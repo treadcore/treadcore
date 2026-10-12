@@ -8,8 +8,10 @@
 # rest: `make` on its own prints this list.
 #
 #   make configure   check the toolchain and libraries, write build/config.env
-#   make build       release build of every crate (the window needs Bevy: slow
-#                    the first time, minutes; incremental after)
+#   make warm        build the engine alone (Bevy, ~370 crates) with a job
+#                    count sized to RAM and at low priority; do this once,
+#                    then every other target finds it built. Resumable.
+#   make build       release build of every crate (after warm: just the game)
 #   make headless    release build of everything except the window
 #   make debug       bot-only match, RUST_LOG=trace, backtraces on, everything
 #                    captured under build/logs/ -- the trace for AI-assisted
@@ -26,7 +28,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure build headless debug run lan host seat lobby-test test schema clean distclean
+.PHONY: help configure warm build headless debug run lan host seat lobby-test test schema clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -35,16 +37,21 @@ LOGDIR   ?= $(BUILDDIR)/logs
 SECONDS  ?= 180
 SEED     ?= 0x7EADC0DE
 NAME     ?= $(shell hostname -s 2>/dev/null || echo player)
+# Parallel rustc jobs. Empty means configure.sh sizes it from RAM.
+JOBS     ?=
 GAME     ?= treadcore
 WANT     ?= 4
 PEER     ?=
-export BUILDDIR LOGDIR SECONDS SEED NAME GAME WANT PEER
+export BUILDDIR LOGDIR SECONDS SEED NAME GAME WANT PEER JOBS
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
 
 configure:
 	@scripts/configure.sh
+
+warm: configure
+	@scripts/warm.sh
 
 build: configure
 	@scripts/build.sh release all

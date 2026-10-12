@@ -19,10 +19,6 @@ treadcore-proto = { workspace = true }
 treadcore-net = { workspace = true }
 treadcore-brain = { workspace = true }
 
-# Pinned to the 0.17 line on purpose: the API this crate is written against.
-# Bump deliberately, with the migration guide open. Default features plus
-# wayland, because Hyprland is the session this is developed on; x11 stays
-# in for Xwayland and everyone else.
-[dependencies.bevy]
-version = "0.17"
-features = ["wayland"]
+# Bevy comes from the workspace table at the root, so the window and the
+# warm crate (`make warm`) build the same engine once.
+bevy = { workspace = true }

@@ -16,7 +16,9 @@
 use std::io::{BufRead, Write};
 use treadcore_sim::*;
 
-pub trait Brain: Send {
+// Send + Sync so a seat's Brain can live in a Bevy resource; JsonBrain keeps
+// its receiver behind a Mutex for the same reason.
+pub trait Brain: Send + Sync {
     fn name(&self) -> &str;
     fn think(&mut self, obs: &Observation) -> Vec<Command>;
 }
@@ -214,7 +216,7 @@ pub struct JsonBrain {
     name: String,
     child: std::process::Child,
     stdin: std::process::ChildStdin,
-    rx: std::sync::mpsc::Receiver<String>,
+    rx: std::sync::Mutex<std::sync::mpsc::Receiver<String>>,
 }
 
 impl JsonBrain {
@@ -237,7 +239,7 @@ impl JsonBrain {
                 }
             }
         });
-        Ok(JsonBrain { name: name.into(), child, stdin, rx })
+        Ok(JsonBrain { name: name.into(), child, stdin, rx: std::sync::Mutex::new(rx) })
     }
 }
 
@@ -250,7 +252,8 @@ impl Brain for JsonBrain {
             let _ = writeln!(self.stdin, "{}", line);
         }
         let mut cmds = Vec::new();
-        while let Ok(line) = self.rx.try_recv() {
+        let rx = self.rx.lock().unwrap();
+        while let Ok(line) = rx.try_recv() {
             match serde_json::from_str::<Vec<Command>>(&line) {
                 Ok(c) => cmds.extend(c),
                 Err(e) => log::warn!("brain '{}': bad line: {}", self.name, e),

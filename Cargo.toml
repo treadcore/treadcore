@@ -24,6 +24,7 @@ members = [
     "source/treadcore-brain",
     "source/treadcore-server",
     "source/treadcore-client",
+    "source/treadcore-warm",
 ]
 
 [workspace.package]
@@ -46,16 +47,53 @@ treadcore-proto = { path = "source/treadcore-proto" }
 treadcore-net = { path = "source/treadcore-net" }
 treadcore-brain = { path = "source/treadcore-brain" }
 
-# Bevy's own advice: the engine's dependencies optimised even in a dev build,
-# or the window crawls. The game crates stay at opt-level 1 so they still
-# build fast and debug well.
+# BEVY, DEFINED ONCE. Both the window and the warm crate take it from here,
+# so the two resolve to the same feature set and the same artifacts in
+# target/: `make warm` compiles the engine, `make build` finds it built.
+#
+# Pinned to 0.17 (the API the client is written against). Default features
+# off, then the ones this game uses: a 2D sprite/text/UI/gizmo window on
+# Wayland or X11. Dropped by not listing them: bevy_pbr, gltf, audio,
+# animation, picking, scenes -- 65 crates and the heaviest of them.
+[workspace.dependencies.bevy]
+version = "0.17"
+default-features = false
+features = [
+    "std", "multi_threaded", "bevy_log", "bevy_asset", "bevy_color", "bevy_state",
+    "bevy_window", "bevy_winit", "wayland", "x11", "bevy_input_focus",
+    "bevy_render", "bevy_core_pipeline", "bevy_sprite", "bevy_sprite_render",
+    "bevy_text", "default_font", "bevy_ui", "bevy_ui_render", "bevy_gizmos",
+]
+
+# PROFILES, SIZED FOR A SMALL MACHINE. This is developed in a 6 GB VM, and
+# the first attempt at these (dependencies at opt-level 3 with full debug
+# info, four rustc at once) ran it out of memory on bevy_ui. So:
+#
+#   dev       game crates at opt-level 1 with debug info: fast to build,
+#             debuggable. Dependencies at opt-level 1 with NO debug info:
+#             Bevy's debug info is gigabytes and nobody steps into it.
+#             The window in a dev build is playable; `make run` uses
+#             release anyway.
+#   release   opt-level 3, no LTO, 16 codegen units: the link step stays
+#             under a gigabyte. This is what `make run` and `make build`
+#             produce.
+#   dist      release plus thin LTO and one codegen unit per crate, for
+#             a binary to hand to someone. Needs memory and time; it is
+#             not the default anywhere.
 [profile.dev]
 opt-level = 1
 
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = 1
+debug = false
 
 [profile.release]
 opt-level = 3
+lto = false
+codegen-units = 16
+debug = false
+
+[profile.dist]
+inherits = "release"
 lto = "thin"
-codegen-units = 4
+codegen-units = 1

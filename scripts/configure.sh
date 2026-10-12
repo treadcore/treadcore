@@ -42,11 +42,27 @@ CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)"
 MEM_MB="$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)"
 echo "  cpus         $CPUS"
 echo "  memory       ${MEM_MB} MB"
-# Bevy's link step wants memory. Below 3 GB, serialise the jobs.
-JOBS="$CPUS"
-if [ "$MEM_MB" -gt 0 ] && [ "$MEM_MB" -lt 3072 ]; then
-    JOBS=1
-    warn "  low memory: building with -j1"
+# JOBS FROM MEMORY, NOT FROM CPUS. A rustc on one of Bevy's big crates
+# (bevy_ui, bevy_render, wgpu-core, naga) wants 1 to 1.5 GB. Four of them
+# at once on a 6 GB machine is a swap storm, and a swap storm is slower
+# than one job. Budget 1.5 GB per job after a gigabyte for everything
+# else, capped at the CPU count, floored at one. JOBS=n on the make line
+# overrides.
+if [ -n "${JOBS:-}" ]; then
+    :
+elif [ "$MEM_MB" -gt 0 ]; then
+    JOBS=$(( (MEM_MB - 1024) / 1536 ))
+    [ "$JOBS" -lt 1 ] && JOBS=1
+    [ "$JOBS" -gt "$CPUS" ] && JOBS="$CPUS"
+else
+    JOBS="$CPUS"
+fi
+echo "  jobs         $JOBS (from ${MEM_MB} MB; JOBS=n overrides)"
+SWAP_MB="$(awk '/SwapTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)"
+if [ "$SWAP_MB" -lt 1024 ]; then
+    warn "  swap         ${SWAP_MB} MB: a Bevy link with no swap can be killed outright; 2 GB of swap is cheap insurance"
+else
+    echo "  swap         ${SWAP_MB} MB"
 fi
 
 cat > "$BUILDDIR/config.env" <<CFG

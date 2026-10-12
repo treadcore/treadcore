@@ -41,8 +41,9 @@ but thins the ring and stretches every link.
 ## Building
 
 ```
-make configure   # toolchain and display libraries; writes build/config.env
-make build       # release, every crate (Bevy: minutes the first time)
+make configure   # toolchain, display libraries, a RAM-sized job count; writes build/config.env
+make warm        # the engine alone, once, gently (see documentation/BUILD.md)
+make build       # release, every crate; after warm, only the game
 make headless    # everything except the window
 make test        # cargo test, every crate
 ```
@@ -108,6 +109,7 @@ index.html, CNAME         the site at treadcore.org (GitHub Pages, served from t
 - [documentation/DESIGN.md](documentation/DESIGN.md): the rules, the numbers, and why.
 - [documentation/PROTOCOL.md](documentation/PROTOCOL.md): the wire protocol and the host election.
 - [documentation/RESEARCH.md](documentation/RESEARCH.md): what the game is modelled on, with sources.
+- [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
 
 ## License

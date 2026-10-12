@@ -1,0 +1,26 @@
+# treadcore-warm -- the engine, and nothing else.
+#
+# A crate whose only purpose is to depend on exactly what the window
+# depends on. `make warm` builds it, which builds Bevy and its three
+# hundred-odd crates into target/, gently (few jobs, low priority), with
+# nothing of the game in the way. `make build` afterwards finds every
+# engine artifact already there and compiles only treadcore.
+#
+# It is also the smallest possible "does a window open on this machine"
+# test: it draws one sprite and some text and quits on Escape.
+[package]
+name = "treadcore-warm"
+description = "Treadcore's prerequisites: builds the engine, opens one window, nothing else."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "treadcore-warm"
+path = "src/main.rs"
+
+[dependencies]
+bevy = { workspace = true }
