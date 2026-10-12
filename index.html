@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>treadcore</title>
+<meta name="description" content="A four-player overhead tank game for the battlefield the tank was just handed: indirect fire, and a drone crew flown off the hull.">
+<style>
+  :root {
+    --green: #1f3a24;
+    --green-deep: #142719;
+    --green-line: #2f5a37;
+    --white: #f4f6ef;
+    --gold: #d9b24c;
+    --gold-bright: #f2d27a;
+    --gold-deep: #9a7a2a;
+    --shadow: 0 0 2px #000, 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 6px rgba(0,0,0,.8);
+  }
+  html, body { margin: 0; background: var(--green-deep); color: var(--white); font: 16px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  body {
+    background-image:
+      linear-gradient(rgba(242,210,122,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(242,210,122,.045) 1px, transparent 1px),
+      radial-gradient(ellipse at 50% 0%, #27472d 0%, var(--green-deep) 60%);
+    background-size: 32px 32px, 32px 32px, 100% 100%;
+    text-shadow: var(--shadow);
+  }
+  main { max-width: 800px; margin: 0 auto; padding: 40px 16px 80px; }
+  header { border: 2px solid var(--gold); border-width: 2px 0; padding: 22px 0 18px; margin-bottom: 36px; position: relative; }
+  header::before, header::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--gold-deep); }
+  header::before { top: 4px; } header::after { bottom: 4px; }
+  h1 { font-size: 46px; letter-spacing: .14em; margin: 0; color: var(--white); text-transform: uppercase; }
+  h1 span { color: var(--gold-bright); }
+  .tag { color: var(--gold); margin: 6px 0 0; letter-spacing: .08em; text-transform: uppercase; font-size: 13px; }
+  h2 { font-size: 17px; margin: 40px 0 12px; color: var(--gold-bright); letter-spacing: .12em; text-transform: uppercase; border-left: 4px solid var(--gold); padding-left: 10px; }
+  p { margin: 0 0 14px; }
+  a { color: var(--gold-bright); text-decoration-color: var(--gold-deep); }
+  a:hover { color: var(--white); }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--gold-deep); }
+  td, th { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--green-line); vertical-align: top; }
+  th { color: var(--gold); font-weight: normal; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; background: rgba(0,0,0,.3); }
+  pre { background: rgba(0,0,0,.45); padding: 14px; overflow-x: auto; border: 1px solid var(--gold-deep); border-left: 4px solid var(--gold); font-size: 14px; color: var(--white); }
+  .hud { background: rgba(0,0,0,.55); border: 1px solid var(--gold-deep); padding: 14px; font-size: 13px; white-space: pre; overflow-x: auto; color: var(--white); margin: 12px 0 24px; }
+  .ok { color: #8cff9a; } .bad { color: #ff6a5a; } .warn { color: var(--gold-bright); }
+  .cta { display: inline-block; margin: 8px 12px 8px 0; padding: 8px 16px; border: 2px solid var(--gold); color: var(--white); text-decoration: none; letter-spacing: .1em; text-transform: uppercase; font-size: 13px; background: rgba(0,0,0,.3); }
+  .cta:hover { background: var(--gold); color: #000; text-shadow: none; }
+  footer { color: var(--gold); margin-top: 60px; font-size: 13px; border-top: 1px solid var(--gold-deep); padding-top: 14px; letter-spacing: .04em; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tread<span>core</span></h1>
+<p class="tag">four tanks &middot; one island &middot; the airspace around each one</p>
+</header>
+
+<p>A four-player overhead tank game for the battlefield the tank was just handed. The gun fires indirect, like artillery, at map coordinates a recon drone is watching. The tank stays alive the way a carrier does: by owning a ring of airspace around itself with interceptor drones flown off its own hull. A shell comes down through that ring regardless. That is the game.</p>
+
+<p>The tank is the mobile command. Everything it deploys, it deploys from itself.</p>
+
+<p>
+<a class="cta" href="https://github.com/treadcore/treadcore">Source</a>
+<a class="cta" href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">Concept</a>
+<a class="cta" href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">Design</a>
+</p>
+
+<pre>git clone git@github.com:treadcore/treadcore.git
+cd treadcore
+make configure
+make run         # solo against three bots
+make lan         # LAN lobby, elects a host
+make debug       # a full bot match, traced to build/logs/</pre>
+
+<h2>The drone crew</h2>
+<table>
+<tr><th>drone</th><th>job</th><th>the number that matters</th></tr>
+<tr><td>recon</td><td>orbits a point, sees 12 tiles, feeds the gun</td><td>a spotted shell lands within 0.6 tiles; blind, within 4</td></tr>
+<tr><td>interceptor</td><td>holds station on the bubble, rams what flies in</td><td>90% kill on a good link, 50% on a dead one; one shot each</td></tr>
+<tr><td>strike</td><td>the FPV: flies to an enemy tank and dives</td><td>35 of 100 armor, if it gets through</td></tr>
+</table>
+
+<h2>The HUD</h2>
+<div class="hud">TREADCORE  solo: three bots
+tick   2140   107.0s  seat 0
+
+pos ( 41.2, 33.8)  hdg  -38  spd 0.0
+armor  [############....]  74
+fuel   [#############...] 488
+shells 17/24   gun <span class="ok">READY</span>
+bay    recon 1  intercept 3  strike 3
+bubble  6.0 tiles (150 m)
+<span class="bad">!! UNDER FIRE !!</span>
+
+AIR  kind  link  batt  task
+#31   Recon  <span class="ok">82%</span>   96s  station r4
+#44   Inter  <span class="ok">91%</span>   61s  station r6
+#45   Inter  <span class="warn">63%</span>   58s  <span class="bad">INTERCEPT #52</span>
+#47   Inter  <span class="ok">88%</span>   40s  station r6
+
+hostile air seen 3   inside detection 1
+hostile tanks seen 1</div>
+
+<p>On the map: the bubble as a ring, every link as a line from tank to drone going green to red with distance, the recon's vision as a disc over the enemy, every shell as an arc with its impact point growing as it falls.</p>
+
+<h2>No server</h2>
+<p>Each process beacons the LAN, pings every peer it finds, publishes a row of the latency matrix, and runs the same election on the same matrix: the host is the peer whose worst link to anyone is best, and anyone the host cannot reach directly sends through the neighbour that can. Bolo's ring, as a tree. <a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">The protocol</a>.</p>
+
+<h2>Brains</h2>
+<p>A Brain gets the same observation the window draws and returns commands the world validates like anyone else's. A bot in Python is a program that reads one JSON line and writes one. <a href="https://github.com/treadcore/treadcore/blob/main/source/treadcore-brain/src/lib.rs">The interface</a>.</p>
+
+<h2>Repository</h2>
+<table>
+<tr><th>directory</th><th>holds</th></tr>
+<tr><td>source/</td><td>the six Rust crates: sim, proto, net, brain, server, client</td></tr>
+<tr><td>documentation/</td><td>concept, design, protocol, research with sources, the lab report</td></tr>
+<tr><td>vendor/</td><td>external code and blobs vendored by the author, each with its licence</td></tr>
+<tr><td>scripts/</td><td>what the Makefile calls</td></tr>
+</table>
+
+<h2>Read more</h2>
+<p><a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">Concept</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">Design</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">Protocol</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">What it is modelled on</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT.md">Lab report</a> &middot; <a href="https://github.com/treadcore/treadcore">Source</a></p>
+
+<footer>MIT &middot; &copy; 2026 Paul Richeson &middot; no assets; everything drawn is a rectangle or a line.</footer>
+</main>
+</body>
+</html>

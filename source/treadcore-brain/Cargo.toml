@@ -1,0 +1,15 @@
+[package]
+name = "treadcore-brain"
+description = "Treadcore's Brain API: observation in, commands out; plus the rule-based bot."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+treadcore-sim = { workspace = true }

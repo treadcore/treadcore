@@ -1,0 +1,5 @@
+/target
+/build
+._*
+.DS_Store
+*.log

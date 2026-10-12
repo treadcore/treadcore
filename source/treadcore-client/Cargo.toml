@@ -1,0 +1,28 @@
+[package]
+name = "treadcore-client"
+description = "Treadcore's Bevy client: overhead map, HUD telemetry overlay, controls."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "treadcore"
+path = "src/main.rs"
+
+[dependencies]
+log = { workspace = true }
+treadcore-sim = { workspace = true }
+treadcore-proto = { workspace = true }
+treadcore-net = { workspace = true }
+treadcore-brain = { workspace = true }
+
+# Pinned to the 0.17 line on purpose: the API this crate is written against.
+# Bump deliberately, with the migration guide open. Default features plus
+# wayland, because Hyprland is the session this is developed on; x11 stays
+# in for Xwayland and everyone else.
+[dependencies.bevy]
+version = "0.17"
+features = ["wayland"]

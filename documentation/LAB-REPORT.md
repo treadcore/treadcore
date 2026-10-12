@@ -1,0 +1,405 @@
+# treadcore: lab report
+
+A walk through the code as it stands on 2026-10-12: what each section
+is, what it looks like, how it is used, and the Rust technique behind
+it. Source: [github.com/treadcore/treadcore](https://github.com/treadcore/treadcore).
+Site: [treadcore.org](https://treadcore.org).
+
+## 1. Status, first
+
+| crate | lines | compiled | tests |
+| --- | --- | --- | --- |
+| treadcore-sim | ~1050 | yes | 6 pass (determinism, launch validation, shell flight, swarm vs bubble, map determinism, every start reaches the centre) |
+| treadcore-proto | ~210 | written, build cancelled before it finished | 2 written |
+| treadcore-net | ~820 | written, build cancelled | 5 written (4 election, 1 loopback session) |
+| treadcore-brain | ~290 | written, build cancelled | 1 written (four bots fight to a result) |
+| treadcore-server | ~330 | written, build cancelled | none |
+| treadcore-client | ~780 | written, build cancelled; Bevy 0.17 dependency build was at ~240 of ~500 crates | none |
+
+So: the world is proven; everything above it is written against it but
+not yet proven by the compiler. Expect a round of small fixes in the
+upper crates when the build runs. The one ambiguity the compiler had
+flagged (Bevy's prelude and the sim both export `Command` and `Event`)
+is already resolved with an explicit import.
+
+## 2. The shape: six crates, one direction
+
+```
+treadcore-client (Bevy)      treadcore-server (headless)
+        \                        /
+         treadcore-brain  treadcore-net
+                   \        /
+                treadcore-proto
+                      |
+                 treadcore-sim
+```
+
+Every arrow points down. The sim knows nothing of sockets, engines or
+bots; the proto crate knows the sim's types and nothing else; net knows
+packets and the sim's `World`; the two binaries know everything. That is
+the whole architecture, and the Cargo workspace enforces it: a crate
+cannot import something it does not list in its manifest, and a cycle
+is a build error.
+
+The practical payoff is in the server's `run_local` and the client's
+solo mode: both drive the same `Host` with no socket. The server runs a
+full match in a few seconds and writes the trace; the window plays the
+same code at 20 ticks a second. There is no "simulation for the game"
+and "simulation for the tests". There is one.
+
+## 3. treadcore-sim: the world
+
+### 3.1 Plain data, plain functions
+
+```rust
+pub struct World {
+    pub tick: Tick,
+    pub map: Map,
+    pub players: Vec<Player>,
+    pub tanks: Vec<Tank>,
+    pub drones: Vec<Drone>,
+    pub shells: Vec<Shell>,
+    pub depots: Vec<Depot>,
+    pub rng: Rng,
+    ...
+    #[serde(skip)]
+    pub events: Vec<Event>,
+}
+
+impl World {
+    pub fn step(&mut self, orders: &[Order]) { ... }
+    pub fn observe(&self, p: PlayerId) -> Observation { ... }
+}
+```
+
+Two methods matter. `step` advances one tick with the orders for that
+tick. `observe` returns what one player is allowed to see. Everything
+else is detail.
+
+The technique is deliberate plainness. No entity-component system, no
+trait objects, no `Rc<RefCell<>>`: entities are `Vec`s of structs with
+an `id`, looked up by linear search. At four tanks, forty drones and
+thirty shells a linear search is faster than a hash map and the code
+reads as what it does. `#[serde(skip)]` on `events` says that events
+are the output of a step, not part of the state; a snapshot of a world
+does not carry them.
+
+### 3.2 Determinism as a property, not a hope
+
+```rust
+pub struct Rng(pub u64);          // xorshift64*
+impl Rng {
+    pub fn f32(&mut self) -> f32 { ... }
+    pub fn disc(&mut self) -> V2 { ... }
+}
+```
+
+The random source is the world's own, seeded from the scenario,
+advanced only inside `step`. The host ticks orders sorted by player.
+The test:
+
+```rust
+#[test]
+fn deterministic() {
+    let mut a = world(); let mut b = world();
+    for i in 0..400 { let o = if i == 3 { orders.clone() } else { vec![] }; a.step(&o); b.step(&o); }
+    assert_eq!(a.rng.0, b.rng.0);
+    ...
+}
+```
+
+Determinism is what makes host-authority honest (a client could, in
+principle, run the same world and check), what makes a trace replayable,
+and what makes a bot testable.
+
+### 3.3 Commands are validated, events are the record
+
+```rust
+pub enum Command { Move { to: V2 }, FireIndirect { at: V2 }, Launch { kind, task }, SetBubble { radius }, ... }
+pub struct Order { pub player: PlayerId, pub cmd: Command }
+pub enum Event { Rejected { player, cmd, why: String }, ShellLaunched { .. }, Intercepted { .. }, TankDestroyed { .. }, ... }
+```
+
+`apply` is a long match over `Command`. Every arm checks before it acts
+(`reloading`, `no shells`, `beyond maximum range`, `bay empty for that
+kind`) and a failure is not a panic or an `Err` but an `Event::Rejected`
+with the reason. The caller does not need a result type: the reason
+goes to the player's HUD and the bot's log through the same channel as
+everything else. Nothing a client sends can put the world in a bad
+state; the worst it can do is be refused.
+
+### 3.4 The step, and the borrow checker
+
+`step_drones` is the densest function and shows the technique Rust
+pushes you toward when many things move and interact in one tick:
+
+```rust
+// 3. Motion. Positions of everything, read before anything moves.
+let drone_pos: Vec<(EntityId, V2)> = self.drones.iter().map(|d| (d.id, d.pos)).collect();
+let tank_pos:  Vec<(EntityId, V2, bool)> = ...;
+let mut lost = Vec::new(); let mut rams = Vec::new(); let mut strikes = Vec::new();
+for d in self.drones.iter_mut() { ... push decisions into those vecs ... }
+// 4. Resolve rams, strikes, recoveries, losses -- then remove.
+```
+
+Read a snapshot of positions, mutate each drone once with that snapshot,
+collect the consequences into lists, then apply the consequences in a
+second pass. The borrow checker will not let you hold `&mut` to one
+drone while reading another, and the shape that satisfies it is also
+the shape that gives order-independent results. The constraint is the
+design.
+
+### 3.5 The numbers live in one file
+
+`rules.rs` is nothing but `pub const` with a sentence each:
+
+```rust
+/// Circular error, in tiles, blind and spotted. The whole reason to fly
+/// recon: a blind shot is a suppression round, a spotted one is a kill.
+pub const CEP_BLIND: f32 = 4.0;
+pub const CEP_SPOTTED: f32 = 0.6;
+```
+
+A balance change is a one-line diff with its reason beside it. The HUD,
+the bot and the docs all read the same constants, so "12 tiles" is never
+typed twice.
+
+### 3.6 The map
+
+`map.rs`: a `Vec<u8>` of terrain, row-major, with `Terrain::from_u8`.
+`u8` rather than `Vec<Terrain>` because the map crosses the wire once in
+`Welcome` and 16 KiB is the right size for it. Generation is value noise
+for forest, a wandering line for the river, and roads walked from each
+start to the centre that become bridges over water. `route` is A* with
+terrain cost and no diagonal corner-cutting, simplified to corners.
+
+The one bug found by test so far was here: a road walked across the
+river in two-thirds-tile steps could lay a bridge that was only
+diagonally connected, which A* correctly refused to cross. The fix was
+to lay a plus of tiles at each water crossing, and the test that found
+it (`every_start_can_reach_the_centre`) stays.
+
+## 4. treadcore-proto: the wire vocabulary
+
+```rust
+pub enum Packet {
+    Beacon { peer, name, game },
+    Hello { peer, name, game, known: Vec<(PeerId, String, String)> },
+    Ping { peer, seq, sent_us }, Pong { .. },
+    RttRow { peer, epoch, rtts: Vec<(PeerId, Option<u32>)> },
+    Elect { peer, epoch, host, route: Vec<(PeerId, PeerId)> },
+    Join, Welcome { player, scenario, tick, map_cells }, Refuse,
+    Command { peer, seq, cmd }, CommandAck { seq },
+    Snapshot { tick, part, parts, bytes }, Events { seq, tick, events }, EventsAck,
+    Heartbeat, Leave,
+    Relay { from, to, hops, inner: Vec<u8> },
+}
+```
+
+One enum is everything that crosses a socket. `encode` prefixes four
+magic bytes and a version; `decode` refuses at the first wrong byte.
+A packet from a different build is dropped, never misread.
+
+Two small techniques. `Relay` carries its payload as `Vec<u8>`, not
+`Box<Packet>`: a forwarding peer does not decode what it forwards, so
+a relay node can be on a different minor version of the inner message
+and still be useful. And `SnapshotAssembler` reassembles an observation
+split across datagrams by tick, keeping only the newest: UDP's
+reordering and loss handled in thirty lines, with no retransmission,
+because a snapshot that is late is worthless and the next one is
+coming.
+
+The Rust style here is the one the language is best at: a closed enum
+with named fields, `serde` deriving everything, `bincode` for bytes.
+The wire format is the type definition. There is no schema file to keep
+in sync.
+
+## 5. treadcore-net: finding each other, electing, relaying
+
+### 5.1 The election is a pure function
+
+```rust
+pub fn elect(peers: &[PeerId], rows: &BTreeMap<PeerId, Row>) -> Option<Decision>
+```
+
+No sockets, no clocks: a latency matrix in, a host and a route out. For
+each candidate, Dijkstra from it; candidates that cannot reach everyone
+(even by relay) are out; the winner has the smallest worst-case path
+latency, ties by total then by id. The route is the Dijkstra tree:
+each peer's next hop toward the host is its parent.
+
+Because it is pure, it has four tests that take microseconds (a central
+peer hosts; a peer reachable only through a neighbour is routed through
+it; a line of four picks the middle; alone, you host) and the lobby
+can call it on every peer with the confidence that identical input
+gives identical output. That is the entire trick of a serverless
+election: do not vote, compute, and compare.
+
+`BTreeMap` rather than `HashMap` everywhere in this file is not taste.
+Iteration order is part of the result (ties, "the lowest id wins"), and
+a `BTreeMap` iterates the same on every machine.
+
+### 5.2 The lobby is a state machine with timers
+
+```rust
+pub enum Phase { Discover, Probe, Share, Decide, Done }
+pub fn poll(&mut self, sock: &mut Socket) -> Option<LobbyResult>
+```
+
+`poll` drains the socket, dispatches each packet to `handle`, then runs
+the current phase's timer logic. It is called from whoever owns the
+loop: a `while` in the server, a Bevy system in the client. No threads.
+The simulation's clock stays the only clock, and the lobby's behaviour
+is the same in a 20 Hz loop and a 2000 Hz one.
+
+`Hello` carrying the sender's known peers with their addresses is what
+makes a lobby of four converge in one round when broadcast only reaches
+some of them, and what lets `--peer` seed a lobby across a router.
+
+### 5.3 Host and Client
+
+```rust
+pub struct Host { pub world: World, pub seats: Vec<Seat>, pub routes: RouteTable, sock: Option<Socket>, inbox: Vec<Order>, .. }
+impl Host {
+    pub fn poll(&mut self)                         // joins, orders, acks, heartbeats, relays
+    pub fn tick(&mut self, local: Vec<Order>) -> &[Event]   // step, snapshot, events out
+}
+```
+
+`sock: Option<Socket>` is the line that makes solo play and the debug
+trace the same code as LAN play. With `None`, `poll` returns at once
+and `tick` skips the send loop. There is no `trait Transport` with two
+implementations; there is one struct and one `if let`.
+
+Reliability is three small mechanisms, not a protocol library:
+
+- orders: per-client sequence, resend every 120 ms until acked, host
+  applies each once in order (a `BTreeMap<u32, Command>` buffers early
+  arrivals);
+- events: per-seat sequence, resend the head of a `VecDeque` until
+  acked, client delivers once;
+- snapshots: fire and forget, newest wins.
+
+The `RouteTable` with `direct` and `via` maps is shared by both ends;
+`send` wraps in `Relay` when `via` says so, and `relay` either unwraps
+(for me) or forwards (not for me, hops < 8). Neither `Host` nor `Client`
+knows which packets were relayed.
+
+The `poll` method's first line, `let Some(mut sock) = self.sock.take()
+else { return };`, and its last, `self.sock = Some(sock)`, are the
+borrow checker again: taking the socket out of `self` lets the method
+mutate seats and routes while holding it, then puts it back. It is a
+common Rust idiom for "I need two mutable things from one struct", and
+it costs nothing.
+
+## 6. treadcore-brain: the controller interface
+
+```rust
+pub trait Brain: Send {
+    fn name(&self) -> &str;
+    fn think(&mut self, obs: &Observation) -> Vec<Command>;
+}
+```
+
+This is Bolo's Brain. Observation in, commands out, and the world
+validates the commands exactly as a human's. A Brain cannot cheat
+because it has no more access than a keyboard: `Observation` is what
+the host already filtered.
+
+`RuleBot` is a doctrine written as a function: keep the bubble up, keep
+a recon out, shoot what the recon sees, move after firing, resupply
+when low, strike a thin bubble. It thinks four times a second, by
+comparing ticks, so four bots cost the host almost nothing.
+
+`JsonBrain` is the same trait over a child process: one JSON observation
+per line on stdin, one JSON array of commands per line on stdout, read
+by a thread into an `mpsc` channel so a slow bot never stalls the tick.
+`Observation` and `Command` serialise with `serde` as they are, so the
+schema for an external bot is the Rust type, printed by
+`treadcore-server --brain-schema`.
+
+`Box<dyn Brain>` is the one trait object in the project, and it is
+where one belongs: the set of controllers is open, and a seat does not
+care which it has.
+
+## 7. treadcore-server: the trace
+
+Hand-parsed flags (the loop is forty lines and reads top to bottom),
+`env_logger`, and `narrate`:
+
+```rust
+Event::ShellLaunched { owner, kind, spotted, eta_ticks, .. } =>
+    log::info!("[{:>6} {:>6.1}s] p{} fires {:?} {} eta {:.1}s", t, s, owner, kind,
+               if *spotted { "SPOTTED" } else { "blind" }, *eta_ticks as f32 * DT),
+```
+
+Every event at `info` as a sentence with tick and seconds in front;
+every tank's state once a second at `debug`; `--trace` writes the same
+events as JSON lines. `make debug` runs this at `RUST_LOG=trace` with
+backtraces on and captures everything under `build/logs/`. The log is
+meant to be read by a person, or handed to an AI with the source beside
+it, which is why it is prose with numbers and not numbers alone.
+
+The same binary is the LAN host (`--net`, elected) and a LAN bot seat
+(`--net`, not elected), so `make lobby-test` runs four of them on one
+machine and checks that exactly one says `hosting:`.
+
+## 8. treadcore-client: the window
+
+Bevy, four plugins, each a file:
+
+| file | owns | pattern |
+| --- | --- | --- |
+| session.rs | `Session` enum (Lobby / Hosting / Client / Ended), `View` resource | `FixedUpdate` at 20 Hz steps the host; `Update` polls the net |
+| render.rs | tile sprites, entity sprites keyed by id, the gizmo overlay | sprites synced from the observation; everything else is lines |
+| hud.rs | four text panels | one `String` per panel rebuilt each frame |
+| input.rs | keys and mouse to `Orders`, the camera | click to drive via the sim's own A* |
+
+The engine never touches the world directly. `View` holds the last
+`Observation` and the map; render and HUD read `View`; input writes
+`Orders`; session moves orders to the host or the client and
+observations back. Bevy's resources and systems give the plumbing;
+the game stays in the sim.
+
+The overlay is the game's look and it is all `Gizmos`: the bubble as a
+ring, the detection margin as a fainter ring, each drone's link as a
+line coloured by `link_color(d.link)`, the recon's vision as a disc,
+each shell as an arc with an impact circle growing with progress. No
+assets. A tank is a rotated rectangle with a line for a barrel.
+
+Pinned to Bevy 0.17 on purpose: it is the API this crate is written
+against, and it moves with every minor. `Time::<Fixed>::from_hz(20.0)`
+gives the host's tick; `AccumulatedMouseScroll` is zoom; `Camera2d`
+with an `OrthographicProjection` scale is the camera.
+
+## 9. The build system
+
+`Makefile` is the front door and prints its own targets; `scripts/*.sh`
+do the work; `cargo` is what they call. `configure.sh` checks the
+toolchain and the display libraries and writes `build/config.env`;
+every other script `need_config`s and refuses to run without it.
+`build.sh` builds headless automatically when the display libraries are
+missing. `debug.sh` is the trace. All output goes to the terminal and
+to a stamped file under `build/logs/` both, so nothing lives only in
+scrollback.
+
+## 10. What the Rust style here is, in one paragraph
+
+Data is plain structs and closed enums with `serde` derives; behaviour
+is functions on them. The one trait object is where the set is open
+(Brains). Mutation follows the shape the borrow checker wants: read a
+snapshot, decide, apply. Determinism is a test, not an aspiration.
+Failure of input is an event, not a panic; failure of the machine (a
+bind error) is a log line and a fallback. Every tuning number has a
+sentence. Every layer can be run without the layer above it, and the
+workspace makes that a compile-time fact.
+
+## 11. What to do next
+
+1. Run the build (below). Fix what the compiler finds in proto, net,
+   brain, server; then the client.
+2. `make test`, then `make debug`, and read the trace for balance:
+   do bots die too fast, do swarms get through, does recon matter.
+3. `make lobby-test` for the election on one machine; then two machines.
+4. Then the things DESIGN.md lists as not here: teams, map files,
+   prediction, NAT.

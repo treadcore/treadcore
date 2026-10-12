@@ -1,0 +1,16 @@
+[package]
+name = "treadcore-sim"
+description = "Treadcore's deterministic world: map, tanks, drone bays, shells. Headless."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

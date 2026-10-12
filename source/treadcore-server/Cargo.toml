@@ -1,0 +1,22 @@
+[package]
+name = "treadcore-server"
+description = "Treadcore headless server: host a match, run bot matches, write verbose traces."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "treadcore-server"
+path = "src/main.rs"
+
+[dependencies]
+log = { workspace = true }
+env_logger = { workspace = true }
+serde_json = { workspace = true }
+treadcore-sim = { workspace = true }
+treadcore-proto = { workspace = true }
+treadcore-net = { workspace = true }
+treadcore-brain = { workspace = true }

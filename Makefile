@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Paul Richeson
+#
+# TREADCORE -- build, run, trace.
+#
+# The Makefile is the front door; the scripts under scripts/ do the work;
+# cargo is what they call. Same convention as copal, radbeeper and the
+# rest: `make` on its own prints this list.
+#
+#   make configure   check the toolchain and libraries, write build/config.env
+#   make build       release build of every crate (the window needs Bevy: slow
+#                    the first time, minutes; incremental after)
+#   make headless    release build of everything except the window
+#   make debug       bot-only match, RUST_LOG=trace, backtraces on, everything
+#                    captured under build/logs/ -- the trace for AI-assisted
+#                    development and debugging
+#   make run         the window, solo against three bots
+#   make lan         the window, LAN lobby: waits for peers, elects a host
+#   make host        headless host on the LAN (plus bots for empty seats)
+#   make seat        headless bot that joins a LAN lobby (run four: a test)
+#   make lobby-test  four headless seats on this machine negotiate a host
+#   make test        cargo test, every crate
+#   make schema      print the JSON brain's observation and command examples
+#   make clean       remove build output, keep the cargo cache
+#   make distclean   remove build/ and target/ both
+
+SHELL := /usr/bin/env bash
+.DEFAULT_GOAL := help
+.PHONY: help configure build headless debug run lan host seat lobby-test test schema clean distclean
+
+BUILDDIR ?= build
+LOGDIR   ?= $(BUILDDIR)/logs
+# Match length for `make debug`, in game seconds. Short by default: a trace
+# is for reading.
+SECONDS  ?= 180
+SEED     ?= 0x7EADC0DE
+NAME     ?= $(shell hostname -s 2>/dev/null || echo player)
+GAME     ?= treadcore
+WANT     ?= 4
+PEER     ?=
+export BUILDDIR LOGDIR SECONDS SEED NAME GAME WANT PEER
+
+help:
+	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
+
+configure:
+	@scripts/configure.sh
+
+build: configure
+	@scripts/build.sh release all
+
+headless: configure
+	@scripts/build.sh release headless
+
+debug: configure
+	@scripts/debug.sh
+
+run: configure
+	@scripts/run.sh solo
+
+lan: configure
+	@scripts/run.sh lan
+
+host: configure
+	@scripts/run.sh host
+
+seat: configure
+	@scripts/run.sh seat
+
+lobby-test: configure
+	@scripts/lobby-test.sh
+
+test:
+	@scripts/build.sh test
+
+schema:
+	@cargo run -q -p treadcore-server -- --brain-schema
+
+clean:
+	rm -rf $(BUILDDIR)/logs $(BUILDDIR)/config.env $(BUILDDIR)/*.log
+	cargo clean -q 2>/dev/null || true
+
+distclean: clean
+	rm -rf $(BUILDDIR) target

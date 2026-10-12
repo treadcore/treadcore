@@ -1,0 +1,116 @@
+# treadcore
+
+A four-player overhead tank game for the battlefield the tank was just
+handed: the gun fires indirect like artillery, and the tank keeps itself
+alive the way a carrier does, by owning the airspace around it with a
+drone crew flown off its own hull.
+
+Rust, Bevy for the window, plain `std` UDP for the network. The four
+clients find each other on the LAN, measure the links between them, and
+elect a host by themselves: the one whose worst link is best, with
+anyone the host cannot reach routed through a neighbour that can.
+
+Website: [treadcore.org](https://treadcore.org). Repository:
+[github.com/treadcore/treadcore](https://github.com/treadcore/treadcore).
+
+## The game
+
+Each player has one tank on a 128 x 128 tile island (one tile is 25 m).
+The tank carries a bay of drones:
+
+| drone | job | the number that matters |
+| --- | --- | --- |
+| recon | orbits a point, sees 12 tiles, feeds telemetry back over a 40-tile link | a shell at a target it can see lands within 0.6 tiles; blind, within 4 |
+| interceptor | holds station on a ring around the tank (the *bubble*), rams anything that flies in | kills 90 % of the time on a good link, 50 % on a dead one; one shot each |
+| strike | the FPV: flies to an enemy tank and dives | 35 of 100 armor, if it gets through the bubble |
+
+The gun lobs high-calibre rounds at map coordinates between 12 and 60
+tiles out. Six seconds of flight at full range. Seventy damage in a
+2.5-tile splash, and the splash takes down every drone over it: the
+bubble does nothing to a shell, and a shell does plenty to the bubble.
+There is also a direct-fire mode for anything that drives into line of
+sight inside 10 tiles.
+
+Depots resupply and repair. Neutral FPV swarms come in off the map edge
+every 45 seconds, so the bubble matters even alone. Last tank standing
+wins; at the time limit, the highest score.
+
+The player's one dial is the bubble radius: wide catches strikes early
+but thins the ring and stretches every link.
+
+## Building
+
+```
+make configure   # toolchain and display libraries; writes build/config.env
+make build       # release, every crate (Bevy: minutes the first time)
+make headless    # everything except the window
+make test        # cargo test, every crate
+```
+
+Needs Rust 1.85+. The window needs `wayland-client`, `xkbcommon`, `alsa`
+and `libudev` dev packages (on Alpine: `wayland-dev libxkbcommon-dev
+alsa-lib-dev eudev-dev`). Without them the headless crates still build.
+
+## Running
+
+```
+make run         # the window, solo against three bots
+make lan         # the window, LAN lobby; WANT=2 to start with two
+make host        # headless host on the LAN, bots in empty seats
+make seat        # headless bot that joins a LAN lobby
+make lobby-test  # four headless peers on this machine elect a host
+```
+
+Controls are on screen (Tab hides them). Left click drives, right click
+fires, 1/2/3 launch interceptor / recon / strike, R recalls, [ ] set
+the bubble.
+
+## The debug trace
+
+```
+make debug                      # 3 game minutes of four bots, flat out
+SECONDS=600 SEED=0x1234 make debug
+BRAIN='python3 mybot.py' make debug   # an external brain in seat 0
+```
+
+Writes `build/logs/debug-STAMP.log` (every log level, every event,
+per-second state of every tank) and `build/logs/trace-STAMP.jsonl` (one
+JSON event per line). The log is written to be read, by a person or by
+an AI with the source beside it: `[tick seconds] who did what`.
+
+## Brains
+
+A Brain is anything that takes an observation and returns commands. The
+observation is the player's view, filtered by the host; a Brain cannot
+see or do anything a keyboard cannot. `RuleBot` fills empty seats.
+`JsonBrain` runs an external program: one JSON observation per line on
+its stdin, one JSON array of commands per line on its stdout. `make
+schema` prints an example of each. See `source/treadcore-brain`.
+
+## Layout
+
+```
+source/treadcore-sim      the world: map, tanks, drones, shells. Headless, deterministic.
+source/treadcore-proto    the packets: commands, snapshots, events, negotiation.
+source/treadcore-net      UDP, LAN discovery, RTT matrix, host election, relay, Host/Client.
+source/treadcore-brain    the Brain trait, RuleBot, JsonBrain.
+source/treadcore-server   headless: bot matches, LAN host, LAN bot seat.
+source/treadcore-client   the Bevy window.
+scripts/                  what the Makefile calls.
+vendor/                   external code and blobs vendored by the author, with their licences.
+documentation/            concept, design, protocol, research notes, the lab report.
+index.html, CNAME         the site at treadcore.org (GitHub Pages, served from the root).
+```
+
+## Documents
+
+- [documentation/CONCEPT.md](documentation/CONCEPT.md): the brief, reviewed; how the design improves on the base concept.
+- [documentation/DESIGN.md](documentation/DESIGN.md): the rules, the numbers, and why.
+- [documentation/PROTOCOL.md](documentation/PROTOCOL.md): the wire protocol and the host election.
+- [documentation/RESEARCH.md](documentation/RESEARCH.md): what the game is modelled on, with sources.
+- [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
+
+## License
+
+MIT. See [LICENSE](LICENSE). No third-party game assets; everything drawn
+is a rectangle or a line.

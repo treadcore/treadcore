@@ -1,0 +1,61 @@
+# TREADCORE -- a four-player overhead tank/drone arena.
+#
+# One workspace, six crates, in dependency order:
+#
+#   treadcore-sim     the deterministic world: map, tanks, drone bays, shells.
+#                     Headless. No engine, no sockets. Everything else is a
+#                     client of this crate.
+#   treadcore-proto   the wire vocabulary: commands, snapshots, events, and
+#                     the peer-negotiation messages. serde + bincode.
+#   treadcore-net     UDP transport, LAN discovery, RTT matrix, host election
+#                     and the relay route; the Host and Client state machines.
+#   treadcore-brain   the Brain API (observation in, commands out) and the
+#                     rule-based bot that fills empty seats.
+#   treadcore-server  headless binary: host a match, run bot-only matches,
+#                     write the verbose traces `make debug` captures.
+#   treadcore-client  the Bevy window: overhead map, HUD telemetry overlay,
+#                     keyboard/mouse control. The only crate that pulls Bevy.
+[workspace]
+resolver = "2"
+members = [
+    "source/treadcore-sim",
+    "source/treadcore-proto",
+    "source/treadcore-net",
+    "source/treadcore-brain",
+    "source/treadcore-server",
+    "source/treadcore-client",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+authors = ["Paul Richeson <paulr@sdf.org>"]
+license = "MIT"
+repository = "https://github.com/treadcore/treadcore"
+homepage = "https://treadcore.org"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1.3"
+log = "0.4"
+env_logger = "0.11"
+treadcore-sim = { path = "source/treadcore-sim" }
+treadcore-proto = { path = "source/treadcore-proto" }
+treadcore-net = { path = "source/treadcore-net" }
+treadcore-brain = { path = "source/treadcore-brain" }
+
+# Bevy's own advice: the engine's dependencies optimised even in a dev build,
+# or the window crawls. The game crates stay at opt-level 1 so they still
+# build fast and debug well.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
