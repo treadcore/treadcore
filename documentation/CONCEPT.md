@@ -152,7 +152,33 @@ a model of a real doctrine shift, not a reskin.
 - Sound and art. Everything drawn is a rectangle or a line, on
   purpose: the overlay is the look.
 
-## 7. The specification in one paragraph
+## 7. Where the vision goes: Pillboys and pillboxes
+
+The brief grew by evening. The original idea was a new take on the RTS
+territory game Bolo defined: capture pillboxes, build, repair, hold
+ground. What changes is where it is done from. The tank is the control
+centre, and it deploys two kinds of technology:
+
+- **Drones**, in the air: built, as above.
+- **Pillboys**, on the ground: the tank's tech infantry, the crew who
+  ride with it and run its systems, and who deploy from it to do the
+  things a tank cannot do from inside: capture a pillbox, repair it,
+  build an emplacement, fix the hull in the field.
+
+Pillboxes return as Bolo had them, stationary automated defences, with
+one addition: in this world they engage drones too, so a captured
+pillbox extends the bubble over ground the tank is not on. Territory is
+the ground pillboxes cover; building is roads, bridges and
+emplacements from material the tank carries; repair in the field is
+slower than at a depot and costs Pillboys their exposure.
+
+The open design question is the Pillboys' control model: a unit the
+player moves, or an order the tank gives ("take that pillbox") that
+resolves over time, under fire, with the squad's state on the HUD
+beside the drones'. The second keeps the tank as the one thing the
+player drives, which is the premise. None of this is implemented yet.
+
+## 8. The specification in one paragraph
 
 Four players, one tank each, a 128 x 128 tile island with depots and a
 neutral drone swarm. Each tank is a mobile command: an indirect-fire

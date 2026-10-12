@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treadcore Opening Day</title>
+<meta name="description" content="Report on the first day of treadcore: the vision, the research, what was built, what was learned about building it, and where it goes next.">
+<style>
+  :root {
+    --bg: #142719;
+    --bg-2: #1f3a24;
+    --line: #2f5a37;
+    --fg: #f4f6ef;
+    --gold: #d9b24c;
+    --gold-bright: #f2d27a;
+    --gold-deep: #9a7a2a;
+    --ok: #8cff9a;
+    --bad: #ff6a5a;
+    --panel: rgba(0,0,0,.45);
+    --shadow: 0 0 2px #000, 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 6px rgba(0,0,0,.8);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1e13; --bg-2: #18301d; } }
+  :root[data-theme="dark"] { --bg: #0f1e13; --bg-2: #18301d; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  body {
+    background-image:
+      linear-gradient(rgba(242,210,122,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(242,210,122,.045) 1px, transparent 1px),
+      radial-gradient(ellipse at 50% 0%, var(--bg-2) 0%, var(--bg) 60%);
+    background-size: 32px 32px, 32px 32px, 100% 100%;
+    text-shadow: var(--shadow);
+  }
+  main { max-width: 820px; margin: 0 auto; padding: 40px 16px 80px; }
+  header { border: 2px solid var(--gold); border-width: 2px 0; padding: 22px 0 18px; margin-bottom: 36px; position: relative; }
+  header::before, header::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--gold-deep); }
+  header::before { top: 4px; } header::after { bottom: 4px; }
+  .kicker { color: var(--gold); letter-spacing: .14em; text-transform: uppercase; font-size: 12px; margin: 0 0 6px; }
+  h1 { font-size: 38px; letter-spacing: .1em; margin: 0; text-transform: uppercase; line-height: 1.15; }
+  h1 span { color: var(--gold-bright); }
+  .by { color: var(--gold); margin: 10px 0 0; font-size: 14px; }
+  h2 { font-size: 17px; margin: 42px 0 12px; color: var(--gold-bright); letter-spacing: .12em; text-transform: uppercase; border-left: 4px solid var(--gold); padding-left: 10px; }
+  h3 { font-size: 15px; margin: 24px 0 8px; color: var(--gold); letter-spacing: .06em; text-transform: uppercase; }
+  p { margin: 0 0 14px; }
+  a { color: var(--gold-bright); text-decoration-color: var(--gold-deep); }
+  a:hover { color: var(--fg); }
+  ul { padding-left: 22px; margin: 0 0 14px; }
+  li { margin: 4px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--gold-deep); }
+  td, th { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--gold); font-weight: normal; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; background: rgba(0,0,0,.3); }
+  pre { background: var(--panel); padding: 14px; overflow-x: auto; border: 1px solid var(--gold-deep); border-left: 4px solid var(--gold); font-size: 13px; }
+  .pull { border: 1px solid var(--gold-deep); border-left: 4px solid var(--gold); background: var(--panel); padding: 14px 16px; margin: 18px 0; font-size: 17px; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 12px 0 20px; }
+  .card { background: var(--panel); border: 1px solid var(--gold-deep); padding: 12px 14px; }
+  .card b { color: var(--gold-bright); display: block; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; margin-bottom: 6px; }
+  footer { color: var(--gold); margin-top: 60px; font-size: 13px; border-top: 1px solid var(--gold-deep); padding-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<p class="kicker">Report &middot; 12 October 2026</p>
+<h1>Treadcore: <span>Opening Day</span></h1>
+<p class="by">An afternoon's vision, and what it became by evening. Paul Richeson, with Claude.</p>
+</header>
+
+<h2>Where it came from</h2>
+<p>It started with the news. Programmes about Ukrainian tanks fighting Russian tech-laden tanks, and the thing both sides had learned: a tank that drives up to the enemy dies to a thousand-dollar drone, and a tank that sits back and fires like artillery, under its own cover, lives. The tank's job had changed while nobody was looking.</p>
+<p>Paul's vision, that afternoon, was a game about the new job. Not a tank you drive at things. A tank that is a <b>control centre</b>: it sits in the field, it reaches out with high-calibre indirect fire, and it deploys its own technology around itself. Drones in the air. And, on the ground, the <b>Pillboys</b>: the tech infantry who ride with the tank, the crew who run its systems, who jump off to capture a pillbox, repair it, build the next one. The old Bolo loop of territory, pillboxes, bases, building and repairing, but with the tank as the headquarters it is done from, and a layer of air on top of it.</p>
+<div class="pull">The tank is the mobile command. Everything it deploys, it deploys from itself.</div>
+
+<h2>What was researched</h2>
+<p>Before a line of code, a look at what is actually being fielded, so the game would be a model of something real. Sources are in <a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">documentation/RESEARCH.md</a>.</p>
+<div class="grid">
+<div class="card"><b>Tanks as artillery</b>Russian tanks firing indirect at up to 10 km; FPV drones over two thirds of tank losses since 2024; "roaming tank" doctrine of fire a few and move. China building indirect-fire sensors into the Type 100.</div>
+<div class="card"><b>Vehicles with their own air arm</b>Boxer with five interceptor drones and a dedicated drone operator. The KNDS Leopard concept: unmanned turret, crew in the hull, recon ahead and interceptors around. ASELSAN GÖKALP, Diehl Garmr, Merops in service.</div>
+<div class="card"><b>The crew sees through the drones</b>Elbit IronVision: see-through armour on the crew's eyes, one button to switch to the drone's video, the tactical picture as an overlay. The crew's picture is telemetry.</div>
+<div class="card"><b>Interceptors as ammunition</b>Portable interceptor factories, sub-million interceptors, swarm control software with on-screen mission overlays. Supply is part of the fight.</div>
+</div>
+<p>And the ancestor: Stuart Cheshire's Bolo, with its shared mutable world, up to sixteen machines in one game, external "Brains" that could drive a tank, and a network that was a ring of peers forwarding to their neighbour. Treadcore keeps the ideas and replaces the ring.</p>
+
+<h2>What was built</h2>
+<p>A Rust workspace of six crates, a build system, and a website, in one day. Repository: <a href="https://github.com/treadcore/treadcore">github.com/treadcore/treadcore</a>. Site: <a href="https://treadcore.org">treadcore.org</a>.</p>
+<table>
+<tr><th>crate</th><th>what it is</th><th>state tonight</th></tr>
+<tr><td>treadcore-sim</td><td>the world: a 128&times;128 tile island from a seed; tanks with indirect-fire guns and a bay of recon, interceptor and strike drones; telemetry link quality that sets interceptor kill rate and drone recall; depots to capture and resupply at; neutral FPV swarms off the map edge; fog of war; deterministic to the bit</td><td class="ok">compiled, 6 tests pass</td></tr>
+<tr><td>treadcore-proto</td><td>one enum of everything that crosses the wire, versioned, bincode</td><td>written</td></tr>
+<tr><td>treadcore-net</td><td>LAN beacon discovery; every peer pings every peer; a latency matrix; a pure-function election of the host (best worst-case link) and a shortest-path relay route for anyone the host cannot reach; host-authoritative session with reliable orders and events, fire-and-forget snapshots</td><td>written, 5 tests written</td></tr>
+<tr><td>treadcore-brain</td><td>the Brain: observation in, commands out, validated like a human's. A rule bot for empty seats; a JSON brain that runs any external program</td><td>written</td></tr>
+<tr><td>treadcore-server</td><td>headless: four-bot matches traced for reading, LAN host, LAN bot seat, <code>--brain-schema</code></td><td>written</td></tr>
+<tr><td>treadcore-client</td><td>the Bevy window: overhead map, HUD telemetry overlay (bubble ring, link lines green to red, recon discs, shell arcs), click to drive, click to fire, keys to launch</td><td>written; engine build pending</td></tr>
+<tr><td>treadcore-warm</td><td>the engine alone, for <code>make warm</code></td><td>written</td></tr>
+</table>
+
+<h3>The rules that carry the vision</h3>
+<ul>
+<li><b>A spotted shell lands within 0.6 tiles; a blind one within 4.</b> Recon is the gun's accuracy.</li>
+<li><b>An interceptor kills 90% of the time on a good link, 50% on a dead one.</b> Telemetry is the ring's strength.</li>
+<li><b>The bubble is a radius the player sets.</b> Wide meets a strike early and thins the ring; tight is dense and blind.</li>
+<li><b>A shell comes down through the ring regardless</b>, and its splash takes the ring down with the tank.</li>
+<li><b>The bay is a budget.</b> 2 recon, 6 interceptors, 3 strikes, restocked at depots, interceptors first.</li>
+</ul>
+
+<h3>The network that carries the brief</h3>
+<p>The brief asked that the clients negotiate who is the server by forming a connectivity route. Each process measures its latency to every other, publishes its row, and every process runs the same election on the same matrix. No vote, no referee: compute and compare. The host is the peer whose worst link to anyone is best. Peers the host cannot reach send through the neighbour that can, and only they pay for the relay. Bolo's ring, as a tree. <a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">The protocol</a>.</p>
+
+<h3>The build system</h3>
+<p>A Makefile in front of bash scripts in front of cargo, as in Paul's other projects. <code>make configure</code> checks the machine and writes a config the other scripts refuse to run without. <code>make debug</code> runs a four-bot match flat out with every log level on and writes two files: a log that reads as the story of the fight, and a JSON event stream. Both are for reading by a person, or by an AI with the source beside it.</p>
+
+<h2>What was learned, the hard way</h2>
+<p>Bevy is some four hundred crates, and the development machine is a 6 GB VM. The first engine build ran four compilers at once on crates that each want a gigabyte and a half, and the machine went to swap on <code>bevy_ui</code>. The fix is a design, not a flag:</p>
+<ul>
+<li>Bevy is defined once at the workspace root, trimmed to the 2D features the game uses: 368 crates instead of 433.</li>
+<li><code>make warm</code> builds the engine alone, at low priority, resumable, through a crate that depends on exactly what the window does. Afterwards, building the game builds only the game.</li>
+<li>The job count comes from memory, not CPUs: three on this machine.</li>
+<li>Dependencies carry no debug info in dev builds; release does not LTO. A separate <code>dist</code> profile does, for shipping.</li>
+</ul>
+<p>Written up in <a href="https://github.com/treadcore/treadcore/blob/main/documentation/BUILD.md">documentation/BUILD.md</a>.</p>
+
+<h2>What was written</h2>
+<table>
+<tr><th>document</th><th>covers</th></tr>
+<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">CONCEPT.md</a></td><td>the brief, line by line; Bolo as the base; what the war changed; the tank as mobile command with tech deployment; why it is an improvement</td></tr>
+<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">DESIGN.md</a></td><td>the rules and every number, with the reason beside it</td></tr>
+<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">PROTOCOL.md</a></td><td>packets, discovery, election, relay, session</td></tr>
+<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">RESEARCH.md</a></td><td>what it is modelled on, with sources</td></tr>
+<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT.md">LAB-REPORT.md</a></td><td>the code, crate by crate, and the Rust technique in it</td></tr>
+<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/BUILD.md">BUILD.md</a></td><td>the build, sized for a small machine</td></tr>
+<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/vendor/THIRD-PARTY.md">vendor/</a></td><td>the vendoring rule and the licence notices</td></tr>
+</table>
+
+<h2>Where it goes next</h2>
+<p>The afternoon's vision is bigger than the evening's build, and the gap is the plan.</p>
+<ul>
+<li><b>Pillboys.</b> The tank's tech infantry: a squad that rides with it and deploys from it. They are what captures a pillbox, repairs it, and builds. Design question for tomorrow: are they one unit the player moves, or an order the tank gives ("Pillboys: take that pillbox") that resolves over time and under fire?</li>
+<li><b>Pillboxes.</b> Bolo's stationary guns, back: automated defences that engage tanks and, in this world, drones. Captured by Pillboys, repaired, repositioned, and the thing a recon drone is sent to find.</li>
+<li><b>Building and repair.</b> Roads, bridges, pillbox emplacements, from material the tank carries; repair of the tank itself by its Pillboys in the field, slower than a depot.</li>
+<li><b>Territory.</b> Depots are the start; pillbox coverage of ground is the shape territory takes.</li>
+<li>Then the things already listed as deferred: teams, map files and an editor, client prediction, NAT traversal, sound.</li>
+</ul>
+<p>First, though: <code>make warm</code>, <code>make test</code>, and the round of fixes the compiler will ask for in the crates above the simulation. The world is proven; the rest is written against it.</p>
+
+<footer>treadcore &middot; MIT &middot; &copy; 2026 Paul Richeson &middot; <a href="https://treadcore.org">treadcore.org</a></footer>
+</main>
+</body>
+</html>
