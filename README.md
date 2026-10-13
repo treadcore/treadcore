@@ -157,6 +157,7 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/MAPS.md](documentation/MAPS.md): the map file format; any text editor is the editor.
 
 - [documentation/RELEASE.md](documentation/RELEASE.md): the implementation cycle, versions, release monuments, candidates and playtesting.
+- [documentation/INDEX.md](documentation/INDEX.md): the code structure index: the tree, every file outlined, a glossary, a keyword cross-reference.
 - [documentation/GOVERNANCE.md](documentation/GOVERNANCE.md): how the organization is run: roles, joining, proposals, review, leaving, recognition.
 - [CONTRIBUTING.md](CONTRIBUTING.md): the short version for a first pull request.
 
