@@ -1,0 +1,254 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 12 Oct 2026 19:10:00 -0700
+Subject: [JOURNAL 0004] The Pillboys: roadmap step 3, the squad and
+         the pillbox
+Message-ID: <0004.20261012@treadcore.org>
+In-Reply-To: <0003.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: pillboys, pillbox, builder, capture, hitscan, route-cost,
+          twenty-seeds
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "start roadmap step 3, the pillboys"
+X-Commits: d45eb29
+
+            THE PILLBOYS: ROADMAP STEP 3, THE SQUAD AND THE PILLBOX
+
+                      Paul Richeson, treadcore.org
+                            12 October 2026
+
+
+ABSTRACT
+
+    Roadmap step 3 was built as DESIGN.md decided it the same
+    afternoon: the Pillboys are state on the tank driven by one order,
+    `Deploy { task }`, Bolo's builder with the tank as the thing driven.
+    The squad walks the world's route at 1.5 tiles a second, captures a
+    neutral or dead pillbox by standing on it for ten seconds, repairs
+    and builds for material, and walks home; a shell's splash over it
+    costs two of four men. Pillboxes are Bolo's with one addition: a
+    short-range gun against drones with an interceptor's odds. Twenty
+    neutral ones start on the map. A tank's route now keeps out of the
+    ring of any live pillbox that would shoot it, because the spoke
+    roads run straight through them. The proof asked for was run:
+    over twenty seeds of eight bots, the four with squads beat the four
+    without 18 wins to 2, 20 945 points to 13 655, 37 survivors to 32,
+    with 248 captures. One caveat is recorded: in the default
+    sixteen-bot trace no pillbox fired at a tank, because the router
+    keeps tanks out; the gun is proven by test, not yet by play.
+
+INDEX TERMS
+
+    builder, squad, pillbox, capture, repair, hitscan, route cost,
+    control group, twenty seeds.
+
+
+I. INTRODUCTION
+
+    Step 3 is the first change to the step function since the replay
+    and the hash were built to catch exactly such changes, and the
+    first mechanic taken from the WinBolo specification (section 6,
+    the builder; section 8, the pillbox). The question was whether the
+    decided control model, an order rather than a unit, plays: does
+    sending the squad and waiting for it pay, against the same doctrine
+    that never sends it?
+
+II. BACKGROUND
+
+    Carried from 0003: the cross-machine replay proof, a replay corpus,
+    the window, two machines. The design was written (DESIGN.md,
+    "Pillboys and pillboxes: the decision") and checked against Bolo
+    (LAB-REPORT-PILLBOYS.md); the spec IDs it implements are on the
+    roadmap step: BLD-01 to 03, 05, 06, 09, 10, 13; PIL-01 to 05, 07
+    to 17; OWN-01, 02.
+
+III. METHOD
+
+    Decisions, with the alternatives rejected:
+
+      decision                    rejected              why
+      --------------------------  --------------------  ----------------
+      pillbox gun is hitscan      a Shell entity with   "must not change
+      with an event               its own damage        shell mechanics";
+                                                        a 15-damage
+                                                        Direct shell is
+                                                        a new Shell
+                                                        field
+      capture only when neutral   capture any pillbox   Bolo: pick up a
+      or dead                     by standing on it     dead one; a live
+                                                        enemy pillbox is
+                                                        shot first, from
+                                                        outside its ring
+      a tank's route pays 5x      hard wall round       the first test
+      inside a live hostile ring  rings; no avoidance   drive died; a
+                                                        wall would strand
+                                                        a tank whose only
+                                                        road is through
+      the squad is not shot by    pillboxes shoot       Bolo's pillboxes
+      pillboxes; splash hurts it  squads                shoot tanks; the
+                                                        shell is the
+                                                        squad's danger
+      the bot holds while the     the bot drives on;    a home that moves
+      squad is out                squad re-routes home  is a long walk;
+                                                        the wait is the
+                                                        cost the proof
+                                                        weighs
+      twenty neutral pillboxes    per-player pillboxes  Bolo starts
+      from the generator          at the start          neutral; capture
+                                                        is the game
+      material from depots now    harvest forest now    harvesting is 6c
+                                                        with walls and
+                                                        mines
+
+IV. CHRONOLOGY
+
+     1. `rules.rs`: the "pillboys and pillboxes" block, every number
+        with its sentence. `map.rs`: `pillboxes` (one at 0.36 of each
+        spoke, four at 9 tiles from the centre), ground cleared round
+        them.
+     2. `lib.rs`: `BuildKind`, `PillboyTask`, `Pillboys`, `Pillbox`;
+        `Tank.pillboys`; `World.pillboxes`; `Command::Deploy`; eleven
+        events; `apply` validation for each task; `step_pillboys`
+        (walk, work, home; capture clocks on the pillbox, contested
+        means nothing moves); `step_pillboxes` (reload, tanks first
+        with a clear line, else the nearest hostile drone, one shot per
+        reload); splash damages pillboxes and squads; direct fire hits
+        a pillbox when no tank is there; the squad dies with the tank;
+        depots restock men and material; pillboxes in the observation.
+     3. `cargo check`: one borrow error (route planning while holding
+        the tank), fixed by reading first.
+     4. `cargo test`: `move_is_routed_across_the_river` failed: the
+        tank stopped at (70.3, 64.9), dead. It had driven down the
+        spoke through the neutral pillbox at a third of the way and
+        the one east of the centre: six or seven shots. The mechanic
+        working, and a finding: every start's road to the centre runs
+        through a pillbox's ring.
+     5. `Map::route_with(a, b, danger)`: a per-tile cost multiplier;
+        `World::route_for(player, a, b)` passes 5 inside the ring of
+        any live pillbox hostile to the player; `Move` and the blocked
+        re-plan use it. The routing test clears the pillboxes; a new
+        test asserts a pillbox kills a parked tank in under 20 s and
+        that the start-to-centre route stays more than 8 tiles from
+        the spoke pillbox.
+     6. `pillboys_capture_a_pillbox`: deploy, refused while out,
+        captured between 20 and 40 s (13 s walk, 10 s stand), squad
+        home at full strength, 25 points, and the pillbox then shoots
+        a parked enemy and not its owner.
+     7. Proto VERSION 4. Server narrates the eleven events and sums
+        pillboxes in the summary. Client: squad line in the HUD, keys
+        4/5/6, pillbox sprites with health, range rings (red hostile),
+        capture rings, the squad's walk drawn. `describe` gained the
+        view so "pillbox hit you" knows whose tank.
+     8. RuleBot: doctrine 9 (send the squad from a standing tank with
+        no enemy in view to the nearest capturable pillbox within 20
+        tiles whose gun cannot reach the tank, or to repair an owned
+        one below half; hold while it is out). `without_pillboys` as
+        the control. `pillboys_pay`: twenty seeds, eight bots
+        alternating.
+     9. `cargo test --workspace`: 24 pass, first time.
+    10. `pillboys_pay --nocapture`: wins 18:2, score 20 945:13 655,
+        alive 37:32, captures 248, 1.97 s wall.
+    11. `make debug` (sixteen bots, 180 s): 18 deployments, 14
+        captures, 1 squad hit, 0 pillbox shots at tanks, 0 repairs, 0
+        builds, 8 refusals (all "inside minimum range", the gun).
+        `make replay`: 36 of 36. `make lobby-test`: PASS, one hash.
+    12. Documents, this entry, commits.
+
+V. RESULTS
+
+    A. The proof (pillboys_pay, 20 seeds x 8 bots x 5 min)
+
+      measure                 with squads   without   note
+      ----------------------  -----------   -------   ------------------
+      wins                    18            2
+      total score             20 945        13 655    248 captures are
+                                                      6 200 of the 7 290
+                                                      margin
+      survivors at the end    37            32        of 80 each
+      wall time, 20 matches   1.97 s
+
+    B. The default trace (16 bots, 180 game s, seed 0x7EADC0DE)
+
+      event                 count     event                 count
+      --------------------  -----     --------------------  -----
+      PillboysDeployed      18        ShellLaunched         51
+      PillboxCaptured       14        Intercepted           113
+      PillboysHit           1         StrikeHit             18
+      PillboxFired          0         TankDestroyed         12
+      PillboxRepaired       0         DepotCaptured         8
+      PillboxBuilt          0         Rejected              8
+
+    C. Tests: 24 pass (sim 12, proto 2, net 5, brain 2, plus the
+       empty harnesses). New: pillbox_kills_a_tank_and_routes_bend_
+       round_it, pillboys_capture_a_pillbox, pillboys_pay.
+
+VI. DISCUSSION
+
+    The proof passed with a margin the trace can show, but the margin
+    is not what the roadmap imagined. The squads won by holding more:
+    every capture is 25 points, and 248 captures over twenty matches
+    are most of the score gap. The survival gap (37 to 32) and the win
+    count (18 to 2) are the better evidence that owning pillboxes
+    helps, and the trace says how: a pillbox you own shoots swarm
+    drones over your approach and is a ring the enemy's router steers
+    around, which keeps enemy tanks away from your depot. What the
+    pillbox did not do, in any bot match, was shoot a tank. The bots
+    now know where the guns are and never drive into them, which is
+    correct play and a dull trace. Backlog item 14: the attackers of
+    step 6d need a reason to enter a ring, and a defender needs to put
+    its pillbox where the road must pass.
+
+    The route-cost change was the session's real design decision. A
+    pillbox on the road is Bolo's whole territory game: the gun
+    controls the road. With the router steering round rings, the gun
+    controls nothing a tank cannot detour; with no avoidance, every bot
+    drove through two guns and died in the first minute. The multiplier
+    (5x inside a ring) is a middle: a detour of five grass tiles beats
+    one tile under the gun, but a ring with no way round is still
+    crossed. Walls (6c) will close the detours, and then the pillbox
+    will fire.
+
+VII. OPEN PROBLEMS
+
+    1. Pillboxes do not fire in bot play (backlog 14).
+    2. Repair and Build are proven only by `apply`'s validation and the
+       bot's willingness: no trace shows a repair or a build, because
+       nothing damaged a pillbox and the bot has no reason to build yet.
+    3. From 0003: the cross-machine replay; the window; two machines.
+
+VIII. NEXT STEPS
+
+    1. Step 6c: material from forest, walls, roads, mines; then a
+       defender has something to build and the pillbox a road to hold.
+    2. A scripted scenario in `make debug` (an attacker ordered through
+       a ring) so the trace shows the gun.
+    3. The window, so the squad's walk can be watched once.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the control model; John Morrison's WinBolo manual, as
+    restated in SPEC-WINBOLO-1.14.md, for the builder's rules.
+
+REFERENCES
+
+    [1] Journal 0003, <0003.20261012@treadcore.org>.
+    [2] documentation/DESIGN.md, "Pillboys and pillboxes: the
+        decision"; documentation/LAB-REPORT-PILLBOYS.md.
+    [3] documentation/SPEC-WINBOLO-1.14.md, sections 6 and 8.
+
+APPENDIX A. COMMITS
+
+    d45eb29  sim, brain, client, server: the Pillboys and pillboxes
+             (roadmap step 3); wire version 4
+    (next)   docs, journal: step 3 done; journal 0004
+
+APPENDIX B. ARTIFACTS
+
+    Trace           build/logs/debug-20261012-1902*.log and its
+                    trace-*.jsonl and replay-*.json (local)
+    Lobby logs      build/logs/lobby-20261012-1902*-peer{1,2,3,4}.log
+    Journal         journal/0004-2026-10-12-the-pillboys.txt (this)
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

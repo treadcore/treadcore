@@ -92,9 +92,18 @@ is given.
     section 11) as `Scenario` presets once pillboxes and material exist.
 12. **Pillbox view.** Jump the camera between owned pillboxes (SPEC
     UI-10 to UI-13); the client's one Bolo feature worth having early.
-13. **Forest concealment as Bolo had it.** Hidden to everything beyond
+13. **Forest concealment as Bolo had it.**
+ Hidden to everything beyond
     3 tiles when inside a 2 x 2 block of forest (SPEC VIS-02), against
     treadcore's halved vision radius. A proposal with a trace.
+14. **Pillboxes never fire in a bot match.** With the router keeping
+    tanks out of hostile rings, the default sixteen-bot trace has zero
+    `PillboxFired` events in three minutes: the gun is proven by test,
+    not by play. The proof of step 3 therefore rests on wins (18:2) and
+    survival (37:32), and its score margin is mostly capture points.
+    Step 6d's attackers need a reason to go into a ring (a depot or a
+    dead pillbox inside one), and a defender needs to put its pillbox
+    where the road has to pass. Design work, with traces.
 
 
 
@@ -160,7 +169,24 @@ observed the same hash sequence.
 
 ## 3. Pillboys: the control model, then the unit
 
-**Decision first.** Written into DESIGN.md on 12 October 2026 ("Pillboys
+**Done 12 October 2026 (journal 0004).** `Pillboys` on `Tank`
+(strength, aboard, pos, task, progress, material, route);
+`Command::Deploy { task }` with `Capture`, `Repair`, `Build { Pillbox,
+at }`, `Return`; `step_pillboys` walks the world's route at 1.5 tiles/s,
+works for the capture, repair or build time, walks home; a splash over a
+deployed squad costs it two men, zero is no squad until a depot. `Pillbox`
+entity: health, owner or neutral, a hitscan gun at hostile tanks within
+8 tiles with a clear line (15 damage every 2 s), an interceptor's odds
+against hostile drones within 4; dead at zero, never removed; captured
+by a squad standing on it for 10 s when neutral or dead; repaired and
+built for material. Twenty neutral pillboxes on the map: one on each
+spoke and four round the centre. A tank's route avoids the range of
+live hostile pillboxes. Wire version 4. Proof: `pillboys_pay`, twenty
+seeds of eight bots, the four with squads against the four without;
+the numbers are in journal 0004 and in the test's output.
+
+**Decision first.**
+ Written into DESIGN.md on 12 October 2026 ("Pillboys
 and pillboxes: the decision"), checked against Bolo's builder and
 refuelling bases (`LAB-REPORT-PILLBOYS.md`): Pillboys are an *order the
 tank gives*, not a unit the player drives. The tank is the one thing

@@ -4,7 +4,38 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-12, night: the Pillboys (roadmap step 3)
+
+Journal: [0004](journal/0004-2026-10-12-the-pillboys.txt).
+
+- New: the squad. `Pillboys` on every tank (strength 4, material 2,
+  aboard or out); `Command::Deploy { task }` with `Capture`, `Repair`,
+  `Build { Pillbox, at }` and `Return`; the squad walks the world's
+  route at 1.5 tiles/s, captures in 10 s, repairs in 6 for one
+  material, builds in 15 for two, walks home; a shell's splash over it
+  costs two men; depots restock men and material. HUD line, map figure,
+  keys 4/5/6.
+- New: pillboxes. Twenty neutral ones on the map (one per spoke, four
+  round the centre); 60 health; a hitscan gun at hostile tanks within
+  8 tiles with a clear line, 15 damage every 2 s; an interceptor's odds
+  against hostile drones within 4; dead at zero, never removed;
+  capturable when neutral or dead; all visible to everyone. Shells
+  damage them; direct fire hits one when no tank is there. Range rings
+  and capture progress drawn; narrated in the trace.
+- Changed: a tank's route avoids the range of live hostile pillboxes
+  (`route_for`, `PILLBOX_AVOID_COST`), because the spoke roads run
+  straight through them. Wire `VERSION` 4. The rule bot sends its
+  squad from a standing tank with no enemy in view and holds while it
+  is out; `RuleBot::without_pillboys` is the control.
+- Proof (`pillboys_pay`, twenty seeds, eight bots): squads win 18:2,
+  score 20 945 to 13 655, survive 37 to 32, 248 captures. 24 tests
+  pass; the replay of the new default match matches 36 checkpoints;
+  lobby-test passes.
+- Known: in the default bot trace no pillbox fires at a tank (the
+  router keeps tanks out); backlog item 14.
+
 ## 2026-10-12, night: replay and world hash (roadmap steps 1 and 2)
+
 
 Journal: [0003](journal/0003-2026-10-12-replay-and-hash.txt).
 

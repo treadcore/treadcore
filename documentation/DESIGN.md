@@ -188,9 +188,21 @@ which is Bolo's range cursor generalised); the tank's movement model
 Bolo's momentum model with the manual steering replaced by a routed
 destination.
 
-**Where this is implemented.** Nowhere yet. ROADMAP step 3, after the
-replay and the hash (steps 1 and 2) exist to prove it did only what it
-meant to.
+**Where this is implemented.** `treadcore-sim`, since 12 October 2026
+(roadmap step 3, journal 0004): `Pillboys`, `Pillbox`, `PillboyTask`,
+`Command::Deploy`, `step_pillboys`, `step_pillboxes`; the numbers in
+`rules.rs` under "pillboys and pillboxes". The squad walks at 1.5 tiles
+a second (the tank does 4), captures in 10 s, repairs in 6 for one
+material, builds in 15 for two. A pillbox has 60 health, shoots tanks
+within 8 tiles for 15 every two seconds and drones within 4 with an
+interceptor's odds, and is captured only when neutral or dead: a live
+enemy pillbox is shot dead first, by the gun, from outside its range.
+Twenty neutral pillboxes start on the map, one a third of the way in on
+every spoke and four round the centre depot. A tank's own route keeps
+out of the ring of any live pillbox that would shoot it, at the cost
+of a detour, because the spoke roads run straight through them.
+Harvesting material from forest, walls, roads and mines are step 6c.
+
 
 ## What is not here yet
 

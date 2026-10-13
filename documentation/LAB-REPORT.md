@@ -12,10 +12,11 @@ history; journal 0002 has the chronology):
 
 | crate | lines | compiled | tests |
 | --- | --- | --- | --- |
-| treadcore-sim | ~1600 | yes | 10 pass (determinism, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, sixteen seats, map determinism, every start reaches the centre) |
+| treadcore-sim | ~2100 | yes | 12 pass (determinism, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, sixteen seats, map determinism, every start reaches the centre) |
 | treadcore-proto | ~240 | yes | 2 pass (round trip, snapshot split and reassembly) |
 | treadcore-net | ~830 | yes | 5 pass (4 election, 1 loopback session) |
-| treadcore-brain | ~370 | yes | 1 pass (four bots fight to a result: more than ten shells and ten launches in six minutes) |
+| treadcore-brain | ~450 | yes | 2 pass (sixteen bots fight to a result; `pillboys_pay`: over twenty seeds, bots that capture pillboxes outscore and outlive the same doctrine without the squad) |
+
 | treadcore-server | ~360 | yes; `make debug` and `make lobby-test` run | none |
 | treadcore-client | ~800 | yes, against Bevy 0.17.3; three dead-code warnings | none |
 | treadcore-warm | ~45 | yes; the window panics in this VM for want of a Vulkan driver (BUILD.md) | none |

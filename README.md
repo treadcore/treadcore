@@ -32,9 +32,14 @@ bubble does nothing to a shell, and a shell does plenty to the bubble.
 There is also a direct-fire mode for anything that drives into line of
 sight inside 10 tiles.
 
-Depots resupply and repair. Neutral FPV swarms come in off the map edge
-every 45 seconds, so the bubble matters even alone. Last tank standing
-wins; at the time limit, the highest score.
+Depots resupply and repair. Twenty neutral pillboxes start on the map
+and shoot anyone within 8 tiles; the tank's Pillboys, a squad of four
+that rides with it, capture them (10 seconds standing on one that is
+neutral or dead), repair them and build new ones, and a pillbox you own
+shoots tanks and drones for you. Neutral FPV swarms come in off the map
+edge every 45 seconds, so the bubble matters even alone. Last tank
+standing wins; at the time limit, the highest score.
+
 
 The player's one dial is the bubble radius: wide catches strikes early
 but thins the ring and stretches every link.
@@ -64,8 +69,10 @@ make lobby-test  # four headless peers on this machine elect a host
 ```
 
 Controls are on screen (Tab hides them). Left click drives (the world
-routes around water and over bridges), right click fires, 1/2/3 launch
-interceptor / recon / strike, R recalls, [ ] set the bubble.
+routes around water, over bridges and round hostile pillboxes), right
+click fires, 1/2/3 launch interceptor / recon / strike, R recalls, 4
+sends the Pillboys to capture or repair the pillbox under the cursor,
+5 to build one there, 6 brings them home, [ ] set the bubble.
 
 
 ## The debug trace
