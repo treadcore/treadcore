@@ -62,13 +62,13 @@ for p in $PROFILES; do
     # slow crates are visible by eye and by grep.
     # set -e would end the script at a failed pipeline before the status
     # check below could say why; off for this one pipeline. The colour
-    # codes are stripped before the filter so an "error" line is seen
-    # whatever cargo painted it.
+    # codes are stripped inside awk so an "error" line is seen whatever
+    # cargo painted it (and because busybox sed, Alpine's, has no -u).
     set +e
     $NICE cargo build "${CFLAG[@]}" "${FLAG[@]}" -p treadcore-warm 2>&1 \
         | tee -a "$LOG" \
-        | sed -u 's/\x1b\[[0-9;]*m//g' \
         | awk -v total="$TOTAL" -v t0="$(date +%s)" -v verbose="$VERBOSE" '
+            { gsub(/\033\[[0-9;]*m/, "") }   # strip colour in awk: busybox sed has no -u
             /^\s*Compiling/ {
                 n++; t = systime() - t0
                 if (verbose >= 1) printf "[%3d/%d] %5ds  %s %s\n", n, total, t, $2, $3
