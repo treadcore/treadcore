@@ -1,0 +1,226 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 12:40:00 -0700
+Subject: [JOURNAL 0017] Sub-cubes, damage that chips, and cubes that
+         roll off
+Message-ID: <0017.20261013@treadcore.org>
+In-Reply-To: <0016.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: sub-cubes, culling, chip, debris, crater, wall, bevel
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "do screen shot review. make them very
+           similar. the destructible walls and the craters have
+           different heights"; then "the sprites need more detail. so
+           each cube is made of sub cubes ... this allows destruction
+           ... cubes that roll off in collision"
+X-Commits: (next)
+
+       SUB-CUBES, DAMAGE THAT CHIPS, AND CUBES THAT ROLL OFF
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    The cubes of 0016 were a fifth of a tile; they are a tenth now,
+    the sub-pixels of the first, and a tank is a hundred and sixty of
+    them with treads and a turret in the seat's colour on an olive
+    hull. The detail is for breaking: damage takes cubes off a model,
+    highest first, in a fixed order, and every impact throws loose
+    cubes that fly, bounce, roll to a stop and fade. Walls stand three
+    levels up on their tile; craters sink two levels with their far
+    wall in shadow; both are aligned to the grid. Hidden faces are
+    culled, which is what makes a map of a thousand walls draw. The
+    frame's boxes got the prior art's bevels. Two findings: solo play
+    had never shown a crater, because the window's map was never
+    told of one; and the camera "offset" on the big map was the first
+    seconds of a 95 000-sprite build, not the camera.
+
+INDEX TERMS
+
+    sub-cube, hidden-face culling, Model::chip, debris, crater, wall,
+    bevel, map_keeps_up.
+
+
+I. INTRODUCTION
+
+    Three asks in one afternoon. First, a review of the frame against
+    WinBolo's screenshot, to make them very similar, with the walls and
+    craters at different heights. Then, mid-work: more detail, each
+    cube of sub-cubes as one would do sub-pixel colouring, so that
+    things can be destroyed; and cubes that roll off on collision.
+
+II. BACKGROUND
+
+    Carried from 0016: the cubes at a fifth of a tile; the side faces
+    local to the model; forest and road as a checker. The frame of
+    0015. A prior-art map, constanine, with a thousand walls and
+    seventeen hundred rubble tiles, which is where the heights would
+    show.
+
+III. METHOD
+
+    Heights first: walls three levels up, craters two down, a pit's
+    far wall drawn in shadow; the frame's bevels and a sunken frame
+    round the map. A shoot on constanine, which found two things
+    (section IV). Then the sub-cubes: the models rewritten at a tenth
+    of a tile with hidden-face culling, `Model::chip` for damage, and
+    a debris system fed by the events the window already hears. A
+    burst shoot to catch the cubes in the air.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      a tenth of a tile for    a tenth for walls too  a thousand walls
+      the things that move,                           at a tenth is a
+      a quarter for the                               hundred thousand
+      ground's blocks and                             sprites; at a
+      pits                                            quarter with
+                                                      culling, 28 each
+      cull hidden top and      draw every face        three levels of
+      side faces                                      a wall are two
+                                                      levels of waste
+      chip highest cubes       random cubes           a pillbox loses
+      first, in a fixed order                         its gun first,
+                                                      and the same
+                                                      damage looks the
+                                                      same twice
+      debris from events, in   debris from the sim    the sim does not
+      the window                                      know a cube; the
+                                                      window does, and
+                                                      a Brain must not
+                                                      see one
+      debris as sprites with   a physics crate        gravity, a
+      a hand-rolled bounce                            bounce and drag
+                                                      are twelve lines
+      a lighter bezel with     the flat bezel         the screenshot's
+      bevels                                          boxes are sunken
+                                                      and its tiles
+                                                      raised
+
+IV. CHRONOLOGY
+
+     1. voxel.rs: RISE to 0.8 of a unit; pits for z below ground;
+        walls three levels; a crater model. render.rs: `raise_or_sink`
+        for Wall and Rubble cells, on the first map and on change.
+        hud.rs: the bezel lighter, `sunken()` and `raised()` border
+        colours, the map in a sunken frame, the order tiles raised.
+     2. Shot on constanine, sixteen seats. The walls stood; the tank
+        was nowhere near the map's middle, and the frames taken
+        twenty seconds later had it off the screen. Three controlled
+        runs: the default map centred; big-lizard centred; constanine
+        with eight and sixteen seats centred, once given five seconds.
+        The first frames had been taken while 95 000 wall sprites were
+        still being built and the camera's lerp had run a frame or
+        two. Not a camera fault: a sprite count.
+     3. Finding: no crater had ever been drawn in solo play. The
+        window's map was cloned from the world at the start and never
+        updated; a client's was kept up from events, a host's was not.
+        One call to `map_keeps_up` in `step_host`. Finding: the
+        newswire said "tank hit -15 (32 left)" for a tank that was not
+        mine; it now says whose.
+     4. voxel.rs rewritten: `Model { unit, cx, cy, cubes }`; hidden
+        top faces (a cube above) and side faces (a cube in front)
+        culled; `chip(frac)`; the tank at a tenth of a tile (olive
+        hull, treads alternating, superstructure, turret in the seat's
+        colour, a barrel of nine), the pillbox as a four-step pyramid
+        with the gun on the top step, the depot with corner posts, the
+        drones, the wall four by four by three at a quarter, the
+        crater four by four two deep, both centred on their tile.
+     5. render.rs: `Debris` and `debris`: every impact in
+        `View.impacts` throws eight to fourteen cubes at random angles
+        and speeds, with a rise, gravity, a bounce at 0.35, drag, spin
+        and a fade over the last 0.4 s. session.rs: `push_events`
+        fills `impacts` from ShellImpact (earth, or tan if the tile
+        was still a wall), MineExploded, TerrainChanged to rubble from
+        a wall, PillboxDamaged and Destroyed, TankDamaged and
+        Destroyed. The model keys carry damage in tenths (tank) and
+        eighths (pillbox) so the cubes are rebuilt as it changes.
+     6. Three burst shoots. The first two had no shot: the right
+        button's release was aimed inside the gun's minimum range, and
+        the refusal had scrolled off the newswire. The third, at
+        twenty-three tiles into a wall: tan cubes out of the wall in
+        two frames of the burst, the fire lamp dim while reloading,
+        the shells at 22 of 24.
+     7. Two frames published (17, the models close; 18, the cubes in
+        the air, with a 2x crop), the gallery, INTERFACE.md section 8,
+        CHANGELOG, INDEX.md; this entry.
+
+V. RESULTS
+
+      measure                                value
+      -------------------------------------  --------------------
+      cubes: tank, pillbox, depot            160, 170, 148
+      sprites a wall, before and after cull  90 and 28
+      sprites for constanine's 1 060 walls   95 000 and 30 000
+      debris per impact                      3 to 14 cubes
+      voxel.rs, render.rs                    270, 560 lines
+      build, release                         19 s
+      tests                                  40 pass (unchanged)
+
+VI. DISCUSSION
+
+    The sub-cube is the right size because it is the size of a
+    detail: a tread, a gun, a corner post. Below it there is nothing
+    to draw and above it nothing to break. The culling is what buys
+    it: a wall is the same block it was, drawn with a third of the
+    sprites, and the map that stalled the camera does not.
+
+    Destruction in the window and not the sim is the line the design
+    has always drawn. The sim knows a pillbox's health and a tile's
+    terrain; what a cube does when it comes off is the window's story
+    about that, told from the events the sim already sends, and a
+    Brain reading the same observation sees no cube. The crater is
+    the sim's (a tile became rubble); the earth rolling out of it is
+    not, and does not need to be.
+
+    The two findings were the day's real lessons. A window that had
+    only ever been run as a client had a host-side gap nobody could
+    see until a solo frame was examined for a crater; and an
+    apparent camera fault was a performance fact, found by the
+    controlled runs, not by reading the camera code again.
+
+VII. OPEN PROBLEMS
+
+    1. The side faces follow the model's rotation, not a light.
+    2. The debris does not know about walls: a cube rolls through a
+       block it should stop at.
+    3. Walls knocked to rubble become pits at once; a half-height
+       ruin between would read better, and the sim has no wall health
+       to hang it on.
+    4. Carried: the text panels' one ink; PLAYABILITY.md items 1, 3,
+       4, 5, 6; the window under Wayland proper; two windows; step 7's
+       two-router proof; steps 8, 9.
+
+VIII. NEXT STEPS
+
+    1. PLAYABILITY.md items 1, 3, 4, 5, 6.
+    2. A playtest with a hand on the mouse.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the three asks and the eye for heights.
+
+REFERENCES
+
+    [1] Journal 0016, <0016.20261013@treadcore.org>.
+    [2] documentation/INTERFACE.md section 8.
+
+APPENDIX A. COMMITS
+
+    (next)   client, docs, site, journal: sub-cubes, damage that
+             chips, cubes that roll off; walls up and craters down;
+             the bevels; journal 0017
+
+APPENDIX B. ARTIFACTS
+
+    Code            source/treadcore-client/src/voxel.rs, render.rs,
+                    hud.rs, session.rs
+    Frames          reports/images/playtest-17, 18, 18b
+    Site            index.html, "In play"
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

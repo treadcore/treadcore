@@ -41,8 +41,11 @@ const WIRE_FONT: f32 = 22.0;
 const LAMP: f32 = 13.0;
 
 // The palette: Bolo's code, red hostile and green friendly, on a bezel.
-const BEZEL: Color = Color::srgb(0.36, 0.37, 0.34);
-const BEZEL_EDGE: Color = Color::srgb(0.62, 0.63, 0.58);
+const BEZEL: Color = Color::srgb(0.47, 0.48, 0.46);
+/// A bevel: light where the light falls (top, left), dark where it
+/// does not. Sunken boxes take it the other way up.
+const BEVEL_LIGHT: Color = Color::srgb(0.78, 0.79, 0.76);
+const BEVEL_DARK: Color = Color::srgb(0.2, 0.2, 0.19);
 const INSET: Color = Color::srgb(0.03, 0.03, 0.03);
 const INK: Color = Color::srgb(0.9, 0.93, 0.9);
 const DIM: Color = Color::srgb(0.17, 0.17, 0.16);
@@ -139,13 +142,22 @@ fn label(p: &mut ChildSpawnerCommands, s: &str) {
     p.spawn((Text::new(s), TextFont { font_size: FONT, ..default() }, TextColor(INK)));
 }
 
-/// An inset box on the bezel: black, a light edge, a little rounding.
+/// A sunken box on the bezel: black, bevelled dark above and light
+/// below, a little rounding.
 fn inset<'a, 'w>(p: &'a mut ChildSpawnerCommands<'w>, node: Node) -> EntityCommands<'a> {
     let mut n = node;
     n.border = UiRect::all(Val::Px(2.0));
     n.padding = UiRect::all(Val::Px(5.0));
     n.margin = UiRect::all(Val::Px(3.0));
-    p.spawn((n, BackgroundColor(INSET), BorderColor::all(BEZEL_EDGE), BorderRadius::all(Val::Px(4.0))))
+    p.spawn((n, BackgroundColor(INSET), sunken(), BorderRadius::all(Val::Px(3.0))))
+}
+
+fn sunken() -> BorderColor {
+    BorderColor { top: BEVEL_DARK, left: BEVEL_DARK, bottom: BEVEL_LIGHT, right: BEVEL_LIGHT }
+}
+
+fn raised() -> BorderColor {
+    BorderColor { top: BEVEL_LIGHT, left: BEVEL_LIGHT, bottom: BEVEL_DARK, right: BEVEL_DARK }
 }
 
 fn lamp(p: &mut ChildSpawnerCommands, group: Group, i: usize, round: bool) {
@@ -219,7 +231,7 @@ fn setup(mut commands: Commands) {
                         }
                         col.spawn(Node { flex_direction: FlexDirection::Row, align_items: AlignItems::Center, height: Val::Px(31.0), flex_shrink: 0.0, ..default() }).with_children(|row| {
                             lamp(row, Group::Order, i, true);
-                            row.spawn((Node { width: Val::Px(28.0), height: Val::Px(28.0), margin: UiRect::horizontal(Val::Px(3.0)), border: UiRect::all(Val::Px(1.5)), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(INSET), BorderColor::all(BEZEL_EDGE), BorderRadius::all(Val::Px(3.0))))
+                            row.spawn((Node { width: Val::Px(28.0), height: Val::Px(28.0), margin: UiRect::horizontal(Val::Px(3.0)), border: UiRect::all(Val::Px(2.0)), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(INSET), raised(), BorderRadius::all(Val::Px(2.0))))
                                 .with_children(|t| pictogram(t, i));
                             row.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|w| {
                                 w.spawn((Text::new(*key), TextFont { font_size: FONT, ..default() }, TextColor(AMBER)));
@@ -230,11 +242,12 @@ fn setup(mut commands: Commands) {
                     col.spawn(Node { height: Val::Px(6.0), ..default() });
                     col.spawn((Text::new("F tank  ' pillbox\nTab events  Esc quit"), TextFont { font_size: 11.0, ..default() }, TextColor(INK)));
                 });
-                // The map: nothing drawn; the scrollback and the screens sit over it.
-                mid.spawn(Node { flex_grow: 1.0, height: Val::Percent(100.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }).with_children(|map| {
+                // The map, in a sunken frame of its own; nothing drawn in
+                // it; the scrollback and the screens sit over it.
+                mid.spawn((Node { flex_grow: 1.0, height: Val::Percent(100.0), border: UiRect::all(Val::Px(3.0)), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, sunken())).with_children(|map| {
                     map.spawn((Node { position_type: PositionType::Absolute, left: Val::Px(0.0), bottom: Val::Px(0.0), padding: UiRect::all(Val::Px(8.0)), ..default() }, BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.8)), Visibility::Hidden, Panel::Log))
                         .with_children(|p| text(p, Panel::Log, FONT));
-                    map.spawn((Node { padding: UiRect::all(Val::Px(14.0)), border: UiRect::all(Val::Px(2.0)), ..default() }, BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)), BorderColor::all(BEZEL_EDGE), BorderRadius::all(Val::Px(4.0)), Visibility::Hidden, Panel::Screen))
+                    map.spawn((Node { padding: UiRect::all(Val::Px(14.0)), border: UiRect::all(Val::Px(2.0)), ..default() }, BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)), raised(), BorderRadius::all(Val::Px(4.0)), Visibility::Hidden, Panel::Screen))
                         .with_children(|p| text(p, Panel::Screen, FONT));
                 });
                 // The right column: the roster, kills and deaths, the lamps.

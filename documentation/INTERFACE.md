@@ -279,3 +279,32 @@ What this is not: a 3D renderer. The engine's PBR crates are not in
 the build, by choice (BUILD.md), and a camera that tilts would be a
 different game. The cubes stand up from the map the way Bolo's
 pillboxes stood up from theirs: by their drawing.
+
+**Sub-cubes, damage, and cubes that roll off** (journal 0017). The
+first cubes were a fifth of a tile and a tank was forty of them; the
+second pass makes them a tenth, the sub-pixels of the first, so a
+tank is a hundred and sixty: an olive hull fourteen long and eight
+wide, tracks two wide with alternating treads, a superstructure, a
+turret in the seat's colour and a barrel of nine. The pillbox is a
+four-step pyramid of a hundred and seventy with the gun on its top
+step. The ground's blocks and pits stay at a quarter of a tile, four
+by four by three for a wall and four by four, two deep, for a crater,
+aligned to their tile; and a top face under another cube or a side
+face behind one is not drawn at all, which is what makes a thousand
+walls affordable (28 sprites each, not 90).
+
+The point of the detail is that it can break. `Model::chip` takes a
+fraction of a model's cubes off, highest first, in an order fixed by
+each cube's place: a tank's turret chips as its armor goes, in tenths;
+a pillbox loses its gun and its top steps as its health goes, in
+eighths; dead, both are burnt down to a grey hull or a dark slab. And
+what comes off goes somewhere: every impact the window hears of (a
+shell's splash, a mine, a wall knocked to rubble, a pillbox or a tank
+hit or destroyed) throws loose cubes out of the point (`render.rs`,
+`debris`): earth out of the ground, tan out of a wall or a pillbox,
+olive out of a hull, the seat's colour out of a destroyed tank. Each
+flies out at its own angle and speed, rises, falls under gravity,
+bounces once or twice, rolls to a stop as the ground takes its speed,
+spins as it goes, and fades after a second or two. A crater is dug
+where the shell lands, two levels down with its far wall in shadow,
+and the cubes that were the ground are the ones rolling away from it.

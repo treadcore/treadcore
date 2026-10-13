@@ -22,7 +22,7 @@ impl Plugin for RenderPlugin {
         app.init_resource::<Sprites>()
             .init_resource::<Fog>()
             .add_systems(Startup, setup_camera)
-            .add_systems(Update, (build_map, update_fog, sync_entities, overlay).chain());
+            .add_systems(Update, (build_map, update_fog, sync_entities, overlay, debris).chain());
     }
 }
 
@@ -38,6 +38,18 @@ pub struct Ent(pub EntityId);
 #[derive(Component)]
 pub struct Label;
 
+/// A loose cube thrown out of an impact: it flies, bounces, rolls to a
+/// stop and fades. Position is the parent transform; `h` is its height
+/// above the ground, drawn as a lift up the screen.
+#[derive(Component)]
+pub struct Debris {
+    vel: Vec2,
+    h: f32,
+    vh: f32,
+    spin: f32,
+    life: f32,
+}
+
 #[derive(Resource, Default)]
 pub struct Sprites {
     pub map_built: bool,
@@ -48,8 +60,9 @@ pub struct Sprites {
     /// built for.
     pub ents: HashMap<EntityId, Entity>,
     pub keys: HashMap<EntityId, u64>,
-    /// Wall tiles, as blocks of cubes, by cell index.
-    pub walls: HashMap<usize, Entity>,
+    /// Wall tiles as blocks of cubes and craters as pits, by cell
+    /// index, with the terrain they were built for.
+    pub walls: HashMap<usize, (u8, Entity)>,
 }
 
 /// Which tiles the player can see, recomputed when an observation lands.
@@ -120,6 +133,10 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
         sprites.tiles = ids;
         sprites.cells = map.cells.clone();
         sprites.map_built = true;
+        let w = map.w;
+        for (i, &c) in map.cells.iter().enumerate() {
+            raise_or_sink(&mut commands, &mut sprites, w, i, Terrain::from_u8(c));
+        }
         return;
     }
     // Craters, and fog changes: recolour only what changed. Walls are
@@ -133,7 +150,7 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
         if new != old || fog_changed {
             if let Ok(mut s) = tiles.get_mut(sprites.tiles[i]) {
                 let c = terrain_color(Terrain::from_u8(new), i % w, i / w);
-                s.color = if vis { c } else { c.darker(0.12) };
+                s.color = if vis { c } else { c.darker(0.07) };
             }
         }
         if new != old {
@@ -141,22 +158,34 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
         }
     }
     for (i, new) in changed {
-        let is_wall = Terrain::from_u8(new) == Terrain::Wall;
-        match (is_wall, sprites.walls.get(&i).copied()) {
-            (true, None) => {
-                let pos = to_screen(V2::new((i % w) as f32 + 0.5, (i / w) as f32 + 0.5));
-                let e = commands.spawn((Transform::from_translation(pos.extend(0.9)), Visibility::Visible)).with_children(|p| voxel::wall().spawn(p, 0.0)).id();
-                sprites.walls.insert(i, e);
-            }
-            (false, Some(e)) => {
-                commands.entity(e).despawn();
-                sprites.walls.remove(&i);
-            }
-            _ => {}
-        }
+        raise_or_sink(&mut commands, &mut sprites, w, i, Terrain::from_u8(new));
     }
     if map.cells != sprites.cells {
         sprites.cells = map.cells.clone();
+    }
+}
+
+/// A wall stands up as a block, a crater sinks as a pit; any other
+/// terrain takes whichever was there down.
+fn raise_or_sink(commands: &mut Commands, sprites: &mut Sprites, w: usize, i: usize, t: Terrain) {
+    let want = match t {
+        Terrain::Wall => Some(Terrain::Wall as u8),
+        Terrain::Rubble => Some(Terrain::Rubble as u8),
+        _ => None,
+    };
+    let have = sprites.walls.get(&i).copied();
+    if have.map(|(k, _)| Some(k)) == Some(want) || (have.is_none() && want.is_none()) {
+        return;
+    }
+    if let Some((_, e)) = have {
+        commands.entity(e).despawn();
+        sprites.walls.remove(&i);
+    }
+    if let Some(k) = want {
+        let pos = to_screen(V2::new((i % w) as f32 + 0.5, (i / w) as f32 + 0.5));
+        let model = if k == Terrain::Wall as u8 { voxel::wall() } else { voxel::crater() };
+        let e = commands.spawn((Transform::from_translation(pos.extend(0.9)), Visibility::Visible)).with_children(|p| model.spawn(p, 0.0)).id();
+        sprites.walls.insert(i, (k, e));
     }
 }
 
@@ -290,7 +319,10 @@ fn sync_entities(
         let name = obs.players.get(t.owner as usize).map(|p| p.name.clone()).unwrap_or_default();
         let label = format!("{}{} {:.0}", if t.owner == me { "* " } else { "" }, name, t.armor);
         let alive = t.alive;
-        place(&mut commands, t.id, to_screen(pos), -t.heading, model_key(1, c, alive as u32), &|| voxel::tank(c, alive), 2.0, Some((label, if alive { c } else { Color::srgb(0.5, 0.5, 0.5) })));
+        // Damage in tenths, so the hull chips as the armor goes.
+        let damage = (1.0 - t.armor / TANK_ARMOR).clamp(0.0, 1.0);
+        let bucket = (damage * 10.0).round() as u32;
+        place(&mut commands, t.id, to_screen(pos), -t.heading, model_key(1, c, alive as u32 | (bucket << 1)), &|| voxel::tank(c, alive, bucket as f32 / 10.0), 2.0, Some((label, if alive { c } else { Color::srgb(0.5, 0.5, 0.5) })));
     }
     for d in &obs.drones {
         let pos = d.pos + V2::from_heading(d.heading).scale(drone_speed(d.kind) * ahead * 0.5);
@@ -331,8 +363,9 @@ fn sync_entities(
         let alive = p.alive();
         let health = p.health / PILLBOX_HEALTH;
         let label = if alive { format!("pb {:.0}", p.health) } else { "pb dead".to_string() };
-        let bucket = if !alive { 0 } else if health > 0.5 { 2 } else { 1 };
-        place(&mut commands, p.id, to_screen(p.pos), 0.0, model_key(8, c, bucket), &|| voxel::pillbox(owner, health, alive), 1.5, Some((label, if alive { c } else { Color::srgb(0.45, 0.42, 0.4) })));
+        let bucket = if !alive { 0 } else { 1 + (health * 8.0).round() as u32 };
+        let h = if alive { ((health * 8.0).round() / 8.0).clamp(0.0, 1.0) } else { 0.0 };
+        place(&mut commands, p.id, to_screen(p.pos), 0.0, model_key(8, c, bucket), &|| voxel::pillbox(owner, h, alive), 1.5, Some((label, if alive { c } else { Color::srgb(0.45, 0.42, 0.4) })));
     }
     // Mines I know about: mine in my colour, found hostile ones red.
     for m in &obs.mines {
@@ -352,6 +385,58 @@ fn sync_entities(
     for (_, e) in gone {
         if let Ok((_, mut v)) = q.get_mut(e) {
             *v = Visibility::Hidden;
+        }
+    }
+}
+
+/// Throw cubes out of every impact the view recorded, and move the
+/// ones in the air: gravity, a bounce, a roll that slows, a fade.
+fn debris(mut commands: Commands, time: Res<Time>, mut view: ResMut<View>, mut q: Query<(Entity, &mut Debris, &mut Transform, &mut Sprite)>) {
+    let dt = time.delta_secs().min(0.1);
+    let impacts: Vec<(V2, Color, u8)> = view.impacts.drain(..).collect();
+    let mut seed = (time.elapsed_secs() * 1000.0) as u32;
+    let mut rnd = || {
+        seed ^= seed << 13;
+        seed ^= seed >> 17;
+        seed ^= seed << 5;
+        (seed % 10000) as f32 / 10000.0
+    };
+    for (at, color, n) in impacts {
+        for _ in 0..n {
+            let a = rnd() * std::f32::consts::TAU;
+            let speed = TILE * (1.5 + rnd() * 3.0);
+            let size = TILE * (0.08 + rnd() * 0.1);
+            commands.spawn((
+                Sprite { color, custom_size: Some(Vec2::splat(size)), ..default() },
+                Transform::from_translation(to_screen(at).extend(5.0)),
+                Debris { vel: Vec2::new(a.cos(), a.sin()) * speed, h: 0.5, vh: TILE * (1.0 + rnd() * 2.5), spin: (rnd() - 0.5) * 20.0, life: 1.2 + rnd() * 0.8 },
+            ));
+        }
+    }
+    let g = TILE * 9.0;
+    for (e, mut d, mut tf, mut s) in q.iter_mut() {
+        d.life -= dt;
+        if d.life <= 0.0 {
+            commands.entity(e).despawn();
+            continue;
+        }
+        let ground = tf.translation.truncate() - Vec2::new(0.0, d.h);
+        let ground = ground + d.vel * dt;
+        d.h += d.vh * dt;
+        d.vh -= g * dt;
+        if d.h < 0.0 {
+            d.h = 0.0;
+            d.vh = -d.vh * 0.35;
+            d.vel *= 0.55;
+            if d.vh.abs() < TILE * 0.3 {
+                d.vh = 0.0;
+            }
+        }
+        d.vel *= 1.0 - 2.5 * dt;
+        tf.translation = (ground + Vec2::new(0.0, d.h)).extend(5.0);
+        tf.rotate_z(d.spin * dt);
+        if d.life < 0.4 {
+            s.color = s.color.with_alpha(d.life / 0.4);
         }
     }
 }

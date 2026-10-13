@@ -4,6 +4,31 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13, later still: sub-cubes, damage that chips, cubes that roll off
+
+Journal: [0017](journal/0017-2026-10-13-sub-cubes.txt).
+
+- Changed: the models' cubes are a tenth of a tile (the things that
+  move) and a quarter (the ground's blocks and pits), with hidden top
+  and side faces culled: a tank is 160 cubes with treads, a
+  superstructure, a turret and a barrel; a pillbox a four-step
+  pyramid; a depot a plate with corner posts; a wall four by four by
+  three on its tile; a crater four by four, two deep, its far wall in
+  shadow. The hull is Bolo's olive, the turret the seat's colour.
+- New: damage chips a model (`Model::chip`): the tank's turret as its
+  armor goes, in tenths; the pillbox's gun and top steps as its
+  health goes, in eighths.
+- New: debris. Every impact throws loose cubes that fly, bounce,
+  roll to a stop, spin and fade: earth from the ground, tan from a
+  wall or pillbox, olive from a hull, the seat's colour from a
+  destroyed tank (`View.impacts`, `render::debris`).
+- Changed: the frame's boxes are bevelled, sunken for the insets and
+  the map, raised for the order tiles; the bezel is lighter. Solo
+  play's map now takes craters and walls from events, as a client's
+  always did (it never showed a crater before). Fog dims less.
+- Fixed: the newswire reported any visible tank's hit as "tank hit";
+  it now says whose.
+
 ## 2026-10-13, late: Bolo's colours, and assets out of cubes
 
 Journal: [0016](journal/0016-2026-10-13-cubes.txt).

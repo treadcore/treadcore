@@ -276,15 +276,24 @@ player, tick); `step_client` 178 (FixedUpdate: predict); `poll` 186
 models, `walls`), `Fog`, `terrain_color` (Bolo's palette, with a
 checker by tile parity for forest and road), `build_map` (tiles;
 walls raised and dropped as cells change), `update_fog`, `model_key`,
+`raise_or_sink` (a wall stands up, a crater sinks, by cell),
 `sync_entities` (every thing as a voxel model: a parent that moves,
-children that are its cubes, rebuilt when the key changes; the
-predicted own tank), `link_color`, `overlay` (the gizmos: bubble,
-links, vision, arcs, the gun's envelope lit while aiming).
+children that are its cubes, rebuilt when the key changes, which
+holds the damage bucket; the predicted own tank), `Debris` and
+`debris` (cubes thrown out of every impact the view recorded: flight,
+gravity, bounce, roll, spin, fade), `link_color`, `overlay` (the
+gizmos: bubble, links, vision, arcs, the gun's envelope lit while
+aiming).
 
-**voxel.rs (190)**: `UNIT` (a fifth of a tile), `RISE`; `Cube`,
-`Model` with `spawn` (a top face and a side face per cube, oblique);
-Bolo's colours; the models: `tank`, `pillbox`, `depot`, `recon`,
-`interceptor`, `strike`, `shell`, `mine`, `squad`, `wall`.
+**voxel.rs (270)**: `RISE`; `Cube`, `Model` (`unit`, `cx`, `cy`,
+`cubes`) with `slab`, `has`, `chip` (damage takes cubes off, highest
+first, in a fixed order) and `spawn` (a top face and a side face per
+cube where not hidden, oblique; pits for z below ground); Bolo's
+colours; the models: `tank` (olive hull, treads, turret in the seat's
+colour, barrel; chips with damage), `pillbox` (a four-step pyramid,
+the gun on top; chips with health), `depot`, `recon`, `interceptor`,
+`strike`, `shell`, `mine`, `squad`, `wall` (a quarter-tile block,
+three high), `crater` (two deep).
 
 **hud.rs (520)**: the frame in the prior art's look (INTERFACE.md
 sections 3 and 7): `LEFT`, `RIGHT`, `TOP`, `BOTTOM` in pixels; the
@@ -449,8 +458,8 @@ GAMETYPE, MAP, BRAIN.
 | documentation/RELEASE.md | the cycle, versions, releases, playtesting |
 | documentation/GOVERNANCE.md | roles, joining, proposals (section 5: a change to rules.rs wants a trace), review, leaving |
 | documentation/INDEX.md | this |
-| journal/0001 to 0016 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes |
-| reports/images/ | the playtest frames, playtest-01 to 16, 256-colour PNG |
+| journal/0001 to 0017 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes; sub-cubes |
+| reports/images/ | the playtest frames, playtest-01 to 18 and 18b, 256-colour PNG |
 
 ## 5. Keyword cross-reference
 
