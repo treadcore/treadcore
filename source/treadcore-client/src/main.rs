@@ -161,7 +161,9 @@ pub fn to_tile(p: Vec2) -> treadcore_sim::V2 {
 /// four as they always were, and the swarm in red.
 pub fn player_color(p: treadcore_sim::PlayerId) -> Color {
     match p {
-        0 => Color::srgb(0.35, 0.75, 1.0),
+        // Seat 0 was sky blue, which is the river's cyan a shade over;
+        // a violet blue reads against water and grass both.
+        0 => Color::srgb(0.55, 0.58, 1.0),
         1 => Color::srgb(1.0, 0.80, 0.30),
         2 => Color::srgb(0.55, 1.0, 0.55),
         3 => Color::srgb(0.95, 0.55, 1.0),

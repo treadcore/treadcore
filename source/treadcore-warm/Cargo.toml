@@ -17,6 +17,8 @@ rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+# A build aid for this machine, not a crate for anyone: never published.
+publish = false
 
 [[bin]]
 name = "treadcore-warm"

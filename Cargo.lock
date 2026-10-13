@@ -3939,7 +3939,7 @@ dependencies = [
 
 [[package]]
 name = "treadcore-brain"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "log",
  "serde",
@@ -3949,7 +3949,7 @@ dependencies = [
 
 [[package]]
 name = "treadcore-client"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "bevy",
  "log",
@@ -3961,7 +3961,7 @@ dependencies = [
 
 [[package]]
 name = "treadcore-net"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "bincode",
  "log",
@@ -3972,7 +3972,7 @@ dependencies = [
 
 [[package]]
 name = "treadcore-proto"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "bincode",
  "serde",
@@ -3981,7 +3981,7 @@ dependencies = [
 
 [[package]]
 name = "treadcore-server"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "env_logger",
  "log",
@@ -3994,7 +3994,7 @@ dependencies = [
 
 [[package]]
 name = "treadcore-sim"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "bincode",
  "log",
@@ -4004,7 +4004,7 @@ dependencies = [
 
 [[package]]
 name = "treadcore-warm"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "bevy",
 ]

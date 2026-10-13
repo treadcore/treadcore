@@ -1,0 +1,218 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 19:30:00 -0700
+Subject: [JOURNAL 0018] The first candidate: 0.1.0-rc.1, the release
+         procedure, the player's guide, crates.io
+Message-ID: <0018.20261013@treadcore.org>
+In-Reply-To: <0017.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: release candidate, make release, make shoot, HOW-TO-PLAY,
+          crates.io, cargo publish, frames, manifest
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "during a release before cargo crates
+           new version release ... write a procedure and incorporate
+           it into a make release cycle verifying that pictures are
+           taken, and documentation shows new pictures ... create
+           user documentation for how to play the game, showing
+           pictures cropped ... then actually do the crates.io
+           project release"
+X-Commits: (this session's release commit and tag)
+
+        THE FIRST CANDIDATE: 0.1.0-RC.1, THE RELEASE PROCEDURE,
+                 THE PLAYER'S GUIDE, CRATES.IO
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    Version 0.1.0-rc.1 is offered as the first release candidate
+    under RELEASE.md section 4. To get there the session wrote the
+    release procedure as a script, `make release`, whose point is the
+    pictures: it refuses a release whose documents do not show the
+    window it ships, which is the mistake journal 0017 found (three
+    empty frames in the gallery). `make shoot` drives the window
+    through one scripted match and crops twelve frames; the player's
+    guide, HOW-TO-PLAY.md, is written against them; the check holds
+    the two together. The crates were published to crates.io in
+    dependency order. The candidate is confirmed by the steward's own
+    playtest on one machine, as section 4 allows until there are
+    three playtesters, and the notes say so.
+
+INDEX TERMS
+
+    release candidate, scripts/release.sh, scripts/shoot.sh,
+    MANIFEST, HOW-TO-PLAY.md, cargo publish, crates.io, 0.1.0-rc.1.
+
+
+I. INTRODUCTION
+
+    The ask, in one message: a procedure for a release that verifies
+    the pictures are taken and the documentation shows them, built
+    into make; a player's guide with cropped pictures; then run it,
+    and when it passes, the crates.io release, with the site and the
+    README brought up to date, and the journal saying a milestone is
+    offered as a candidate.
+
+II. BACKGROUND
+
+    Journal 0017 had done the day's window work: solid tiles, the
+    builder's five modes, the hit you can feel, and the manifests for
+    crates.io with `make token` and `make publish`. RELEASE.md had a
+    cycle, versions, monuments and candidates (sections 1 to 5) but
+    no procedure a script could run, and its checklist did not
+    mention pictures. The gallery had held three zero-byte frames for
+    half a day without anything noticing. There was no player's
+    guide; README's one paragraph of controls was it.
+
+III. METHOD
+
+    The pictures first, because the guide and the check both hang on
+    them: a shoot script with a fixed sequence (idle; a mode armed
+    and the cursor's square; the squad sent; a refusal; the gun's
+    envelope; the scrollback; the models close), cropped to the
+    thing each shows, listed in a manifest named by the version.
+    Then the guide written against the frames. Then the check, which
+    reads the manifest and the documents. Then the version, the
+    documents, the run, the commit and tag, the publish.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      a manifest of frames     check that any png     the check must
+      per version, each of     exists                 know which
+      which a document must                           frames belong
+      show                                            to this release
+      frames newer than the    frames newer than the  the first
+      window's last commit     last tag               candidate has
+                                                      no tag before it
+      the guide's pictures     one full-frame         a reader finds
+      cropped to the element   screenshot per topic   a lamp strip
+                                                      faster at 1:1
+      the check stops before   the script tags and    the publish
+      the tag and the publish  publishes              cannot be undone;
+      and prints them                                 a human types it
+      0.1.0-rc.1 as the        0.1.0                  section 4: a
+      published version                               candidate is an
+                                                      rc tag; crates.io
+                                                      takes a
+                                                      pre-release
+      the path dependencies    "0.1.0" with the       a pre-release
+      at the exact version     workspace at rc.1      does not satisfy
+                                                      ^0.1.0
+
+IV. CHRONOLOGY
+
+     1. scripts/shoot.sh: the window under Xwayland, floated and
+        sized by hyprctl, driven by xdotool, grim for the frames,
+        Pillow for the crops. First run: the window quit halfway.
+        The sequence pressed Esc to drop a mode that the click had
+        already dropped, and Esc with no mode armed quits. Second
+        run: the pillbox click landed on a crater ("cannot build
+        there") and Tab did not open the scrollback: a press and
+        release inside one frame of a software rasteriser can be
+        missed. A `key` helper that holds the key 0.2 s; the click
+        moved to the grass by the depot. Twelve frames, a manifest.
+     2. documentation/HOW-TO-PLAY.md: ten sections, every picture a
+        frame from the shoot, every number from DESIGN.md or the
+        README: start, the screen, driving and firing, the column,
+        the builder, pillboxes and depots, the stock, the events, the
+        keys, the network.
+     3. scripts/release.sh and `make release`: the version agreed in
+        Cargo.toml and in CHANGELOG.md; make test; make build with
+        zero warning lines in its log; the manifest for the version,
+        each frame present, not empty, newer than the window's last
+        commit, and named by the guide or the site; the guide named
+        by README and the site; every image either shows a file;
+        make publish DRY=1. Then the four commands left to a hand.
+        RELEASE.md section 6 says the same in prose; the old 6
+        (hotfixes) is 7.
+     4. The version to 0.1.0-rc.1 in the workspace and the four path
+        dependencies. README: the crates, cargo install, the guide,
+        the release; the make list. index.html: How to play with
+        four of the frames, the release line, crates.io. CHANGELOG:
+        the candidate's section. This entry.
+     5. make release: (the run and its result, below).
+     6. The release commit, the tag v0.1.0-rc.1 signed with the ssh
+        key, make publish: (the result, below).
+
+V. RESULTS
+
+      measure                                value
+      -------------------------------------  --------------------
+      frames shot, cropped                   12
+      guide                                  HOW-TO-PLAY.md, 200 lines
+      release checks                         5 steps, 20-odd lines
+      scripts/shoot.sh, release.sh           90, 80 lines
+      version                                0.1.0-rc.1
+      crates                                 5 (warm never published)
+
+VI. DISCUSSION
+
+    The release procedure is a check on documents, not on code: the
+    code has `make test` and the replay. What a release can get
+    wrong that a test cannot catch is showing a window that is not
+    the one it ships, and the only way to make that impossible is to
+    have the pictures taken by a script from the build, and to have
+    a script refuse a release whose documents do not show them. The
+    manifest is the hinge: it names the frames this version took,
+    and the check reads the documents for each name.
+
+    The guide was written from the frames, not the other way round,
+    and that is the right order: a sentence about a lamp strip that
+    sits under a picture of the lamp strip cannot drift from it
+    without the picture being retaken, and the check makes the
+    retake happen.
+
+VII. OPEN PROBLEMS
+
+    1. The shoot is this machine's: Hyprland, Xwayland at :0, a
+       floating window at 1200 by 740. Another machine needs its
+       own window-placing lines in shoot.sh.
+    2. The guide shows no network frame; the lobby and a LAN game
+       need a second machine in the shoot.
+    3. The candidate is confirmed by one playtest on one machine.
+       Section 4 wants three playtesters.
+    4. Carried from 0017: the roster as a text table, the bottom
+       strip's uneven boxes, the air box as prose, the screens
+       without the bezel; the debris and the walls; PLAYABILITY
+       items 1, 6, 7, 9, 10, 11.
+
+VIII. NEXT STEPS
+
+    1. The call for playtest (RELEASE.md section 4, step 2).
+    2. PLAYABILITY item 1, the first minute, before the next
+       candidate.
+    3. A second machine in the shoot, for the network frames.
+
+ACKNOWLEDGMENTS
+
+    Paul, for asking for the procedure before the release and not
+    after.
+
+REFERENCES
+
+    [1] Journal 0017, <0017.20261013@treadcore.org>.
+    [2] documentation/RELEASE.md sections 4 and 6.
+    [3] https://crates.io/crates/treadcore-client
+
+APPENDIX A. COMMITS
+
+    (the release commit; the tag v0.1.0-rc.1)
+
+APPENDIX B. ARTIFACTS
+
+    Scripts         scripts/shoot.sh, scripts/release.sh, Makefile
+                    (shoot, release)
+    Guide           documentation/HOW-TO-PLAY.md
+    Frames          reports/images/guide-*.png,
+                    reports/images/MANIFEST-0.1.0-rc.1.txt
+    Site            index.html, "How to play"
+    Crates          https://crates.io/crates/treadcore-{sim,proto,
+                    net,brain,client}
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

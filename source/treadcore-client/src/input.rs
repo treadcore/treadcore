@@ -1,13 +1,19 @@
 //! Keyboard and mouse to orders, and the camera.
 //!
-//! The keys are the orders column's (hud.rs): the digits launch and
-//! deploy, the brackets set the bubble, the mouse drives and fires.
+//! The keys are the orders column's (hud.rs): the digits launch the
+//! drones and arm the builder modes, the brackets set the bubble, the
+//! mouse drives and fires. A builder mode is the prior art's (SPEC
+//! BLD-01): arm it, by its key or its tile, and the next left click on
+//! the map sends the squad to that square; the mode drops as it goes.
+//! In pillbox mode a click on a pillbox repairs it, whoever owns it
+//! (BLD-05), or captures it if it is dead or nobody's; on open ground
+//! it builds one.
 //! The views are the prior art's (SPEC UI-08 to UI-13): the tank view
 //! follows the tank, the apostrophe steps through the player's and
 //! allies' pillboxes, Return or F comes back to the tank, and the
 //! scroll keys suspend following until then.
 
-use crate::hud::{self, HudState};
+use crate::hud::{self, HudState, Mode, OrderTile, MODE_ROW, RETURN_ROW};
 use crate::render::MainCamera;
 use crate::session::{Orders, View};
 use crate::{to_screen, to_tile};
@@ -32,15 +38,17 @@ pub struct Cam {
     /// Pillbox view: the index into the player's (and allies') pillboxes
     /// the camera sits on; the apostrophe steps it (SPEC UI-10, UI-12).
     pub pillbox: Option<usize>,
+    /// The shake applied last frame, taken off before this frame's.
+    pub shake: Vec2,
 }
 
 impl Default for Cam {
     fn default() -> Cam {
-        Cam { follow: true, centred_once: false, pillbox: None }
+        Cam { follow: true, centred_once: false, pillbox: None, shake: Vec2::ZERO }
     }
 }
 
-fn cursor_tile(window: &Window, cam: &Camera, cam_tf: &GlobalTransform) -> Option<V2> {
+pub fn cursor_tile(window: &Window, cam: &Camera, cam_tf: &GlobalTransform) -> Option<V2> {
     let c = window.cursor_position()?;
     if hud::in_frame(c, window.size()) {
         return None;
@@ -63,24 +71,42 @@ fn camera(
     view: Res<View>,
     mut cam: ResMut<Cam>,
     mut q: Query<(&mut Transform, &mut Projection), With<MainCamera>>,
+    lamps: Query<(&Interaction, &hud::Lamp), Changed<Interaction>>,
 ) {
     let Ok((mut tf, mut proj)) = q.single_mut() else { return };
     let Projection::Orthographic(o) = &mut *proj else { return };
+    // Last frame's shake comes off before anything else moves the camera.
+    tf.translation -= cam.shake.extend(0.0);
+    cam.shake = Vec2::ZERO;
     if scroll.delta.y != 0.0 {
         o.scale = (o.scale * (1.0 - scroll.delta.y * 0.1)).clamp(0.15, 2.5);
     }
+    // In pillbox view the arrows jump to the neighbouring pillbox in
+    // that direction (SPEC UI-11); otherwise they scroll.
+    let in_pillbox_view = cam.pillbox.is_some();
     let mut pan = Vec2::ZERO;
-    if keys.any_pressed([KeyCode::KeyW, KeyCode::ArrowUp]) {
+    if keys.pressed(KeyCode::KeyW) || (!in_pillbox_view && keys.pressed(KeyCode::ArrowUp)) {
         pan.y += 1.0;
     }
-    if keys.any_pressed([KeyCode::KeyS, KeyCode::ArrowDown]) {
+    if keys.pressed(KeyCode::KeyS) || (!in_pillbox_view && keys.pressed(KeyCode::ArrowDown)) {
         pan.y -= 1.0;
     }
-    if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
+    if keys.pressed(KeyCode::KeyA) || (!in_pillbox_view && keys.pressed(KeyCode::ArrowLeft)) {
         pan.x -= 1.0;
     }
-    if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
+    if keys.pressed(KeyCode::KeyD) || (!in_pillbox_view && keys.pressed(KeyCode::ArrowRight)) {
         pan.x += 1.0;
+    }
+    // A click on a pillbox lamp jumps the view to that pillbox (UI-10).
+    for (i, l) in lamps.iter() {
+        if *i == Interaction::Pressed && l.0 == hud::Group::Pillbox {
+            if let Some(p) = view.obs.as_ref().and_then(|o| o.pillboxes.get(l.1)) {
+                cam.follow = false;
+                cam.pillbox = None;
+                let target = to_screen(p.pos) - frame_offset() * Vec2::new(1.0, -1.0) * o.scale;
+                tf.translation = target.extend(tf.translation.z);
+            }
+        }
     }
     // Tank view: Return or F. F on an already following camera stops
     // it, as before.
@@ -92,12 +118,29 @@ fn camera(
         cam.follow = cam.pillbox.is_some() || !cam.follow;
         cam.pillbox = None;
     }
-    // Pillbox view: the apostrophe steps through mine and my allies'.
-    if keys.just_pressed(KeyCode::Quote) {
+    // Pillbox view: the apostrophe steps through mine and my allies';
+    // in it, an arrow jumps to the nearest of them in that direction.
+    let arrow = [(KeyCode::ArrowUp, V2::new(0.0, -1.0)), (KeyCode::ArrowDown, V2::new(0.0, 1.0)), (KeyCode::ArrowLeft, V2::new(-1.0, 0.0)), (KeyCode::ArrowRight, V2::new(1.0, 0.0))]
+        .into_iter()
+        .find(|(k, _)| in_pillbox_view && keys.just_pressed(*k))
+        .map(|(_, d)| d);
+    if keys.just_pressed(KeyCode::Quote) || arrow.is_some() {
         if let Some(obs) = view.obs.as_ref() {
             let mine: Vec<&Pillbox> = obs.pillboxes.iter().filter(|p| p.owner.map(|o| o == obs.player || obs.allied(o)).unwrap_or(false)).collect();
             if !mine.is_empty() {
-                let next = cam.pillbox.map(|i| (i + 1) % mine.len()).unwrap_or(0);
+                let next = match (arrow, cam.pillbox) {
+                    (Some(d), Some(cur)) if cur < mine.len() => {
+                        let here = mine[cur].pos;
+                        // The nearest pillbox whose offset lies mostly along d.
+                        mine.iter()
+                            .enumerate()
+                            .filter(|(i, p)| *i != cur && { let v = p.pos - here; v.x * d.x + v.y * d.y > (v.x * d.y - v.y * d.x).abs() })
+                            .min_by(|a, b| a.1.pos.dist(here).partial_cmp(&b.1.pos.dist(here)).unwrap())
+                            .map(|(i, _)| i)
+                            .unwrap_or(cur)
+                    }
+                    _ => cam.pillbox.map(|i| (i + 1) % mine.len()).unwrap_or(0),
+                };
                 cam.pillbox = Some(next);
                 cam.follow = false;
                 let target = to_screen(mine[next].pos) - frame_offset() * Vec2::new(1.0, -1.0) * o.scale;
@@ -122,6 +165,13 @@ fn camera(
             cam.centred_once = true;
         }
     }
+    // A hit you can feel: the camera shakes for a moment, fading out.
+    if let Some(age) = view.hit.map(|h| h.elapsed().as_secs_f32()).filter(|a| *a < hud::HIT_FLASH) {
+        let a = (1.0 - age / hud::HIT_FLASH) * 4.0 * o.scale;
+        let t = time.elapsed_secs();
+        cam.shake = Vec2::new((t * 90.0).sin(), (t * 70.0).cos()) * a;
+        tf.translation += cam.shake.extend(0.0);
+    }
 }
 
 fn orders(
@@ -129,17 +179,27 @@ fn orders(
     mouse: Res<ButtonInput<MouseButton>>,
     window: Query<&Window, With<PrimaryWindow>>,
     cam: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
-    view: Res<View>,
+    mut view: ResMut<View>,
     mut orders: ResMut<Orders>,
     mut hud: ResMut<HudState>,
+    tiles: Query<(&Interaction, &OrderTile), Changed<Interaction>>,
 ) {
+    // A tile clicked is its key pressed.
+    let clicked: Option<usize> = tiles.iter().find(|(i, _)| **i == Interaction::Pressed).map(|(_, t)| t.0);
+    let hit = |key: KeyCode, row: usize| keys.just_pressed(key) || clicked == Some(row);
     if keys.just_pressed(KeyCode::Tab) {
         hud.show_log = !hud.show_log;
     }
+    // Esc drops an armed mode; with none armed it quits.
     if keys.just_pressed(KeyCode::Escape) {
-        info!("quit");
-        std::process::exit(0);
+        if hud.mode.is_some() {
+            hud.mode = None;
+        } else {
+            info!("quit");
+            std::process::exit(0);
+        }
     }
+    let before = orders.0.len();
     let Some(obs) = view.obs.as_ref() else { return };
     let Some(me) = obs.me.as_ref() else { return };
     let Ok(window) = window.single() else { return };
@@ -149,9 +209,13 @@ fn orders(
 
     if mouse.just_pressed(MouseButton::Left) {
         if let Some(p) = at {
-            // The world routes a Move around water itself and the tank
-            // follows the waypoints; the client only names the destination.
-            orders.0.push(Command::Move { to: p });
+            if let Some(mode) = hud.mode.take() {
+                orders.0.push(Command::Deploy { task: builder_task(obs, mode, p) });
+            } else {
+                // The world routes a Move around water itself and the tank
+                // follows the waypoints; the client only names the destination.
+                orders.0.push(Command::Move { to: p });
+            }
         }
     }
     // The gun: hold the right button and the envelope lights (render.rs);
@@ -167,49 +231,32 @@ fn orders(
             }
         }
     }
-    if keys.just_pressed(KeyCode::Digit1) {
+    if hit(KeyCode::Digit1, 0) {
         orders.0.push(Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return });
     }
-    if keys.just_pressed(KeyCode::Digit2) {
+    if hit(KeyCode::Digit2, 1) {
         let center = at.unwrap_or(me.pos);
         orders.0.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 4.0 } });
     }
-    if keys.just_pressed(KeyCode::Digit3) {
+    if hit(KeyCode::Digit3, 2) {
         let p = at.unwrap_or(me.pos);
         if let Some(t) = obs.hostile_tanks().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()) {
             orders.0.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: t.id } });
         }
     }
-    if keys.just_pressed(KeyCode::KeyR) {
+    if hit(KeyCode::KeyR, 3) {
         orders.0.push(Command::Recall);
     }
-    if keys.just_pressed(KeyCode::Digit4) {
-        if let Some(p) = at {
-            if let Some(pb) = obs.pillboxes.iter().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()).filter(|pb| pb.pos.dist(p) <= 3.0) {
-                let task = if pb.owner == Some(obs.player) { PillboyTask::Repair { target: pb.id } } else { PillboyTask::Capture { pillbox: pb.id } };
-                orders.0.push(Command::Deploy { task });
-            }
+    // The builder modes: the key or the tile arms one (or disarms it,
+    // pressed again); the click on the map gives it, above.
+    let mode_keys = [KeyCode::Digit4, KeyCode::Digit5, KeyCode::Digit6, KeyCode::Digit7, KeyCode::Digit8];
+    for (n, mode) in Mode::ALL.iter().enumerate() {
+        if hit(mode_keys[n], MODE_ROW + n) {
+            hud.mode = if hud.mode == Some(*mode) || !hud::can_order(Some(me), mode.row()) { None } else { Some(*mode) };
         }
     }
-    if keys.just_pressed(KeyCode::Digit5) {
-        if let Some(p) = at {
-            orders.0.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Pillbox, at: p } });
-        }
-    }
-    if keys.just_pressed(KeyCode::Digit6) {
+    if hit(KeyCode::Digit9, RETURN_ROW) {
         orders.0.push(Command::Deploy { task: PillboyTask::Return });
-    }
-    for (key, what) in [(KeyCode::Digit7, BuildKind::Wall), (KeyCode::Digit8, BuildKind::Mine), (KeyCode::Digit9, BuildKind::Road)] {
-        if keys.just_pressed(key) {
-            if let Some(p) = at {
-                orders.0.push(Command::Deploy { task: PillboyTask::Build { what, at: p } });
-            }
-        }
-    }
-    if keys.just_pressed(KeyCode::Digit0) {
-        if let Some(p) = at {
-            orders.0.push(Command::Deploy { task: PillboyTask::Harvest { at: p } });
-        }
     }
     if keys.just_pressed(KeyCode::BracketLeft) {
         orders.0.push(Command::SetBubble { radius: me.bubble - 1.0 });
@@ -219,5 +266,30 @@ fn orders(
     }
     if keys.just_pressed(KeyCode::Space) {
         orders.0.push(Command::Stop);
+    }
+    // A new order takes the last refusal off the wire.
+    if orders.0.len() > before {
+        view.refused = None;
+    }
+}
+
+/// What a builder mode does on a square (SPEC section 6): farm the
+/// forest there; lay a road, or a bridge on water; raise a wall; in
+/// pillbox mode repair the pillbox there whoever owns it, capture it
+/// if it is dead or nobody's, or build one on open ground; bury a mine.
+fn builder_task(obs: &Observation, mode: Mode, p: V2) -> PillboyTask {
+    match mode {
+        Mode::Farm => PillboyTask::Harvest { at: p },
+        Mode::Road => PillboyTask::Build { what: BuildKind::Road, at: p },
+        Mode::Wall => PillboyTask::Build { what: BuildKind::Wall, at: p },
+        Mode::Mine => PillboyTask::Build { what: BuildKind::Mine, at: p },
+        Mode::Pillbox => {
+            let near = obs.pillboxes.iter().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()).filter(|pb| pb.pos.dist(p) <= 1.5);
+            match near {
+                Some(pb) if pb.owner == Some(obs.player) || (pb.alive() && pb.owner.is_some()) => PillboyTask::Repair { target: pb.id },
+                Some(pb) => PillboyTask::Capture { pillbox: pb.id },
+                None => PillboyTask::Build { what: BuildKind::Pillbox, at: p },
+            }
+        }
     }
 }

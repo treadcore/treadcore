@@ -29,10 +29,11 @@ frame:
  +-----------------------------------------------+
 ```
 
-- A **mode column** on the left: six small tiles, one per thing the
-  builder can be told to do (tree, road, building, pillbox, mine, and
-  the tank), with a red lamp beside the active one. The whole command
-  vocabulary, visible, and the current mode never in doubt.
+- A **mode column** on the left: five tiles, one per thing the
+  builder can be told to do (farm, road, building, pillbox, mine),
+  each a picture of the ground with the thing on it, with a red lamp
+  beside the active one. The whole command vocabulary, visible, and
+  the current mode never in doubt.
 - **Lamp grids** on the right for the tank's stock: shells as a grid of
   red squares, mines as a grid, armor as green dots, trees as a bar.
   No numbers. A glance says "half".
@@ -117,16 +118,24 @@ Top strip: who and when, and the NET line, one row each. It is the
 only place a number that is not the tank's lives.
 
 **ORDERS, the left column.** Bolo's mode column, for treadcore's
-orders. The key, a glyph, a word: `1 I` launch interceptor, `2 R`
-recon toward cursor, `3 S` strike at nearest hostile, `R <` recall;
-then the squad's seven, `4` capture, `5` build pillbox, `6` return,
-`7` wall, `8` mine, `9` road, `0` harvest; then `[ ]` bubble. The lamp
-beside an order lights while it is the cursor's mode (the squad
-orders take a tile; the lamp says which one the next click gives),
-and dims when it cannot be given (no material: `5 7 8 9` dim; squad
-deployed: `4 5 7 8 9 0` dim, `6` lit). This column *is* the help. The
-controls overlay goes; Tab toggles the column's words off for a
-player who knows them.
+orders: eleven tiles, each a picture of the ground with the thing on
+it in a raised bevel, a key and a word. The drones' rows first: `1`
+launch interceptor, `2` recon toward cursor, `3` strike at nearest
+hostile, `R` recall, `[ ]` bubble, each with its glyph on the grass.
+Then the builder's five modes in the prior art's order (SPEC section
+6, UI-02), `4` farm, `5` road, `6` wall, `7` pillbox, `8` mine, and
+`9` return. A mode is armed by its key or a click on its tile, and the
+red lamp beside it is the one lamp lit in the column; the square
+under the cursor is outlined in the colour of what the squad would
+make there; the next left click on the map gives the order on that
+square, and the mode drops as the squad goes (BLD-01); Esc drops it
+unused. In pillbox mode a click on a pillbox repairs it, whoever owns
+it (BLD-05), or captures it if it is dead or nobody's; on open ground
+it builds one. A key dims when its order cannot be given (no
+material, the squad out). The mouse is not an order and has no row:
+the foot of the column says `L drive  R fire`. This column *is* the
+help. The controls overlay goes; Tab toggles the column's words off
+for a player who knows them.
 
 **The map.** Unchanged, and never covered. The tank at the centre
 when following; the bubble ring and detection ring around it, as the
@@ -239,8 +248,11 @@ out; material as eight green squares; armor and fuel as green bars.
 Each order has a pictogram tile (the hull, a round, the interceptor's
 ring, the recon's disc, the strike's dart, a hollow pillbox for
 capture and a filled one for build, a wall, a mine, a road, a tree
-tile) and a lamp beside it, red when the order can be given and dim
-when not. Kills and deaths count in a box of their own. The newswire
+tile) and, for the builder modes, a lamp beside it, red against the
+armed mode (journal 0017 made the column the prior art's: five modes,
+one lamp lit; before it every lamp that could be given was lit, and
+thirteen red lamps said nothing). Kills and deaths count in a box of
+their own. The newswire
 is one line in a 22 px face across the bottom. No images: every
 element is a rectangle, rounded or not. The pings are the one thing
 not taken, because a seat is told only its own round trip; the lobby
@@ -251,12 +263,17 @@ screen shows the medians while they are measured.
 The last of the look, the same night (journal 0016): the ground in
 Bolo's palette and the things on it built from cubes.
 
-**The palette** (`render.rs`, `terrain_color`): dark green grass,
-forest in a bright green checker at one sprite a tile (Bolo's leaf
-pattern, as far as a flat tile goes), grey road with a lighter checker
-for its dashes, cyan water, tan planks for bridges, tan blocks for
-walls, brown rubble. The five converted community maps look like the
-screenshots they were converted from.
+**The palette** (`render.rs`, `terrain_color`): every tile is one
+solid block of one colour, the colour of the sprite WinBolo drew that
+terrain with, sampled from its screenshots: grass the green of the
+grass sprite's blades, forest the bright green of its leaves, road the
+grey of its dashes, water the river's cyan, bridges the building's
+brown, walls its tan, rubble earth. The first pass (journal 0016) had
+forest and road as a checker by tile parity, meant as Bolo's dither;
+Bolo's dither is a texture at a pixel a dot, and at a tile a dot it
+was a chessboard, so journal 0017 took it out. The order tiles for
+road and harvest are in the same two colours as the ground they make
+and take.
 
 **The cubes** (`voxel.rs`): a `Model` is a list of cubes on a grid of
 fifths of a tile, and the window has no third dimension: a cube is
@@ -279,3 +296,32 @@ What this is not: a 3D renderer. The engine's PBR crates are not in
 the build, by choice (BUILD.md), and a camera that tilts would be a
 different game. The cubes stand up from the map the way Bolo's
 pillboxes stood up from theirs: by their drawing.
+
+**Sub-cubes, damage, and cubes that roll off** (journal 0017). The
+first cubes were a fifth of a tile and a tank was forty of them; the
+second pass makes them a tenth, the sub-pixels of the first, so a
+tank is a hundred and sixty: an olive hull fourteen long and eight
+wide, tracks two wide with alternating treads, a superstructure, a
+turret in the seat's colour and a barrel of nine. The pillbox is a
+four-step pyramid of a hundred and seventy with the gun on its top
+step. The ground's blocks and pits stay at a quarter of a tile, four
+by four by three for a wall and four by four, two deep, for a crater,
+aligned to their tile; and a top face under another cube or a side
+face behind one is not drawn at all, which is what makes a thousand
+walls affordable (28 sprites each, not 90).
+
+The point of the detail is that it can break. `Model::chip` takes a
+fraction of a model's cubes off, highest first, in an order fixed by
+each cube's place: a tank's turret chips as its armor goes, in tenths;
+a pillbox loses its gun and its top steps as its health goes, in
+eighths; dead, both are burnt down to a grey hull or a dark slab. And
+what comes off goes somewhere: every impact the window hears of (a
+shell's splash, a mine, a wall knocked to rubble, a pillbox or a tank
+hit or destroyed) throws loose cubes out of the point (`render.rs`,
+`debris`): earth out of the ground, tan out of a wall or a pillbox,
+olive out of a hull, the seat's colour out of a destroyed tank. Each
+flies out at its own angle and speed, rises, falls under gravity,
+bounces once or twice, rolls to a stop as the ground takes its speed,
+spins as it goes, and fades after a second or two. A crater is dug
+where the shell lands, two levels down with its far wall in shadow,
+and the cubes that were the ground are the ones rolling away from it.

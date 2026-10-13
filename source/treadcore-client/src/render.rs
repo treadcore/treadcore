@@ -7,7 +7,9 @@
 //! fly out of link range, the recon disc sliding over the enemy, and the
 //! arc of a shell leaving it.
 
-use crate::hud::HudState;
+use crate::hud::{HudState, Mode};
+use crate::input::cursor_tile;
+use bevy::window::PrimaryWindow;
 use crate::session::View;
 use crate::voxel;
 use crate::{player_color, to_screen, TILE};
@@ -22,21 +24,35 @@ impl Plugin for RenderPlugin {
         app.init_resource::<Sprites>()
             .init_resource::<Fog>()
             .add_systems(Startup, setup_camera)
-            .add_systems(Update, (build_map, update_fog, sync_entities, overlay).chain());
+            .add_systems(Update, (build_map, update_fog, sync_entities, overlay, debris).chain());
     }
 }
 
 #[derive(Component)]
 pub struct MainCamera;
 
+/// A ground tile's sprite; `Sprites.tiles` holds them by cell index.
 #[derive(Component)]
-pub struct Tile(pub usize);
+pub struct Tile;
 
+/// A thing's model: the parent that moves; `Sprites.ents` holds them by id.
 #[derive(Component)]
-pub struct Ent(pub EntityId);
+pub struct Ent;
 
 #[derive(Component)]
 pub struct Label;
+
+/// A loose cube thrown out of an impact: it flies, bounces, rolls to a
+/// stop and fades. Position is the parent transform; `h` is its height
+/// above the ground, drawn as a lift up the screen.
+#[derive(Component)]
+pub struct Debris {
+    vel: Vec2,
+    h: f32,
+    vh: f32,
+    spin: f32,
+    life: f32,
+}
 
 #[derive(Resource, Default)]
 pub struct Sprites {
@@ -48,8 +64,9 @@ pub struct Sprites {
     /// built for.
     pub ents: HashMap<EntityId, Entity>,
     pub keys: HashMap<EntityId, u64>,
-    /// Wall tiles, as blocks of cubes, by cell index.
-    pub walls: HashMap<usize, Entity>,
+    /// Wall tiles as blocks of cubes and craters as pits, by cell
+    /// index, with the terrain they were built for.
+    pub walls: HashMap<usize, (u8, Entity)>,
 }
 
 /// Which tiles the player can see, recomputed when an observation lands.
@@ -70,34 +87,31 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
-/// Bolo's ground: dark green grass, bright green forest in a checker
-/// (its leaf pattern, at one sprite a tile), grey road with a lighter
-/// checker for its dashes, cyan water, tan planks and blocks.
-pub fn terrain_color(t: Terrain, x: usize, y: usize) -> Color {
-    let odd = (x + y) % 2 == 1;
+/// Bolo's ground, one solid colour a tile: each tile is a solid block
+/// in the colour of the sprite WinBolo drew it with (the screenshots
+/// on retro-replay's Bolo page). Grass is the green of the grass
+/// sprite's blades, forest the bright green of its leaves, road the
+/// grey of its dashes, water the river's cyan, a wall and a bridge the
+/// building's tan and brown. No checker, no dither: Bolo's dither was
+/// a texture at a pixel a dot, and at a tile a dot it was a chessboard.
+pub fn terrain_color(t: Terrain) -> Color {
     match t {
-        Terrain::Grass => Color::srgb(0.14, 0.34, 0.13),
-        Terrain::Forest => {
-            if odd {
-                Color::srgb(0.16, 0.60, 0.20)
-            } else {
-                Color::srgb(0.10, 0.46, 0.15)
-            }
-        }
-        Terrain::Road => {
-            if odd {
-                Color::srgb(0.50, 0.50, 0.50)
-            } else {
-                Color::srgb(0.42, 0.42, 0.42)
-            }
-        }
-        Terrain::Water => Color::srgb(0.0, 0.58, 0.72),
-        Terrain::Bridge => Color::srgb(0.62, 0.50, 0.34),
-        Terrain::Rubble => Color::srgb(0.30, 0.25, 0.20),
+        Terrain::Grass => GRASS,
+        Terrain::Forest => FOREST,
+        Terrain::Road => ROAD,
+        Terrain::Water => WATER,
+        Terrain::Bridge => voxel::TAN_DARK,
+        Terrain::Rubble => voxel::EARTH,
         Terrain::Depot => Color::srgb(0.50, 0.46, 0.38),
-        Terrain::Wall => Color::srgb(0.55, 0.42, 0.26),
+        Terrain::Wall => voxel::TAN,
     }
 }
+
+/// The ground's colours, sampled from WinBolo's sprites.
+pub const GRASS: Color = Color::srgb(0.0, 0.44, 0.125);
+pub const FOREST: Color = Color::srgb(0.12, 0.69, 0.06);
+pub const ROAD: Color = Color::srgb(0.42, 0.42, 0.42);
+pub const WATER: Color = Color::srgb(0.0, 0.56, 0.62);
 
 fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprites>, mut tiles: Query<&mut Sprite, With<Tile>>, fog: Res<Fog>) {
     let Some(map) = view.map.as_ref() else { return };
@@ -109,9 +123,9 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
                 let pos = to_screen(V2::new(x as f32 + 0.5, y as f32 + 0.5));
                 let id = commands
                     .spawn((
-                        Sprite { color: terrain_color(t, x, y), custom_size: Some(Vec2::splat(TILE)), ..default() },
+                        Sprite { color: terrain_color(t), custom_size: Some(Vec2::splat(TILE)), ..default() },
                         Transform::from_translation(pos.extend(0.0)),
-                        Tile(y * map.w + x),
+                        Tile,
                     ))
                     .id();
                 ids.push(id);
@@ -120,6 +134,10 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
         sprites.tiles = ids;
         sprites.cells = map.cells.clone();
         sprites.map_built = true;
+        let w = map.w;
+        for (i, &c) in map.cells.iter().enumerate() {
+            raise_or_sink(&mut commands, &mut sprites, w, i, Terrain::from_u8(c));
+        }
         return;
     }
     // Craters, and fog changes: recolour only what changed. Walls are
@@ -132,8 +150,8 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
         let vis = fog.visible.get(i).copied().unwrap_or(true);
         if new != old || fog_changed {
             if let Ok(mut s) = tiles.get_mut(sprites.tiles[i]) {
-                let c = terrain_color(Terrain::from_u8(new), i % w, i / w);
-                s.color = if vis { c } else { c.darker(0.12) };
+                let c = terrain_color(Terrain::from_u8(new));
+                s.color = if vis { c } else { c.darker(0.07) };
             }
         }
         if new != old {
@@ -141,22 +159,34 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
         }
     }
     for (i, new) in changed {
-        let is_wall = Terrain::from_u8(new) == Terrain::Wall;
-        match (is_wall, sprites.walls.get(&i).copied()) {
-            (true, None) => {
-                let pos = to_screen(V2::new((i % w) as f32 + 0.5, (i / w) as f32 + 0.5));
-                let e = commands.spawn((Transform::from_translation(pos.extend(0.9)), Visibility::Visible)).with_children(|p| voxel::wall().spawn(p, 0.0)).id();
-                sprites.walls.insert(i, e);
-            }
-            (false, Some(e)) => {
-                commands.entity(e).despawn();
-                sprites.walls.remove(&i);
-            }
-            _ => {}
-        }
+        raise_or_sink(&mut commands, &mut sprites, w, i, Terrain::from_u8(new));
     }
     if map.cells != sprites.cells {
         sprites.cells = map.cells.clone();
+    }
+}
+
+/// A wall stands up as a block, a crater sinks as a pit; any other
+/// terrain takes whichever was there down.
+fn raise_or_sink(commands: &mut Commands, sprites: &mut Sprites, w: usize, i: usize, t: Terrain) {
+    let want = match t {
+        Terrain::Wall => Some(Terrain::Wall as u8),
+        Terrain::Rubble => Some(Terrain::Rubble as u8),
+        _ => None,
+    };
+    let have = sprites.walls.get(&i).copied();
+    if have.map(|(k, _)| Some(k)) == Some(want) || (have.is_none() && want.is_none()) {
+        return;
+    }
+    if let Some((_, e)) = have {
+        commands.entity(e).despawn();
+        sprites.walls.remove(&i);
+    }
+    if let Some(k) = want {
+        let pos = to_screen(V2::new((i % w) as f32 + 0.5, (i / w) as f32 + 0.5));
+        let model = if k == Terrain::Wall as u8 { voxel::wall() } else { voxel::crater() };
+        let e = commands.spawn((Transform::from_translation(pos.extend(0.9)), Visibility::Visible)).with_children(|p| model.spawn(p, 0.0)).id();
+        sprites.walls.insert(i, (k, e));
     }
 }
 
@@ -262,7 +292,7 @@ fn sync_entities(
             }
             None => {
                 let m = build();
-                let mut ec = commands.spawn((tf, Visibility::Visible, Ent(id)));
+                let mut ec = commands.spawn((tf, Visibility::Visible, Ent));
                 ec.with_children(|p| {
                     m.spawn(p, 0.0);
                     if let Some((text, c)) = label {
@@ -290,7 +320,10 @@ fn sync_entities(
         let name = obs.players.get(t.owner as usize).map(|p| p.name.clone()).unwrap_or_default();
         let label = format!("{}{} {:.0}", if t.owner == me { "* " } else { "" }, name, t.armor);
         let alive = t.alive;
-        place(&mut commands, t.id, to_screen(pos), -t.heading, model_key(1, c, alive as u32), &|| voxel::tank(c, alive), 2.0, Some((label, if alive { c } else { Color::srgb(0.5, 0.5, 0.5) })));
+        // Damage in tenths, so the hull chips as the armor goes.
+        let damage = (1.0 - t.armor / TANK_ARMOR).clamp(0.0, 1.0);
+        let bucket = (damage * 10.0).round() as u32;
+        place(&mut commands, t.id, to_screen(pos), -t.heading, model_key(1, c, alive as u32 | (bucket << 1)), &|| voxel::tank(c, alive, bucket as f32 / 10.0), 2.0, Some((label, if alive { c } else { Color::srgb(0.5, 0.5, 0.5) })));
     }
     for d in &obs.drones {
         let pos = d.pos + V2::from_heading(d.heading).scale(drone_speed(d.kind) * ahead * 0.5);
@@ -331,8 +364,9 @@ fn sync_entities(
         let alive = p.alive();
         let health = p.health / PILLBOX_HEALTH;
         let label = if alive { format!("pb {:.0}", p.health) } else { "pb dead".to_string() };
-        let bucket = if !alive { 0 } else if health > 0.5 { 2 } else { 1 };
-        place(&mut commands, p.id, to_screen(p.pos), 0.0, model_key(8, c, bucket), &|| voxel::pillbox(owner, health, alive), 1.5, Some((label, if alive { c } else { Color::srgb(0.45, 0.42, 0.4) })));
+        let bucket = if !alive { 0 } else { 1 + (health * 8.0).round() as u32 };
+        let h = if alive { ((health * 8.0).round() / 8.0).clamp(0.0, 1.0) } else { 0.0 };
+        place(&mut commands, p.id, to_screen(p.pos), 0.0, model_key(8, c, bucket), &|| voxel::pillbox(owner, h, alive), 1.5, Some((label, if alive { c } else { Color::srgb(0.45, 0.42, 0.4) })));
     }
     // Mines I know about: mine in my colour, found hostile ones red.
     for m in &obs.mines {
@@ -356,6 +390,58 @@ fn sync_entities(
     }
 }
 
+/// Throw cubes out of every impact the view recorded, and move the
+/// ones in the air: gravity, a bounce, a roll that slows, a fade.
+fn debris(mut commands: Commands, time: Res<Time>, mut view: ResMut<View>, mut q: Query<(Entity, &mut Debris, &mut Transform, &mut Sprite)>) {
+    let dt = time.delta_secs().min(0.1);
+    let impacts: Vec<(V2, Color, u8)> = view.impacts.drain(..).collect();
+    let mut seed = (time.elapsed_secs() * 1000.0) as u32;
+    let mut rnd = || {
+        seed ^= seed << 13;
+        seed ^= seed >> 17;
+        seed ^= seed << 5;
+        (seed % 10000) as f32 / 10000.0
+    };
+    for (at, color, n) in impacts {
+        for _ in 0..n {
+            let a = rnd() * std::f32::consts::TAU;
+            let speed = TILE * (1.5 + rnd() * 3.0);
+            let size = TILE * (0.08 + rnd() * 0.1);
+            commands.spawn((
+                Sprite { color, custom_size: Some(Vec2::splat(size)), ..default() },
+                Transform::from_translation(to_screen(at).extend(5.0)),
+                Debris { vel: Vec2::new(a.cos(), a.sin()) * speed, h: 0.5, vh: TILE * (1.0 + rnd() * 2.5), spin: (rnd() - 0.5) * 20.0, life: 1.2 + rnd() * 0.8 },
+            ));
+        }
+    }
+    let g = TILE * 9.0;
+    for (e, mut d, mut tf, mut s) in q.iter_mut() {
+        d.life -= dt;
+        if d.life <= 0.0 {
+            commands.entity(e).despawn();
+            continue;
+        }
+        let ground = tf.translation.truncate() - Vec2::new(0.0, d.h);
+        let ground = ground + d.vel * dt;
+        d.h += d.vh * dt;
+        d.vh -= g * dt;
+        if d.h < 0.0 {
+            d.h = 0.0;
+            d.vh = -d.vh * 0.35;
+            d.vel *= 0.55;
+            if d.vh.abs() < TILE * 0.3 {
+                d.vh = 0.0;
+            }
+        }
+        d.vel *= 1.0 - 2.5 * dt;
+        tf.translation = (ground + Vec2::new(0.0, d.h)).extend(5.0);
+        tf.rotate_z(d.spin * dt);
+        if d.life < 0.4 {
+            s.color = s.color.with_alpha(d.life / 0.4);
+        }
+    }
+}
+
 pub fn link_color(link: f32) -> Color {
     if link > 0.6 {
         Color::srgb(0.4, 1.0, 0.5)
@@ -368,8 +454,26 @@ pub fn link_color(link: f32) -> Color {
 
 /// The telemetry overlay. Everything here is a line: cheap, redrawn every
 /// frame, no entities to manage.
-fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>) {
+fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>, window: Query<&Window, With<PrimaryWindow>>, cam: Query<(&Camera, &GlobalTransform), With<MainCamera>>) {
     let Some(obs) = view.obs.as_ref() else { return };
+    // An armed builder mode: the square under the cursor, in the colour
+    // of what the squad would make there, so the order lands where it
+    // was meant (PLAYABILITY.md items 4 and 5).
+    if let Some(mode) = hud.mode {
+        if let (Ok(w), Ok((c, c_tf))) = (window.single(), cam.single()) {
+            if let Some(p) = cursor_tile(w, c, c_tf) {
+                let centre = to_screen(Map::tile_centre(p));
+                let color = match mode {
+                    Mode::Farm => FOREST,
+                    Mode::Road => ROAD,
+                    Mode::Wall | Mode::Pillbox => voxel::TAN,
+                    Mode::Mine => voxel::MINE,
+                };
+                gizmos.rect_2d(centre, Vec2::splat(TILE), color);
+                gizmos.rect_2d(centre, Vec2::splat(TILE + 3.0), color.with_alpha(0.4));
+            }
+        }
+    }
     let me = obs.player;
     let Some(my) = obs.me.as_ref() else { return };
     let mine = player_color(me);

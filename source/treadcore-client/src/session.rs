@@ -51,11 +51,21 @@ pub struct View {
     /// prior art's two counters.
     pub kills: u32,
     pub deaths: u32,
+    /// Impacts the renderer throws cubes out of: where, what colour,
+    /// how many. Drained each frame.
+    pub impacts: Vec<(V2, Color, u8)>,
     /// Wall-clock when the observation arrived, for interpolation.
     pub received: Option<Instant>,
     /// The player's own tank as predicted (roadmap step 4), and when it
     /// was last driven: a client draws this one, not the snapshot's.
     pub predicted: Option<(Tank, Instant)>,
+    /// When the player's own tank was last hit: the frame flashes and
+    /// the camera shakes for a moment after (PLAYABILITY.md item 3).
+    pub hit: Option<Instant>,
+    /// The last order refused, held on the newswire until the next
+    /// order or a few seconds, because a refusal is the one line a new
+    /// player has to read twice.
+    pub refused: Option<(Instant, String)>,
 }
 
 #[derive(Default, Clone)]
@@ -84,7 +94,6 @@ pub enum Session {
     Lobby { lobby: Lobby, sock: Option<Socket>, me: PeerId },
     Hosting { host: Host, bots: Vec<(PlayerId, Box<dyn Brain>)>, me_player: PlayerId },
     Client { client: Client },
-    Ended,
 }
 
 #[derive(Resource)]
@@ -177,6 +186,12 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
         let obs = host.world.observe(*me_player);
         view.last_tick = obs.tick;
         push_events(&mut view, &obs.events, *me_player);
+        // The window's map keeps up with the world's the way a client's
+        // does: craters and walls arrive as events. (Solo play never
+        // showed a crater before this line.)
+        if let Some(m) = view.map.as_mut() {
+            Predictor::map_keeps_up(m, &obs.events);
+        }
         if let Some(s) = host.socket() {
             view.net.sent = s.sent;
             view.net.received = s.received;
@@ -319,7 +334,6 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
             host.poll();
             None
         }
-        Session::Ended => None,
     };
     if let Some(s) = next {
         commands.insert_resource(SessionRes(s));
@@ -335,6 +349,53 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             if *owner == me {
                 view.deaths += 1;
             }
+        }
+        // What breaks throws cubes (render.rs): earth out of a crater,
+        // tan out of a wall or a pillbox, the seat's colour out of a
+        // tank. The map here is still the one before this event, so a
+        // wall about to become rubble is still a wall.
+        let tan = crate::voxel::TAN;
+        let earth = crate::voxel::EARTH;
+        match e {
+            Event::ShellImpact { at, kind: ShellKind::Indirect, .. } => {
+                let wall = view.map.as_ref().map(|m| m.at(*at) == Terrain::Wall).unwrap_or(false);
+                view.impacts.push((*at, if wall { tan } else { earth }, 10));
+            }
+            Event::ShellImpact { at, kind: ShellKind::Direct, .. } => view.impacts.push((*at, earth, 4)),
+            Event::MineExploded { at, .. } => view.impacts.push((*at, earth, 12)),
+            Event::TerrainChanged { at, to } if Terrain::from_u8(*to) == Terrain::Rubble => {
+                let wall = view.map.as_ref().map(|m| m.at(*at) == Terrain::Wall).unwrap_or(false);
+                if wall {
+                    view.impacts.push((*at, tan, 8));
+                }
+            }
+            Event::PillboxDestroyed { pillbox, .. } => {
+                if let Some(p) = view.obs.as_ref().and_then(|o| o.pillboxes.iter().find(|p| p.id == *pillbox)) {
+                    view.impacts.push((p.pos, tan, 14));
+                }
+            }
+            Event::PillboxDamaged { pillbox, .. } => {
+                if let Some(p) = view.obs.as_ref().and_then(|o| o.pillboxes.iter().find(|p| p.id == *pillbox)) {
+                    view.impacts.push((p.pos, tan, 3));
+                }
+            }
+            Event::TankDestroyed { tank, owner, .. } => {
+                if let Some(t) = view.obs.as_ref().and_then(|o| o.tanks.iter().find(|t| t.id == *tank)) {
+                    view.impacts.push((t.pos, crate::player_color(*owner), 12));
+                }
+            }
+            Event::TankDamaged { tank, .. } => {
+                if let Some(t) = view.obs.as_ref().and_then(|o| o.tanks.iter().find(|t| t.id == *tank)) {
+                    view.impacts.push((t.pos, crate::voxel::OLIVE, 3));
+                }
+                if view.obs.as_ref().and_then(|o| o.me.as_ref()).map(|t| t.id == *tank).unwrap_or(false) {
+                    view.hit = Some(Instant::now());
+                }
+            }
+            Event::Rejected { player, why, .. } if *player == me => {
+                view.refused = Some((Instant::now(), format!("order refused: {}", why)));
+            }
+            _ => {}
         }
         let line = describe(e, me, view);
 
@@ -368,7 +429,16 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::Intercepted { owner, .. } => format!("{} intercept: KILL", who(owner)),
         Event::InterceptMissed { .. } => "intercept missed".into(),
         Event::StrikeHit { damage, .. } => format!("STRIKE hit for {:.0}", damage),
-        Event::TankDamaged { by, damage, armor_left, .. } => format!("tank hit -{:.0} ({:.0} left) by {}", damage, armor_left, by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into())),
+        Event::TankDamaged { tank, by, damage, armor_left } => {
+            let obs = view.obs.as_ref();
+            let mine = obs.and_then(|o| o.me.as_ref()).map(|t| t.id == *tank).unwrap_or(false);
+            if mine {
+                format!("tank hit -{:.0} ({:.0} left) by {}", damage, armor_left, by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into()))
+            } else {
+                let owner = obs.and_then(|o| o.tanks.iter().find(|t| t.id == *tank)).map(|t| who(&t.owner)).unwrap_or_else(|| "a tank".into());
+                format!("{} hit -{:.0} by {}", owner, damage, by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into()))
+            }
+        }
         Event::TankDestroyed { owner, by, .. } => format!("{} DESTROYED by {}", who(owner), by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into())),
         Event::DepotCaptured { by, .. } => format!("{} captured a depot", who(by)),
         Event::Resupplied { .. } => "resupplying".into(),

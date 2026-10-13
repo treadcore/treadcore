@@ -14,6 +14,18 @@ addresses and they punch through; nobody runs a game server.
 
 Website: [treadcore.org](https://treadcore.org). Repository:
 [github.com/treadcore/treadcore](https://github.com/treadcore/treadcore).
+Crates: [treadcore-client](https://crates.io/crates/treadcore-client)
+(the window, installed as `treadcore`), [treadcore-server](https://crates.io/crates/treadcore-server),
+and the libraries they are built from, `treadcore-sim`, `treadcore-proto`,
+`treadcore-net`, `treadcore-brain`. The current release is 0.1.0-rc.1,
+the first candidate (`documentation/RELEASE.md`); it is offered for
+playtesting, and the player's guide is
+[documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md).
+
+```
+cargo install treadcore-client   # the window, as `treadcore`
+treadcore --solo                 # you against fifteen bots
+```
 
 ## The game
 
@@ -57,6 +69,10 @@ make warm        # the engine alone, once, gently (see documentation/BUILD.md)
 make build       # release, every crate; after warm, only the game
 make headless    # everything except the window
 make test        # cargo test, every crate
+make shoot       # the release frames: the window driven by a script, cropped, for the guide and the site
+make release     # the release procedure: version, tests, no warnings, frames taken and shown, crates package
+make token       # store the crates.io API token for cargo (TOKEN=... or typed)
+make publish     # publish the five crates in dependency order; DRY=1 to verify only
 ```
 
 Needs Rust 1.85+. The window needs `wayland-client`, `xkbcommon`, `alsa`
@@ -86,14 +102,19 @@ and everyone else plays with `INTRODUCER=that.host:47296 BEACON=0 make
 lan` (or `host`, `seat`). The peer id lives in `build/identity`, so a
 player whose game drops gets the same seat back by starting again.
 
-The orders are the column on the left of the screen, with what each
-costs and whether it can be given now. Left click drives (the world
+How to play, with pictures: [documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md).
+In short: the orders are the column on the left of the screen, with
+what each costs and whether it can be given now. Left click drives (the world
 routes around water, over bridges and round hostile pillboxes); hold
 the right button to see the gun's reach and release to fire; 1/2/3
-launch interceptor / recon / strike, R recalls, 4 sends the Pillboys
-to capture or repair the pillbox under the cursor, 5 to build one
-there, 6 brings them home, 7/8/9 wall, mine and road (a bridge on
-water) at the cursor, 0 harvests the forest there, [ ] set the bubble.
+launch interceptor / recon / strike, R recalls, [ ] set the bubble.
+The Pillboys take the prior art's builder modes: 4 farm, 5 road (a
+bridge on water), 6 wall, 7 pillbox, 8 mine arm a mode (the key or a
+click on its tile; the red lamp shows which), and the next left click
+on the map sends them to that square; in pillbox mode a click on a
+pillbox repairs it, or captures it if it is dead or nobody's; the
+square it would take is outlined under the cursor; Esc drops the
+mode. 9 brings them home.
 F or Return follows the tank, the apostrophe steps through your
 pillboxes, Tab shows the events. The screen is laid out as the prior
 art's was (`documentation/INTERFACE.md`); what still stands between
@@ -165,6 +186,7 @@ journal/                  the creation journal: one plain-text entry per session
 
 ## Documents
 
+- [documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md): the player's guide, with pictures of the build it ships with: the screen, driving and firing, the drones, the builder's five modes, pillboxes and depots, every key.
 - [documentation/CONCEPT.md](documentation/CONCEPT.md): the brief, reviewed; how the design improves on the base concept.
 - [documentation/DESIGN.md](documentation/DESIGN.md): the rules, the numbers, and why.
 - [documentation/PROTOCOL.md](documentation/PROTOCOL.md): the wire protocol and the host election.
@@ -179,7 +201,7 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/SPEC-PRIOR-ART-1.14.md](documentation/SPEC-PRIOR-ART-1.14.md): the clean-room functional specification of the prior art, version 1.14 that the prior-art-derived steps cite, with a preface on what treadcore adopts.
 - [documentation/MAPS.md](documentation/MAPS.md): the map file format; any text editor is the editor.
 
-- [documentation/RELEASE.md](documentation/RELEASE.md): the implementation cycle, versions, release monuments, candidates and playtesting.
+- [documentation/RELEASE.md](documentation/RELEASE.md): the implementation cycle, versions, release monuments, candidates and playtesting, and the release procedure `make release` runs.
 - [documentation/INDEX.md](documentation/INDEX.md): the code structure index: the tree, every file outlined, a glossary, a keyword cross-reference.
 - [documentation/GOVERNANCE.md](documentation/GOVERNANCE.md): how the organization is run: roles, joining, proposals, review, leaving, recognition.
 - [CONTRIBUTING.md](CONTRIBUTING.md): the short version for a first pull request.

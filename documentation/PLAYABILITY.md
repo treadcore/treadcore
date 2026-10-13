@@ -26,9 +26,9 @@ the sim.
 | --- | --- | --- | --- |
 | 1 | **The first minute.** A tank at its start is found by indirect fire inside thirty seconds, three times of three. | The newcomer dies reading the help. | Sim: none. Brain: a bot opening that does not fire at a tank that has not moved or fired for the first 60 s (`RuleBot`, one condition). Scenario: `grace: Tick`, with `--grace`. Half a day with the trace. |
 | 2 | **Reading the screen.** Done today: the frame (orders, roster, lamps, newswire, the lobby and match-over screens). | A player who cannot see the shells left does not know when to go home. | Done; a day's polish left (section 4). |
-| 3 | **A hit you can feel.** A shell landing on you is a line in the newswire and a number. | No fear, no urgency; the bubble never feels like a shield. | Window: a flash of the frame's edge on `TankDamaged`, a shake of the camera for a quarter second, the `UNDER FIRE` strip in red. A day. Sound is step 9 and stays there, but these three cost nothing. |
-| 4 | **Aiming.** Fixed today: hold right to see the gun's reach, release to fire. The recon's disc is what you can hit; a blind shot is told in the newswire. | A shot refused "inside minimum range" was the first thing the script did. | Done. Left: the cursor's tile under the pointer as a square, so `0 harvest` lands on the tree you meant (finding 8). An hour. |
-| 5 | **The squad's orders take a tile.** Seven keys, each a tile under the cursor, no confirmation, no preview. | The builder was Bolo's second game; here it is a key you press at a guess. | Window: a mode. Press `7`, the wall tile follows the cursor as a ghost, click to place, Esc to drop; the orders column lamp says which mode. A day. The sim is unchanged. |
+| 3 | **A hit you can feel.** Done (journal 0017): the map's frame flashes red and the camera shakes for a third of a second on `TankDamaged`, and the top strip goes red while `UNDER FIRE`. | No fear, no urgency; the bubble never feels like a shield. | Done. Sound is step 9 and stays there. |
+| 4 | **Aiming.** Fixed today: hold right to see the gun's reach, release to fire. The recon's disc is what you can hit; a blind shot is told in the newswire. | A shot refused "inside minimum range" was the first thing the script did. | Done, and the cursor's tile is outlined while a builder mode is armed (journal 0017), so farm lands on the tree you meant. A refusal now stays on the newswire for four seconds or until the next order. |
+| 5 | **The squad's orders take a tile.** Done (journal 0017): the prior art's five modes. Press `6`, the wall's square follows the cursor as an outline, click to place, Esc to drop; the column's one red lamp says which mode. | The builder was Bolo's second game; here it was a key you pressed at a guess. | Done. The sim is unchanged but for BLD-05. |
 | 6 | **Nothing to say.** `Command::Chat` exists; the window has no box. | Sixteen players and alliances with no words. | Window: Enter opens a line at the newswire, Enter sends to all, Shift-Enter to the team; messages in the newswire tagged by name (SPEC UI-22, UI-23). Half a day. |
 | 7 | **Proposals are invisible.** The three-way rule, Join, Recruit, Swap, Merge: the best idea in the design, and the window shows a proposal as one roster line and gives no key to answer it. | The social game is bot-only. | Window: `Y`/`N` answer the newest proposal; a `P` menu over the roster to make one (pick a seat, pick terms). A day. |
 | 8 | **The pillbox view.** Done today (`'`, Return). | Territory you cannot look at is not yours. | Done. |
@@ -51,7 +51,7 @@ after today.
 | Bolo element | SPEC | before today | after today |
 | --- | --- | --- | --- |
 | map in the centre, never covered | UI-01 | covered by the controls overlay | the map is the middle of the frame; the scrollback and screens are the only things over it, on request |
-| builder mode column, left | UI-02 | a key list in the overlay | the orders column: key, word, count or cost, a dash when it cannot be given |
+| builder mode column, left | UI-02 | a key list in the overlay | the orders column: the five builder modes in the spec's order, a picture tile and a lamp each, one lamp lit for the armed mode, a click on the map gives it (journal 0017) |
 | one status icon per tank, pillbox, base | UI-03 | the roster; depots as `p0 p1 ..` | the roster, 20 pillbox lamps, 17 depot lamps, by owner |
 | bars for the nearest friendly base's stock | UI-04 | none | none: a depot's stock is not a thing in this game (resupply is time-gated) |
 | four bars for the tank's own stock | UI-05 | armor and fuel bars, numbers for the rest | shells as 24 lamps, the bay as 11, the squad as 4, material as 8, armor and fuel bars |
@@ -60,8 +60,8 @@ after today.
 | colour code: red hostile, green friendly | §2.9.11 | seat colours on the map; hostile air red | the same; in the lamps `X` hostile, `#` mine, `+` ally, `o` neutral, `.` dead, because the frame is one colour |
 | tank view follows the tank | UI-08 | F | F or Return, and the tank sits in the map's middle, not the window's |
 | scroll keys suspend following | UI-09 | WASD | the same |
-| pillbox view, next on each press | UI-10 | none | the apostrophe, mine and my allies' |
-| arrows to the neighbouring pillbox | UI-11 | none | none; next in id order |
+| pillbox view, next on each press | UI-10 | none | the apostrophe, mine and my allies'; a click on a pillbox lamp jumps to that one (journal 0017) |
+| arrows to the neighbouring pillbox | UI-11 | none | in pillbox view the arrows jump to the nearest pillbox in that direction (journal 0017); outside it they scroll |
 | re-entering starts from the last viewed | UI-12 | none | yes |
 | tank view key returns | UI-13 | F | Return or F |
 | window sizes, redraw rate | UI-14, 15 | wheel zoom | the same |
@@ -83,8 +83,8 @@ What the frame still wants, found in its own first frames:
 
 - Colour in the text. Done the same evening for everything that is
   a lamp or a bar (`INTERFACE.md` section 7): the lamps are nodes,
-  coloured by state. The text panels are still one ink; `UNDER FIRE`
-  on the top strip wants red. Minutes, with a `TextSpan`.
+  coloured by state. The text panels are still one ink, except that
+  the top strip goes red while `UNDER FIRE` (journal 0017).
 - The roster's columns do not line up with their header. Minutes.
 - Below about 900 px the bottom strip's lines wrap. Fold the AIR line
   under the lamps and let the newswire be one line. An hour.

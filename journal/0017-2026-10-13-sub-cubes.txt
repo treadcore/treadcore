@@ -1,0 +1,402 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 12:40:00 -0700
+Subject: [JOURNAL 0017] Sub-cubes, damage that chips, cubes that
+         roll off; solid tiles; the builder's five modes
+Message-ID: <0017.20261013@treadcore.org>
+In-Reply-To: <0016.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: sub-cubes, culling, chip, debris, crater, wall, bevel,
+          solid tiles, builder modes, BLD-01, BLD-05, UI-02, crates.io
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "do screen shot review. make them very
+           similar. the destructible walls and the craters have
+           different heights"; then "the sprites need more detail. so
+           each cube is made of sub cubes ... this allows destruction
+           ... cubes that roll off in collision"; then "remove the
+           checkard pattern. make each tile ... solid blocks, styled
+           like the sprites in bolo"; then "compare the pixels, the
+           left side ... read the spec, verify the game follows the
+           cleanroom spec"; then "implement. also do a ui review ...
+           release this as a crate.io ... i want a build release"
+X-Commits: (next)
+
+      SUB-CUBES, DAMAGE THAT CHIPS, CUBES THAT ROLL OFF; SOLID
+              TILES; THE BUILDER'S FIVE MODES
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    The cubes of 0016 were a fifth of a tile; they are a tenth now,
+    the sub-pixels of the first, and a tank is a hundred and sixty of
+    them with treads and a turret in the seat's colour on an olive
+    hull. The detail is for breaking: damage takes cubes off a model,
+    highest first, in a fixed order, and every impact throws loose
+    cubes that fly, bounce, roll to a stop and fade. Walls stand three
+    levels up on their tile; craters sink two levels with their far
+    wall in shadow; both are aligned to the grid. Hidden faces are
+    culled, which is what makes a map of a thousand walls draw. The
+    frame's boxes got the prior art's bevels. Two findings: solo play
+    had never shown a crater, because the window's map was never
+    told of one; and the camera "offset" on the big map was the first
+    seconds of a 95 000-sprite build, not the camera. Later the same
+    day: the forest and road checker went, every tile one solid
+    colour sampled from WinBolo's sprites; the orders column was
+    held against WinBolo's pixel by pixel and the spec, and became
+    the prior art's builder column, five modes, one red lamp, a click
+    on the map; the sim lets any pillbox be repaired (BLD-05); the
+    manifests were made ready for crates.io and a release build made.
+
+INDEX TERMS
+
+    sub-cube, hidden-face culling, Model::chip, debris, crater, wall,
+    bevel, map_keeps_up, terrain_color, Mode, builder_task, BLD-01,
+    BLD-05, UI-02, cargo publish.
+
+
+I. INTRODUCTION
+
+    Three asks in one afternoon. First, a review of the frame against
+    WinBolo's screenshot, to make them very similar, with the walls and
+    craters at different heights. Then, mid-work: more detail, each
+    cube of sub-cubes as one would do sub-pixel colouring, so that
+    things can be destroyed; and cubes that roll off on collision.
+
+II. BACKGROUND
+
+    Carried from 0016: the cubes at a fifth of a tile; the side faces
+    local to the model; forest and road as a checker. The frame of
+    0015. A prior-art map, constanine, with a thousand walls and
+    seventeen hundred rubble tiles, which is where the heights would
+    show.
+
+III. METHOD
+
+    Heights first: walls three levels up, craters two down, a pit's
+    far wall drawn in shadow; the frame's bevels and a sunken frame
+    round the map. A shoot on constanine, which found two things
+    (section IV). Then the sub-cubes: the models rewritten at a tenth
+    of a tile with hidden-face culling, `Model::chip` for damage, and
+    a debris system fed by the events the window already hears. A
+    burst shoot to catch the cubes in the air.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      a tenth of a tile for    a tenth for walls too  a thousand walls
+      the things that move,                           at a tenth is a
+      a quarter for the                               hundred thousand
+      ground's blocks and                             sprites; at a
+      pits                                            quarter with
+                                                      culling, 28 each
+      cull hidden top and      draw every face        three levels of
+      side faces                                      a wall are two
+                                                      levels of waste
+      chip highest cubes       random cubes           a pillbox loses
+      first, in a fixed order                         its gun first,
+                                                      and the same
+                                                      damage looks the
+                                                      same twice
+      debris from events, in   debris from the sim    the sim does not
+      the window                                      know a cube; the
+                                                      window does, and
+                                                      a Brain must not
+                                                      see one
+      debris as sprites with   a physics crate        gravity, a
+      a hand-rolled bounce                            bounce and drag
+                                                      are twelve lines
+      a lighter bezel with     the flat bezel         the screenshot's
+      bevels                                          boxes are sunken
+                                                      and its tiles
+                                                      raised
+
+IV. CHRONOLOGY
+
+     1. voxel.rs: RISE to 0.8 of a unit; pits for z below ground;
+        walls three levels; a crater model. render.rs: `raise_or_sink`
+        for Wall and Rubble cells, on the first map and on change.
+        hud.rs: the bezel lighter, `sunken()` and `raised()` border
+        colours, the map in a sunken frame, the order tiles raised.
+     2. Shot on constanine, sixteen seats. The walls stood; the tank
+        was nowhere near the map's middle, and the frames taken
+        twenty seconds later had it off the screen. Three controlled
+        runs: the default map centred; big-lizard centred; constanine
+        with eight and sixteen seats centred, once given five seconds.
+        The first frames had been taken while 95 000 wall sprites were
+        still being built and the camera's lerp had run a frame or
+        two. Not a camera fault: a sprite count.
+     3. Finding: no crater had ever been drawn in solo play. The
+        window's map was cloned from the world at the start and never
+        updated; a client's was kept up from events, a host's was not.
+        One call to `map_keeps_up` in `step_host`. Finding: the
+        newswire said "tank hit -15 (32 left)" for a tank that was not
+        mine; it now says whose.
+     4. voxel.rs rewritten: `Model { unit, cx, cy, cubes }`; hidden
+        top faces (a cube above) and side faces (a cube in front)
+        culled; `chip(frac)`; the tank at a tenth of a tile (olive
+        hull, treads alternating, superstructure, turret in the seat's
+        colour, a barrel of nine), the pillbox as a four-step pyramid
+        with the gun on the top step, the depot with corner posts, the
+        drones, the wall four by four by three at a quarter, the
+        crater four by four two deep, both centred on their tile.
+     5. render.rs: `Debris` and `debris`: every impact in
+        `View.impacts` throws eight to fourteen cubes at random angles
+        and speeds, with a rise, gravity, a bounce at 0.35, drag, spin
+        and a fade over the last 0.4 s. session.rs: `push_events`
+        fills `impacts` from ShellImpact (earth, or tan if the tile
+        was still a wall), MineExploded, TerrainChanged to rubble from
+        a wall, PillboxDamaged and Destroyed, TankDamaged and
+        Destroyed. The model keys carry damage in tenths (tank) and
+        eighths (pillbox) so the cubes are rebuilt as it changes.
+     6. Three burst shoots. The first two had no shot: the right
+        button's release was aimed inside the gun's minimum range, and
+        the refusal had scrolled off the newswire. The third, at
+        twenty-three tiles into a wall: tan cubes out of the wall in
+        two frames of the burst, the fire lamp dim while reloading,
+        the shells at 22 of 24.
+     7. Two frames published (17, the models close; 18, the cubes in
+        the air, with a 2x crop), the gallery, INTERFACE.md section 8,
+        CHANGELOG, INDEX.md; this entry. (The three frames were found
+        later to be empty files, and were retaken in step 12.)
+     8. The checker out. The forest and road checker of 0016 was
+        meant as Bolo's dither; at a tile a dot it was a chessboard.
+        WinBolo's screenshots on retro-replay's Bolo page were
+        sampled: grass (0,112,32), forest (31,176,16), road's dashes
+        (165,165,165), river (0,143,159), the building's tan
+        (192,160,111) and brown (128,95,64). `terrain_color` is one
+        solid colour a tile now; TAN and TAN_DARK are the sprite's.
+        Shot on constanine: the craters were black bars. `darker` on
+        a brown as dim as EARTH bottoms out at black; the pit's floor
+        and far wall mix toward black instead. Frame 19.
+     9. The orders column against WinBolo's, pixel by pixel: five
+        buttons at a 50 px pitch, 46 px pictures that are three by
+        three map squares of the real sprites in a 4 px bevel, a 6 px
+        lamp beside each, one of them red. Ours: fourteen rows, 28 px
+        abstract tiles, thirteen red lamps. Against the spec: BLD-01
+        (a mode, then a click) not followed, there were no modes;
+        BLD-05 (any pillbox can be repaired) refused with "not our
+        pillbox"; BLD-02, 03, 06, 09, 10, 13 held. INTERFACE.md had
+        contradicted itself on what the lamp meant.
+    10. hud.rs: `Mode` (farm, road, wall, pillbox, mine, the spec's
+        order), `HudState.mode`, `picture` (a mode's tile: nine
+        squares of ground in the terrain colours with the thing on
+        them as blocks, top face and side face, as voxel.rs draws
+        them), `OrderTile` (every tile a Button), `OrderKey` (the key
+        dims when the order cannot be given); the lamp is red against
+        the armed mode and dark otherwise, and the tank's and drones'
+        rows have no lamp. input.rs: a key or a tile arms a mode, the
+        next left click on the map gives it and the mode drops;
+        `builder_task` (pillbox mode: repair whoever owns it, capture
+        if dead or nobody's, build on open ground); 9 returns. sim:
+        Repair accepted for any pillbox, abandoned only when it needs
+        none. Shot: key 7, one red lamp; a click; "Pillboys out:
+        build", the squad lamps amber, keys 4 to 8 dim, 9 lit.
+        Frame 20.
+    11. Release. `cargo build --release --workspace`: treadcore 92 MB,
+        treadcore-server 5 MB. Cargo.toml: the four path dependencies
+        given versions (crates.io refuses a path alone), readme,
+        keywords and categories at the workspace, each crate taking
+        them; treadcore-warm `publish = false`. `cargo publish
+        --dry-run -p treadcore-sim` packages and verifies; the other
+        four cannot be dry-run until sim is on crates.io, since each
+        depends on the one before.
+    12. Frames 17 and 18 retaken (the originals were 0 bytes: the
+        grim of the earlier session wrote nothing); 18's shell landed
+        on grass by the river, not the wall, so the cubes are earth.
+    13. The review's first three, and the spec's loose ends. The
+        drone rows given the picture tiles, drive and fire out of the
+        column into its foot (the mouse is not an order); the armed
+        mode's square outlined under the cursor (PLAYABILITY 4, 5);
+        Esc drops the mode. A hit you can feel (PLAYABILITY 3):
+        `View.hit`, the map frame red and the camera shaking for 0.3
+        s, the top strip red while UNDER FIRE. A refusal held on the
+        wire four seconds or until the next order (`View.refused`).
+        Pillbox lamps as buttons, a click jumping the view (UI-10);
+        arrows in pillbox view jumping to the neighbour in that
+        direction (UI-11). Seat 0 off the river's cyan. Shot: farm
+        armed, the green square at the cursor; a click on grass,
+        "order refused: no forest there" held, gone five seconds on.
+    14. The first run of 13 panicked at start: two queries in one
+        system wrote TextColor (the top strip's red, the keys'
+        dimming) and the engine refuses that (B0001). `Without`
+        filters on each. The column then overran the frame: a tile's
+        width in this engine's UI is its content and the bevel adds
+        to it, so a 39 px tile was 45; sized by content now, the
+        foot's help in three short lines.
+    15. `scripts/publish.sh` and `make token`, `make publish` (DRY=1):
+        the token through `cargo login` into ~/.cargo, never the
+        tree; the five crates in order; a dirty tree or a missing tag
+        refused or warned. Frame 20 retaken with the final column.
+    16. `make build` warned three times, dead code all: `Tile` and
+        `Ent` carried an index nobody read (the `Sprites` maps hold
+        them), now unit markers; `Session::Ended` was never made.
+        Zero warnings.
+
+V. RESULTS
+
+      measure                                value
+      -------------------------------------  --------------------
+      cubes: tank, pillbox, depot            160, 170, 148
+      sprites a wall, before and after cull  90 and 28
+      sprites for constanine's 1 060 walls   95 000 and 30 000
+      debris per impact                      3 to 14 cubes
+      voxel.rs, render.rs                    270, 560 lines
+      hud.rs, input.rs                       660, 240 lines
+      orders column: rows, lamps lit         14 and 13; now 13 and 1
+      builder modes, as the spec             5, in its order
+      spec items checked                     BLD-01 to 13, UI-02
+      orders column, rows                    14, then 13, then 11
+      PLAYABILITY items closed               3, 4, 5
+      spec UI items taken                    UI-02, UI-10 (jump), UI-11
+      build, release                         19 s; the workspace 5 min
+      tests                                  40 pass (unchanged)
+      binaries                               treadcore 92 MB,
+                                             treadcore-server 5 MB
+
+VI. DISCUSSION
+
+    The sub-cube is the right size because it is the size of a
+    detail: a tread, a gun, a corner post. Below it there is nothing
+    to draw and above it nothing to break. The culling is what buys
+    it: a wall is the same block it was, drawn with a third of the
+    sprites, and the map that stalled the camera does not.
+
+    Destruction in the window and not the sim is the line the design
+    has always drawn. The sim knows a pillbox's health and a tile's
+    terrain; what a cube does when it comes off is the window's story
+    about that, told from the events the sim already sends, and a
+    Brain reading the same observation sees no cube. The crater is
+    the sim's (a tile became rubble); the earth rolling out of it is
+    not, and does not need to be.
+
+    The column was the day's second lesson in the same shape as the
+    checker. Both were a Bolo thing taken at the wrong scale: a
+    dither at a tile a dot, a lamp per order instead of a lamp per
+    mode. Held against the pixels and the spec's sentence, each took
+    an afternoon to put right and the fix was smaller than the thing
+    it replaced. The review of the frame (section IX) is the same
+    exercise for what is left.
+
+    The two findings were the day's real lessons. A window that had
+    only ever been run as a client had a host-side gap nobody could
+    see until a solo frame was examined for a crater; and an
+    apparent camera fault was a performance fact, found by the
+    controlled runs, not by reading the camera code again.
+
+VII. OPEN PROBLEMS
+
+    1. The side faces follow the model's rotation, not a light.
+    2. The debris does not know about walls: a cube rolls through a
+       block it should stop at.
+    2b. The shake and the flash are proven by reading, not by a frame:
+       no bot hit the tank while the script was watching. The first
+       playtest with a hand on the mouse will show them.
+    3. Walls knocked to rubble become pits at once; a half-height
+       ruin between would read better, and the sim has no wall health
+       to hang it on.
+    4. Carried: the text panels' one ink; PLAYABILITY.md items 1, 3,
+       4, 5, 6; the window under Wayland proper; two windows; step 7's
+       two-router proof; steps 8, 9.
+
+VIII. NEXT STEPS
+
+    1. PLAYABILITY.md items 1, 3, 4, 5, 6.
+    2. A playtest with a hand on the mouse.
+    3. crates.io: the account, then publish sim, proto, net, brain,
+       client in that order; a 0.1.0 tag.
+    4. The review's items, section IX.
+
+IX. THE FRAME REVIEWED
+
+    What the frame has now, held against WinBolo's, element by
+    element, after the day's two fixes. In the order a player meets
+    them.
+
+      element            as it is                    what is wrong
+      -----------------  --------------------------  -----------------
+      the map            Bolo's colours, solid       the own tank is
+                         tiles, blocks and pits,     small at the
+                         the tank in the middle      default scale;
+                                                     the labels under
+                                                     things are the
+                                                     one text on the
+                                                     map and scale
+                                                     with the zoom
+      the builder column five modes, picture tiles,  the drone rows
+                         one lamp, the spec's        above have no
+                         order                       lamp and no
+                                                     picture; "fire"
+                                                     and "drive" are
+                                                     the mouse, not
+                                                     orders, and sit
+                                                     as if they were
+      the right column   roster, tank lamps, kills   the roster is a
+                         and deaths, pillbox and     text table of
+                         depot lamps by owner        sixteen rows in
+                                                     a 268 px column;
+                                                     the pillbox lamp
+                                                     is not yet a
+                                                     button (UI-10)
+      the bottom strip   shells, bay, squad,         five boxes of
+                         material as lamps; armor    different heights
+                         and fuel as bars; the air   and the air box
+                         table                       is prose
+      the newswire       one line, 22 px, the last   the refusals
+                         event                       ("no material")
+                                                     go by in a second
+                                                     and are the one
+                                                     thing a new
+                                                     player needs to
+                                                     read twice
+      the top strip      who, when, the network      two lines of
+                         counters                    telemetry that
+                                                     only the author
+                                                     reads
+      the colour code    red hostile, green          the own seat's
+                         friendly, the seat's        colour is sky
+                         colour for mine             blue and so is
+                                                     water
+      the screens        the lobby and match-over    text in a box;
+                         screens over the map        no bevel, no
+                                                     lamps
+
+    The three to do first were done the same afternoon (step 13):
+    the own seat off the water's colour; the refusals held on the
+    wire; the drone rows in the same tiles. Left from the table: the
+    roster as a text table, the bottom strip's uneven boxes, the air
+    box as prose, the screens without the bezel, the labels that
+    scale with the zoom.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the three asks and the eye for heights.
+
+REFERENCES
+
+    [1] Journal 0016, <0016.20261013@treadcore.org>.
+    [2] documentation/INTERFACE.md section 8.
+
+APPENDIX A. COMMITS
+
+    (next)   client, docs, site, journal: sub-cubes, damage that
+             chips, cubes that roll off; walls up and craters down;
+             the bevels; journal 0017
+
+APPENDIX B. ARTIFACTS
+
+    Code            source/treadcore-client/src/voxel.rs, render.rs,
+                    hud.rs, input.rs, session.rs, main.rs;
+                    source/treadcore-sim/src/lib.rs (Repair);
+                    Cargo.toml and the six crate manifests;
+                    scripts/publish.sh, Makefile (token, publish)
+    Frames          reports/images/playtest-17, 18, 18b, 19, 20
+    Site            index.html, "In play"
+    Binaries        target/release/treadcore, treadcore-server
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

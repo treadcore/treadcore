@@ -273,40 +273,60 @@ player, tick); `step_client` 178 (FixedUpdate: predict); `poll` 186
 `push_events`, `describe` 298 (the event log's words).
 
 **render.rs (500)**: `Sprites` (tiles, `ents` and `keys` for the
-models, `walls`), `Fog`, `terrain_color` (Bolo's palette, with a
-checker by tile parity for forest and road), `build_map` (tiles;
+models, `walls`), `Fog`, `terrain_color` (Bolo's palette, one solid
+colour a tile, sampled from WinBolo's sprites), `build_map` (tiles;
 walls raised and dropped as cells change), `update_fog`, `model_key`,
+`raise_or_sink` (a wall stands up, a crater sinks, by cell),
 `sync_entities` (every thing as a voxel model: a parent that moves,
-children that are its cubes, rebuilt when the key changes; the
-predicted own tank), `link_color`, `overlay` (the gizmos: bubble,
-links, vision, arcs, the gun's envelope lit while aiming).
+children that are its cubes, rebuilt when the key changes, which
+holds the damage bucket; the predicted own tank), `Debris` and
+`debris` (cubes thrown out of every impact the view recorded: flight,
+gravity, bounce, roll, spin, fade), `link_color`, `overlay` (the
+gizmos: bubble, links, vision, arcs, the gun's envelope lit while
+aiming).
 
-**voxel.rs (190)**: `UNIT` (a fifth of a tile), `RISE`; `Cube`,
-`Model` with `spawn` (a top face and a side face per cube, oblique);
-Bolo's colours; the models: `tank`, `pillbox`, `depot`, `recon`,
-`interceptor`, `strike`, `shell`, `mine`, `squad`, `wall`.
+**voxel.rs (270)**: `RISE`; `Cube`, `Model` (`unit`, `cx`, `cy`,
+`cubes`) with `slab`, `has`, `chip` (damage takes cubes off, highest
+first, in a fixed order) and `spawn` (a top face and a side face per
+cube where not hidden, oblique; pits for z below ground); Bolo's
+colours; the models: `tank` (olive hull, treads, turret in the seat's
+colour, barrel; chips with damage), `pillbox` (a four-step pyramid,
+the gun on top; chips with health), `depot`, `recon`, `interceptor`,
+`strike`, `shell`, `mine`, `squad`, `wall` (a quarter-tile block,
+three high), `crater` (two deep).
 
 **hud.rs (520)**: the frame in the prior art's look (INTERFACE.md
 sections 3 and 7): `LEFT`, `RIGHT`, `TOP`, `BOTTOM` in pixels; the
 palette constants (Bolo's red hostile, green friendly, on a bezel);
-`HudState` (`show_log`, `aiming`); `in_frame` (is a window point on a
+`Mode` (the five builder modes in the spec's order, `MODE_ROW`,
+`RETURN_ROW`); `HudState` (`show_log`, `aiming`, `mode`: the armed
+builder mode); `OrderTile`, `OrderKey`, `MapFrame` (the map's border,
+red for `HIT_FLASH` after a hit); `in_frame` (is a window point on a
 panel); `Panel` (the text panels: Top, Roster, Counters, Air, Wire,
 Log, Screen); `Group` and `Lamp` (a lamp per tank, pillbox, depot,
 shell, drone by kind, squad man, material, and beside each order);
 `Bar` (armor, fuel); `ORDERS` (key and word per order); `inset` (a
 black box with a light edge), `lamp`, `lamp_row`, `bar`, `pictogram`
-(a shape per order); `setup` (the flex frame); `update` (texts,
-visibility, every lamp's colour from the view, every bar's width);
-`can_order` (the lamp beside an order); `top`, `roster`, `air`,
+(a shape per tank or drone order), `picture` (a builder mode's tile:
+three by three squares of ground with the thing on it, in the game's
+colours and blocks); `setup` (the flex frame); `update` (texts,
+visibility, every lamp's colour from the view, the armed mode's lamp,
+the keys dimmed, every bar's width); `can_order` (whether an order
+can be given); `wire` holds a refusal for `REFUSAL_HOLD` seconds; `top`, `roster`, `air`,
 `wire` (the newswire), `log`, `screen` (the lobby screen with
 `FIRST_MINUTE`; the match-over screen).
 
-**input.rs (200)**: `Cam` (`follow`, `pillbox`: the pillbox view),
-`cursor_tile` (none on a panel), `frame_offset` (the map's middle
-relative to the window's), `camera` (Return or F for the tank view,
-the apostrophe steps the pillbox view, SPEC UI-08 to UI-13), `orders`
-(every key and click to a Command; the right button held lights the
-gun's envelope and fires on release).
+**input.rs (290)**: `Cam` (`follow`, `pillbox`: the pillbox view,
+`shake`), `cursor_tile` (none on a panel; render.rs draws the armed
+mode's square there), `frame_offset` (the map's middle relative to
+the window's), `camera` (Return or F for the tank view, the
+apostrophe steps the pillbox view and in it the arrows jump to the
+neighbouring pillbox, a click on a pillbox lamp jumps to it, SPEC
+UI-08 to UI-13; the shake after a hit), `orders`
+(every key and tile click to a Command; a builder key or tile arms a
+mode and the next map click gives it; the right button held lights
+the gun's envelope and fires on release), `builder_task` (what a mode
+does on a square: in pillbox mode repair, capture or build).
 
 ### 2.9 source/treadcore-warm/src/main.rs (45 lines)
 
@@ -449,8 +469,8 @@ GAMETYPE, MAP, BRAIN.
 | documentation/RELEASE.md | the cycle, versions, releases, playtesting |
 | documentation/GOVERNANCE.md | roles, joining, proposals (section 5: a change to rules.rs wants a trace), review, leaving |
 | documentation/INDEX.md | this |
-| journal/0001 to 0016 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes |
-| reports/images/ | the playtest frames, playtest-01 to 16, 256-colour PNG |
+| journal/0001 to 0017 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes; sub-cubes |
+| reports/images/ | the playtest frames, playtest-01 to 18, 256-colour PNG |
 
 ## 5. Keyword cross-reference
 

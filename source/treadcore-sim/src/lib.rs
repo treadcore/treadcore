@@ -1326,9 +1326,11 @@ impl World {
                         Some(p) if p.owner.is_some() && p.alive() => return self.reject(o, "pillbox is live and theirs: shoot it dead first"),
                         Some(_) => {}
                     },
+                    // Any pillbox can be repaired, damaged or dead, whoever
+                    // owns it, and repair never changes the owner (SPEC
+                    // BLD-05, BLD-06).
                     PillboyTask::Repair { target } => match self.pillbox(*target) {
                         None => return self.reject(o, "no such pillbox"),
-                        Some(p) if p.owner != Some(o.player) => return self.reject(o, "not our pillbox"),
                         Some(p) if p.health >= PILLBOX_HEALTH => return self.reject(o, "pillbox needs no repair"),
                         Some(_) if material < PILLBOX_REPAIR_COST => return self.reject(o, "no material"),
                         Some(_) => {}
@@ -1643,8 +1645,8 @@ impl World {
                 }
                 PillboyTask::Repair { target } => {
                     let p = pillboxes.iter().find(|p| p.id == *target).unwrap();
-                    if p.owner != Some(t.owner) {
-                        done.push((t.id, t.owner, Done::Abandon("pillbox is no longer ours")));
+                    if p.health >= PILLBOX_HEALTH {
+                        done.push((t.id, t.owner, Done::Abandon("pillbox needs no repair")));
                     } else if s.material < PILLBOX_REPAIR_COST {
                         done.push((t.id, t.owner, Done::Abandon("no material")));
                     } else {

@@ -130,11 +130,53 @@ machines confirms a candidate, and the release notes say so.
 **After promoting**
 
 - [ ] GitHub Release (not pre-release) with notes, tarballs, checksums
+- [ ] `make publish` from the tag: the five crates to crates.io in
+      dependency order (sim, proto, net, brain, client; `DRY=1` first).
+      The token is stored once with `make token` and lives in
+      `~/.cargo/credentials.toml`, never in the tree
 - [ ] journal entry; report page under `reports/`; `index.html` links it
 - [ ] milestone closed; next milestone's issues triaged
 - [ ] the release ceremony's acts done (`GOVERNANCE.md` section 10)
 
-## 6. Hotfixes
+## 6. The release procedure: `make release`
+
+What a candidate has to pass before it is tagged, and before anything
+goes to crates.io; `scripts/release.sh`, run by `make release`. It
+changes nothing but build output; the first failure stops it. The
+point of it is the pictures: a release whose documents show an older
+window than the one it ships is not a release, and the first
+candidate's gallery was found to hold three empty files (journal
+0017), which is the mistake this procedure exists to catch.
+
+1. **The version.** `[workspace.package] version` and the four path
+   dependencies agree; `CHANGELOG.md` has a section headed `## <version>`.
+2. **Tests and a clean build.** `make test` green; `make build` with
+   no warnings at all.
+3. **The pictures.** `make shoot` has run for this version
+   (`scripts/shoot.sh`: the window driven by a script through the
+   same sequence every time, the frames cropped to what they show,
+   `reports/images/guide-*.png`, listed in
+   `reports/images/MANIFEST-<version>.txt`). Every listed frame
+   exists, is not empty, is newer than the window's newest source
+   file, and is shown by the player's guide
+   (`documentation/HOW-TO-PLAY.md`) or the site (`index.html`). A
+   frame nobody shows fails the check; so does a picture a document
+   shows that is not a file.
+4. **The documents.** The guide exists; `README.md` and `index.html`
+   name it; every image either shows is a file.
+5. **crates.io.** `make publish DRY=1` packages and verifies.
+6. **By hand**, in order, which the check prints: the release commit
+   (`git commit -s`), the tag (`git tag -s v<version>`), `make
+   publish`, `git push && git push --tags`. The publish is the one
+   step that cannot be undone (a version on crates.io can be yanked,
+   never removed), which is why it is last and by hand.
+
+A new feature in a release is not done until the guide shows it: the
+feature's frame is added to `scripts/shoot.sh`, the guide's section
+is written against the frame, and `make release` holds the two
+together from then on.
+
+## 7. Hotfixes
 
 A fix to a released version that cannot wait: branch from the tag,
 fix, `make test`, tag `vX.Y.(Z+1)`, release with a one-paragraph

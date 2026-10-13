@@ -39,6 +39,24 @@
 #                    REPLAY=file) and check every world hash it recorded;
 #                    the regression test for a change to the rules
 #   make test        cargo test, every crate
+#   make shoot       take the release frames: the window driven by a
+#                    script, every picture the player's guide and the site
+#                    show, cropped, into reports/images/guide-*.png with
+#                    a manifest for the version
+#   make release     the release procedure (RELEASE.md section 6): version
+#                    and changelog agree, tests pass, the build has no
+#                    warnings, the frames for this version are taken and
+#                    every one is shown by the guide or the site, the
+#                    documents name the guide, the crates package. Then
+#                    says what to do by hand: commit, tag, publish, push
+#   make token       store or replace the crates.io API token for cargo
+#                    (TOKEN=... or typed, echo off); it lives in
+#                    ~/.cargo/credentials.toml, never in this tree
+#   make publish     publish the five crates to crates.io in dependency
+#                    order (sim, proto, net, brain, client); DRY=1 only
+#                    packages and verifies sim. Needs make token, a clean
+#                    tree (ALLOW_DIRTY=1 to override) and, by RELEASE.md,
+#                    a tag v<version>
 #   make mem         one line every 2 s of free/available/swap/rustc count,
 #                    for a second terminal beside make warm (N=5 for 5 s)
 #   make quiet       desktop effects off (blur/shadow/animation) while
@@ -52,7 +70,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce lobby-test replay map convert test mem quiet loud sysprep schema clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce lobby-test replay map convert test shoot release token publish mem quiet loud sysprep schema clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -158,6 +176,18 @@ map: configure
 
 test:
 	@scripts/build.sh test
+
+shoot: configure
+	@scripts/shoot.sh
+
+release: configure
+	@scripts/release.sh
+
+token:
+	@scripts/publish.sh token
+
+publish:
+	@scripts/publish.sh $(if $(DRY),dry,all)
 
 mem:
 	@scripts/memwatch.sh $(or $(N),2)

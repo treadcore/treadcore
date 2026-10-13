@@ -4,6 +4,94 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 0.1.0-rc.1 (2026-10-13): the first candidate
+
+Journal: [0018](journal/0018-2026-10-13-first-candidate.txt). Offered
+for playtesting under `documentation/RELEASE.md` section 4; the
+steward's own playtest on one machine stands in for the three
+playtesters until there are three.
+
+- New: the release procedure, `make release` (`scripts/release.sh`,
+  RELEASE.md section 6): the version agreed everywhere and in this
+  file, tests green, a build with no warnings, the release frames
+  taken for the version and every one shown by the guide or the site,
+  the documents naming the guide, the crates packaging. `make shoot`
+  (`scripts/shoot.sh`) takes the frames: the window driven through
+  the same match every time, cropped to what each shows,
+  `reports/images/guide-*.png` with a manifest.
+- New: the player's guide, `documentation/HOW-TO-PLAY.md`, with the
+  frames: the screen, driving and firing, the drones, the builder's
+  five modes, pillboxes and depots, the stock, the events, every key,
+  the network.
+- New: the five crates on crates.io (`treadcore-sim`, `-proto`,
+  `-net`, `-brain`, `-client`, the window installed as `treadcore`);
+  `cargo install treadcore-client`. README and the site say so and
+  point at treadcore.org.
+- Everything under 2026-10-13 below is in this candidate.
+
+## 2026-10-13, later still: sub-cubes, damage that chips, cubes that roll off
+
+Journal: [0017](journal/0017-2026-10-13-sub-cubes.txt).
+
+- Changed: the models' cubes are a tenth of a tile (the things that
+  move) and a quarter (the ground's blocks and pits), with hidden top
+  and side faces culled: a tank is 160 cubes with treads, a
+  superstructure, a turret and a barrel; a pillbox a four-step
+  pyramid; a depot a plate with corner posts; a wall four by four by
+  three on its tile; a crater four by four, two deep, its far wall in
+  shadow. The hull is Bolo's olive, the turret the seat's colour.
+- New: damage chips a model (`Model::chip`): the tank's turret as its
+  armor goes, in tenths; the pillbox's gun and top steps as its
+  health goes, in eighths.
+- New: debris. Every impact throws loose cubes that fly, bounce,
+  roll to a stop, spin and fade: earth from the ground, tan from a
+  wall or pillbox, olive from a hull, the seat's colour from a
+  destroyed tank (`View.impacts`, `render::debris`).
+- Changed: the frame's boxes are bevelled, sunken for the insets and
+  the map, raised for the order tiles; the bezel is lighter. Solo
+  play's map now takes craters and walls from events, as a client's
+  always did (it never showed a crater before). Fog dims less.
+- Fixed: the newswire reported any visible tank's hit as "tank hit";
+  it now says whose.
+- Changed: no checker. Every tile is one solid block of one colour,
+  sampled from WinBolo's sprite for that terrain (grass, forest,
+  road, water, the building's tan and brown). Craters are brown, not
+  black.
+- Changed: the orders column is the prior art's builder column (SPEC
+  BLD-01, UI-02): five modes in the spec's order (4 farm, 5 road, 6
+  wall, 7 pillbox, 8 mine), each a picture tile of the ground with
+  the thing on it, a lamp beside it lit red for the one armed; the
+  key or a click on the tile arms it, the next click on the map gives
+  it, and the mode drops as the squad goes. In pillbox mode a click
+  on a pillbox repairs it, or captures a dead or neutral one; open
+  ground builds one. 9 brings the squad home. The tank's and drones'
+  rows have no lamp; a key dims when its order cannot be given.
+- Changed (sim): any pillbox can be repaired, whoever owns it, and
+  repair never changes the owner (SPEC BLD-05, BLD-06, as adopted);
+  "not our pillbox" is no longer a refusal.
+- Changed: the drones' rows wear the same picture tiles as the
+  builder's, so the column is one thing; the mouse's drive and fire
+  have no row, the foot of the column names them. While a mode is
+  armed the square under the cursor is outlined in the colour of
+  what the squad would make there; Esc drops the mode (and quits only
+  with none armed).
+- New: a hit you can feel (PLAYABILITY.md item 3): the map's frame
+  flashes red and the camera shakes for a third of a second when
+  your tank is hit; the top strip is red while UNDER FIRE.
+- Changed: a refused order stays on the newswire for four seconds or
+  until the next order, instead of passing in a frame.
+- New: a click on a pillbox lamp jumps the view to that pillbox
+  (SPEC UI-10); in pillbox view the arrow keys jump to the nearest
+  pillbox in that direction (UI-11).
+- Changed: seat 0's colour is a violet blue, off the river's cyan.
+- New: `make token` stores the crates.io API token for cargo
+  (`scripts/publish.sh`); `make publish` publishes the five crates in
+  dependency order, `DRY=1` packages and verifies only. The manifests
+  carry what crates.io wants (versions on the path dependencies,
+  readme, keywords, categories; treadcore-warm never published).
+- Fixed: `make build` is warning-free (two unread fields and an
+  unused session state, removed).
+
 ## 2026-10-13, late: Bolo's colours, and assets out of cubes
 
 Journal: [0016](journal/0016-2026-10-13-cubes.txt).
