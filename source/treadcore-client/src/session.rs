@@ -59,6 +59,9 @@ pub struct NetStats {
     pub dropped: u64,
     pub peers: usize,
     pub phase: String,
+    /// The host's world hash and its tick, from heartbeats (or our own
+    /// when hosting).
+    pub hash: (Tick, u64),
 }
 
 pub enum Session {
@@ -142,6 +145,7 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
             view.net.dropped = s.dropped;
         }
         view.net.peers = host.seats.iter().filter(|s| s.joined).count();
+        view.net.hash = host.hash_mark;
         view.obs = Some(obs);
         view.received = Some(Instant::now());
         if host.world.over {
@@ -205,6 +209,8 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                 client.send(cmd);
             }
             view.net.unacked = client.unacked();
+            view.net.hash = client.host_hash;
+
             view.net.sent = client.socket().sent;
             view.net.received = client.socket().received;
             view.net.dropped = client.socket().dropped;

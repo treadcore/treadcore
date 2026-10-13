@@ -18,9 +18,12 @@ use std::collections::{BTreeMap, VecDeque};
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 use treadcore_proto::{snapshot_packets, Packet, PeerId, SnapshotAssembler};
-use treadcore_sim::{Command, Event, Observation, Order, PlayerId, Scenario, Tick, World};
+use treadcore_sim::{Command, Event, Observation, Order, PlayerId, Replay, Scenario, Tick, World};
 
 const RESEND: Duration = Duration::from_millis(120);
+/// The host hashes the world every this many ticks (fifty seconds),
+/// logs it, and carries it in every heartbeat until the next.
+pub const HASH_EVERY: Tick = 1000;
 const HEARTBEAT: Duration = Duration::from_millis(500);
 const TIMEOUT: Duration = Duration::from_secs(6);
 /// Snapshots every other tick: 10 Hz.
@@ -97,6 +100,11 @@ pub struct Host {
     /// Orders from remote seats, collected by `poll`, consumed by `tick`.
     inbox: Vec<Order>,
     pub ticks_run: u64,
+    /// When Some, every tick's orders are recorded into it (`--record`).
+    pub replay: Option<Replay>,
+    /// The world hash as of the last multiple of `HASH_EVERY`: what the
+    /// heartbeat carries and the log shows.
+    pub hash_mark: (Tick, u64),
 }
 
 impl Host {
@@ -124,7 +132,14 @@ impl Host {
                 rtt_ticks: 0,
             })
             .collect();
-        Host { me, world, seats, routes, sock, inbox: Vec::new(), ticks_run: 0 }
+        let hash0 = world.hash();
+        Host { me, world, seats, routes, sock, inbox: Vec::new(), ticks_run: 0, replay: None, hash_mark: (0, hash0) }
+    }
+
+    /// Start recording a replay of this match from now (normally before
+    /// the first tick).
+    pub fn record(&mut self) {
+        self.replay = Some(Replay::new(self.world.scenario.clone()));
     }
 
     pub fn is_networked(&self) -> bool {
@@ -204,7 +219,8 @@ impl Host {
         for seat in self.seats.iter_mut().filter(|s| s.joined) {
             if now.duration_since(seat.last_heartbeat) >= HEARTBEAT {
                 seat.last_heartbeat = now;
-                self.routes.send(&mut sock, self.me, seat.peer, &Packet::Heartbeat { peer: self.me, tick: self.world.tick });
+                let (hash_tick, hash) = self.hash_mark;
+                self.routes.send(&mut sock, self.me, seat.peer, &Packet::Heartbeat { peer: self.me, tick: self.world.tick, hash_tick, hash });
             }
             if now.duration_since(seat.last_event_send) >= RESEND {
                 seat.last_event_send = now;
@@ -230,6 +246,14 @@ impl Host {
         orders.sort_by_key(|o| o.player);
         self.world.step(&orders);
         self.ticks_run += 1;
+        if let Some(r) = self.replay.as_mut() {
+            r.record(&self.world, &orders);
+        }
+        if self.world.tick % HASH_EVERY == 0 || self.world.over {
+            let h = self.world.hash();
+            self.hash_mark = (self.world.tick, h);
+            log::info!("world hash at tick {}: {:016x}", self.world.tick, h);
+        }
         if let Some(mut sock) = self.sock.take() {
             let tick = self.world.tick;
             for seat in self.seats.iter_mut().filter(|s| s.joined) {
@@ -306,6 +330,10 @@ pub struct Client {
     last_heartbeat: Instant,
     /// Host's tick as of its last heartbeat, and ours when it arrived.
     pub host_tick: Tick,
+    /// The host's world hash and the tick it was taken at, from the last
+    /// heartbeat. Logged when it changes; compared once the client runs
+    /// its own world (roadmap step 4).
+    pub host_hash: (Tick, u64),
     pub refuse_reason: String,
 }
 
@@ -332,6 +360,7 @@ impl Client {
             last_rx: now,
             last_heartbeat: now,
             host_tick: 0,
+            host_hash: (0, 0),
             refuse_reason: String::new(),
         }
     }
@@ -404,8 +433,12 @@ impl Client {
                         self.events.extend(events);
                     }
                 }
-                Packet::Heartbeat { tick, .. } => {
+                Packet::Heartbeat { tick, hash_tick, hash, .. } => {
                     self.host_tick = tick;
+                    if hash_tick > 0 && (hash_tick, hash) != self.host_hash {
+                        self.host_hash = (hash_tick, hash);
+                        log::info!("host world hash at tick {}: {:016x}", hash_tick, hash);
+                    }
                 }
                 Packet::Leave { .. } => {
                     log::warn!("host left");
@@ -434,7 +467,8 @@ impl Client {
                 }
                 if now.duration_since(self.last_heartbeat) >= HEARTBEAT {
                     self.last_heartbeat = now;
-                    self.routes.send(&mut self.sock, self.me, self.host, &Packet::Heartbeat { peer: self.me, tick: self.host_tick });
+                    self.routes.send(&mut self.sock, self.me, self.host, &Packet::Heartbeat { peer: self.me, tick: self.host_tick, hash_tick: 0, hash: 0 });
+
                 }
                 if now.duration_since(self.last_rx) >= TIMEOUT {
                     log::error!("host silent for {:?}", TIMEOUT);

@@ -27,7 +27,7 @@ use treadcore_sim::{Command, Event, Observation, PlayerId, Scenario, Tick};
 pub const MAGIC: [u8; 4] = *b"TRDC";
 /// Bump on any change to `Packet` or to anything it carries from
 /// treadcore-sim. Peers on different versions ignore each other entirely.
-pub const VERSION: u16 = 2;
+pub const VERSION: u16 = 3;
 
 /// Default UDP port. 0xB8C0 -- nothing registered there.
 pub const PORT: u16 = 47296;
@@ -90,7 +90,13 @@ pub enum Packet {
     /// A client leaving, or the host shutting down.
     Leave { peer: PeerId },
     /// Periodic from both ends; three missed and the other side is gone.
-    Heartbeat { peer: PeerId, tick: Tick },
+    /// From the host it also carries the world hash as of `hash_tick`
+    /// (the last multiple of `HASH_EVERY`), so a client that runs the
+    /// world can compare, and one that does not can at least log it:
+    /// four peers' logs with the same hash at the same tick is the
+    /// lobby test's proof. From a client, `hash` is 0 until it predicts.
+    Heartbeat { peer: PeerId, tick: Tick, hash_tick: Tick, hash: u64 },
+
 
     // ---- relay ---------------------------------------------------------
     /// Deliver `inner` to `to`. A peer that receives one and is not `to`

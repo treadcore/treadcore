@@ -12,14 +12,16 @@ need_config
 export CARGO_BUILD_JOBS
 LOG="$LOGDIR/debug-$STAMP.log"
 TRACE="$LOGDIR/trace-$STAMP.jsonl"
+REPLAY="$LOGDIR/replay-$STAMP.json"
 say "building headless (debug profile) -> $LOGDIR/build-$STAMP.log"
 cargo build -p treadcore-server 2>&1 | tee "$LOGDIR/build-$STAMP.log" >/dev/null || die "build failed: see $LOGDIR/build-$STAMP.log"
 BIN="$ROOT/target/debug/treadcore-server"
-ARGS=(--local --seed "${SEED:-0x7EADC0DE}" --seconds "${GAME_SECONDS:-180}" --players "${PLAYERS:-16}" --trace "$TRACE")
+ARGS=(--local --seed "${SEED:-0x7EADC0DE}" --seconds "${GAME_SECONDS:-180}" --players "${PLAYERS:-16}" --trace "$TRACE" --record "$REPLAY")
 [ -n "${BRAIN:-}" ] && ARGS+=(--brain "$BRAIN")
 say "tracing: $BIN ${ARGS[*]}"
 say "  log   $LOG"
 say "  trace $TRACE"
+say "  replay $REPLAY   (play it back: make replay REPLAY=$REPLAY)"
 {
     echo "# treadcore debug trace $STAMP"
     echo "# $BIN ${ARGS[*]}"
@@ -32,3 +34,5 @@ echo
 say "done. $(wc -l < "$LOG") log lines, $(wc -l < "$TRACE") events."
 say "  less $LOG"
 say "  grep -c Intercept $TRACE"
+say "  make replay REPLAY=$REPLAY"
+

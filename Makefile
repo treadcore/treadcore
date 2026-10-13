@@ -25,6 +25,9 @@
 #   make host        headless host on the LAN (plus bots for empty seats, PLAYERS)
 #   make seat        headless bot that joins a LAN lobby (run four: a test)
 #   make lobby-test  four headless seats on this machine negotiate a host
+#   make replay      play back the newest build/logs/replay-*.json (or
+#                    REPLAY=file) and check every world hash it recorded;
+#                    the regression test for a change to the rules
 #   make test        cargo test, every crate
 #   make mem         one line every 2 s of free/available/swap/rustc count,
 #                    for a second terminal beside make warm (N=5 for 5 s)
@@ -39,7 +42,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat lobby-test test mem quiet loud sysprep schema clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat lobby-test replay test mem quiet loud sysprep schema clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -58,6 +61,7 @@ GAME     ?= treadcore
 WANT     ?= 4
 PEER     ?=
 PLAYERS  ?= 16
+REPLAY   ?=
 export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS JOBS VERBOSE
 
 help:
@@ -100,6 +104,10 @@ seat: configure
 
 lobby-test: configure
 	@scripts/lobby-test.sh
+
+replay: configure
+	@scripts/replay.sh $(REPLAY)
+
 
 test:
 	@scripts/build.sh test

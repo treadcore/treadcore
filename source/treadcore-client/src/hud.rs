@@ -145,6 +145,10 @@ fn scoreboard(view: &View) -> String {
         s.push_str(&format!("phase {}  peers {}\n", n.phase, n.peers));
     }
     s.push_str(&format!("rtt {}  unacked {}  tx {} rx {} drop {}\n", n.rtt_ms.map(|r| format!("{}ms", r)).unwrap_or_else(|| "-".into()), n.unacked, n.sent, n.received, n.dropped));
+    if n.hash.0 > 0 {
+        s.push_str(&format!("world hash @{} {:08x}\n", n.hash.0, (n.hash.1 >> 32) as u32));
+    }
+
     if let Some(obs) = view.obs.as_ref() {
         s.push_str("\nSEAT  NAME      SCORE  STATE\n");
         for p in &obs.players {

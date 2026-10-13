@@ -36,6 +36,8 @@ struct Args {
     trace: Option<String>,
     schema: bool,
     players: usize,
+    record: Option<String>,
+    replay: Option<String>,
 }
 
 fn parse() -> Args {
@@ -54,6 +56,8 @@ fn parse() -> Args {
         trace: None,
         schema: false,
         players: MAX_PLAYERS,
+        record: None,
+        replay: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -75,6 +79,8 @@ fn parse() -> Args {
             "--trace" => a.trace = Some(val()),
             "--brain-schema" => a.schema = true,
             "--players" => a.players = parse_num::<usize>(&val()).clamp(1, MAX_PLAYERS),
+            "--record" => a.record = Some(val()),
+            "--replay" => a.replay = Some(val()),
             "-h" | "--help" => {
                 println!("{}", HELP);
                 std::process::exit(0);
@@ -102,6 +108,10 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --port N           UDP port to bind (47296; falls back to any free)
   --brain 'CMD ...'  run an external JSON brain in one seat (repeatable)
   --trace FILE       write every event as JSON lines to FILE
+  --record FILE      write the match as a replay (JSON: scenario, every
+                     tick's orders, world hashes every 100 ticks)
+  --replay FILE      play a recorded match back instead of running bots;
+                     narrate it, and exit 1 if any hash differs
   --brain-schema     print example observation and commands, then exit
 
 Logging is env_logger: RUST_LOG=trace for everything, debug for per-second
@@ -132,10 +142,61 @@ fn main() {
         return;
     }
     log::info!("treadcore-server {} ({} Hz, {}x{} map)", env!("CARGO_PKG_VERSION"), TICK_HZ, MAP_W, MAP_H);
-    if args.net {
+    if args.replay.is_some() {
+        run_replay(args);
+    } else if args.net {
         run_net(args);
     } else {
         run_local(args);
+    }
+}
+
+/// Write a recorded replay as JSON, with the hashes it ended on.
+fn save_replay(host: &Host, path: &str) {
+    let Some(r) = host.replay.as_ref() else { return };
+    match std::fs::File::create(path).and_then(|f| serde_json::to_writer(std::io::BufWriter::new(f), r).map_err(std::io::Error::other)) {
+        Ok(()) => log::info!("replay: {} ticks, {} orders, {} checkpoints, final hash {:016x} -> {}", r.ticks, r.orders.len(), r.checkpoints.len(), r.final_hash().unwrap_or(0), path),
+        Err(e) => log::error!("replay {}: {}", path, e),
+    }
+}
+
+/// Play a recorded match back, narrating it as a live one, and compare
+/// the world hash at every checkpoint the recording holds. The exit
+/// status says whether the rules still do what they did.
+fn run_replay(args: Args) {
+    let path = args.replay.as_deref().unwrap();
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| die(&format!("replay {}: {}", path, e)));
+    let replay: Replay = serde_json::from_str(&text).unwrap_or_else(|e| die(&format!("replay {}: not a replay: {}", path, e)));
+    log::info!("replay: {} ({} ticks, {} orders, {} checkpoints, seed {:#x}, {} seats)", path, replay.ticks, replay.orders.len(), replay.checkpoints.len(), replay.scenario.seed, replay.scenario.players.len());
+    let mut trace = Trace::open(args.trace.as_ref());
+    let mut w = World::new(replay.scenario.clone());
+    let started = Instant::now();
+    let mut next_cp = 0usize;
+    let mut mismatches = 0u32;
+    while w.tick < replay.ticks {
+        let orders: Vec<Order> = replay.orders_for(w.tick + 1).cloned().collect();
+        w.step(&orders);
+        narrate(&w, &w.events);
+        trace.write(w.tick, &w.events);
+        if let Some((t, recorded)) = replay.checkpoints.get(next_cp).copied() {
+            if t == w.tick {
+                let now = w.hash();
+                if now == recorded {
+                    log::debug!("[{:>6} {:>6.1}s] checkpoint ok {:016x}", w.tick, w.seconds(), now);
+                } else {
+                    mismatches += 1;
+                    log::error!("[{:>6} {:>6.1}s] HASH MISMATCH recorded {:016x} replayed {:016x}", w.tick, w.seconds(), recorded, now);
+                }
+                next_cp += 1;
+            }
+        }
+    }
+    summary(&w, started);
+    if mismatches == 0 {
+        log::info!("replay: every checkpoint matched ({})", replay.checkpoints.len());
+    } else {
+        log::error!("replay: {} of {} checkpoints differ: the rules have changed since this was recorded", mismatches, replay.checkpoints.len());
+        std::process::exit(1);
     }
 }
 
@@ -246,6 +307,9 @@ fn run_local(args: Args) {
     let scenario = scenario_from(&args, names);
     let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..args.players as PlayerId).map(|i| (i, make_brain(args.brains.get(i as usize), i, args.seed))).collect();
     let mut host = Host::new(new_peer_id(), None, scenario, vec![], RouteTable::default());
+    if args.record.is_some() {
+        host.record();
+    }
     let mut trace = Trace::open(args.trace.as_ref());
     log::info!("local match: seed {:#x}, {} seats: {}", args.seed, bots.len(), bots.iter().map(|(p, b)| format!("p{}={}", p, b.name())).collect::<Vec<_>>().join(" "));
     let started = Instant::now();
@@ -263,6 +327,9 @@ fn run_local(args: Args) {
         }
     }
     summary(&host.world, started);
+    if let Some(p) = args.record.as_deref() {
+        save_replay(&host, p);
+    }
 }
 
 fn run_net(args: Args) {
@@ -311,6 +378,9 @@ fn run_net(args: Args) {
         let scenario = scenario_from(&args, names);
         let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain(args.brains.get((i - first_bot) as usize), i, args.seed))).collect();
         let mut host = Host::new(me, Some(sock), scenario, peers, routes);
+        if args.record.is_some() {
+            host.record();
+        }
         log::info!("hosting: {} remote seat(s), {} bot(s)", host.seats.len(), bots.len());
         let mut next = Instant::now();
         while !host.world.over {
@@ -335,6 +405,10 @@ fn run_net(args: Args) {
         }
         host.shutdown();
         summary(&host.world, started);
+        if let Some(p) = args.record.as_deref() {
+            save_replay(&host, p);
+        }
+
     } else {
         let mut client = Client::new(me, sock, result.decision.host, routes, &args.name);
         let mut bot = make_brain(args.brains.first(), 0, args.seed ^ me);

@@ -36,10 +36,16 @@ HOSTS="$(grep -l 'hosting:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
 # the match end.
 JOINED="$(grep -l 'welcomed as player' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
 ENDED="$(grep -l 'match over; winner' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
-echo "  hosts $HOSTS, welcomed $JOINED, saw the end $ENDED"
-if [ "$HOSTS" = 1 ] && [ "$JOINED" = 3 ] && [ "$ENDED" = 3 ] && [ "$FAIL" = 0 ]; then
-    say "lobby-test: PASS (one host, three clients welcomed, all saw the match end)"
+# The hash: the host logs its world hash at tick 1000 and carries it in
+# heartbeats; every client logs what it received. Four logs, one hash.
+HASHES="$(grep -h 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | sed 's/.*tick 1000: //' | sort | uniq -c | awk '{print $1":"$2}' | tr '\n' ' ')"
+HASH_LOGS="$(grep -l 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
+HASH_DISTINCT="$(grep -h 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | sed 's/.*tick 1000: //' | sort -u | wc -l)"
+echo "  hosts $HOSTS, welcomed $JOINED, saw the end $ENDED, hash at tick 1000 in $HASH_LOGS logs: $HASHES"
+if [ "$HOSTS" = 1 ] && [ "$JOINED" = 3 ] && [ "$ENDED" = 3 ] && [ "$HASH_LOGS" = 4 ] && [ "$HASH_DISTINCT" = 1 ] && [ "$FAIL" = 0 ]; then
+    say "lobby-test: PASS (one host, three clients welcomed, all saw the match end, one world hash at tick 1000 in all four logs)"
 else
-    die "lobby-test: FAIL (hosts $HOSTS, welcomed $JOINED, ended $ENDED, exit status $FAIL); see $LOGDIR/lobby-$STAMP-peer*.log"
+    die "lobby-test: FAIL (hosts $HOSTS, welcomed $JOINED, ended $ENDED, hash logs $HASH_LOGS distinct $HASH_DISTINCT, exit status $FAIL); see $LOGDIR/lobby-$STAMP-peer*.log"
 fi
+
 

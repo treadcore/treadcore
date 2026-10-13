@@ -1227,7 +1227,35 @@ impl World {
         }
     }
 
+    // ---------------------------------------------------------------- hash
+
+    /// A 64-bit digest of everything that is state: tick, rng, every
+    /// entity's every field, the map's cells, the scenario. Events are
+    /// not state (they are `serde(skip)`) and are not in it. Two worlds
+    /// with the same hash have the same future; two hosts with
+    /// different hashes have diverged, and the first checkpoint where
+    /// they differ is where. The digest is FNV-1a over the bincode
+    /// serialisation, so a new field is in the hash the day it is
+    /// added, and floats hash by their bits, which is what determinism
+    /// means here.
+    pub fn hash(&self) -> u64 {
+        let bytes = bincode::serialize(self).expect("world serialises");
+        fnv1a64(&bytes)
+    }
+
+    /// Run a replay from its scenario to its last tick and return the
+    /// world. `Replay::verify` is the same with the checkpoints checked.
+    pub fn run(replay: &Replay) -> World {
+        let mut w = World::new(replay.scenario.clone());
+        while w.tick < replay.ticks {
+            let orders: Vec<Order> = replay.orders_for(w.tick + 1).cloned().collect();
+            w.step(&orders);
+        }
+        w
+    }
+
     // --------------------------------------------------------- observation
+
 
     /// The world as player `p` is allowed to see it: own entities in full,
     /// everything else only where their sensors reach. This is what goes
@@ -1259,7 +1287,98 @@ impl World {
     }
 }
 
+/// FNV-1a, 64 bits. Not cryptographic; stable across machines and
+/// versions, which is all a desync detector needs.
+pub fn fnv1a64(bytes: &[u8]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in bytes {
+        h ^= *b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h
+}
+
+// ------------------------------------------------------------------ replay
+
+/// How often a replay records the world hash, in ticks: five seconds.
+pub const CHECKPOINT_EVERY: Tick = 100;
+
+/// A match as the orders applied at each tick, the scenario they were
+/// applied to, and the hashes the world had along the way. Serialisable,
+/// so a traced match is a file; replayable, so the file is a regression
+/// test for every later change to `step` and the debugging tool for
+/// "the bot did something odd at tick 3 412". An order's tick is the
+/// world's tick after the step that applied it.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Replay {
+    pub scenario: Scenario,
+    /// How many ticks were run.
+    pub ticks: Tick,
+    /// In tick order, and within a tick in the order they were applied.
+    pub orders: Vec<(Tick, Order)>,
+    /// (tick, hash) every `CHECKPOINT_EVERY` ticks, and at the end.
+    pub checkpoints: Vec<(Tick, u64)>,
+}
+
+impl Replay {
+    pub fn new(scenario: Scenario) -> Replay {
+        Replay { scenario, ..Replay::default() }
+    }
+
+    /// Record one step: call after `world.step(orders)` with the same
+    /// slice, in the order it was applied.
+    pub fn record(&mut self, world: &World, orders: &[Order]) {
+        // After the match is over, `step` is a no-op and so is this:
+        // orders offered to a finished world were not applied.
+        if world.over && self.ticks == world.tick {
+            return;
+        }
+        self.ticks = world.tick;
+        for o in orders {
+            self.orders.push((world.tick, o.clone()));
+        }
+        if world.tick % CHECKPOINT_EVERY == 0 || world.over {
+            if self.checkpoints.last().map(|(t, _)| *t != world.tick).unwrap_or(true) {
+                self.checkpoints.push((world.tick, world.hash()));
+            }
+        }
+    }
+
+    /// The orders applied in the step that produced `tick`.
+    pub fn orders_for(&self, tick: Tick) -> impl Iterator<Item = &Order> {
+        let start = self.orders.partition_point(|(t, _)| *t < tick);
+        self.orders[start..].iter().take_while(move |(t, _)| *t == tick).map(|(_, o)| o)
+    }
+
+    /// The hash the world had at the end, if the replay recorded one.
+    pub fn final_hash(&self) -> Option<u64> {
+        self.checkpoints.last().filter(|(t, _)| *t == self.ticks).map(|(_, h)| *h)
+    }
+
+    /// Run the replay and check every checkpoint. Ok(world) if they all
+    /// match; Err((tick, recorded, replayed)) at the first that does not.
+    pub fn verify(&self) -> Result<World, (Tick, u64, u64)> {
+        let mut w = World::new(self.scenario.clone());
+        let mut next = 0usize;
+        while w.tick < self.ticks {
+            let orders: Vec<Order> = self.orders_for(w.tick + 1).cloned().collect();
+            w.step(&orders);
+            if let Some((t, h)) = self.checkpoints.get(next) {
+                if *t == w.tick {
+                    let now = w.hash();
+                    if now != *h {
+                        return Err((*t, *h, now));
+                    }
+                    next += 1;
+                }
+            }
+        }
+        Ok(w)
+    }
+}
+
 fn event_visible(e: &Event, p: PlayerId) -> bool {
+
     match e {
         Event::Rejected { player, .. } => *player == p,
         Event::ShellLaunched { owner, .. } => *owner == p,
@@ -1397,8 +1516,71 @@ mod tests {
         assert!(t.pos.dist(center) < 1.0, "tank stopped at {:?}, {} waypoints left", t.pos, t.route.len());
     }
 
+    /// The hash is a function of state: two worlds stepped alike agree
+    /// at every tick, and one more order changes it.
+    #[test]
+    fn hash_follows_state() {
+        let mut a = world();
+        let mut b = world();
+        assert_eq!(a.hash(), b.hash());
+        let o = vec![Order { player: 0, cmd: Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return } }];
+        for i in 0..200 {
+            let orders = if i == 5 { o.clone() } else { vec![] };
+            a.step(&orders);
+            b.step(&orders);
+            assert_eq!(a.hash(), b.hash(), "diverged at tick {}", a.tick);
+        }
+        b.step(&[Order { player: 1, cmd: Command::SetBubble { radius: 9.0 } }]);
+        a.step(&[]);
+        assert_ne!(a.hash(), b.hash());
+    }
+
+    /// A recorded match replays to the same hashes, and a replay whose
+    /// orders were tampered with is caught at the first checkpoint.
+    #[test]
+    fn replay_reproduces_the_world() {
+        // A swarm every ten seconds, not every ten ticks: the first draft
+        // of this test said 10 and the swarm killed three tanks by tick
+        // 170, which ended the match and the recording there.
+        let scenario = Scenario { swarm_interval: 10 * TICK_HZ, swarm_size: 2, time_limit: 0, ..Scenario::bots(4) };
+
+        let mut w = World::new(scenario.clone());
+        let mut rec = Replay::new(scenario);
+        for i in 0..(30 * TICK_HZ as Tick) {
+            let mut orders = vec![];
+            if i % 40 == 3 {
+                orders.push(Order { player: (i % 4) as PlayerId, cmd: Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return } });
+            }
+            if i == 50 {
+                orders.push(Order { player: 2, cmd: Command::FireIndirect { at: w.map.center() } });
+                orders.push(Order { player: 3, cmd: Command::Move { to: w.map.center() } });
+            }
+            w.step(&orders);
+            rec.record(&w, &orders);
+        }
+        assert_eq!(rec.ticks, 600);
+        assert_eq!(rec.checkpoints.len(), 6);
+        assert_eq!(rec.final_hash(), Some(w.hash()));
+        let again = World::run(&rec);
+        assert_eq!(again.hash(), w.hash());
+        assert!(rec.verify().is_ok());
+        // Through serde and back, still the same.
+        let json = serde_json::to_string(&rec).unwrap();
+        let back: Replay = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, rec);
+        // Tamper: drop the shell at tick 51. The first checkpoint after
+        // it (tick 100) must disagree.
+        let mut bad = rec.clone();
+        bad.orders.retain(|(_, o)| !matches!(o.cmd, Command::FireIndirect { .. }));
+        match bad.verify() {
+            Err((t, _, _)) => assert_eq!(t, 100),
+            Ok(_) => panic!("tampered replay verified"),
+        }
+    }
+
     #[test]
     fn sixteen_seats() {
+
         let players = (0..MAX_PLAYERS).map(|i| (format!("p{}", i), true)).collect();
         let mut w = World::new(Scenario { players, swarm_interval: 0, ..Scenario::default() });
         assert_eq!(w.tanks.len(), 16);
