@@ -19,18 +19,24 @@
 //!                 clients send orders and receive what they may see.
 //!   5. predict    the client's copy of its own tank, driven ahead of
 //!                 the snapshots and reconciled to every one of them.
+//!   6. introducer across the Internet: the rendezvous service that tells
+//!                 peers in one lobby each other's addresses, the peer's
+//!                 registration with it, and the identity file a peer
+//!                 keeps so it can come back to its seat.
 //!
 //! Nothing in here spawns a thread. Everything is `poll()` from whoever
 //! owns the loop -- the server's main, or a Bevy system -- which keeps the
 //! simulation's clock the only clock.
 
 pub mod election;
+pub mod introducer;
 pub mod lobby;
 pub mod predict;
 pub mod session;
 pub mod transport;
 
 pub use election::{elect, Decision};
+pub use introducer::{identity_from_file, Introducer, Registration};
 pub use lobby::{Lobby, LobbyConfig, LobbyResult, Phase};
 pub use predict::Predictor;
 pub use session::{Client, ClientState, Host, Seat};

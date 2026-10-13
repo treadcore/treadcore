@@ -15,10 +15,21 @@
 //! A peer that only hears about another through a third party's Hello
 //! still probes it directly, and if the probe never answers the matrix
 //! says so, and the election routes around it.
+//!
+//! Across the Internet (roadmap step 7) the beacon reaches nobody, so
+//! the lobby registers with an introducer instead (`introducer.rs`),
+//! which answers with every other peer in the lobby and two addresses
+//! for each. Until a peer has been heard from directly, every greeting
+//! and every probe goes to both of its addresses; the first that
+//! answers is its address from then on. If the introducer names a peer
+//! that is already hosting, the lobby does not elect: it pings that
+//! host until it answers and decides for it, which is how a player who
+//! dropped out gets back to the match they were in.
 
 use crate::election::{elect, Decision, Row};
+use crate::introducer::{lan_address, Registration, REGISTER_LOOKING};
 use crate::transport::Socket;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
 use treadcore_proto::{Packet, PeerId};
@@ -30,6 +41,11 @@ pub struct LobbyConfig {
     pub game: String,
     /// Addresses to greet directly: "host:port" strings.
     pub seeds: Vec<String>,
+    /// Shout on the LAN every second (off for a peer on the Internet
+    /// that has an introducer and no one on its segment to disturb).
+    pub beacon: bool,
+    /// An introducer's "host:port", for peers no broadcast reaches.
+    pub introducer: Option<String>,
     /// Stop discovering as soon as this many peers (including me) are
     /// known. 1 means play alone, decide instantly.
     pub want: usize,
@@ -46,6 +62,8 @@ impl LobbyConfig {
             name: name.into(),
             game: game.into(),
             seeds: vec![],
+            beacon: true,
+            introducer: None,
             want: 4,
             discover: Duration::from_secs(8),
             probe: Duration::from_millis(1500),
@@ -107,6 +125,20 @@ pub struct Lobby {
     pub cfg: LobbyConfig,
     pub phase: Phase,
     pub peers: BTreeMap<PeerId, Peer>,
+    /// Addresses a peer might be at, from the introducer or a third
+    /// party's Hello, tried in turn until the peer is heard from.
+    candidates: BTreeMap<PeerId, Vec<SocketAddr>>,
+    /// Peers a packet has come from directly: their `addr` is known to
+    /// work, and the candidates are dropped.
+    heard: BTreeSet<PeerId>,
+    /// A peer the introducer says is hosting: join it, do not elect.
+    hosting: Option<PeerId>,
+    /// This socket's LAN address, told to the introducer. Guessed from
+    /// the default route unless `set_local` says otherwise.
+    local: Option<SocketAddr>,
+    registration: Option<Registration>,
+    introducer_failed: bool,
+    last_punch: Instant,
     rows: BTreeMap<PeerId, (u32, Row)>,
     elects: BTreeMap<PeerId, (u32, Decision)>,
     epoch: u32,
@@ -126,6 +158,13 @@ impl Lobby {
             cfg,
             phase: Phase::Discover,
             peers: BTreeMap::new(),
+            candidates: BTreeMap::new(),
+            heard: BTreeSet::new(),
+            hosting: None,
+            local: None,
+            registration: None,
+            introducer_failed: false,
+            last_punch: now - Duration::from_secs(10),
             rows: BTreeMap::new(),
             elects: BTreeMap::new(),
             epoch: 0,
@@ -145,6 +184,83 @@ impl Lobby {
 
     pub fn result(&self) -> Option<&LobbyResult> {
         self.result.as_ref()
+    }
+
+    /// The address to register as this peer's own (a test on loopback
+    /// says loopback; otherwise the LAN address is guessed).
+    pub fn set_local(&mut self, addr: SocketAddr) {
+        self.local = Some(addr);
+    }
+
+    /// The registration, for whoever hosts to keep up after the lobby.
+    pub fn take_registration(&mut self) -> Option<Registration> {
+        self.registration.take()
+    }
+
+    /// Where to send a peer something: its one address once it has
+    /// been heard from, every address it might have until then.
+    fn targets(&self, id: PeerId) -> Vec<SocketAddr> {
+        let Some(p) = self.peers.get(&id) else { return vec![] };
+        if self.heard.contains(&id) {
+            return vec![p.addr];
+        }
+        let mut v = vec![p.addr];
+        for a in self.candidates.get(&id).into_iter().flatten() {
+            if !v.contains(a) {
+                v.push(*a);
+            }
+        }
+        v
+    }
+
+    /// A packet came straight from `id` at `from`: that is its address.
+    fn heard_from(&mut self, id: PeerId, from: SocketAddr) {
+        if let Some(p) = self.peers.get_mut(&id) {
+            p.last_seen = Instant::now();
+            if p.addr != from {
+                log::info!("peer {:016x} answers at {} (was {})", id, from, p.addr);
+                p.addr = from;
+            }
+            if self.heard.insert(id) {
+                self.candidates.remove(&id);
+            }
+        }
+    }
+
+    fn candidate(&mut self, id: PeerId, addr: SocketAddr) {
+        if id == self.cfg.me || self.heard.contains(&id) {
+            return;
+        }
+        let v = self.candidates.entry(id).or_default();
+        if !v.contains(&addr) {
+            v.push(addr);
+        }
+    }
+
+    /// Greet every address of every peer not yet heard from. Each
+    /// packet out opens this side's router for that peer's packets in;
+    /// the first answer settles the address.
+    fn punch(&mut self, sock: &mut Socket) {
+        let unheard: Vec<PeerId> = self.peers.keys().filter(|id| !self.heard.contains(id)).copied().collect();
+        if unheard.is_empty() {
+            return;
+        }
+        let hello = self.hello();
+        for id in unheard {
+            if self.hosting == Some(id) {
+                // A host runs no lobby and answers no Hello; it does
+                // answer a Ping from a peer that has a seat.
+                self.ping_seq += 1;
+                let (seq, sent_us) = (self.ping_seq, self.now_us());
+                for a in self.targets(id) {
+                    sock.send(a, &Packet::Ping { peer: self.cfg.me, seq, sent_us });
+                }
+            } else {
+                for a in self.targets(id) {
+                    sock.send(a, &hello);
+                }
+            }
+        }
     }
 
     /// All peer ids including me, sorted.
@@ -197,14 +313,45 @@ impl Lobby {
     /// enough). Returns the result once, the tick it is decided.
     pub fn poll(&mut self, sock: &mut Socket) -> Option<LobbyResult> {
         let now = Instant::now();
+        if self.registration.is_none() && !self.introducer_failed {
+            if let Some(intro) = self.cfg.introducer.clone() {
+                let local = self.local.unwrap_or_else(|| lan_address(sock.local.port()));
+                match Registration::new(&intro, self.cfg.me, &self.cfg.name, &self.cfg.game, local) {
+                    Ok(r) => {
+                        log::info!("registering with the introducer at {} as {}", r.addr, local);
+                        self.registration = Some(r);
+                    }
+                    Err(e) => {
+                        log::error!("introducer '{}': {}; going on without it", intro, e);
+                        self.introducer_failed = true;
+                    }
+                }
+            }
+        }
         for (from, p) in sock.recv() {
             self.handle(sock, from, p);
         }
         match self.phase {
             Phase::Discover => {
+                if let Some(r) = self.registration.as_mut() {
+                    r.poll(sock, REGISTER_LOOKING, false);
+                }
+                if now.duration_since(self.last_punch) >= Duration::from_millis(250) {
+                    self.last_punch = now;
+                    self.punch(sock);
+                }
+                if let Some(h) = self.hosting {
+                    if self.heard.contains(&h) {
+                        log::info!("lobby: {:016x} is hosting and answers; joining it, no election", h);
+                        let decision = Decision { host: h, route: vec![], eccentricity_us: 0 };
+                        return self.finish(decision);
+                    }
+                }
                 if now.duration_since(self.last_beacon) >= Duration::from_secs(1) {
                     self.last_beacon = now;
-                    sock.broadcast(&Packet::Beacon { peer: self.cfg.me, name: self.cfg.name.clone(), game: self.cfg.game.clone() });
+                    if self.cfg.beacon {
+                        sock.broadcast(&Packet::Beacon { peer: self.cfg.me, name: self.cfg.name.clone(), game: self.cfg.game.clone() });
+                    }
                     let hello = self.hello();
                     for s in self.cfg.seeds.clone() {
                         match s.to_socket_addrs() {
@@ -217,9 +364,12 @@ impl Lobby {
                         }
                     }
                 }
-                let enough = self.peers.len() + 1 >= self.cfg.want;
+                // A host that was named but has not answered yet is
+                // waited for, not elected around, until the timer.
+                let waiting_for_host = self.hosting.is_some();
+                let enough = self.peers.len() + 1 >= self.cfg.want && !waiting_for_host;
                 let timed_out = now.duration_since(self.phase_start) >= self.cfg.discover;
-                if enough || timed_out || self.cfg.want <= 1 {
+                if enough || timed_out || (self.cfg.want <= 1 && !waiting_for_host) {
                     if self.peers.is_empty() {
                         // Alone. No matrix, no vote: I host.
                         let decision = Decision { host: self.cfg.me, route: vec![], eccentricity_us: 0 };
@@ -234,9 +384,11 @@ impl Lobby {
                     self.ping_seq += 1;
                     let seq = self.ping_seq;
                     let sent_us = self.now_us();
-                    let addrs: Vec<SocketAddr> = self.peers.values().map(|p| p.addr).collect();
-                    for a in addrs {
-                        sock.send(a, &Packet::Ping { peer: self.cfg.me, seq, sent_us });
+                    let ids: Vec<PeerId> = self.peers.keys().copied().collect();
+                    for id in ids {
+                        for a in self.targets(id) {
+                            sock.send(a, &Packet::Ping { peer: self.cfg.me, seq, sent_us });
+                        }
                     }
                 }
                 if now.duration_since(self.phase_start) >= self.cfg.probe {
@@ -329,12 +481,21 @@ impl Lobby {
     }
 
     fn handle(&mut self, sock: &mut Socket, from: SocketAddr, p: Packet) {
+        // Anything that comes straight from a peer settles its address.
+        match &p {
+            Packet::Beacon { peer, .. } | Packet::Hello { peer, .. } | Packet::Ping { peer, .. } | Packet::Pong { peer, .. } | Packet::RttRow { peer, .. } | Packet::Elect { peer, .. } => {
+                let peer = *peer;
+                self.heard_from(peer, from);
+            }
+            _ => {}
+        }
         match p {
             Packet::Beacon { peer, name, game } => {
                 if game != self.cfg.game || peer == self.cfg.me {
                     return;
                 }
                 self.learn(peer, &name, from);
+                self.heard_from(peer, from);
                 let hello = self.hello();
                 sock.send(from, &hello);
             }
@@ -343,11 +504,14 @@ impl Lobby {
                     return;
                 }
                 let new = self.learn(peer, &name, from);
+                self.heard_from(peer, from);
                 for (id, n, a) in known {
                     if let Ok(addr) = a.parse::<SocketAddr>() {
                         if self.learn(id, &n, addr) {
                             let hello = self.hello();
                             sock.send(addr, &hello);
+                        } else {
+                            self.candidate(id, addr);
                         }
                     }
                 }
@@ -356,18 +520,36 @@ impl Lobby {
                     sock.send(from, &hello);
                 }
             }
-            Packet::Ping { peer, seq, sent_us } => {
-                if let Some(p) = self.peers.get_mut(&peer) {
-                    p.last_seen = Instant::now();
-                    p.addr = from;
+            Packet::Introduce { game, peers } => {
+                let from_introducer = self.registration.as_ref().map(|r| r.is_from(from)).unwrap_or(false);
+                if game != self.cfg.game || !from_introducer {
+                    return;
                 }
+                for i in peers {
+                    if i.peer == self.cfg.me {
+                        continue;
+                    }
+                    let public = i.public.parse::<SocketAddr>().ok();
+                    let local = i.local.parse::<SocketAddr>().ok();
+                    let Some(first) = public.or(local) else { continue };
+                    if self.learn(i.peer, &i.name, first) {
+                        log::info!("introduced to {:016x} '{}': public {}, local {}{}", i.peer, i.name, i.public, i.local, if i.hosting { ", hosting" } else { "" });
+                    }
+                    for a in [public, local].into_iter().flatten() {
+                        self.candidate(i.peer, a);
+                    }
+                    if i.hosting && self.hosting.is_none() && self.phase == Phase::Discover {
+                        self.hosting = Some(i.peer);
+                    }
+                }
+            }
+            Packet::Ping { seq, sent_us, .. } => {
                 sock.send(from, &Packet::Pong { peer: self.cfg.me, seq, sent_us });
             }
             Packet::Pong { peer, sent_us, .. } => {
                 let rtt = self.now_us().saturating_sub(sent_us) as u32;
                 if let Some(p) = self.peers.get_mut(&peer) {
                     p.samples.push(rtt);
-                    p.last_seen = Instant::now();
                 }
             }
             Packet::RttRow { peer, epoch, rtts } => {

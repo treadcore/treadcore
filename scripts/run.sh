@@ -4,6 +4,11 @@
 #   lan    the window, LAN lobby, elect a host among whoever answers
 #   host   headless host on the LAN; bots in empty seats
 #   seat   headless bot that joins the LAN lobby
+#   introduce  the introducer: a rendezvous service for peers across the
+#          Internet (PORT=n); hosts nothing
+# INTRODUCER=host:port registers lan, host and seat with an introducer;
+# BEACON=0 keeps them off the LAN broadcast; IDENTITY=file keeps the
+# peer id across restarts (the default, build/identity, does).
 # All of them log to build/logs/MODE-STAMP.log at RUST_LOG=debug.
 . "$(dirname "$0")/common.sh"
 need_config
@@ -12,6 +17,9 @@ MODE="${1:-solo}"
 LOG="$LOGDIR/$MODE-$STAMP.log"
 NET=(--name "${NAME:-player}" --game "${GAME:-treadcore}" --want "${WANT:-4}" --players "${PLAYERS:-16}" --defenders "${DEFENDERS:-0}" --teams "${TEAMS:-0}" --game-type "${GAMETYPE:-open}")
 [ -n "${PEER:-}" ] && NET+=(--peer "$PEER")
+[ -n "${INTRODUCER:-}" ] && NET+=(--introducer "$INTRODUCER")
+[ "${BEACON:-1}" = 0 ] && NET+=(--no-beacon)
+NET+=(--identity "${IDENTITY:-$BUILDDIR/identity}")
 case "$MODE" in
     solo|lan)
         [ "$HAVE_WINDOW" = 1 ] || die "the window cannot build here (see make configure); try make debug"
@@ -26,6 +34,12 @@ case "$MODE" in
         BIN="$ROOT/target/release/treadcore-server"
         ARGS=(--net "${NET[@]}" --seed "${SEED:-0x7EADC0DE}")
         [ "$MODE" = seat ] && ARGS+=(--port 0)
+        ;;
+    introduce)
+        say "building headless (release) -> $LOGDIR/build-$STAMP.log"
+        cargo build --release -p treadcore-server 2>&1 | tee "$LOGDIR/build-$STAMP.log" >/dev/null || die "build failed: see $LOGDIR/build-$STAMP.log"
+        BIN="$ROOT/target/release/treadcore-server"
+        ARGS=(--introduce --port "${PORT:-47296}")
         ;;
     *) die "unknown mode $MODE" ;;
 esac

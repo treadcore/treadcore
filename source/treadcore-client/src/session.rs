@@ -12,7 +12,7 @@ use std::collections::VecDeque;
 use std::time::Instant;
 use treadcore_brain::{run_bots, Brain, RuleBot};
 use treadcore_net::session::RouteTable;
-use treadcore_net::{new_peer_id, Client, ClientState, Host, Lobby, LobbyConfig, Phase, Predictor, Socket};
+use treadcore_net::{identity_from_file, new_peer_id, Client, ClientState, Host, Lobby, LobbyConfig, Phase, Predictor, Socket};
 use treadcore_proto::{PeerId, PORT};
 use treadcore_sim::*;
 // Explicit, because bevy::prelude also exports a Command and an Event and
@@ -81,13 +81,24 @@ pub enum Session {
 pub struct SessionRes(pub Session);
 
 fn start(mut commands: Commands, args: Res<Args>, mut view: ResMut<View>) {
-    let me = new_peer_id();
+    let me = match args.identity.as_deref() {
+        Some(path) => match identity_from_file(path) {
+            Ok(id) => id,
+            Err(e) => {
+                error!("identity {}: {}; using a fresh id", path, e);
+                new_peer_id()
+            }
+        },
+        None => new_peer_id(),
+    };
     if args.lan {
         match Socket::bind(PORT) {
             Ok(sock) => {
                 let mut cfg = LobbyConfig::new(me, &args.name, &args.game);
                 cfg.seeds = args.peers.clone();
                 cfg.want = args.want;
+                cfg.beacon = args.beacon;
+                cfg.introducer = args.introducer.clone();
                 view.status = format!("lobby '{}': looking for {} peers", args.game, args.want);
                 view.net.mode = "lobby";
                 commands.insert_resource(SessionRes(Session::Lobby { lobby: Lobby::new(cfg), sock: Some(sock), me }));
@@ -215,7 +226,12 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                 // (seats beyond the peers and me are filled to --players by host_local)
 
                 let sock = sock.take();
-                Some(host_local(&args, me, peers, sock, routes, &mut view))
+                let registration = lobby.take_registration();
+                let mut s = host_local(&args, me, peers, sock, routes, &mut view);
+                if let Session::Hosting { host, .. } = &mut s {
+                    host.registration = registration;
+                }
+                Some(s)
             } else {
                 if let Some(h) = result.next_hop {
                     routes.via.insert(result.decision.host, h);

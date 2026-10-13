@@ -53,6 +53,15 @@ pub struct Predictor {
     /// The tick of the last snapshot that corrected the tank: the HUD
     /// shows it for a moment.
     pub corrected_at: Option<Tick>,
+    /// Whether a snapshot has been adopted yet. Until one has, the copy
+    /// is the scenario's start, which is not the tank's state at the
+    /// Welcome's tick when a seat comes back mid-match (rejoin): the
+    /// first snapshot is the baseline, not a check.
+    baselined: bool,
+    /// The host's tank as of the last snapshot, and that tick: where a
+    /// re-drive starts from when the map changes under ticks already
+    /// predicted.
+    anchor: Option<(Tick, Tank)>,
 }
 
 impl Predictor {
@@ -62,7 +71,7 @@ impl Predictor {
         let mut world = World::new(scenario);
         world.map = map;
         world.tick = tick;
-        Predictor { world, me, in_flight: Vec::new(), history: VecDeque::new(), ahead: 0, checks: 0, mismatches: 0, last_mismatch: None, snapshots: 0, behind: 0, corrected_at: None }
+        Predictor { world, me, in_flight: Vec::new(), history: VecDeque::new(), ahead: 0, checks: 0, mismatches: 0, last_mismatch: None, snapshots: 0, behind: 0, corrected_at: None, baselined: false, anchor: None }
     }
 
     /// Our own tank as predicted, if the copy has one.
@@ -117,8 +126,48 @@ impl Predictor {
         }
     }
 
-    pub fn events(&mut self, events: &[Event]) {
-        Predictor::map_keeps_up(&mut self.world.map, events);
+    /// Events as of `tick`. A terrain change (a crater, a wall) that
+    /// lands under ticks already predicted is driven again: the host
+    /// changed its map at `tick`, after that tick's drive, so the ticks
+    /// up to it are driven over the old map and the rest over the new
+    /// one, from the last snapshot's tank. Without this, a shell that
+    /// craters the road two ticks ahead of the client is a mismatch
+    /// of a fifth of a tile, found in the 0012 lobby runs.
+    pub fn events(&mut self, tick: Tick, events: &[Event]) {
+        let changes_map = events.iter().any(|e| matches!(e, Event::ShellImpact { kind: ShellKind::Indirect, .. } | Event::TerrainChanged { .. }));
+        let Some((atick, atank)) = self.anchor.clone().filter(|_| changes_map) else {
+            Predictor::map_keeps_up(&mut self.world.map, events);
+            return;
+        };
+        if self.world.tick <= atick || tick < atick {
+            Predictor::map_keeps_up(&mut self.world.map, events);
+            return;
+        }
+        let total = self.ahead;
+        self.world.tick = atick;
+        if let Some(t) = self.world.tanks.iter_mut().find(|t| t.id == atank.id) {
+            *t = atank;
+        }
+        self.history.retain(|(t, _, _)| *t <= atick);
+        let pending: Vec<Command> = self.in_flight.iter().map(|(_, c)| c.clone()).collect();
+        if !pending.is_empty() {
+            self.world.tick = self.world.tick.wrapping_sub(1);
+            self.world.predict(self.me, &pending);
+        }
+        self.ahead = 0;
+        let mut applied = false;
+        for _ in 0..total {
+            if !applied && self.world.tick >= tick {
+                Predictor::map_keeps_up(&mut self.world.map, events);
+                applied = true;
+            }
+            self.world.predict(self.me, &[]);
+            self.ahead += 1;
+            self.remember();
+        }
+        if !applied {
+            Predictor::map_keeps_up(&mut self.world.map, events);
+        }
     }
 
     /// A snapshot: the host's tank at `obs.tick`, having applied our
@@ -132,7 +181,7 @@ impl Predictor {
         // span, so a difference is the world's doing, not the lag's.
         if let Some(host) = obs.me.as_ref() {
             if let Some((_, state, pos)) = self.history.iter().find(|(t, _, _)| *t == obs.tick) {
-                if quiet && host.alive {
+                if quiet && host.alive && self.baselined {
                     self.checks += 1;
                     if *state != host.tick_state() {
                         self.mismatches += 1;
@@ -164,6 +213,8 @@ impl Predictor {
             }
         }
         w.over = obs.over;
+        self.baselined = true;
+        self.anchor = obs.me.as_ref().map(|t| (obs.tick, t.clone()));
         self.history.retain(|(t, _, _)| *t <= obs.tick);
         // Re-apply what the host has not yet applied, then drive the
         // ticks we were ahead again, from the host's state.

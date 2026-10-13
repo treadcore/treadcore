@@ -11,6 +11,11 @@
 //!                find one another, measure the links between them, and
 //!                agree -- without a referee -- which of them hosts and
 //!                how the rest route to it. See treadcore-net::lobby.
+//!   rendezvous   Register, Introduce. Across the Internet, where no
+//!                broadcast reaches, a tiny service (the introducer)
+//!                tells peers in one lobby each other's public address;
+//!                the lobby then punches through. See
+//!                treadcore-net::introducer.
 //!   session      Join, Welcome, Command, CommandAck, Snapshot, Events.
 //!                The host-authoritative game: clients send orders, the
 //!                host steps the world and sends back what each client is
@@ -27,7 +32,7 @@ use treadcore_sim::{Command, Event, Map, Observation, PlayerId, Scenario, Tick};
 pub const MAGIC: [u8; 4] = *b"TRDC";
 /// Bump on any change to `Packet` or to anything it carries from
 /// treadcore-sim. Peers on different versions ignore each other entirely.
-pub const VERSION: u16 = 10;
+pub const VERSION: u16 = 11;
 
 
 
@@ -71,8 +76,25 @@ pub enum Packet {
     /// wins. `route` is (peer, next hop toward host) for every non-host.
     Elect { peer: PeerId, epoch: u32, host: PeerId, route: Vec<(PeerId, PeerId)> },
 
+    // ---- rendezvous ----------------------------------------------------
+    /// To the introducer, every second while looking, every five while
+    /// hosting: "I am in lobby `game`; here is the address I see for
+    /// myself". The introducer notes the address the packet came from
+    /// (the public one, as a NAT rewrote it) beside it. `hosting` says a
+    /// match is running here, so a peer that drops and returns can find
+    /// its host without a lobby.
+    Register { peer: PeerId, name: String, game: String, local: String, hosting: bool },
+    /// From the introducer: everyone else registered in `game`, with the
+    /// two addresses each might be reached at. The lobby greets both
+    /// until one answers (hole punching); a pair that never gets
+    /// through is routed around by the election, as on a LAN.
+    Introduce { game: String, peers: Vec<Introduced> },
+
     // ---- session -------------------------------------------------------
-    Join { peer: PeerId, name: String },
+    /// `session` is a random number per process: the host tells a client
+    /// that restarted (same peer, new session) from one whose Join was
+    /// merely repeated, and starts its sequence numbers over.
+    Join { peer: PeerId, name: String, session: u64 },
     /// The whole map, as it is at this tick (craters and walls included),
     /// not just its cells: a map from a file has its own starts, depots
     /// and pillboxes, and a client must not guess them from a seed.
@@ -123,6 +145,19 @@ pub enum Packet {
     /// looks `to` up in its route table and forwards. `hops` stops a bad
     /// table from looping forever.
     Relay { from: PeerId, to: PeerId, hops: u8, inner: Vec<u8> },
+}
+
+/// One peer as the introducer knows it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Introduced {
+    pub peer: PeerId,
+    pub name: String,
+    /// The address the introducer heard the peer from.
+    pub public: String,
+    /// The address the peer sees for itself (its LAN address): the one
+    /// that works for two peers behind the same router.
+    pub local: String,
+    pub hosting: bool,
 }
 
 #[derive(Debug)]
@@ -176,6 +211,7 @@ impl Packet {
             | Packet::Pong { peer, .. }
             | Packet::RttRow { peer, .. }
             | Packet::Elect { peer, .. }
+            | Packet::Register { peer, .. }
             | Packet::Join { peer, .. }
             | Packet::Command { peer, .. }
             | Packet::Leave { peer }

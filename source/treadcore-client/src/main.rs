@@ -45,6 +45,12 @@ pub struct Args {
     pub map: Option<String>,
     /// Deal the seats into this many teams; 0 is everyone alone.
     pub teams: usize,
+    /// An introducer ("host:port") for peers no broadcast reaches.
+    pub introducer: Option<String>,
+    /// Shout on the LAN while looking (`--no-beacon` turns it off).
+    pub beacon: bool,
+    /// A file holding this peer's id across restarts (`--identity`).
+    pub identity: Option<String>,
 }
 
 fn parse_args() -> Args {
@@ -59,6 +65,9 @@ fn parse_args() -> Args {
         players: treadcore_sim::MAX_PLAYERS,
         map: None,
         teams: 0,
+        introducer: None,
+        beacon: true,
+        identity: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -77,6 +86,9 @@ fn parse_args() -> Args {
             "--swarm" => a.swarm = val().parse::<u32>().unwrap_or(45) * TICK_HZ,
             "--players" => a.players = val().parse::<usize>().unwrap_or(treadcore_sim::MAX_PLAYERS).clamp(1, treadcore_sim::MAX_PLAYERS),
             "--teams" => a.teams = val().parse().unwrap_or(0),
+            "--introducer" => a.introducer = Some(val()),
+            "--no-beacon" => a.beacon = false,
+            "--identity" => a.identity = Some(val()),
             "--map" => {
 
                 let path = val();
@@ -92,7 +104,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--seed S] [--swarm SECONDS] [--players 1..16] [--map FILE]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE]");
 
 
                 std::process::exit(0);

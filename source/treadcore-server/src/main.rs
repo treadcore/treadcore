@@ -10,6 +10,8 @@
 //!            whoever joined, filling empty seats with bots.
 //!   seat     `--net` and not elected: join the elected host as a bot
 //!            player. Four of these on one machine is a lobby test.
+//!   introduce `--introduce`: the introducer, a rendezvous service for
+//!            peers across the Internet (roadmap step 7). Hosts nothing.
 //!
 //! No argument parser crate; the flags are few and the loop is explicit
 //! so the trace reads top to bottom.
@@ -17,7 +19,7 @@
 use std::time::{Duration, Instant};
 use treadcore_brain::{run_bots, Brain, Defender, JsonBrain, RuleBot};
 use treadcore_net::session::RouteTable;
-use treadcore_net::{new_peer_id, Client, ClientState, Host, Lobby, LobbyConfig, Socket};
+use treadcore_net::{identity_from_file, new_peer_id, Client, ClientState, Host, Introducer, Lobby, LobbyConfig, Socket};
 use treadcore_proto::PORT;
 use treadcore_sim::*;
 
@@ -31,6 +33,14 @@ struct Args {
     peers: Vec<String>,
     want: usize,
     port: u16,
+    /// Run the introducer instead of a lobby or a match.
+    introduce: bool,
+    /// An introducer to register with ("host:port").
+    introducer: Option<String>,
+    /// Shout on the LAN while looking (off: `--no-beacon`).
+    beacon: bool,
+    /// A file holding this peer's id across restarts (`--identity`).
+    identity: Option<String>,
     brains: Vec<String>,
     swarm: u32,
     trace: Option<String>,
@@ -66,6 +76,10 @@ fn parse() -> Args {
         peers: vec![],
         want: 4,
         port: PORT,
+        introduce: false,
+        introducer: None,
+        beacon: true,
+        identity: None,
         brains: vec![],
         swarm: 45 * TICK_HZ,
         trace: None,
@@ -96,6 +110,10 @@ fn parse() -> Args {
             "--peer" => a.peers.push(val()),
             "--want" => a.want = parse_num(&val()),
             "--port" => a.port = parse_num(&val()),
+            "--introduce" => a.introduce = true,
+            "--introducer" => a.introducer = Some(val()),
+            "--no-beacon" => a.beacon = false,
+            "--identity" => a.identity = Some(val()),
             "--brain" => a.brains.push(val()),
             "--swarm" => a.swarm = parse_num::<u32>(&val()) * TICK_HZ,
             "--trace" => a.trace = Some(val()),
@@ -164,6 +182,15 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --peer HOST:PORT   greet this address as well as the LAN broadcast
   --want N           how many peers to wait for before deciding (4)
   --port N           UDP port to bind (47296; falls back to any free)
+  --introducer H:P   register with the introducer there, for peers no
+                     broadcast reaches; a host keeps registering, so a
+                     seat that drops and returns finds it again
+  --no-beacon        do not shout on the LAN (with --introducer, on a
+                     network that is not yours)
+  --identity FILE    this peer's id, kept in FILE across restarts (made
+                     the first time): what a returning seat is known by
+  --introduce        be the introducer on --port: hosts nothing, keeps
+                     nothing past thirty seconds; one for a group
   --brain 'CMD ...'  run an external JSON brain in one seat (repeatable)
   --trace FILE       write every event as JSON lines to FILE
   --record FILE      write the match as a replay (JSON: scenario, every
@@ -211,6 +238,8 @@ fn main() {
     }
     if args.replay.is_some() {
         run_replay(args);
+    } else if args.introduce {
+        run_introducer(args);
     } else if args.net {
         run_net(args);
     } else {
@@ -613,13 +642,37 @@ fn run_local(args: Args) {
     save_map(&host.world, args.save_map.as_deref());
 }
 
+/// The introducer: one socket, one state machine, forever. Logs each
+/// registration and lapse; `--seconds` is not honoured, it runs until
+/// killed.
+fn run_introducer(args: Args) {
+    let mut sock = Socket::bind(args.port).unwrap_or_else(|e| die(&format!("bind: {}", e)));
+    let mut intro = Introducer::new();
+    log::info!("introducer on {}: tell peers --introducer HOST:{}", sock.local, sock.local.port());
+    let mut last_line = Instant::now();
+    loop {
+        intro.poll(&mut sock);
+        if last_line.elapsed() >= Duration::from_secs(60) {
+            last_line = Instant::now();
+            let (peers, games) = intro.count();
+            log::info!("introducer: {} peer(s) in {} lobby(ies); {} registrations, {} introductions so far", peers, games, intro.registrations, intro.introductions);
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
 fn run_net(args: Args) {
-    let me = new_peer_id();
+    let me = match args.identity.as_deref() {
+        Some(path) => identity_from_file(path).unwrap_or_else(|e| die(&format!("identity: {}", e))),
+        None => new_peer_id(),
+    };
     let mut sock = Socket::bind(args.port).unwrap_or_else(|e| die(&format!("bind: {}", e)));
     let mut cfg = LobbyConfig::new(me, &args.name, &args.game);
     cfg.seeds = args.peers.clone();
     cfg.want = args.want;
-    log::info!("peer {:016x} '{}' in lobby '{}', waiting for {} peers", me, args.name, args.game, args.want);
+    cfg.beacon = args.beacon;
+    cfg.introducer = args.introducer.clone();
+    log::info!("peer {:016x} '{}' in lobby '{}', waiting for {} peers{}", me, args.name, args.game, args.want, if args.identity.is_some() { " (identity from file)" } else { "" });
     let mut lobby = Lobby::new(cfg);
     let result = loop {
         if let Some(r) = lobby.poll(&mut sock) {
@@ -645,6 +698,7 @@ fn run_net(args: Args) {
     }
     let mut trace = Trace::open(args.trace.as_ref());
     let started = Instant::now();
+    let registration = lobby.take_registration();
 
     if result.i_host(me) {
         let mut peers: Vec<(u64, String)> = result.peers.iter().map(|p| (p.id, p.name.clone())).collect();
@@ -661,10 +715,11 @@ fn run_net(args: Args) {
         let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain_kind(args.brains.get((i - first_bot) as usize), i, args.seed, i >= first_defender))).collect();
 
         let mut host = Host::new(me, Some(sock), scenario, peers, routes);
+        host.registration = registration;
         if args.record.is_some() {
             host.record();
         }
-        log::info!("hosting: {} remote seat(s), {} bot(s)", host.seats.len(), bots.len());
+        log::info!("hosting: {} remote seat(s), {} bot(s){}", host.seats.len(), bots.len(), if host.registration.is_some() { "; registered as hosting with the introducer" } else { "" });
         let mut next = Instant::now();
         let mut report = Report::default();
         while !host.world.over {
@@ -699,7 +754,7 @@ fn run_net(args: Args) {
     } else {
         let mut client = Client::new(me, sock, result.decision.host, routes, &args.name);
         let mut bot = make_brain(args.brains.first(), 0, args.seed ^ me);
-        log::info!("joining host {:016x} as a bot seat", result.decision.host);
+        log::info!("joining host {:016x} as a bot seat (session {:016x})", result.decision.host, client.session);
         let mut last_obs: Option<Observation> = None;
         let mut next_tick = Instant::now();
         loop {

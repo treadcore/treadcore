@@ -12,7 +12,17 @@
 //! Relay: a peer the host cannot reach directly is reached through the
 //! peer the election named. Both ends wrap in `Packet::Relay`; a peer that
 //! receives a Relay not addressed to it forwards along its own table.
+//!
+//! Rejoin (roadmap step 7, SPEC GAM-12): a seat belongs to a peer id,
+//! and a peer id can outlive a process (`introducer::identity_from_file`).
+//! A client that drops and comes back sends a Join with a new `session`
+//! number; the host sees the same peer, a new session, and gives the
+//! seat back with its sequence numbers started over. While it hosts, a
+//! host keeps registering with the introducer so the returning peer can
+//! find it, and pings every address the introducer gives for a seated
+//! peer that is not joined, which opens its own router for the Join.
 
+use crate::introducer::{Registration, REGISTER_HOSTING};
 use crate::predict::Predictor;
 use crate::transport::Socket;
 use std::collections::{BTreeMap, VecDeque};
@@ -83,6 +93,11 @@ pub struct Seat {
     pub peer: PeerId,
     pub name: String,
     pub joined: bool,
+    /// The client process's session number from its Join; a Join with
+    /// another is a restart, and the seat's sequences start over.
+    pub session: u64,
+    /// Times this seat was given back to a returning process.
+    pub rejoins: u32,
     next_seq: u32,
     pending: BTreeMap<u32, Command>,
     events_out: VecDeque<(u32, Tick, Vec<Event>)>,
@@ -109,6 +124,8 @@ pub struct Host {
     pub hash_mark: (Tick, u64),
     /// Numbers the chunked Welcomes so a client tells one from the next.
     welcome_id: u32,
+    /// Kept up while hosting, so a peer that dropped can find us.
+    pub registration: Option<Registration>,
 }
 
 impl Host {
@@ -126,6 +143,8 @@ impl Host {
                 peer,
                 name,
                 joined: false,
+                session: 0,
+                rejoins: 0,
                 next_seq: 1,
                 pending: BTreeMap::new(),
                 events_out: VecDeque::new(),
@@ -137,7 +156,7 @@ impl Host {
             })
             .collect();
         let hash0 = world.hash();
-        Host { me, world, seats, routes, sock, inbox: Vec::new(), ticks_run: 0, replay: None, hash_mark: (0, hash0), welcome_id: 0 }
+        Host { me, world, seats, routes, sock, inbox: Vec::new(), ticks_run: 0, replay: None, hash_mark: (0, hash0), welcome_id: 0, registration: None }
     }
 
     /// Start recording a replay of this match from now (normally before
@@ -159,11 +178,32 @@ impl Host {
         let Some(mut sock) = self.sock.take() else { return };
         let now = Instant::now();
         let mut incoming: Vec<(PeerId, Packet)> = Vec::new();
+        if let Some(r) = self.registration.as_mut() {
+            r.poll(&mut sock, REGISTER_HOSTING, true);
+        }
         for (from, p) in sock.recv() {
             match p {
                 Packet::Relay { from: f, to, hops, inner } => {
                     if let Some(x) = self.routes.relay(&mut sock, self.me, f, to, hops, inner) {
                         incoming.push(x);
+                    }
+                }
+                Packet::Introduce { peers, .. } => {
+                    // The introducer names a peer of ours that is looking
+                    // for us: a seat that dropped. Ping every address it
+                    // might be at, so our router lets its Join in.
+                    let from_introducer = self.registration.as_ref().map(|r| r.is_from(from)).unwrap_or(false);
+                    if !from_introducer {
+                        continue;
+                    }
+                    for i in peers {
+                        let seated = self.seats.iter().any(|s| s.peer == i.peer && !s.joined);
+                        if !seated || i.hosting {
+                            continue;
+                        }
+                        for a in [i.public.parse::<SocketAddr>(), i.local.parse::<SocketAddr>()].into_iter().flatten() {
+                            sock.send(a, &Packet::Ping { peer: self.me, seq: 0, sent_us: 0 });
+                        }
                     }
                 }
                 p => {
@@ -187,8 +227,21 @@ impl Host {
             };
             seat.last_seen = now;
             match p {
-                Packet::Join { name, .. } => {
+                Packet::Join { name, session, .. } => {
                     seat.name = name;
+                    if session != seat.session {
+                        // A new process behind an old peer id: a first
+                        // join, or a return. Its sequences start at one.
+                        if seat.session != 0 {
+                            seat.rejoins += 1;
+                            log::info!("seat {} '{}' is back ({:016x}, session {:016x}): its seat and sequences given back", seat.player, seat.name, peer, session);
+                        }
+                        seat.session = session;
+                        seat.next_seq = 1;
+                        seat.pending.clear();
+                        seat.events_out.clear();
+                        seat.events_seq = 0;
+                    }
                     seat.joined = true;
                     let w = Packet::Welcome { player: seat.player, scenario: self.world.scenario.clone(), tick: self.world.tick, map: self.world.map.clone() };
                     // The map can be 65 KiB: in pieces, a fresh id each time.
@@ -219,6 +272,11 @@ impl Host {
                 Packet::Leave { .. } => {
                     log::info!("seat {} left", seat.player);
                     seat.joined = false;
+                }
+                Packet::Ping { seq, sent_us, .. } => {
+                    // A seated peer looking for its host through the
+                    // introducer: the lobby pings until the host answers.
+                    self.routes.send(&mut sock, self.me, peer, &Packet::Pong { peer: self.me, seq, sent_us });
                 }
                 _ => {}
             }
@@ -318,6 +376,9 @@ pub struct Client {
     pub host: PeerId,
     pub routes: RouteTable,
     pub state: ClientState,
+    /// This process's number, in every Join: the host tells a restart
+    /// from a repeated Join by it.
+    pub session: u64,
     pub player: Option<PlayerId>,
     pub scenario: Option<Scenario>,
     pub map: Option<Map>,
@@ -356,6 +417,7 @@ impl Client {
             host,
             routes,
             state: ClientState::Joining,
+            session: crate::new_peer_id(),
             player: None,
             scenario: None,
             map: None,
@@ -478,12 +540,12 @@ impl Client {
                         self.latest = Some(obs);
                     }
                 }
-                Packet::Events { seq, events, .. } => {
+                Packet::Events { seq, tick, events } => {
                     self.routes.send(&mut self.sock, self.me, self.host, &Packet::EventsAck { seq });
                     if seq > self.events_seen {
                         self.events_seen = seq;
                         if let Some(pr) = self.predictor.as_mut() {
-                            pr.events(&events);
+                            pr.events(tick, &events);
                         }
                         if let Some(m) = self.map.as_mut() {
                             Predictor::map_keeps_up(m, &events);
@@ -510,7 +572,7 @@ impl Client {
             ClientState::Joining => {
                 if now.duration_since(self.last_join) >= Duration::from_millis(500) {
                     self.last_join = now;
-                    self.routes.send(&mut self.sock, self.me, self.host, &Packet::Join { peer: self.me, name: self.name.clone() });
+                    self.routes.send(&mut self.sock, self.me, self.host, &Packet::Join { peer: self.me, name: self.name.clone(), session: self.session });
                 }
                 if now.duration_since(self.last_rx) >= TIMEOUT * 2 {
                     log::error!("host never answered");
@@ -660,5 +722,97 @@ mod tests {
         assert_eq!(pr.mismatches, 0, "{}", pr.summary());
         assert!(ahead_max >= 1, "the predictor never ran ahead of a snapshot");
         client.leave();
+    }
+
+    /// Rejoin (roadmap step 7, SPEC GAM-12), in process: a client joins,
+    /// gives an order, and its process dies (the Client is dropped, no
+    /// Leave). A new Client with the same peer id and a new session
+    /// number joins from a new socket: the host gives the seat back at
+    /// the tick the match has reached, starts its sequences over, and
+    /// the newcomer's first order (seq 1 again) is applied.
+    #[test]
+    fn seat_comes_back_after_a_restart() {
+        let hs = Socket::bind(0).unwrap();
+        let host_addr = hs.local_with_loopback();
+        let (hid, cid) = (0x0001, 0x0002);
+        let scenario = Scenario { players: vec![("remote".into(), false), ("bot".into(), true)], swarm_interval: 0, ..Scenario::default() };
+        let mut hr = RouteTable::default();
+        let cs = Socket::bind(0).unwrap();
+        hr.direct.insert(cid, cs.local_with_loopback());
+        let mut host = Host::new(hid, Some(hs), scenario, vec![(cid, "remote".into())], hr);
+        let mut cr = RouteTable::default();
+        cr.direct.insert(hid, host_addr);
+        let mut client = Client::new(cid, cs, hid, cr, "remote");
+        let first_session = client.session;
+        let mut drone_seen = false;
+        for _ in 0..400 {
+            client.poll();
+            host.poll();
+            host.tick(vec![]);
+            if client.state == ClientState::Playing && client.unacked() == 0 && !drone_seen {
+                if let Some(obs) = client.take_observation() {
+                    if obs.my_drones().count() > 0 {
+                        drone_seen = true;
+                        break;
+                    }
+                    if obs.tick > 5 && obs.my_drones().count() == 0 && client.seq == 0 {
+                        client.send(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: treadcore_sim::V2::new(64.0, 64.0), radius: 3.0 } });
+                    }
+                }
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(drone_seen, "the first process never saw its order applied");
+        let tick_at_death = host.world.tick;
+        drop(client);
+        // Thirty ticks of the match without it; the seat is still joined,
+        // as far as the host knows (no Leave, no timeout yet).
+        for _ in 0..30 {
+            host.poll();
+            host.tick(vec![]);
+        }
+        assert!(host.seats[0].joined);
+        let cs2 = Socket::bind(0).unwrap();
+        // A real return finds the host through the introducer, and the
+        // host learns the new address from the Join itself; here the
+        // host's table still names the dead socket until the Join lands.
+        let mut cr2 = RouteTable::default();
+        cr2.direct.insert(hid, host_addr);
+        let mut back = Client::new(cid, cs2, hid, cr2, "remote");
+        assert_ne!(back.session, first_session);
+        let mut welcomed_at = None;
+        let mut recalled = false;
+        let mut drones_after = None;
+        for _ in 0..600 {
+            back.poll();
+            host.poll();
+            host.tick(vec![]);
+            if back.state == ClientState::Playing {
+                if welcomed_at.is_none() {
+                    welcomed_at = Some(host.world.tick);
+                }
+                if let Some(obs) = back.take_observation() {
+                    if !recalled && obs.my_drones().count() > 0 {
+                        back.send(Command::Recall);
+                        recalled = true;
+                    }
+                    if recalled && back.unacked() == 0 {
+                        drones_after = Some(obs.my_drones().count());
+                        if obs.my_drones().count() == 0 {
+                            break;
+                        }
+                    }
+                }
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        let w = welcomed_at.expect("the returning process was never welcomed");
+        assert!(w > tick_at_death, "welcomed at tick {} but the match was at {} when the first process died", w, tick_at_death);
+        assert_eq!(back.player, Some(0), "the seat came back as a different player");
+        assert_eq!(host.seats[0].rejoins, 1);
+        assert!(recalled, "the returning process never saw its drone");
+        assert_eq!(drones_after, Some(0), "the returning process's first order (seq 1 again) was not applied");
+        eprintln!("died at tick {}, back at tick {}, seq restarted and applied", tick_at_death, w);
+        back.leave();
     }
 }

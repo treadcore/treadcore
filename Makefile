@@ -24,7 +24,13 @@
 #   make lan         the window, LAN lobby: waits for peers, elects a host
 #   make host        headless host on the LAN (plus bots for empty seats, PLAYERS)
 #   make seat        headless bot that joins a LAN lobby (run four: a test)
+#   make introduce   the introducer: tells peers across the Internet each
+#                    other's addresses (INTRODUCER=host:port on lan, host,
+#                    seat; BEACON=0 to stay off the LAN; PORT=n)
 #   make lobby-test  four headless seats on this machine negotiate a host
+#                    (LAG=200 for lag; INTRODUCER=1 to meet through an
+#                    introducer only; REJOIN=1 kills a seat and brings it
+#                    back to the same seat)
 #   make map         write the generated map for SEED to MAP (default
 #                    maps/generated-SEED.map): the start of a hand-made one;
 #                    MAP=maps/x.map make debug|run|host plays on it
@@ -46,7 +52,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat lobby-test replay map convert test mem quiet loud sysprep schema clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce lobby-test replay map convert test mem quiet loud sysprep schema clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -70,6 +76,18 @@ DEFENDERS ?= 0
 # Simulated one-way lag, in ms, on every peer of `make lobby-test`: the
 # stand-in for tc netem. 0 is the loopback as it is.
 LAG      ?= 0
+# An introducer, host:port, for lan/host/seat (roadmap step 7); for
+# lobby-test, 1 runs one on this machine and meets through it alone.
+INTRODUCER ?=
+# 0 keeps lan/host/seat off the LAN broadcast (with an introducer).
+BEACON   ?= 1
+# The file that keeps this peer's id across restarts (build/identity).
+IDENTITY ?=
+# lobby-test: 1 kills peer 4 after REJOIN_AFTER seconds and restarts it.
+REJOIN   ?= 0
+REJOIN_AFTER ?= 20
+# The introducer's port (make introduce).
+PORT     ?= 47296
 # Deal the seats into N teams (0: everyone alone, allying in play).
 TEAMS    ?= 0
 # What a tank starts with: open, tournament or strict (SPEC section 11).
@@ -77,7 +95,7 @@ GAMETYPE ?= open
 # A map file to play on instead of the generated one (documentation/MAPS.md).
 MAP      ?=
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP JOBS VERBOSE LAG
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
@@ -116,6 +134,9 @@ host: configure
 
 seat: configure
 	@scripts/run.sh seat
+
+introduce: configure
+	@scripts/run.sh introduce
 
 lobby-test: configure
 	@scripts/lobby-test.sh
