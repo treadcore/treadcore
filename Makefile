@@ -25,6 +25,10 @@
 #   make host        headless host on the LAN (plus bots for empty seats, PLAYERS)
 #   make seat        headless bot that joins a LAN lobby (run four: a test)
 #   make lobby-test  four headless seats on this machine negotiate a host
+#   make map         write the generated map for SEED to MAP (default
+#                    maps/generated-SEED.map): the start of a hand-made one;
+#                    MAP=maps/x.map make debug|run|host plays on it
+#   make convert BOLO=file.map  convert a Macintosh Bolo map into maps/bolo/
 #   make replay      play back the newest build/logs/replay-*.json (or
 #                    REPLAY=file) and check every world hash it recorded;
 #                    the regression test for a change to the rules
@@ -42,7 +46,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat lobby-test replay test mem quiet loud sysprep schema clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat lobby-test replay map convert test mem quiet loud sysprep schema clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -63,8 +67,10 @@ PEER     ?=
 PLAYERS  ?= 16
 # Of the bot seats, how many dig in (Fortifier) rather than attack (RuleBot).
 DEFENDERS ?= 0
+# A map file to play on instead of the generated one (documentation/MAPS.md).
+MAP      ?=
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS JOBS VERBOSE
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS MAP JOBS VERBOSE
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
@@ -109,6 +115,17 @@ lobby-test: configure
 
 replay: configure
 	@scripts/replay.sh $(REPLAY)
+
+convert:
+	@test -n "$(BOLO)" || { echo 'usage: make convert BOLO=path/to/Some.map'; exit 2; }
+	@mkdir -p maps/bolo
+	@python3 -I scripts/bolo2map.py "$(BOLO)" "maps/bolo/$$(basename "$(BOLO)" .map | tr 'A-Z' 'a-z' | tr -d "'" | tr ' ' '-').map"
+
+map: configure
+
+	@mkdir -p maps
+	@cargo run -q -p treadcore-server -- --seed $(SEED) --write-map $(or $(MAP),maps/generated-$(SEED).map)
+
 
 
 test:

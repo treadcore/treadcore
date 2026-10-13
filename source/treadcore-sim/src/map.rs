@@ -7,9 +7,12 @@
 //! dead. Drones ignore all of it. That asymmetry is most of the game's
 //! texture: the ground is the tank's problem, the air is the drones'.
 
-use crate::{Rng, V2};
+use crate::{PlayerId, Rng, MAX_PLAYERS, V2};
 use serde::{Deserialize, Serialize};
 
+/// The generated map's size: 128 tiles of 25 m is a 3.2 km island. A
+/// map file declares its own `size` (1 to 1024; Bolo's maps are 256)
+/// and the world is built at the size it reads.
 pub const MAP_W: usize = 128;
 pub const MAP_H: usize = 128;
 
@@ -61,7 +64,31 @@ impl Terrain {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// Who owns a depot at the start. `ByStart` is the generator's rule:
+/// the i-th depot belongs to the i-th seat, if seated. A map file may
+/// say `neutral` or a seat instead.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum DepotOwner {
+    ByStart,
+    Neutral,
+    Seat(PlayerId),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MapDepot {
+    pub pos: V2,
+    pub owner: DepotOwner,
+}
+
+/// A pillbox as the map places it: where, and whose at the start
+/// (None is neutral, Bolo's default).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MapPillbox {
+    pub pos: V2,
+    pub owner: Option<PlayerId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
     pub w: usize,
     pub h: usize,
@@ -70,11 +97,59 @@ pub struct Map {
     /// 16 KiB and a diff is the cells that changed.
     pub cells: Vec<u8>,
     pub starts: Vec<V2>,
-    pub depots: Vec<V2>,
-    /// Neutral pillboxes at the start: one on each spoke between a
-    /// start's depot and the centre, and four around the centre.
-    pub pillboxes: Vec<V2>,
+    pub depots: Vec<MapDepot>,
+    /// Pillboxes at the start. Generated maps place neutral ones: one
+    /// on each spoke between a start's depot and the centre, and four
+    /// around the centre. A map file may give owners.
+    pub pillboxes: Vec<MapPillbox>,
 }
+
+/// Why a map file was refused, with the line it happened on.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MapError {
+    pub line: usize,
+    pub msg: String,
+}
+
+impl std::fmt::Display for MapError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "line {}: {}", self.line, self.msg)
+    }
+}
+
+impl std::error::Error for MapError {}
+
+/// The one character per terrain in a map file. Chosen to read as the
+/// ground does in a terminal: `.` open, `T` trees, `=` road, `~` water,
+/// `+` bridge, `%` rubble, `D` depot, `W` wall.
+impl Terrain {
+    pub fn glyph(self) -> char {
+        match self {
+            Terrain::Grass => '.',
+            Terrain::Forest => 'T',
+            Terrain::Road => '=',
+            Terrain::Water => '~',
+            Terrain::Bridge => '+',
+            Terrain::Rubble => '%',
+            Terrain::Depot => 'D',
+            Terrain::Wall => 'W',
+        }
+    }
+    pub fn from_glyph(c: char) -> Option<Terrain> {
+        Some(match c {
+            '.' => Terrain::Grass,
+            'T' => Terrain::Forest,
+            '=' => Terrain::Road,
+            '~' => Terrain::Water,
+            '+' => Terrain::Bridge,
+            '%' => Terrain::Rubble,
+            'D' => Terrain::Depot,
+            'W' => Terrain::Wall,
+            _ => return None,
+        })
+    }
+}
+
 
 impl Map {
     pub fn generate(seed: u64) -> Map {
@@ -84,10 +159,12 @@ impl Map {
         let noise = Noise::new(&mut rng);
 
         // Forest: thresholded smooth noise, so it comes in clumps and belts
-        // rather than speckles.
+        // rather than speckles. The frequency scales with the map so a
+        // belt is the same number of tiles wide at any size.
+        let f = 0.045 * 128.0 / w as f32;
         for y in 0..h {
             for x in 0..w {
-                let n = noise.at(x as f32 * 0.045, y as f32 * 0.045);
+                let n = noise.at(x as f32 * f, y as f32 * f);
                 if n > 0.58 {
                     cells[y * w + x] = Terrain::Forest as u8;
                 }
@@ -96,9 +173,10 @@ impl Map {
         // A river: a wandering line from one edge to the opposite one, two
         // or three tiles wide, with a lake where it bends hardest.
         let vertical = rng.below(2) == 0;
-        let mut p = if vertical { rng.range(30.0, 98.0) } else { rng.range(30.0, 98.0) };
-        for i in 0..(if vertical { h } else { w }) {
-            p += rng.range(-1.2, 1.2) + (64.0 - p) * 0.01;
+        let (across, along) = if vertical { (w as f32, h) } else { (h as f32, w) };
+        let mut p = rng.range(across * 0.234375, across * 0.765625); // 30..98 of 128, as on day one
+        for i in 0..along {
+            p += rng.range(-1.2, 1.2) + (across * 0.5 - p) * 0.01;
             let width = 1.5 + (noise.at(i as f32 * 0.1, 7.7) * 2.0);
             for d in -3..=3 {
                 let q = p + d as f32;
@@ -138,16 +216,17 @@ impl Map {
             V2::new(lo, q1),
         ];
         let center = V2::new(w as f32 * 0.5, h as f32 * 0.5);
-        let mut depots: Vec<V2> = starts.iter().map(|s| s.lerp(center, 0.18)).collect();
-        depots.push(center);
+        let mut depots: Vec<MapDepot> = starts.iter().map(|s| MapDepot { pos: s.lerp(center, 0.18), owner: DepotOwner::ByStart }).collect();
+        depots.push(MapDepot { pos: center, owner: DepotOwner::ByStart });
         // Pillboxes: a third of the way in on every spoke (ten tiles
         // past the start's depot, eight short of where a bot stands to
         // fire), and a square of four round the centre depot. All
         // neutral: Bolo's, shooting at everyone until someone's squad
         // takes them.
-        let mut pillboxes: Vec<V2> = starts.iter().map(|s| s.lerp(center, 0.36)).collect();
-        for (dx, dy) in [(9.0, 0.0), (-9.0, 0.0), (0.0, 9.0), (0.0, -9.0)] {
-            pillboxes.push(center + V2::new(dx, dy));
+        let mut pillboxes: Vec<MapPillbox> = starts.iter().map(|s| MapPillbox { pos: s.lerp(center, 0.36), owner: None }).collect();
+        let ring = 9.0 * w as f32 / 128.0;
+        for (dx, dy) in [(ring, 0.0), (-ring, 0.0), (0.0, ring), (0.0, -ring)] {
+            pillboxes.push(MapPillbox { pos: center + V2::new(dx, dy), owner: None });
         }
 
         let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone() };
@@ -166,15 +245,15 @@ impl Map {
         }
         // Clear the ground around starts, depots and pillboxes, then
         // stamp depots.
-        for s in starts.iter().chain(depots.iter()) {
+        for s in starts.iter().chain(depots.iter().map(|d| &d.pos)) {
             map.clear_disc(*s, 3.0);
         }
         for p in &pillboxes {
-            map.clear_disc(*p, 1.5);
+            map.clear_disc(p.pos, 1.5);
         }
 
         for d in &depots {
-            map.stamp(*d, 1, Terrain::Depot);
+            map.stamp(d.pos, 1, Terrain::Depot);
         }
         map
     }
@@ -440,6 +519,170 @@ impl Map {
     }
 }
 
+// ---------------------------------------------------------------- files
+
+/// The map file: `documentation/MAPS.md`. A header, the rows, then the
+/// places. Any text editor is the map editor.
+pub const MAP_FORMAT: &str = "treadcore map 1";
+
+impl Map {
+    /// The map as a text file. `{}` on floats prints the shortest
+    /// string that reads back to the same value, so a map survives the
+    /// round trip exactly (the test for this step).
+    pub fn to_text(&self) -> String {
+        let mut s = String::with_capacity(self.w * (self.h + 1) + 1024);
+        s.push_str(MAP_FORMAT);
+        s.push('\n');
+        s.push_str(&format!("size {} {}\n", self.w, self.h));
+        s.push_str(&format!("seed {:#x}\n", self.seed));
+        s.push_str("# rows: one character per tile, west to east, north first;\n");
+        s.push_str("# . grass  T forest  = road  ~ water  + bridge  % rubble  D depot  W wall\n");
+        for y in 0..self.h {
+            for x in 0..self.w {
+                s.push(self.at_tile(x, y).glyph());
+            }
+            s.push('\n');
+        }
+        s.push_str("# places: start x y (seat order); depot x y [seat|neutral] (unsaid: the\n");
+        s.push_str("# first N depots belong to the first N seats); pillbox x y [seat|neutral]\n");
+        for p in &self.starts {
+            s.push_str(&format!("start {} {}\n", p.x, p.y));
+        }
+        for d in &self.depots {
+            match d.owner {
+                DepotOwner::ByStart => s.push_str(&format!("depot {} {}\n", d.pos.x, d.pos.y)),
+                DepotOwner::Neutral => s.push_str(&format!("depot {} {} neutral\n", d.pos.x, d.pos.y)),
+                DepotOwner::Seat(o) => s.push_str(&format!("depot {} {} {}\n", d.pos.x, d.pos.y, o)),
+            }
+        }
+        for p in &self.pillboxes {
+            match p.owner {
+                Some(o) => s.push_str(&format!("pillbox {} {} {}\n", p.pos.x, p.pos.y, o)),
+                None => s.push_str(&format!("pillbox {} {} neutral\n", p.pos.x, p.pos.y)),
+            }
+        }
+        s
+    }
+
+    /// Read a map file. Refuses, with the line, anything it cannot
+    /// use: the wrong format line, a row of the wrong length, a glyph
+    /// it does not know, a place off the map, a start or depot on water
+    /// or a wall, no starts, more than sixteen. Repairs what Bolo's
+    /// loader repaired: a pillbox owner that is not a seat is neutral.
+    pub fn from_text(text: &str) -> Result<Map, MapError> {
+        let err = |line: usize, msg: &str| MapError { line, msg: msg.to_string() };
+        let mut lines = text.lines().enumerate().map(|(i, l)| (i + 1, l.trim_end()));
+        let (n, first) = lines.next().ok_or_else(|| err(0, "empty file"))?;
+        if first.trim() != MAP_FORMAT {
+            return Err(err(n, &format!("not a treadcore map: expected '{}'", MAP_FORMAT)));
+        }
+        let (mut w, mut h, mut seed) = (0usize, 0usize, 0u64);
+        let mut cells: Vec<u8> = Vec::new();
+        let mut starts = Vec::new();
+        let mut depots = Vec::new();
+        let mut pillboxes = Vec::new();
+        let mut rows_read = 0usize;
+        for (n, raw) in lines {
+            let line = raw.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let mut words = line.split_whitespace();
+            let head = words.next().unwrap();
+            // A row is a line made only of glyphs, of the map's width.
+            if w > 0 && rows_read < h && line.len() == w && line.chars().all(|c| Terrain::from_glyph(c).is_some()) {
+                for c in line.chars() {
+                    cells.push(Terrain::from_glyph(c).unwrap() as u8);
+                }
+                rows_read += 1;
+                continue;
+            }
+            let num = |s: Option<&str>, what: &str| -> Result<f32, MapError> {
+                s.ok_or_else(|| err(n, &format!("{} missing", what)))?.parse::<f32>().map_err(|_| err(n, &format!("{} is not a number", what)))
+            };
+            match head {
+                "size" => {
+                    w = num(words.next(), "width")? as usize;
+                    h = num(words.next(), "height")? as usize;
+                    if w == 0 || h == 0 || w > 1024 || h > 1024 {
+                        return Err(err(n, "size out of range (1 to 1024)"));
+                    }
+                }
+                "seed" => {
+                    let s = words.next().ok_or_else(|| err(n, "seed missing"))?;
+                    seed = s.strip_prefix("0x").map(|x| u64::from_str_radix(x, 16)).unwrap_or_else(|| s.parse::<u64>()).map_err(|_| err(n, "seed is not a number"))?;
+                }
+                "start" | "depot" | "pillbox" => {
+                    if rows_read < h {
+                        return Err(err(n, &format!("'{}' before all {} rows were read ({} so far)", head, h, rows_read)));
+                    }
+                    let x = num(words.next(), "x")?;
+                    let y = num(words.next(), "y")?;
+                    if x < 0.0 || y < 0.0 || x >= w as f32 || y >= h as f32 {
+                        return Err(err(n, "place is off the map"));
+                    }
+                    let p = V2::new(x, y);
+                    let t = Terrain::from_u8(cells[y as usize * w + x as usize]);
+                    match head {
+                        "start" => {
+                            if !t.passable() {
+                                return Err(err(n, "a start on water or a wall"));
+                            }
+                            starts.push(p);
+                        }
+                        "depot" => {
+                            if !t.passable() {
+                                return Err(err(n, "a depot on water or a wall"));
+                            }
+                            let owner = match words.next() {
+                                None => DepotOwner::ByStart,
+                                Some("neutral") | Some("-") => DepotOwner::Neutral,
+                                Some(s) => match s.parse::<usize>() {
+                                    Ok(o) if o < MAX_PLAYERS => DepotOwner::Seat(o as PlayerId),
+                                    _ => DepotOwner::Neutral,
+                                },
+                            };
+                            depots.push(MapDepot { pos: p, owner });
+                        }
+                        _ => {
+                            if t == Terrain::Water {
+                                return Err(err(n, "a pillbox on water"));
+                            }
+                            let owner = match words.next() {
+                                None | Some("neutral") | Some("-") => None,
+                                Some(s) => match s.parse::<usize>() {
+                                    Ok(o) if o < MAX_PLAYERS => Some(o as PlayerId),
+                                    _ => None, // Bolo's repair: an owner that is no seat is neutral
+                                },
+                            };
+                            pillboxes.push(MapPillbox { pos: p, owner });
+                        }
+                    }
+                }
+                _ => {
+                    if w > 0 && rows_read < h {
+                        return Err(err(n, &format!("row {} is not {} glyphs of . T = ~ + % D W", rows_read + 1, w)));
+                    }
+                    return Err(err(n, &format!("unknown line '{}'", head)));
+                }
+            }
+        }
+        if w == 0 {
+            return Err(err(0, "no size line"));
+        }
+        if rows_read != h {
+            return Err(err(0, &format!("{} rows, expected {}", rows_read, h)));
+        }
+        if starts.is_empty() {
+            return Err(err(0, "no start lines: a map needs at least one"));
+        }
+        if starts.len() > MAX_PLAYERS {
+            return Err(err(0, &format!("{} starts; the most is {}", starts.len(), MAX_PLAYERS)));
+        }
+        Ok(Map { w, h, seed, cells, starts, depots, pillboxes })
+    }
+}
+
 /// Value noise: a lattice of random values, bilinear interpolation,
 /// three octaves. Enough for forests and river width; not for terrain
 /// height, which this game does not have.
@@ -483,12 +726,56 @@ mod tests {
             assert!(a.at(*s).passable());
         }
         for d in &a.depots {
-            assert_eq!(a.at(*d), Terrain::Depot);
+            assert_eq!(a.at(d.pos), Terrain::Depot);
         }
+    }
+
+    /// Roadmap step 5's proof: a generated map written as text reads
+    /// back equal, to the bit.
+    #[test]
+    fn map_survives_the_file_round_trip() {
+        for seed in [7u64, 0x7EAD_C0DE] {
+            let m = Map::generate(seed);
+            let text = m.to_text();
+            let back = Map::from_text(&text).expect("the map we wrote does not read");
+            assert_eq!(back, m, "seed {}", seed);
+            assert_eq!(back.to_text(), text);
+        }
+    }
+
+    /// A loader that says no, with the line.
+    #[test]
+    fn bad_map_files_are_refused_with_a_line() {
+        let m = Map::generate(3);
+        let good = m.to_text();
+        assert!(Map::from_text("hello\n").is_err());
+        let short_row = good.replacen("\n.", "\n", 1);
+        let _ = short_row;
+        // A glyph nobody knows, in row 1.
+        let mut lines: Vec<String> = good.lines().map(|l| l.to_string()).collect();
+        let first_row = lines.iter().position(|l| l.len() == m.w && !l.starts_with('#')).unwrap();
+
+        lines[first_row].replace_range(0..1, "?");
+        let e = Map::from_text(&lines.join("\n")).unwrap_err();
+        assert_eq!(e.line, first_row + 1, "{}", e);
+        // A start in the river.
+        let water = (0..m.w * m.h).position(|i| m.cells[i] == Terrain::Water as u8).unwrap();
+        let (wx, wy) = (water % m.w, water / m.w);
+        let bad = format!("{}start {} {}\n", good, wx, wy);
+        let e = Map::from_text(&bad).unwrap_err();
+        assert!(e.msg.contains("water"), "{}", e);
+        // No starts at all.
+        let no_starts: String = good.lines().filter(|l| !l.starts_with("start ")).map(|l| format!("{}\n", l)).collect();
+        assert!(Map::from_text(&no_starts).unwrap_err().msg.contains("no start"));
+        // An owner that is not a seat is repaired to neutral, not refused.
+        let odd = format!("{}pillbox 64 64 99\n", good);
+        let back = Map::from_text(&odd).unwrap();
+        assert_eq!(back.pillboxes.last().unwrap().owner, None);
     }
 
     #[test]
     fn every_start_can_reach_the_centre() {
+
         for seed in [7u64, 42, 0x7EAD_C0DE] {
             let m = Map::generate(seed);
             assert_eq!(m.starts.len(), crate::MAX_PLAYERS);

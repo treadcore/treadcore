@@ -22,12 +22,12 @@
 //! Nothing here knows about sockets. treadcore-net owns those.
 
 use serde::{Deserialize, Serialize};
-use treadcore_sim::{Command, Event, Observation, PlayerId, Scenario, Tick};
+use treadcore_sim::{Command, Event, Map, Observation, PlayerId, Scenario, Tick};
 
 pub const MAGIC: [u8; 4] = *b"TRDC";
 /// Bump on any change to `Packet` or to anything it carries from
 /// treadcore-sim. Peers on different versions ignore each other entirely.
-pub const VERSION: u16 = 5;
+pub const VERSION: u16 = 6;
 
 
 
@@ -73,7 +73,11 @@ pub enum Packet {
 
     // ---- session -------------------------------------------------------
     Join { peer: PeerId, name: String },
-    Welcome { player: PlayerId, scenario: Scenario, tick: Tick, map_cells: Vec<u8> },
+    /// The whole map, as it is at this tick (craters and walls included),
+    /// not just its cells: a map from a file has its own starts, depots
+    /// and pillboxes, and a client must not guess them from a seed.
+    Welcome { player: PlayerId, scenario: Scenario, tick: Tick, map: Map },
+
     /// Rejected join: lobby full, or the match is over.
     Refuse { why: String },
     /// A client's order. `seq` is per-client and monotonic; the client
@@ -99,6 +103,13 @@ pub enum Packet {
     /// lobby test's proof. From a client, `hash` is 0 until it predicts.
     Heartbeat { peer: PeerId, tick: Tick, hash_tick: Tick, hash: u64 },
 
+
+    /// A packet too big for one datagram, in pieces: `Welcome` with a
+    /// large map. `id` tells one big packet's pieces from another's; the
+    /// receiver reassembles by id and decodes `inner`. Unreliable like a
+    /// snapshot: a lost piece loses the packet, and the sender's retry
+    /// (a repeated Join draws a fresh Welcome) sends a new id.
+    Chunk { id: u32, part: u16, parts: u16, bytes: Vec<u8> },
 
     // ---- relay ---------------------------------------------------------
     /// Deliver `inner` to `to`. A peer that receives one and is not `to`
@@ -168,8 +179,49 @@ impl Packet {
     }
 }
 
+/// Any packet, split into `Chunk`s if it does not fit a datagram, or as
+/// itself if it does. For Welcome, whose map may be 65 KiB.
+pub fn chunk_packets(p: &Packet, id: u32) -> Vec<Packet> {
+    let bytes = p.encode();
+    if bytes.len() <= MAX_DATAGRAM {
+        return vec![p.clone()];
+    }
+    let chunk = MAX_DATAGRAM - 64;
+    let parts = bytes.chunks(chunk).count() as u16;
+    bytes.chunks(chunk).enumerate().map(|(i, c)| Packet::Chunk { id, part: i as u16, parts, bytes: c.to_vec() }).collect()
+}
+
+/// Reassembles one chunked packet at a time, by id; a new id starts over.
+#[derive(Default)]
+pub struct ChunkAssembler {
+    id: u32,
+    parts: Vec<Option<Vec<u8>>>,
+}
+
+impl ChunkAssembler {
+    pub fn push(&mut self, id: u32, part: u16, parts: u16, bytes: Vec<u8>) -> Option<Packet> {
+        if id != self.id || self.parts.len() != parts as usize {
+            self.id = id;
+            self.parts = vec![None; parts as usize];
+        }
+        if let Some(slot) = self.parts.get_mut(part as usize) {
+            *slot = Some(bytes);
+        }
+        if !self.parts.is_empty() && self.parts.iter().all(|p| p.is_some()) {
+            let mut all = Vec::new();
+            for p in self.parts.drain(..) {
+                all.extend(p.unwrap());
+            }
+            Packet::decode(&all).ok()
+        } else {
+            None
+        }
+    }
+}
+
 /// An observation on the wire: bincode, then split into MAX_DATAGRAM
-/// pieces. A 4-tank, 40-drone observation is a few KiB; the map is not in
+/// pieces.
+/// A 4-tank, 40-drone observation is a few KiB; the map is not in
 /// it (it went in `Welcome`, and craters arrive as events).
 pub fn snapshot_packets(obs: &Observation) -> Vec<Packet> {
     let bytes = bincode::serialize(obs).expect("observation serialises");
@@ -229,8 +281,31 @@ mod tests {
         assert!(matches!(Packet::decode(b"xxxxxx"), Err(DecodeError::BadMagic)));
     }
 
+    /// A Welcome with a big map goes in pieces and comes back whole.
+    #[test]
+    fn big_packets_chunk_and_reassemble() {
+        let w = treadcore_sim::World::new(treadcore_sim::Scenario::default());
+        let p = Packet::Welcome { player: 3, scenario: w.scenario.clone(), tick: 7, map: w.map.clone() };
+        let pieces = chunk_packets(&p, 42);
+        assert!(pieces.len() > 10, "a 16 KiB map should take more than ten datagrams, got {}", pieces.len());
+        let mut asm = ChunkAssembler::default();
+        let mut got = None;
+        // Out of order, too.
+        let mut order: Vec<usize> = (0..pieces.len()).collect();
+        order.reverse();
+        for i in order {
+            if let Packet::Chunk { id, part, parts, bytes } = &pieces[i] {
+                got = asm.push(*id, *part, *parts, bytes.clone()).or(got);
+            }
+        }
+        assert_eq!(got, Some(p));
+        // A small packet is not chunked.
+        assert_eq!(chunk_packets(&Packet::CommandAck { seq: 1 }, 1).len(), 1);
+    }
+
     #[test]
     fn snapshot_splits_and_reassembles() {
+
         let w = treadcore_sim::World::new(treadcore_sim::Scenario::default());
         let obs = w.observe(0);
         let pk = snapshot_packets(&obs);

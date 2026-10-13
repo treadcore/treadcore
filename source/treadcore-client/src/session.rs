@@ -97,7 +97,12 @@ fn start(mut commands: Commands, args: Res<Args>, mut view: ResMut<View>) {
 }
 
 fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
-    let mut s = Scenario { seed: args.seed, swarm_interval: args.swarm, ..Scenario::default() };
+    let map = match &args.map {
+        Some(text) => MapSource::Text(text.clone()),
+        None => MapSource::FromScenarioSeed,
+    };
+    let mut s = Scenario { seed: args.seed, map, swarm_interval: args.swarm, ..Scenario::default() };
+
     if !names.is_empty() {
         s.players = names;
     }
@@ -220,11 +225,7 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                 ClientState::Lost => view.status = "connection lost".into(),
                 ClientState::Playing => {
                     if view.map.is_none() {
-                        if let (Some(cells), Some(sc)) = (client.map_cells.clone(), client.scenario.clone()) {
-                            let mut m = Map::generate(sc.seed);
-                            if cells.len() == m.cells.len() {
-                                m.cells = cells;
-                            }
+                        if let Some(m) = client.map.clone() {
                             view.map = Some(m);
                             view.me = client.player;
                             view.status = format!("playing as seat {}", client.player.unwrap_or(0));

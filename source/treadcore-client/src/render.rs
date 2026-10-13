@@ -56,7 +56,9 @@ fn setup_camera(mut commands: Commands) {
         Camera2d,
         MainCamera,
         Projection::Orthographic(OrthographicProjection { scale: 0.7, ..OrthographicProjection::default_2d() }),
-        Transform::from_translation(Vec3::new(MAP_W as f32 * TILE * 0.5, MAP_H as f32 * TILE * 0.5, 0.0)),
+        // Centred on a default-sized map until the first observation
+        // puts the camera on the tank (input.rs centres it once).
+        Transform::from_translation(Vec3::new(MAP_W as f32 * TILE * 0.5, -(MAP_H as f32) * TILE * 0.5, 0.0)),
     ));
 }
 
@@ -390,6 +392,8 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>) {
             }
         }
     }
-    // Map edge.
-    gizmos.rect_2d(Vec2::new(MAP_W as f32 * TILE * 0.5, MAP_H as f32 * TILE * 0.5), Vec2::new(MAP_W as f32 * TILE, MAP_H as f32 * TILE), Color::srgba(1.0, 1.0, 1.0, 0.2));
+    // Map edge, at the map's own size.
+    let (mw, mh) = (obs.map_w as f32, obs.map_h as f32);
+    gizmos.rect_2d(Vec2::new(mw * TILE * 0.5, -mh * TILE * 0.5), Vec2::new(mw * TILE, mh * TILE), Color::srgba(1.0, 1.0, 1.0, 0.2));
+
 }

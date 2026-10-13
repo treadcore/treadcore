@@ -41,6 +41,12 @@ struct Args {
     /// How many bot seats, from the last, are Fortifiers (defenders)
     /// instead of RuleBots (attackers).
     defenders: usize,
+    /// A map file's text, read and checked at start (`--map`).
+    map: Option<String>,
+    /// Write the map as played to this file when the match ends.
+    save_map: Option<String>,
+    /// Write the generated map for `--seed` to this file and exit.
+    write_map: Option<String>,
 }
 
 fn parse() -> Args {
@@ -62,6 +68,9 @@ fn parse() -> Args {
         record: None,
         replay: None,
         defenders: 0,
+        map: None,
+        save_map: None,
+        write_map: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -84,6 +93,19 @@ fn parse() -> Args {
             "--brain-schema" => a.schema = true,
             "--players" => a.players = parse_num::<usize>(&val()).clamp(1, MAX_PLAYERS),
             "--defenders" => a.defenders = parse_num(&val()),
+            "--map" => {
+                let path = val();
+                let text = std::fs::read_to_string(&path).unwrap_or_else(|e| die(&format!("map {}: {}", path, e)));
+                // MAP-10: a file that is not a map is refused, and the game
+                // does not start.
+                match Map::from_text(&text) {
+                    Ok(m) => log::info!("map {}: {}x{}, {} starts, {} depots, {} pillboxes", path, m.w, m.h, m.starts.len(), m.depots.len(), m.pillboxes.len()),
+                    Err(e) => die(&format!("map {}: {}", path, e)),
+                }
+                a.map = Some(text);
+            }
+            "--save-map" => a.save_map = Some(val()),
+            "--write-map" => a.write_map = Some(val()),
             "--record" => a.record = Some(val()),
             "--replay" => a.replay = Some(val()),
             "-h" | "--help" => {
@@ -108,6 +130,12 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --players N        seats in a --local match or a hosted one, 1 to 16 (16)
   --defenders N      of the bot seats, the last N dig in at their depot
                      (harvest, mines, walls) instead of attacking (0)
+  --map FILE         play on this map file (documentation/MAPS.md)
+                     instead of the one generated from --seed
+  --save-map FILE    when the match ends, write the map as played
+                     (craters, walls, pillbox owners) to FILE
+  --write-map FILE   write the map generated from --seed to FILE and
+                     exit: the starting point for editing one
   --name NAME        this peer's name (server)
   --game NAME        lobby name; only peers in the same lobby meet
   --peer HOST:PORT   greet this address as well as the LAN broadcast
@@ -148,7 +176,16 @@ fn main() {
         print!("{}", treadcore_brain::schema_examples());
         return;
     }
-    log::info!("treadcore-server {} ({} Hz, {}x{} map)", env!("CARGO_PKG_VERSION"), TICK_HZ, MAP_W, MAP_H);
+    log::info!("treadcore-server {} ({} Hz)", env!("CARGO_PKG_VERSION"), TICK_HZ);
+
+    if let Some(path) = args.write_map.as_deref() {
+        let m = Map::generate(args.seed);
+        match std::fs::write(path, m.to_text()) {
+            Ok(()) => log::info!("wrote the map for seed {:#x} to {} ({} starts, {} depots, {} pillboxes)", args.seed, path, m.starts.len(), m.depots.len(), m.pillboxes.len()),
+            Err(e) => die(&format!("write-map {}: {}", path, e)),
+        }
+        return;
+    }
     if args.replay.is_some() {
         run_replay(args);
     } else if args.net {
@@ -327,9 +364,22 @@ fn summary(world: &World, started: Instant) {
 
 }
 
-fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
+/// Write the map as played, if asked. The next match can start from it.
+fn save_map(world: &World, path: Option<&str>) {
+    let Some(path) = path else { return };
+    let m = world.map_as_played();
+    match std::fs::write(path, m.to_text()) {
+        Ok(()) => log::info!("map as played -> {} ({} walls, {} pillboxes of which {} owned)", path, m.cells.iter().filter(|c| **c == Terrain::Wall as u8).count(), m.pillboxes.len(), m.pillboxes.iter().filter(|p| p.owner.is_some()).count()),
+        Err(e) => log::error!("save-map {}: {}", path, e),
+    }
+}
 
-    let mut s = Scenario { seed: args.seed, swarm_interval: args.swarm, ..Scenario::default() };
+fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
+    let map = match &args.map {
+        Some(text) => MapSource::Text(text.clone()),
+        None => MapSource::FromScenarioSeed,
+    };
+    let mut s = Scenario { seed: args.seed, map, swarm_interval: args.swarm, ..Scenario::default() };
     if args.ticks > 0 {
         s.time_limit = args.ticks;
     }
@@ -368,6 +418,7 @@ fn run_local(args: Args) {
     if let Some(p) = args.record.as_deref() {
         save_replay(&host, p);
     }
+    save_map(&host.world, args.save_map.as_deref());
 }
 
 fn run_net(args: Args) {
@@ -448,6 +499,8 @@ fn run_net(args: Args) {
         if let Some(p) = args.record.as_deref() {
             save_replay(&host, p);
         }
+        save_map(&host.world, args.save_map.as_deref());
+
 
     } else {
         let mut client = Client::new(me, sock, result.decision.host, routes, &args.name);

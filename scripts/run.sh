@@ -29,5 +29,7 @@ case "$MODE" in
         ;;
     *) die "unknown mode $MODE" ;;
 esac
+[ -n "${MAP:-}" ] && ARGS+=(--map "$MAP")
 say "$BIN ${ARGS[*]}  (log: $LOG)"
+
 RUST_LOG="${RUST_LOG:-debug}" RUST_BACKTRACE=1 "$BIN" "${ARGS[@]}" 2>&1 | tee "$LOG"

@@ -39,6 +39,8 @@ pub struct Args {
     pub swarm: u32,
     /// Seats in a solo or hosted match, 1 to 16; bots fill what people do not.
     pub players: usize,
+    /// The text of a map file (`--map FILE`), checked at start.
+    pub map: Option<String>,
 }
 
 fn parse_args() -> Args {
@@ -51,6 +53,7 @@ fn parse_args() -> Args {
         seed: 0x7EAD_C0DE,
         swarm: 45 * TICK_HZ,
         players: treadcore_sim::MAX_PLAYERS,
+        map: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -68,9 +71,22 @@ fn parse_args() -> Args {
             }
             "--swarm" => a.swarm = val().parse::<u32>().unwrap_or(45) * TICK_HZ,
             "--players" => a.players = val().parse::<usize>().unwrap_or(treadcore_sim::MAX_PLAYERS).clamp(1, treadcore_sim::MAX_PLAYERS),
+            "--map" => {
+                let path = val();
+                let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+                    eprintln!("treadcore: map {}: {}", path, e);
+                    std::process::exit(2)
+                });
+                if let Err(e) = treadcore_sim::Map::from_text(&text) {
+                    eprintln!("treadcore: map {}: {}", path, e);
+                    std::process::exit(2)
+                }
+                a.map = Some(text);
+            }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--seed S] [--swarm SECONDS] [--players 1..16]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--seed S] [--swarm SECONDS] [--players 1..16] [--map FILE]");
+
 
                 std::process::exit(0);
             }
@@ -105,14 +121,17 @@ fn main() {
         .run();
 }
 
-/// Tile coordinates (y down, as the sim has them) to screen (y up).
+/// Tile coordinates (y down, as the sim has them) to screen (y up): the
+/// map hangs below the x axis, so no map height is needed and a map of
+/// any size draws the same way.
 pub fn to_screen(p: treadcore_sim::V2) -> Vec2 {
-    Vec2::new(p.x * TILE, (treadcore_sim::MAP_H as f32 - p.y) * TILE)
+    Vec2::new(p.x * TILE, -p.y * TILE)
 }
 
 pub fn to_tile(p: Vec2) -> treadcore_sim::V2 {
-    treadcore_sim::V2::new(p.x / TILE, treadcore_sim::MAP_H as f32 - p.y / TILE)
+    treadcore_sim::V2::new(p.x / TILE, -p.y / TILE)
 }
+
 
 /// Seat colours. Sixteen players spaced round the hue circle, the first
 /// four as they always were, and the swarm in red.

@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 pub mod map;
 pub mod rules;
 
-pub use map::{Map, Terrain, MAP_H, MAP_W};
+pub use map::{DepotOwner, Map, MapDepot, MapError, MapPillbox, Terrain, MAP_FORMAT, MAP_H, MAP_W};
 pub use rules::*;
 
 /// Simulation rate. Twenty ticks a second is enough for a game whose
@@ -547,9 +547,34 @@ pub enum LossReason {
 
 // ------------------------------------------------------------------ scenario
 
+/// Where a scenario's map comes from: generated from the scenario's own
+/// seed (the default, so `Scenario { seed, ..Default::default() }` plays
+/// a different island for every seed, as it always did), generated from
+/// a seed of its own, or the text of a map file carried whole, so a
+/// replay and a Welcome are self-contained and no peer needs the file.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum MapSource {
+    FromScenarioSeed,
+    Seed(u64),
+    Text(String),
+}
+
+impl MapSource {
+    pub fn build(&self, scenario_seed: u64) -> Result<Map, MapError> {
+        match self {
+            MapSource::FromScenarioSeed => Ok(Map::generate(scenario_seed)),
+            MapSource::Seed(s) => Ok(Map::generate(*s)),
+            MapSource::Text(t) => Map::from_text(t),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Scenario {
+    /// Seeds the dice (scatter, intercepts, the swarm). The map has its
+    /// own source.
     pub seed: u64,
+    pub map: MapSource,
     pub players: Vec<(String, bool)>,
     /// Ticks between neutral FPV swarms from the map edge; 0 disables them.
     /// They make the bubble matter even with one player on the map.
@@ -577,6 +602,7 @@ impl Default for Scenario {
     fn default() -> Scenario {
         Scenario {
             seed: 0x7EAD_C0DE,
+            map: MapSource::FromScenarioSeed,
             players: (0..MAX_PLAYERS).map(|i| (seat_name(i), true)).collect(),
 
             swarm_interval: 45 * TICK_HZ,
@@ -610,8 +636,12 @@ pub struct World {
 }
 
 impl World {
+    /// A world from a scenario. A map file that does not read is a
+    /// programming error here: the server checks the file before it
+    /// builds the scenario (`Map::from_text`), and a scenario that
+    /// arrived in a Welcome or a replay was built from one that did.
     pub fn new(scenario: Scenario) -> World {
-        let map = Map::generate(scenario.seed);
+        let map = scenario.map.build(scenario.seed).unwrap_or_else(|e| panic!("scenario map does not read: {}", e));
         let mut w = World {
             tick: 0,
             map,
@@ -629,20 +659,24 @@ impl World {
             events: Vec::new(),
             scenario: scenario.clone(),
         };
-        for (i, pos) in w.map.depots.clone().iter().enumerate() {
+        let seats = scenario.players.len().min(MAX_PLAYERS).min(w.map.starts.len());
+        for (i, d) in w.map.depots.clone().iter().enumerate() {
             let id = w.alloc();
-            let owner = if i < scenario.players.len().min(MAX_PLAYERS) {
-                Some(i as PlayerId)
-            } else {
-                None
+            let owner = match d.owner {
+                DepotOwner::ByStart if i < seats => Some(i as PlayerId),
+                DepotOwner::Seat(o) if (o as usize) < seats => Some(o),
+                _ => None,
             };
-            w.depots.push(Depot { id, pos: *pos, owner, capture: 0, capturer: None });
+            w.depots.push(Depot { id, pos: d.pos, owner, capture: 0, capturer: None });
         }
-        for pos in w.map.pillboxes.clone() {
+        for p in w.map.pillboxes.clone() {
             let id = w.alloc();
-            w.pillboxes.push(Pillbox { id, pos, owner: None, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+            // An owner the scenario does not seat is neutral.
+            let owner = p.owner.filter(|o| (*o as usize) < scenario.players.len().min(MAX_PLAYERS).min(w.map.starts.len()));
+            w.pillboxes.push(Pillbox { id, pos: p.pos, owner, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
         }
-        for (i, (name, is_bot)) in scenario.players.iter().take(MAX_PLAYERS).enumerate() {
+        // No more seats than the map has starts.
+        for (i, (name, is_bot)) in scenario.players.iter().take(seats).enumerate() {
             let id = w.alloc();
             let pos = w.map.starts[i];
             w.tanks.push(Tank {
@@ -679,6 +713,15 @@ impl World {
         let id = self.next_id;
         self.next_id += 1;
         id
+    }
+
+    /// The map as it is now (craters, walls, felled forest) with the
+    /// pillboxes as they are owned now: what `--save-map` writes, so a
+    /// fought-over island can be the start of the next match.
+    pub fn map_as_played(&self) -> Map {
+        let mut m = self.map.clone();
+        m.pillboxes = self.pillboxes.iter().map(|p| MapPillbox { pos: p.pos, owner: p.owner }).collect();
+        m
     }
 
     pub fn tank(&self, id: EntityId) -> Option<&Tank> {
@@ -1996,12 +2039,13 @@ impl World {
             return;
         }
         // From a random edge, at the nearest tank to that edge.
+        let (mw, mh) = (self.map.w as f32, self.map.h as f32);
         let side = self.rng.below(4);
-        let along = self.rng.range(8.0, MAP_W as f32 - 8.0);
+        let along = self.rng.range(8.0, (if side % 2 == 0 { mw } else { mh }) - 8.0);
         let from = match side {
             0 => V2::new(along, 0.5),
-            1 => V2::new(MAP_W as f32 - 0.5, along),
-            2 => V2::new(along, MAP_H as f32 - 0.5),
+            1 => V2::new(mw - 0.5, along),
+            2 => V2::new(along, mh - 0.5),
             _ => V2::new(0.5, along),
         };
         let (target, _) = alive.iter().min_by(|a, b| a.1.dist(from).partial_cmp(&b.1.dist(from)).unwrap()).unwrap();
@@ -2093,6 +2137,8 @@ impl World {
             tanks,
             drones,
             shells,
+            map_w: self.map.w as u16,
+            map_h: self.map.h as u16,
             depots: self.depots.clone(),
             pillboxes: self.pillboxes.clone(),
             mines: self.mines.iter().filter(|m| self.mine_known_to(p, m)).cloned().collect(),
@@ -2216,6 +2262,10 @@ pub struct Observation {
     pub tanks: Vec<Tank>,
     pub drones: Vec<Drone>,
     pub shells: Vec<Shell>,
+    /// The map's size in tiles: a Brain has no map, but it can know the
+    /// edges and the middle.
+    pub map_w: u16,
+    pub map_h: u16,
     pub depots: Vec<Depot>,
     /// Every pillbox, like every depot: territory is public.
     pub pillboxes: Vec<Pillbox>,
@@ -2257,7 +2307,16 @@ impl Observation {
         let p = self.player;
         self.drones.iter().filter(move |d| d.owner != p)
     }
+    /// The middle of the map.
+    pub fn centre(&self) -> V2 {
+        V2::new(self.map_w as f32 * 0.5, self.map_h as f32 * 0.5)
+    }
+    /// A point kept a few tiles inside the map's edges.
+    pub fn clamp(&self, p: V2) -> V2 {
+        V2::new(p.x.clamp(2.0, self.map_w as f32 - 3.0), p.y.clamp(2.0, self.map_h as f32 - 3.0))
+    }
 }
+
 
 pub fn wrap_angle(a: f32) -> f32 {
     use std::f32::consts::PI;
@@ -2315,7 +2374,10 @@ mod tests {
     #[test]
     fn indirect_shell_flies_and_lands() {
         let mut w = world();
-        let at = w.map.center();
+        // Thirty tiles toward the centre: inside the gun's range on any
+        // size of map.
+        let me = w.tank_of(0).unwrap().pos;
+        let at = me + (w.map.center() - me).norm().scale(30.0);
         w.step(&[Order { player: 0, cmd: Command::FireIndirect { at } }]);
         assert_eq!(w.shells.len(), 1);
         let eta = w.shells[0].impact_tick;
@@ -2385,7 +2447,9 @@ mod tests {
                 orders.push(Order { player: (i % 4) as PlayerId, cmd: Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return } });
             }
             if i == 50 {
-                orders.push(Order { player: 2, cmd: Command::FireIndirect { at: w.map.center() } });
+                let gun = w.tank_of(2).unwrap().pos;
+                let at = gun + (w.map.center() - gun).norm().scale(30.0);
+                orders.push(Order { player: 2, cmd: Command::FireIndirect { at } });
                 orders.push(Order { player: 3, cmd: Command::Move { to: w.map.center() } });
             }
             w.step(&orders);
@@ -2507,9 +2571,9 @@ mod tests {
         w.pillboxes.clear();
         let me = w.players[0].tank;
         let home = w.tank(me).unwrap().pos;
-        // Harvest the nearest forest the crew can see.
-        let obs = w.observe(0);
-        let tree = *obs.forest.first().expect("no forest within sight of the north start");
+        // Harvest the nearest forest to the start (the crew's own sight
+        // is FOREST_SIGHT; the squad will walk further for a test).
+        let tree = *w.map.forest_near(home, 120.0, 1).first().expect("no forest near the north start");
         assert_eq!(w.map.at(tree), Terrain::Forest);
         let before = w.tank(me).unwrap().pillboys.material;
         w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Harvest { at: tree } } }]);
@@ -2631,8 +2695,44 @@ mod tests {
         assert!(w2.tank_of(0).unwrap().armor <= TANK_ARMOR - MINE_DAMAGE + 0.01);
     }
 
+    /// A world built from a map file: four starts seat four even when
+    /// the scenario names sixteen, a pillbox's owner is honoured, and
+    /// the scenario (map text and all) survives a replay round trip.
+    #[test]
+    fn world_from_a_map_file() {
+        let m = Map::generate(11);
+        let mut text: String = m.to_text().lines().filter(|l| !l.starts_with("start ") && !l.starts_with("pillbox ")).map(|l| format!("{}\n", l)).collect();
+        for s in &m.starts[..4] {
+            text.push_str(&format!("start {} {}\n", s.x, s.y));
+        }
+        text.push_str(&format!("pillbox {} {} 2\n", m.center().x + 9.0, m.center().y));
+        text.push_str(&format!("pillbox {} {} 9\n", m.center().x - 9.0, m.center().y)); // seat 9 is not seated: neutral
+        let scenario = Scenario { map: MapSource::Text(text), swarm_interval: 0, ..Scenario::default() };
+        let w = World::new(scenario.clone());
+        assert_eq!(w.tanks.len(), 4);
+        assert_eq!(w.players.len(), 4);
+        assert_eq!(w.pillboxes.len(), 2);
+        assert_eq!(w.pillboxes[0].owner, Some(2));
+        assert_eq!(w.pillboxes[1].owner, None);
+        assert_eq!(w.depots.iter().filter(|d| d.owner.is_some()).count(), 4);
+        let rec = Replay::new(scenario);
+        let json = serde_json::to_string(&rec).unwrap();
+        let back: Replay = serde_json::from_str(&json).unwrap();
+        assert_eq!(World::new(back.scenario).hash(), w.hash());
+        // As played: a crater and a capture come out in the saved map.
+        let mut w2 = w.clone();
+        let open_ground = w2.map.center() + V2::new(6.0, 0.0); // the centre tile is the depot
+        w2.map.crater(open_ground);
+        w2.pillboxes[1].owner = Some(0);
+        let saved = w2.map_as_played();
+        assert_eq!(saved.at(open_ground), Terrain::Rubble);
+        assert_eq!(saved.pillboxes[1].owner, Some(0));
+        assert_eq!(Map::from_text(&saved.to_text()).unwrap(), saved);
+    }
+
     #[test]
     fn sixteen_seats() {
+
 
 
 

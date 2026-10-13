@@ -17,8 +17,9 @@ use crate::transport::Socket;
 use std::collections::{BTreeMap, VecDeque};
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
-use treadcore_proto::{snapshot_packets, Packet, PeerId, SnapshotAssembler};
-use treadcore_sim::{Command, Event, Observation, Order, PlayerId, Replay, Scenario, Tick, World};
+use treadcore_proto::{chunk_packets, snapshot_packets, ChunkAssembler, Packet, PeerId, SnapshotAssembler};
+use treadcore_sim::{Command, Event, Map, Observation, Order, PlayerId, Replay, Scenario, Tick, World};
+
 
 const RESEND: Duration = Duration::from_millis(120);
 /// The host hashes the world every this many ticks (fifty seconds),
@@ -105,6 +106,8 @@ pub struct Host {
     /// The world hash as of the last multiple of `HASH_EVERY`: what the
     /// heartbeat carries and the log shows.
     pub hash_mark: (Tick, u64),
+    /// Numbers the chunked Welcomes so a client tells one from the next.
+    welcome_id: u32,
 }
 
 impl Host {
@@ -133,7 +136,7 @@ impl Host {
             })
             .collect();
         let hash0 = world.hash();
-        Host { me, world, seats, routes, sock, inbox: Vec::new(), ticks_run: 0, replay: None, hash_mark: (0, hash0) }
+        Host { me, world, seats, routes, sock, inbox: Vec::new(), ticks_run: 0, replay: None, hash_mark: (0, hash0), welcome_id: 0 }
     }
 
     /// Start recording a replay of this match from now (normally before
@@ -186,8 +189,12 @@ impl Host {
                 Packet::Join { name, .. } => {
                     seat.name = name;
                     seat.joined = true;
-                    let w = Packet::Welcome { player: seat.player, scenario: self.world.scenario.clone(), tick: self.world.tick, map_cells: self.world.map.cells.clone() };
-                    self.routes.send(&mut sock, self.me, peer, &w);
+                    let w = Packet::Welcome { player: seat.player, scenario: self.world.scenario.clone(), tick: self.world.tick, map: self.world.map.clone() };
+                    // The map can be 65 KiB: in pieces, a fresh id each time.
+                    self.welcome_id = self.welcome_id.wrapping_add(1);
+                    for piece in chunk_packets(&w, self.welcome_id) {
+                        self.routes.send(&mut sock, self.me, peer, &piece);
+                    }
                     log::info!("seat {} '{}' joined from {:016x}", seat.player, seat.name, peer);
                 }
                 Packet::Command { seq, cmd, .. } => {
@@ -316,12 +323,13 @@ pub struct Client {
     pub state: ClientState,
     pub player: Option<PlayerId>,
     pub scenario: Option<Scenario>,
-    pub map_cells: Option<Vec<u8>>,
+    pub map: Option<Map>,
     pub name: String,
     sock: Socket,
     seq: u32,
     unacked: BTreeMap<u32, (Command, Instant)>,
     asm: SnapshotAssembler,
+    chunks: ChunkAssembler,
     latest: Option<Observation>,
     events_seen: u32,
     events: Vec<Event>,
@@ -347,12 +355,13 @@ impl Client {
             state: ClientState::Joining,
             player: None,
             scenario: None,
-            map_cells: None,
+            map: None,
             name: name.into(),
             sock,
             seq: 0,
             unacked: BTreeMap::new(),
             asm: SnapshotAssembler::default(),
+            chunks: ChunkAssembler::default(),
             latest: None,
             events_seen: 0,
             events: Vec::new(),
@@ -401,16 +410,29 @@ impl Client {
                 p => incoming.push(p),
             }
         }
+        // Pieces of a big packet become the packet.
+        let mut whole: Vec<Packet> = Vec::new();
         for p in incoming {
+            match p {
+                Packet::Chunk { id, part, parts, bytes } => {
+                    if let Some(w) = self.chunks.push(id, part, parts, bytes) {
+                        whole.push(w);
+                    }
+                }
+                p => whole.push(p),
+            }
+        }
+        for p in whole {
             self.last_rx = now;
             match p {
-                Packet::Welcome { player, scenario, tick, map_cells } => {
+                Packet::Welcome { player, scenario, tick, map } => {
+
                     if self.state == ClientState::Joining {
                         log::info!("welcomed as player {} at tick {}", player, tick);
                     }
                     self.player = Some(player);
                     self.scenario = Some(scenario);
-                    self.map_cells = Some(map_cells);
+                    self.map = Some(map);
                     self.state = ClientState::Playing;
                 }
                 Packet::Refuse { why } => {

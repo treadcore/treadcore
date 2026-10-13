@@ -84,6 +84,13 @@ pub struct RuleBot {
     patience: f32,
     /// Use the squad at all. Off for the control group in the proof.
     pub pillboys: bool,
+    /// What the world refused and why it will stay refused: pillboxes
+    /// the squad cannot reach, and tiles the tank cannot drive to. On an
+    /// island map (the converted Bolo maps) half the objectives are
+    /// across water, and a bot that forgot was refused four times a
+    /// second for the whole match.
+    unreachable_pillboxes: Vec<EntityId>,
+    unreachable_tiles: Vec<(i32, i32)>,
 }
 
 /// How far the bot will send its squad: a 20-tile walk is 13 seconds
@@ -102,7 +109,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, settled_at: None, patience, pillboys: true }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new() }
     }
 
     /// The same doctrine without the squad: the control group.
@@ -118,9 +125,7 @@ impl RuleBot {
         obs.depots.iter().filter(|d| if friendly { d.owner == Some(obs.player) } else { d.owner != Some(obs.player) }).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
     }
 
-    fn clamp_to_map(p: V2) -> V2 {
-        V2::new(p.x.clamp(2.0, MAP_W as f32 - 3.0), p.y.clamp(2.0, MAP_H as f32 - 3.0))
-    }
+
 }
 
 impl Brain for RuleBot {
@@ -133,6 +138,24 @@ impl Brain for RuleBot {
         let Some(me) = obs.me.as_ref() else { return cmds };
         if !me.alive {
             return cmds;
+        }
+        // Every tick: what the world refused as unreachable stays so.
+        for e in &obs.events {
+            if let Event::Rejected { cmd, why, .. } = e {
+                match cmd {
+                    Command::Deploy { task: PillboyTask::Capture { pillbox } } | Command::Deploy { task: PillboyTask::Repair { target: pillbox } } if why.contains("unreachable") => {
+                        if !self.unreachable_pillboxes.contains(pillbox) {
+                            self.unreachable_pillboxes.push(*pillbox);
+                        }
+                    }
+                    Command::Move { to } if why.contains("unreachable") || why == "water" => {
+                        if !self.unreachable_tiles.contains(&to.tile()) {
+                            self.unreachable_tiles.push(to.tile());
+                        }
+                    }
+                    _ => {}
+                }
+            }
         }
         // Think four times a second; the world does not need more and the
         // host has three other bots to run.
@@ -157,9 +180,15 @@ impl Brain for RuleBot {
         } else {
             self.settled_at = None;
         }
-        // The objective: the nearest depot that is not mine. With none
-        // left, the centre of the map.
-        let objective = self.nearest_depot(obs, me, false).map(|d| d.pos).unwrap_or_else(|| V2::new(MAP_W as f32 * 0.5, MAP_H as f32 * 0.5));
+        // The objective: the nearest depot that is not mine and that the
+        // world has not called unreachable. With none left, the centre.
+        let objective = obs
+            .depots
+            .iter()
+            .filter(|d| d.owner != Some(obs.player) && !self.unreachable_tiles.contains(&d.pos.tile()))
+            .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+            .map(|d| d.pos)
+            .unwrap_or_else(|| obs.centre());
 
         // 1. The bubble.
         let want_station = if hostile_air > 0 { 4 } else { 2 };
@@ -199,7 +228,7 @@ impl Brain for RuleBot {
             let capture = obs
                 .pillboxes
                 .iter()
-                .filter(|p| p.owner != Some(obs.player) && (p.owner.is_none() || !p.alive()) && p.pos.dist(me.pos) <= PILLBOY_REACH && safe(p))
+                .filter(|p| p.owner != Some(obs.player) && (p.owner.is_none() || !p.alive()) && p.pos.dist(me.pos) <= PILLBOY_REACH && safe(p) && !self.unreachable_pillboxes.contains(&p.id))
                 .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
             if let Some(p) = capture {
                 cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: p.id } });
@@ -207,7 +236,7 @@ impl Brain for RuleBot {
                 let repair = obs
                     .pillboxes
                     .iter()
-                    .filter(|p| p.owner == Some(obs.player) && p.health < PILLBOX_HEALTH * 0.5 && p.pos.dist(me.pos) <= PILLBOY_REACH)
+                    .filter(|p| p.owner == Some(obs.player) && p.health < PILLBOX_HEALTH * 0.5 && p.pos.dist(me.pos) <= PILLBOY_REACH && !self.unreachable_pillboxes.contains(&p.id))
                     .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
                 if let Some(p) = repair {
                     cmds.push(Command::Deploy { task: PillboyTask::Repair { target: p.id } });
@@ -274,7 +303,7 @@ impl Brain for RuleBot {
                 } else {
                     me.pos + away.scale(3.0) + self.rng.disc().scale(4.0)
                 };
-                cmds.push(Command::Move { to: Self::clamp_to_map(to) });
+                cmds.push(Command::Move { to: obs.clamp(to) });
             }
             return cmds;
         }
@@ -282,8 +311,10 @@ impl Brain for RuleBot {
         // 2. The firing position, and 8. the advance.
         let to_obj = me.pos.dist(objective);
         if to_obj > STANDOFF + 3.0 && stationary {
-            let p = objective + (me.pos - objective).norm().scale(STANDOFF);
-            cmds.push(Command::Move { to: Self::clamp_to_map(p) });
+            let p = obs.clamp(objective + (me.pos - objective).norm().scale(STANDOFF));
+            if !self.unreachable_tiles.contains(&p.tile()) {
+                cmds.push(Command::Move { to: p });
+            }
         } else if to_obj > DEPOT_RADIUS * 0.6 && stationary {
             let settled = self.settled_at.map(|t| obs.tick.saturating_sub(t)).unwrap_or(0) as f32 * DT;
             let quiet = obs.tick.saturating_sub(self.last_contact) as f32 * DT;
@@ -382,7 +413,7 @@ impl Brain for Fortifier {
         }
         self.last_think = obs.tick;
         let home = *self.home.get_or_insert_with(|| obs.depots.iter().filter(|d| d.owner == Some(obs.player)).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).unwrap_or(me.pos));
-        let centre = V2::new(MAP_W as f32 * 0.5, MAP_H as f32 * 0.5);
+        let centre = obs.centre();
         // Sit by the depot, just off it so the squad's rings have room.
         let post = home + (home - centre).norm().scale(1.0);
         if me.pos.dist(post) > 1.5 && me.goal.is_none() {
