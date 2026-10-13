@@ -234,15 +234,21 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                     if let Some(me) = client.player {
                         push_events(&mut view, &events, me);
                     }
-                    // Craters arrive as impact events; the client's copy of
-                    // the map keeps up by applying them.
+                    // Craters arrive as impact events, walls, roads, felled
+                    // forest and mine craters as TerrainChanged; the
+                    // client's copy of the map keeps up by applying them.
                     if let Some(m) = view.map.as_mut() {
                         for e in &events {
-                            if let Event::ShellImpact { at, kind: ShellKind::Indirect, .. } = e {
-                                m.crater(*at);
+                            match e {
+                                Event::ShellImpact { at, kind: ShellKind::Indirect, .. } => m.crater(*at),
+                                Event::TerrainChanged { at, to } => {
+                                    m.set(*at, Terrain::from_u8(*to));
+                                }
+                                _ => {}
                             }
                         }
                     }
+
                     if let Some(obs) = client.take_observation() {
                         view.net.rtt_ms = Some((obs.tick.saturating_sub(client.host_tick) as u32).saturating_mul(1000 / TICK_HZ));
                         if obs.over {
@@ -306,7 +312,7 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::LinkLost { .. } => "link lost: drone returning".into(),
         Event::Chat { player, text } => format!("{}: {}", who(player), text),
         Event::MatchOver { winner } => format!("match over: {}", winner.map(|w| who(&w)).unwrap_or_else(|| "draw".into())),
-        Event::PillboysDeployed { task, .. } => format!("Pillboys out: {}", match task { PillboyTask::Capture { .. } => "capture", PillboyTask::Repair { .. } => "repair", PillboyTask::Build { .. } => "build", PillboyTask::Return => "return" }),
+        Event::PillboysDeployed { task, .. } => format!("Pillboys out: {}", match task { PillboyTask::Capture { .. } => "capture", PillboyTask::Repair { .. } => "repair", PillboyTask::Build { .. } => "build", PillboyTask::Harvest { .. } => "harvest", PillboyTask::Return => "return" }),
         Event::PillboysReturned { .. } => "Pillboys aboard".into(),
         Event::PillboysAbandoned { why, .. } => format!("Pillboys give up: {}", why),
         Event::PillboysHit { owner, lost, left, .. } => format!("{} Pillboys hit: -{} ({} left)", who(owner), lost, left),
@@ -319,6 +325,11 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::PillboxFired { tank, damage, .. } => {
             if Some(*tank) == view.obs.as_ref().and_then(|o| o.me.as_ref()).map(|t| t.id) { format!("pillbox hit you -{:.0}", damage) } else { return None }
         }
+        Event::Built { owner, what, .. } => format!("{} built a {:?}", who(owner), what),
+        Event::Harvested { material, .. } => format!("harvested +{} material", material),
+        Event::MineLaid { .. } => "mine laid".into(),
+        Event::MineExploded { owner, hits, .. } => format!("MINE ({}) {}", who(owner), if hits.is_empty() { "cleared".to_string() } else { format!("hit {}", hits.len()) }),
+        Event::TerrainChanged { .. } => return None,
     })
 }
 

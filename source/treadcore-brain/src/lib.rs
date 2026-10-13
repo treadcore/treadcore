@@ -296,7 +296,161 @@ impl Brain for RuleBot {
     }
 }
 
+// ------------------------------------------------------------ fortifier
+
+/// The smallest brain that plays the brief's defensive game: it stays
+/// at its home depot, keeps two interceptors up, shoots what it sees,
+/// and sets the squad to work: harvest the nearest forest the crew can
+/// see until the tank carries material, then lay a ring of mines round
+/// the depot at radius `MOAT_RADIUS` (no gate: its own mines do not
+/// hurt it), then a ring of walls one tile further out with the tile
+/// toward the map's centre left open as the gate. With `fortify` off it does everything but the squad's work:
+/// the control group for roadmap step 6c's proof.
+pub struct Fortifier {
+    name: String,
+    last_think: Tick,
+    pub fortify: bool,
+    home: Option<V2>,
+    /// Wall tiles already ordered: the Observation carries no map, so
+    /// the brain remembers rather than looks.
+    wall_tries: Vec<(i32, i32)>,
+    /// Tiles the world refused to build on, from its own Rejected
+    /// events; and forest tiles it was told to fell first.
+    blocked: Vec<(i32, i32)>,
+    fell: Vec<V2>,
+}
+
+pub const MOAT_RADIUS: f32 = 3.0;
+
+impl Fortifier {
+    pub fn new(name: &str, fortify: bool) -> Fortifier {
+        Fortifier { name: name.into(), last_think: 0, fortify, home: None, wall_tries: Vec::new(), blocked: Vec::new(), fell: Vec::new() }
+    }
+
+    /// The ring of tiles at `r` round `c`, in the order to lay them: the
+    /// far side first. With `gate`, the tile toward `toward` is left
+    /// out: a wall ring needs a way out, a minefield does not, because a
+    /// tank's own mines never hurt it. The first proof left a gate in
+    /// the moat and the attacker's route came down the road through it.
+    fn ring(c: V2, r: f32, toward: V2, gate: bool) -> Vec<V2> {
+        let mut tiles: Vec<V2> = Vec::new();
+        let ri = r.ceil() as i32;
+        for dy in -ri..=ri {
+            for dx in -ri..=ri {
+                let p = Map::tile_centre(c + V2::new(dx as f32, dy as f32));
+                let d = p.dist(Map::tile_centre(c));
+                if d >= r - 0.5 && d < r + 0.5 {
+                    tiles.push(p);
+                }
+            }
+        }
+        let dir = (toward - c).norm();
+        // Farthest from the gate first; the gate tile itself is skipped.
+        if gate {
+            tiles.retain(|p| (*p - c).norm().dist(dir) > 0.5);
+        }
+        tiles.sort_by(|a, b| (*b - c).norm().dist(dir).partial_cmp(&(*a - c).norm().dist(dir)).unwrap());
+        tiles
+    }
+}
+
+impl Brain for Fortifier {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn think(&mut self, obs: &Observation) -> Vec<Command> {
+        let mut cmds = Vec::new();
+        let Some(me) = obs.me.as_ref() else { return cmds };
+        // Every tick, before the think-rate gate: a refusal lands in the
+        // tick after the order, which is rarely a think tick.
+        // The world says why an order failed, and the brain has no map
+        // to have known. Forest in the ring is felled first (material,
+        // too); anything else is left alone.
+        for e in &obs.events {
+            if let Event::Rejected { cmd: Command::Deploy { task: PillboyTask::Build { at, .. } }, why, .. } = e {
+                if why.starts_with("forest") {
+                    if !self.fell.iter().any(|f| f.tile() == at.tile()) {
+                        self.fell.push(*at);
+                    }
+                } else if !self.blocked.contains(&at.tile()) {
+                    self.blocked.push(at.tile());
+                }
+            }
+        }
+        if !me.alive || obs.tick.saturating_sub(self.last_think) < (TICK_HZ / 4) as Tick {
+            return cmds;
+        }
+        self.last_think = obs.tick;
+        let home = *self.home.get_or_insert_with(|| obs.depots.iter().filter(|d| d.owner == Some(obs.player)).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).unwrap_or(me.pos));
+        let centre = V2::new(MAP_W as f32 * 0.5, MAP_H as f32 * 0.5);
+        // Sit by the depot, just off it so the squad's rings have room.
+        let post = home + (home - centre).norm().scale(1.0);
+        if me.pos.dist(post) > 1.5 && me.goal.is_none() {
+            cmds.push(Command::Move { to: post });
+            return cmds;
+        }
+        // The bubble, and the gun.
+        let my_interceptors = obs.my_drones().filter(|d| d.kind == DroneKind::Interceptor).count();
+        if my_interceptors < 2 && me.bay.interceptor > 0 {
+            cmds.push(Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return });
+        }
+        if let Some(e) = obs.hostile_tanks().min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+            let range = me.pos.dist(e.pos);
+            if me.reload == 0 && me.shells > 0 {
+                if range <= DIRECT_RANGE {
+                    cmds.push(Command::FireDirect { at: e.pos });
+                } else if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&range) {
+                    let lead = V2::from_heading(e.heading).scale(e.speed * range / SHELL_SPEED_INDIRECT * 0.8);
+                    cmds.push(Command::FireIndirect { at: e.pos + lead });
+                }
+            }
+        }
+        // The squad.
+        if !self.fortify || me.pillboys.strength == 0 {
+            return cmds;
+        }
+        if me.pillboys.deployed() || me.goal.is_some() {
+            return cmds;
+        }
+        let known: Vec<(i32, i32)> = obs.mines.iter().filter(|m| m.owner == obs.player).map(|m| m.pos.tile()).collect();
+        // Forest tiles in the rings wait until there is room for their
+        // material: the first version re-ordered a mine onto forest,
+        // was told to fell it, could not (material full), and did it
+        // again four times a second for three minutes.
+        let forest_tiles: Vec<(i32, i32)> = self.fell.iter().map(|f| f.tile()).collect();
+        let open = |p: &V2| !self.blocked.contains(&p.tile()) && !forest_tiles.contains(&p.tile());
+        let moat: Vec<V2> = Self::ring(home, MOAT_RADIUS, centre, false).into_iter().filter(|p| !known.contains(&p.tile()) && open(p)).collect();
+        let walls: Vec<V2> = Self::ring(home, MOAT_RADIUS + 1.0, centre, true).into_iter().filter(|p| open(p) && !self.wall_tries.contains(&p.tile())).collect();
+        if me.pillboys.material + HARVEST_MATERIAL <= PILLBOY_MATERIAL_MAX {
+            if let Some(tree) = self.fell.first().copied() {
+                self.fell.remove(0);
+                cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: tree } });
+                return cmds;
+            }
+        }
+        // Material first: a harvest is four, a mine one.
+        if me.pillboys.material < 1 || (me.pillboys.material < 4 && !moat.is_empty() && me.pillboys.material < moat.len() as u8) {
+            if let Some(tree) = obs.forest.first() {
+                cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: *tree } });
+                return cmds;
+            }
+        }
+        if let Some(at) = moat.first() {
+            cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Mine, at: *at } });
+            return cmds;
+        }
+        // Walls: the Observation has no map, so try each tile in turn;
+        // a refused order (already a wall) costs nothing but a tick.
+        if let Some(at) = walls.first().copied() {
+            self.wall_tries.push(at.tile());
+            cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Wall, at } });
+        }
+        cmds
+    }
+}
+
 // ------------------------------------------------------------- json brain
+
 
 /// An external program as a Brain. Each tick the observation goes out as
 /// one line of JSON on its stdin; it answers with one line: a JSON array
@@ -431,8 +585,92 @@ mod tests {
         assert!(alive.0 >= alive.1, "capturers did not outlive: {} vs {}", alive.0, alive.1);
     }
 
+    /// Roadmap step 6c's proof: a fortified depot survives a scripted
+    /// attack longer than a bare one, over twenty seeds. Two seats: the
+    /// Fortifier at its home depot, and an attacker that drives for that
+    /// depot after a grace period and fires at what it sees. Measured:
+    /// the tick the defender dies, or the time limit; and whether the
+    /// attacker died. The margin is printed so a trace can show it.
+    #[test]
+    fn fortification_pays() {
+        struct Attacker {
+            target: V2,
+            start: Tick,
+            last: Tick,
+        }
+        impl Brain for Attacker {
+            fn name(&self) -> &str {
+                "attacker"
+            }
+            fn think(&mut self, obs: &Observation) -> Vec<Command> {
+                let mut c = Vec::new();
+                let Some(me) = obs.me.as_ref() else { return c };
+                if obs.tick < self.start || obs.tick.saturating_sub(self.last) < 5 {
+                    return c;
+                }
+                self.last = obs.tick;
+                if let Some(e) = obs.hostile_tanks().next() {
+                    if me.reload == 0 && me.shells > 0 {
+                        let r = me.pos.dist(e.pos);
+                        if r <= DIRECT_RANGE {
+                            c.push(Command::FireDirect { at: e.pos });
+                        } else if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&r) {
+                            c.push(Command::FireIndirect { at: e.pos });
+                        }
+                    }
+                }
+                if me.goal.is_none() && me.pos.dist(self.target) > 1.0 {
+                    c.push(Command::Move { to: self.target });
+                }
+                c
+            }
+        }
+        let grace = 150 * TICK_HZ as Tick;
+        let limit = 6 * 60 * TICK_HZ as Tick;
+        let mut survived = (0u64, 0u64);
+        let mut defender_alive = (0u32, 0u32);
+        let mut attacker_dead = (0u32, 0u32);
+        let mut built = (0u32, 0u32);
+        for seed in 0..20u64 {
+            for fortify in [true, false] {
+                let scenario = Scenario { seed: 0xF0F7_0000 + seed * 104_729, swarm_interval: 0, time_limit: limit, ..Scenario::bots(2) };
+                let mut w = World::new(scenario);
+                w.pillboxes.clear();
+                let depot = w.depots.iter().find(|d| d.owner == Some(0)).unwrap().pos;
+                let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = vec![(0, Box::new(Fortifier::new("fort", fortify))), (1, Box::new(Attacker { target: depot, start: grace, last: 0 }))];
+                let mut died_at = limit;
+                let mut things = 0u32;
+                while !w.over {
+                    let orders = run_bots(&w, &mut bots);
+                    w.step(&orders);
+                    things += w.events.iter().filter(|e| matches!(e, Event::Built { .. })).count() as u32;
+                    if !w.players[0].alive && died_at == limit {
+                        died_at = w.tick;
+                    }
+                }
+                let slot = if fortify { &mut survived.0 } else { &mut survived.1 };
+                *slot += died_at;
+                if w.players[0].alive {
+                    if fortify { defender_alive.0 += 1 } else { defender_alive.1 += 1 }
+                }
+                if !w.players[1].alive {
+                    if fortify { attacker_dead.0 += 1 } else { attacker_dead.1 += 1 }
+                }
+                if fortify { built.0 += things } else { built.1 += things }
+            }
+        }
+        eprintln!(
+            "fortification_pays over 20 seeds: defender survived to tick {} vs {} (of {} max); defender alive {}:{}  attacker dead {}:{}  things built {}:{}",
+            survived.0, survived.1, limit * 20, defender_alive.0, defender_alive.1, attacker_dead.0, attacker_dead.1, built.0, built.1
+        );
+        assert!(built.0 >= 60, "the fortifier barely built anything: {}", built.0);
+        assert!(survived.0 > survived.1, "fortified did not outlive bare: {} vs {}", survived.0, survived.1);
+        assert!(defender_alive.0 >= defender_alive.1);
+    }
+
     #[test]
     fn bots_fight_to_a_result() {
+
 
         let scenario = Scenario { swarm_interval: 30 * TICK_HZ, time_limit: 6 * 60 * TICK_HZ as Tick, ..Scenario::default() };
         let mut w = World::new(scenario);

@@ -69,6 +69,7 @@ pub fn terrain_color(t: Terrain) -> Color {
         Terrain::Bridge => Color::srgb(0.55, 0.47, 0.33),
         Terrain::Rubble => Color::srgb(0.30, 0.26, 0.22),
         Terrain::Depot => Color::srgb(0.55, 0.55, 0.50),
+        Terrain::Wall => Color::srgb(0.62, 0.58, 0.50),
     }
 }
 
@@ -238,7 +239,13 @@ fn sync_entities(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sp
         let label = if p.alive() { format!("pb {:.0}", p.health) } else { "pb dead".to_string() };
         place(&mut commands, p.id, to_screen(p.pos), 0.785, Vec2::splat(TILE * 1.0), c, 1.5, Some((label, c)));
     }
+    // Mines I know about: mine in my colour, found hostile ones red.
+    for m in &obs.mines {
+        let c = if m.owner == me { player_color(me).with_alpha(0.9) } else { Color::srgb(1.0, 0.3, 0.25) };
+        place(&mut commands, m.id, to_screen(m.pos), 0.785, Vec2::splat(TILE * 0.4), c, 1.2, None);
+    }
     // Squads out in the field: a small figure in the owner's colour,
+
     // keyed by the tank id with a high bit so it never collides.
     for t in obs.tanks.iter().filter(|t| t.alive && t.pillboys.deployed()) {
         let c = player_color(t.owner);

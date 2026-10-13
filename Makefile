@@ -61,8 +61,10 @@ GAME     ?= treadcore
 WANT     ?= 4
 PEER     ?=
 PLAYERS  ?= 16
+# Of the bot seats, how many dig in (Fortifier) rather than attack (RuleBot).
+DEFENDERS ?= 0
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS JOBS VERBOSE
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS JOBS VERBOSE
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'

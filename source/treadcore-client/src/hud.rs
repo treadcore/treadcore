@@ -92,6 +92,9 @@ R              recall all drones
 4              Pillboys: capture (or repair) the pillbox under cursor
 5              Pillboys: build a pillbox at cursor
 6              Pillboys: return
+7 / 8 / 9      Pillboys: wall / mine / road (bridge on water) at cursor
+0              Pillboys: harvest the forest at cursor
+
 [ / ]          bubble radius - / +
 
 space          stop
@@ -123,7 +126,8 @@ fn telemetry(view: &View) -> String {
         (_, true) => "aboard".to_string(),
         (Some(PillboyTask::Capture { .. }), false) => format!("CAPTURING {}%", sq.progress as u32 * 100 / PILLBOX_CAPTURE_TICKS as u32),
         (Some(PillboyTask::Repair { .. }), false) => format!("REPAIRING {}%", sq.progress as u32 * 100 / PILLBOX_REPAIR_TICKS as u32),
-        (Some(PillboyTask::Build { .. }), false) => format!("BUILDING {}%", sq.progress as u32 * 100 / PILLBOX_BUILD_TICKS as u32),
+        (Some(PillboyTask::Build { what, .. }), false) => format!("BUILDING {:?} {}%", what, sq.progress as u32 * 100 / what.ticks() as u32),
+        (Some(PillboyTask::Harvest { .. }), false) => format!("HARVESTING {}%", sq.progress as u32 * 100 / HARVEST_TICKS as u32),
         (Some(PillboyTask::Return), false) => "returning".to_string(),
         (None, false) => "out".to_string(),
     };

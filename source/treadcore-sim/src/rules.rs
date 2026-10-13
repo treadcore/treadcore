@@ -94,10 +94,52 @@ pub const PILLBOY_MAX: u8 = 4;
 /// squad is the slow part of every order, which is what makes an order
 /// a decision.
 pub const PILLBOY_SPEED: f32 = 1.5;
-/// Material the tank carries for the squad: pillbox repairs and new
-/// emplacements. Restocked at depots; harvested from forest later (6c).
-pub const PILLBOY_MATERIAL_MAX: u8 = 4;
+/// Material the tank carries for the squad: trees. Harvested from
+/// forest by the squad (`HARVEST_MATERIAL` a tile), restocked one at a
+/// time at depots. Eight is a ring of mines, or four walls and a
+/// pillbox.
+pub const PILLBOY_MATERIAL_MAX: u8 = 8;
 pub const PILLBOY_MATERIAL_START: u8 = 2;
+/// Harvesting: the squad stands in a forest tile for this long, the
+/// tile becomes grass, the tank gains this much material.
+pub const HARVEST_TICKS: u16 = 4 * TICK_HZ as u16;
+pub const HARVEST_MATERIAL: u8 = 4;
+/// What the squad builds, how long, for how much. Bolo's costs were
+/// half a tree for a road and a wall; here material is whole and a
+/// harvest is four, so a wall is a quarter of a tree.
+pub const WALL_BUILD_TICKS: u16 = 3 * TICK_HZ as u16;
+pub const WALL_COST: u8 = 1;
+pub const ROAD_BUILD_TICKS: u16 = 3 * TICK_HZ as u16;
+pub const ROAD_COST: u8 = 1;
+pub const MINE_LAY_TICKS: u16 = 3 * TICK_HZ as u16;
+pub const MINE_COST: u8 = 1;
+/// Within this of a wall or mine site the squad works from beside it,
+/// never on it.
+pub const BUILD_STANDOFF: f32 = 1.6;
+/// A mine: Bolo's, laid by the squad. Hidden from everyone but its
+/// layer until a tank or squad comes within `MINE_REVEAL`; set off by a
+/// tank or squad on its tile, by a shell's splash, or by a neighbour on
+/// an orthogonally adjacent tile (a chequerboard does not chain). The
+/// tank on it takes `MINE_DAMAGE`; anything within `MINE_RADIUS` takes
+/// `MINE_SPLASH_DAMAGE`; a squad in the blast is lost; the tile craters.
+/// Drones ignore mines entirely: a moat is no defence against the air.
+pub const MINE_REVEAL: f32 = 1.5;
+pub const MINE_DAMAGE: f32 = 50.0;
+pub const MINE_RADIUS: f32 = 1.5;
+pub const MINE_SPLASH_DAMAGE: f32 = 20.0;
+/// Route cost for a tile holding a mine the driver knows about: all but
+/// a wall.
+pub const MINE_AVOID_COST: f32 = 50.0;
+/// How far the crew can see the trees: the forest tiles an Observation
+/// lists for a Brain that has no map.
+pub const FOREST_SIGHT: f32 = 20.0;
+/// A pillbox holds shells for its owner's tank, like a small depot:
+
+/// a tank within `DEPOT_RADIUS` of its own live pillbox takes one a
+/// resupply cycle while they last; they come back slowly.
+pub const PILLBOX_SHELLS: u16 = 8;
+pub const PILLBOX_SHELL_REGEN_TICKS: u64 = 10 * TICK_HZ as u64;
+
 /// A shell's splash over a deployed squad costs it this many Pillboys.
 pub const PILLBOY_SPLASH_LOSS: u8 = 2;
 /// Within this of the tank the squad is back aboard.

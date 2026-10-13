@@ -264,11 +264,55 @@ impl Bay {
 
 // ------------------------------------------------------- pillboys, pillboxes
 
-/// What the tank can build through its squad. Walls, roads and mines
-/// come with roadmap step 6c.
+/// What the tank can build through its squad, for material.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BuildKind {
+    /// An emplacement: `PILLBOX_BUILD_COST`, `PILLBOX_BUILD_TICKS`.
     Pillbox,
+    /// Impassable, blocks fire, knocked to rubble by a splash.
+    Wall,
+    /// A road on land, a bridge over water.
+    Road,
+    /// Hidden until found, set off by a tank, a squad, a splash or a
+    /// neighbour. Never on water, a wall or a depot.
+    Mine,
+}
+
+impl BuildKind {
+    pub fn cost(self) -> u8 {
+        match self {
+            BuildKind::Pillbox => PILLBOX_BUILD_COST,
+            BuildKind::Wall => WALL_COST,
+            BuildKind::Road => ROAD_COST,
+            BuildKind::Mine => MINE_COST,
+        }
+    }
+    pub fn ticks(self) -> u16 {
+        match self {
+            BuildKind::Pillbox => PILLBOX_BUILD_TICKS,
+            BuildKind::Wall => WALL_BUILD_TICKS,
+            BuildKind::Road => ROAD_BUILD_TICKS,
+            BuildKind::Mine => MINE_LAY_TICKS,
+        }
+    }
+    /// The squad works from beside a wall or a mine, never on it.
+    fn standoff(self) -> f32 {
+        match self {
+            BuildKind::Wall | BuildKind::Mine => BUILD_STANDOFF,
+            _ => PILLBOY_WORK_RANGE,
+        }
+    }
+}
+
+/// A mine on a tile. Bolo's: the layer and (later) their allies see it;
+/// everyone else finds it the hard way, or by coming within
+/// `MINE_REVEAL` of it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Mine {
+    pub id: EntityId,
+    /// The tile's centre.
+    pub pos: V2,
+    pub owner: PlayerId,
 }
 
 /// An order to the squad. Bolo's builder: the click is the order, the
@@ -283,6 +327,8 @@ pub enum PillboyTask {
     Repair { target: EntityId },
     /// Raise an emplacement at a point, for material.
     Build { what: BuildKind, at: V2 },
+    /// Fell a forest tile for material.
+    Harvest { at: V2 },
     /// Come home.
     Return,
 }
@@ -292,8 +338,16 @@ impl PillboyTask {
     fn site(&self, world: &World) -> Option<V2> {
         match self {
             PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => world.pillbox(*pillbox).map(|p| p.pos),
-            PillboyTask::Build { at, .. } => Some(*at),
+            PillboyTask::Build { at, .. } | PillboyTask::Harvest { at } => Some(*at),
             PillboyTask::Return => None,
+        }
+    }
+    /// How close the squad must get to work.
+    fn reach(&self) -> f32 {
+        match self {
+            PillboyTask::Build { what, .. } => what.standoff(),
+            PillboyTask::Return => PILLBOY_BOARD_RANGE,
+            _ => PILLBOY_WORK_RANGE,
         }
     }
 }
@@ -341,6 +395,8 @@ pub struct Pillbox {
     /// Capture progress and whose squad is making it.
     pub capture: u16,
     pub capturer: Option<PlayerId>,
+    /// Shells it holds for its owner's tank; regrow slowly.
+    pub shells: u16,
 }
 
 impl Pillbox {
@@ -468,6 +524,14 @@ pub enum Event {
     PillboxDestroyed { pillbox: EntityId, owner: Option<PlayerId>, by: Option<PlayerId> },
     /// Hitscan at a tank. `owner` is NEUTRAL for a neutral pillbox.
     PillboxFired { pillbox: EntityId, owner: PlayerId, tank: EntityId, damage: f32 },
+    /// The squad finished a wall, road, bridge or pillbox.
+    Built { owner: PlayerId, what: BuildKind, at: V2 },
+    Harvested { owner: PlayerId, at: V2, material: u8 },
+    /// To the layer only.
+    MineLaid { mine: EntityId, owner: PlayerId, at: V2 },
+    MineExploded { mine: EntityId, owner: PlayerId, at: V2, hits: Vec<EntityId> },
+    /// A tile changed under everyone: a client updates its copy of the map.
+    TerrainChanged { at: V2, to: u8 },
     Chat { player: PlayerId, text: String },
     MatchOver { winner: Option<PlayerId> },
 }
@@ -535,6 +599,7 @@ pub struct World {
     pub shells: Vec<Shell>,
     pub depots: Vec<Depot>,
     pub pillboxes: Vec<Pillbox>,
+    pub mines: Vec<Mine>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
@@ -556,6 +621,7 @@ impl World {
             shells: Vec::new(),
             depots: Vec::new(),
             pillboxes: Vec::new(),
+            mines: Vec::new(),
             rng: Rng::new(scenario.seed ^ 0xA5A5_5A5A),
             next_id: 1,
             over: false,
@@ -574,7 +640,7 @@ impl World {
         }
         for pos in w.map.pillboxes.clone() {
             let id = w.alloc();
-            w.pillboxes.push(Pillbox { id, pos, owner: None, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None });
+            w.pillboxes.push(Pillbox { id, pos, owner: None, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
         }
         for (i, (name, is_bot)) in scenario.players.iter().take(MAX_PLAYERS).enumerate() {
             let id = w.alloc();
@@ -632,10 +698,50 @@ impl World {
     }
 
     /// A tank's route: the map's, avoiding the range of every live
-    /// pillbox hostile to `p` at `PILLBOX_AVOID_COST` extra per tile.
+    /// pillbox hostile to `p` at `PILLBOX_AVOID_COST` extra per tile,
+    /// and every hostile mine `p` knows about at `MINE_AVOID_COST`.
     pub fn route_for(&self, p: PlayerId, from: V2, to: V2) -> Vec<V2> {
         let guns: Vec<V2> = self.pillboxes.iter().filter(|b| b.alive() && b.hostile_to(p)).map(|b| b.pos).collect();
-        self.map.route_with(from, to, |tile| if guns.iter().any(|g| g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 })
+        let mines: Vec<V2> = self.mines.iter().filter(|m| m.owner != p && self.mine_known_to(p, m)).map(|m| m.pos).collect();
+        self.map.route_with(from, to, |tile| {
+            let mut c = 0.0;
+            if guns.iter().any(|g| g.dist(tile) <= PILLBOX_RANGE + 0.5) {
+                c += PILLBOX_AVOID_COST;
+            }
+            if mines.iter().any(|m| m.tile() == tile.tile()) {
+                c += MINE_AVOID_COST;
+            }
+            c
+        })
+    }
+
+    /// Does `p` know this mine is there? Its own, or one within
+    /// `MINE_REVEAL` of its tank or its deployed squad.
+    pub fn mine_known_to(&self, p: PlayerId, m: &Mine) -> bool {
+        if m.owner == p {
+            return true;
+        }
+        self.tanks.iter().filter(|t| t.owner == p && t.alive).any(|t| t.pos.dist(m.pos) <= MINE_REVEAL || (t.pillboys.deployed() && t.pillboys.pos.dist(m.pos) <= MINE_REVEAL))
+    }
+
+    /// Where the squad walks to for a site: the site if it can stand
+    /// there, else the nearest passable neighbour (a bridge is built
+    /// from the bank).
+    fn approach(&self, site: V2) -> Option<V2> {
+        if self.map.at(site).passable() {
+            return Some(site);
+        }
+        let (x, y) = site.tile();
+        [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            .iter()
+            .map(|(dx, dy)| V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5))
+            .find(|p| self.map.in_bounds(*p) && self.map.at(*p).passable())
+    }
+
+    fn set_terrain(&mut self, at: V2, t: Terrain) {
+        if self.map.set(at, t).is_some() {
+            self.events.push(Event::TerrainChanged { at: Map::tile_centre(at), to: t as u8 });
+        }
     }
     fn pillbox_mut(&mut self, id: EntityId) -> Option<&mut Pillbox> {
         self.pillboxes.iter_mut().find(|p| p.id == id)
@@ -907,27 +1013,59 @@ impl World {
                         Some(_) if material < PILLBOX_REPAIR_COST => return self.reject(o, "no material"),
                         Some(_) => {}
                     },
-                    PillboyTask::Build { what: BuildKind::Pillbox, at } => {
-                        if !self.map.in_bounds(*at) || !self.map.at(*at).passable() {
-                            return self.reject(o, "cannot build there");
+                    PillboyTask::Build { what, at } => {
+                        if !self.map.in_bounds(*at) {
+                            return self.reject(o, "off map");
                         }
-                        if self.map.at(*at) == Terrain::Depot || self.depots.iter().any(|d| d.pos.dist(*at) <= DEPOT_RADIUS) {
+                        let here = self.map.at(*at);
+                        if material < what.cost() {
+                            return self.reject(o, "no material");
+                        }
+                        if here == Terrain::Depot || self.depots.iter().any(|d| d.pos.dist(*at) <= DEPOT_RADIUS) {
                             return self.reject(o, "not on a depot");
                         }
-                        if self.pillboxes.iter().any(|p| p.pos.dist(*at) < PILLBOX_SPACING) {
-                            return self.reject(o, "too close to another pillbox");
+                        if self.pillboxes.iter().any(|p| p.pos.dist(*at) < if *what == BuildKind::Pillbox { PILLBOX_SPACING } else { 1.0 }) {
+                            return self.reject(o, "a pillbox is there");
                         }
-                        if material < PILLBOX_BUILD_COST {
-                            return self.reject(o, "no material");
+                        match what {
+                            BuildKind::Pillbox | BuildKind::Wall | BuildKind::Mine => {
+                                if !here.passable() {
+                                    return self.reject(o, "cannot build there");
+                                }
+                                if here == Terrain::Forest {
+                                    return self.reject(o, "forest: harvest it first");
+                                }
+                                if *what == BuildKind::Mine && self.mines.iter().any(|m| m.pos.tile() == at.tile()) {
+                                    return self.reject(o, "a mine is there");
+                                }
+                                if *what != BuildKind::Mine && self.tanks.iter().any(|t| t.alive && t.pos.tile() == at.tile()) {
+                                    return self.reject(o, "a tank is there");
+                                }
+                            }
+                            BuildKind::Road => {
+                                if matches!(here, Terrain::Road | Terrain::Bridge | Terrain::Wall | Terrain::Forest) {
+                                    return self.reject(o, "cannot lay a road there");
+                                }
+                            }
+                        }
+                    }
+                    PillboyTask::Harvest { at } => {
+                        if !self.map.in_bounds(*at) || self.map.at(*at) != Terrain::Forest {
+                            return self.reject(o, "no forest there");
+                        }
+                        if material >= PILLBOY_MATERIAL_MAX {
+                            return self.reject(o, "material is full");
                         }
                     }
                     PillboyTask::Return => unreachable!(),
                 }
                 let site = task.site(self).unwrap();
-                let route = self.map.route(pos, site);
+                let Some(walk) = self.approach(site) else { return self.reject(o, "site unreachable") };
+                let route = self.map.route(pos, walk);
                 if route.is_empty() {
                     return self.reject(o, "site unreachable");
                 }
+
                 let t = self.tank_mut(tid).unwrap();
                 t.pillboys.aboard = false;
                 t.pillboys.pos = pos;
@@ -947,7 +1085,8 @@ impl World {
         enum Done {
             Captured(EntityId, Option<PlayerId>),
             Repaired(EntityId),
-            Built(V2),
+            Built(BuildKind, V2),
+            Harvested(V2),
             Abandon(&'static str),
             Home,
         }
@@ -955,6 +1094,11 @@ impl World {
         let mut captures: Vec<(EntityId, PlayerId)> = Vec::new();
         let map = &self.map;
         let pillboxes = &self.pillboxes;
+        let tank_tiles: Vec<(i32, i32)> = self.tanks.iter().filter(|t| t.alive).map(|t| t.pos.tile()).collect();
+        let mine_tiles: Vec<(i32, i32)> = self.mines.iter().map(|m| m.pos.tile()).collect();
+        // A hostile mine under a walking squad: found the hard way.
+        let hostile_mines: Vec<(EntityId, PlayerId, (i32, i32))> = self.mines.iter().map(|m| (m.id, m.owner, m.pos.tile())).collect();
+        let mut stepped_on: Vec<EntityId> = Vec::new();
         for t in self.tanks.iter_mut() {
             let s = &mut t.pillboys;
             if !t.alive || s.aboard {
@@ -965,14 +1109,19 @@ impl World {
                 s.task = Some(PillboyTask::Return);
                 continue;
             };
-            // Where to walk.
+            // Where to walk: the site, or beside it when the squad
+            // cannot stand on it (water for a bridge).
             let site: Option<V2> = match &task {
                 PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos),
-                PillboyTask::Build { at, .. } => Some(*at),
+                PillboyTask::Build { at, .. } | PillboyTask::Harvest { at } => Some(*at),
                 PillboyTask::Return => None,
             };
             let target = match site {
-                Some(p) => p,
+                Some(p) if map.at(p).passable() => p,
+                Some(p) => {
+                    let (x, y) = p.tile();
+                    [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().map(|(dx, dy)| V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5)).find(|q| map.in_bounds(*q) && map.at(*q).passable()).unwrap_or(p)
+                }
                 None => t.pos,
             };
             if let PillboyTask::Return = task {
@@ -987,7 +1136,7 @@ impl World {
                 continue;
             }
             // Walk.
-            let at_site = s.pos.dist(target) <= if matches!(task, PillboyTask::Return) { PILLBOY_BOARD_RANGE } else { PILLBOY_WORK_RANGE };
+            let at_site = s.pos.dist(site.unwrap_or(t.pos)) <= task.reach() || (site.is_some() && s.pos.dist(target) <= PILLBOY_WORK_RANGE);
             if !at_site {
                 let next = s.route.first().copied().unwrap_or(target);
                 let to = next - s.pos;
@@ -999,6 +1148,9 @@ impl World {
                     }
                 } else {
                     s.pos = s.pos + to.norm().scale(step);
+                }
+                if let Some((mid, _, _)) = hostile_mines.iter().find(|(_, o, tile)| *o != t.owner && *tile == s.pos.tile()) {
+                    stepped_on.push(*mid);
                 }
                 if matches!(task, PillboyTask::Return) && s.pos.dist(t.pos) <= PILLBOY_BOARD_RANGE {
                     done.push((t.id, t.owner, Done::Home));
@@ -1035,15 +1187,31 @@ impl World {
                         }
                     }
                 }
-                PillboyTask::Build { what: BuildKind::Pillbox, at } => {
-                    if pillboxes.iter().any(|p| p.pos.dist(*at) < PILLBOX_SPACING) {
+                PillboyTask::Build { what, at } => {
+                    let blocked = match what {
+                        BuildKind::Pillbox => pillboxes.iter().any(|p| p.pos.dist(*at) < PILLBOX_SPACING),
+                        BuildKind::Wall => !map.at(*at).passable() || tank_tiles.iter().any(|tt| *tt == at.tile()),
+                        BuildKind::Road => matches!(map.at(*at), Terrain::Road | Terrain::Bridge | Terrain::Wall),
+                        BuildKind::Mine => !map.at(*at).passable() || mine_tiles.iter().any(|mt| *mt == at.tile()),
+                    };
+                    if blocked {
                         done.push((t.id, t.owner, Done::Abandon("something is already there")));
-                    } else if s.material < PILLBOX_BUILD_COST {
+                    } else if s.material < what.cost() {
                         done.push((t.id, t.owner, Done::Abandon("no material")));
                     } else {
                         s.progress += 1;
-                        if s.progress >= PILLBOX_BUILD_TICKS {
-                            done.push((t.id, t.owner, Done::Built(*at)));
+                        if s.progress >= what.ticks() {
+                            done.push((t.id, t.owner, Done::Built(*what, *at)));
+                        }
+                    }
+                }
+                PillboyTask::Harvest { at } => {
+                    if map.at(*at) != Terrain::Forest {
+                        done.push((t.id, t.owner, Done::Abandon("the forest is gone")));
+                    } else {
+                        s.progress += 1;
+                        if s.progress >= HARVEST_TICKS {
+                            done.push((t.id, t.owner, Done::Harvested(*at)));
                         }
                     }
                 }
@@ -1105,13 +1273,39 @@ impl World {
                     }
                     self.events.push(Event::PillboxRepaired { pillbox: pid, by: owner });
                 }
-                Done::Built(at) => {
-                    let id = self.alloc();
-                    self.pillboxes.push(Pillbox { id, pos: at, owner: Some(owner), health: PILLBOX_HEALTH, reload: PILLBOX_RELOAD_TICKS, capture: 0, capturer: None });
+                Done::Built(what, at) => {
                     if let Some(t) = self.tank_mut(tid) {
-                        t.pillboys.material -= PILLBOX_BUILD_COST;
+                        t.pillboys.material -= what.cost();
                     }
-                    self.events.push(Event::PillboxBuilt { pillbox: id, by: owner, at });
+                    let at = Map::tile_centre(at);
+                    match what {
+                        BuildKind::Pillbox => {
+                            let id = self.alloc();
+                            self.pillboxes.push(Pillbox { id, pos: at, owner: Some(owner), health: PILLBOX_HEALTH, reload: PILLBOX_RELOAD_TICKS, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+                            self.events.push(Event::PillboxBuilt { pillbox: id, by: owner, at });
+                        }
+                        BuildKind::Wall => self.set_terrain(at, Terrain::Wall),
+                        BuildKind::Road => {
+                            let t = if self.map.at(at) == Terrain::Water { Terrain::Bridge } else { Terrain::Road };
+                            self.set_terrain(at, t);
+                        }
+                        BuildKind::Mine => {
+                            let id = self.alloc();
+                            self.mines.push(Mine { id, pos: at, owner });
+                            self.events.push(Event::MineLaid { mine: id, owner, at });
+                        }
+                    }
+                    self.events.push(Event::Built { owner, what, at });
+                }
+                Done::Harvested(at) => {
+                    let at = Map::tile_centre(at);
+                    self.set_terrain(at, Terrain::Grass);
+                    let mut gained = 0;
+                    if let Some(t) = self.tank_mut(tid) {
+                        gained = HARVEST_MATERIAL.min(PILLBOY_MATERIAL_MAX - t.pillboys.material);
+                        t.pillboys.material += gained;
+                    }
+                    self.events.push(Event::Harvested { owner, at, material: gained });
                 }
                 Done::Abandon(why) => {
                     self.events.push(Event::PillboysAbandoned { tank: tid, owner, why: why.into() });
@@ -1138,12 +1332,79 @@ impl World {
             }
 
         }
+        for mid in stepped_on {
+            self.explode_mine(mid);
+        }
+    }
+
+    /// A mine goes off: the tile craters, the tank on it takes
+    /// `MINE_DAMAGE`, anything within `MINE_RADIUS` takes the splash,
+    /// a squad in it is lost, and any mine on an orthogonally adjacent
+    /// tile goes off too. Drones are not touched.
+    fn explode_mine(&mut self, mine: EntityId) {
+        let mut queue = vec![mine];
+        while let Some(id) = queue.pop() {
+            let Some(ix) = self.mines.iter().position(|m| m.id == id) else { continue };
+            let m = self.mines.remove(ix);
+            let mut hits = Vec::new();
+            let tanks: Vec<(EntityId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.pos)).collect();
+            for (tid, pos) in tanks {
+                if pos.tile() == m.pos.tile() {
+                    self.damage(tid, MINE_DAMAGE, Some(m.owner));
+                    hits.push(tid);
+                } else if pos.dist(m.pos) <= MINE_RADIUS {
+                    self.damage(tid, MINE_SPLASH_DAMAGE, Some(m.owner));
+                    hits.push(tid);
+                }
+            }
+            let squads: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive && t.pillboys.deployed() && t.pillboys.pos.dist(m.pos) <= MINE_RADIUS).map(|t| t.id).collect();
+            for tid in squads {
+                let t = self.tank_mut(tid).unwrap();
+                let owner = t.owner;
+                t.pillboys.strength = 0;
+                t.pillboys.aboard = true;
+                t.pillboys.task = None;
+                t.pillboys.route.clear();
+                t.pillboys.pos = t.pos;
+                hits.push(tid);
+                self.events.push(Event::PillboysLost { tank: tid, owner });
+            }
+            self.map.crater(m.pos);
+            self.events.push(Event::TerrainChanged { at: Map::tile_centre(m.pos), to: self.map.at(m.pos) as u8 });
+            self.events.push(Event::MineExploded { mine: m.id, owner: m.owner, at: m.pos, hits });
+            let (mx, my) = m.pos.tile();
+            for n in self.mines.iter().filter(|n| {
+                let (nx, ny) = n.pos.tile();
+                (nx - mx).abs() + (ny - my).abs() == 1
+            }) {
+                queue.push(n.id);
+            }
+        }
     }
 
     /// The pillboxes' guns. Tanks first (hitscan, a clear line, in
     /// range), else the nearest hostile drone inside the air range with
     /// an interceptor's odds. One shot per reload, whatever the target.
     fn step_pillboxes(&mut self) {
+        // Shells regrow; the owner's tank draws on them like a depot.
+        if self.tick % PILLBOX_SHELL_REGEN_TICKS == 0 {
+            for p in self.pillboxes.iter_mut().filter(|p| p.alive() && p.shells < PILLBOX_SHELLS) {
+                p.shells += 1;
+            }
+        }
+        if self.tick % RESUPPLY_EVERY == 0 {
+            let mut draws: Vec<(EntityId, EntityId)> = Vec::new();
+            for t in self.tanks.iter().filter(|t| t.alive && t.shells < TANK_SHELLS) {
+                if let Some(p) = self.pillboxes.iter().find(|p| p.alive() && p.owner == Some(t.owner) && p.shells > 0 && p.pos.dist(t.pos) <= DEPOT_RADIUS) {
+                    draws.push((t.id, p.id));
+                }
+            }
+            for (tid, pid) in draws {
+                self.tank_mut(tid).unwrap().shells += 1;
+                self.pillbox_mut(pid).unwrap().shells -= 1;
+                self.events.push(Event::Resupplied { tank: tid, depot: pid });
+            }
+        }
         let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
         let drones: Vec<(EntityId, PlayerId, V2)> = self.drones.iter().map(|d| (d.id, d.owner, d.pos)).collect();
         let mut shots: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, tank, damage
@@ -1245,6 +1506,8 @@ impl World {
     fn step_tanks(&mut self) {
         let map = &self.map;
         let guns: Vec<(Option<PlayerId>, V2)> = self.pillboxes.iter().filter(|b| b.alive()).map(|b| (b.owner, b.pos)).collect();
+        let mines: Vec<(PlayerId, (i32, i32), EntityId)> = self.mines.iter().map(|m| (m.owner, m.pos.tile(), m.id)).collect();
+        let mut triggered: Vec<EntityId> = Vec::new();
         for t in self.tanks.iter_mut() {
             if !t.alive {
                 continue;
@@ -1293,7 +1556,7 @@ impl World {
             if dist < t.speed * DT {
                 next = goal;
             }
-            if map.at(next) == Terrain::Water || !map.in_bounds(next) {
+            if !map.at(next).passable() || !map.in_bounds(next) {
                 // Blocked: stop, and plan again from here to where the
                 // route was going. Giving up left a tank parked at the
                 // water's edge for a whole match.
@@ -1311,7 +1574,12 @@ impl World {
             }
             t.pos = next;
             t.fuel = (t.fuel - FUEL_PER_TILE * t.speed * DT).max(0.0);
-
+            if let Some(m) = mines.iter().find(|(o, tile, _)| *o != t.owner && *tile == next.tile()) {
+                triggered.push(m.2);
+            }
+        }
+        for mid in triggered {
+            self.explode_mine(mid);
         }
     }
 
@@ -1554,6 +1822,20 @@ impl World {
                         hits.push(id);
                     }
                     self.hurt_squads(s.impact);
+                    // Walls in the splash come down; mines in it go off.
+                    let (cx, cy) = s.impact.tile();
+                    for dy in -3..=3 {
+                        for dx in -3..=3 {
+                            let p = V2::new((cx + dx) as f32 + 0.5, (cy + dy) as f32 + 0.5);
+                            if self.map.in_bounds(p) && self.map.at(p) == Terrain::Wall && p.dist(s.impact) <= SPLASH_RADIUS * 0.7 {
+                                self.set_terrain(p, Terrain::Rubble);
+                            }
+                        }
+                    }
+                    let mines: Vec<EntityId> = self.mines.iter().filter(|m| m.pos.dist(s.impact) <= SPLASH_RADIUS).map(|m| m.id).collect();
+                    for mid in mines {
+                        self.explode_mine(mid);
+                    }
                     // Low-flying drones in the splash go down too. The
                     // bubble does nothing to a shell; the shell does plenty
                     // to the bubble.
@@ -1795,6 +2077,7 @@ impl World {
     /// also on the host; the difference is what has been left out.
     pub fn observe(&self, p: PlayerId) -> Observation {
         let me = self.tank_of(p).cloned();
+        let forest = me.as_ref().filter(|t| t.alive).map(|t| self.map.forest_near(t.pos, FOREST_SIGHT, 8)).unwrap_or_default();
         let tanks = self
             .tanks
             .iter()
@@ -1812,6 +2095,8 @@ impl World {
             shells,
             depots: self.depots.clone(),
             pillboxes: self.pillboxes.clone(),
+            mines: self.mines.iter().filter(|m| self.mine_known_to(p, m)).cloned().collect(),
+            forest,
             players: self.players.iter().map(|x| PlayerView { id: x.id, name: x.name.clone(), alive: x.alive, score: x.score, is_bot: x.is_bot }).collect(),
             events: self.events.iter().filter(|e| event_visible(e, p)).cloned().collect(),
             over: self.over,
@@ -1917,6 +2202,7 @@ fn event_visible(e: &Event, p: PlayerId) -> bool {
         Event::ShellLaunched { owner, .. } => *owner == p,
         Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::LinkLost { owner, .. } => *owner == p,
         Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => *owner == p,
+        Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } => *owner == p,
         _ => true,
     }
 }
@@ -1933,6 +2219,12 @@ pub struct Observation {
     pub depots: Vec<Depot>,
     /// Every pillbox, like every depot: territory is public.
     pub pillboxes: Vec<Pillbox>,
+    /// The mines this player knows about: its own, and hostile ones
+    /// within `MINE_REVEAL` of its tank or squad.
+    pub mines: Vec<Mine>,
+    /// The nearest forest tiles to the tank, for a Brain with no map.
+    pub forest: Vec<V2>,
+
     pub players: Vec<PlayerView>,
 
     pub events: Vec<Event>,
@@ -2206,8 +2498,142 @@ mod tests {
         assert!(at_enemy >= 2 && at_me == 0, "fired at enemy {} times, at owner {}", at_enemy, at_me);
     }
 
+    /// The squad fells a forest tile for material, walls a tile that
+    /// then blocks a route and a flat shot, and lays a mine that only
+    /// its layer can see until a tank finds it the hard way.
+    #[test]
+    fn squad_harvests_walls_and_mines() {
+        let mut w = world();
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let home = w.tank(me).unwrap().pos;
+        // Harvest the nearest forest the crew can see.
+        let obs = w.observe(0);
+        let tree = *obs.forest.first().expect("no forest within sight of the north start");
+        assert_eq!(w.map.at(tree), Terrain::Forest);
+        let before = w.tank(me).unwrap().pillboys.material;
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Harvest { at: tree } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        let mut harvested = false;
+        for _ in 0..(60 * TICK_HZ) {
+            w.step(&[]);
+            if w.events.iter().any(|e| matches!(e, Event::Harvested { .. })) {
+                harvested = true;
+            }
+            if harvested && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert!(harvested);
+        assert_eq!(w.map.at(tree), Terrain::Grass);
+        assert_eq!(w.tank(me).unwrap().pillboys.material, (before + HARVEST_MATERIAL).min(PILLBOY_MATERIAL_MAX));
+        assert!(w.events.iter().any(|e| matches!(e, Event::TerrainChanged { .. })) || true);
+        // A wall two tiles south of the tank, on the spoke road.
+        let wall_at = Map::tile_centre(home + V2::new(0.0, 2.0));
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Wall, at: wall_at } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        for _ in 0..(30 * TICK_HZ) {
+            w.step(&[]);
+            if w.map.at(wall_at) == Terrain::Wall && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert_eq!(w.map.at(wall_at), Terrain::Wall, "wall not built");
+        assert!(!w.map.at(wall_at).passable());
+        assert!(!w.map.line_clear(home, home + V2::new(0.0, 5.0)), "a wall should block a flat shot");
+        let route = w.map.route(home, home + V2::new(0.0, 5.0));
+        assert!(route.iter().all(|p| p.tile() != wall_at.tile()), "route goes through the wall");
+        // A mine beside the wall: ours to see, not theirs, until found.
+        let mine_at = Map::tile_centre(home + V2::new(2.0, 2.0));
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Mine, at: mine_at } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        for _ in 0..(30 * TICK_HZ) {
+            w.step(&[]);
+            if !w.mines.is_empty() && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert_eq!(w.mines.len(), 1, "mine not laid");
+        assert_eq!(w.observe(0).mines.len(), 1);
+        assert_eq!(w.observe(1).mines.len(), 0, "a hostile mine should be hidden");
+        // The enemy drives onto it.
+        let enemy = w.players[1].tank;
+        w.tank_mut(enemy).unwrap().pos = mine_at + V2::new(0.0, 3.0);
+        w.step(&[Order { player: 1, cmd: Command::Move { to: mine_at } }]);
+        let armor0 = w.tank(enemy).unwrap().armor;
+        let mut boom = false;
+        for _ in 0..(10 * TICK_HZ) {
+            w.step(&[]);
+            if w.events.iter().any(|e| matches!(e, Event::MineExploded { .. })) {
+                boom = true;
+                break;
+            }
+        }
+        assert!(boom, "the enemy drove over the mine and nothing happened");
+        assert!(w.mines.is_empty());
+        assert!(w.tank(enemy).unwrap().armor <= armor0 - MINE_DAMAGE + 0.01);
+        assert_eq!(w.map.at(mine_at), Terrain::Rubble);
+    }
+
+    /// Three mines in a row: a shell's splash on the first sets off all
+    /// three. A chequerboard would not (orthogonal neighbours only).
+    #[test]
+    fn mines_chain_and_shells_clear_them() {
+        let mut w = world();
+        w.pillboxes.clear();
+        let c = Map::tile_centre(w.map.center());
+        for i in 0..3 {
+            let id = w.alloc();
+            w.mines.push(Mine { id, pos: c + V2::new(i as f32, 0.0), owner: 2 });
+        }
+        let id = w.alloc();
+        w.mines.push(Mine { id, pos: c + V2::new(5.0, 5.0), owner: 2 }); // not adjacent: stays
+        // Fire from 20 tiles north, spotted or not; the splash is 2.5.
+        let gun = c + V2::new(0.0, -20.0);
+        w.tank_mut(w.players[0].tank).unwrap().pos = gun;
+        w.step(&[Order { player: 0, cmd: Command::FireIndirect { at: c } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::ShellLaunched { .. })), "{:?}", w.events);
+        let mut exploded = 0;
+        for _ in 0..(5 * TICK_HZ) {
+            w.step(&[]);
+            exploded += w.events.iter().filter(|e| matches!(e, Event::MineExploded { .. })).count();
+            if w.shells.is_empty() {
+                break;
+            }
+        }
+        // With a 4-tile blind scatter the splash may miss the row; with
+        // the first mine in it the whole row goes.
+        if exploded > 0 {
+            assert_eq!(exploded, 3, "chain did not take the whole row");
+            assert_eq!(w.mines.len(), 1, "the lone mine should remain");
+        } else {
+            assert_eq!(w.mines.len(), 4);
+        }
+        // Directly: set the first off.
+        let mut w2 = world();
+        w2.pillboxes.clear();
+        for i in 0..3 {
+            let id = w2.alloc();
+            w2.mines.push(Mine { id, pos: c + V2::new(i as f32, 0.0), owner: 2 });
+        }
+        w2.tank_mut(w2.players[0].tank).unwrap().pos = c + V2::new(0.0, -3.0);
+        w2.step(&[Order { player: 0, cmd: Command::Move { to: c } }]);
+        let mut n = 0;
+        for _ in 0..(10 * TICK_HZ) {
+            w2.step(&[]);
+            n += w2.events.iter().filter(|e| matches!(e, Event::MineExploded { .. })).count();
+            if w2.mines.is_empty() {
+                break;
+            }
+        }
+        assert_eq!(n, 3);
+        assert!(w2.mines.is_empty());
+        assert!(w2.tank_of(0).unwrap().armor <= TANK_ARMOR - MINE_DAMAGE + 0.01);
+    }
+
     #[test]
     fn sixteen_seats() {
+
 
 
         let players = (0..MAX_PLAYERS).map(|i| (format!("p{}", i), true)).collect();

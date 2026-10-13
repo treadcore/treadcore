@@ -7,6 +7,7 @@
 #   SEED=0x1234 make debug      a different map and dice
 #   BRAIN='python3 bot.py' make debug   an external JSON brain in seat 0
 #   PLAYERS=4 make debug        four bots instead of sixteen
+#   DEFENDERS=12 make debug     twelve of them dig in; four attack
 . "$(dirname "$0")/common.sh"
 need_config
 export CARGO_BUILD_JOBS
@@ -16,7 +17,7 @@ REPLAY="$LOGDIR/replay-$STAMP.json"
 say "building headless (debug profile) -> $LOGDIR/build-$STAMP.log"
 cargo build -p treadcore-server 2>&1 | tee "$LOGDIR/build-$STAMP.log" >/dev/null || die "build failed: see $LOGDIR/build-$STAMP.log"
 BIN="$ROOT/target/debug/treadcore-server"
-ARGS=(--local --seed "${SEED:-0x7EADC0DE}" --seconds "${GAME_SECONDS:-180}" --players "${PLAYERS:-16}" --trace "$TRACE" --record "$REPLAY")
+ARGS=(--local --seed "${SEED:-0x7EADC0DE}" --seconds "${GAME_SECONDS:-180}" --players "${PLAYERS:-16}" --defenders "${DEFENDERS:-0}" --trace "$TRACE" --record "$REPLAY")
 [ -n "${BRAIN:-}" ] && ARGS+=(--brain "$BRAIN")
 say "tracing: $BIN ${ARGS[*]}"
 say "  log   $LOG"

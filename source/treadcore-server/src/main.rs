@@ -15,7 +15,7 @@
 //! so the trace reads top to bottom.
 
 use std::time::{Duration, Instant};
-use treadcore_brain::{run_bots, Brain, JsonBrain, RuleBot};
+use treadcore_brain::{run_bots, Brain, Fortifier, JsonBrain, RuleBot};
 use treadcore_net::session::RouteTable;
 use treadcore_net::{new_peer_id, Client, ClientState, Host, Lobby, LobbyConfig, Socket};
 use treadcore_proto::PORT;
@@ -38,6 +38,9 @@ struct Args {
     players: usize,
     record: Option<String>,
     replay: Option<String>,
+    /// How many bot seats, from the last, are Fortifiers (defenders)
+    /// instead of RuleBots (attackers).
+    defenders: usize,
 }
 
 fn parse() -> Args {
@@ -58,6 +61,7 @@ fn parse() -> Args {
         players: MAX_PLAYERS,
         record: None,
         replay: None,
+        defenders: 0,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -79,6 +83,7 @@ fn parse() -> Args {
             "--trace" => a.trace = Some(val()),
             "--brain-schema" => a.schema = true,
             "--players" => a.players = parse_num::<usize>(&val()).clamp(1, MAX_PLAYERS),
+            "--defenders" => a.defenders = parse_num(&val()),
             "--record" => a.record = Some(val()),
             "--replay" => a.replay = Some(val()),
             "-h" | "--help" => {
@@ -101,6 +106,8 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --ticks N          the same, in ticks
   --swarm N          neutral FPV swarm every N seconds; 0 for none (45)
   --players N        seats in a --local match or a hosted one, 1 to 16 (16)
+  --defenders N      of the bot seats, the last N dig in at their depot
+                     (harvest, mines, walls) instead of attacking (0)
   --name NAME        this peer's name (server)
   --game NAME        lobby name; only peers in the same lobby meet
   --peer HOST:PORT   greet this address as well as the LAN broadcast
@@ -201,6 +208,13 @@ fn run_replay(args: Args) {
 }
 
 fn make_brain(spec: Option<&String>, seat: PlayerId, seed: u64) -> Box<dyn Brain> {
+    make_brain_kind(spec, seat, seed, false)
+}
+
+fn make_brain_kind(spec: Option<&String>, seat: PlayerId, seed: u64, defender: bool) -> Box<dyn Brain> {
+    if defender && spec.is_none() {
+        return Box::new(Fortifier::new("fortifier", true));
+    }
     match spec {
         Some(s) => {
             let mut parts = s.split_whitespace();
@@ -270,6 +284,11 @@ fn narrate(world: &World, events: &[Event]) {
             Event::PillboxDamaged { pillbox, by, damage, health_left } => log::info!("[{:>6} {:>6.1}s] pillbox #{} -{:.0} ({:.0} left) by {:?}", t, s, pillbox, damage, health_left, by),
             Event::PillboxDestroyed { pillbox, owner, by } => log::warn!("[{:>6} {:>6.1}s] pillbox #{} ({}) DEAD by {:?}", t, s, pillbox, owner.map(|o| format!("p{}", o)).unwrap_or_else(|| "neutral".into()), by),
             Event::PillboxFired { pillbox, owner, tank, damage } => log::info!("[{:>6} {:>6.1}s] {} pillbox #{} hits tank #{} for {:.0}", t, s, if *owner == NEUTRAL { "neutral".to_string() } else { format!("p{}", owner) }, pillbox, tank, damage),
+            Event::Built { owner, what, at } => log::info!("[{:>6} {:>6.1}s] p{} builds {:?} at ({:.0},{:.0})", t, s, owner, what, at.x, at.y),
+            Event::Harvested { owner, at, material } => log::info!("[{:>6} {:>6.1}s] p{} harvests ({:.0},{:.0}) +{} material", t, s, owner, at.x, at.y, material),
+            Event::MineLaid { owner, at, .. } => log::info!("[{:>6} {:>6.1}s] p{} lays a mine at ({:.0},{:.0})", t, s, owner, at.x, at.y),
+            Event::MineExploded { owner, at, hits, .. } => log::warn!("[{:>6} {:>6.1}s] MINE (p{}) at ({:.0},{:.0}) hits {:?}", t, s, owner, at.x, at.y, hits),
+            Event::TerrainChanged { at, to } => log::trace!("[{:>6} {:>6.1}s] terrain ({:.0},{:.0}) -> {:?}", t, s, at.x, at.y, Terrain::from_u8(*to)),
         }
     }
     if t % TICK_HZ as Tick == 0 {
@@ -299,7 +318,10 @@ fn summary(world: &World, started: Instant) {
     }
     let craters = world.map.cells.iter().filter(|c| **c == Terrain::Rubble as u8).count();
     log::info!("  craters: {}  depots: {:?}", craters, world.depots.iter().map(|d| d.owner).collect::<Vec<_>>());
+    let walls = world.map.cells.iter().filter(|c| **c == Terrain::Wall as u8).count();
+    log::info!("  walls: {}  mines left: {}", walls, world.mines.len());
     let owned = world.pillboxes.iter().filter(|p| p.owner.is_some()).count();
+
     let dead = world.pillboxes.iter().filter(|p| !p.alive()).count();
     log::info!("  pillboxes: {} ({} owned, {} dead): {:?}", world.pillboxes.len(), owned, dead, world.pillboxes.iter().map(|p| p.owner.map(|o| o.to_string()).unwrap_or_else(|| "-".into())).collect::<Vec<_>>().join(" "));
 
@@ -320,7 +342,8 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
 fn run_local(args: Args) {
     let names: Vec<(String, bool)> = (0..args.players).map(|i| (seat_name(i), true)).collect();
     let scenario = scenario_from(&args, names);
-    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..args.players as PlayerId).map(|i| (i, make_brain(args.brains.get(i as usize), i, args.seed))).collect();
+    let first_defender = args.players.saturating_sub(args.defenders) as PlayerId;
+    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..args.players as PlayerId).map(|i| (i, make_brain_kind(args.brains.get(i as usize), i, args.seed, i >= first_defender))).collect();
     let mut host = Host::new(new_peer_id(), None, scenario, vec![], RouteTable::default());
     if args.record.is_some() {
         host.record();
@@ -391,7 +414,9 @@ fn run_net(args: Args) {
             names.push((format!("bot{}", names.len()), true));
         }
         let scenario = scenario_from(&args, names);
-        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain(args.brains.get((i - first_bot) as usize), i, args.seed))).collect();
+        let first_defender = seats.saturating_sub(args.defenders) as PlayerId;
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain_kind(args.brains.get((i - first_bot) as usize), i, args.seed, i >= first_defender))).collect();
+
         let mut host = Host::new(me, Some(sock), scenario, peers, routes);
         if args.record.is_some() {
             host.record();

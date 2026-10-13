@@ -23,6 +23,9 @@ pub enum Terrain {
     Bridge = 4,
     Rubble = 5,
     Depot = 6,
+    /// Built by the squad. Impassable; blocks a direct shot and a
+    /// pillbox's line; an indirect splash knocks it down to rubble.
+    Wall = 7,
 }
 
 impl Terrain {
@@ -34,6 +37,7 @@ impl Terrain {
             4 => Terrain::Bridge,
             5 => Terrain::Rubble,
             6 => Terrain::Depot,
+            7 => Terrain::Wall,
             _ => Terrain::Grass,
         }
     }
@@ -44,11 +48,16 @@ impl Terrain {
             Terrain::Grass | Terrain::Depot | Terrain::Bridge => 1.0,
             Terrain::Rubble => 1.5,
             Terrain::Forest => 1.8,
-            Terrain::Water => f32::INFINITY,
+            Terrain::Water | Terrain::Wall => f32::INFINITY,
         }
     }
     pub fn passable(self) -> bool {
-        self != Terrain::Water
+        !matches!(self, Terrain::Water | Terrain::Wall)
+    }
+    /// Blocks a flat shot: forest hides what is in it and what is
+    /// behind it; a wall is a wall.
+    pub fn blocks_fire(self) -> bool {
+        matches!(self, Terrain::Forest | Terrain::Wall)
     }
 }
 
@@ -267,18 +276,59 @@ impl Map {
         V2::new(self.w as f32 * 0.5, self.h as f32 * 0.5)
     }
 
-    /// Line of sight for direct fire: no forest tile between (forest hides
-    /// what is in it, and blocks what is behind it).
+    /// Line of sight for direct fire: no forest or wall tile between
+    /// (forest hides what is in it, and blocks what is behind it).
     pub fn line_clear(&self, a: V2, b: V2) -> bool {
         let n = (a.dist(b) * 2.0).ceil().max(1.0) as usize;
         for i in 1..n {
             let p = a.lerp(b, i as f32 / n as f32);
-            if self.at(p) == Terrain::Forest {
+            if self.at(p).blocks_fire() {
                 return false;
             }
         }
         true
     }
+
+    /// Set one tile. Returns the index, for the event that tells
+    /// clients their copy changed.
+    pub fn set(&mut self, at: V2, t: Terrain) -> Option<usize> {
+        let (x, y) = at.tile();
+        if self.in_tile(x, y) {
+            let i = y as usize * self.w + x as usize;
+            self.cells[i] = t as u8;
+            Some(i)
+        } else {
+            None
+        }
+    }
+
+    /// The centre of the tile `p` is in.
+    pub fn tile_centre(p: V2) -> V2 {
+        let (x, y) = p.tile();
+        V2::new(x as f32 + 0.5, y as f32 + 0.5)
+    }
+
+    /// Up to `n` forest tile centres nearest `around`, within `radius`:
+    /// what a crew can see of the trees, for a Brain that has no map.
+    pub fn forest_near(&self, around: V2, radius: f32, n: usize) -> Vec<V2> {
+        let (cx, cy) = around.tile();
+        let r = radius.ceil() as i32;
+        let mut out: Vec<(f32, V2)> = Vec::new();
+        for y in (cy - r).max(0)..(cy + r + 1).min(self.h as i32) {
+            for x in (cx - r).max(0)..(cx + r + 1).min(self.w as i32) {
+                if self.at_tile(x as usize, y as usize) == Terrain::Forest {
+                    let c = V2::new(x as f32 + 0.5, y as f32 + 0.5);
+                    let d = c.dist(around);
+                    if d <= radius {
+                        out.push((d, c));
+                    }
+                }
+            }
+        }
+        out.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        out.into_iter().take(n).map(|(_, c)| c).collect()
+    }
+
 
     /// A drivable route from `a` to `b` as a list of waypoints, by A* over
     /// tiles with terrain cost, simplified to corners. The sim moves in

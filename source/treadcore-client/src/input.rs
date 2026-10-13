@@ -154,6 +154,19 @@ fn orders(
     if keys.just_pressed(KeyCode::Digit6) {
         orders.0.push(Command::Deploy { task: PillboyTask::Return });
     }
+    for (key, what) in [(KeyCode::Digit7, BuildKind::Wall), (KeyCode::Digit8, BuildKind::Mine), (KeyCode::Digit9, BuildKind::Road)] {
+        if keys.just_pressed(key) {
+            if let Some(p) = at {
+                orders.0.push(Command::Deploy { task: PillboyTask::Build { what, at: p } });
+            }
+        }
+    }
+    if keys.just_pressed(KeyCode::Digit0) {
+        if let Some(p) = at {
+            orders.0.push(Command::Deploy { task: PillboyTask::Harvest { at: p } });
+        }
+    }
+
 
     if keys.just_pressed(KeyCode::BracketLeft) {
         orders.0.push(Command::SetBubble { radius: me.bubble - 1.0 });
