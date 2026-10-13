@@ -1,6 +1,6 @@
 # treadcore protocol
 
-Version 7. One UDP socket per process, default port 47296. Every datagram
+Version 8. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 
@@ -108,7 +108,9 @@ within a tile and a half of its tank or squad), the eight nearest
 forest tiles (a Brain has no map), every player's name, score and
 life, the events for this tick the player is allowed to know about, and
 whether the match is over, and which team won; every player's team;
-the alliance requests the player made or may answer. Terrain changes (walls built, forest
+the proposals (to join, recruit, swap or merge) the player made or may
+answer.
+ Terrain changes (walls built, forest
 
 felled, mine craters) arrive as `TerrainChanged` events; shell craters
 as `ShellImpact`; the client applies both to its copy of the map.

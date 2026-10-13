@@ -244,8 +244,22 @@ ally's, and goes with them if they leave.
 The match ends when one team is left standing, or at the time limit
 with the highest team score; the winning team's top scorer is the
 winner. Scores stay per player, so a team's standings are its members'.
-Swapping sides and recruiting mid-match, under the rule that three
-sides must remain, are roadmap step 6b.
+
+**Proposals and the three-way rule.** Every change of sides in play is
+a proposal from one player to another: to join them, to recruit them,
+to swap teams, or to merge whole teams. The one asked, or anyone on
+their team, accepts or declines within thirty seconds, or it lapses.
+The world refuses a proposal, with the reason, when it is made and
+again when it is accepted, if the outcome would leave fewer than three
+sides with a living tank or give one side more than half the living
+tanks. Three is the smallest number of sides in which an alliance is a
+choice rather than the end of the match, and half is where a side
+stops needing anyone. Every resolution is announced to everyone, so a
+betrayal is public the moment it happens. Bolo's alliance request is a
+join proposal with Bolo's own extra rule: leave your alliance before
+you ask to join another. A join proposed in so many words is a
+defection, and allowed.
+
 
 ## What is not here yet
 

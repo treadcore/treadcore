@@ -1,0 +1,175 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 12 Oct 2026 21:10:00 -0700
+Subject: [JOURNAL 0008] Proposals and the three-way rule: roadmap
+         step 6b
+Message-ID: <0008.20261012@treadcore.org>
+In-Reply-To: <0007.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: proposal, defection, recruit, swap, merge, three-way-rule,
+          betrayal
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "then continue" after step 6
+X-Commits: 7531b46
+
+          PROPOSALS AND THE THREE-WAY RULE: ROADMAP STEP 6B
+
+                      Paul Richeson, treadcore.org
+                            12 October 2026
+
+
+ABSTRACT
+
+    Step 6b makes every change of sides in play a proposal: to join,
+    to recruit, to swap teams, or to merge whole teams, put by one
+    player to another, answered by the one asked or anyone on their
+    team within thirty seconds, and resolved by the world under the
+    three-way rule: no outcome may leave fewer than three sides with a
+    living tank, or give one side more than half the living tanks. The
+    rule is checked when a proposal is made and again when accepted,
+    and every resolution (accepted, declined, refused with the reason,
+    lapsed, overtaken) is an event to everyone, so a betrayal is public
+    the moment it happens. Step 6's alliance commands became sugar
+    over this. The proof is a recorded match: two sides of eight refuse
+    every proposal; of three sides a defection is carried out and the
+    defector's recon spots for its new side; recruiting past half is
+    refused; a swap is allowed at any size. 31 tests pass.
+
+INDEX TERMS
+
+    proposal, terms, defection, recruitment, swap, merge, three-way
+    rule, public resolution.
+
+
+I. INTRODUCTION
+
+    The brief wanted betrayal: a mid-match proposal to swap sides or
+    recruit, "but only in a three way balance type way." Step 6 built
+    sides and Bolo's way of forming them; this step builds the way of
+    changing them, and the rule that keeps a change from being the end
+    of the game.
+
+II. BACKGROUND
+
+    Carried from 0007: no bot allies yet; no alliance keys in the
+    window; and the older items. CONCEPT.md section 9 sets the rule in
+    words; ROADMAP 6b sets the commands.
+
+III. METHOD
+
+    Decisions, with the alternatives rejected:
+
+      decision                    rejected              why
+      --------------------------  --------------------  ----------------
+      one protocol: proposals;    two: alliances and    one store, one
+      Bolo's request is a Join    proposals side by     rule, one event
+      proposal                    side                  stream
+      the rule applies to every   proposals only        an alliance
+      change of sides, Bolo's                           accept is a
+      requests included                                 change of sides
+      a Join proposed outright    Bolo's "leave first"  a defection is
+      is a defection, allowed     for every Join        the point;
+                                                        Bolo's
+                                                        rule stays on
+                                                        Bolo's command
+      check the rule twice:       once, when proposed   the world moves
+      proposed and accepted                             in thirty
+                                                        seconds
+      every resolution is a       announce accepts      a refusal is
+                                                        news
+      public event                only                  too; a lapse
+                                                        says
+                                                        the offer is
+                                                        gone
+      a swap at any size          forbid swaps late     a swap keeps
+                                                        every
+                                                        side its size
+
+IV. CHRONOLOGY
+
+     1. Types: Terms (Join, Recruit, Swap, Merge), Proposal, Command::
+        Propose and Answer; events Proposed and ProposalResolved;
+        World.proposals; PROPOSAL_TICKS, MIN_SIDES. AllianceRequest
+        and its events removed; Observation.requests became proposals.
+     2. outcome(), three_way_check(), propose(), answer(); lapsing in
+        step; apply_alliance rewritten over them.
+     3. The patch that replaced apply_alliance was cut from its start
+        to the next function the editor saw, step_tanks, and took the
+        squad, pillbox, mine and splash functions with it. Restored
+        from the last commit, 445 lines, by exact slice. A lesson about
+        slicing by landmark in a file whose order one does not hold in
+        one's head.
+     4. 30 tests pass, one new fails: a Join in two sides of eight was
+        refused for "leave your alliance first", not for the rule. The
+        Bolo request keeps that rule; a Join proposed in so many words
+        is a defection and goes to the three-way check. 31 pass.
+     5. Default trace, replay (36 of 36), lobby-test: pass. Documents,
+        this entry, commits, push.
+
+V. RESULTS
+
+    Tests: 31 pass (sim 20, proto 3, net 5, brain 3). New: proposals_
+    change_sides_under_the_three_way_rule, a recorded match that
+    replays.
+
+      sides   proposal                      outcome
+      ------  ----------------------------  -------------------------
+      8 / 8   Merge, Join, Swap, Recruit    all refused: fewer than
+                                            three sides would remain
+      6/5/5   seat 3 (six) joins team 1     accepted by seat 4 (any
+                                            member); recon shared
+      6/6/4   recruit one to team 1 (7)     accepted
+      5/7/4   recruit one more (8 of 16)    accepted: half is allowed
+      4/8/4   recruit one more (9 of 16)    refused: more than half
+      4/8/4   swap seats 1 and 9            accepted: sides keep size
+
+VI. DISCUSSION
+
+    The rule does what the brief asked, and the test says where the
+    edges are: two sides can never change, a side may grow to half and
+    no further, a swap is always open. Whether half is the right line,
+    and whether the sides should be counted by living tanks or by
+    seats, is a balance question for play; both are one constant.
+
+    The slicing accident is recorded because the journal records false
+    starts. Nothing was lost (the last commit held the code), and the
+    lesson is a working rule: replace a function by its own bounds,
+    never from one landmark to the next.
+
+VII. OPEN PROBLEMS
+
+    1. No bot proposes or answers; the protocol is proven by test.
+       Step 6d's brains are where one will.
+    2. The window has no keys for proposals or answers; the HUD shows
+       them.
+    3. From 0007 and before.
+
+VIII. NEXT STEPS
+
+    1. Step 6d: the defender and attacker brains, with alliances.
+    2. Proposal keys in the window.
+
+ACKNOWLEDGMENTS
+
+    Paul, for "only in a three way balance type way", which is the
+    whole design of this step in nine words.
+
+REFERENCES
+
+    [1] Journal 0007, <0007.20261012@treadcore.org>.
+    [2] documentation/ROADMAP.md step 6b; documentation/DESIGN.md,
+        "Proposals and the three-way rule"; CONCEPT.md section 9.
+
+APPENDIX A. COMMITS
+
+    7531b46  sim, server, client, brain: proposals and the three-way
+             rule (roadmap step 6b); wire version 8
+    (next)   docs, journal: step 6b done; journal 0008
+
+APPENDIX B. ARTIFACTS
+
+    Journal         journal/0008-2026-10-12-proposals.txt (this)
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

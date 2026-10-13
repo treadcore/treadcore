@@ -317,7 +317,26 @@ teammate does no damage and says so in the trace.
 
 ## 6b. Betrayal and recruitment: the proposal protocol
 
-**Reference.** SPEC ALL-02 to ALL-05 are the request and answer; the
+**Done 12 October 2026 (journal 0008).** `Command::Propose { to, terms }`
+with `Terms::Join` (I join you: an alliance request, or a defection),
+`Recruit` (you join me), `Swap` (we exchange teams) and `Merge` (my team
+joins yours); `Command::Answer { proposal, accept }` by the one asked or
+any member of their team; a `Proposal` stands `PROPOSAL_TICKS` (30 s).
+**The three-way rule** (`MIN_SIDES` 3): the world refuses, with the
+reason, any proposal whose outcome would leave fewer than three sides
+with a living tank or give one side more than half the living tanks,
+once when proposed and again when accepted. Every resolution is a
+public event (`ProposalResolved`: accepted, declined, refused with why,
+lapsed, or overtaken by a change of sides). Bolo's alliance commands are
+sugar over this (a request is a Join proposal and keeps Bolo's "leave
+first"). Wire version 8. Proof: `proposals_change_sides_under_the_
+three_way_rule`, a recorded match: two sides of eight refuse every
+proposal; of three sides a defection is accepted and the newcomer's
+recon spots for its new side; recruiting to more than half is refused;
+a swap is allowed at any size; the match replays.
+
+**Reference.**
+ SPEC ALL-02 to ALL-05 are the request and answer; the
 swap, the recruit and the three-way rule are treadcore's additions.
 
 **Change.** `treadcore-sim`: `Command::Propose { to: PlayerId, terms:
@@ -444,6 +463,11 @@ thin LTO for binaries; `cargo dist` or a plain tarball per platform.
                        │                      └─ 7 internet ── 8 service
                        └─ 3 pillboys ── 6c material ── 5 maps ── 6 teams ── 6b proposals ── 6d defender
                                                                                               └─ 9 sound/art/dist
+
+Done through 6b on 12 October 2026 (journals 0002 to 0008). Next: 6d,
+the defender and attacker brains; then 4, prediction; 7 and 8 need a
+second machine.
+
 ```
 
 Two tracks after step 0, independent until step 6, which wants both

@@ -4,7 +4,25 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-12, night: proposals and the three-way rule (roadmap step 6b)
+
+Journal: [0008](journal/0008-2026-10-12-proposals.txt).
+
+- New: `Command::Propose { to, terms }` with `Terms::Join | Recruit |
+  Swap | Merge`, `Command::Answer { proposal, accept }`; a `Proposal`
+  stands 30 s; the three-way rule (`MIN_SIDES` 3, no side over half
+  the living tanks) refuses an outcome, with the reason, when proposed
+  and when accepted; `Proposed` and `ProposalResolved` events, the
+  latter to everyone. Bolo's alliance commands are sugar over this.
+- Changed: `AllianceRequest` and its two events gone; the observation
+  carries `proposals`. Wire `VERSION` 8.
+- Proof: a recorded match in which two sides of eight refuse every
+  proposal, a defection among three sides is carried out and shares
+  recon, recruiting past half is refused and a swap is allowed. 31
+  tests pass; replay and lobby-test pass.
+
 ## 2026-10-12, night: teams and alliances (roadmap step 6)
+
 
 Journal: [0007](journal/0007-2026-10-12-teams-and-alliances.txt).
 
