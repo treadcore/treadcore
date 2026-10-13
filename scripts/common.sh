@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared by every script: paths, logging, the config.env handshake.
 # Sourced, not run.
 set -euo pipefail
@@ -7,6 +8,7 @@ case "$BUILDDIR" in /*) ;; *) BUILDDIR="$ROOT/$BUILDDIR" ;; esac
 LOGDIR="${LOGDIR:-$BUILDDIR/logs}"
 case "$LOGDIR" in /*) ;; *) LOGDIR="$ROOT/$LOGDIR" ;; esac
 mkdir -p "$BUILDDIR" "$LOGDIR"
+# shellcheck disable=SC2034  # used by every script that sources this
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 say()  { printf '\033[1m%s\033[0m\n' "$*"; }
