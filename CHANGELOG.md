@@ -4,6 +4,23 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13, night: the bezel: the frame in WinBolo's look
+
+Journal: [0015](journal/0015-2026-10-13-the-bezel.txt).
+
+- Changed: the frame wears the prior art's look (`INTERFACE.md`
+  section 7), drawn with UI nodes and no images: a grey bezel of
+  inset black boxes; a lamp per tank, per pillbox and per depot in
+  the owner's colour (mine in my seat colour, green ally, red hostile,
+  dim neutral, dark dead); shells as red squares, the bay by kind, the
+  squad as four lamps that go amber when out, material as eight,
+  armor and fuel as bars; a pictogram tile and a lamp beside every
+  order, red when it can be given; kills and deaths; the newswire in
+  a 22 px face across the bottom. The top strip holds two lines.
+- New: `View.kills` and `View.deaths`, counted from `TankDestroyed`.
+- Changed: the gallery's frame pictures are the bezel (playtest-10 to
+  13), plus the scrollback (14).
+
 ## 2026-10-13, evening: the frame (the GUI redesign), and the playability review
 
 Journal: [0014](journal/0014-2026-10-13-the-frame.txt).

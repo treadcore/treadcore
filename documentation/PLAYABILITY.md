@@ -81,10 +81,10 @@ neighbouring-pillbox arrows.
 
 What the frame still wants, found in its own first frames:
 
-- Colour in the text. The frame is one ink. `UNDER FIRE`, a dead
-  lamp, a hostile `X` want red; a lit lamp wants the seat's colour.
-  Bevy's `TextSpan` does it per run; the panels become a few spans
-  instead of one string. A morning.
+- Colour in the text. Done the same evening for everything that is
+  a lamp or a bar (`INTERFACE.md` section 7): the lamps are nodes,
+  coloured by state. The text panels are still one ink; `UNDER FIRE`
+  on the top strip wants red. Minutes, with a `TextSpan`.
 - The roster's columns do not line up with their header. Minutes.
 - Below about 900 px the bottom strip's lines wrap. Fold the AIR line
   under the lamps and let the newswire be one line. An hour.

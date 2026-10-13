@@ -278,17 +278,20 @@ predicted own tank, drones, shells, depots, pillboxes, mines, squads),
 `link_color` 275, `overlay` 287 (the gizmos: bubble, links, vision,
 arcs).
 
-**hud.rs (330)**: the frame (INTERFACE.md): `LEFT`, `RIGHT`, `TOP`,
-`BOTTOM` in pixels; `HudState` (`show_log`, `aiming`); `in_frame`
-(is a window point on a panel); `Panel` (Top, Orders, Right, Bottom,
-Log, Screen); `setup` (the flex frame: top strip, orders column, the
-map, the right column, the bottom strip; the scrollback and the
-screen over the map); `top` (who, when, NET), `orders` (every key,
-its count or cost, a dash when it cannot be given), `right` (the
-roster, pillbox and depot lamps by owner), `bottom` (shells, bay,
-squad and material as lamps, armor and fuel bars, the air table, the
-two-line newswire), `log` (the scrollback), `screen` (the lobby
-screen with `FIRST_MINUTE`; the match-over screen).
+**hud.rs (520)**: the frame in the prior art's look (INTERFACE.md
+sections 3 and 7): `LEFT`, `RIGHT`, `TOP`, `BOTTOM` in pixels; the
+palette constants (Bolo's red hostile, green friendly, on a bezel);
+`HudState` (`show_log`, `aiming`); `in_frame` (is a window point on a
+panel); `Panel` (the text panels: Top, Roster, Counters, Air, Wire,
+Log, Screen); `Group` and `Lamp` (a lamp per tank, pillbox, depot,
+shell, drone by kind, squad man, material, and beside each order);
+`Bar` (armor, fuel); `ORDERS` (key and word per order); `inset` (a
+black box with a light edge), `lamp`, `lamp_row`, `bar`, `pictogram`
+(a shape per order); `setup` (the flex frame); `update` (texts,
+visibility, every lamp's colour from the view, every bar's width);
+`can_order` (the lamp beside an order); `top`, `roster`, `air`,
+`wire` (the newswire), `log`, `screen` (the lobby screen with
+`FIRST_MINUTE`; the match-over screen).
 
 **input.rs (200)**: `Cam` (`follow`, `pillbox`: the pillbox view),
 `cursor_tile` (none on a panel), `frame_offset` (the map's middle
@@ -438,8 +441,8 @@ GAMETYPE, MAP, BRAIN.
 | documentation/RELEASE.md | the cycle, versions, releases, playtesting |
 | documentation/GOVERNANCE.md | roles, joining, proposals (section 5: a change to rules.rs wants a trace), review, leaving |
 | documentation/INDEX.md | this |
-| journal/0001 to 0014 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame |
-| reports/images/ | the playtest frames, playtest-01 to 13, 256-colour PNG |
+| journal/0001 to 0015 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel |
+| reports/images/ | the playtest frames, playtest-01 to 14, 256-colour PNG |
 
 ## 5. Keyword cross-reference
 

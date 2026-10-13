@@ -211,3 +211,37 @@ the shot goes on release. The newswire is two lines; the scrollback
 holds forty. The frame's widths are 132, 268, 44 and 84 pixels. The
 frames are in the gallery, and what the frame still wants is in
 PLAYABILITY.md section 4.
+
+## 7. The look: WinBolo's bezel, the same evening
+
+A second look at the prior art, this time WinBolo's 2026 screen at
+full size (an AppleInsider screenshot of the Mac port) and the Bolo
+cover with the title spelled in wall tiles. What is going on in that
+frame, element by element: a grey bezel of inset black boxes; a lamp
+for every thing in the game (a row of circles for the tanks, hollow
+for one's own, green friendly, red hostile; a grid of red squares for
+the pillboxes, chequered when neutral; a grid for the bases), each
+lit in the colour of its state; a tile with a tiny picture beside each
+builder mode and a red lamp against the active one; four green bars
+with a pictogram each for shells, mines, armour and trees; a skull and
+a gravestone with the kills and deaths; the Players menu with every
+player's ping; and the newswire in a large face across the whole
+bottom, scrolling.
+
+The frame of section 3 now wears it (`hud.rs`, journal 0015). Every
+lamp is a UI node whose background is its state, so the one-ink limit
+of the first frame is gone: pillbox and depot lamps are the owner's
+seat colour for mine, green for an ally's, red for hostile, dim tan
+for neutral, dark for dead; a row of sixteen tank lamps the same way;
+shells as red squares; the bay by kind (recon sky, interceptor green,
+strike red); the squad as four green lamps that go amber when it is
+out; material as eight green squares; armor and fuel as green bars.
+Each order has a pictogram tile (the hull, a round, the interceptor's
+ring, the recon's disc, the strike's dart, a hollow pillbox for
+capture and a filled one for build, a wall, a mine, a road, a tree
+tile) and a lamp beside it, red when the order can be given and dim
+when not. Kills and deaths count in a box of their own. The newswire
+is one line in a 22 px face across the bottom. No images: every
+element is a rectangle, rounded or not. The pings are the one thing
+not taken, because a seat is told only its own round trip; the lobby
+screen shows the medians while they are measured.

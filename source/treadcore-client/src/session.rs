@@ -47,6 +47,10 @@ pub struct View {
     /// The last tick an observation gave, for stamping events that
     /// arrive before the next one (a rejoin's first events, say).
     pub last_tick: Tick,
+    /// Tanks this seat destroyed, and times it was destroyed: the
+    /// prior art's two counters.
+    pub kills: u32,
+    pub deaths: u32,
     /// Wall-clock when the observation arrived, for interpolation.
     pub received: Option<Instant>,
     /// The player's own tank as predicted (roadmap step 4), and when it
@@ -324,6 +328,14 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
 
 fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
     for e in events {
+        if let Event::TankDestroyed { owner, by, .. } = e {
+            if *by == Some(me) && *owner != me {
+                view.kills += 1;
+            }
+            if *owner == me {
+                view.deaths += 1;
+            }
+        }
         let line = describe(e, me, view);
 
         if let Some(l) = line {

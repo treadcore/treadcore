@@ -1,0 +1,178 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 11:10:00 -0700
+Subject: [JOURNAL 0015] The bezel: the frame in WinBolo's look
+Message-ID: <0015.20261013@treadcore.org>
+In-Reply-To: <0014.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: bezel, lamps, pictograms, newswire, WinBolo, UI nodes
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "review this interface. look at what
+           going on. try to make this appear in the gui", with a
+           WinBolo screenshot and the Bolo cover
+X-Commits: (next)
+
+              THE BEZEL: THE FRAME IN WINBOLO'S LOOK
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    Two pictures came in: WinBolo's 2026 screen at full size, and the
+    Bolo cover. The screen is a grey bezel of inset black boxes full
+    of lamps, each lit in the colour of its state, a picture tile with
+    a lamp beside every builder mode, bars with pictograms, kills and
+    deaths, and a newswire in a big face. The frame of 0014 was given
+    that look in one rewrite of hud.rs: every lamp is a UI node whose
+    background is its state, every bar a node whose width is its
+    value, every pictogram a node or two, no images. The one-ink limit
+    of the first frame went with it. Built, shot, published: five
+    frames in the gallery.
+
+INDEX TERMS
+
+    bezel, lamp, pictogram, newswire, BorderColor, BorderRadius,
+    kills, deaths, WinBolo.
+
+
+I. INTRODUCTION
+
+    0014 laid the screen out in Bolo's frame but drew it in one ink,
+    with ASCII for lamps. The pictures Paul sent showed what the frame
+    looks like when it is a thing: lamps, tiles, bars, a bezel. The
+    ask was to make that appear.
+
+II. BACKGROUND
+
+    Carried from 0014: the playability items; colour per run in the
+    frame; the bottom strip below 900 px. The frame's panels were six
+    Text nodes in a flex layout; the engine's UI has nodes with
+    background, border and radius, which is all a lamp is.
+
+III. METHOD
+
+    Read both pictures and list what is going on in the WinBolo frame
+    element by element (INTERFACE.md section 7). Map each element to
+    this game's thing. Rewrite hud.rs: the frame as before, every box
+    an inset on a bezel, lamps as nodes with marker components
+    updated each frame from the View, bars likewise, pictograms as
+    shapes, the newswire at 22 px. Build; shoot with the 0014 script;
+    fix what the frames show; shoot again; publish.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      lamps as UI nodes        glyphs in text         a node has its
+                                                      own colour; the
+                                                      font's subset
+                                                      has no circles
+      pictograms as shapes     a sprite sheet         the rule: no
+                                                      images; and a
+                                                      ring, a disc, a
+                                                      dart say enough
+      the order lamp lit red   lit for the active     there are no
+      when the order can be    mode, as Bolo          modes yet; this
+      given                                           is the dash of
+                                                      0014 in colour
+      kills and deaths from    from the roster        the roster has
+      events in the View                              scores, not
+                                                      kills
+      pings not shown          a ping per seat        a seat is told
+                                                      only its own
+                                                      round trip
+      a tank lamp row          none; the roster       Bolo has it, it
+                               says alive                reads at a
+                                                      glance, and the
+                                                      column had room
+
+IV. CHRONOLOGY
+
+     1. The pictures fetched with a browser user agent (the CDN gives
+        empty files without one) into an isolated directory, read.
+        INTERFACE.md section 7 written from them.
+     2. hud.rs rewritten: 520 lines. `Group`, `Lamp`, `Bar`, `inset`,
+        `lamp_row`, `pictogram`; `update` colours every lamp from the
+        view. View gains `kills` and `deaths` from TankDestroyed. One
+        lifetime on `inset`'s return; then built.
+     3. First shoot: the bezel, the tiles, the lamps right; the top
+        strip clipped its second line (44 px holds one), the air text
+        was six lines and pushed the newswire out of its strip.
+     4. TOP to 58 px; the bottom row fixed at 72 px with the air
+        text at three short lines; a TANKS lamp row added above the
+        counters. Second shoot: clean. The newswire reads `514  p1
+        captured a pillbox` across the bottom in the big face.
+     5. A twenty-second match for the match-over frame. Five frames
+        published (10 to 14); the gallery's captions; CHANGELOG,
+        INDEX.md, PLAYABILITY.md section 4; this entry.
+
+V. RESULTS
+
+      measure                               value
+      ------------------------------------  --------------------
+      hud.rs                                330 to 520 lines
+      frame (left, right, top, bottom)      156, 268, 58, 128 px
+      lamps on screen                       16 tanks + 24 pillbox
+                                            + 20 depot + 24 shell
+                                            + 11 bay + 4 squad +
+                                            8 material + 14 order
+      build, release                        18 s
+      frames published                      5 (10 to 14)
+      tests                                 40 pass (unchanged)
+
+VI. DISCUSSION
+
+    A lamp is the right unit for this game's screen, as it was for
+    Bolo's: the player wants to know "how many shells" as a shape, not
+    a number, and "whose is that pillbox" as a colour, not a letter.
+    The UI node is exactly that unit, and the frame's one-ink limit
+    was never a limit of the engine, only of drawing everything as
+    text. Four hundred nodes update each frame in a loop over a query
+    and the window does not notice.
+
+    What did not transfer, and why, is in INTERFACE.md section 7: the
+    pings. Everything else in the WinBolo frame has a counterpart now.
+
+VII. OPEN PROBLEMS
+
+    1. The text panels are still one ink: `UNDER FIRE` wants red.
+    2. The air box clips its third line at 1200 px; below 900 px the
+       bottom row folds badly (0014's open problem, unchanged).
+    3. Carried: PLAYABILITY.md items 1, 3, 4, 5, 6; the window under
+       Wayland proper; two windows at once; step 7's two-router proof;
+       steps 8 and 9.
+
+VIII. NEXT STEPS
+
+    1. PLAYABILITY.md items 1, 3, 4, 5, 6.
+    2. A playtest with a hand on the mouse.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the two pictures; WinBolo's maintainers, whose 2026
+    screen is the clearest statement of the frame there is.
+
+REFERENCES
+
+    [1] Journal 0014, <0014.20261013@treadcore.org>.
+    [2] documentation/INTERFACE.md section 7.
+    [3] The pictures: a WinBolo screenshot at appleinsider.com
+        (gallery 68116-143573, 30 June 2026) and the Bolo cover at
+        kotaku.com (IGDB cobxro). [Accessed: 13-Oct-2026.]
+
+APPENDIX A. COMMITS
+
+    (next)   client, docs, site, journal: the bezel: the frame in
+             WinBolo's look; journal 0015
+
+APPENDIX B. ARTIFACTS
+
+    Code            source/treadcore-client/src/hud.rs
+    Frames          reports/images/playtest-10 to 14
+    Site            index.html, "In play"
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
