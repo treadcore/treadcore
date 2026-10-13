@@ -68,6 +68,13 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
 ///      or to repair an owned one below half health. While the squad is
 ///      out the tank holds its position, so the squad has a home to
 ///      come back to; that wait is the cost the proof weighs.
+///  10. Storm (roadmap step 6d, backlog item 14). An enemy that has
+///      been in view for twice the bot's patience and is still alive is
+///      sitting on a depot being repaired as fast as it is shelled; the
+///      firing position is not working. The bot shells the live
+///      hostile pillboxes guarding the objective, then drives onto it
+///      to capture it, firing direct on the way, and stops scooting.
+///      Low on anything, it goes home instead and the storm is off.
 pub struct RuleBot {
     name: String,
     rng: Rng,
@@ -77,6 +84,14 @@ pub struct RuleBot {
     last_think: Tick,
     /// Tick an enemy tank was last in view; drives the patience clock.
     last_contact: Tick,
+    /// Seconds an enemy has been in view since the objective was set,
+    /// accumulated across the bot's own scoots and resupplies. Twice
+    /// the patience and the bot storms.
+    contact_total: f32,
+    /// The objective the contact clock belongs to.
+    contact_objective: Option<(i32, i32)>,
+    /// The depot being stormed, until it is ours or the bot runs low.
+    storm: Option<V2>,
     /// Tick the tank last came to rest at a firing position.
     settled_at: Option<Tick>,
     /// This bot's patience in seconds, drawn once from its seed so four
@@ -109,7 +124,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new() }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new() }
     }
 
     /// The same doctrine without the squad: the control group.
@@ -172,7 +187,10 @@ impl Brain for RuleBot {
         let enemy = self.nearest_enemy(obs, me);
         if enemy.is_some() {
             self.last_contact = obs.tick;
+            self.contact_total += (TICK_HZ / 4) as f32 * DT;
         }
+        // Hit in the last second: by something, seen or not.
+        let just_hit = me.last_hit_tick > 0 && obs.tick.saturating_sub(me.last_hit_tick) <= TICK_HZ as Tick;
         let stationary = me.goal.is_none();
         if stationary {
             if self.settled_at.is_none() {
@@ -190,6 +208,10 @@ impl Brain for RuleBot {
             .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
             .map(|d| d.pos)
             .unwrap_or_else(|| obs.centre());
+        if self.contact_objective != Some(objective.tile()) {
+            self.contact_objective = Some(objective.tile());
+            self.contact_total = 0.0;
+        }
 
         // 1. The bubble.
         let want_station = if hostile_air > 0 { 4 } else { 2 };
@@ -212,12 +234,18 @@ impl Brain for RuleBot {
         // recon launched then orbits the start, where the tank will not
         // be.
         let settled_s = self.settled_at.map(|t| obs.tick.saturating_sub(t) as f32 * DT).unwrap_or(0.0);
+        // The recon orbits short of what it watches: a recon inside an
+        // enemy's bubble is intercepted (the first 6d trace lost both of
+        // an attacker's recons over a defended depot in eight seconds
+        // and the attacker sat blind for the rest of the match). Ten
+        // tiles short with a two-tile orbit keeps it outside a default
+        // bubble and inside its own twelve tiles of vision.
         let dir = (look_at - me.pos).norm();
-        let dist = me.pos.dist(look_at).min(RECON_LINK * 0.7);
+        let dist = (me.pos.dist(look_at) - (RECON_VISION - 2.0)).clamp(2.0, RECON_LINK * 0.7);
         let center = me.pos + dir.scale(dist);
         if my_recon.is_empty() {
             if me.bay.recon > 0 && (settled_s >= 1.0 || enemy.is_some()) {
-                cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 3.0 } });
+                cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 2.0 } });
             }
         } else if enemy.is_some() && !recon_sees_it {
             // A recon that cannot see the enemy is moved, not doubled
@@ -226,7 +254,7 @@ impl Brain for RuleBot {
             let r = my_recon[0];
             let already = matches!(&r.task, DroneTask::Orbit { center: c, .. } if c.dist(center) < 4.0);
             if !already && matches!(r.task, DroneTask::Orbit { .. }) {
-                cmds.push(Command::Retask { drone: r.id, task: DroneTask::Orbit { center, radius: 3.0 } });
+                cmds.push(Command::Retask { drone: r.id, task: DroneTask::Orbit { center, radius: 2.0 } });
             }
         }
 
@@ -254,10 +282,40 @@ impl Brain for RuleBot {
             }
         }
 
+        // 10. The storm: on when the enemy has been in view for twice the
+        // patience and the objective is in reach; off when the depot
+        // is ours or the bot runs low (section 7 takes it home).
+        let hostile_box = |p: &&Pillbox| p.alive() && !p.owner.map(|o| obs.allied(o)).unwrap_or(false);
+        if self.storm.is_none() {
+            let long_contact = self.contact_total >= self.patience * 2.0;
+            if long_contact && me.pos.dist(objective) <= INDIRECT_MAX_RANGE {
+                self.storm = Some(objective);
+                cmds.push(Command::Chat { text: "storming the depot".into(), to: ChatTo::Team });
+            }
+        }
+        if let Some(tgt) = self.storm {
+            let taken = obs.depots.iter().any(|d| d.pos.dist(tgt) < 1.0 && d.owner.map(|o| obs.allied(o)).unwrap_or(false));
+            if taken {
+                self.storm = None;
+            }
+        }
+        // The guns guarding a stormed depot: shelled before anything else.
+        let guns: Vec<&Pillbox> = match self.storm {
+            Some(tgt) => obs.pillboxes.iter().filter(hostile_box).filter(|p| p.pos.dist(tgt) <= PILLBOX_RANGE + 2.0).collect(),
+            None => Vec::new(),
+        };
+        let gun_target = guns.iter().filter(|p| (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&me.pos.dist(p.pos))).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+        if let Some(g) = gun_target {
+            if me.reload == 0 && me.shells > 0 {
+                cmds.push(Command::FireIndirect { at: g.pos });
+                self.last_fire_tick = obs.tick;
+            }
+        }
+
         // 4. The gun, and 6. strikes.
         if let Some(e) = enemy {
             let range = me.pos.dist(e.pos);
-            if me.reload == 0 && me.shells > 0 {
+            if me.reload == 0 && me.shells > 0 && gun_target.is_none() {
                 if range <= DIRECT_RANGE {
                     cmds.push(Command::FireDirect { at: e.pos });
                     self.last_fire_tick = obs.tick;
@@ -282,24 +340,62 @@ impl Brain for RuleBot {
             }
         }
 
+        // Under fire with the squad out, the squad comes home and the
+        // tank moves: the first 6d trace had three attackers die at
+        // their starts holding still for a squad that was capturing a
+        // pillbox ten tiles away.
         if squad_out {
-            return cmds;
+            if !just_hit {
+                return cmds;
+            }
+            cmds.push(Command::Deploy { task: PillboyTask::Return });
         }
 
         // 7. Resupply.
-        let low = me.shells < 6 || me.armor < 45.0 || me.bay.interceptor == 0 || me.fuel < 120.0;
-        let full = me.shells >= TANK_SHELLS - 2 && me.armor >= TANK_ARMOR - 5.0 && me.bay.interceptor >= BAY_FULL.interceptor - 1;
+        // Blind counts as low: a bot with no recon up and none in the bay
+        // cannot see to shoot or to advance.
+        let blind = me.bay.recon == 0 && my_recon.is_empty();
+        let low = me.shells < 6 || me.armor < 45.0 || me.bay.interceptor == 0 || me.fuel < 120.0 || blind;
+        let full = me.shells >= TANK_SHELLS - 2 && me.armor >= TANK_ARMOR - 5.0 && me.bay.interceptor >= BAY_FULL.interceptor - 1 && me.bay.recon > 0;
         if self.resupplying && full {
             self.resupplying = false;
         }
         if low && !self.resupplying {
             self.resupplying = true;
+            self.storm = None;
         }
         if self.resupplying {
             let depot = self.nearest_depot(obs, me, true).or_else(|| self.nearest_depot(obs, me, false));
             if let Some(d) = depot {
                 if me.pos.dist(d.pos) > DEPOT_RADIUS * 0.6 && stationary {
                     cmds.push(Command::Move { to: d.pos });
+                }
+            }
+            return cmds;
+        }
+
+        // Hit by something unseen: move anyway. A tank that stands still
+        // for a spotted shell's flight is where the next one lands.
+        if just_hit && stationary && enemy.is_none() {
+            let to = me.pos + self.rng.disc().scale(4.0);
+            cmds.push(Command::Move { to: obs.clamp(to) });
+            return cmds;
+        }
+
+        // 10. Storming: guns first, from indirect range; then onto the
+        // depot. No scooting.
+        if let Some(tgt) = self.storm {
+            if stationary {
+                if let Some(g) = guns.iter().min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+                    let d = me.pos.dist(g.pos);
+                    if d > INDIRECT_MAX_RANGE * 0.9 || d < INDIRECT_MIN_RANGE + 1.0 {
+                        // A firing position on the gun: inside indirect
+                        // range, outside its own.
+                        let to = g.pos + (me.pos - g.pos).norm().scale(INDIRECT_MIN_RANGE + 6.0);
+                        cmds.push(Command::Move { to: obs.clamp(to) });
+                    }
+                } else if me.pos.dist(tgt) > DEPOT_RADIUS * 0.6 {
+                    cmds.push(Command::Move { to: tgt });
                 }
             }
             return cmds;
@@ -343,35 +439,101 @@ impl Brain for RuleBot {
     }
 }
 
-// ------------------------------------------------------------ fortifier
+// ------------------------------------------------------------- defender
 
-/// The smallest brain that plays the brief's defensive game: it stays
-/// at its home depot, keeps two interceptors up, shoots what it sees,
-/// and sets the squad to work: harvest the nearest forest the crew can
-/// see until the tank carries material, then lay a ring of mines round
-/// the depot at radius `MOAT_RADIUS` (no gate: its own mines do not
-/// hurt it), then a ring of walls one tile further out with the tile
-/// toward the map's centre left open as the gate. With `fortify` off it does everything but the squad's work:
-/// the control group for roadmap step 6c's proof.
-pub struct Fortifier {
+/// The brief's defensive game, as the simplest doctrine that plays it
+/// (roadmap step 6d; it grew out of step 6c's Fortifier, which is this
+/// brain with `fortify` off plus the rings):
+///
+///   1. Never leave. The post is a tile off the home depot on the side
+///      away from the map's centre, so the rings have room.
+///   2. Two interceptors up; four while hostile drones are near.
+///   3. Eyes on the approach: one recon over the gate direction,
+///      `WATCH` tiles out, so the gun sees what comes while it is
+///      still at its own standoff.
+///   4. Shoot what is seen: direct inside 10 tiles, indirect from 12 to
+///      60, led.
+///   5. The squad, in this order, each when the squad is aboard and the
+///      material is there: capture the neutral or dead pillbox on the
+///      approach (the generated map puts one a third of the way in on
+///      every spoke); repair an owned pillbox below half; the moat, a
+///      gateless ring of mines at `MOAT_RADIUS` (first: cheap, quick,
+///      and the thing that stops a tank; built later, the 6c proof
+///      turned the other way, with the attacker walking through the
+///      gap onto the depot); build a pillbox at the mouth of the
+///      walls, `MOUTH` tiles out along the gate direction; lay the
+///      road from the depot to it, so the squad can reach it; mine the
+///      approach beyond it; the walls, a ring one tile outside the
+///      moat with the gate toward the centre. Forest for material, the
+///      nearest first; every refusal remembered.
+///   6. Allies. While its side is small a defender proposes, once a
+///      minute, to recruit the owner of the nearest depot that is not
+///      its side's, and it accepts any proposal from a player who has
+///      never hurt it. The three-way rule decides the rest.
+///
+/// With `fortify` off it does everything but the squad's work: the
+/// control group for the proofs.
+pub struct Defender {
     name: String,
     last_think: Tick,
     pub fortify: bool,
     home: Option<V2>,
-    /// Wall tiles already ordered: the Observation carries no map, so
-    /// the brain remembers rather than looks.
+    /// Tiles already ordered: the Observation carries no map, so the
+    /// brain remembers rather than looks.
     wall_tries: Vec<(i32, i32)>,
+    road_tries: Vec<(i32, i32)>,
+    mouth_tries: Vec<(i32, i32)>,
+    approach_tries: Vec<(i32, i32)>,
     /// Tiles the world refused to build on, from its own Rejected
     /// events; and forest tiles it was told to fell first.
     blocked: Vec<(i32, i32)>,
     fell: Vec<V2>,
+    /// Pillboxes the squad could not reach.
+    unreachable: Vec<EntityId>,
+    /// Who has shot this tank: never an ally.
+    hurt_by: Vec<PlayerId>,
+    last_proposal: Tick,
+    /// Where the trouble is: the depot of whoever shot us last, or the
+    /// last hostile tank seen. The recon watches there.
+    watch: Option<V2>,
+    /// Sidestepping under fire until this tick; the post rule waits.
+    dodge_until: Tick,
+    rng: Option<Rng>,
 }
 
 pub const MOAT_RADIUS: f32 = 3.0;
+/// The mouth pillbox: outside the wall ring, inside pillbox range of
+/// the depot, so a tank on the depot is under its gun.
+pub const MOUTH: f32 = 6.0;
+/// Where the recon watches from: `RECON_VISION` tiles each side of
+/// this covers the approach from the moat to beyond an attacker's
+/// standoff.
+pub const WATCH: f32 = 16.0;
+/// The approach mines, this far out along the gate direction.
+pub const APPROACH: f32 = 8.0;
+/// Seconds between a defender's proposals.
+pub const PROPOSE_EVERY: f32 = 60.0;
 
-impl Fortifier {
-    pub fn new(name: &str, fortify: bool) -> Fortifier {
-        Fortifier { name: name.into(), last_think: 0, fortify, home: None, wall_tries: Vec::new(), blocked: Vec::new(), fell: Vec::new() }
+impl Defender {
+    pub fn new(name: &str, fortify: bool) -> Defender {
+        Defender {
+            name: name.into(),
+            last_think: 0,
+            fortify,
+            home: None,
+            wall_tries: Vec::new(),
+            road_tries: Vec::new(),
+            mouth_tries: Vec::new(),
+            approach_tries: Vec::new(),
+            blocked: Vec::new(),
+            fell: Vec::new(),
+            unreachable: Vec::new(),
+            hurt_by: Vec::new(),
+            last_proposal: 0,
+            watch: None,
+            dodge_until: 0,
+            rng: None,
+        }
     }
 
     /// The ring of tiles at `r` round `c`, in the order to lay them: the
@@ -399,9 +561,29 @@ impl Fortifier {
         tiles.sort_by(|a, b| (*b - c).norm().dist(dir).partial_cmp(&(*a - c).norm().dist(dir)).unwrap());
         tiles
     }
+
+    /// Candidate sites for the mouth pillbox: along the gate direction
+    /// at `MOUTH`, then a little to either side, then further out.
+    fn mouth_sites(home: V2, dir: V2) -> Vec<V2> {
+        let h = dir.heading();
+        let mut out = Vec::new();
+        for r in [MOUTH, MOUTH + 1.0, MOUTH + 2.0] {
+            for a in [0.0, 0.4, -0.4] {
+                out.push(Map::tile_centre(home + V2::from_heading(h + a).scale(r)));
+            }
+        }
+        out
+    }
+
+    /// The approach mines: three across the gate direction at
+    /// `APPROACH`, the road's tile in the middle.
+    fn approach_sites(home: V2, dir: V2) -> Vec<V2> {
+        let h = dir.heading();
+        [0.0, 0.25, -0.25].iter().map(|a| Map::tile_centre(home + V2::from_heading(h + a).scale(APPROACH))).collect()
+    }
 }
 
-impl Brain for Fortifier {
+impl Brain for Defender {
     fn name(&self) -> &str {
         &self.name
     }
@@ -409,19 +591,37 @@ impl Brain for Fortifier {
         let mut cmds = Vec::new();
         let Some(me) = obs.me.as_ref() else { return cmds };
         // Every tick, before the think-rate gate: a refusal lands in the
-        // tick after the order, which is rarely a think tick.
-        // The world says why an order failed, and the brain has no map
-        // to have known. Forest in the ring is felled first (material,
-        // too); anything else is left alone.
+        // tick after the order, which is rarely a think tick. The world
+        // says why an order failed, and the brain has no map to have
+        // known. Forest in a ring is felled first (material, too);
+        // anything else is left alone. And who shoots us is noted.
         for e in &obs.events {
-            if let Event::Rejected { cmd: Command::Deploy { task: PillboyTask::Build { at, .. } }, why, .. } = e {
-                if why.starts_with("forest") {
-                    if !self.fell.iter().any(|f| f.tile() == at.tile()) {
-                        self.fell.push(*at);
+            match e {
+                Event::Rejected { cmd: Command::Deploy { task: PillboyTask::Build { at, .. } }, why, .. } => {
+                    if why.starts_with("forest") {
+                        if !self.fell.iter().any(|f| f.tile() == at.tile()) {
+                            self.fell.push(*at);
+                        }
+                    } else if !self.blocked.contains(&at.tile()) {
+                        self.blocked.push(at.tile());
                     }
-                } else if !self.blocked.contains(&at.tile()) {
-                    self.blocked.push(at.tile());
                 }
+                Event::Rejected { cmd: Command::Deploy { task: PillboyTask::Capture { pillbox } }, why, .. } | Event::Rejected { cmd: Command::Deploy { task: PillboyTask::Repair { target: pillbox } }, why, .. } => {
+                    if why.contains("unreachable") && !self.unreachable.contains(pillbox) {
+                        self.unreachable.push(*pillbox);
+                    }
+                }
+                Event::TankDamaged { tank, by: Some(b), .. } if *tank == me.id && *b != obs.player && !obs.allied(*b) => {
+                    if !self.hurt_by.contains(b) {
+                        self.hurt_by.push(*b);
+                    }
+                    // Counter-battery by deduction: the shell came from
+                    // the owner of that depot. Look there.
+                    if let Some(d) = obs.depots.iter().filter(|d| d.owner == Some(*b)).min_by(|x, y| x.pos.dist(me.pos).partial_cmp(&y.pos.dist(me.pos)).unwrap()) {
+                        self.watch = Some(d.pos);
+                    }
+                }
+                _ => {}
             }
         }
         if !me.alive || obs.tick.saturating_sub(self.last_think) < (TICK_HZ / 4) as Tick {
@@ -430,66 +630,188 @@ impl Brain for Fortifier {
         self.last_think = obs.tick;
         let home = *self.home.get_or_insert_with(|| obs.depots.iter().filter(|d| d.owner == Some(obs.player)).chain(obs.depots.iter().filter(|d| d.owner.map(|o| obs.allied(o)).unwrap_or(false))).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).unwrap_or(me.pos));
         let centre = obs.centre();
-        // Sit by the depot, just off it so the squad's rings have room.
+        let dir = (centre - home).norm();
+        // 1. Sit by the depot, just off it so the squad's rings have room.
+        // Under fire, sidestep inside the depot's radius for a few
+        // seconds: a tank that stands still for a spotted shell's flight
+        // is where the next one lands (the first 6d trace lost three
+        // defenders to the opening salvo in twenty seconds). A short
+        // step: the moat is a tile and a half beyond it, and a moat set
+        // off by an attacker splashes its owner like anyone else (the
+        // 6c proof turned the other way round when the step was longer).
         let post = home + (home - centre).norm().scale(1.0);
-        if me.pos.dist(post) > 1.5 && me.goal.is_none() {
+        let dodging = obs.tick < self.dodge_until;
+        let just_hit = me.last_hit_tick > 0 && obs.tick.saturating_sub(me.last_hit_tick) <= TICK_HZ as Tick;
+        if just_hit && !dodging && me.goal.is_none() {
+            let rng = self.rng.get_or_insert_with(|| Rng::new(fnv1a64(self.name.as_bytes()) ^ (obs.player as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)));
+            let to = obs.clamp(home + rng.disc().scale(MOAT_RADIUS - MINE_RADIUS - 0.3));
+            self.dodge_until = obs.tick + 4 * TICK_HZ as Tick;
+            cmds.push(Command::Move { to });
+            return cmds;
+        }
+        if !dodging && me.pos.dist(post) > 1.5 && me.goal.is_none() {
             cmds.push(Command::Move { to: post });
             return cmds;
         }
-        // The bubble, and the gun.
+        // 6. Allies. Answer what is on the table, then ask.
+        // Only the one asked answers; a teammate's answer to the same
+        // proposal in the same tick is "no such proposal". When two
+        // defenders have proposed to each other in the same minute, the
+        // lower seat answers and the higher lets its own proposal be
+        // overtaken, or both answers land in one tick and the second
+        // finds nothing to answer.
+        // One answer a think: accepting one changes sides, and the world
+        // then resolves the rest itself.
+        let answer = obs.proposals.iter().filter(|p| p.from != obs.player && p.to == obs.player).find(|p| {
+            let mutual = obs.proposals.iter().any(|q| q.from == obs.player && q.to == p.from);
+            !(mutual && obs.player > p.from)
+        });
+        if let Some(p) = answer {
+            cmds.push(Command::Answer { proposal: p.id, accept: !self.hurt_by.contains(&p.from) });
+        }
+        let my_side = obs.players.iter().filter(|x| x.alive && x.team == obs.my_team()).count();
+        let asked = obs.proposals.iter().any(|p| p.from == obs.player);
+        if my_side < 3 && !asked && obs.tick.saturating_sub(self.last_proposal) as f32 * DT >= PROPOSE_EVERY {
+            let alive = |o: PlayerId| obs.players.iter().any(|x| x.id == o && x.alive);
+            let neighbour = obs
+                .depots
+                .iter()
+                .filter(|d| d.owner.map(|o| !obs.allied(o) && alive(o) && !self.hurt_by.contains(&o)).unwrap_or(false))
+                .min_by(|a, b| a.pos.dist(home).partial_cmp(&b.pos.dist(home)).unwrap())
+                .and_then(|d| d.owner);
+            if let Some(o) = neighbour {
+                cmds.push(Command::Propose { to: o, terms: Terms::Recruit });
+                self.last_proposal = obs.tick;
+            }
+        }
+        // 2. The bubble.
         let my_interceptors = obs.my_drones().filter(|d| d.kind == DroneKind::Interceptor).count();
-        if my_interceptors < 2 && me.bay.interceptor > 0 {
+        let hostile_air = obs.hostile_drones().filter(|d| d.pos.dist(me.pos) <= me.bubble + DETECT_MARGIN + 6.0).count();
+        let want_station = if hostile_air > 0 { 4 } else { 2 };
+        if my_interceptors < want_station && me.bay.interceptor > 0 {
             cmds.push(Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return });
         }
-        if let Some(e) = obs.hostile_tanks().min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+        // 3. Eyes: on the approach from the centre until something
+        // happens, then on the trouble (the last shooter's depot, or the
+        // last hostile tank seen), short of it by the recon's own vision
+        // so it stays out of a bubble. Moved by Retask when the trouble
+        // moves.
+        let enemy = obs.hostile_tanks().min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+        if let Some(e) = enemy {
+            self.watch = Some(e.pos);
+        }
+        let eye = match self.watch {
+            Some(w) => {
+                let d = (me.pos.dist(w) - (RECON_VISION - 2.0)).clamp(2.0, RECON_LINK * 0.7);
+                obs.clamp(me.pos + (w - me.pos).norm().scale(d))
+            }
+            None => obs.clamp(home + dir.scale(WATCH)),
+        };
+        match obs.my_drones().find(|d| d.kind == DroneKind::Recon) {
+            None => {
+                if me.bay.recon > 0 {
+                    cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: eye, radius: 3.0 } });
+                }
+            }
+            Some(r) => {
+                if matches!(&r.task, DroneTask::Orbit { center, .. } if center.dist(eye) > 4.0) {
+                    cmds.push(Command::Retask { drone: r.id, task: DroneTask::Orbit { center: eye, radius: 3.0 } });
+                }
+            }
+        }
+        // 4. The gun.
+        if let Some(e) = enemy {
             let range = me.pos.dist(e.pos);
             if me.reload == 0 && me.shells > 0 {
                 if range <= DIRECT_RANGE {
                     cmds.push(Command::FireDirect { at: e.pos });
                 } else if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&range) {
                     let lead = V2::from_heading(e.heading).scale(e.speed * range / SHELL_SPEED_INDIRECT * 0.8);
-                    cmds.push(Command::FireIndirect { at: e.pos + lead });
+                    let aim = e.pos + lead;
+                    let aim = if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&me.pos.dist(aim)) { aim } else { e.pos };
+                    cmds.push(Command::FireIndirect { at: aim });
                 }
             }
         }
-        // The squad.
+        // 5. The squad.
         if !self.fortify || me.pillboys.strength == 0 {
             return cmds;
         }
         if me.pillboys.deployed() || me.goal.is_some() {
             return cmds;
         }
-        let known: Vec<(i32, i32)> = obs.mines.iter().filter(|m| m.owner == obs.player).map(|m| m.pos.tile()).collect();
-        // Forest tiles in the rings wait until there is room for their
-        // material: the first version re-ordered a mine onto forest,
-        // was told to fell it, could not (material full), and did it
-        // again four times a second for three minutes.
-        let forest_tiles: Vec<(i32, i32)> = self.fell.iter().map(|f| f.tile()).collect();
-        let open = |p: &V2| !self.blocked.contains(&p.tile()) && !forest_tiles.contains(&p.tile());
-        let moat: Vec<V2> = Self::ring(home, MOAT_RADIUS, centre, false).into_iter().filter(|p| !known.contains(&p.tile()) && open(p)).collect();
-        let walls: Vec<V2> = Self::ring(home, MOAT_RADIUS + 1.0, centre, true).into_iter().filter(|p| open(p) && !self.wall_tries.contains(&p.tile())).collect();
-        if me.pillboys.material + HARVEST_MATERIAL <= PILLBOY_MATERIAL_MAX {
+        let material = me.pillboys.material;
+        let reach = |p: &Pillbox| p.pos.dist(home) <= PILLBOY_REACH && !self.unreachable.contains(&p.id);
+        // Capture: the approach's pillbox, neutral or dead, outside its
+        // own range of the post (a live neutral one shoots the tank, not
+        // the squad; but the squad's home must stay out of its ring).
+        let capture = obs
+            .pillboxes
+            .iter()
+            .filter(|p| reach(p) && !p.owner.map(|o| obs.allied(o)).unwrap_or(false) && (p.owner.is_none() || !p.alive()) && (!p.alive() || p.pos.dist(me.pos) > PILLBOX_RANGE + 1.0))
+            .min_by(|a, b| a.pos.dist(home).partial_cmp(&b.pos.dist(home)).unwrap());
+        if let Some(p) = capture {
+            cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: p.id } });
+            return cmds;
+        }
+        // Repair: an owned pillbox below half, when there is material.
+        let repair = obs.pillboxes.iter().filter(|p| reach(p) && p.owner == Some(obs.player) && p.health < PILLBOX_HEALTH * 0.5).min_by(|a, b| a.health.partial_cmp(&b.health).unwrap());
+        if let Some(p) = repair {
+            if material >= PILLBOX_REPAIR_COST {
+                cmds.push(Command::Deploy { task: PillboyTask::Repair { target: p.id } });
+                return cmds;
+            }
+        }
+        // Material. Forest tiles in the rings wait until there is room
+        // for their material: the first version re-ordered a mine onto
+        // forest, was told to fell it, could not (material full), and
+        // did it again four times a second for three minutes.
+        if material + HARVEST_MATERIAL <= PILLBOY_MATERIAL_MAX {
             if let Some(tree) = self.fell.first().copied() {
                 self.fell.remove(0);
                 cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: tree } });
                 return cmds;
             }
         }
-        // Material first: a harvest is four, a mine one. With none and no
-        // forest in sight there is nothing to build with: wait for the
-        // depot's trickle rather than order a build the world refuses
-        // four times a second (backlog item 4).
-        if me.pillboys.material < 1 || (me.pillboys.material < 4 && !moat.is_empty() && me.pillboys.material < moat.len() as u8) {
+        let known: Vec<(i32, i32)> = obs.mines.iter().filter(|m| m.owner == obs.player).map(|m| m.pos.tile()).collect();
+        let forest_tiles: Vec<(i32, i32)> = self.fell.iter().map(|f| f.tile()).collect();
+        let open = |p: &V2| !self.blocked.contains(&p.tile()) && !forest_tiles.contains(&p.tile());
+        // The mouth pillbox: one, live, ours, near the mouth.
+        let has_mouth = obs.pillboxes.iter().any(|p| p.owner == Some(obs.player) && p.alive() && p.pos.dist(home) <= MOUTH + 3.0 && p.pos.dist(home) >= MOAT_RADIUS + 1.0);
+        let mouth_site = if has_mouth { None } else { Self::mouth_sites(home, dir).into_iter().find(|p| open(p) && !self.mouth_tries.contains(&p.tile()) && !obs.pillboxes.iter().any(|b| b.pos.dist(*p) < PILLBOX_SPACING)) };
+        // The road starts outside the depot's own radius (nothing is
+        // built on a depot) and runs to the mouth.
+        let road: Vec<V2> = (3..(MOUTH as i32)).map(|r| Map::tile_centre(home + dir.scale(r as f32))).filter(|p| open(p) && !self.road_tries.contains(&p.tile())).collect();
+        let approach: Vec<V2> = Self::approach_sites(home, dir).into_iter().filter(|p| open(p) && !known.contains(&p.tile()) && !self.approach_tries.contains(&p.tile())).collect();
+        let moat: Vec<V2> = Self::ring(home, MOAT_RADIUS, centre, false).into_iter().filter(|p| !known.contains(&p.tile()) && open(p)).collect();
+        let walls: Vec<V2> = Self::ring(home, MOAT_RADIUS + 1.0, centre, true).into_iter().filter(|p| open(p) && !self.wall_tries.contains(&p.tile())).collect();
+        // What the next job costs; harvest when short, wait when there
+        // is no forest in sight (the depot's trickle will do).
+        let need = if moat.is_empty() && mouth_site.is_some() { PILLBOX_BUILD_COST } else { 1 };
+        if material < need || (material < 4 && !moat.is_empty() && material < moat.len() as u8) {
             if let Some(tree) = obs.forest.first() {
                 cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: *tree } });
-                return cmds;
             }
-        }
-        if me.pillboys.material < 1 {
             return cmds;
         }
+        // The moat first: cheap, quick, and the thing that stops a tank.
         if let Some(at) = moat.first() {
             cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Mine, at: *at } });
+            return cmds;
+        }
+        if let Some(at) = mouth_site {
+            self.mouth_tries.push(at.tile());
+            cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Pillbox, at } });
+            return cmds;
+        }
+        if let Some(at) = road.first().copied() {
+            self.road_tries.push(at.tile());
+            cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Road, at } });
+            return cmds;
+        }
+        if let Some(at) = approach.first().copied() {
+            self.approach_tries.push(at.tile());
+            cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Mine, at } });
             return cmds;
         }
         // Walls: the Observation has no map, so try each tile in turn;
@@ -693,7 +1015,7 @@ mod tests {
                 let mut w = World::new(scenario);
                 w.pillboxes.clear();
                 let depot = w.depots.iter().find(|d| d.owner == Some(0)).unwrap().pos;
-                let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = vec![(0, Box::new(Fortifier::new("fort", fortify))), (1, Box::new(Attacker { target: depot, start: grace, last: 0 }))];
+                let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = vec![(0, Box::new(Defender::new("fort", fortify))), (1, Box::new(Attacker { target: depot, start: grace, last: 0 }))];
                 let mut died_at = limit;
                 let mut things = 0u32;
                 while !w.over {
@@ -722,6 +1044,96 @@ mod tests {
         assert!(built.0 >= 60, "the fortifier barely built anything: {}", built.0);
         assert!(survived.0 > survived.1, "fortified did not outlive bare: {} vs {}", survived.0, survived.1);
         assert!(defender_alive.0 >= defender_alive.1);
+    }
+
+    /// Roadmap step 6d's proof, as it came out: sixteen bots, four
+    /// attacking, over ten seeds of five minutes. The match lasts to
+    /// the time limit, the defended depots stay defended, and the
+    /// defenders outlive the attackers. The roadmap predicted that
+    /// most kills would be pillbox kills; they are shell kills, both
+    /// ways, because the gun out-ranges the pillbox 60 tiles to 8 and
+    /// an attacker that storms a prepared depot is one that has
+    /// already lost the duel. The split is printed so the trace of a
+    /// run shows it.
+    #[test]
+    fn defenders_hold() {
+        let seeds = 10u64;
+        let limit = 5 * 60 * TICK_HZ as Tick;
+        let mut to_the_limit = 0u32;
+        let mut alive = (0u32, 0u32); // attackers, defenders
+        let mut attacker_depots = 0u32;
+        let mut defender_depots = 0u32;
+        let mut kills = std::collections::BTreeMap::new();
+        let mut pillbox_shots = 0u32;
+        let mut built = 0u32;
+        for seed in 0..seeds {
+            let scenario = Scenario { seed: 0x6D6D_0000 + seed * 7919, time_limit: limit, ..Scenario::bots(16) };
+            let mut w = World::new(scenario);
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..16u8)
+                .map(|i| {
+                    let b: Box<dyn Brain> = if i < 4 { Box::new(RuleBot::new(5000 + seed * 16 + i as u64, "attacker")) } else { Box::new(Defender::new("defender", true)) };
+                    (i, b)
+                })
+                .collect();
+            let mut pending: std::collections::HashMap<EntityId, &str> = std::collections::HashMap::new();
+            let mut last: std::collections::HashMap<EntityId, &str> = std::collections::HashMap::new();
+            while !w.over {
+                let orders = run_bots(&w, &mut bots);
+                w.step(&orders);
+                for e in &w.events {
+                    match e {
+                        Event::StrikeHit { tank, .. } => {
+                            pending.insert(*tank, "strike");
+                        }
+                        Event::PillboxFired { tank, .. } => {
+                            pillbox_shots += 1;
+                            pending.insert(*tank, "pillbox");
+                        }
+                        Event::MineExploded { hits, .. } => {
+                            for h in hits {
+                                pending.insert(*h, "mine");
+                            }
+                        }
+                        Event::TankDamaged { tank, .. } => {
+                            let c = pending.remove(tank).unwrap_or("shell");
+                            last.insert(*tank, c);
+                        }
+                        Event::TankDestroyed { tank, .. } => {
+                            *kills.entry(last.get(tank).copied().unwrap_or("?")).or_insert(0u32) += 1;
+                        }
+                        Event::PillboxBuilt { .. } => built += 1,
+                        _ => {}
+                    }
+                }
+            }
+            if w.tick >= limit {
+                to_the_limit += 1;
+            }
+            alive.0 += w.players.iter().filter(|p| p.alive && p.id < 4).count() as u32;
+            alive.1 += w.players.iter().filter(|p| p.alive && p.id >= 4).count() as u32;
+            attacker_depots += w.depots.iter().filter(|d| d.owner.map(|o| o < 4).unwrap_or(false)).count() as u32;
+            defender_depots += w.depots.iter().filter(|d| d.owner.map(|o| o >= 4).unwrap_or(false)).count() as u32;
+        }
+        eprintln!(
+            "defenders_hold over {} seeds: to the time limit {}; alive attackers {} of {}, defenders {} of {}; depots at the end: defenders {} of their {}, attackers {} (their own {}); kills by cause {:?}; pillbox shots {}; pillboxes built {}",
+            seeds,
+            to_the_limit,
+            alive.0,
+            4 * seeds,
+            alive.1,
+            12 * seeds,
+            defender_depots,
+            12 * seeds,
+            attacker_depots,
+            4 * seeds,
+            kills,
+            pillbox_shots,
+            built
+        );
+        assert!(to_the_limit * 2 > seeds as u32, "the match did not last: {} of {}", to_the_limit, seeds);
+        assert!(alive.1 * 4 > alive.0 * 12, "defenders did not outlive attackers: {} of {} vs {} of {}", alive.1, 12 * seeds, alive.0, 4 * seeds);
+        assert!(defender_depots * 10 >= 12 * seeds as u32 * 6, "the defenders lost their depots: {} of {}", defender_depots, 12 * seeds);
+        assert!(built >= seeds as u32, "the defenders barely built pillboxes: {}", built);
     }
 
     #[test]

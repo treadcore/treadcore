@@ -703,6 +703,11 @@ pub struct Scenario {
     /// then fails its hashes honestly, if the rules have moved).
     #[serde(default)]
     pub game_type: GameType,
+    /// Bolo's brain advantage (SPEC BRN-12, GAM-03): a bot seat is told
+    /// where every tank is, regardless of range. Off by default; a
+    /// handicap for a human against bots, never on in a bot-only proof.
+    #[serde(default)]
+    pub advantage: bool,
     pub players: Vec<(String, bool)>,
     /// A team per seat, or none: everyone starts alone, as in Bolo
     /// (ALL-01), and allies by request in play.
@@ -742,6 +747,7 @@ impl Default for Scenario {
             seed: 0x7EAD_C0DE,
             map: MapSource::FromScenarioSeed,
             game_type: GameType::Open,
+            advantage: false,
             players: (0..MAX_PLAYERS).map(|i| (seat_name(i), true)).collect(),
             teams: None,
 
@@ -2583,7 +2589,8 @@ impl World {
     pub fn observe(&self, p: PlayerId) -> Observation {
         let me = self.tank_of(p).cloned();
         let forest = me.as_ref().filter(|t| t.alive).map(|t| self.map.forest_near(t.pos, FOREST_SIGHT, 8)).unwrap_or_default();
-        let tanks = self.tanks.iter().filter(|t| self.tank_visible_to(p, t)).cloned().collect();
+        let advantage = self.scenario.advantage && self.players.iter().any(|x| x.id == p && x.is_bot);
+        let tanks = self.tanks.iter().filter(|t| self.tank_visible_to(p, t) || (advantage && t.alive)).cloned().collect();
         let drones = self.drones.iter().filter(|d| d.owner == p || self.visible_to(p, d.pos)).cloned().collect();
         let shells = self.shells.iter().filter(|s| s.owner == p || self.visible_to(p, s.pos_at(self.tick)) || self.visible_to(p, s.impact)).cloned().collect();
         Observation {

@@ -15,7 +15,7 @@
 //! so the trace reads top to bottom.
 
 use std::time::{Duration, Instant};
-use treadcore_brain::{run_bots, Brain, Fortifier, JsonBrain, RuleBot};
+use treadcore_brain::{run_bots, Brain, Defender, JsonBrain, RuleBot};
 use treadcore_net::session::RouteTable;
 use treadcore_net::{new_peer_id, Client, ClientState, Host, Lobby, LobbyConfig, Socket};
 use treadcore_proto::PORT;
@@ -38,13 +38,15 @@ struct Args {
     players: usize,
     record: Option<String>,
     replay: Option<String>,
-    /// How many bot seats, from the last, are Fortifiers (defenders)
+    /// How many bot seats, from the last, are Defenders
     /// instead of RuleBots (attackers).
     defenders: usize,
     /// Deal the seats into this many teams, round robin (0: everyone alone).
     teams: usize,
     /// What a tank starts with (`--game-type open|tournament|strict`).
     game_type: GameType,
+    /// Bot seats see every tank (`--advantage`, SPEC BRN-12).
+    advantage: bool,
     /// A map file's text, read and checked at start (`--map`).
     map: Option<String>,
     /// Write the map as played to this file when the match ends.
@@ -74,6 +76,7 @@ fn parse() -> Args {
         defenders: 0,
         teams: 0,
         game_type: GameType::Open,
+        advantage: false,
         map: None,
         save_map: None,
         write_map: None,
@@ -100,6 +103,7 @@ fn parse() -> Args {
             "--players" => a.players = parse_num::<usize>(&val()).clamp(1, MAX_PLAYERS),
             "--defenders" => a.defenders = parse_num(&val()),
             "--teams" => a.teams = parse_num(&val()),
+            "--advantage" => a.advantage = true,
             "--game-type" => {
                 let v = val();
                 a.game_type = GameType::parse(&v).unwrap_or_else(|| die(&format!("game type '{}': open, tournament or strict", v)));
@@ -146,7 +150,10 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --game-type T      what a tank starts with: open (shells and material
                      full), tournament (half the shells, no material),
                      strict (neither) (open)
-  --map FILE        play on this map file (documentation/MAPS.md)
+  --advantage        bot seats are told where every tank is, regardless
+                     of range (Bolo's brain advantage; a handicap for a
+                     human against bots)
+  --map FILE       play on this map file (documentation/MAPS.md)
                      instead of the one generated from --seed
   --save-map FILE    when the match ends, write the map as played
                      (craters, walls, pillbox owners) to FILE
@@ -268,7 +275,7 @@ fn make_brain(spec: Option<&String>, seat: PlayerId, seed: u64) -> Box<dyn Brain
 
 fn make_brain_kind(spec: Option<&String>, seat: PlayerId, seed: u64, defender: bool) -> Box<dyn Brain> {
     if defender && spec.is_none() {
-        return Box::new(Fortifier::new("fortifier", true));
+        return Box::new(Defender::new("defender", true));
     }
     match spec {
         Some(s) => {
@@ -558,7 +565,7 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
         Some(text) => MapSource::Text(text.clone()),
         None => MapSource::FromScenarioSeed,
     };
-    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, swarm_interval: args.swarm, ..Scenario::default() };
+    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, advantage: args.advantage, swarm_interval: args.swarm, ..Scenario::default() };
     if args.ticks > 0 {
         s.time_limit = args.ticks;
     }

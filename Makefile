@@ -65,7 +65,7 @@ GAME     ?= treadcore
 WANT     ?= 4
 PEER     ?=
 PLAYERS  ?= 16
-# Of the bot seats, how many dig in (Fortifier) rather than attack (RuleBot).
+# Of the bot seats, how many dig in (Defender) rather than attack (RuleBot).
 DEFENDERS ?= 0
 # Deal the seats into N teams (0: everyone alone, allying in play).
 TEAMS    ?= 0
