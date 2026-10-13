@@ -43,6 +43,8 @@ struct Args {
     defenders: usize,
     /// Deal the seats into this many teams, round robin (0: everyone alone).
     teams: usize,
+    /// What a tank starts with (`--game-type open|tournament|strict`).
+    game_type: GameType,
     /// A map file's text, read and checked at start (`--map`).
     map: Option<String>,
     /// Write the map as played to this file when the match ends.
@@ -71,6 +73,7 @@ fn parse() -> Args {
         replay: None,
         defenders: 0,
         teams: 0,
+        game_type: GameType::Open,
         map: None,
         save_map: None,
         write_map: None,
@@ -97,6 +100,10 @@ fn parse() -> Args {
             "--players" => a.players = parse_num::<usize>(&val()).clamp(1, MAX_PLAYERS),
             "--defenders" => a.defenders = parse_num(&val()),
             "--teams" => a.teams = parse_num(&val()),
+            "--game-type" => {
+                let v = val();
+                a.game_type = GameType::parse(&v).unwrap_or_else(|| die(&format!("game type '{}': open, tournament or strict", v)));
+            }
             "--map" => {
                 let path = val();
                 let text = std::fs::read_to_string(&path).unwrap_or_else(|e| die(&format!("map {}: {}", path, e)));
@@ -136,7 +143,10 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
                      (harvest, mines, walls) instead of attacking (0)
   --teams N          deal the seats into N teams, round robin (seat i to
                      team i mod N); 0 is everyone alone, allying in play
-  --map FILE         play on this map file (documentation/MAPS.md)
+  --game-type T      what a tank starts with: open (shells and material
+                     full), tournament (half the shells, no material),
+                     strict (neither) (open)
+  --map FILE        play on this map file (documentation/MAPS.md)
                      instead of the one generated from --seed
   --save-map FILE    when the match ends, write the map as played
                      (craters, walls, pillbox owners) to FILE
@@ -223,11 +233,13 @@ fn run_replay(args: Args) {
     let started = Instant::now();
     let mut next_cp = 0usize;
     let mut mismatches = 0u32;
+    let mut report = Report::default();
     while w.tick < replay.ticks {
         let orders: Vec<Order> = replay.orders_for(w.tick + 1).cloned().collect();
         w.step(&orders);
         narrate(&w, &w.events);
         trace.write(w.tick, &w.events);
+        report.tally(w.tick, &w.events);
         if let Some((t, recorded)) = replay.checkpoints.get(next_cp).copied() {
             if t == w.tick {
                 let now = w.hash();
@@ -241,7 +253,7 @@ fn run_replay(args: Args) {
             }
         }
     }
-    summary(&w, started);
+    summary(&w, started, &report);
     if mismatches == 0 {
         log::info!("replay: every checkpoint matched ({})", replay.checkpoints.len());
     } else {
@@ -275,6 +287,154 @@ fn make_brain_kind(spec: Option<&String>, seat: PlayerId, seed: u64, defender: b
     }
 }
 
+/// The match report: the numbers a balance reader wants, tallied from
+/// the event stream as it goes by and printed after the scoreboard, so
+/// a trace ends with its own summary instead of a reader counting JSON
+/// lines (backlog item 8). A kill's cause is the last thing that hurt
+/// the tank: a strike, a pillbox or a mine announces itself in the
+/// event before the damage; anything else is a shell.
+#[derive(Default)]
+struct Report {
+    shells_indirect: u32,
+    shells_spotted: u32,
+    shells_direct: u32,
+    shell_hits: u32,
+    launched: [u32; 3],
+    lost: std::collections::BTreeMap<String, u32>,
+    intercepts: u32,
+    intercept_misses: u32,
+    interceptors_shot: u32,
+    strike_hits: u32,
+    swarm: u32,
+    kills: std::collections::BTreeMap<&'static str, u32>,
+    first_kill: Option<Tick>,
+    pillbox_fired: u32,
+    pillbox_captured: u32,
+    pillbox_built: u32,
+    pillbox_destroyed: u32,
+    depots_captured: u32,
+    proposals: u32,
+    proposals_accepted: u32,
+    refused: std::collections::BTreeMap<String, u32>,
+    pending: std::collections::HashMap<EntityId, &'static str>,
+    last_cause: std::collections::HashMap<EntityId, &'static str>,
+}
+
+impl Report {
+    fn tally(&mut self, tick: Tick, events: &[Event]) {
+        for e in events {
+            match e {
+                Event::ShellLaunched { kind: ShellKind::Indirect, spotted, .. } => {
+                    self.shells_indirect += 1;
+                    self.shells_spotted += *spotted as u32;
+                }
+                Event::ShellLaunched { kind: ShellKind::Direct, .. } => self.shells_direct += 1,
+                Event::DroneLaunched { kind, .. } => self.launched[*kind as usize] += 1,
+                Event::DroneLost { kind, why, .. } => {
+                    *self.lost.entry(format!("{:?} {:?}", kind, why).to_lowercase()).or_default() += 1;
+                    if *kind == DroneKind::Interceptor && *why == LossReason::Shot {
+                        self.interceptors_shot += 1;
+                    }
+                }
+                Event::Intercepted { .. } => self.intercepts += 1,
+                Event::InterceptMissed { .. } => self.intercept_misses += 1,
+                Event::StrikeHit { tank, .. } => {
+                    self.strike_hits += 1;
+                    self.pending.insert(*tank, "strike");
+                }
+                Event::SwarmInbound { count, .. } => self.swarm += count,
+                Event::PillboxFired { tank, .. } => {
+                    self.pillbox_fired += 1;
+                    self.pending.insert(*tank, "pillbox");
+                }
+                Event::MineExploded { hits, .. } => {
+                    for h in hits {
+                        self.pending.insert(*h, "mine");
+                    }
+                }
+                Event::TankDamaged { tank, by, .. } => {
+                    let cause = match (self.pending.remove(tank), by) {
+                        (Some("strike"), None) => "swarm",
+                        (Some(c), _) => c,
+                        (None, _) => {
+                            self.shell_hits += 1;
+                            "shell"
+                        }
+                    };
+                    self.last_cause.insert(*tank, cause);
+                }
+                Event::TankDestroyed { tank, .. } => {
+                    let cause = self.last_cause.get(tank).copied().unwrap_or("?");
+                    *self.kills.entry(cause).or_default() += 1;
+                    self.first_kill.get_or_insert(tick);
+                }
+                Event::PillboxCaptured { .. } => self.pillbox_captured += 1,
+                Event::PillboxBuilt { .. } => self.pillbox_built += 1,
+                Event::PillboxDestroyed { .. } => self.pillbox_destroyed += 1,
+                Event::DepotCaptured { .. } => self.depots_captured += 1,
+                Event::Proposed { .. } => self.proposals += 1,
+                Event::ProposalResolved { accepted: true, .. } => self.proposals_accepted += 1,
+                Event::Rejected { cmd, why, .. } => {
+                    let what = format!("{:?}", cmd);
+                    let what = what.split(|c: char| !c.is_alphanumeric()).next().unwrap_or("?");
+                    *self.refused.entry(format!("{} {}", what, why)).or_default() += 1;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn print(&self) {
+        let pct = |a: u32, b: u32| if b == 0 { 0.0 } else { 100.0 * a as f32 / b as f32 };
+        log::info!(
+            "  shells: {} indirect ({} spotted, {} blind), {} direct; {} tank hits",
+            self.shells_indirect,
+            self.shells_spotted,
+            self.shells_indirect - self.shells_spotted,
+            self.shells_direct,
+            self.shell_hits
+        );
+        let tries = self.intercepts + self.intercept_misses;
+        log::info!(
+            "  drones: {} recon, {} interceptor, {} strike launched; intercepts {} of {} ({:.0}%); interceptors shot down {}",
+            self.launched[0],
+            self.launched[1],
+            self.launched[2],
+            self.intercepts,
+            tries,
+            pct(self.intercepts, tries),
+            self.interceptors_shot
+        );
+        let strikes = self.launched[2] + self.swarm;
+        log::info!("  strikes: {} launched ({} swarm), {} hit ({:.0}%)", strikes, self.swarm, self.strike_hits, pct(self.strike_hits, strikes));
+        let kills: u32 = self.kills.values().sum();
+        let by: Vec<String> = self.kills.iter().map(|(k, v)| format!("{} {}", v, k)).collect();
+        log::info!(
+            "  kills: {} ({}); first at {}",
+            kills,
+            if by.is_empty() { "none".to_string() } else { by.join(", ") },
+            self.first_kill.map(|t| format!("{:.1}s", t as f32 * DT)).unwrap_or_else(|| "never".into())
+        );
+        log::info!(
+            "  pillboxes: fired {}; captured {}, built {}, destroyed {}; depots captured {}; proposals {} ({} accepted)",
+            self.pillbox_fired,
+            self.pillbox_captured,
+            self.pillbox_built,
+            self.pillbox_destroyed,
+            self.depots_captured,
+            self.proposals,
+            self.proposals_accepted
+        );
+        let lost: Vec<String> = self.lost.iter().map(|(k, v)| format!("{} {}", v, k)).collect();
+        log::info!("  drones lost: {}", if lost.is_empty() { "none".to_string() } else { lost.join(", ") });
+        let mut refused: Vec<(&String, &u32)> = self.refused.iter().collect();
+        refused.sort_by_key(|(_, n)| std::cmp::Reverse(**n));
+        let total: u32 = self.refused.values().sum();
+        let top: Vec<String> = refused.iter().take(5).map(|(k, v)| format!("{} {}", v, k)).collect();
+        log::info!("  refused orders: {}{}", total, if top.is_empty() { String::new() } else { format!(" ({})", top.join("; ")) });
+    }
+}
+
 struct Trace(Option<std::io::BufWriter<std::fs::File>>);
 
 impl Trace {
@@ -305,6 +465,7 @@ fn narrate(world: &World, events: &[Event]) {
             Event::DroneLaunched { owner, kind, drone } => log::info!("[{:>6} {:>6.1}s] p{} launches {:?} #{}", t, s, owner, kind, drone),
             Event::DroneLost { owner, kind, why, drone } => log::info!("[{:>6} {:>6.1}s] p{} loses {:?} #{} ({:?})", t, s, owner, kind, drone, why),
             Event::DroneRecovered { owner, kind, .. } => log::debug!("[{:>6} {:>6.1}s] p{} recovers {:?}", t, s, owner, kind),
+            Event::DroneRetasked { owner, drone, task } => log::info!("[{:>6} {:>6.1}s] p{} retasks #{}: {:?}", t, s, owner, drone, task),
             Event::Intercepted { owner, target, interceptor } => log::info!("[{:>6} {:>6.1}s] {} INTERCEPT kills drone #{} (by #{})", t, s, if *owner == NEUTRAL { "neutral pillbox".to_string() } else { format!("p{}", owner) }, target, interceptor),
             Event::InterceptMissed { target, .. } => log::info!("[{:>6} {:>6.1}s] intercept missed drone #{}", t, s, target),
             Event::StrikeHit { tank, damage, .. } => log::info!("[{:>6} {:>6.1}s] STRIKE hits tank #{} for {}", t, s, tank, damage),
@@ -356,7 +517,7 @@ fn narrate(world: &World, events: &[Event]) {
     }
 }
 
-fn summary(world: &World, started: Instant) {
+fn summary(world: &World, started: Instant, report: &Report) {
     log::info!("---- match over after {} ticks ({:.0} game seconds, {:.1}s wall) ----", world.tick, world.seconds(), started.elapsed().as_secs_f32());
     let mut ps: Vec<&Player> = world.players.iter().collect();
     ps.sort_by_key(|p| (p.team, std::cmp::Reverse(p.score)));
@@ -379,7 +540,7 @@ fn summary(world: &World, started: Instant) {
 
     let dead = world.pillboxes.iter().filter(|p| !p.alive()).count();
     log::info!("  pillboxes: {} ({} owned, {} dead): {:?}", world.pillboxes.len(), owned, dead, world.pillboxes.iter().map(|p| p.owner.map(|o| o.to_string()).unwrap_or_else(|| "-".into())).collect::<Vec<_>>().join(" "));
-
+    report.print();
 }
 
 /// Write the map as played, if asked. The next match can start from it.
@@ -397,7 +558,7 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
         Some(text) => MapSource::Text(text.clone()),
         None => MapSource::FromScenarioSeed,
     };
-    let mut s = Scenario { seed: args.seed, map, swarm_interval: args.swarm, ..Scenario::default() };
+    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, swarm_interval: args.swarm, ..Scenario::default() };
     if args.ticks > 0 {
         s.time_limit = args.ticks;
     }
@@ -424,11 +585,13 @@ fn run_local(args: Args) {
     log::info!("local match: seed {:#x}, {} seats: {}", args.seed, bots.len(), bots.iter().map(|(p, b)| format!("p{}={}", p, b.name())).collect::<Vec<_>>().join(" "));
     let started = Instant::now();
     let mut next = Instant::now();
+    let mut report = Report::default();
     while !host.world.over {
         let orders = run_bots(&host.world, &mut bots);
         let events = host.tick(orders).to_vec();
         narrate(&host.world, &events);
         trace.write(host.world.tick, &events);
+        report.tally(host.world.tick, &events);
         if args.realtime {
             next += Duration::from_secs_f32(DT);
             if let Some(d) = next.checked_duration_since(Instant::now()) {
@@ -436,7 +599,7 @@ fn run_local(args: Args) {
             }
         }
     }
-    summary(&host.world, started);
+    summary(&host.world, started, &report);
     if let Some(p) = args.record.as_deref() {
         save_replay(&host, p);
     }
@@ -496,6 +659,7 @@ fn run_net(args: Args) {
         }
         log::info!("hosting: {} remote seat(s), {} bot(s)", host.seats.len(), bots.len());
         let mut next = Instant::now();
+        let mut report = Report::default();
         while !host.world.over {
             host.poll();
             if Instant::now() >= next {
@@ -504,6 +668,7 @@ fn run_net(args: Args) {
                 let events = host.tick(orders).to_vec();
                 narrate(&host.world, &events);
                 trace.write(host.world.tick, &events);
+                report.tally(host.world.tick, &events);
             }
             std::thread::sleep(Duration::from_millis(1));
         }
@@ -517,7 +682,7 @@ fn run_net(args: Args) {
             std::thread::sleep(Duration::from_millis(5));
         }
         host.shutdown();
-        summary(&host.world, started);
+        summary(&host.world, started, &report);
         if let Some(p) = args.record.as_deref() {
             save_replay(&host, p);
         }

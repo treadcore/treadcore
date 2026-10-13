@@ -9,6 +9,7 @@
 #   PLAYERS=4 make debug        four bots instead of sixteen
 #   DEFENDERS=12 make debug     twelve of them dig in; four attack
 #   TEAMS=4 make debug          four teams of four
+#   GAMETYPE=strict make debug  no shells or material to start with
 #   MAP=maps/x.map make debug   on a map file (documentation/MAPS.md)
 
 . "$(dirname "$0")/common.sh"
@@ -20,7 +21,7 @@ REPLAY="$LOGDIR/replay-$STAMP.json"
 say "building headless (debug profile) -> $LOGDIR/build-$STAMP.log"
 cargo build -p treadcore-server 2>&1 | tee "$LOGDIR/build-$STAMP.log" >/dev/null || die "build failed: see $LOGDIR/build-$STAMP.log"
 BIN="$ROOT/target/debug/treadcore-server"
-ARGS=(--local --seed "${SEED:-0x7EADC0DE}" --seconds "${GAME_SECONDS:-180}" --players "${PLAYERS:-16}" --defenders "${DEFENDERS:-0}" --teams "${TEAMS:-0}" --trace "$TRACE" --record "$REPLAY")
+ARGS=(--local --seed "${SEED:-0x7EADC0DE}" --seconds "${GAME_SECONDS:-180}" --players "${PLAYERS:-16}" --defenders "${DEFENDERS:-0}" --teams "${TEAMS:-0}" --game-type "${GAMETYPE:-open}" --trace "$TRACE" --record "$REPLAY")
 [ -n "${BRAIN:-}" ] && ARGS+=(--brain "$BRAIN")
 [ -n "${MAP:-}" ] && ARGS+=(--map "$MAP")
 say "tracing: $BIN ${ARGS[*]}"

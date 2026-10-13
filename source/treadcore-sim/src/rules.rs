@@ -26,6 +26,12 @@ pub const TURN_CRAWL: f32 = 0.25;
 pub const FUEL_PER_TILE: f32 = 1.0;
 /// Own eyes: not far. The tank sees the drones' picture, not the ground.
 pub const TANK_VISION: f32 = 7.0;
+/// Bolo's forest concealment (SPEC VIS-02, PIL-07): a tank inside a 2 x 2
+/// block of forest is hidden from every eye and every pillbox beyond
+/// this many tiles, a recon drone's included. Tree cover against the
+/// air is the oldest counter to it, and it gives the squad a reason to
+/// leave some forest standing.
+pub const CONCEAL_RANGE: f32 = 3.0;
 
 // ---- the gun -----------------------------------------------------------
 pub const RELOAD_TICKS: u16 = 4 * TICK_HZ as u16;

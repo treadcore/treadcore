@@ -227,7 +227,7 @@ impl Host {
             if now.duration_since(seat.last_heartbeat) >= HEARTBEAT {
                 seat.last_heartbeat = now;
                 let (hash_tick, hash) = self.hash_mark;
-                self.routes.send(&mut sock, self.me, seat.peer, &Packet::Heartbeat { peer: self.me, tick: self.world.tick, hash_tick, hash });
+                self.routes.send(&mut sock, self.me, seat.peer, &Packet::Heartbeat { peer: self.me, tick: self.world.tick, hash_tick, hash, rtt_ticks: seat.rtt_ticks });
             }
             if now.duration_since(seat.last_event_send) >= RESEND {
                 seat.last_event_send = now;
@@ -336,6 +336,9 @@ pub struct Client {
     /// heartbeat. Logged when it changes; compared once the client runs
     /// its own world (roadmap step 4).
     pub host_hash: (Tick, u64),
+    /// The host's estimate of our round trip, in ticks, from its last
+    /// heartbeat. What the HUD shows as rtt.
+    pub rtt_ticks: u32,
     pub refuse_reason: String,
 }
 
@@ -364,6 +367,7 @@ impl Client {
             last_heartbeat: now,
             host_tick: 0,
             host_hash: (0, 0),
+            rtt_ticks: 0,
             refuse_reason: String::new(),
         }
     }
@@ -449,8 +453,9 @@ impl Client {
                         self.events.extend(events);
                     }
                 }
-                Packet::Heartbeat { tick, hash_tick, hash, .. } => {
+                Packet::Heartbeat { tick, hash_tick, hash, rtt_ticks, .. } => {
                     self.host_tick = tick;
+                    self.rtt_ticks = rtt_ticks;
                     if hash_tick > 0 && (hash_tick, hash) != self.host_hash {
                         self.host_hash = (hash_tick, hash);
                         log::info!("host world hash at tick {}: {:016x}", hash_tick, hash);
@@ -483,7 +488,7 @@ impl Client {
                 }
                 if now.duration_since(self.last_heartbeat) >= HEARTBEAT {
                     self.last_heartbeat = now;
-                    self.routes.send(&mut self.sock, self.me, self.host, &Packet::Heartbeat { peer: self.me, tick: self.host_tick, hash_tick: 0, hash: 0 });
+                    self.routes.send(&mut self.sock, self.me, self.host, &Packet::Heartbeat { peer: self.me, tick: self.host_tick, hash_tick: 0, hash: 0, rtt_ticks: 0 });
 
                 }
                 if now.duration_since(self.last_rx) >= TIMEOUT {

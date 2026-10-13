@@ -371,8 +371,8 @@ pub struct Pillboys {
 }
 
 impl Pillboys {
-    pub fn fresh(pos: V2) -> Pillboys {
-        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material: PILLBOY_MATERIAL_START, route: Vec::new() }
+    pub fn fresh(pos: V2, material: u8) -> Pillboys {
+        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material, route: Vec::new() }
     }
     pub fn deployed(&self) -> bool {
         !self.aboard
@@ -525,7 +525,12 @@ pub enum Command {
     FireIndirect { at: V2 },
     FireDirect { at: V2 },
     Launch { kind: DroneKind, task: DroneTask },
+    /// Every drone home.
     Recall,
+    /// One of my drones, given a new task: a recon's orbit moved, a
+    /// strike's target changed, or any one drone recalled on its own.
+    /// Interceptors stay the world's to task; they can only be recalled.
+    Retask { drone: EntityId, task: DroneTask },
     SetBubble { radius: f32 },
     /// An order to the Pillboys. One at a time; a new one while they are
     /// out is refused, except Return.
@@ -559,6 +564,8 @@ pub enum Event {
     DroneLaunched { drone: EntityId, owner: PlayerId, kind: DroneKind },
     DroneLost { drone: EntityId, owner: PlayerId, kind: DroneKind, why: LossReason },
     DroneRecovered { drone: EntityId, owner: PlayerId, kind: DroneKind },
+    /// To the owner and allies: a drone took a new task by order.
+    DroneRetasked { drone: EntityId, owner: PlayerId, task: DroneTask },
     Intercepted { interceptor: EntityId, target: EntityId, owner: PlayerId },
     InterceptMissed { interceptor: EntityId, target: EntityId },
     StrikeHit { drone: EntityId, tank: EntityId, damage: f32 },
@@ -641,12 +648,61 @@ impl MapSource {
     }
 }
 
+/// Bolo's three game types (SPEC section 11), as what a tank starts
+/// with. Everything else about a match is the scenario's other fields.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GameType {
+    /// Every tank starts armed and stocked: shells and material full.
+    Open,
+    /// Some free ammunition: half the shells, no material. The depots
+    /// and the forest are where the rest comes from.
+    Tournament,
+    /// No free ammunition at all: no shells, no material. The first
+    /// thing anyone does is drive to a depot.
+    Strict,
+}
+
+impl GameType {
+    pub fn shells(self) -> u16 {
+        match self {
+            GameType::Open => TANK_SHELLS,
+            GameType::Tournament => TANK_SHELLS / 2,
+            GameType::Strict => 0,
+        }
+    }
+    pub fn material(self) -> u8 {
+        match self {
+            GameType::Open => PILLBOY_MATERIAL_START,
+            _ => 0,
+        }
+    }
+    pub fn parse(s: &str) -> Option<GameType> {
+        match s.to_ascii_lowercase().as_str() {
+            "open" => Some(GameType::Open),
+            "tournament" => Some(GameType::Tournament),
+            "strict" | "strict-tournament" => Some(GameType::Strict),
+            _ => None,
+        }
+    }
+}
+
+impl Default for GameType {
+    fn default() -> GameType {
+        GameType::Open
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Scenario {
     /// Seeds the dice (scatter, intercepts, the swarm). The map has its
     /// own source.
     pub seed: u64,
     pub map: MapSource,
+    /// What a tank starts with (Bolo's game types). Defaults when
+    /// absent, so a replay recorded before it existed still reads (and
+    /// then fails its hashes honestly, if the rules have moved).
+    #[serde(default)]
+    pub game_type: GameType,
     pub players: Vec<(String, bool)>,
     /// A team per seat, or none: everyone starts alone, as in Bolo
     /// (ALL-01), and allies by request in play.
@@ -685,6 +741,7 @@ impl Default for Scenario {
         Scenario {
             seed: 0x7EAD_C0DE,
             map: MapSource::FromScenarioSeed,
+            game_type: GameType::Open,
             players: (0..MAX_PLAYERS).map(|i| (seat_name(i), true)).collect(),
             teams: None,
 
@@ -773,7 +830,7 @@ impl World {
                 heading: (w.map.center() - pos).heading(),
                 speed: 0.0,
                 armor: TANK_ARMOR,
-                shells: TANK_SHELLS,
+                shells: scenario.game_type.shells(),
                 fuel: TANK_FUEL,
                 bay: BAY_FULL,
                 goal: None,
@@ -782,7 +839,7 @@ impl World {
                 bubble: BUBBLE_DEFAULT,
                 last_hit_tick: 0,
                 alive: true,
-                pillboys: Pillboys::fresh(pos),
+                pillboys: Pillboys::fresh(pos, scenario.game_type.material()),
             });
             w.players.push(Player {
                 id: i as PlayerId,
@@ -937,11 +994,40 @@ impl World {
 
     /// Does a recon drone of `p`, or of an ally, have `at` in view right
     /// now? Shared recon is the team's first dividend: one tank's eyes
-    /// are another's gun.
+    /// are another's gun. A point under forest cover is spotted only
+    /// from inside `CONCEAL_RANGE`.
     pub fn spotted_by(&self, p: PlayerId, at: V2) -> bool {
+        let reach = if self.concealed(at) { CONCEAL_RANGE } else { RECON_VISION };
         self.drones
             .iter()
-            .any(|d| self.allied(d.owner, p) && d.kind == DroneKind::Recon && d.link >= LINK_FLOOR && d.pos.dist(at) <= RECON_VISION)
+            .any(|d| self.allied(d.owner, p) && d.kind == DroneKind::Recon && d.link >= LINK_FLOOR && d.pos.dist(at) <= reach)
+    }
+
+    /// Bolo's cover (VIS-02): `at` lies in a 2 x 2 block of forest. A
+    /// tank standing there is hidden from everything beyond
+    /// `CONCEAL_RANGE`, pillboxes included (PIL-07).
+    pub fn concealed(&self, at: V2) -> bool {
+        let (x, y) = at.tile();
+        let forest = |x: i32, y: i32| self.map.in_tile(x, y) && self.map.at_tile(x as usize, y as usize) == Terrain::Forest;
+        if !forest(x, y) {
+            return false;
+        }
+        [(-1, -1), (0, -1), (-1, 0), (0, 0)].iter().any(|(dx, dy)| forest(x + dx, y + dy) && forest(x + dx + 1, y + dy) && forest(x + dx, y + dy + 1) && forest(x + dx + 1, y + dy + 1))
+    }
+
+    /// Can `p` see this tank? Its own always; a concealed one only from
+    /// inside `CONCEAL_RANGE`; otherwise by the ordinary discs.
+    pub fn tank_visible_to(&self, p: PlayerId, t: &Tank) -> bool {
+        if t.owner == p {
+            return true;
+        }
+        if !t.alive {
+            return false;
+        }
+        if self.concealed(t.pos) {
+            return self.tanks.iter().any(|o| o.alive && self.allied(o.owner, p) && o.pos.dist(t.pos) <= CONCEAL_RANGE) || self.drones.iter().any(|d| self.allied(d.owner, p) && d.pos.dist(t.pos) <= CONCEAL_RANGE);
+        }
+        self.visible_to(p, t.pos)
     }
 
     // ------------------------------------------------------------ stepping
@@ -1155,6 +1241,30 @@ impl World {
                 for d in self.drones.iter_mut().filter(|d| d.owner == o.player) {
                     d.task = DroneTask::Return;
                 }
+            }
+            Command::Retask { drone, task } => {
+                let Some(d) = self.drones.iter().find(|d| d.id == *drone) else { return self.reject(o, "no such drone") };
+                if d.owner != o.player {
+                    return self.reject(o, "not my drone");
+                }
+                let new = match (d.kind, task) {
+                    (_, DroneTask::Return) => DroneTask::Return,
+                    (DroneKind::Interceptor, _) => return self.reject(o, "interceptors are the world's to task"),
+                    (DroneKind::Recon, DroneTask::Orbit { center, radius }) => {
+                        if !self.map.in_bounds(*center) {
+                            return self.reject(o, "off map");
+                        }
+                        DroneTask::Orbit { center: *center, radius: radius.clamp(1.0, 6.0) }
+                    }
+                    (DroneKind::Strike, DroneTask::Strike { target }) => match self.tank(*target) {
+                        None => return self.reject(o, "no such tank"),
+                        Some(t) if self.allied(t.owner, o.player) => return self.reject(o, "that tank is an ally"),
+                        Some(_) => DroneTask::Strike { target: *target },
+                    },
+                    _ => return self.reject(o, "task does not suit that drone"),
+                };
+                self.drones.iter_mut().find(|d| d.id == *drone).unwrap().task = new.clone();
+                self.events.push(Event::DroneRetasked { drone: *drone, owner: o.player, task: new });
             }
             Command::SetBubble { radius } => {
                 let r = radius.clamp(BUBBLE_MIN, BUBBLE_MAX);
@@ -1739,7 +1849,8 @@ impl World {
                 self.events.push(Event::Resupplied { tank: tid, depot: pid });
             }
         }
-        let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
+        // Tanks with their cover (PIL-07), read once.
+        let tanks: Vec<(EntityId, PlayerId, V2, bool)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos, self.concealed(t.pos))).collect();
         let drones: Vec<(EntityId, PlayerId, V2)> = self.drones.iter().map(|d| (d.id, d.owner, d.pos)).collect();
         // Teams, read once: a pillbox is hostile to anyone not on its
         // owner's team; a neutral one to everyone.
@@ -1759,11 +1870,13 @@ impl World {
                 continue;
             }
             let shooter = p.shooter();
+            // A tank under forest cover is a target only from close
+            // (PIL-07).
             let tank = tanks
                 .iter()
-                .filter(|(_, o, pos)| !allied_with(p.owner, *o) && pos.dist(p.pos) <= PILLBOX_RANGE && self.map.line_clear(p.pos, *pos))
+                .filter(|(_, o, pos, hidden)| !allied_with(p.owner, *o) && pos.dist(p.pos) <= PILLBOX_RANGE && self.map.line_clear(p.pos, *pos) && (!hidden || pos.dist(p.pos) <= CONCEAL_RANGE))
                 .min_by(|a, b| a.2.dist(p.pos).partial_cmp(&b.2.dist(p.pos)).unwrap().then(a.0.cmp(&b.0)));
-            if let Some((tid, _, _)) = tank {
+            if let Some((tid, _, _, _)) = tank {
                 shots.push((p.id, shooter, *tid, PILLBOX_DAMAGE));
                 p.reload = PILLBOX_RELOAD_TICKS;
                 continue;
@@ -1776,8 +1889,8 @@ impl World {
                 // The owner tank's radar, if it is within link range.
                 let link = p
                     .owner
-                    .and_then(|o| tanks.iter().find(|(_, to, _)| *to == o))
-                    .map(|(_, _, tp)| (1.0 - tp.dist(p.pos) / DRONE_LINK).clamp(0.0, 1.0))
+                    .and_then(|o| tanks.iter().find(|(_, to, _, _)| *to == o))
+                    .map(|(_, _, tp, _)| (1.0 - tp.dist(p.pos) / DRONE_LINK).clamp(0.0, 1.0))
                     .unwrap_or(0.0);
                 air.push((p.id, shooter, *did, link));
                 p.reload = PILLBOX_RELOAD_TICKS;
@@ -1954,15 +2067,21 @@ impl World {
             }
         }
         // 2. Interceptor assignment. For each tank with interceptors on
-        //    station, any hostile drone inside detection gets the nearest
-        //    free interceptor. One interceptor per intruder.
+        //    station, any hostile strike inside detection gets the nearest
+        //    free interceptor. One interceptor per intruder. Hostile
+        //    interceptors are never intruders: when they were, two
+        //    bubbles that overlapped stripped each other in seconds and
+        //    the strikes came through the gap (backlog item 1; the
+        //    traces of 13 October 2026 put the kills at 7 shell : 6
+        //    strike engaging everything, 9 : 3 engaging strikes only).
+        //    The bubble is a shield, not a sword.
         let mut assignments: Vec<(EntityId, EntityId)> = Vec::new();
         for t in self.tanks.iter().filter(|t| t.alive) {
             let detect = t.bubble + DETECT_MARGIN;
             let mut intruders: Vec<&Drone> = self
                 .drones
                 .iter()
-                .filter(|d| !self.allied(d.owner, t.owner) && d.pos.dist(t.pos) <= detect && d.kind != DroneKind::Recon)
+                .filter(|d| !self.allied(d.owner, t.owner) && d.pos.dist(t.pos) <= detect && d.kind == DroneKind::Strike)
                 .collect();
             // Also engage recon drones that come inside the bubble itself:
             // they are spotting for someone's gun. An ally's are welcome.
@@ -2464,12 +2583,7 @@ impl World {
     pub fn observe(&self, p: PlayerId) -> Observation {
         let me = self.tank_of(p).cloned();
         let forest = me.as_ref().filter(|t| t.alive).map(|t| self.map.forest_near(t.pos, FOREST_SIGHT, 8)).unwrap_or_default();
-        let tanks = self
-            .tanks
-            .iter()
-            .filter(|t| t.owner == p || (t.alive && self.visible_to(p, t.pos)))
-            .cloned()
-            .collect();
+        let tanks = self.tanks.iter().filter(|t| self.tank_visible_to(p, t)).cloned().collect();
         let drones = self.drones.iter().filter(|d| d.owner == p || self.visible_to(p, d.pos)).cloned().collect();
         let shells = self.shells.iter().filter(|s| s.owner == p || self.visible_to(p, s.pos_at(self.tick)) || self.visible_to(p, s.impact)).cloned().collect();
         Observation {
@@ -2501,7 +2615,7 @@ impl World {
         match e {
             Event::Rejected { player, .. } => *player == p,
             Event::ShellLaunched { owner, .. } => self.allied(*owner, p),
-            Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::LinkLost { owner, .. } => self.allied(*owner, p),
+            Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::DroneRetasked { owner, .. } | Event::LinkLost { owner, .. } => self.allied(*owner, p),
             Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => self.allied(*owner, p),
             Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } => self.allied(*owner, p),
             Event::Chat { player, to: ChatTo::Team, .. } => self.allied(*player, p),
@@ -3323,6 +3437,110 @@ mod tests {
         // The scripted match replays to the same hashes.
         rec.record(&w, &[]);
         assert!(rec.verify().is_ok(), "the proposal match does not replay");
+    }
+
+    /// Backlog item 3: a recon's orbit moves by order, one drone comes
+    /// home on its own, an interceptor is refused, another's drone is
+    /// refused.
+    #[test]
+    fn retask_moves_a_recon_and_recalls_one_drone() {
+        let mut w = world();
+        let c = w.map.center();
+        w.step(&[
+            Order { player: 0, cmd: Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: c, radius: 3.0 } } },
+            Order { player: 0, cmd: Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return } },
+        ]);
+        let recon = w.drones.iter().find(|d| d.kind == DroneKind::Recon).unwrap().id;
+        let interceptor = w.drones.iter().find(|d| d.kind == DroneKind::Interceptor).unwrap().id;
+        let moved = c + V2::new(5.0, 5.0);
+        w.step(&[
+            Order { player: 0, cmd: Command::Retask { drone: recon, task: DroneTask::Orbit { center: moved, radius: 9.0 } } },
+            Order { player: 0, cmd: Command::Retask { drone: interceptor, task: DroneTask::Orbit { center: moved, radius: 2.0 } } },
+            Order { player: 1, cmd: Command::Retask { drone: recon, task: DroneTask::Return } },
+        ]);
+        assert_eq!(w.drone(recon).unwrap().task, DroneTask::Orbit { center: moved, radius: 6.0 }, "the orbit moved and the radius was clamped");
+        assert!(matches!(w.drone(interceptor).unwrap().task, DroneTask::Orbit { .. }));
+        let refused: Vec<&str> = w.events.iter().filter_map(|e| if let Event::Rejected { why, .. } = e { Some(why.as_str()) } else { None }).collect();
+        assert_eq!(refused, vec!["interceptors are the world's to task", "not my drone"]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::DroneRetasked { drone, .. } if *drone == recon)));
+        // One drone home: the interceptor stays up. (A few seconds first,
+        // or the recon is recalled from inside recovery range and is
+        // simply back in the bay.)
+        for _ in 0..40 {
+            w.step(&[]);
+        }
+        w.step(&[Order { player: 0, cmd: Command::Retask { drone: recon, task: DroneTask::Return } }]);
+        assert_eq!(w.drone(recon).unwrap().task, DroneTask::Return);
+        assert!(matches!(w.drone(interceptor).unwrap().task, DroneTask::Orbit { .. }));
+    }
+
+    /// Backlog item 13, SPEC VIS-02 and PIL-07: a tank in a 2 x 2 block
+    /// of forest is unseen by a recon drone overhead and untargeted by
+    /// a pillbox beside it, until something comes within three tiles.
+    #[test]
+    fn forest_block_conceals_a_tank() {
+        let mut w = world();
+        let c = Map::tile_centre(w.map.center());
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                w.map.set(c + V2::new(dx as f32, dy as f32), Terrain::Forest);
+            }
+        }
+        w.tanks[1].pos = c;
+        assert!(w.concealed(c));
+        // A recon of seat 0 orbits right over it (untethered, so its
+        // link does not fail for the distance to its tank).
+        w.drones.push(Drone { id: 900, owner: 0, kind: DroneKind::Recon, pos: c + V2::new(4.0, 0.0), heading: 0.0, battery: 100.0, tether: None, task: DroneTask::Orbit { center: c, radius: 4.0 }, link: 1.0, phase: 0.0 });
+        // A neutral pillbox six tiles north, with a clear line, and out
+        // of its own air range of the drone.
+        for dy in 0..=6 {
+            w.map.set(c + V2::new(0.0, dy as f32 + 2.0), Terrain::Grass);
+        }
+        let pid = w.alloc();
+        w.pillboxes.push(Pillbox { id: pid, pos: c + V2::new(0.0, 6.0), owner: None, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+        assert!(!w.spotted_by(0, c), "spotted through the trees");
+        assert!(!w.observe(0).tanks.iter().any(|t| t.owner == 1), "seen through the trees");
+        w.step(&[]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::PillboxFired { pillbox, .. } if *pillbox == pid)), "the pillbox shot into the trees");
+        // Close in: the drone to two tiles, and it is seen and spotted.
+        w.drones.iter_mut().find(|d| d.id == 900).unwrap().pos = c + V2::new(2.0, 0.0);
+        assert!(w.spotted_by(0, c));
+        assert!(w.observe(0).tanks.iter().any(|t| t.owner == 1));
+        // Thin the block to a row of three trees: not a block. Then clear
+        // it: on open ground the same drone four tiles off sees the tank
+        // and the same pillbox fires (forest blocks a pillbox's shot by
+        // itself, so the PIL-07 check above is belt and braces).
+        w.drones.iter_mut().find(|d| d.id == 900).unwrap().pos = c + V2::new(4.0, 0.0);
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if dy != 0 {
+                    w.map.set(c + V2::new(dx as f32, dy as f32), Terrain::Grass);
+                }
+            }
+        }
+        assert!(!w.concealed(c), "three trees are not a block");
+        for dx in -1..=1 {
+            w.map.set(c + V2::new(dx as f32, 0.0), Terrain::Grass);
+        }
+        w.step(&[]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::PillboxFired { pillbox, .. } if *pillbox == pid)), "the pillbox did not fire on the uncovered tank");
+        assert!(w.observe(0).tanks.iter().any(|t| t.owner == 1));
+    }
+
+    /// Backlog item 11, SPEC section 11: the game types are what a tank
+    /// starts with.
+    #[test]
+    fn game_types_set_the_start() {
+        let open = World::new(Scenario { swarm_interval: 0, ..Scenario::default() });
+        let strict = World::new(Scenario { game_type: GameType::Strict, swarm_interval: 0, ..Scenario::default() });
+        let tourney = World::new(Scenario { game_type: GameType::Tournament, swarm_interval: 0, ..Scenario::default() });
+        assert_eq!((open.tanks[0].shells, open.tanks[0].pillboys.material), (TANK_SHELLS, PILLBOY_MATERIAL_START));
+        assert_eq!((tourney.tanks[0].shells, tourney.tanks[0].pillboys.material), (TANK_SHELLS / 2, 0));
+        assert_eq!((strict.tanks[0].shells, strict.tanks[0].pillboys.material), (0, 0));
+        let mut strict = strict;
+        strict.step(&[Order { player: 0, cmd: Command::FireIndirect { at: strict.map.center() } }]);
+        assert!(strict.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "no shells")));
+        assert_eq!(GameType::parse("Strict-Tournament"), Some(GameType::Strict));
     }
 
     #[test]

@@ -10,7 +10,7 @@ need_config
 export CARGO_BUILD_JOBS
 MODE="${1:-solo}"
 LOG="$LOGDIR/$MODE-$STAMP.log"
-NET=(--name "${NAME:-player}" --game "${GAME:-treadcore}" --want "${WANT:-4}" --players "${PLAYERS:-16}" --defenders "${DEFENDERS:-0}" --teams "${TEAMS:-0}")
+NET=(--name "${NAME:-player}" --game "${GAME:-treadcore}" --want "${WANT:-4}" --players "${PLAYERS:-16}" --defenders "${DEFENDERS:-0}" --teams "${TEAMS:-0}" --game-type "${GAMETYPE:-open}")
 [ -n "${PEER:-}" ] && NET+=(--peer "$PEER")
 case "$MODE" in
     solo|lan)

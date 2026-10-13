@@ -27,7 +27,7 @@ use treadcore_sim::{Command, Event, Map, Observation, PlayerId, Scenario, Tick};
 pub const MAGIC: [u8; 4] = *b"TRDC";
 /// Bump on any change to `Packet` or to anything it carries from
 /// treadcore-sim. Peers on different versions ignore each other entirely.
-pub const VERSION: u16 = 8;
+pub const VERSION: u16 = 9;
 
 
 
@@ -101,7 +101,11 @@ pub enum Packet {
     /// world can compare, and one that does not can at least log it:
     /// four peers' logs with the same hash at the same tick is the
     /// lobby test's proof. From a client, `hash` is 0 until it predicts.
-    Heartbeat { peer: PeerId, tick: Tick, hash_tick: Tick, hash: u64 },
+    /// `rtt_ticks` from the host is its estimate of that client's round
+    /// trip: the host's tick minus the host tick the client's last
+    /// heartbeat echoed (a snapshot out, a heartbeat back). The HUD's
+    /// rtt is this; a client sends 0.
+    Heartbeat { peer: PeerId, tick: Tick, hash_tick: Tick, hash: u64, rtt_ticks: u32 },
 
 
     /// A packet too big for one datagram, in pieces: `Welcome` with a

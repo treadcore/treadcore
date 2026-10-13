@@ -212,13 +212,22 @@ impl Brain for RuleBot {
         // recon launched then orbits the start, where the tank will not
         // be.
         let settled_s = self.settled_at.map(|t| obs.tick.saturating_sub(t) as f32 * DT).unwrap_or(0.0);
-        let want_recon = my_recon.is_empty() || (enemy.is_some() && !recon_sees_it && my_recon.len() < 2);
-        if want_recon && me.bay.recon > 0 && (settled_s >= 1.0 || enemy.is_some()) {
-
-            let dir = (look_at - me.pos).norm();
-            let dist = me.pos.dist(look_at).min(RECON_LINK * 0.7);
-            let center = me.pos + dir.scale(dist);
-            cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 3.0 } });
+        let dir = (look_at - me.pos).norm();
+        let dist = me.pos.dist(look_at).min(RECON_LINK * 0.7);
+        let center = me.pos + dir.scale(dist);
+        if my_recon.is_empty() {
+            if me.bay.recon > 0 && (settled_s >= 1.0 || enemy.is_some()) {
+                cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 3.0 } });
+            }
+        } else if enemy.is_some() && !recon_sees_it {
+            // A recon that cannot see the enemy is moved, not doubled
+            // (backlog item 3): its orbit goes to where the enemy is,
+            // once, and it flies there.
+            let r = my_recon[0];
+            let already = matches!(&r.task, DroneTask::Orbit { center: c, .. } if c.dist(center) < 4.0);
+            if !already && matches!(r.task, DroneTask::Orbit { .. }) {
+                cmds.push(Command::Retask { drone: r.id, task: DroneTask::Orbit { center, radius: 3.0 } });
+            }
         }
 
         // 9. The squad. Deployed: hold here and let the gun and the
@@ -253,10 +262,15 @@ impl Brain for RuleBot {
                     cmds.push(Command::FireDirect { at: e.pos });
                     self.last_fire_tick = obs.tick;
                 } else if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&range) {
-                    // Lead a moving target by its flight time.
+                    // Lead a moving target by its flight time; if the
+                    // led point falls inside minimum range (the world
+                    // refused eight of these a match, backlog item 4),
+                    // fire at the tank itself.
                     let flight = range / SHELL_SPEED_INDIRECT;
                     let lead = V2::from_heading(e.heading).scale(e.speed * flight * 0.8);
-                    cmds.push(Command::FireIndirect { at: e.pos + lead });
+                    let aim = e.pos + lead;
+                    let aim = if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&me.pos.dist(aim)) { aim } else { e.pos };
+                    cmds.push(Command::FireIndirect { at: aim });
                     self.last_fire_tick = obs.tick;
                     self.scoot_until = obs.tick + (6 * TICK_HZ) as Tick;
                 }
@@ -461,12 +475,18 @@ impl Brain for Fortifier {
                 return cmds;
             }
         }
-        // Material first: a harvest is four, a mine one.
+        // Material first: a harvest is four, a mine one. With none and no
+        // forest in sight there is nothing to build with: wait for the
+        // depot's trickle rather than order a build the world refuses
+        // four times a second (backlog item 4).
         if me.pillboys.material < 1 || (me.pillboys.material < 4 && !moat.is_empty() && me.pillboys.material < moat.len() as u8) {
             if let Some(tree) = obs.forest.first() {
                 cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: *tree } });
                 return cmds;
             }
+        }
+        if me.pillboys.material < 1 {
+            return cmds;
         }
         if let Some(at) = moat.first() {
             cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Mine, at: *at } });

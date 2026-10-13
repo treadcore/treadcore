@@ -254,7 +254,10 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                     }
 
                     if let Some(obs) = client.take_observation() {
-                        view.net.rtt_ms = Some((obs.tick.saturating_sub(client.host_tick) as u32).saturating_mul(1000 / TICK_HZ));
+                        // The host's measurement, sent back in its heartbeat
+                        // (backlog item 5): the old figure here was snapshot
+                        // tick minus heartbeat tick, which is heartbeat age.
+                        view.net.rtt_ms = Some(client.rtt_ticks.saturating_mul(1000 / TICK_HZ));
                         if obs.over {
                             view.status = match obs.winner {
                                 Some(w) if Some(w) == client.player => "MATCH OVER: you win".into(),
@@ -305,6 +308,12 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::DroneLaunched { kind, .. } => format!("{:?} airborne", kind),
         Event::DroneLost { owner, kind, why, .. } => format!("{} lost {:?} ({:?})", who(owner), kind, why),
         Event::DroneRecovered { kind, .. } => format!("{:?} recovered", kind),
+        Event::DroneRetasked { task, .. } => match task {
+            DroneTask::Orbit { .. } => "recon orbit moved".into(),
+            DroneTask::Strike { .. } => "strike retargeted".into(),
+            DroneTask::Return => "drone recalled".into(),
+            DroneTask::Intercept { .. } => return None,
+        },
         Event::Intercepted { owner, .. } => format!("{} intercept: KILL", who(owner)),
         Event::InterceptMissed { .. } => "intercept missed".into(),
         Event::StrikeHit { damage, .. } => format!("STRIKE hit for {:.0}", damage),
