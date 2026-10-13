@@ -12,7 +12,7 @@ use std::collections::VecDeque;
 use std::time::Instant;
 use treadcore_brain::{run_bots, Brain, RuleBot};
 use treadcore_net::session::RouteTable;
-use treadcore_net::{new_peer_id, Client, ClientState, Host, Lobby, LobbyConfig, Phase, Socket};
+use treadcore_net::{new_peer_id, Client, ClientState, Host, Lobby, LobbyConfig, Phase, Predictor, Socket};
 use treadcore_proto::{PeerId, PORT};
 use treadcore_sim::*;
 // Explicit, because bevy::prelude also exports a Command and an Event and
@@ -26,7 +26,7 @@ impl Plugin for SessionPlugin {
         app.init_resource::<View>()
             .init_resource::<Orders>()
             .add_systems(Startup, start)
-            .add_systems(FixedUpdate, step_host)
+            .add_systems(FixedUpdate, (step_host, step_client))
             .add_systems(Update, poll);
     }
 }
@@ -46,6 +46,9 @@ pub struct View {
     pub net: NetStats,
     /// Wall-clock when the observation arrived, for interpolation.
     pub received: Option<Instant>,
+    /// The player's own tank as predicted (roadmap step 4), and when it
+    /// was last driven: a client draws this one, not the snapshot's.
+    pub predicted: Option<(Tank, Instant)>,
 }
 
 #[derive(Default, Clone)]
@@ -62,6 +65,9 @@ pub struct NetStats {
     /// The host's world hash and its tick, from heartbeats (or our own
     /// when hosting).
     pub hash: (Tick, u64),
+    /// Prediction: ticks ahead of the last snapshot, orders in flight,
+    /// checks, mismatches, and the tick of the last correction.
+    pub predict: Option<(u32, usize, u64, u64, Option<Tick>)>,
 }
 
 pub enum Session {
@@ -166,6 +172,17 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
     }
 }
 
+/// A client's own tank, driven one tick ahead at the tick rate. Orders
+/// are sent (and predicted) in `poll`, as often as frames come; this is
+/// only the clock.
+fn step_client(session: Option<ResMut<SessionRes>>, mut view: ResMut<View>) {
+    let Some(mut session) = session else { return };
+    if let Session::Client { client } = &mut session.0 {
+        client.predict_tick();
+        view.predicted = client.predicted_tank().map(|t| (t.clone(), Instant::now()));
+    }
+}
+
 fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<Args>, mut orders: ResMut<Orders>, mut view: ResMut<View>) {
     let Some(mut session) = session else { return };
     let next = match &mut session.0 {
@@ -218,6 +235,7 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
             }
             view.net.unacked = client.unacked();
             view.net.hash = client.host_hash;
+            view.net.predict = client.predictor.as_ref().map(|p| (p.ahead, p.in_flight(), p.checks, p.mismatches, p.corrected_at));
 
             view.net.sent = client.socket().sent;
             view.net.received = client.socket().received;
@@ -240,17 +258,10 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                     }
                     // Craters arrive as impact events, walls, roads, felled
                     // forest and mine craters as TerrainChanged; the
-                    // client's copy of the map keeps up by applying them.
+                    // window's copy of the map keeps up the way the
+                    // predictor's does.
                     if let Some(m) = view.map.as_mut() {
-                        for e in &events {
-                            match e {
-                                Event::ShellImpact { at, kind: ShellKind::Indirect, .. } => m.crater(*at),
-                                Event::TerrainChanged { at, to } => {
-                                    m.set(*at, Terrain::from_u8(*to));
-                                }
-                                _ => {}
-                            }
-                        }
+                        Predictor::map_keeps_up(m, &events);
                     }
 
                     if let Some(obs) = client.take_observation() {
@@ -267,6 +278,7 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                         }
                         view.obs = Some(obs);
                         view.received = Some(Instant::now());
+                        view.predicted = client.predicted_tank().map(|t| (t.clone(), Instant::now()));
                     }
                 }
             }

@@ -13,12 +13,13 @@
 //! peer the election named. Both ends wrap in `Packet::Relay`; a peer that
 //! receives a Relay not addressed to it forwards along its own table.
 
+use crate::predict::Predictor;
 use crate::transport::Socket;
 use std::collections::{BTreeMap, VecDeque};
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 use treadcore_proto::{chunk_packets, snapshot_packets, ChunkAssembler, Packet, PeerId, SnapshotAssembler};
-use treadcore_sim::{Command, Event, Map, Observation, Order, PlayerId, Replay, Scenario, Tick, World};
+use treadcore_sim::{Command, Event, Map, Observation, Order, PlayerId, Replay, Scenario, Tank, Tick, World};
 
 
 const RESEND: Duration = Duration::from_millis(120);
@@ -266,7 +267,9 @@ impl Host {
             for seat in self.seats.iter_mut().filter(|s| s.joined) {
                 if tick % SNAPSHOT_EVERY == 0 {
                     let obs = self.world.observe(seat.player);
-                    for p in snapshot_packets(&obs) {
+                    // Every order received before this tick was applied
+                    // in it: the seat's next seq, less one, is done.
+                    for p in snapshot_packets(&obs, seat.next_seq - 1) {
                         self.routes.send(&mut sock, self.me, seat.peer, &p);
                     }
                 }
@@ -340,6 +343,9 @@ pub struct Client {
     /// heartbeat. What the HUD shows as rtt.
     pub rtt_ticks: u32,
     pub refuse_reason: String,
+    /// Our own tank, run ahead of the snapshots (roadmap step 4). Built
+    /// from the Welcome; `None` until then.
+    pub predictor: Option<Predictor>,
 }
 
 impl Client {
@@ -369,6 +375,7 @@ impl Client {
             host_hash: (0, 0),
             rtt_ticks: 0,
             refuse_reason: String::new(),
+            predictor: None,
         }
     }
 
@@ -376,7 +383,26 @@ impl Client {
         self.seq += 1;
         let p = Packet::Command { peer: self.me, seq: self.seq, cmd: cmd.clone() };
         self.routes.send(&mut self.sock, self.me, self.host, &p);
+        if let Some(pr) = self.predictor.as_mut() {
+            pr.order(self.seq, &cmd);
+        }
         self.unacked.insert(self.seq, (cmd, Instant::now()));
+    }
+
+    /// One tick of prediction, at the tick rate, from whoever owns the
+    /// loop (the window's fixed update; the headless seat's timer).
+    pub fn predict_tick(&mut self) {
+        if self.state == ClientState::Playing {
+            if let Some(pr) = self.predictor.as_mut() {
+                pr.tick();
+            }
+        }
+    }
+
+    /// Our own tank as predicted: where it is now, not where the last
+    /// snapshot had it.
+    pub fn predicted_tank(&self) -> Option<&Tank> {
+        self.predictor.as_ref().and_then(|p| p.tank())
     }
 
     pub fn take_observation(&mut self) -> Option<Observation> {
@@ -429,6 +455,9 @@ impl Client {
                         log::info!("welcomed as player {} at tick {}", player, tick);
                     }
                     self.player = Some(player);
+                    if self.predictor.is_none() {
+                        self.predictor = Some(Predictor::new(player, scenario.clone(), map.clone(), tick));
+                    }
                     self.scenario = Some(scenario);
                     self.map = Some(map);
                     self.state = ClientState::Playing;
@@ -441,8 +470,11 @@ impl Client {
                 Packet::CommandAck { seq } => {
                     self.unacked.remove(&seq);
                 }
-                Packet::Snapshot { tick, part, parts, bytes } => {
+                Packet::Snapshot { tick, part, parts, acked, bytes } => {
                     if let Some(obs) = self.asm.push(tick, part, parts, bytes) {
+                        if let Some(pr) = self.predictor.as_mut() {
+                            pr.reconcile(&obs, acked);
+                        }
                         self.latest = Some(obs);
                     }
                 }
@@ -450,6 +482,12 @@ impl Client {
                     self.routes.send(&mut self.sock, self.me, self.host, &Packet::EventsAck { seq });
                     if seq > self.events_seen {
                         self.events_seen = seq;
+                        if let Some(pr) = self.predictor.as_mut() {
+                            pr.events(&events);
+                        }
+                        if let Some(m) = self.map.as_mut() {
+                            Predictor::map_keeps_up(m, &events);
+                        }
                         self.events.extend(events);
                     }
                 }
@@ -502,6 +540,9 @@ impl Client {
 
     pub fn leave(&mut self) {
         self.routes.send(&mut self.sock, self.me, self.host, &Packet::Leave { peer: self.me });
+        if let Some(pr) = self.predictor.as_ref() {
+            log::info!("{}", pr.summary());
+        }
     }
 }
 
@@ -546,5 +587,78 @@ mod tests {
         assert!(seen_drone, "order never reflected in a snapshot");
         assert_eq!(client.unacked(), 0);
         assert!(client.drain_events().iter().any(|e| matches!(e, Event::DroneLaunched { .. })));
+    }
+
+    /// Roadmap step 4's proof, in process: host and client on loopback
+    /// with 100 ms of simulated lag each way (a 200 ms round trip), the
+    /// client predicting. One Move, driven for six seconds of real
+    /// time at the tick rate. The predicted tank moves off before the
+    /// host's snapshot shows it moving; between orders the prediction
+    /// matches the host bit for bit, and the mismatch count is zero.
+    #[test]
+    fn prediction_hides_the_lag_and_matches_the_host() {
+        let mut hs = Socket::bind(0).unwrap();
+        let mut cs = Socket::bind(0).unwrap();
+        hs.set_lag(Duration::from_millis(100));
+        cs.set_lag(Duration::from_millis(100));
+        let (hid, cid) = (0x0001, 0x0002);
+        let mut hr = RouteTable::default();
+        hr.direct.insert(cid, cs.local_with_loopback());
+        let mut cr = RouteTable::default();
+        cr.direct.insert(hid, hs.local_with_loopback());
+        let scenario = Scenario { players: vec![("remote".into(), false), ("bot".into(), true)], swarm_interval: 0, ..Scenario::default() };
+        let mut host = Host::new(hid, Some(hs), scenario, vec![(cid, "remote".into())], hr);
+        // Routing alone, as the sim's own test does: the spoke pillboxes
+        // would shoot the tank, which is not what is measured here.
+        host.world.pillboxes.clear();
+        let mut client = Client::new(cid, cs, hid, cr, "remote");
+        let centre = host.world.map.center();
+        let start = Instant::now();
+        let mut next_host = start;
+        let mut next_client = start;
+        let mut sent: Option<Instant> = None;
+        let mut predicted_moved: Option<Instant> = None;
+        let mut host_moved: Option<Instant> = None;
+        let mut ahead_max = 0u32;
+        while start.elapsed() < Duration::from_secs(6) {
+            let now = Instant::now();
+            client.poll();
+            host.poll();
+            if now >= next_host {
+                next_host += Duration::from_secs_f32(treadcore_sim::DT);
+                host.tick(vec![]);
+            }
+            if now >= next_client {
+                next_client += Duration::from_secs_f32(treadcore_sim::DT);
+                client.predict_tick();
+            }
+            if client.state == ClientState::Playing && sent.is_none() && start.elapsed() > Duration::from_secs(1) {
+                client.send(Command::Move { to: centre });
+                sent = Some(now);
+            }
+            if sent.is_some() && predicted_moved.is_none() && client.predicted_tank().map(|t| t.speed > 0.0).unwrap_or(false) {
+                predicted_moved = Some(now);
+            }
+            if let Some(obs) = client.take_observation() {
+                if sent.is_some() && host_moved.is_none() && obs.me.as_ref().map(|t| t.speed > 0.0).unwrap_or(false) {
+                    host_moved = Some(now);
+                }
+            }
+            if let Some(pr) = client.predictor.as_ref() {
+                ahead_max = ahead_max.max(pr.ahead);
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(client.state, ClientState::Playing);
+        let pr = client.predictor.as_ref().expect("a predictor from the Welcome");
+        eprintln!("{}; at most {} ticks ahead of a snapshot", pr.summary(), ahead_max);
+        let (p, h) = (predicted_moved.expect("predicted tank moved"), host_moved.expect("host tank moved"));
+        let lead = h.saturating_duration_since(p);
+        eprintln!("predicted tank moved {} ms before the host's snapshot showed it", lead.as_millis());
+        assert!(lead >= Duration::from_millis(120), "prediction led by only {:?}; the round trip is 200 ms", lead);
+        assert!(pr.checks >= 10, "only {} checks in six seconds", pr.checks);
+        assert_eq!(pr.mismatches, 0, "{}", pr.summary());
+        assert!(ahead_max >= 1, "the predictor never ran ahead of a snapshot");
+        client.leave();
     }
 }

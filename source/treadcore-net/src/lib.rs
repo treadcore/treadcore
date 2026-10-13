@@ -17,6 +17,8 @@
 //!                 neighbour that can: a connectivity route.
 //!   4. session    Host and Client. The host owns the world and ticks it;
 //!                 clients send orders and receive what they may see.
+//!   5. predict    the client's copy of its own tank, driven ahead of
+//!                 the snapshots and reconciled to every one of them.
 //!
 //! Nothing in here spawns a thread. Everything is `poll()` from whoever
 //! owns the loop -- the server's main, or a Bevy system -- which keeps the
@@ -24,11 +26,13 @@
 
 pub mod election;
 pub mod lobby;
+pub mod predict;
 pub mod session;
 pub mod transport;
 
 pub use election::{elect, Decision};
 pub use lobby::{Lobby, LobbyConfig, LobbyResult, Phase};
+pub use predict::Predictor;
 pub use session::{Client, ClientState, Host, Seat};
 pub use transport::{Socket, PeerId};
 

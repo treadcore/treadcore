@@ -67,6 +67,9 @@ PEER     ?=
 PLAYERS  ?= 16
 # Of the bot seats, how many dig in (Defender) rather than attack (RuleBot).
 DEFENDERS ?= 0
+# Simulated one-way lag, in ms, on every peer of `make lobby-test`: the
+# stand-in for tc netem. 0 is the loopback as it is.
+LAG      ?= 0
 # Deal the seats into N teams (0: everyone alone, allying in play).
 TEAMS    ?= 0
 # What a tank starts with: open, tournament or strict (SPEC section 11).
@@ -74,7 +77,7 @@ GAMETYPE ?= open
 # A map file to play on instead of the generated one (documentation/MAPS.md).
 MAP      ?=
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP JOBS VERBOSE
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP JOBS VERBOSE LAG
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'

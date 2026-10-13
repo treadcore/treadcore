@@ -196,7 +196,15 @@ fn sync_entities(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sp
         }
     };
 
+    // The player's own tank is the predicted one when there is one
+    // (a client), interpolated from its last predicted tick rather than
+    // from the snapshot; every other tank is the snapshot's.
+    let predicted = view.predicted.as_ref().filter(|(t, _)| t.owner == me);
     for t in &obs.tanks {
+        let (t, ahead) = match predicted {
+            Some((p, at)) if p.id == t.id => (p, at.elapsed().as_secs_f32().min(0.1)),
+            _ => (t, ahead),
+        };
         let pos = t.pos + V2::from_heading(t.heading).scale(t.speed * ahead);
         let c = if t.alive { player_color(t.owner) } else { Color::srgb(0.2, 0.2, 0.2) };
         let name = obs.players.get(t.owner as usize).map(|p| p.name.clone()).unwrap_or_default();

@@ -442,6 +442,16 @@ pub struct Tank {
     pub pillboys: Pillboys,
 }
 
+impl Tank {
+    /// What prediction compares, as bits: a client's tank at a tick
+    /// against the host's. Position, heading, speed, the waypoint and
+    /// the route; not armour or fuel, which the world does to a tank
+    /// and the snapshot brings.
+    pub fn tick_state(&self) -> (u32, u32, u32, u32, Option<(u32, u32)>, usize) {
+        (self.pos.x.to_bits(), self.pos.y.to_bits(), self.heading.to_bits(), self.speed.to_bits(), self.goal.map(|g| (g.x.to_bits(), g.y.to_bits())), self.route.len())
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Depot {
     pub id: EntityId,
@@ -543,6 +553,14 @@ pub enum Command {
     /// Answer a proposal made to me or my team.
     Answer { proposal: EntityId, accept: bool },
     Chat { text: String, to: ChatTo },
+}
+
+impl Command {
+    /// The orders a client predicts (roadmap step 4): those that move
+    /// the hull. A fire order is one, because firing turns the tank.
+    pub fn predicted(cmd: &Command) -> bool {
+        matches!(cmd, Command::Move { .. } | Command::Stop | Command::FireIndirect { .. } | Command::FireDirect { .. })
+    }
 }
 
 /// A command with its author. The host stamps the player; a client never
@@ -1977,81 +1995,45 @@ impl World {
         let guns: Vec<(Option<PlayerId>, V2)> = self.pillboxes.iter().filter(|b| b.alive()).map(|b| (b.owner, b.pos)).collect();
         let mines: Vec<(PlayerId, (i32, i32), EntityId)> = self.mines.iter().map(|m| (m.owner, m.pos.tile(), m.id)).collect();
         let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
-        let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
-        let allied_with = |a: PlayerId, b: PlayerId| a == b || (team_of(a).is_some() && team_of(a) == team_of(b));
         let mut triggered: Vec<EntityId> = Vec::new();
         for t in self.tanks.iter_mut() {
-            if !t.alive {
-                continue;
-            }
-            if t.reload > 0 {
-                t.reload -= 1;
-            }
-            let Some(goal) = t.goal else {
-                t.speed = 0.0;
-                continue;
-            };
-            if t.fuel <= 0.0 {
-                t.goal = None;
-                t.route.clear();
-                t.speed = 0.0;
-                continue;
-            }
-            let to = goal - t.pos;
-            let dist = to.len();
-            if dist < 0.15 {
-                t.pos = goal;
-                // Next waypoint, keeping the speed: a corner on a road is
-                // not a stop.
-                if t.route.is_empty() {
-                    t.goal = None;
-                    t.speed = 0.0;
-                } else {
-                    t.goal = Some(t.route.remove(0));
-                }
-                continue;
-            }
-            let cost = map.move_cost(t.pos);
-            let dir = to.norm();
-            let want = t.heading;
-            let turn = wrap_angle(dir.heading() - want);
-            // Brake for a corner. At full speed a hull turning at
-            // TANK_TURN swings two tiles wide, which on a one-tile bridge
-            // is the river; a tank facing the wrong way pivots at a crawl
-            // and accelerates once it is pointed down the road.
-            let max = if turn.abs() > TURN_BRAKE_ANGLE { TANK_SPEED * TURN_CRAWL / cost } else { TANK_SPEED / cost };
-            t.speed = (t.speed + TANK_ACCEL * DT).min(max);
-            let step = TANK_TURN * DT;
-            t.heading = want + turn.clamp(-step, step);
-            let fwd = V2::from_heading(t.heading);
-            let mut next = t.pos + fwd.scale(t.speed * DT);
-            if dist < t.speed * DT {
-                next = goal;
-            }
-            if !map.at(next).passable() || !map.in_bounds(next) {
-                // Blocked: stop, and plan again from here to where the
-                // route was going. Giving up left a tank parked at the
-                // water's edge for a whole match.
-                t.speed = 0.0;
-                let dest = t.route.last().copied().unwrap_or(goal);
-                let mut wp = map.route_with(t.pos, dest, |tile| if guns.iter().any(|(o, g)| !o.map(|o| allied_with(o, t.owner)).unwrap_or(false) && g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 });
-                if wp.is_empty() {
-                    t.goal = None;
-                    t.route.clear();
-                } else {
-                    t.goal = Some(wp.remove(0));
-                    t.route = wp;
-                }
-                continue;
-            }
-            t.pos = next;
-            t.fuel = (t.fuel - FUEL_PER_TILE * t.speed * DT).max(0.0);
-            if let Some(m) = mines.iter().find(|(o, tile, _)| !allied_with(*o, t.owner) && *tile == next.tile()) {
-                triggered.push(m.2);
+            if let Some(m) = drive_tank(t, map, &guns, &mines, &teams) {
+                triggered.push(m);
             }
         }
         for mid in triggered {
             self.explode_mine(mid);
+        }
+    }
+
+    /// Client-side prediction (roadmap step 4): one tick of player `p`'s
+    /// tank alone, under `cmds` from `p`, by the same code `step` runs
+    /// on the host. Only the orders that move the hull are taken: `Move`,
+    /// `Stop`, and the two fire orders, because firing turns the tank
+    /// toward the target (the first lagged lobby test found that one:
+    /// a standing tank, zero tiles off, heading wrong). Every other
+    /// order is the host's to answer, and nothing else in the world
+    /// moves; the shell a predicted fire spawns is dropped at once. A
+    /// mine the tank drives onto is left to the host too: the snapshot
+    /// brings the damage, and the mismatch it logs is honest. The
+    /// caller's world is the client's partial copy, kept up from
+    /// snapshots (treadcore-net's `Predictor`); the tick advances here
+    /// so the copy's clock reads as the host's would.
+    pub fn predict(&mut self, p: PlayerId, cmds: &[Command]) {
+        self.events.clear();
+        self.tick += 1;
+        for cmd in cmds {
+            if Command::predicted(cmd) {
+                self.apply(&Order { player: p, cmd: cmd.clone() });
+            }
+        }
+        self.shells.clear();
+        let guns: Vec<(Option<PlayerId>, V2)> = self.pillboxes.iter().filter(|b| b.alive()).map(|b| (b.owner, b.pos)).collect();
+        let mines: Vec<(PlayerId, (i32, i32), EntityId)> = self.mines.iter().map(|m| (m.owner, m.pos.tile(), m.id)).collect();
+        let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|x| (x.id, x.team)).collect();
+        let map = &self.map;
+        if let Some(t) = self.tanks.iter_mut().find(|t| t.owner == p) {
+            drive_tank(t, map, &guns, &mines, &teams);
         }
     }
 
@@ -2632,6 +2614,83 @@ impl World {
     }
 }
 
+/// One tick of one tank's motion: reload, the waypoint, the turn, the
+/// speed for the terrain, the step, and a re-route when blocked. The
+/// host runs it for every tank in `step_tanks`; a client runs it for
+/// its own in `World::predict`, which is why it is a function of what
+/// it reads and not a method on the world. Returns the mine the tank
+/// drove onto, if any, for the caller to set off.
+fn drive_tank(t: &mut Tank, map: &Map, guns: &[(Option<PlayerId>, V2)], mines: &[(PlayerId, (i32, i32), EntityId)], teams: &[(PlayerId, TeamId)]) -> Option<EntityId> {
+    let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
+    let allied_with = |a: PlayerId, b: PlayerId| a == b || (team_of(a).is_some() && team_of(a) == team_of(b));
+    if !t.alive {
+        return None;
+    }
+    if t.reload > 0 {
+        t.reload -= 1;
+    }
+    let Some(goal) = t.goal else {
+        t.speed = 0.0;
+        return None;
+    };
+    if t.fuel <= 0.0 {
+        t.goal = None;
+        t.route.clear();
+        t.speed = 0.0;
+        return None;
+    }
+    let to = goal - t.pos;
+    let dist = to.len();
+    if dist < 0.15 {
+        t.pos = goal;
+        // Next waypoint, keeping the speed: a corner on a road is
+        // not a stop.
+        if t.route.is_empty() {
+            t.goal = None;
+            t.speed = 0.0;
+        } else {
+            t.goal = Some(t.route.remove(0));
+        }
+        return None;
+    }
+    let cost = map.move_cost(t.pos);
+    let dir = to.norm();
+    let want = t.heading;
+    let turn = wrap_angle(dir.heading() - want);
+    // Brake for a corner. At full speed a hull turning at
+    // TANK_TURN swings two tiles wide, which on a one-tile bridge
+    // is the river; a tank facing the wrong way pivots at a crawl
+    // and accelerates once it is pointed down the road.
+    let max = if turn.abs() > TURN_BRAKE_ANGLE { TANK_SPEED * TURN_CRAWL / cost } else { TANK_SPEED / cost };
+    t.speed = (t.speed + TANK_ACCEL * DT).min(max);
+    let step = TANK_TURN * DT;
+    t.heading = want + turn.clamp(-step, step);
+    let fwd = V2::from_heading(t.heading);
+    let mut next = t.pos + fwd.scale(t.speed * DT);
+    if dist < t.speed * DT {
+        next = goal;
+    }
+    if !map.at(next).passable() || !map.in_bounds(next) {
+        // Blocked: stop, and plan again from here to where the
+        // route was going. Giving up left a tank parked at the
+        // water's edge for a whole match.
+        t.speed = 0.0;
+        let dest = t.route.last().copied().unwrap_or(goal);
+        let mut wp = map.route_with(t.pos, dest, |tile| if guns.iter().any(|(o, g)| !o.map(|o| allied_with(o, t.owner)).unwrap_or(false) && g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 });
+        if wp.is_empty() {
+            t.goal = None;
+            t.route.clear();
+        } else {
+            t.goal = Some(wp.remove(0));
+            t.route = wp;
+        }
+        return None;
+    }
+    t.pos = next;
+    t.fuel = (t.fuel - FUEL_PER_TILE * t.speed * DT).max(0.0);
+    mines.iter().find(|(o, tile, _)| !allied_with(*o, t.owner) && *tile == next.tile()).map(|m| m.2)
+}
+
 /// FNV-1a, 64 bits. Not cryptographic; stable across machines and
 /// versions, which is all a desync detector needs.
 pub fn fnv1a64(bytes: &[u8]) -> u64 {
@@ -2897,6 +2956,38 @@ mod tests {
         }
         let t = w.tank_of(1).unwrap();
         assert!(t.pos.dist(center) < 1.0, "tank stopped at {:?}, {} waypoints left", t.pos, t.route.len());
+    }
+
+    /// `World::predict` drives a tank by the same code as `step`: a
+    /// client's partial copy of the world, given the same Move at the
+    /// same tick, puts its tank where the host puts it, bit for bit,
+    /// all the way across the river (roadmap step 4).
+    #[test]
+    fn prediction_drives_the_tank_as_the_host_does() {
+        let mut host = world();
+        host.pillboxes.clear();
+        let mut mine = World::new(host.scenario.clone());
+        mine.pillboxes.clear();
+        mine.tanks.retain(|t| t.owner == 1);
+        let center = host.map.center();
+        host.step(&[Order { player: 1, cmd: Command::Move { to: center } }]);
+        mine.predict(1, &[Command::Move { to: center }]);
+        let mut moved = 0;
+        for _ in 0..(60 * TICK_HZ) {
+            host.step(&[]);
+            mine.predict(1, &[]);
+            let (h, m) = (host.tank_of(1).unwrap(), mine.tank_of(1).unwrap());
+            assert_eq!(h.tick_state(), m.tick_state(), "tick {}", host.tick);
+            if h.speed > 0.0 {
+                moved += 1;
+            }
+            if h.goal.is_none() {
+                break;
+            }
+        }
+        assert!(moved > 100, "the tank never drove");
+        assert_eq!(host.tick, mine.tick);
+        assert!(host.tank_of(1).unwrap().pos.dist(center) < 1.0);
     }
 
     /// The hash is a function of state: two worlds stepped alike agree

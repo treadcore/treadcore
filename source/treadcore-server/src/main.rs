@@ -701,8 +701,16 @@ fn run_net(args: Args) {
         let mut bot = make_brain(args.brains.first(), 0, args.seed ^ me);
         log::info!("joining host {:016x} as a bot seat", result.decision.host);
         let mut last_obs: Option<Observation> = None;
+        let mut next_tick = Instant::now();
         loop {
             client.poll();
+            // The seat predicts its own tank like the window does, at
+            // the tick rate; the headless seat is how prediction is
+            // proved against a lagged link (`make lobby-test LAG=200`).
+            if Instant::now() >= next_tick {
+                next_tick += Duration::from_secs_f32(DT);
+                client.predict_tick();
+            }
             // Read what arrived before judging the connection: the last
             // snapshot and the host's Leave can come in one poll.
             let obs = client.take_observation();

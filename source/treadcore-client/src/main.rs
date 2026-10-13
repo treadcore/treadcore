@@ -12,9 +12,11 @@
 //!            then either hosts (bots in empty seats) or plays as a client.
 //!   neither  same as --solo.
 //!
-//! The world is never simulated here except when this process is the
-//! host; a client draws the last observation it received and sends
-//! orders. See treadcore-net for the protocol.
+//! The world is simulated here only when this process is the host. A
+//! client draws the last observation it received and sends orders; the
+//! one thing it runs itself is its own tank, driven ahead of the
+//! snapshots and corrected by each (treadcore-net's Predictor). See
+//! treadcore-net for the protocol.
 
 mod hud;
 mod input;

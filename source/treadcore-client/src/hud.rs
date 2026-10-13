@@ -169,6 +169,10 @@ fn scoreboard(view: &View) -> String {
     if n.hash.0 > 0 {
         s.push_str(&format!("world hash @{} {:08x}\n", n.hash.0, (n.hash.1 >> 32) as u32));
     }
+    if let Some((ahead, in_flight, checks, mismatches, corrected)) = n.predict {
+        let recent = corrected.zip(view.obs.as_ref().map(|o| o.tick)).map(|(c, t)| t.saturating_sub(c) < 2 * TICK_HZ as Tick).unwrap_or(false);
+        s.push_str(&format!("predict +{} ticks  in flight {}  checked {}  mismatch {}{}\n", ahead, in_flight, checks, mismatches, if recent { "  CORRECTED" } else { "" }));
+    }
 
     if let Some(obs) = view.obs.as_ref() {
         s.push_str("\nTEAM SEAT  NAME      SCORE  STATE\n");

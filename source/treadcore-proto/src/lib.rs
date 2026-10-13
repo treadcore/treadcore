@@ -27,7 +27,7 @@ use treadcore_sim::{Command, Event, Map, Observation, PlayerId, Scenario, Tick};
 pub const MAGIC: [u8; 4] = *b"TRDC";
 /// Bump on any change to `Packet` or to anything it carries from
 /// treadcore-sim. Peers on different versions ignore each other entirely.
-pub const VERSION: u16 = 9;
+pub const VERSION: u16 = 10;
 
 
 
@@ -87,8 +87,11 @@ pub enum Packet {
     CommandAck { seq: u32 },
     /// The host's view for one player, as of `tick`. Unreliable: a lost
     /// one is replaced by the next. `part`/`parts` split a big observation
-    /// across datagrams; the client reassembles by tick.
-    Snapshot { tick: Tick, part: u8, parts: u8, bytes: Vec<u8> },
+    /// across datagrams; the client reassembles by tick. `acked` is the
+    /// last of this client's command seqs the host had applied by this
+    /// tick: what a predicting client re-applies is everything after it
+    /// (roadmap step 4).
+    Snapshot { tick: Tick, part: u8, parts: u8, acked: u32, bytes: Vec<u8> },
     /// Events the player is allowed to know about. Sent reliably-ish: each
     /// batch repeats until acked by `EventsAck`, so a kill is never lost.
     Events { seq: u32, tick: Tick, events: Vec<Event> },
@@ -227,14 +230,14 @@ impl ChunkAssembler {
 /// pieces.
 /// A 4-tank, 40-drone observation is a few KiB; the map is not in
 /// it (it went in `Welcome`, and craters arrive as events).
-pub fn snapshot_packets(obs: &Observation) -> Vec<Packet> {
+pub fn snapshot_packets(obs: &Observation, acked: u32) -> Vec<Packet> {
     let bytes = bincode::serialize(obs).expect("observation serialises");
     let chunk = MAX_DATAGRAM - 64;
     let parts = bytes.chunks(chunk).count().max(1) as u8;
     bytes
         .chunks(chunk)
         .enumerate()
-        .map(|(i, c)| Packet::Snapshot { tick: obs.tick, part: i as u8, parts, bytes: c.to_vec() })
+        .map(|(i, c)| Packet::Snapshot { tick: obs.tick, part: i as u8, parts, acked, bytes: c.to_vec() })
         .collect()
 }
 
@@ -312,11 +315,12 @@ mod tests {
 
         let w = treadcore_sim::World::new(treadcore_sim::Scenario::default());
         let obs = w.observe(0);
-        let pk = snapshot_packets(&obs);
+        let pk = snapshot_packets(&obs, 7);
         let mut asm = SnapshotAssembler::default();
         let mut got = None;
         for p in pk {
-            if let Packet::Snapshot { tick, part, parts, bytes } = p {
+            if let Packet::Snapshot { tick, part, parts, acked, bytes } = p {
+                assert_eq!(acked, 7);
                 got = asm.push(tick, part, parts, bytes).or(got);
             }
         }
