@@ -1,0 +1,137 @@
+# Packages for a release. On a tag v<version> (pushed after `make release`
+# passed: the pre-push hook in .githooks/ runs it), build:
+#
+#   treadcore-<version>-linux-amd64.deb     Debian 12+, Ubuntu 22.04+, Mint 21+
+#   treadcore-<version>-linux-arm64.deb
+#   treadcore-<version>-linux-x86_64.rpm    Fedora 40+
+#   treadcore-<version>-linux-aarch64.rpm
+#   treadcore-<version>-windows-x86_64.zip
+#   treadcore-<version>-macos-arm64.zip     Treadcore.app, ad-hoc signed
+#   SHA256SUMS
+#
+# and put them on a DRAFT GitHub release. Nothing is public until a
+# person publishes the draft, no sooner than a day after the tag
+# (RELEASE.md section 6). download.html links to these names.
+#
+# The packages carry the window's runtime dependencies, the same list
+# as scripts/deps.sh (source/treadcore-client/Cargo.toml says which and
+# why). Rust is never one: they are built binaries. The build here uses
+# rustup's stable toolchain.
+name: packages
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      rpmversion: ${{ steps.v.outputs.rpmversion }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          v="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "rpmversion=${v//-/\~}" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME}" != "v$v" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} is not v$v, the version in Cargo.toml"; exit 1
+          fi
+
+  deb:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - { runner: ubuntu-22.04, arch: amd64 }
+          - { runner: ubuntu-22.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: system packages (scripts/deps.sh, Debian line)
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libwayland-dev libxkbcommon-dev libasound2-dev libudev-dev libvulkan1 mesa-vulkan-drivers
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --locked -p treadcore-client -p treadcore-server
+      - run: cargo install --locked cargo-deb
+      - run: cargo deb -p treadcore-client --no-build -o "treadcore-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.deb"
+      - uses: actions/upload-artifact@v4
+        with: { name: "deb-${{ matrix.arch }}", path: "*.deb" }
+
+  rpm:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - { runner: ubuntu-latest, arch: x86_64 }
+          - { runner: ubuntu-22.04-arm, arch: aarch64 }
+    runs-on: ${{ matrix.runner }}
+    container: fedora:41
+    steps:
+      - name: system packages (scripts/deps.sh, Fedora line)
+        run: dnf install -y gcc git pkgconf-pkg-config wayland-devel libxkbcommon-devel alsa-lib-devel systemd-devel
+      - uses: actions/checkout@v4
+      - name: rust (rustup, stable)
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: cargo build --release --locked -p treadcore-client -p treadcore-server
+      - run: cargo install --locked cargo-generate-rpm
+      - run: cargo generate-rpm -p source/treadcore-client --set-metadata 'version = "${{ needs.version.outputs.rpmversion }}"' -o "treadcore-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.rpm"
+      - uses: actions/upload-artifact@v4
+        with: { name: "rpm-${{ matrix.arch }}", path: "*.rpm" }
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --locked -p treadcore-client -p treadcore-server
+      - name: zip
+        shell: pwsh
+        run: |
+          $d = "treadcore-${{ needs.version.outputs.version }}-windows-x86_64"
+          New-Item -ItemType Directory $d | Out-Null
+          Copy-Item target/release/treadcore.exe, target/release/treadcore-server.exe, README.md, documentation/HOW-TO-PLAY.md, LICENSE $d
+          Compress-Archive -Path $d -DestinationPath "$d.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: "*.zip" }
+
+  macos:
+    needs: version
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Treadcore.app (scripts/install.sh, into a staging prefix)
+        run: |
+          PREFIX="$RUNNER_TEMP/p" APPDIR="$RUNNER_TEMP/apps" make install
+          d="treadcore-${{ needs.version.outputs.version }}-macos-arm64"
+          mkdir "$d"
+          cp -R "$RUNNER_TEMP/apps/Treadcore.app" "$d/"
+          cp "$RUNNER_TEMP/p/bin/treadcore-server" README.md documentation/HOW-TO-PLAY.md LICENSE "$d/"
+          ditto -c -k --keepParent "$d" "$d.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: macos, path: "*.zip" }
+
+  release:
+    needs: [version, deb, rpm, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - run: cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: ${{ contains(needs.version.outputs.version, '-') }}
+          name: treadcore ${{ needs.version.outputs.version }}
+          body: |
+            treadcore ${{ needs.version.outputs.version }}. What changed: [CHANGELOG.md](https://github.com/treadcore/treadcore/blob/main/CHANGELOG.md). Which file for which system: [treadcore.org/download.html](https://treadcore.org/download.html). How to play: [HOW-TO-PLAY.md](https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md).
+          files: out/*

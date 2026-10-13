@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Treadcore
+GenericName=Tank game
+Comment=Sixteen tanks, one island, the airspace round each one
+Exec=treadcore --solo
+Icon=treadcore
+Terminal=false
+Categories=Game;StrategyGame;
+StartupWMClass=org.treadcore.treadcore
+Keywords=tank;drone;bolo;multiplayer;strategy;
+Actions=lan;
+
+[Desktop Action lan]
+Name=Treadcore on the LAN
+Exec=treadcore --lan

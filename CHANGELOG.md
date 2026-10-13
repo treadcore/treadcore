@@ -43,6 +43,24 @@ Journal: [0019](journal/0019-2026-10-13-the-first-minute.txt).
   launched from it, uninstalled cleanly.
 - Changed: the window's app id is `org.treadcore.treadcore`, matching
   the desktop entry, so taskbars give it its name and icon.
+- New: packages. `.github/workflows/packages.yml` builds, on a release
+  tag, a .deb (Debian, Ubuntu, Linux Mint; x86-64 and ARM64), a .rpm
+  (Fedora; x86-64 and AArch64), a Windows zip and a macOS zip, onto a
+  draft GitHub release with SHA256SUMS. The packages carry the window's
+  runtime dependencies (Wayland, xkbcommon, the Vulkan loader, Mesa's
+  Vulkan drivers; the linked ones read from the binary); Rust is never
+  one of them. Metadata in `source/treadcore-client/Cargo.toml`; the
+  desktop entry and icon in `packaging/`, shared with `make install`.
+- New: `make hooks` turns on `.githooks/pre-push`: pushing a `v*` tag
+  runs `make release` first and is refused if it fails or the tag is
+  not the version.
+- New: a Nix flake (`nix run github:treadcore/treadcore`); untested.
+- New: `download.html`, a system selector with a badge and a panel for
+  each of Debian, Ubuntu, Linux Mint, Fedora, NixOS, Windows, macOS,
+  Copal, Alpine, Arch, Omarchy, Gentoo and cargo, its links read from
+  the newest published release; and the same platforms on index.html.
+- New: `make deps` knows Linux Mint, NixOS and Windows (Git Bash or
+  MSYS2); the default player name falls back to `USERNAME` on Windows.
 
 ## 0.1.0-rc.1 (2026-10-13): the first candidate
 

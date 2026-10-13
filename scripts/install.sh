@@ -92,41 +92,10 @@ if [ "$DARWIN" = 0 ] && [ "$HAVE_WINDOW" = 1 ]; then
     mkdir -p "$(dirname "$DESKTOP")" "$(dirname "$ICON")"
     # The icon is drawn the way the game is: rectangles. Grass, a tan
     # pillbox in three steps with its gun, an olive tank in front.
-    cat > "$ICON" <<'SVG'
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="10" fill="#007020"/>
-  <rect x="6" y="6" width="22" height="22" fill="#1fb010"/>
-  <rect x="30" y="8" width="26" height="26" fill="#806040"/>
-  <rect x="30" y="8" width="26" height="22" fill="#c0a06f"/>
-  <rect x="34" y="11" width="18" height="15" fill="#cbad7c"/>
-  <rect x="38" y="14" width="10" height="8" fill="#d6ba8a"/>
-  <rect x="41" y="16" width="5" height="4" fill="#f28c33"/>
-  <rect x="8" y="36" width="36" height="20" fill="#33331f"/>
-  <rect x="8" y="36" width="36" height="16" fill="#6b6b42"/>
-  <rect x="8" y="36" width="36" height="3" fill="#333028"/>
-  <rect x="8" y="49" width="36" height="3" fill="#333028"/>
-  <rect x="18" y="40" width="14" height="8" fill="#8c94ff"/>
-  <rect x="32" y="43" width="22" height="3" fill="#9ea39e"/>
-</svg>
-SVG
-    cat > "$DESKTOP" <<DESK
-[Desktop Entry]
-Type=Application
-Name=Treadcore
-GenericName=Tank game
-Comment=Sixteen tanks, one island, the airspace round each one
-Exec=$BINDIR/treadcore --solo
-Icon=treadcore
-Terminal=false
-Categories=Game;StrategyGame;
-StartupWMClass=org.treadcore.treadcore
-Keywords=tank;drone;bolo;multiplayer;strategy;
-Actions=lan;
-
-[Desktop Action lan]
-Name=Treadcore on the LAN
-Exec=$BINDIR/treadcore --lan
-DESK
+    install -m 644 "$ROOT/packaging/treadcore.svg" "$ICON"
+    # The packaged entry runs `treadcore` from PATH; here, the full path,
+    # because ~/.local/bin is not on every launcher's PATH.
+    sed "s#^Exec=treadcore#Exec=$BINDIR/treadcore#" "$ROOT/packaging/org.treadcore.treadcore.desktop" > "$DESKTOP"
     refresh_menus
     echo "  $DESKTOP"
     echo "  $ICON"

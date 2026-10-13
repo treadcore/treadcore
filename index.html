@@ -81,6 +81,12 @@ ul,ol{margin:0 0 1.1rem;padding-left:1.4rem} li{margin:.3rem 0}
 @media (max-width:40rem){.gallery{grid-template-columns:1fr}}
 footer{border-top:1px solid var(--line);padding:2rem 0 3rem;color:var(--faint);font-size:.88rem}
 footer a{color:var(--dim)}
+.platforms{display:grid;gap:.6rem;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));margin:1rem 0 1.4rem;padding:0;list-style:none}
+.platforms a{display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;text-decoration:none;color:var(--fg);
+background:var(--card);border:1px solid var(--line);border-radius:.5rem;font-weight:600;font-size:.92rem;line-height:1.2}
+.platforms a:hover{border-color:var(--accent)}
+.platforms small{display:block;font-weight:400;color:var(--faint);font-size:.75rem}
+.pico{width:2rem;height:2rem;flex:none;border-radius:.3rem}
 .nav{display:flex;flex-wrap:wrap;gap:1.1rem;margin:0 0 1rem;padding:0;list-style:none;font-size:.9rem}
 
 /* the paper */
@@ -145,6 +151,21 @@ border-top:3px double var(--ink);border-bottom:1px solid var(--ink)}
 </script>
 </head>
 <body>
+<svg width="0" height="0" id="platform-icons" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copal" viewBox="0 0 16 16"><rect width="16" height="16" fill="#a8630f"/><rect x="3" y="3" width="10" height="10" fill="#e8a33a"/><rect x="5" y="5" width="6" height="6" fill="#ffd27a"/><rect x="7" y="7" width="2" height="2" fill="#7a4505"/></symbol>
+  <symbol id="i-alpine" viewBox="0 0 16 16"><rect width="16" height="16" fill="#0d597f"/><rect x="2" y="9" width="12" height="4" fill="#fff"/><rect x="4" y="7" width="4" height="2" fill="#fff"/><rect x="5" y="5" width="2" height="2" fill="#fff"/><rect x="9" y="8" width="3" height="1" fill="#fff"/></symbol>
+  <symbol id="i-arch" viewBox="0 0 16 16"><rect width="16" height="16" fill="#1793d1"/><rect x="7" y="2" width="2" height="3" fill="#fff"/><rect x="6" y="5" width="4" height="3" fill="#fff"/><rect x="5" y="8" width="2" height="5" fill="#fff"/><rect x="9" y="8" width="2" height="5" fill="#fff"/><rect x="3" y="12" width="2" height="2" fill="#fff"/><rect x="11" y="12" width="2" height="2" fill="#fff"/></symbol>
+  <symbol id="i-omarchy" viewBox="0 0 16 16"><rect width="16" height="16" fill="#1a1b26"/><rect x="2" y="2" width="5" height="5" fill="#7aa2f7"/><rect x="9" y="2" width="5" height="5" fill="#bb9af7"/><rect x="2" y="9" width="5" height="5" fill="#9ece6a"/><rect x="9" y="9" width="5" height="5" fill="#e0af68"/></symbol>
+  <symbol id="i-debian" viewBox="0 0 16 16"><rect width="16" height="16" fill="#a80030"/><rect x="5" y="3" width="6" height="2" fill="#fff"/><rect x="11" y="5" width="2" height="5" fill="#fff"/><rect x="7" y="7" width="3" height="2" fill="#fff"/><rect x="5" y="5" width="2" height="6" fill="#fff"/><rect x="7" y="11" width="4" height="2" fill="#fff"/></symbol>
+  <symbol id="i-ubuntu" viewBox="0 0 16 16"><rect width="16" height="16" fill="#e95420"/><rect x="5" y="5" width="6" height="6" fill="#fff"/><rect x="6" y="6" width="4" height="4" fill="#e95420"/><rect x="2" y="7" width="3" height="2" fill="#fff"/><rect x="10" y="2" width="3" height="3" fill="#fff"/><rect x="10" y="11" width="3" height="3" fill="#fff"/></symbol>
+  <symbol id="i-mint" viewBox="0 0 16 16"><rect width="16" height="16" fill="#87cf3e"/><rect x="2" y="3" width="2" height="9" fill="#fff"/><rect x="2" y="12" width="12" height="2" fill="#fff"/><rect x="6" y="5" width="2" height="7" fill="#fff"/><rect x="10" y="5" width="2" height="7" fill="#fff"/><rect x="6" y="5" width="6" height="2" fill="#fff"/></symbol>
+  <symbol id="i-fedora" viewBox="0 0 16 16"><rect width="16" height="16" fill="#294172"/><rect x="3" y="3" width="10" height="10" fill="#3c6eb4"/><rect x="7" y="4" width="2" height="8" fill="#fff"/><rect x="7" y="4" width="5" height="2" fill="#fff"/><rect x="4" y="7" width="6" height="2" fill="#fff"/></symbol>
+  <symbol id="i-gentoo" viewBox="0 0 16 16"><rect width="16" height="16" fill="#54487a"/><rect x="4" y="3" width="8" height="8" fill="#ddd9ee"/><rect x="7" y="6" width="3" height="3" fill="#54487a"/><rect x="2" y="9" width="6" height="4" fill="#ddd9ee"/></symbol>
+  <symbol id="i-nix" viewBox="0 0 16 16"><rect width="16" height="16" fill="#5277c3"/><rect x="3" y="3" width="2" height="10" fill="#fff"/><rect x="11" y="3" width="2" height="10" fill="#fff"/><rect x="5" y="5" width="2" height="2" fill="#7ebae4"/><rect x="7" y="7" width="2" height="2" fill="#7ebae4"/><rect x="9" y="9" width="2" height="2" fill="#7ebae4"/></symbol>
+  <symbol id="i-macos" viewBox="0 0 16 16"><rect width="16" height="16" fill="#555"/><rect x="3" y="4" width="10" height="7" fill="#ddd"/><rect x="4" y="5" width="8" height="5" fill="#3a8bd6"/><rect x="6" y="12" width="4" height="1" fill="#ddd"/></symbol>
+  <symbol id="i-windows" viewBox="0 0 16 16"><rect width="16" height="16" fill="#0a5aa8"/><rect x="2" y="2" width="5.5" height="5.5" fill="#fff"/><rect x="8.5" y="2" width="5.5" height="5.5" fill="#fff"/><rect x="2" y="8.5" width="5.5" height="5.5" fill="#fff"/><rect x="8.5" y="8.5" width="5.5" height="5.5" fill="#fff"/></symbol>
+  <symbol id="i-cargo" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3b2a1c"/><rect x="3" y="5" width="10" height="7" fill="#c97a3a"/><rect x="3" y="5" width="10" height="2" fill="#e8a067"/><rect x="7" y="7" width="2" height="5" fill="#8a4f20"/></symbol>
+</svg>
 <header class="hero"><div class="wrap">
 <p class="eyebrow">Sixteen tanks &middot; one island &middot; the airspace round each one</p>
 <h1>A tank game for the battlefield the tank was just handed</h1>
@@ -155,10 +176,11 @@ Sixteen players find each other on a LAN or across the Internet, measure
 the links between them and elect a host. <strong>Nobody runs a server.</strong></p>
 <ul class="badges">
 <li>Free, MIT</li><li>cargo install</li><li>Up to sixteen players</li>
-<li>No server</li><li>Bots fill empty seats</li><li>Linux, Rust</li>
+<li>No server</li><li>Bots fill empty seats</li><li>Linux, macOS, Windows</li>
 </ul>
 <div class="cta">
-<a class="primary" href="#get-started">Get started</a>
+<a class="primary" href="download.html">Download</a>
+<a href="#get-started">Get started</a>
 <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a>
 <a href="#paper">The paper</a>
 <a href="https://github.com/treadcore/treadcore">Source</a>
@@ -199,7 +221,7 @@ numbers from eight traced matches.</p></div>
 
 <div class="wrap"><main class="site" id="treadcore">
 <h1 id="treadcore">treadcore</h1>
-<p><strong>An overhead tank game for the drone battlefield. Sixteen players, no server, Linux.</strong></p>
+<p><strong>An overhead tank game for the drone battlefield. Sixteen players, no server. Linux, macOS, Windows.</strong></p>
 <p>MIT &middot; <code>0.1.0-rc.1</code>, the first release candidate &middot; <code>cargo install treadcore-client</code></p>
 <p><strong><a href="https://treadcore.org/">treadcore.org</a></strong> &mdash; this page, the
 <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">player's guide</a>,
@@ -225,6 +247,26 @@ make debug       # a full bot match, traced to build/logs/</code></pre>
 <tr><td><strong>No server</strong></td><td>The windows elect a host among themselves and route round links that fail. A seat waits for a player who drops. An introducer, not a server, for the Internet.</td></tr>
 <tr><td><strong>A world you can replay</strong></td><td>Every match records; every replay must hash the same. Bots are tested against traces, and a change to the rules is a change the trace shows.</td></tr>
 </tbody></table>
+<hr>
+<h2 id="get-it">Get it for your system</h2>
+<p>A package where there is a package manager to take it, <code>make install</code> where
+building from source is the custom, a zip where there is neither, and <code>cargo install</code>
+anywhere. Pick yours on the <a href="download.html">download page</a>.</p>
+<ul class="platforms" role="list">
+<li><a href="download.html#debian"><svg class="pico"><use href="#i-debian"/></svg><span>Debian<small>.deb</small></span></a></li>
+<li><a href="download.html#ubuntu"><svg class="pico"><use href="#i-ubuntu"/></svg><span>Ubuntu<small>.deb</small></span></a></li>
+<li><a href="download.html#mint"><svg class="pico"><use href="#i-mint"/></svg><span>Linux Mint<small>Cinnamon, .deb</small></span></a></li>
+<li><a href="download.html#fedora"><svg class="pico"><use href="#i-fedora"/></svg><span>Fedora<small>.rpm</small></span></a></li>
+<li><a href="download.html#nix"><svg class="pico"><use href="#i-nix"/></svg><span>NixOS, Nix<small>flake</small></span></a></li>
+<li><a href="download.html#windows"><svg class="pico"><use href="#i-windows"/></svg><span>Windows<small>zip</small></span></a></li>
+<li><a href="download.html#macos"><svg class="pico"><use href="#i-macos"/></svg><span>macOS<small>zip, make install</small></span></a></li>
+<li><a href="download.html#copal"><svg class="pico"><use href="#i-copal"/></svg><span>Copal Linux<small>make install</small></span></a></li>
+<li><a href="download.html#alpine"><svg class="pico"><use href="#i-alpine"/></svg><span>Alpine<small>make install</small></span></a></li>
+<li><a href="download.html#arch"><svg class="pico"><use href="#i-arch"/></svg><span>Arch<small>make install</small></span></a></li>
+<li><a href="download.html#omarchy"><svg class="pico"><use href="#i-omarchy"/></svg><span>Omarchy<small>make install</small></span></a></li>
+<li><a href="download.html#gentoo"><svg class="pico"><use href="#i-gentoo"/></svg><span>Gentoo<small>make install</small></span></a></li>
+<li><a href="download.html#cargo"><svg class="pico"><use href="#i-cargo"/></svg><span>Anywhere<small>cargo install</small></span></a></li>
+</ul>
 <hr>
 <h2 id="get-started">Get started</h2>
 <pre><code>treadcore --solo</code></pre>
@@ -503,7 +545,7 @@ bots and writes the trace.</p>
 </main>
 </div>
 
-<footer><div class="wrap"><ul class="nav"><li><strong>Overview</strong></li><li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li><li><a href="#paper">The paper</a></li><li><a href="reports/2026-10-12-opening-day.html">Opening day</a></li><li><a href="https://github.com/treadcore/treadcore">GitHub</a></li><li><a href="https://crates.io/crates/treadcore-client">crates.io</a></li></ul>
+<footer><div class="wrap"><ul class="nav"><li><strong>Overview</strong></li><li><a href="download.html">Download</a></li><li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li><li><a href="#paper">The paper</a></li><li><a href="reports/2026-10-12-opening-day.html">Opening day</a></li><li><a href="https://github.com/treadcore/treadcore">GitHub</a></li><li><a href="https://crates.io/crates/treadcore-client">crates.io</a></li></ul>
 <p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson. No assets: everything drawn is a rectangle or a line.
 Built and played on <a href="https://github.com/copallinux/copal">Copal Linux</a>, a distillation of Alpine Linux.
 <a href="https://github.com/treadcore/treadcore">Source</a> &middot;

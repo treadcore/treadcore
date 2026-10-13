@@ -22,7 +22,7 @@ case "$PLATFORM" in
         # vulkan-swrast is lavapipe; a real GPU wants vulkan-radeon,
         # vulkan-intel or nvidia-utils as well, and Omarchy has its own.
         CMD="pacman -S --needed base-devel pkgconf wayland libxkbcommon alsa-lib systemd-libs vulkan-icd-loader vulkan-swrast" ;;
-    debian|ubuntu)
+    debian|ubuntu|mint)
         # mesa-vulkan-drivers carries lavapipe beside the radeon and intel drivers.
         CMD="apt-get install -y build-essential pkg-config libwayland-dev libxkbcommon-dev libasound2-dev libudev-dev libvulkan1 mesa-vulkan-drivers" ;;
     gentoo)
@@ -33,6 +33,16 @@ case "$PLATFORM" in
         CMD="dnf install -y gcc pkgconf-pkg-config wayland-devel libxkbcommon-devel alsa-lib-devel systemd-devel vulkan-loader mesa-vulkan-drivers" ;;
     macos)
         say "$PLATFORM_NAME: nothing to install. The window uses Metal and Cocoa, which come with the system; Rust from https://rustup.rs."
+        exit 0 ;;
+    windows)
+        say "$PLATFORM_NAME: no system packages. The window uses DirectX 12 or Vulkan from the GPU's driver."
+        echo "  Rust from https://rustup.rs, which asks for the Visual Studio C++ build tools (the MSVC toolchain) and installs them."
+        echo "  Or the ready-made zip from https://treadcore.org/download.html"
+        exit 0 ;;
+    nixos)
+        say "$PLATFORM_NAME: the flake brings everything, Rust included."
+        echo "  nix run github:treadcore/treadcore          # play"
+        echo "  nix develop                                 # a shell with the build's packages, in this checkout"
         exit 0 ;;
     *)
         warn "$PLATFORM_NAME: not one this script knows. The window needs, by any name: a C compiler, pkg-config, the wayland-client, xkbcommon, alsa and libudev development files, a Vulkan loader and a Vulkan driver."

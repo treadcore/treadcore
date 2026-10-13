@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# pre-push: a release tag goes nowhere until the release check passes.
+# Turned on by `make hooks` (git config core.hooksPath .githooks).
+#
+# Only a push of a tag v* is checked; branches push as before. The tag
+# must name the version in Cargo.toml, and scripts/release.sh (make
+# release) must pass on the tree it points at: tests, a build with no
+# warnings, the frames taken and shown, the documents, the crates
+# packaging. A tag that reaches GitHub starts .github/workflows/
+# packages.yml, so this is the last stop before packages are built.
+# `git push --no-verify` skips it, deliberately and visibly.
+set -u
+ROOT="$(git rev-parse --show-toplevel)"
+VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    case "$remote_ref" in
+        refs/tags/v*) ;;
+        *) continue ;;
+    esac
+    tag="${remote_ref#refs/tags/}"
+    [ "$local_sha" = 0000000000000000000000000000000000000000 ] && continue   # deleting a tag
+    if [ "$tag" != "v$VERSION" ]; then
+        echo "pre-push: tag $tag is not v$VERSION, the version in Cargo.toml" >&2
+        status=1; continue
+    fi
+    commit="$(git rev-parse "$local_sha^{commit}")"
+    if [ "$commit" != "$(git rev-parse HEAD)" ]; then
+        echo "pre-push: $tag is not the checked-out commit; check it out and push again, so the check runs on what the tag names" >&2
+        status=1; continue
+    fi
+    echo "pre-push: $tag: running the release check (make release) before it leaves this machine" >&2
+    if ! "$ROOT/scripts/release.sh" >&2; then
+        echo "pre-push: the release check failed; $tag was not pushed" >&2
+        status=1
+    fi
+done
+exit "$status"

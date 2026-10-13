@@ -26,3 +26,70 @@ treadcore-brain = { workspace = true }
 # Bevy comes from the workspace table at the root, so the window and the
 # warm crate (`make warm`) build the same engine once.
 bevy = { workspace = true }
+
+# PACKAGES. One package, `treadcore`, holds the window and the headless
+# server, a desktop entry and an icon; built by .github/workflows/
+# packages.yml on a tag (cargo-deb, cargo-generate-rpm). Binary packages:
+# Rust and cargo are never a dependency of them; build from source with
+# your own toolchain (rustup or the distribution's) and `make deps`.
+#
+# What the window needs at run time, the same list as scripts/deps.sh:
+# ALSA and libudev are linked, and the tools find them in the binary
+# ($auto, auto-req). Wayland and xkbcommon are loaded by winit at run
+# time, and the Vulkan loader and a driver by wgpu, so no tool can see
+# them: they are named here. mesa-vulkan-drivers carries lavapipe, so
+# a machine with no GPU still runs. The X11 libraries are for an X11
+# session only, and so recommended rather than required.
+[package.metadata.deb]
+name = "treadcore"
+maintainer = "Paul Richeson <paulr@sdf.org>"
+copyright = "2026, Paul Richeson"
+license-file = ["../../LICENSE", "0"]
+extended-description = """\
+A sixteen-player overhead tank game for the drone battlefield. The gun \
+fires indirect at what a recon drone sees, interceptors hold a ring round \
+the hull, a squad builds and takes the ground, and the players elect a \
+host among themselves: no server. Includes treadcore-server, the headless \
+host and bot seat."""
+section = "games"
+priority = "optional"
+depends = "$auto, libwayland-client0, libwayland-cursor0, libxkbcommon0, libvulkan1, mesa-vulkan-drivers"
+recommends = "libx11-6, libx11-xcb1, libxcursor1, libxi6, libxrandr2, libxkbcommon-x11-0"
+assets = [
+    ["target/release/treadcore", "usr/bin/", "755"],
+    ["target/release/treadcore-server", "usr/bin/", "755"],
+    ["../../packaging/org.treadcore.treadcore.desktop", "usr/share/applications/", "644"],
+    ["../../packaging/treadcore.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+    ["../../README.md", "usr/share/doc/treadcore/", "644"],
+    ["../../documentation/HOW-TO-PLAY.md", "usr/share/doc/treadcore/", "644"],
+]
+
+[package.metadata.generate-rpm]
+name = "treadcore"
+summary = "A sixteen-player overhead tank game for the drone battlefield"
+license = "MIT"
+url = "https://treadcore.org"
+auto-req = "builtin"
+assets = [
+    { source = "target/release/treadcore", dest = "/usr/bin/treadcore", mode = "755" },
+    { source = "target/release/treadcore-server", dest = "/usr/bin/treadcore-server", mode = "755" },
+    { source = "../../packaging/org.treadcore.treadcore.desktop", dest = "/usr/share/applications/org.treadcore.treadcore.desktop", mode = "644" },
+    { source = "../../packaging/treadcore.svg", dest = "/usr/share/icons/hicolor/scalable/apps/treadcore.svg", mode = "644" },
+    { source = "../../README.md", dest = "/usr/share/doc/treadcore/README.md", mode = "644", doc = true },
+    { source = "../../documentation/HOW-TO-PLAY.md", dest = "/usr/share/doc/treadcore/HOW-TO-PLAY.md", mode = "644", doc = true },
+    { source = "../../LICENSE", dest = "/usr/share/licenses/treadcore/LICENSE", mode = "644", doc = true },
+]
+
+[package.metadata.generate-rpm.requires]
+libwayland-client = "*"
+libwayland-cursor = "*"
+libxkbcommon = "*"
+vulkan-loader = "*"
+mesa-vulkan-drivers = "*"
+
+[package.metadata.generate-rpm.recommends]
+libX11 = "*"
+libXcursor = "*"
+libXi = "*"
+libXrandr = "*"
+libxkbcommon-x11 = "*"

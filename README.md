@@ -27,6 +27,15 @@ cargo install treadcore-client   # the window, as `treadcore`
 treadcore --solo                 # you against fifteen bots
 ```
 
+For your system: [treadcore.org/download.html](https://treadcore.org/download.html).
+Packages for Debian, Ubuntu and Linux Mint (.deb) and Fedora (.rpm), a
+zip for Windows and for macOS, all on each
+[GitHub release](https://github.com/treadcore/treadcore/releases); a
+Nix flake (`nix run github:treadcore/treadcore`); and `make install`
+from source for Copal, Alpine, Arch, Omarchy and Gentoo. The packages
+carry the window's runtime dependencies; none of them needs Rust,
+which you bring yourself only to build from source.
+
 ## The game
 
 Up to sixteen players, one tank each, on a 128 x 128 tile island (one
@@ -71,6 +80,7 @@ make headless    # everything except the window
 make test        # cargo test, every crate
 make shoot       # the release frames: the window driven by a script, cropped, for the guide and the site
 make release     # the release procedure: version, tests, no warnings, frames taken and shown, crates package
+make hooks       # turn on .githooks/: pushing a v* tag runs make release first
 make token       # store the crates.io API token for cargo (TOKEN=... or typed)
 make publish     # publish the five crates in dependency order; DRY=1 to verify only
 ```

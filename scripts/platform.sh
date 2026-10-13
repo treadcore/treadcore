@@ -1,12 +1,15 @@
 # shellcheck shell=bash
 # platform.sh: which system this is, for deps.sh and install.sh. Sourced.
-# Sets PLATFORM (copal, alpine, omarchy, arch, debian, ubuntu, gentoo,
-# fedora, macos, or unknown), PLATFORM_NAME (for messages) and SUDO
+# Sets PLATFORM (copal, alpine, omarchy, arch, mint, debian, ubuntu,
+# gentoo, fedora, nixos, macos, windows, or unknown), PLATFORM_NAME (for messages) and SUDO
 # (doas or sudo, or nothing when already root).
 PLATFORM=unknown
 PLATFORM_NAME="$(uname -s)"
 if [ "$(uname -s)" = Darwin ]; then
     PLATFORM=macos; PLATFORM_NAME="macOS $(sw_vers -productVersion 2>/dev/null)"
+elif case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) true ;; *) false ;; esac; then
+    # Git Bash or MSYS2 on Windows: the Makefile's scripts run there.
+    PLATFORM=windows; PLATFORM_NAME="Windows ($(uname -s))"
 elif [ -r /etc/os-release ]; then
     # shellcheck disable=SC1091
     . /etc/os-release
@@ -16,6 +19,8 @@ elif [ -r /etc/os-release ]; then
     for id in ${ID:-} ${ID_LIKE:-}; do
         case "$id" in
             alpine) PLATFORM=alpine ;;
+            linuxmint) PLATFORM=mint ;;
+            nixos) PLATFORM=nixos ;;
             arch) PLATFORM=arch ;;
             ubuntu) PLATFORM=ubuntu ;;
             debian) PLATFORM=debian ;;

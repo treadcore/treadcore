@@ -176,6 +176,18 @@ candidate's gallery was found to hold three empty files (journal
    a day. (0.1.0-rc.1 was published the day it was tagged, before
    this rule; journal 0019.)
 
+**The hook and the packages.** `make hooks` turns on `.githooks/
+pre-push`: a push of a tag `v*` runs this whole check first, refuses a
+tag that is not the version in `Cargo.toml`, and stops the push if the
+check fails. A tag that reaches GitHub starts `.github/workflows/
+packages.yml`, which builds the .deb (Ubuntu 22.04, x86-64 and ARM64),
+the .rpm (Fedora 41, x86-64 and AArch64), a Windows zip and a macOS
+zip of `Treadcore.app`, and puts them with `SHA256SUMS` on a **draft**
+GitHub release, a pre-release for a candidate. The draft is published
+by hand on the same day as `make publish`, no sooner than a day after
+the tag; until then `download.html` shows no package links, because it
+reads the newest *published* release from GitHub's API.
+
 A new feature in a release is not done until the guide shows it: the
 feature's frame is added to `scripts/shoot.sh`, the guide's section
 is written against the frame, and `make release` holds the two

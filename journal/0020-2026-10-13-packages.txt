@@ -1,0 +1,100 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 22:30:00 -0700
+Subject: [JOURNAL 0020] Every platform: make deps, make install, the
+         packages, the hook, the download page
+Message-ID: <0020.20261013@treadcore.org>
+In-Reply-To: <0019.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: make deps, make install, desktop entry, deb, rpm, nix flake,
+          windows, pre-push hook, download.html
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "add a make install for copal ... consider
+           arch, omarchy, debian, ubuntu, gentoo"; "a git release hook
+           ... .deb and .rpm or maybe even a flatpak"; "allow user to
+           supply their own cargo ... most things would be verified by
+           the package"; "a system selector with all the platforms ...
+           windows ... Linux Mint Cinnamon ... Nix via a nix flake"
+
+           EVERY PLATFORM: MAKE DEPS, MAKE INSTALL, THE PACKAGES,
+                    THE HOOK, THE DOWNLOAD PAGE
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    Paul's make install (macOS, ~/.local/bin) became one for every
+    system. scripts/platform.sh tells eleven systems apart; make deps
+    prints or runs each one's packages; make configure and make
+    install say the same line when something is missing. On Linux
+    make install writes a desktop entry and a rectangle-drawn icon,
+    and on musl puts the window behind a wrapper that preloads
+    bigstack.so. On Copal it was tested end to end: listed in the
+    Super+Space menu, launched, uninstalled. A release tag now runs
+    make release in a pre-push hook and, on GitHub, a workflow that
+    builds .deb, .rpm, Windows and macOS packages onto a draft
+    release. A Nix flake. download.html, a system selector over
+    thirteen ways in, reads its links from the newest published
+    release, so it is never stale.
+
+IV. CHRONOLOGY
+
+     1. make install as pulled from Paul's macOS commit copied two
+        binaries on Linux and nothing else. On Copal that misses the
+        preload: the window crashes on lavapipe without it.
+     2. Copal's menu (copal-menu) reads ~/.local/share/applications
+        and rebuilds when the directory changes: a desktop entry is
+        all it needs, the same file every XDG launcher reads.
+     3. scripts/platform.sh, scripts/deps.sh. Alpine's eight package
+        names checked against apk; the rest from each distribution's
+        index, untested here. Detection tried on sample os-release
+        files for Mint, NixOS, Arch, EndeavourOS, Gentoo, Ubuntu.
+     4. install.sh: the wrapper, the entry, the icon. First run: the
+        wrapper pointed at nothing, because the server's turn through
+        the loop deleted the window's lib directory. Fixed, retested.
+        Hyprland showed the window with an empty class; the window's
+        app id is now org.treadcore.treadcore, matching the entry.
+     5. Packages. cargo-deb and cargo-generate-rpm needed a static xz
+        on Alpine; LZMA_API_STATIC=1 built it from source. A local
+        .deb and .rpm from the musl binaries checked the layout and
+        the dependency lists. RPM versions cannot contain '-': the
+        workflow passes 0.1.0~rc.1. The RPM's builtin scan reads the
+        binary's NEEDED libraries; ALSA and udev are needed to build
+        the window but are not linked, so neither package asks for
+        them. Wayland, xkbcommon and the Vulkan loader are loaded at
+        run time and are named by hand; mesa-vulkan-drivers brings
+        lavapipe, so a machine with no GPU runs.
+     6. The workflow: .deb on Ubuntu 22.04 (glibc 2.35, so Debian 12
+        and Mint 21 take it), .rpm in a fedora:41 container, Windows
+        and macOS zips, a draft release with SHA256SUMS; a job first
+        refuses a tag that is not the Cargo.toml version. Not run: it
+        starts on a tag, and no tag has been pushed since.
+     7. The hook, make hooks. A wrong tag refused; a branch push
+        passed through.
+     8. Windows: no Unix-only code in the tree; USER falls back to
+        USERNAME. The flake: buildRustPackage from Cargo.lock, the
+        window wrapped with LD_LIBRARY_PATH for what it dlopens.
+        Neither has been run by the author.
+     9. download.html and index.html's platform grid; rendered headless
+        with chromium and looked at. make shoot, make release: pass.
+
+VII. OPEN PROBLEMS
+
+    1. The workflow has not run. The first tag will be its test; the
+       release is a draft, so a failure costs nothing public.
+    2. Untested by the author: the .deb and .rpm installed, Windows,
+       the flake, make deps on anything but Copal.
+    3. An AUR PKGBUILD and a Gentoo ebuild; Flatpak, as a file on the
+       GitHub release rather than Flathub.
+
+VIII. NEXT STEPS
+
+    1. Cut 0.1.0-rc.2: the version, make release, the tag, push (the
+       hook runs, the workflow builds the draft).
+    2. A day later: publish the draft and make publish; post the call.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
