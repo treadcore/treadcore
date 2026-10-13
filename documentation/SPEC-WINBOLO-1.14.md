@@ -18,7 +18,8 @@ a descendant. The preface says which parts it takes.
 | 5 Tank: shooting | diverges by design: the gun fires indirect at a coordinate; TNK-18's "first obstacle" applies to direct fire only, and not yet | DESIGN.md |
 | 5 Tank: stocks, boats | stocks adapted (shells, armor, fuel, trees-as-material in 6c; no mines stock until 6c); boats not adopted | ROADMAP 6c |
 | 6 Builder | **adopted** as the Pillboy: BLD-01 to BLD-03, BLD-05, BLD-06, BLD-09, BLD-10, BLD-13; the parachute (BLD-11) becomes resupply at a depot | DESIGN.md "Pillboys and pillboxes", ROADMAP 3, 6c |
-| 7 Mines | **adopted** for step 6c with one rule added: drones ignore mines | ROADMAP 6c |
+| 7 Mines | **adopted** (step 6c, done): MIN-01 as the squad's lay, MIN-02 as material, MIN-03, MIN-05, MIN-06, MIN-09 to MIN-13; one rule added: drones ignore mines; quick mines (MIN-04) and ally sharing (MIN-08) wait for alliances | ROADMAP 6c |
+
 | 8 Pillboxes | **adopted**: PIL-01 to PIL-05, PIL-07 to PIL-17; added: pillboxes engage drones at short range; pillboxes hold shells (BAS-01 shape) | ROADMAP 3, 6c |
 | 9 Refuelling bases | **adopted** as depots, already in: BAS-02, BAS-04 to BAS-06, BAS-11; BAS-07 to BAS-09 (armour as the gate) open for a proposal | DESIGN.md "Depots" |
 | 10 Visibility | adapted: forest halves vision (VIS-02 in spirit); drones add sensors Bolo did not have | DESIGN.md "The world" |

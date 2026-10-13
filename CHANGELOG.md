@@ -4,7 +4,33 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-12, night: material, walls, mines, roads (roadmap step 6c)
+
+Journal: [0005](journal/0005-2026-10-12-material-walls-mines.txt).
+
+- New: `Terrain::Wall` (impassable, blocks a flat shot and a pillbox's
+  line, a splash knocks it to rubble); `Mine` entities (hidden until
+  found within 1.5 tiles; set off by a tank or squad on the tile, a
+  shell's splash or an orthogonal neighbour; 50 to the tank on it, 20
+  within 1.5, a squad in it lost, the tile cratered; drones untouched;
+  a tank's own mines never hurt it); `Build { Wall | Road | Mine |
+  Pillbox }` and `Harvest { at }` (forest to grass, +4 material);
+  roads become bridges over water; material cap 8; pillboxes hold 8
+  shells for their owner's tank. `Event::TerrainChanged`; the
+  Observation carries known mines and the eight nearest forest tiles.
+  Routes avoid known hostile mines. Keys 7/8/9/0.
+- New: `Fortifier`, the minimal defender (harvest, a gateless mine
+  ring at radius 3 round the home depot, a wall ring at 4 with a gate
+  toward the centre; learns from its own refusals). `--defenders N`,
+  `DEFENDERS=n make debug`.
+- Changed: wire `VERSION` 5.
+- Proof (`fortification_pays`, twenty seeds, scripted attacker): the
+  fortified defender survived to tick 137 664 in total against
+  94 885 bare, lived 18:5, killed the attacker 20:12, built 431:0.
+  24 tests pass; replay 36/36; lobby-test passes.
+
 ## 2026-10-12, night: the Pillboys (roadmap step 3)
+
 
 Journal: [0004](journal/0004-2026-10-12-the-pillboys.txt).
 

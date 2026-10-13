@@ -1,0 +1,253 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 12 Oct 2026 19:35:00 -0700
+Subject: [JOURNAL 0005] Material, walls, mines, roads: roadmap step 6c
+Message-ID: <0005.20261012@treadcore.org>
+In-Reply-To: <0004.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: material, harvest, wall, mine, road, bridge, fortifier,
+          scripted-attack, twenty-seeds
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "start roadmap step 6c, material, walls,
+           mines, roads"
+X-Commits: 8303e07
+
+          MATERIAL, WALLS, MINES, ROADS: ROADMAP STEP 6C
+
+                      Paul Richeson, treadcore.org
+                            12 October 2026
+
+
+ABSTRACT
+
+    Step 6c gives the squad things to build. The squad fells a forest
+    tile for four material and builds walls (impassable, block a flat
+    shot, a splash knocks them to rubble), roads (bridges over water,
+    built from the bank) and mines, Bolo's: hidden from all but the
+    layer until found within a tile and a half, set off by a tank or
+    squad on the tile, a shell's splash or an orthogonal neighbour, 50
+    to the tank on it and 20 around, a squad in the blast lost, the
+    tile cratered, and ignored by drones. Pillboxes hold eight shells
+    for their owner's tank. A terrain-change event keeps clients'
+    maps current. A minimal defender brain, the Fortifier, harvests,
+    rings its home depot with mines and walls, and sits. The proof:
+    over twenty seeds, against a scripted attacker that drives for the
+    depot after 150 seconds, the fortified defender lived to tick
+    137 664 in total against 94 885 bare (45 percent longer), survived
+    18 matches to 5, and killed the attacker 20 times to 12, having
+    built 431 things to none. The first run of that proof found a gate
+    in the moat on the very road the attacker used; the second found a
+    brain re-ordering the same refused build four times a second.
+
+INDEX TERMS
+
+    material, harvest, wall, road, bridge, mine, chain reaction,
+    fortifier, scripted attack, control group.
+
+
+I. INTRODUCTION
+
+    Step 3 left the pillbox silent in bot play: tanks route round a
+    gun they know about. The roadmap's answer was 6c: walls to close
+    the detours, mines to make the ground itself the defence, roads
+    for the squad to repair along, and material to pay for it, so that
+    a defender has something to build and the pillbox a road to hold.
+
+II. BACKGROUND
+
+    Carried from 0004: pillboxes never fire in bot play (backlog 14);
+    repair and build proven only by validation; the cross-machine
+    replay; the window; two machines. The spec IDs implemented here:
+    section 6's mode table (costs), MIN-01 to 03, 05, 06, 09 to 13,
+    TER-01 to 03 in part (walls to rubble, forest felled; regrowth not
+    yet), BAS-01's shape on the pillbox.
+
+III. METHOD
+
+    Decisions, with the alternatives rejected:
+
+      decision                    rejected              why
+      --------------------------  --------------------  ----------------
+      mines are entities, not     Terrain::Mine as the  a hidden mine in
+      terrain                     roadmap sketched      the map cells
+                                                        would reach
+                                                        every client
+                                                        in Welcome
+      visibility is stateless:    a per-player set of   nothing to keep
+      own, or within 1.5 of own   revealed mines        in sync; a found
+      tank or squad                                     mine is near the
+                                                        finder anyway
+      a tank's own mines never    Bolo: a mine hurts    a defender's
+      hurt it                     anyone                moat needs no
+                                                        gate; the first
+                                                        proof showed why
+      the Observation lists the   give Brains the map   16 KiB a tick;
+      eight nearest forest tiles                        "the crew can
+                                                        see the trees"
+                                                        is a sensor
+      the squad builds walls and  stand on the tile     a squad inside a
+      mines from an adjacent      and step off          wall is a bug
+      tile                                              waiting to
+                                                        happen
+      TerrainChanged event for    re-send the map       16 KiB; the
+      every changed tile                                client already
+                                                        applies craters
+      material cap 8, harvest 4   Bolo's half-tree      whole numbers; a
+                                  costs                 ring is eight
+                                                        mines
+      the Fortifier reads its     give it the map       the world
+      own refusals to learn                             already says
+                                                        why; a Brain
+      which tiles are forest                            that listens
+                                                        needs nothing
+                                                        a human lacks
+
+IV. CHRONOLOGY
+
+     1. `rules.rs`: the material, harvest, build, mine and pillbox-
+        shell constants, each with its sentence. `map.rs`:
+        `Terrain::Wall`, `blocks_fire`, `set`, `tile_centre`,
+        `forest_near`; `line_clear` honours walls.
+     2. `lib.rs`: `BuildKind` grows to Wall, Road, Mine with cost and
+        time; `Mine`; `PillboyTask::Harvest`; `World.mines`;
+        `Pillbox.shells`; events Built, Harvested, MineLaid,
+        MineExploded, TerrainChanged; `route_for` avoids known hostile
+        mines; `approach` for sites the squad cannot stand on;
+        validation per kind; `step_pillboys` works by `what.ticks()`
+        and `what.cost()`, harvests, lays; a walking squad on a
+        hostile mine sets it off; `explode_mine` with the chain;
+        tanks moving onto a hostile mine; splash knocks walls to
+        rubble and sets off mines; pillbox shells regrow and are drawn
+        by the owner's tank; the Observation carries known mines and
+        nearby forest.
+     3. The patching tool used for these edits applied all-or-nothing
+        and twice applied nothing because one block's blank line
+        differed; it now applies what matches and reports the rest.
+        A lesson about tools, not about the game.
+     4. Compile errors: a borrow in `observe` (forest computed before
+        `me` moved), two in the client (a colour variable out of
+        scope; a match missing Harvest), one in the brain (a V2
+        reference). Then 24 tests pass, three of them new.
+     5. `fortification_pays`, first run: survived 98 373 vs 94 885
+        ticks, alive 6:5, attacker dead 12:12, built 298:0. A thin
+        margin. The Fortifier left a gate in the mine ring toward the
+        centre, and the attacker's route follows the spoke road, which
+        enters the depot from the centre side: through the gate.
+     6. The gate removed from the moat (a tank's own mines do not hurt
+        it); kept in the wall ring. Second run: 118 231 vs 94 885,
+        alive 12:5, attacker dead 16:12, built 288:0.
+     7. `--defenders N` on the server; `DEFENDERS=n make debug`. A
+        trace of twelve Fortifiers and four RuleBots: 157 mines, 95
+        walls, 26 harvests, 7 mines set off, one tank destroyed, and
+        1 325 refused orders, 1 310 of them "forest: harvest it first":
+        a Fortifier re-ordering a mine onto a forest tile in its ring
+        four times a second.
+     8. The Fortifier reads its own Rejected events: forest to fell
+        first, other refusals to leave alone. First attempt changed
+        nothing: refusals land in the tick after the order, and the
+        brain read events only on its think ticks, one in five. Moved
+        above the rate gate: the proof rose to 124 722 (alive 14:5),
+        but the trace still had 1 310 refusals: a Fortifier with full
+        material was told to fell the tile, could not (material full),
+        and re-ordered the build. Forest tiles now wait until there is
+        room for their material; the rest of the ring is built first.
+        Refusals in the trace: 54 (40 forest, each once). Proof:
+        137 664 vs 94 885, alive 18:5, attacker dead 20:12, built
+        431:0.
+     9. `make replay` on the default match: 36 of 36. `make lobby-test`:
+        PASS, one hash. Documents, this entry, commits.
+
+V. RESULTS
+
+    A. The proof (fortification_pays, 20 seeds x 2 arms x 6 min)
+
+      measure                            fortified    bare
+      ---------------------------------  -----------  -------
+      defender survival, ticks, summed   137 664      94 885
+      defender alive at the end          18           5
+      attacker destroyed                 20           12
+      things built                       431          0
+      wall time, 40 matches              3.1 s
+
+    B. The defended trace (12 Fortifiers, 4 RuleBots, 180 s)
+
+      event              count    event              count
+      -----------------  -----    -----------------  -----
+      Harvested          28       MineExploded       7
+      Built              296      PillboxCaptured    6
+      MineLaid           175      TankDestroyed      1
+      walls built        121      PillboxFired       0
+      refused orders     54       (were 1 324 before the fix)
+
+    C. Tests: 24 pass (sim 14, proto 2, net 5, brain 3). New:
+       squad_harvests_walls_and_mines, mines_chain_and_shells_clear_
+       them, fortification_pays.
+
+VI. DISCUSSION
+
+    The proof runs are the lesson of the session. The mechanics all
+    worked from the first compile; the doctrine had a hole exactly
+    where the enemy came from (the gate on the road), and then a loop
+    (a refused order re-issued forever), and only a scripted attacker
+    running twenty times showed the first, and a trace's refusal count
+    the second. A margin of four percent said "something is wrong"
+    where a single trace would have said "the mines went off, fine".
+    Each fix widened the margin: 98 373, 118 231, 124 722, 137 664
+    against a constant 94 885. The proof as the roadmap wrote it (a
+    margin the trace can show, over twenty seeds) is doing the work it
+    was meant to.
+
+    Mines as entities rather than terrain was the right call for a
+    reason the roadmap did not anticipate: hiding. The map's cells go
+    to every client in Welcome and change by public events; a mine in
+    a cell would be public. An entity with a visibility rule is hidden
+    by the same `observe` that hides a tank in forest.
+
+    Pillboxes still do not fire in bot play. The walls are there now;
+    the attackers are not yet made to want what is behind them. That
+    is step 6d's defender and attacker doctrine, with backlog item 14.
+
+VII. OPEN PROBLEMS
+
+    1. Forest does not regrow (TER-03); harvested ground stays grass.
+    2. Pillbox shells are drawn but no bot uses a pillbox as a depot;
+       the mechanic is proven by code reading only.
+    3. Pillboxes do not fire in bot play (backlog 14).
+    4. From 0004 and before: the cross-machine replay; the window; two
+       machines.
+
+VIII. NEXT STEPS
+
+    1. Step 5 (map files), so a defended layout can be authored and
+       the proof run on a map built for it.
+    2. Step 6 (teams and alliances) and 6b (proposals), then 6d, the
+       defender and attacker brains that make the pillbox fire.
+    3. Forest regrowth as a small proposal with a trace.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the order of work; the WinBolo manual as restated in
+    SPEC-WINBOLO-1.14.md, sections 6 and 7.
+
+REFERENCES
+
+    [1] Journal 0004, <0004.20261012@treadcore.org>.
+    [2] documentation/ROADMAP.md, step 6c; documentation/DESIGN.md.
+    [3] documentation/SPEC-WINBOLO-1.14.md, sections 6, 7 and 4.
+
+APPENDIX A. COMMITS
+
+    8303e07  sim, brain, client, server: material, walls, mines, roads
+             (roadmap step 6c); wire version 5
+    (next)   docs, journal: step 6c done; journal 0005
+
+APPENDIX B. ARTIFACTS
+
+    Traces          build/logs/debug-20261012-192*.log (defended and
+                    default), with trace-*.jsonl and replay-*.json
+    Lobby logs      build/logs/lobby-20261012-192*-peer{1,2,3,4}.log
+    Journal         journal/0005-2026-10-12-material-walls-mines.txt
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

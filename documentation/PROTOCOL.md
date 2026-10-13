@@ -1,6 +1,6 @@
 # treadcore protocol
 
-Version 4. One UDP socket per process, default port 47296. Every datagram
+Version 5. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 
@@ -91,8 +91,14 @@ not know which packets were relayed.
 `Observation` (`source/treadcore-sim`): the tick, the player's own tank
 in full (its squad included), every tank, drone and shell inside the
 player's sensor discs, every depot and every pillbox (territory is
-public), every player's name, score and life, the events for this
-tick the player is allowed to know about, and whether the match is over.
+public), the mines the player knows about (its own, and hostile ones
+within a tile and a half of its tank or squad), the eight nearest
+forest tiles (a Brain has no map), every player's name, score and
+life, the events for this tick the player is allowed to know about, and
+whether the match is over. Terrain changes (walls built, forest
+felled, mine craters) arrive as `TerrainChanged` events; shell craters
+as `ShellImpact`; the client applies both to its copy of the map.
+
 
 The map is not in it: it went in `Welcome`, and craters arrive as
 impact events, which the client applies to its copy.

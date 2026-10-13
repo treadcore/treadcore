@@ -36,7 +36,10 @@ Depots resupply and repair. Twenty neutral pillboxes start on the map
 and shoot anyone within 8 tiles; the tank's Pillboys, a squad of four
 that rides with it, capture them (10 seconds standing on one that is
 neutral or dead), repair them and build new ones, and a pillbox you own
-shoots tanks and drones for you. Neutral FPV swarms come in off the map
+shoots tanks and drones for you and holds shells for your tank. The
+squad also fells forest for material and builds walls, roads, bridges
+and mines with it: a mine is hidden until found, set off by a tank, a
+shell or a neighbouring mine, and ignored by drones. Neutral FPV swarms come in off the map
 edge every 45 seconds, so the bubble matters even alone. Last tank
 standing wins; at the time limit, the highest score.
 
@@ -72,7 +75,9 @@ Controls are on screen (Tab hides them). Left click drives (the world
 routes around water, over bridges and round hostile pillboxes), right
 click fires, 1/2/3 launch interceptor / recon / strike, R recalls, 4
 sends the Pillboys to capture or repair the pillbox under the cursor,
-5 to build one there, 6 brings them home, [ ] set the bubble.
+5 to build one there, 6 brings them home, 7/8/9 wall, mine and road
+(a bridge on water) at the cursor, 0 harvests the forest there, [ ]
+set the bubble.
 
 
 ## The debug trace
@@ -80,6 +85,8 @@ sends the Pillboys to capture or repair the pillbox under the cursor,
 ```
 make debug                      # 3 game minutes of sixteen bots, flat out
 GAME_SECONDS=600 SEED=0x1234 PLAYERS=4 make debug
+DEFENDERS=12 make debug         # twelve dig in at their depots, four attack
+
 
 BRAIN='python3 mybot.py' make debug   # an external brain in seat 0
 ```

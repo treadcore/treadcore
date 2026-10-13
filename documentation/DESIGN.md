@@ -201,7 +201,24 @@ Twenty neutral pillboxes start on the map, one a third of the way in on
 every spoke and four round the centre depot. A tank's own route keeps
 out of the ring of any live pillbox that would shoot it, at the cost
 of a detour, because the spoke roads run straight through them.
-Harvesting material from forest, walls, roads and mines are step 6c.
+Since the same night (roadmap step 6c, journal 0005) the squad also
+harvests and builds. `Harvest { at }` fells a forest tile in four
+seconds for four material; the tank carries eight at most. `Build`
+lays a wall (one material, three seconds: impassable, blocks a flat
+shot, a splash knocks it to rubble), a road (one material; a bridge
+when the tile is water, built from the bank), or a mine (one material,
+three seconds). A mine is Bolo's: hidden from everyone but its layer
+until a tank or squad comes within a tile and a half; set off by a
+tank or squad on its tile, by a shell's splash, or by a mine on an
+orthogonally adjacent tile, so a line chains and a chequerboard does
+not; the tank on it takes 50, anything within a tile and a half takes
+20, a squad in the blast is lost, and the tile craters. Drones ignore
+mines: a moat is no defence against the air. A tank's own mines never
+hurt it, so a defender's moat needs no gate. A pillbox holds eight
+shells for its owner's tank, drawn one a resupply cycle inside two
+tiles, regrowing one every ten seconds: ammunition comes from pillboxes
+as well as depots.
+
 
 
 ## What is not here yet

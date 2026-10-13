@@ -302,7 +302,27 @@ accepted and the trace shows the team change and the shared recon.
 
 ## 6c. Material, walls, mines, roads: what a Pillboy builds
 
-**Reference.** SPEC section 6 (the mode table: costs in trees), section
+**Done 12 October 2026 (journal 0005).** `Terrain::Wall` (impassable,
+blocks a flat shot and a pillbox's line, knocked to rubble by a
+splash); `Mine` entities (hidden from all but the layer until a tank or
+squad comes within 1.5 tiles; set off by a tank or squad on the tile,
+a shell's splash, or an orthogonal neighbour; 50 to the tank on it, 20
+within 1.5, a squad in it lost, the tile cratered; drones untouched);
+`Build { Wall | Road | Mine | Pillbox }` and `Harvest { at }` (a forest
+tile to grass, +4 material, 4 s); roads become bridges over water,
+built from the bank; material capped at 8. Pillboxes hold 8 shells for
+their owner's tank and regrow one every 10 s. `Event::TerrainChanged`
+keeps the client's map current. The Observation carries the mines a
+player knows and the eight nearest forest tiles. A tank's route avoids
+the hostile mines its driver knows about. `Fortifier`, the minimal
+defender (harvest, a gateless ring of mines at radius 3 round the home
+depot, a ring of walls at 4 with a gate toward the centre); `--defenders
+N` on the server, `DEFENDERS=n` on make. Wire version 5. Proof:
+`fortification_pays`, twenty seeds, a scripted attacker against a
+fortified and a bare depot; numbers in journal 0005.
+
+**Reference.**
+ SPEC section 6 (the mode table: costs in trees), section
 7 (MIN-01 to MIN-13: who sees a mine, what sets it off, the crater),
 TER-01 to TER-03 (walls take hits to rubble; forest farmed and
 regrowing), BAS-01 (stocks held by a structure). Not taken: boats, deep
