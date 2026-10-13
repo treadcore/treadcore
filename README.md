@@ -81,7 +81,12 @@ alsa-lib-dev eudev-dev`), and a Vulkan driver: on a machine with no
 GPU, `mesa-vulkan-swrast`. Without them the headless crates still
 build. On a musl machine `make configure` also builds a tiny preload
 that gives lavapipe's shader compiler a stack it can live on
-(`documentation/BUILD.md`).
+(`documentation/BUILD.md`). On macOS nothing extra is needed: the
+window uses Cocoa, Metal and CoreAudio from the system.
+
+`make install` puts `treadcore` and `treadcore-server` in
+`~/.local/bin` (`PREFIX=/usr/local` for elsewhere) and, on macOS,
+`Treadcore.app` in `~/Applications`; `make uninstall` takes them out.
 
 ## Running
 
@@ -90,6 +95,7 @@ make run         # the window, solo against fifteen bots (PLAYERS=4 for three)
 make lan         # the window, LAN lobby; WANT=2 to start with two
 make host        # headless host on the LAN, bots in empty seats
 make seat        # headless bot that joins a LAN lobby
+make quad        # four windows on this machine, networked, tiled two by two
 make lobby-test  # four headless peers on this machine elect a host
 LAG=200 make lobby-test   # the same with 200 ms of lag on every receive: prediction's proof
 INTRODUCER=1 make lobby-test   # no broadcast: the four meet through an introducer alone

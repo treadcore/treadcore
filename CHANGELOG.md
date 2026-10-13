@@ -4,6 +4,18 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## Unreleased
+
+- New: builds and runs on macOS (Apple silicon): `make configure`
+  knows Darwin (Cocoa, Metal, CoreAudio, sysctl for memory) and
+  `make lobby-test` reads BSD `wc`.
+- New: `make install` and `make uninstall` (`scripts/install.sh`): the
+  release binaries into `PREFIX/bin`, `~/.local` by default; on macOS
+  also an ad-hoc signed `~/Applications/Treadcore.app`.
+- New: `make quad` (`scripts/quad.sh`): four windows on one machine,
+  networked through the LAN lobby over loopback, tiled two by two;
+  `CLIENTS=n`, `MATCH_SECONDS=n`. The window takes `--window X,Y,W,H`.
+
 ## 0.1.0-rc.1 (2026-10-13): the first candidate
 
 Journal: [0018](journal/0018-2026-10-13-first-candidate.txt). Offered

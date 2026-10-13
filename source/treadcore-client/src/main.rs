@@ -25,7 +25,7 @@ mod session;
 mod voxel;
 
 use bevy::prelude::*;
-use bevy::window::PresentMode;
+use bevy::window::{PresentMode, WindowPosition, WindowResolution};
 use treadcore_sim::TICK_HZ;
 
 /// Pixels per tile at zoom 1.
@@ -54,6 +54,9 @@ pub struct Args {
     pub identity: Option<String>,
     /// The match's time limit in game seconds, when hosting (`--seconds`).
     pub seconds: Option<u64>,
+    /// Where the window opens and how big, `--window X,Y,W,H` in pixels:
+    /// for tiling several clients on one screen (`make quad`).
+    pub window: Option<[i32; 4]>,
 }
 
 fn parse_args() -> Args {
@@ -72,6 +75,7 @@ fn parse_args() -> Args {
         beacon: true,
         identity: None,
         seconds: None,
+        window: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -94,6 +98,15 @@ fn parse_args() -> Args {
             "--no-beacon" => a.beacon = false,
             "--identity" => a.identity = Some(val()),
             "--seconds" => a.seconds = val().parse().ok(),
+            "--window" => {
+                let v: Vec<i32> = val().split(',').filter_map(|n| n.trim().parse().ok()).collect();
+                if let [x, y, w, h] = v[..] {
+                    a.window = Some([x, y, w.max(320), h.max(240)]);
+                } else {
+                    eprintln!("treadcore: --window wants X,Y,W,H");
+                    std::process::exit(2)
+                }
+            }
             "--map" => {
 
                 let path = val();
@@ -109,7 +122,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE]");
 
 
                 std::process::exit(0);
@@ -122,15 +135,17 @@ fn parse_args() -> Args {
 
 fn main() {
     let args = parse_args();
+    let mut window = Window { title: "treadcore".into(), present_mode: PresentMode::AutoVsync, ..default() };
+    if let Some([x, y, w, h]) = args.window {
+        window.title = format!("treadcore -- {}", args.name);
+        window.position = WindowPosition::At(IVec2::new(x, y));
+        window.resolution = WindowResolution::new(w as u32, h as u32);
+    }
     App::new()
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "treadcore".into(),
-                        present_mode: PresentMode::AutoVsync,
-                        ..default()
-                    }),
+                    primary_window: Some(window),
                     ..default()
                 })
                 .set(bevy::log::LogPlugin {

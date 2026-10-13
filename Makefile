@@ -27,6 +27,10 @@
 #   make introduce   the introducer: tells peers across the Internet each
 #                    other's addresses (INTRODUCER=host:port on lan, host,
 #                    seat; BEACON=0 to stay off the LAN; PORT=n)
+#   make quad        four windows on this machine, networked: a LAN lobby
+#                    over loopback, a host elected among them, the windows
+#                    tiled two by two (CLIENTS=n, PLAYERS=n for bots too,
+#                    MATCH_SECONDS=n); logs in build/logs/quad-*
 #   make lobby-test  four headless seats on this machine negotiate a host
 #                    (LAG=200 for lag; INTRODUCER=1 to meet through an
 #                    introducer only; REJOIN=1 kills a seat and brings it
@@ -65,12 +69,15 @@
 #   make sysprep     show the root-level memory changes for this VM
 #                    (disk swapfile behind zram, zstd); apply with doas
 #   make schema      print the JSON brain's observation and command examples
+#   make install     the release binaries into PREFIX/bin (~/.local; on
+#                    macOS also ~/Applications/Treadcore.app, APP=0 not)
+#   make uninstall   remove what make install put there
 #   make clean       remove build output, keep the cargo cache
 #   make distclean   remove build/ and target/ both
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce lobby-test replay map convert test shoot release token publish mem quiet loud sysprep schema clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce quad lobby-test replay map convert test shoot release token publish mem quiet loud sysprep schema install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -156,6 +163,9 @@ seat: configure
 introduce: configure
 	@scripts/run.sh introduce
 
+quad: configure
+	@scripts/quad.sh
+
 lobby-test: configure
 	@scripts/lobby-test.sh
 
@@ -203,6 +213,12 @@ sysprep:
 
 schema:
 	@cargo run -q -p treadcore-server -- --brain-schema
+
+install: configure
+	@scripts/install.sh install
+
+uninstall:
+	@scripts/install.sh uninstall
 
 clean:
 	rm -rf $(BUILDDIR)/logs $(BUILDDIR)/config.env $(BUILDDIR)/*.log
