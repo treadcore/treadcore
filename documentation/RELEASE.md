@@ -166,10 +166,15 @@ candidate's gallery was found to hold three empty files (journal
    name it; every image either shows is a file.
 5. **crates.io.** `make publish DRY=1` packages and verifies.
 6. **By hand**, in order, which the check prints: the release commit
-   (`git commit -s`), the tag (`git tag -s v<version>`), `make
-   publish`, `git push && git push --tags`. The publish is the one
-   step that cannot be undone (a version on crates.io can be yanked,
-   never removed), which is why it is last and by hand.
+   (`git commit -s`), the tag (`git tag -s v<version>`), `git push &&
+   git push --tags`, then **at least a day later** `make publish`.
+   The publish is the one step that cannot be undone (a version on
+   crates.io can be yanked, never removed), which is why it is last,
+   by hand, and a day after the tag: the tagged build is lived with
+   for a day first, and anything found in it makes a new candidate,
+   not a published version. `make publish` refuses a tag younger than
+   a day. (0.1.0-rc.1 was published the day it was tagged, before
+   this rule; journal 0019.)
 
 A new feature in a release is not done until the guide shows it: the
 feature's frame is added to `scripts/shoot.sh`, the guide's section

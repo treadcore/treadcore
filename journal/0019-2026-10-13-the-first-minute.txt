@@ -1,0 +1,180 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 21:00:00 -0700
+Subject: [JOURNAL 0019] The first minute; the network in the shoot;
+         the call for playtest drafted
+Message-ID: <0019.20261013@treadcore.org>
+In-Reply-To: <0018.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: grace, first minute, RuleBot, Defender, fuel, shoot,
+          network frames, lobby, call for playtest
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul, after the release: the three next steps
+           of journal 0018
+X-Commits: (not committed; left for Paul)
+
+         THE FIRST MINUTE; THE NETWORK IN THE SHOOT; THE CALL
+                              FOR PLAYTEST
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    The three next steps of journal 0018. The bots now keep the first
+    minute: for sixty seconds they hold fire at a hostile tank that
+    has never moved and never fired, told by its fuel, which is full
+    until a tank drives. A new test sits seat 0 still among fifteen
+    rule bots: first hit at 29.5 s before, none inside the minute
+    after. The first version of the rule, "not moved since first
+    seen", shifted bot survival by twenty tanks in 240 over sixty
+    seeds and was replaced; the fuel rule leaves the squad proof's
+    twenty seeds identical to the digit. `make shoot` now shoots the
+    network on one machine and the guide shows it. The call for
+    playtest is drafted, not posted.
+
+INDEX TERMS
+
+    GRACE_SECONDS, Grace, a_newcomer_gets_a_first_minute, fuel,
+    shoot.sh, guide-lobby, guide-networked, call for playtest.
+
+
+I. INTRODUCTION
+
+    Journal 0018 ended with three steps: post the call for
+    playtesters; fix the bots firing at a new player in the first
+    seconds (PLAYABILITY item 1); and a second machine in the shoot
+    so the guide shows network play.
+
+II. BACKGROUND
+
+    0.1.0-rc.1 published and tagged; main merged and pushed by Paul
+    (the merge of fa8475c that the session could not run). The first
+    playtest (0013) had a human tank at its start destroyed inside
+    thirty seconds, three times of three; PLAYABILITY ranked it first.
+
+III. METHOD
+
+    The proof first: a test that fails on the bots as they are. Then
+    the rule, in the brain only, since it is the bots' manners and not
+    a rule of the world. Then the squad proof at sixty seeds as well
+    as twenty, because its survival margin was one tank in eighty.
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      the rule in the brain    a scenario flag,       a human may shoot
+                               --grace, in the        a sitting tank;
+                               world                  only the bots
+                                                      need manners
+      "never moved": fuel      "not moved since       the first spared
+      below full, or seen      first seen"            bots at depots
+      reloading                                       and firing
+                                                      positions: 110:110
+                                                      became 103:123
+      the network shot on one  wait for a second      journal 0013
+      machine, introducer,     machine                proved the
+      host, seat, the window                          arrangement; the
+      as a client with lag                            frames are true
+      the call drafted for     posted for rc.1        rc.1 shells the
+      rc.2, not posted                                sitting newcomer;
+                                                      posting is Paul's
+
+IV. CHRONOLOGY
+
+     1. `a_newcomer_gets_a_first_minute`: seat 0 gives no orders,
+        fifteen RuleBots, swarm off, three seeds, 90 s. Fails on the
+        old bots: hit at tick 590, 29.5 s.
+     2. Grace, first version: a tank not 2 tiles from where this bot
+        first saw it, and not seen reloading, is spared for 60 s.
+        The newcomer test passes; `pillboys_pay` fails, survival
+        35:38 where it was 35:34. At sixty seeds: old 110:110, new
+        103:123. The rule spared bots that stood still when first
+        seen, at a depot or a firing position.
+     3. Grace, second version: never moved, by fuel. Every tank starts
+        at TANK_FUEL and only driving burns it; observations carry
+        whole tanks, so a bot sees an enemy's fuel. At sixty seeds:
+        110:111. At the test's twenty: 16:4, 16950:10720, 35:34, the
+        old figures exactly. All 41 tests pass; the newcomer is first
+        hit at tick 1206 on two seeds and never on the third, six
+        ticks after the grace: the bots are queued and waiting.
+     4. The lobby's first-minute help said a tank that stands still is
+        found by fifteen guns; it now says the bots hold fire for a
+        minute first. DESIGN.md Brains, PLAYABILITY item 1, the guide
+        section 1, CHANGELOG under Unreleased.
+     5. shoot.sh's network half: an introducer, a host with the
+        smallest id, the window with 30 ms of lag and --want 3, then a
+        bot seat. The first run had the lobby frame show the match
+        already playing: the lobby decides within 8 s of the process
+        starting and the software rasteriser's first frame comes as
+        late. The lobby is now caught in a burst as the window
+        appears, at the compositor's size, and the last frame without
+        map grass is kept. It is the "joining" screen after the
+        election, with the first-minute help; the peer list itself is
+        gone before the window draws on this machine, and the guide
+        says so. The networked frame: client of the headless host,
+        rtt 150 ms, 213 checks, 0 mismatches.
+     6. HOW-TO-PLAY section 10 shows the three frames; make release
+        passes with fifteen.
+     7. reports/calls/playtest-0.1.0-rc.2.md: the call, per RELEASE.md
+        section 4 step 2, for rc.2, with a note on what to change for
+        rc.1. Not posted: the session has no GitHub credentials, and
+        the post is Paul's.
+
+V. RESULTS
+
+      measure                                value
+      -------------------------------------  --------------------
+      sitting newcomer first hit, before     29.5 s
+      the same, after                        60.3 s, 60.3 s, never
+      squad proof, 20 seeds, survival        35:34 before and after
+      squad proof, 60 seeds, survival        110:110 old, 103:123
+                                             first grace, 110:111
+                                             final
+      tests                                  41 pass (brain 5)
+      frames in the shoot                    15 (3 of the network)
+      build warnings                         0
+
+VI. DISCUSSION
+
+    The first rule was the obvious one and it was wrong in a way only
+    a bigger sample showed: at twenty seeds it moved a margin that
+    was already one tank, and that could have been called noise. At
+    sixty the shift was twenty tanks, and the cause was plain once
+    looked for. The fuel rule is better because it is a fact about
+    the tank, not about what one bot happened to see: a tank at full
+    fuel has never driven, whoever looks at it.
+
+VII. OPEN PROBLEMS
+
+    1. The lobby's peer list is never on screen long enough to be
+       photographed on a software rasteriser.
+    2. The bots shell the sitting newcomer six ticks after the minute.
+       A grace, not a shield; a playtest says whether it is enough.
+    3. Carried: PLAYABILITY 6, 7, 9, 10, 11; the roster as a table;
+       the shoot's window placement is this machine's.
+
+VIII. NEXT STEPS
+
+    1. Paul's macOS build updates, folded in.
+    2. Commit; cut 0.1.0-rc.2 with make release and the tag; push.
+    3. A day later at the earliest: make publish, then post the call
+       (reports/calls/playtest-0.1.0-rc.2.md). Rule set by Paul this
+       session: we only publish at least one day after the tag; RELEASE.md
+       section 6 says so and make publish refuses a younger tag.
+       0.1.0-rc.1 was published the day it was tagged, before the rule.
+    4. PLAYABILITY item 6, chat.
+
+APPENDIX B. ARTIFACTS
+
+    Code            source/treadcore-brain/src/lib.rs (Grace, the
+                    test), source/treadcore-client/src/hud.rs (help)
+    Scripts         scripts/shoot.sh (the network half)
+    Frames          reports/images/guide-lobby, guide-networked,
+                    guide-net-top
+    Documents       HOW-TO-PLAY.md, DESIGN.md, PLAYABILITY.md,
+                    CHANGELOG.md, reports/calls/playtest-0.1.0-rc.2.md
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
