@@ -20,9 +20,9 @@
 #   make debug       bot-only match, RUST_LOG=trace, backtraces on, everything
 #                    captured under build/logs/ -- the trace for AI-assisted
 #                    development and debugging
-#   make run         the window, solo against three bots
+#   make run         the window, solo against fifteen bots (PLAYERS=4 for three)
 #   make lan         the window, LAN lobby: waits for peers, elects a host
-#   make host        headless host on the LAN (plus bots for empty seats)
+#   make host        headless host on the LAN (plus bots for empty seats, PLAYERS)
 #   make seat        headless bot that joins a LAN lobby (run four: a test)
 #   make lobby-test  four headless seats on this machine negotiate a host
 #   make test        cargo test, every crate
@@ -43,9 +43,11 @@ SHELL := /usr/bin/env bash
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
-# Match length for `make debug`, in game seconds. Short by default: a trace
-# is for reading.
-SECONDS  ?= 180
+# Match length for `make debug` and `make lobby-test`, in game seconds. Short by
+# default: a trace is for reading. Not SECONDS: that is bash's own counter of
+# seconds since the shell started, and exporting it makes the match as long
+# as the build took plus 180.
+GAME_SECONDS ?= 180
 SEED     ?= 0x7EADC0DE
 NAME     ?= $(shell hostname -s 2>/dev/null || echo player)
 # Parallel rustc jobs. Empty means configure.sh sizes it from RAM.
@@ -55,7 +57,8 @@ VERBOSE  ?= 0
 GAME     ?= treadcore
 WANT     ?= 4
 PEER     ?=
-export BUILDDIR LOGDIR SECONDS SEED NAME GAME WANT PEER JOBS VERBOSE
+PLAYERS  ?= 16
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS JOBS VERBOSE
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
