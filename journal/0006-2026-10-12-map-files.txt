@@ -40,7 +40,7 @@ ABSTRACT
     130 KiB, goes in chunks. Sixteen bots play a converted Bolo map,
     and on it the pillboxes fire: Bolo's roads give the router no way
     round. Rejections on island maps (squads and tanks sent across
-    water) fell from @@REJ1@@ to @@REJ2@@ once the bot remembered what
+    water) fell from 863 to 396 once the bot remembered what
     the world refused. 28 tests pass.
 
 INDEX TERMS
@@ -81,7 +81,8 @@ III. METHOD
                                                         another machine
                                                         has no file
       MapSource::FromScenario-    Seed(u64) as the      `Scenario {
-      Seed as the default         default               seed, ..default }`
+      Seed as the default         default               seed, ..default
+                                                        }`
                                                         must still vary
                                                         the island; the
                                                         proofs went
@@ -89,14 +90,17 @@ III. METHOD
                                                         did not
       the world takes its size    crop Bolo maps to     a one-tile road
       from the map                128, or scale them    does not scale;
-                                                        the file says its
+                                                        the file says
+                                                        its
                                                         size
       default stays 128           256 everywhere        Paul: "I'm wrong
                                                         about the map
-                                                        size"; the file's
+                                                        size"; the
+                                                        file's
                                                         size is the
                                                         destined size
-      Welcome in Chunks           drop the map from     a 65 KiB map does
+      Welcome in Chunks           drop the map from     a 65 KiB map
+                                                        does
                                   Welcome, rebuild      not fit a
                                   from the scenario     datagram; the
                                                         chunk is generic
@@ -106,14 +110,16 @@ III. METHOD
                                                         able to say so
       starts moved to the         keep them at sea      no boats here
       nearest land
-      Bolo maps in maps/bolo/     vendor/ rule: no      Paul's direction;
+      Bolo maps in maps/bolo/     vendor/ rule: no      Paul's
+                                                        direction;
       with provenance recorded    Bolo maps             provenance and
                                                         the licence
                                                         question written
                                                         down, removable
                                                         on request
       the RuleBot remembers       let it re-order       791 refusals in
-      what the world refused as                         90 s on an island
+      what the world refused as                         90 s on an
+                                                        island
       unreachable                                       map
 
 IV. CHRONOLOGY
@@ -179,7 +185,9 @@ IV. CHRONOLOGY
         "water", tanks ordered across water four times a second.
     10. The RuleBot reads its Rejected events: a pillbox the squad
         cannot reach and a tile the tank cannot drive to stay refused.
-        @@STEP10@@
+        Godzilla, 90 s: 396 refusals (from 863), the rest fresh scoot
+        points the bot computes each time; FortressIslesX, 60 s: 284
+        (from 1 345). The proofs unchanged.
     11. `make map` writes `maps/island.map`; `make convert BOLO=file`;
         `make replay` on the Godzilla match: all checkpoints; lobby-
         test: PASS, one hash. Documents, vendor notes, this entry.
@@ -205,10 +213,10 @@ V. RESULTS
 
       measure                      before memory   after
       ---------------------------  -------------   -------
-      shells                       16              @@G_SHELLS@@
-      pillbox shots at tanks       21              @@G_PBF@@
-      tanks destroyed              11              @@G_KILLS@@
-      refused orders               863             @@G_REJ@@
+      shells                       16              13
+      pillbox shots at tanks       21              19
+      tanks destroyed              11              10
+      refused orders               863             396
       replay file                  147 846 bytes
       checkpoints matched          18 of 18
 

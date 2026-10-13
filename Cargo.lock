@@ -3996,6 +3996,7 @@ dependencies = [
 name = "treadcore-sim"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "log",
  "serde",
  "serde_json",
