@@ -146,9 +146,14 @@ match report (item 8), figures per match.
     survival (37:32), and its score margin is mostly capture points.
     Step 6d's attackers need a reason to go into a ring (a depot or a
     dead pillbox inside one), and a defender needs to put its pillbox
-    where the road has to pass. Design work, with traces. **Deferred to
-    6d**, with its number: 2 pillbox shots a match with sixteen
-    attackers, 0 with twelve defenders.
+    where the road has to pass. Design work, with traces. **Done in
+    6d as far as it goes:** the attacker storms a depot it cannot
+    shell clear, and the defender's pillbox sits at the mouth and on
+    the spoke; and still 0 to 4 pillbox shots a match, because the
+    artillery duel is decided before anyone drives up. The pillbox's
+    job in this game is to make a depot untakeable by a tank, not to
+    kill; the trace says that is what it does (101 of 120 depots
+    held). Closed with that reading; a playtest may reopen it.
 
 
 
@@ -466,6 +471,36 @@ quarter by default) and `Defender`s in the rest.
 **Proof.** Sixteen bots, four attacking: the match lasts to the time
 limit more often than not, and most kills are pillbox kills.
 
+**Done, 13 October 2026 (journal 0010).** `Defender` replaces the
+Fortifier: the doctrine above with a recon on the approach (moved, by
+`Retask`, to the depot of whoever shot it last: counter-battery by
+deduction), a sidestep when hit, the squad in the order moat, mouth
+pillbox, road, approach mines, walls (the moat first: built later, the
+6c proof turned the other way, the attacker walking through the gap
+onto the depot, where a contested depot repairs nobody), and the
+spoke's neutral pillbox captured first of all. The "maze" is the 6c
+ring with a gate. A Defender proposes to recruit its nearest neighbour
+once a minute and accepts any proposal from a player who has never
+hurt it: the first bots to propose and answer. The attacker got its
+half of the step: a recon kept ten tiles short of what it watches, a
+squad recalled under fire, and a storm (shell the guns, then drive onto
+the depot) when a defender has been in view for twice its patience.
+The `attackers` option is `--defenders N` from 6c, the other way up.
+BRN-12 is `Scenario.advantage`, `--advantage`.
+
+The proof, `defenders_hold`, ten seeds of five minutes: every match to
+the time limit; attackers alive 2 of 40, defenders 84 of 120; the
+defenders keep 101 of their 120 depots. Its second clause failed and
+the test says so: the kills are 65 by shell, 7 by mine, 1 by pillbox,
+1 by strike. The gun out-ranges the pillbox 60 tiles to 8, both sides
+have eyes, and an attacker that reaches a prepared depot is one that
+has already lost the duel; the four attackers are dead by the third
+minute. Pillbox kills need a storm, and the storm needs the attacker
+alive at twice its patience. Eight seeds of the same match through the
+report: 7.5 kills a match (6.1 shell, 0.9 mine, 0.4 strike, 0.1
+pillbox), 8.5 of 16 alive at five minutes and the same at ten.
+`fortification_pays` widened to 144 000 against 134 206 ticks.
+
 
 ## 7. Across the Internet
 
@@ -509,8 +544,8 @@ thin LTO for binaries; `cargo dist` or a plain tarball per platform.
                                                                                               └─ 9 sound/art/dist
 
 Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
-worked through on 13 October (journal 0009). Next: 6d, the defender and
-attacker brains; then 4, prediction; 7 and 8 need a second machine.
+worked through and 6d done on 13 October (journals 0009, 0010). Next:
+4, prediction; 7 and 8 need a second machine; 9 last.
 
 ```
 

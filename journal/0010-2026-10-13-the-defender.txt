@@ -1,0 +1,234 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 07:05:00 -0700
+Subject: [JOURNAL 0010] The Defender and the storming attacker:
+         roadmap step 6d
+Message-ID: <0010.20261013@treadcore.org>
+In-Reply-To: <0009.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: defender, attacker, storm, counter-battery, moat, pillbox,
+          alliance, proof
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "continue with 6d"
+X-Commits: 6be50c9
+
+    THE DEFENDER AND THE STORMING ATTACKER: ROADMAP STEP 6D
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    Step 6d replaces the Fortifier with the Defender, the brief's
+    defensive doctrine with eyes: a recon on the approach that moves
+    to the depot of whoever shot it last, a sidestep under fire, the
+    moat first, then a pillbox at the mouth of the walls, a road, mines
+    across the approach, the walls; and the first bots that propose
+    and answer alliances. The attacker got the other half: a recon
+    kept out of the enemy's bubble, a squad recalled under fire, and a
+    storm when shelling a repaired tank goes nowhere. The proof ran
+    ten seeds of sixteen bots, four attacking: every match to the time
+    limit, attackers alive 2 of 40 against defenders 84 of 120, the
+    defenders keeping 101 of 120 depots. The roadmap's second clause,
+    most kills by pillbox, did not come true: 65 kills by shell to 1,
+    because the gun out-ranges the pillbox 60 tiles to 8. Five
+    iterations of trace, finding, fix are the chronology. 35 tests.
+
+INDEX TERMS
+
+    defender, attacker, storm, counter-battery, moat, mouth pillbox,
+    alliance, contested depot, proof.
+
+
+I. INTRODUCTION
+
+    The roadmap's last step on the Bolo track: a brain that uses
+    everything 3, 6c, 6 and 6b built. The brief wanted a defensive
+    game; the question was whether a bot playing it holds a depot
+    against bots that do not, and what kills whom.
+
+II. BACKGROUND
+
+    Carried from 0009: no bot proposes or answers; pillboxes fire 0 to
+    2 times a match (backlog 14); concealment unexercised; the window
+    unproven. The Fortifier of 6c: post, two interceptors, a gun with
+    seven tiles of sight, a moat and a wall ring. Twelve of them
+    against four rule bots: 2.4 kills a match, nobody storms, no
+    pillbox fires. The generated map has no forest cover within reach
+    of any depot (checked: 0 of 17), so hiding in trees is not a
+    defender's tactic here. Every spoke has a neutral pillbox ten
+    tiles from the depot toward the centre, on the approach.
+
+III. METHOD
+
+    The Defender was written whole, then the match was traced and
+    read, and what the trace showed was fixed, five times over. Each
+    round: eight seeds of sixteen bots, 300 s, through the match
+    report; one trace at debug level read by hand.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      the defender has a       build only, as the     a defender with
+      recon and shoots back    roadmap listed         no eyes is
+                                                      shelled from 25
+                                                      tiles for free
+      watch the shooter's      watch the centre       attacks come
+      depot (public) when hit                         along the ring,
+                                                      from neighbours
+      sidestep inside the      stand and repair       two spotted
+      depot when hit                                  shells kill a
+                                                      standing tank;
+                                                      repair is 8/s
+      moat first, pillbox,     pillbox first          at 150 s the
+      road, approach, walls                           moat was half
+                                                      built and the
+                                                      attacker walked
+                                                      through the gap
+      attacker storms after    never storm; storm     continuous
+      accumulated contact      after continuous       contact never
+                               contact                happens: bots
+                                                      scoot
+      attacker's recon ten     over the target        intercepted in
+      tiles short                                     the bubble in
+                                                      eight seconds
+      keep --defenders         attackers: u8 as the   same knob, the
+                               roadmap wrote          other way up
+      the proof asserts what   assert "most kills     a proof that
+      is true and prints the   pillbox" and tune      asserts what is
+      kill split               until it holds         not so is a
+                                                      press release
+
+IV. CHRONOLOGY
+
+     1. The Defender written over the Fortifier: capture, repair, the
+        mouth pillbox, road, approach mines, moat, walls; recon at 16
+        tiles toward the centre; proposals. First run: twelve build
+        11 pillboxes, 207 mines, 138 walls; 8 of 24 proposals
+        accepted; 0.6 kills a match. The attackers do nothing.
+     2. Trace: attacker seat 0 sits at its start for 300 s with no
+        recon, both shot down in eight seconds over the defended
+        depot by the defender's bubble (a recon inside the bubble is
+        an intruder, by 0002's design). Blind, it never advances.
+        Fix: the recon orbits ten tiles short of what it watches;
+        blind counts as low, so the bot goes home for one.
+     3. Run: 8.4 kills a match, 7.6 alive. Trace: three defenders die
+        in the first twenty seconds, to the opening salvo from the
+        side, while their recons watch the centre; then the
+        survivors' counter-battery kills every attacker by 130 s.
+        Fix: the recon watches the depot of whoever shot last (the
+        depot owner is public: deduction, not cheating), moved by
+        Retask; a hit tank sidesteps for four seconds.
+     4. Run: 6.0 kills, 10 alive, no storms. Trace: now the attackers
+        die first, at their starts, holding still for a squad sent to
+        capture the spoke pillbox in the first second; the storm
+        never triggers because contact is never continuous. Fix: a
+        hit tank recalls its squad and moves; the storm clock
+        accumulates contact. Also one answer a think: two answers in
+        one tick made "no such proposal" eleven times a match.
+     5. Run: 7.5 kills, 8.5 alive; the proof's first clause holds and
+        its second does not. Then `fortification_pays` failed: the
+        fortified defender died sooner than the bare one, 125 k
+        against 134 k ticks. Per-seed diagnostics and an event dump
+        of seed 8: the scripted attacker walked through the half-
+        built ring onto the depot, a contested depot repairs nobody,
+        and the two tanks traded direct fire to a mutual kill at
+        tick 3942. The ring was half built because the pillbox, road
+        and approach came first. Fix: the moat first. The proof
+        widened past where it was: 144 000 against 134 206.
+     6. `defenders_hold` written with the roadmap's clauses, the
+        second as a printed split rather than an assertion that
+        would fail. 35 tests; a traced five-minute defended match
+        replays (60 of 60); lobby-test; documents; this entry.
+
+V. RESULTS
+
+    Twelve Defenders, four RuleBots, eight seeds, per match:
+
+      round                       kills  shell  mine  pbox  alive
+      --------------------------  -----  -----  ----  ----  -----
+      Fortifier (before 6d)         2.4    1.9   0.5     0   13.6
+      1. Defender as written        0.6    0.5     0     0   15.4
+      2. attacker recon, blind      8.4    6.9   1.0   0.2    7.6
+      3. watch the shooter, dodge   6.0    5.8   0.2     0   10.0
+      4. squad recalled, storm      7.5    7.2     0   0.1    8.5
+      5. moat first (final)         7.5    6.1   0.9   0.1    8.5
+      final at ten minutes          7.6    6.1   0.9   0.1    8.4
+
+    Every match to the time limit in every round. The four attackers
+    are dead by the third minute; nothing happens after.
+
+    `defenders_hold`, ten seeds: to the limit 10 of 10; attackers
+    alive 2 of 40, defenders 84 of 120; depots at the end, defenders
+    101 of 120, attackers 59 (their own 40); kills 65 shell, 7 mine,
+    1 pillbox, 1 strike; 2 pillbox shots; 62 pillboxes built.
+
+    Tests: 35 pass (sim 23, proto 3, net 5, brain 4).
+
+VI. DISCUSSION
+
+    The step did what it set out to, and one of its predictions was
+    wrong in a way worth keeping. Pillboxes do not kill in this game
+    because a 60-tile gun with eyes settles matters before anyone is
+    within 8 tiles of one; what a pillbox does is make a depot
+    untakeable by a tank, and 101 of 120 depots held says it does.
+    The roadmap now says so beside its original clause.
+
+    Each round's finding was a bot doing the obvious thing in the
+    wrong circumstance: a recon flown into a bubble, a tank standing
+    still for its squad under fire, a wall ring built after the
+    ornaments. None was a rule of the world; all were doctrine, and a
+    trace found each in minutes. The match report from 0009 earned
+    its place again: the kill split by cause is the whole story of
+    this step in one line.
+
+    The contested-depot rule (two tanks there, nothing happens) made
+    the 6c failure: it turns a defender's home into a fair duel the
+    moment an attacker stands on it. That is a good rule; it is what
+    makes storming worth anything. The moat is the answer to it.
+
+VII. OPEN PROBLEMS
+
+    1. Storms are rare: the attacker that lives to twice its patience
+       is rare. A pillbox kill is rarer. A playtest decides whether
+       that is the game or the bots.
+    2. No bot uses cover; the generated map offers none at a depot.
+    3. The window: unproven, and no keys for Retask, proposals or
+       answers.
+    4. Rejoin (steps 7, 8); the pillbox view (the first window).
+
+VIII. NEXT STEPS
+
+    1. Step 4, client-side prediction of the player's own tank.
+    2. Steps 7 and 8 when a second machine is on the table.
+
+ACKNOWLEDGMENTS
+
+    Paul, for "continue with 6d".
+
+REFERENCES
+
+    [1] Journal 0009, <0009.20261013@treadcore.org>.
+    [2] Journal 0005, <0005.20261012@treadcore.org>: the Fortifier
+        and fortification_pays.
+    [3] documentation/ROADMAP.md step 6d and backlog item 14;
+        documentation/SPEC-WINBOLO-1.14.md section 16, BRN-12.
+
+APPENDIX A. COMMITS
+
+    6be50c9  brain, sim, server: the Defender and the storming
+             attacker (roadmap step 6d)
+    (next)   docs, journal: step 6d done; journal 0010
+
+APPENDIX B. ARTIFACTS
+
+    Journal         journal/0010-2026-10-13-the-defender.txt (this)
+    Trace           build/logs/debug-20261013-065537.log, twelve
+                    defenders, 300 s; replay-20261013-065537.json
+                    (60 of 60)
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

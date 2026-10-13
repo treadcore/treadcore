@@ -4,6 +4,33 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13, later: the Defender and the storming attacker (roadmap step 6d)
+
+Journal: [0010](journal/0010-2026-10-13-the-defender.txt).
+
+- Changed: `Fortifier` is now `Defender`, roadmap 6d's doctrine: at
+  its depot for good; a recon on the approach, moved by `Retask` to
+  the depot of whoever shot it last; counter-battery; a sidestep when
+  hit; the squad in order: capture the spoke's pillbox, repair its
+  own, the moat, a pillbox at the mouth of the walls, the road to it,
+  mines across the approach, the walls. It proposes to recruit its
+  nearest neighbour once a minute and accepts proposals from anyone
+  who has never hurt it: the first bots to use step 6b.
+- Changed: the `RuleBot` attacker keeps its recon ten tiles short of
+  what it watches (one over a defended depot was intercepted in eight
+  seconds), counts blind as low, recalls its squad and moves when hit,
+  and storms a depot whose defender has been in view for twice its
+  patience: the guns first, then the depot.
+- New: `Scenario.advantage` and `--advantage` (Bolo's BRN-12): bot
+  seats are told where every tank is.
+- Proof, `defenders_hold`: ten seeds of sixteen bots, four attacking:
+  every match to the time limit; attackers alive 2 of 40, defenders
+  84 of 120; the defenders keep 101 of 120 depots. The kills are 65
+  by shell, 7 by mine, 1 by pillbox: the roadmap's "most kills are
+  pillbox kills" did not come true, and ROADMAP 6d says why.
+  `fortification_pays` widens to 144 000 against 134 206 ticks.
+- Tests: 35 pass (sim 23, proto 3, net 5, brain 4).
+
 ## 2026-10-13: the backlog, worked through
 
 Journal: [0009](journal/0009-2026-10-13-the-backlog.txt).

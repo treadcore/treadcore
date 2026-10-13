@@ -141,11 +141,27 @@ alive or at the time limit (15 minutes), highest score winning.
 ## Brains
 
 A Brain gets the same observation a client draws and returns commands
-the world validates exactly as a human's. `RuleBot` keeps two to four
-interceptors up, one recon out toward the nearest enemy, shoots what the
-recon sees and moves after firing, goes home to resupply when low, and
-sends a strike at any enemy whose ring is thin. `JsonBrain` runs an
-external program over stdin/stdout so a bot can be written in anything.
+the world validates exactly as a human's. `RuleBot`, the attacker,
+keeps two to four interceptors up, one recon out toward the nearest
+enemy (orbiting ten tiles short of it, outside a bubble), shoots what
+the recon sees and moves after firing, goes home to resupply when low
+or blind, sends a strike at any enemy whose ring is thin, and, when an
+enemy has been in view for twice its patience and is still alive (a
+tank on a depot is repaired as fast as it is shelled), storms: it
+shells the pillboxes guarding the depot, then drives onto it. A hit
+tank recalls its squad and moves. `Defender` plays the brief's
+defensive game and never leaves its depot: a recon on the approach, or
+on the depot of whoever shot it last; counter-battery; a sidestep when
+hit; and the squad in this order: capture the spoke's pillbox, repair
+its own, the moat, a pillbox at the mouth of the walls, a road to it,
+mines across the approach, the walls. It proposes once a minute to
+recruit the owner of the nearest depot that is not its side's, and
+accepts any proposal from a player who has never hurt it; the three-way
+rule does the rest. `JsonBrain` runs an external program over
+stdin/stdout so a bot can be written in anything. With the scenario's
+`advantage` flag (Bolo's BRN-12) a bot seat is told where every tank
+is; it is a handicap for a human against bots and is never on in a
+proof.
 
 ## Pillboys and pillboxes: the decision
 
@@ -279,10 +295,9 @@ defection, and allowed.
 
 ## What is not here yet
 
-- Pillboxes, walls, mines and roads are built; the defender brain that
-  uses them is roadmap step 6d.
-
-
+- A brain that uses forest cover. The concealment rule is in; no bot
+  stands in trees on purpose, and the generated map has no cover at
+  its depots.
 - Map editing. The map is generated from a seed; a file format and an
   editor would let a map be authored and shared.
 - Client-side prediction of the player's own tank. Snapshots are
