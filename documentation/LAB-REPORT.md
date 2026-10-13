@@ -12,7 +12,7 @@ history; journal 0002 has the chronology):
 
 | crate | lines | compiled | tests |
 | --- | --- | --- | --- |
-| treadcore-sim | ~1400 | yes | 7 pass (determinism, launch validation, shell flight, swarm vs bubble, a Move routed across the river, map determinism, every start reaches the centre) |
+| treadcore-sim | ~1600 | yes | 10 pass (determinism, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, sixteen seats, map determinism, every start reaches the centre) |
 | treadcore-proto | ~240 | yes | 2 pass (round trip, snapshot split and reassembly) |
 | treadcore-net | ~830 | yes | 5 pass (4 election, 1 loopback session) |
 | treadcore-brain | ~370 | yes | 1 pass (four bots fight to a result: more than ten shells and ten launches in six minutes) |
@@ -93,6 +93,14 @@ are the output of a step, not part of the state; a snapshot of a world
 does not carry them.
 
 ### 3.2 Determinism as a property, not a hope
+
+Since journal 0003 the property has a number: `World::hash()` is FNV-1a
+over the bincode bytes of the world, and a `Replay` (scenario, every
+tick's orders, a hash every hundred ticks) plays back to the same
+hashes or names the first tick where it does not. `make debug` records
+one beside every trace; `make replay` checks it. That is the regression
+test for every later change to `step`.
+
 
 ```rust
 pub struct Rng(pub u64);          // xorshift64*

@@ -78,9 +78,21 @@ BRAIN='python3 mybot.py' make debug   # an external brain in seat 0
 ```
 
 Writes `build/logs/debug-STAMP.log` (every log level, every event,
-per-second state of every tank) and `build/logs/trace-STAMP.jsonl` (one
-JSON event per line). The log is written to be read, by a person or by
-an AI with the source beside it: `[tick seconds] who did what`.
+per-second state of every tank), `build/logs/trace-STAMP.jsonl` (one
+JSON event per line) and `build/logs/replay-STAMP.json` (the scenario,
+every tick's orders, the world hash every hundred ticks). The log is
+written to be read, by a person or by an AI with the source beside it:
+`[tick seconds] who did what`.
+
+```
+make replay                     # play the newest replay back; every hash must match
+make replay REPLAY=build/logs/replay-STAMP.json
+```
+
+A replay is the regression test for a change to the rules: it ends
+with every checkpoint matched, or names the first tick where the world
+differs and exits 1.
+
 
 ## Brains
 

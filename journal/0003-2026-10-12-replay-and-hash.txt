@@ -1,0 +1,216 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 12 Oct 2026 18:50:00 -0700
+Subject: [JOURNAL 0003] Replay and world hash: roadmap steps 1 and 2
+Message-ID: <0003.20261012@treadcore.org>
+In-Reply-To: <0002.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: replay, world-hash, fnv1a, determinism, desync, checkpoint,
+          regression-suite
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "start roadmap step 1 and 2"
+X-Commits: 175f512
+
+          REPLAY AND WORLD HASH: ROADMAP STEPS 1 AND 2
+
+                      Paul Richeson, treadcore.org
+                            12 October 2026
+
+
+ABSTRACT
+
+    Roadmap steps 1 and 2 were built together, because the hash is
+    what makes a replay checkable. `World::hash()` is FNV-1a over the
+    bincode serialisation of the world, so every field is in the digest
+    the day it is added and floats hash by their bits. `Replay` records
+    the scenario, every tick's orders and the hash every hundred ticks;
+    `Replay::verify()` replays and names the first checkpoint that
+    differs. The server records (`--record`) and plays back (`--replay`,
+    exit 1 on a mismatch); `make debug` now writes a replay beside its
+    trace and `make replay` checks the newest. The host hashes every
+    thousand ticks and carries the hash in heartbeats; clients log it;
+    `make lobby-test` asserts one hash at tick 1 000 in all four logs.
+    A recorded sixteen-bot match (3 600 ticks, 535 orders, 42.9 KB)
+    replayed to all 36 checkpoints in 0.2 s; the same file with the
+    indirect shells removed failed at tick 100. The wire is version 3.
+
+INDEX TERMS
+
+    replay, world hash, FNV-1a, bincode, checkpoint, desync detection,
+    regression test, heartbeat.
+
+
+I. INTRODUCTION
+
+    Every later step (prediction, Pillboys, alliances) changes the step
+    function. The roadmap wanted, before any of them, a way to say that
+    a change did only what it meant to: a corpus of recorded matches
+    that still replay to the same hashes. This session built that
+    instrument.
+
+II. BACKGROUND
+
+    Carried from 0002: step 0 closed except the window (no Vulkan
+    driver here), the release engine (built since: 444 s, 4 jobs, no
+    swap), and two machines. The sim already had the property the
+    replay needs: the same seed and the same orders give the same
+    world (`deterministic` test); it lacked a digest to say so cheaply
+    and a record of the orders to say it again later.
+
+III. METHOD
+
+    Decisions, with the alternatives rejected:
+
+      decision                    rejected              why
+      --------------------------  --------------------  ----------------
+      hash = FNV-1a over the      a hand-written Hash   a new field is
+      bincode bytes of World      impl walking fields   hashed the day
+                                                        it is added;
+                                                        floats by bits
+      checkpoints every 100       final hash only       "odd at tick
+      ticks in the replay                               3 412" needs the
+                                                        first bad
+                                                        checkpoint, not
+                                                        the last
+      the Host records            the sim records       the sim stays
+      (`Host::record`); the sim   inside `step`         pure; the host
+      only defines Replay                               already holds
+                                                        the sorted
+                                                        orders
+      JSON for the replay file    bincode               greppable,
+                                                        diffable; 43 KB
+                                                        for three
+                                                        minutes of
+                                                        sixteen bots
+      hash in Heartbeat every     hash in every         a hash per tick
+      1 000 ticks                 snapshot              is 16 KiB
+                                                        serialised 20
+                                                        times a second
+                                                        on the host for
+                                                        nothing yet
+      lobby-test asserts one      trust the loopback    the roadmap's
+      hash at tick 1 000 in       test                  proof, as
+      four logs                                         written
+
+IV. CHRONOLOGY
+
+     1. `treadcore-sim`: bincode added as a dependency; `World::hash`,
+        `fnv1a64`, `World::run`; `Replay` with `record`, `orders_for`
+        (partition_point over the tick-sorted orders), `final_hash`,
+        `verify`; `CHECKPOINT_EVERY` 100. Two tests: `hash_follows_
+        state` (two worlds agree at every tick; one extra order
+        disagrees) and `replay_reproduces_the_world` (record 600 ticks,
+        replay, serde round trip, tamper and catch).
+     2. `treadcore-proto`: `Heartbeat { peer, tick, hash_tick, hash }`;
+        VERSION 3.
+     3. `treadcore-net`: `Host.replay`, `Host::record`, `hash_mark`;
+        the host hashes at every `HASH_EVERY` (1 000) tick and at the
+        end, logs "world hash at tick N", carries it in heartbeats; the
+        client stores `host_hash` and logs it when it changes.
+     4. `treadcore-server`: `--record FILE` (local and hosted),
+        `--replay FILE` (narrates the replay like a live match, checks
+        every checkpoint, exit 1 on a mismatch). The client HUD shows
+        the host's hash.
+     5. Scripts: `make debug` records `build/logs/replay-STAMP.json`;
+        `scripts/replay.sh` and `make replay [REPLAY=file]`;
+        `lobby-test.sh` asserts the hash at tick 1 000.
+     6. `cargo test --workspace`: 19 of 20 pass; `replay_reproduces_
+        the_world` failed on its checkpoint count (V.B).
+     7. `make debug`: sixteen bots, 180 game seconds, replay written:
+        42 902 bytes, 535 orders, 36 checkpoints.
+     8. `make replay`: every checkpoint matched (36) in 0.2 s wall.
+     9. The replay with every FireIndirect order removed (535 -> 483
+        orders): HASH MISMATCH at tick 100, and every checkpoint after;
+        exit 1.
+    10. `make lobby-test`: PASS; hash at tick 1 000 = 304ae25fe8705ebf
+        in all four logs.
+    11. Test fixed (V.B); documents; commits; this entry.
+
+V. RESULTS
+
+    A. Measurements
+
+      quantity                                        value
+      ----------------------------------------------  ----------------
+      replay of 16 bots, 180 game s                   42 902 bytes JSON
+      orders recorded                                 535
+      checkpoints (every 100 ticks)                   36
+      `make replay` wall time (debug build)           0.20 s
+      tampered replay: first mismatch                 tick 100
+      lobby-test hash at tick 1 000, four logs        one value
+      tests                                           20 pass
+
+    B. The test that failed
+
+      `replay_reproduces_the_world` recorded 170 ticks, not 600: its
+      scenario said `swarm_interval: 10`, ten ticks, and two swarm
+      drones every half second killed three of four tanks by tick 170,
+      which ended the match. `step` on a finished world is a no-op and
+      the recording stopped with it, correctly. The test now swarms
+      every ten seconds, and `Replay::record` ignores orders offered
+      to a finished world, since they were not applied. A test that
+      fails for the right reason on the first run is a test that
+      works.
+
+VI. DISCUSSION
+
+    A replay is cheap and the hash is cheap: serialising a sixteen-tank
+    world is a few tens of kilobytes, and FNV-1a over it is nothing
+    next to the step. Hashing every tick on the host would still be
+    affordable; it is done every thousand ticks because nothing reads
+    it faster yet. When the client predicts (step 4) it will want the
+    hash in every snapshot, and the snapshot already carries the
+    observation; that is the time to move it.
+
+    The tamper test is the point of the checkpoints. A final hash says
+    "something changed"; the checkpoint says "by tick 100", and the
+    narrated replay between the last good checkpoint and the first bad
+    one is the story of what. That is the debugging tool the roadmap
+    asked for, and it costs one line of JSON every five seconds.
+
+VII. OPEN PROBLEMS
+
+    1. The cross-machine proof: a replay recorded here, verified on
+       another machine (the Mac host, or a CI runner). Expected to
+       pass: bincode is byte-exact and Rust's f32 arithmetic has no
+       fused multiply-add by default; but expected is not measured.
+    2. A replay corpus: a directory of recorded matches checked in or
+       published, and `make replay-all`. `RELEASE.md` should make it a
+       release gate.
+    3. The window and two machines, from 0002.
+
+VIII. NEXT STEPS
+
+    1. Record three or four reference matches (seeds, player counts)
+       into `build/replays/` and verify them on the Mac host.
+    2. Roadmap step 3, Pillboys, now that a change to `step` can be
+       shown to do only what it meant to.
+    3. Tag v0.1.0-rc.1 once the window opens somewhere (RELEASE.md).
+
+ACKNOWLEDGMENTS
+
+    Paul, for the order of work.
+
+REFERENCES
+
+    [1] Journal 0002, <0002.20261012@treadcore.org>.
+    [2] documentation/ROADMAP.md, steps 1 and 2.
+    [3] G. Fowler, L. C. Noll, K.-P. Vo, "FNV hash," 1991; the
+        64-bit FNV-1a offset basis and prime are the public ones.
+
+APPENDIX A. COMMITS
+
+    175f512  sim, net, server: replay and world hash (roadmap steps 1
+             and 2); wire version 3
+    (next)   docs, journal: steps 1 and 2 done; journal 0003
+
+APPENDIX B. ARTIFACTS
+
+    Replay          build/logs/replay-20261012-184701.json (local)
+    Replay log      build/logs/replay-20261012-184713.log
+    Lobby logs      build/logs/lobby-20261012-18*-peer{1,2,3,4}.log
+    Journal         journal/0003-2026-10-12-replay-and-hash.txt (this)
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

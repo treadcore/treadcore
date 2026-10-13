@@ -4,7 +4,27 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-12, night: replay and world hash (roadmap steps 1 and 2)
+
+Journal: [0003](journal/0003-2026-10-12-replay-and-hash.txt).
+
+- New: `World::hash()` (FNV-1a over the serialised world) and
+  `Replay` (scenario, every tick's orders, a hash checkpoint every
+  100 ticks) in `treadcore-sim`, with `World::run` and
+  `Replay::verify`. The host records on request; the server has
+  `--record FILE` and `--replay FILE` (exit 1 on a mismatch). `make
+  debug` writes `build/logs/replay-STAMP.json`; `make replay` checks
+  the newest, or `REPLAY=file`. The host hashes every 1 000 ticks, logs
+  it and carries it in `Heartbeat`; clients log it; the HUD shows it.
+- Changed: wire `VERSION` 3 (`Heartbeat` gained `hash_tick`, `hash`).
+  `make lobby-test` asserts one world hash at tick 1 000 in all four
+  logs.
+- Measured: a sixteen-bot, 180-second match records to 43 KB and
+  replays to all 36 checkpoints in 0.2 s; with the indirect shells
+  removed it fails at tick 100. 20 tests pass.
+
 ## 2026-10-12, evening: proven, fixed, sixteen
+
 
 Journal: [0002](journal/0002-2026-10-12-proving-the-world.txt).
 

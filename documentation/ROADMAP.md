@@ -111,6 +111,17 @@ shells, 128 intercepts, 10 kills and 8 captures on the default seed.
 
 ## 1. The replay: traces that run
 
+**Done 12 October 2026 (journal 0003).** `Replay { scenario, ticks,
+orders: Vec<(Tick, Order)>, checkpoints: Vec<(Tick, u64)> }` in
+`treadcore-sim`, serde; `World::run(&replay)` and `Replay::verify()`
+(the first checkpoint that differs, with both hashes). The host records
+when asked (`Host::record`); the server has `--record FILE` and
+`--replay FILE`; `make debug` records beside its trace and `make
+replay` plays the newest back, exit 1 on a mismatch. Proof so far: a
+recorded sixteen-bot match replays to the same hash on this machine,
+and a replay with one shell removed is caught at the first checkpoint
+after it. A different machine is still to do.
+
 **Change.** `treadcore-sim` gains `Replay { scenario, orders: Vec<(Tick,
 Order)> }`, serialisable; `World::run(replay) -> World`. The server
 records one (`--record FILE`) and plays one back (`--replay FILE`),
@@ -129,9 +140,17 @@ different machine.
 
 ## 2. World hash and desync detection
 
+**Done 12 October 2026 (journal 0003).** `World::hash()`: FNV-1a over
+the bincode serialisation of the world, so every field is in it the
+day it is added and floats hash by their bits. The host hashes every
+`HASH_EVERY` (1 000) ticks, logs it, and carries it in `Heartbeat`
+(wire version 3); clients log what they receive. `make lobby-test`
+asserts one hash at tick 1 000 in all four logs.
+
 **Change.** `World::hash() -> u64` over the state that matters (tick,
 rng, every entity's fields, map cells). The host sends it in
 `Heartbeat`; a client that also runs the world (step 4) compares.
+
 
 **Why.** Before prediction exists, the hash makes replay testable
 (step 1) and gives `make lobby-test` a real assertion: every peer

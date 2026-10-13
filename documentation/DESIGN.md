@@ -31,7 +31,13 @@ lets a trace be replayed, and what lets a bot be tested.
 - 20 ticks a second. A tick applies the orders for that tick, then moves
   tanks, drones and shells, resolves intercepts, strikes, impacts, depot
   capture and resupply, spawns the swarm if due, and checks for a result.
+- The world has a hash: FNV-1a over its serialised state, every field,
+  floats by their bits. The host logs it every fifty seconds and sends
+  it in heartbeats. A match records as a replay (the scenario, every
+  tick's orders, the hash every five seconds) and plays back to the
+  same hashes or names the first tick where it does not; `make replay`.
 - Fog of war: a player sees out to 7 tiles from the tank (half that into
+
   forest), 12 from a recon drone, 4 from any other drone. The observation
   a client or Brain gets is the host's world with everything outside
   those discs removed.
