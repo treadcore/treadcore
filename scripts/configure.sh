@@ -49,7 +49,7 @@ echo "  memory       ${MEM_MB} MB"
 # else, capped at the CPU count, floored at one. JOBS=n on the make line
 # overrides.
 if [ -n "${JOBS:-}" ]; then
-    :
+    JOBS_FROM_USER=1
 elif [ "$MEM_MB" -gt 0 ]; then
     JOBS=$(( (MEM_MB - 1024) / 1536 ))
     [ "$JOBS" -lt 1 ] && JOBS=1
@@ -59,10 +59,19 @@ else
 fi
 echo "  jobs         $JOBS (from ${MEM_MB} MB; JOBS=n overrides)"
 SWAP_MB="$(awk '/SwapTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)"
+SWAP_FREE_MB="$(awk '/SwapFree/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)"
 if [ "$SWAP_MB" -lt 1024 ]; then
     warn "  swap         ${SWAP_MB} MB: a Bevy link with no swap can be killed outright; 2 GB of swap is cheap insurance"
 else
-    echo "  swap         ${SWAP_MB} MB"
+    echo "  swap         ${SWAP_MB} MB, ${SWAP_FREE_MB} MB free"
+fi
+# A machine whose swap is already full is over-committed before the
+# build starts: something else (an editor's rust-analyzer, usually) is
+# holding what the build needs. One job until it clears. JOBS=n still
+# overrides, for someone who knows better.
+if [ -z "${JOBS_FROM_USER:-}" ] && [ "$SWAP_MB" -gt 0 ] && [ $((SWAP_FREE_MB * 10)) -lt "$SWAP_MB" ] && [ "$JOBS" -gt 1 ]; then
+    warn "  swap is over 90% full: building with 1 job until it clears (pkill -x rust-analyzer usually clears it)"
+    JOBS=1
 fi
 
 cat > "$BUILDDIR/config.env" <<CFG
