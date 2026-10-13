@@ -1,0 +1,14 @@
+# Cargo settings for this workspace.
+#
+# MUSL LINKS STATICALLY BY DEFAULT, AND A WAYLAND WINDOW CANNOT BE. On
+# Alpine (and any *-linux-musl target) rustc passes -static to the
+# linker, which then wants libwayland-client.a -- and Alpine ships only
+# the .so. The engine compiled all 379 crates and failed on that one
+# line. -crt-static turns the default off for the musl targets, so the
+# binary links the system libraries dynamically like a glibc one would.
+# The headless crates do not care either way.
+[target.aarch64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=-crt-static"]
+
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=-crt-static"]

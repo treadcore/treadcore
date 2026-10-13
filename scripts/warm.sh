@@ -34,7 +34,7 @@ command -v ionice >/dev/null && NICE="ionice -c 3 $NICE"
 cargo tree -p treadcore-warm --offline -e normal,build --prefix indent > "$TREE" 2>/dev/null \
     || cargo tree -p treadcore-warm -e normal,build --prefix indent > "$TREE"
 TOTAL=$(cargo tree -p treadcore-warm -e normal,build --prefix none 2>/dev/null | sort -u | wc -l)
-DEPTH=$(awk '{match($0,/^[ │├└─]*/); d=RLENGTH/4; if (d>m) m=d} END{print m+0}' "$TREE")
+DEPTH=$(cargo tree -p treadcore-warm -e normal,build --prefix depth 2>/dev/null | awk '{if ($1+0>m) m=$1+0} END{print m}')
 
 say "warming the engine: profiles [$PROFILES], $CARGO_BUILD_JOBS job(s), low priority"
 say "  $TOTAL crates, dependency tree $DEPTH deep -> $TREE"
@@ -60,8 +60,14 @@ for p in $PROFILES; do
     # Number every "Compiling" line against the total; with VERBOSE=1
     # also stamp each with seconds since the profile started, so the
     # slow crates are visible by eye and by grep.
+    # set -e would end the script at a failed pipeline before the status
+    # check below could say why; off for this one pipeline. The colour
+    # codes are stripped before the filter so an "error" line is seen
+    # whatever cargo painted it.
+    set +e
     $NICE cargo build "${CFLAG[@]}" "${FLAG[@]}" -p treadcore-warm 2>&1 \
         | tee -a "$LOG" \
+        | sed -u 's/\x1b\[[0-9;]*m//g' \
         | awk -v total="$TOTAL" -v t0="$(date +%s)" -v verbose="$VERBOSE" '
             /^\s*Compiling/ {
                 n++; t = systime() - t0
@@ -70,10 +76,12 @@ for p in $PROFILES; do
                 fflush(); next
             }
             /^\s*(Finished|error|warning: unused)/ { print; fflush(); next }
+            /^ *= note: .*(ld|collect2|cannot find|undefined)/ { print; fflush(); next }
             verbose >= 2 { print; fflush() }
-            /^error/ { print; fflush() }
         '
-    [ "${PIPESTATUS[0]}" = 0 ] || die "warm ($p) failed: see $LOG"
+    STATUS="${PIPESTATUS[0]}"
+    set -e
+    [ "$STATUS" = 0 ] || die "warm ($p) failed (cargo exit $STATUS): see $LOG"
 done
 say "engine warm in $(( $(date +%s) - START ))s. 'make build' now compiles only the game."
 say "  smoke test the window: target/release/treadcore-warm"
