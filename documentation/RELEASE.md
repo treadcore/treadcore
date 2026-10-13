@@ -140,6 +140,9 @@ machines confirms a candidate, and the release notes say so.
 
 ## 6. The release procedure: `make release`
 
+*The steps to deploy a version, in order with their commands, are in
+`DEPLOY.md`. This section is what the release check checks, and why.*
+
 What a candidate has to pass before it is tagged, and before anything
 goes to crates.io; `scripts/release.sh`, run by `make release`. It
 changes nothing but build output; the first failure stops it. The

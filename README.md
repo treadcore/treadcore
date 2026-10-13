@@ -225,6 +225,7 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/MAPS.md](documentation/MAPS.md): the map file format; any text editor is the editor.
 
 - [documentation/LAB-REPORT-PACKAGES.md](documentation/LAB-REPORT-PACKAGES.md): packages for every platform as a Cargo tutorial: the Bevy template, the multi-target build, .deb, .rpm, .msi and the flake, testing each where its users are, the git hook, the one-day limit, and API discipline.
+- [documentation/DEPLOY.md](documentation/DEPLOY.md): the deploy procedure, step by step: tag on day 0, publish on day 1 or later, with the command for each step and what to do when one fails.
 - [documentation/RELEASE.md](documentation/RELEASE.md): the implementation cycle, versions, release monuments, candidates and playtesting, and the release procedure `make release` runs.
 - [documentation/INDEX.md](documentation/INDEX.md): the code structure index: the tree, every file outlined, a glossary, a keyword cross-reference.
 - [documentation/GOVERNANCE.md](documentation/GOVERNANCE.md): how the organization is run: roles, joining, proposals, review, leaving, recognition.
