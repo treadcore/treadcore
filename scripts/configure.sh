@@ -18,7 +18,10 @@ echo "  cargo        $(cargo --version | awk '{print $2}')"
 # what is here so build.sh can say why the window will not build rather
 # than let the linker say it.
 HAVE_WINDOW=1
-if command -v pkg-config >/dev/null; then
+if [ "$(uname -s)" = Darwin ]; then
+    # macOS: winit, CoreAudio and Metal come with the system.
+    echo "  display      macOS (Cocoa, Metal, CoreAudio)"
+elif command -v pkg-config >/dev/null; then
     for lib in wayland-client xkbcommon alsa libudev; do
         if pkg-config --exists "$lib"; then
             printf '  %-13s%s\n' "$lib" "$(pkg-config --modversion "$lib")"
@@ -31,7 +34,9 @@ else
     warn "  pkg-config missing: cannot check display libraries"
     HAVE_WINDOW=0
 fi
-if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+if [ "$(uname -s)" = Darwin ]; then
+    :
+elif [ -n "${WAYLAND_DISPLAY:-}" ]; then
     echo "  session      wayland ($WAYLAND_DISPLAY)"
 elif [ -n "${DISPLAY:-}" ]; then
     echo "  session      x11 ($DISPLAY)"
@@ -40,6 +45,7 @@ else
 fi
 CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)"
 MEM_MB="$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)"
+[ "$MEM_MB" = 0 ] && MEM_MB="$(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1048576 ))"
 echo "  cpus         $CPUS"
 echo "  memory       ${MEM_MB} MB"
 # JOBS FROM MEMORY, NOT FROM CPUS. A rustc on one of Bevy's big crates
@@ -60,7 +66,9 @@ fi
 echo "  jobs         $JOBS (from ${MEM_MB} MB; JOBS=n overrides)"
 SWAP_MB="$(awk '/SwapTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)"
 SWAP_FREE_MB="$(awk '/SwapFree/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)"
-if [ "$SWAP_MB" -lt 1024 ]; then
+if [ "$(uname -s)" = Darwin ]; then
+    echo "  swap         macOS (dynamic)"
+elif [ "$SWAP_MB" -lt 1024 ]; then
     warn "  swap         ${SWAP_MB} MB: a Bevy link with no swap can be killed outright; 2 GB of swap is cheap insurance"
 else
     echo "  swap         ${SWAP_MB} MB, ${SWAP_FREE_MB} MB free"
@@ -78,7 +86,9 @@ fi
 # and panics without one; on a VM with no GPU the answer is lavapipe
 # (mesa-vulkan-swrast), Vulkan on the CPU.
 PRELOAD=
-if ls /usr/share/vulkan/icd.d/*.json >/dev/null 2>&1; then
+if [ "$(uname -s)" = Darwin ]; then
+    echo "  gpu          Metal"
+elif ls /usr/share/vulkan/icd.d/*.json >/dev/null 2>&1; then
     ICDS="$(ls /usr/share/vulkan/icd.d/ | sed 's/_icd.*//' | tr '\n' ' ')"
     echo "  vulkan       $ICDS"
 else
