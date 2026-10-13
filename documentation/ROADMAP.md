@@ -33,13 +33,13 @@ every later step is built on a guess.
 
 ## The reference specification
 
-`SPEC-WINBOLO-1.14.md` is the clean-room functional specification of
-WinBolo/LinBolo 1.14, received 12 October 2026. Every step below that
-touches the Bolo-derived layer (3, 5, 6, 6b, 6c, 6d) cites its
+`SPEC-PRIOR-ART-1.14.md` is the clean-room functional specification of
+the prior art, version 1.14, received 12 October 2026. Every step below that
+touches the prior-art-derived layer (3, 5, 6, 6b, 6c, 6d) cites its
 requirement IDs, and a proposal that changes one of those mechanics
 says which IDs it keeps, adapts or drops. Its preface says which parts
 treadcore adopts; its networking (section 12) is reference only, and
-nothing of Macintosh Bolo's AppleTalk ring is in it or in treadcore.
+nothing of the Macintosh-era prior art's AppleTalk ring is in it or in treadcore.
 
 ## Backlog: what the first traces found
 
@@ -130,10 +130,10 @@ match report (item 8), figures per match.
     shells, 2 material; tournament: 12, 0; strict: 0, 0); `--game-type`,
     `GAMETYPE=strict make debug`.
 12. **Pillbox view.** Jump the camera between owned pillboxes (SPEC
-    UI-10 to UI-13); the client's one Bolo feature worth having early.
+    UI-10 to UI-13); the client's one the prior art feature worth having early.
     **Deferred** to the first session with a working window (step 0's
     open problem); a client change that cannot be seen is a guess.
-13. **Forest concealment as Bolo had it.** Hidden to everything beyond
+13. **Forest concealment as the prior art had it.** Hidden to everything beyond
     3 tiles when inside a 2 x 2 block of forest (SPEC VIS-02), against
     treadcore's halved vision radius. A proposal with a trace. **Done**,
     as written, pillboxes included (PIL-07): `CONCEAL_RANGE` 3, beside
@@ -237,7 +237,7 @@ the numbers are in journal 0004 and in the test's output.
 
 **Decision first.**
  Written into DESIGN.md on 12 October 2026 ("Pillboys
-and pillboxes: the decision"), checked against Bolo's builder and
+and pillboxes: the decision"), checked against the prior art's builder and
 refuelling bases (`LAB-REPORT-PILLBOYS.md`): Pillboys are an *order the
 tank gives*, not a unit the player drives. The tank is the one thing
 the player drives; that is the premise. `Command::Deploy { task:
@@ -249,7 +249,7 @@ not a Pillboy's business: they are refuelling bases, taken and used by
 driving onto them, as now.
 
 
-**Reference.** SPEC-WINBOLO-1.14.md section 6 (BLD-01 to BLD-03,
+**Reference.** SPEC-PRIOR-ART-1.14.md section 6 (BLD-01 to BLD-03,
 BLD-05, BLD-06, BLD-09, BLD-10, BLD-13) for the squad; section 8
 (PIL-01 to PIL-05, PIL-07 to PIL-17) for the pillbox; OWN-01, OWN-02
 for ownership. BLD-11's parachute becomes resupply at a depot.
@@ -323,15 +323,15 @@ the loader refuses with the line and repairs an owner that is no seat.
 `Map`, not its cells). `World::map_as_played`; the server's `--map`,
 `--save-map`, `--write-map`; `make map`; `MAP=file` on debug, run and
 host. The world is built at the size the file declares (the generator
-makes 128, Bolo's maps are 256): swarm edges, the brains' clamps and
+makes 128, the prior art's maps are 256): swarm edges, the brains' clamps and
 the client's camera take it from the map, and `Welcome` is sent in
 `Chunk`s when the map does not fit a datagram (backlog item 6, done).
-`scripts/bolo2map.py` and `make convert` turn a Macintosh Bolo map
-(`BMAPBOLO` v1) into a treadcore map; five converted community maps
-ship in `maps/bolo/` (provenance in `vendor/THIRD-PARTY.md`). Proof:
+`scripts/priorart2map.py` and `make convert` turn a Macintosh-era prior-art map
+(its binary format, v1) into a treadcore map; five converted community maps
+ship in `maps/prior-art/` (provenance in `vendor/THIRD-PARTY.md`). Proof:
 `generate(seed).to_text()` reads back equal for two seeds and writes
 back identical; a world built from a four-start file seats four of
-sixteen; sixteen bots play a 256 x 256 Bolo map through `make debug`.
+sixteen; sixteen bots play a 256 x 256 prior-art map through `make debug`.
 
 
 **Reference.**
@@ -341,7 +341,7 @@ defines, what a loader repairs, that a running map can be saved.
 **Change.** `treadcore-sim::map` gains `to_file` / `from_file`: a
 header line, then 128 rows of 128 characters (one per terrain), then
 `start x y`, `depot x y`, `pillbox x y owner` lines. Human-editable in
-any text editor, which is the editor for the first release (Bolo's
+any text editor, which is the editor for the first release (the prior art's
 BMAPEdit came later; its ASCII import/export came with it). `Scenario`
 takes `map: MapSource::Seed(u64) | File(path)`.
 
@@ -354,7 +354,7 @@ a seed cannot do that.
 
 **Done 12 October 2026 (journal 0007).** `Player.team`; a scenario deals
 seats into teams (`with_teams(n)`, `--teams N`, `TEAMS=n make debug`) or
-leaves everyone alone, Bolo's start. Sensors are the team's: `visible_to`
+leaves everyone alone, the prior art's start. Sensors are the team's: `visible_to`
 and `spotted_by` take any ally's tank or drone, so one tank's recon is
 another's gun. Friendly fire is off within a team for shells, strikes,
 mines and splash (`FriendlyFireSpared` in the trace); one's own shells
@@ -363,7 +363,7 @@ tanks; a strike at an ally is refused; allies share depots and pillbox
 shells and see each other's mines; an ally's pillbox cannot be captured.
 `Command::Chat { text, to: All | Team }`. Scores stay per player; the
 match ends when one team stands, and the winning team's top scorer is
-the winner (`MatchOver { winner, team }`). Bolo's alliance protocol in
+the winner (`MatchOver { winner, team }`). The prior art's alliance protocol in
 play: `Command::Alliance(Request | Accept | Decline | Leave)` with
 thirty-second requests, any member accepting, leaving at will, all of it
 events (ALL-01 to ALL-06, ALL-08 to ALL-10). The RuleBot and Fortifier
@@ -401,8 +401,8 @@ reason, any proposal whose outcome would leave fewer than three sides
 with a living tank or give one side more than half the living tanks,
 once when proposed and again when accepted. Every resolution is a
 public event (`ProposalResolved`: accepted, declined, refused with why,
-lapsed, or overtaken by a change of sides). Bolo's alliance commands are
-sugar over this (a request is a Join proposal and keeps Bolo's "leave
+lapsed, or overtaken by a change of sides). The prior art's alliance commands are
+sugar over this (a request is a Join proposal and keeps the prior art's "leave
 first"). Wire version 8. Proof: `proposals_change_sides_under_the_
 three_way_rule`, a recorded match: two sides of eight refuse every
 proposal; of three sides a defection is accepted and the newcomer's

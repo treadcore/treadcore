@@ -22,8 +22,8 @@ X-Commits: 68227ed
 ABSTRACT
 
     Step 6 gives the world sides. A player has a team; a scenario deals
-    the seats into teams or leaves everyone alone, Bolo's start, to
-    ally in play by Bolo's protocol: ask, be accepted by any member,
+    the seats into teams or leaves everyone alone, the prior art's start, to
+    ally in play by the prior art's protocol: ask, be accepted by any member,
     leave at will, a request standing thirty seconds, all of it events.
     A team shares its picture (an ally's recon spots for your gun), its
     depots, its pillboxes' shells and the knowledge of its mines, and
@@ -49,14 +49,14 @@ I. INTRODUCTION
     bracket. The brief (CONCEPT.md section 9) asked for alliances that
     turn friendly fire off so allies can stampede together, and later
     for betrayal under a three-way rule. Step 6 is the first half: the
-    team as a thing in the world, and Bolo's way of forming one.
+    team as a thing in the world, and the prior art's way of forming one.
 
 II. BACKGROUND
 
     Carried from 0006: doctrine distances tuned for 128; 65 536 tile
-    sprites on a Bolo map; the Bolo maps' licence; forest regrowth; the
+    sprites on a prior-art map; the prior-art maps' licence; forest regrowth; the
     cross-machine replay; the window; two machines. The spec's ALL-01
-    to ALL-10 and OWN-03 say what an alliance is in Bolo.
+    to ALL-10 and OWN-03 say what an alliance is in the prior art.
 
 III. METHOD
 
@@ -73,7 +73,7 @@ III. METHOD
                                                         ally
       the leaver gets the         the leaver's old id   the old id is
       smallest unused team id                           still the team's
-      any member may accept a     only the one asked    Bolo (ALL-04):
+      any member may accept a     only the one asked    the prior art (ALL-04):
       request to their team                             any member
                                                         admits
       scores stay per player;     a team score field    a team's
@@ -152,7 +152,7 @@ VI. DISCUSSION
     teammate) ran as written, once the test stopped killing its own
     recon with its own first shell, which is the rules working.
 
-    The alliance protocol is Bolo's and is deliberately plain. The
+    The alliance protocol is the prior art's and is deliberately plain. The
     constraint the brief asked for, that sides may change only while
     three remain, is not here: step 6b adds proposals, swaps and the
     three-way rule on top of this, and this step's `Leave` and
@@ -166,7 +166,7 @@ VII. OPEN PROBLEMS
     2. The window has no key for the alliance commands; the HUD shows
        requests but a human cannot answer one. A small input change
        when the window opens.
-    3. From 0006: doctrine distances; tile sprites; the Bolo maps'
+    3. From 0006: doctrine distances; tile sprites; the prior-art maps'
        licence; forest regrowth; the cross-machine replay; the window;
        two machines.
 
@@ -186,7 +186,7 @@ REFERENCES
     [1] Journal 0006, <0006.20261012@treadcore.org>.
     [2] documentation/ROADMAP.md step 6; documentation/DESIGN.md,
         "Teams and alliances".
-    [3] documentation/SPEC-WINBOLO-1.14.md, ALL-01 to ALL-10, OWN-03.
+    [3] documentation/SPEC-PRIOR-ART-1.14.md, ALL-01 to ALL-10, OWN-03.
 
 APPENDIX A. COMMITS
 

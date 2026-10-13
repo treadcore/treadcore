@@ -6,7 +6,7 @@ Subject: [JOURNAL 0006] Map files, the editor that is any editor, and
 Message-ID: <0006.20261012@treadcore.org>
 In-Reply-To: <0005.20261012@treadcore.org>
 Organization: treadcore.org
-Keywords: map-file, text-format, round-trip, BMAPBOLO, converter,
+Keywords: map-file, text-format, round-trip, binary-maps, converter,
           dynamic-size, chunked-welcome
 X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
            as the pair; Paul: "start roadmap step 5", then "look at
@@ -33,19 +33,19 @@ ABSTRACT
     generated map to the bit. A scenario names its map as the
     scenario's seed, another seed, or the text of a file carried
     whole, so replays and Welcomes are self-contained. Mid-session
-    Paul produced five Macintosh Bolo maps (the BMAPBOLO binary
+    Paul produced five Macintosh-era prior-art maps (the binary
     format); a converter was written, the maps turned out to be 256 x
     256, and the world was made to take its size from the map after a
     detour through making 256 the default and back. Welcome, now up to
-    130 KiB, goes in chunks. Sixteen bots play a converted Bolo map,
-    and on it the pillboxes fire: Bolo's roads give the router no way
+    130 KiB, goes in chunks. Sixteen bots play a converted prior-art map,
+    and on it the pillboxes fire: The prior art's roads give the router no way
     round. Rejections on island maps (squads and tanks sent across
     water) fell from 863 to 396 once the bot remembered what
     the world refused. 28 tests pass.
 
 INDEX TERMS
 
-    map file, glyph, round trip, loader, MapSource, Bolo, BMAPBOLO,
+    map file, glyph, round trip, loader, MapSource, the prior art,
     run-length, converter, dynamic size, Chunk.
 
 
@@ -88,7 +88,7 @@ III. METHOD
                                                         proofs went
                                                         wrong when it
                                                         did not
-      the world takes its size    crop Bolo maps to     a one-tile road
+      the world takes its size    crop prior-art maps to     a one-tile road
       from the map                128, or scale them    does not scale;
                                                         the file says
                                                         its
@@ -104,15 +104,15 @@ III. METHOD
                                   Welcome, rebuild      not fit a
                                   from the scenario     datagram; the
                                                         chunk is generic
-      depot lines may say an      first-N rule only     Bolo's bases are
+      depot lines may say an      first-N rule only     the prior art's bases are
       owner                                             neutral, and the
                                                         file should be
                                                         able to say so
       starts moved to the         keep them at sea      no boats here
       nearest land
-      Bolo maps in maps/bolo/     vendor/ rule: no      Paul's
+      prior-art maps in maps/prior-art/     vendor/ rule: no      Paul's
                                                         direction;
-      with provenance recorded    Bolo maps             provenance and
+      with provenance recorded    prior-art maps             provenance and
                                                         the licence
                                                         question written
                                                         down, removable
@@ -133,7 +133,7 @@ IV. CHRONOLOGY
         Welcome's map used as is. MAPS.md written.
      2. Paul: look in ~/Downloads/SharedVM for .map files. Five there:
         Constanine, Fido's Airstrip, FortressIsles2, FortressIslesX,
-        Godzilla. `BMAPBOLO` version 1: pills (5 bytes), bases (6),
+        Godzilla. The binary format, version 1: pills (5 bytes), bases (6),
         starts (3), then run-length rows: a run is datalen, y, startx,
         endx, nibbles; a nibble under 8 means that many plus one
         literal terrains follow, 8 or more means the next nibble
@@ -151,7 +151,7 @@ IV. CHRONOLOGY
         height is needed. `DepotOwner` on map depots. `Chunk` packets
         and `ChunkAssembler`; the host chunks Welcome; a proto test
         sends a 16 KiB Welcome in pieces, out of order.
-     5. The converter, `scripts/bolo2map.py`: terrains mapped
+     5. The converter, `scripts/priorart2map.py`: terrains mapped
         (building to wall; shot building, crater, rubble, swamp to
         rubble; river, sea, boat to water; mined to plain), owners
         kept, bases as depots with owners said, starts moved to the
@@ -176,7 +176,7 @@ IV. CHRONOLOGY
         because `map` defaulted to `Seed(0x7EADC0DE)`. A third variant,
         `MapSource::FromScenarioSeed`, is the default; the proofs
         returned to 18:2 and 137 664 vs 94 885 exactly.
-     9. The five maps converted into `maps/bolo/`; each loads
+     9. The five maps converted into `maps/prior-art/`; each loads
         (`--map`), 10 to 16 starts, 10 to 16 depots, 5 to 16
         pillboxes. Godzilla, sixteen bots, 90 s: 21 pillbox shots and
         a pillbox kill, the first in bot play; and 863 refused orders,
@@ -188,7 +188,7 @@ IV. CHRONOLOGY
         Godzilla, 90 s: 396 refusals (from 863), the rest fresh scoot
         points the bot computes each time; FortressIslesX, 60 s: 284
         (from 1 345). The proofs unchanged.
-    11. `make map` writes `maps/island.map`; `make convert BOLO=file`;
+    11. `make map` writes `maps/island.map`; `make convert FROM=file`;
         `make replay` on the Godzilla match: all checkpoints; lobby-
         test: PASS, one hash. Documents, vendor notes, this entry.
 
@@ -241,7 +241,7 @@ VI. DISCUSSION
     all of it was wrong in the same way.
 
     Third, the ancestor's maps make the pillbox fire. On the
-    generated island the router steers round every gun; on Bolo's
+    generated island the router steers round every gun; on the prior art's
     islands the road is the only way, and the first pillbox kill in
     bot play happened on Godzilla without any change to the rules.
     Backlog item 14 is still a design question for the generated map,
@@ -255,9 +255,9 @@ VII. OPEN PROBLEMS
        their objectives. A doctrine that reads the map's size and
        routes round water (a route-reachability question to the
        world, or a reachable-depots list in the Observation).
-    2. The client draws one sprite per tile: 65 536 on a Bolo map, to
+    2. The client draws one sprite per tile: 65 536 on a prior-art map, to
        be measured when the window opens.
-    3. The licence of the five Bolo maps is not established
+    3. The licence of the five prior-art maps is not established
        (vendor/THIRD-PARTY.md).
     4. Forest regrowth; the cross-machine replay; the window; two
        machines.
@@ -266,7 +266,7 @@ VIII. NEXT STEPS
 
     1. Step 6, teams and alliances, then 6b, the proposal protocol.
     2. A reachable-objectives answer for brains (open problem 1) as a
-       proposal with the Bolo traces as evidence.
+       proposal with the prior art traces as evidence.
     3. Hand-edit one map (a defended `quarters`) now that the format
        exists, and run the fortification proof on it.
 
@@ -280,23 +280,23 @@ REFERENCES
 
     [1] Journal 0005, <0005.20261012@treadcore.org>.
     [2] documentation/MAPS.md; documentation/ROADMAP.md step 5.
-    [3] documentation/SPEC-WINBOLO-1.14.md, MAP-03 to MAP-10.
-    [4] The Bolo map file format, as read from the files and the
-        format's public description (BMAPBOLO version 1).
+    [3] documentation/SPEC-PRIOR-ART-1.14.md, MAP-03 to MAP-10.
+    [4] The prior-art map file format, as read from the files and the
+        format's public description (version 1).
 
 APPENDIX A. COMMITS
 
     0d06c82  sim, proto, net, server, client, brain: map files, any map
-             size, chunked Welcome, Bolo converter (roadmap step 5);
+             size, chunked Welcome, the prior art converter (roadmap step 5);
              wire version 6
-    (next)   docs, vendor, journal: step 5 done; the Bolo maps'
+    (next)   docs, vendor, journal: step 5 done; the prior-art maps'
              provenance; journal 0006
 
 APPENDIX B. ARTIFACTS
 
-    Maps            maps/island.map; maps/bolo/{constanine,fidos-
+    Maps            maps/island.map; maps/prior-art/{constanine,fidos-
                     airstrip,fortressisles2,fortressislesx,godzilla}.map
-    Converter       scripts/bolo2map.py
+    Converter       scripts/priorart2map.py
     Traces          build/logs/debug-20261012-20*.log (Godzilla,
                     FortressIslesX, default) with replays beside them
     Journal         journal/0006-2026-10-12-map-files.txt (this)

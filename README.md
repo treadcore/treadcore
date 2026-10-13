@@ -88,7 +88,7 @@ make debug                      # 3 game minutes of sixteen bots, flat out
 GAME_SECONDS=600 SEED=0x1234 PLAYERS=4 make debug
 DEFENDERS=12 make debug         # twelve Defenders dig in at their depots, four RuleBots attack
 TEAMS=4 make debug              # four teams of four; allies share recon, spare each other
-GAMETYPE=strict make debug      # Bolo's game types: open, tournament, strict (what a tank starts with)
+GAMETYPE=strict make debug      # the prior art's game types: open, tournament, strict (what a tank starts with)
 
 MAP=maps/quarters.map make debug   # on a map file; make map writes one to edit
 
@@ -133,7 +133,7 @@ source/treadcore-server   headless: bot matches, LAN host, LAN bot seat.
 source/treadcore-client   the Bevy window.
 scripts/                  what the Makefile calls.
 maps/                     map files (documentation/MAPS.md); make map writes a new one;
-                          maps/bolo/ holds five converted Macintosh Bolo maps.
+                          maps/prior-art/ holds five converted Macintosh-era prior-art maps.
 
 
 vendor/                   external code and blobs vendored by the author, with their licences.
@@ -152,8 +152,8 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/ROADMAP.md](documentation/ROADMAP.md): the next architectural steps, in dependency order.
 - [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
-- [documentation/LAB-REPORT-PILLBOYS.md](documentation/LAB-REPORT-PILLBOYS.md): the Pillboy requirement checked against Bolo's builder, and what was decided.
-- [documentation/SPEC-WINBOLO-1.14.md](documentation/SPEC-WINBOLO-1.14.md): the clean-room functional specification of WinBolo 1.14 that the Bolo-derived steps cite, with a preface on what treadcore adopts.
+- [documentation/LAB-REPORT-PILLBOYS.md](documentation/LAB-REPORT-PILLBOYS.md): the Pillboy requirement checked against the prior art's builder, and what was decided.
+- [documentation/SPEC-PRIOR-ART-1.14.md](documentation/SPEC-PRIOR-ART-1.14.md): the clean-room functional specification of the prior art, version 1.14 that the prior-art-derived steps cite, with a preface on what treadcore adopts.
 - [documentation/MAPS.md](documentation/MAPS.md): the map file format; any text editor is the editor.
 
 - [documentation/RELEASE.md](documentation/RELEASE.md): the implementation cycle, versions, release monuments, candidates and playtesting.

@@ -26,7 +26,7 @@ pub const TURN_CRAWL: f32 = 0.25;
 pub const FUEL_PER_TILE: f32 = 1.0;
 /// Own eyes: not far. The tank sees the drones' picture, not the ground.
 pub const TANK_VISION: f32 = 7.0;
-/// Bolo's forest concealment (SPEC VIS-02, PIL-07): a tank inside a 2 x 2
+/// the prior art's forest concealment (SPEC VIS-02, PIL-07): a tank inside a 2 x 2
 /// block of forest is hidden from every eye and every pillbox beyond
 /// this many tiles, a recon drone's included. Tree cover against the
 /// air is the oldest counter to it, and it gives the squad a reason to
@@ -110,7 +110,7 @@ pub const PILLBOY_MATERIAL_START: u8 = 2;
 /// tile becomes grass, the tank gains this much material.
 pub const HARVEST_TICKS: u16 = 4 * TICK_HZ as u16;
 pub const HARVEST_MATERIAL: u8 = 4;
-/// What the squad builds, how long, for how much. Bolo's costs were
+/// What the squad builds, how long, for how much. The prior art's costs were
 /// half a tree for a road and a wall; here material is whole and a
 /// harvest is four, so a wall is a quarter of a tree.
 pub const WALL_BUILD_TICKS: u16 = 3 * TICK_HZ as u16;
@@ -122,7 +122,7 @@ pub const MINE_COST: u8 = 1;
 /// Within this of a wall or mine site the squad works from beside it,
 /// never on it.
 pub const BUILD_STANDOFF: f32 = 1.6;
-/// A mine: Bolo's, laid by the squad. Hidden from everyone but its
+/// A mine: The prior art's, laid by the squad. Hidden from everyone but its
 /// layer until a tank or squad comes within `MINE_REVEAL`; set off by a
 /// tank or squad on its tile, by a shell's splash, or by a neighbour on
 /// an orthogonally adjacent tile (a chequerboard does not chain). The
@@ -152,7 +152,7 @@ pub const PILLBOY_SPLASH_LOSS: u8 = 2;
 pub const PILLBOY_BOARD_RANGE: f32 = 1.0;
 /// Within this of the site the squad is at work.
 pub const PILLBOY_WORK_RANGE: f32 = 0.7;
-/// Ticks of uncontested work: capture (Bolo's "stays on it"), a repair,
+/// Ticks of uncontested work: capture (the prior art's "stays on it"), a repair,
 /// a new emplacement.
 pub const PILLBOX_CAPTURE_TICKS: u16 = 10 * TICK_HZ as u16;
 pub const PILLBOX_REPAIR_TICKS: u16 = 6 * TICK_HZ as u16;
@@ -170,7 +170,7 @@ pub const PILLBOX_HEALTH: f32 = 60.0;
 pub const PILLBOX_RANGE: f32 = 8.0;
 pub const PILLBOX_DAMAGE: f32 = 15.0;
 pub const PILLBOX_RELOAD_TICKS: u16 = 2 * TICK_HZ as u16;
-/// Against drones: the one addition to Bolo's pillbox. Short, and with
+/// Against drones: the one addition to the prior art's pillbox. Short, and with
 /// an interceptor's kill curve: a link to the owner tank's radar if it is
 /// within `DRONE_LINK`, else the pillbox's own sensor at `INTERCEPT_BASE`.
 pub const PILLBOX_AIR_RANGE: f32 = 4.0;

@@ -137,9 +137,9 @@ V. RESULTS
 
       proof                            lag       checks  mismatch  lead
       -------------------------------  --------  ------  --------  -----
-      net test, host and client        100 ms    53      0         250 ms
-      lobby-test LAG=200, three seats  200 ms    1 602   0         -
-      lobby-test, three seats          0         1 600   0         -
+      net test, host and client       100 ms    53      0         250 ms
+      lobby-test LAG=200, 3 seats      200 ms    1 602   0         -
+      lobby-test, 3 seats              0         1 600   0         -
       first lagged run (before 4)      200 ms    1 724   14        -
 
     The 6d replay: 60 of 60 after the refactor. Tests: 37 pass

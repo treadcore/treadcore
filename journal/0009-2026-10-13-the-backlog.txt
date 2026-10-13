@@ -32,7 +32,7 @@ ABSTRACT
     (the strike is the kill) answers itself. Tank speed 2.5 was tried
     and rejected: inside the noise, and the four-bot complaint was of
     a map that no longer exists. Added: Retask, forest concealment as
-    Bolo had it, the three game types, the host's rtt in the HUD. 34
+    the prior art had it, the three game types, the host's rtt in the HUD. 34
     tests pass; wire version 9.
 
 INDEX TERMS
@@ -96,7 +96,7 @@ III. METHOD
       VIS-02 as written,       halved radius only    cover against the
       2 x 2 block, 3 tiles                           air is the oldest
                                                      counter to it
-      game types as what a     Bolo's base-count     one enum, three
+      game types as what a     the prior art's base-count     one enum, three
       tank starts with         shell formula         numbers; the rest
                                                      is the depots'
       old replays read and     fail to parse on the  a replay that
@@ -223,7 +223,7 @@ REFERENCES
         was written.
     [2] Journal 0008, <0008.20261012@treadcore.org>.
     [3] documentation/ROADMAP.md, "Backlog: what the first traces
-        found"; documentation/SPEC-WINBOLO-1.14.md, VIS-02, PIL-07,
+        found"; documentation/SPEC-PRIOR-ART-1.14.md, VIS-02, PIL-07,
         BAS-07 to BAS-09, section 11.
 
 APPENDIX A. COMMITS

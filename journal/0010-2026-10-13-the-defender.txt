@@ -43,7 +43,7 @@ INDEX TERMS
 
 I. INTRODUCTION
 
-    The roadmap's last step on the Bolo track: a brain that uses
+    The roadmap's last step on the prior art track: a brain that uses
     everything 3, 6c, 6 and 6b built. The brief wanted a defensive
     game; the question was whether a bot playing it holds a depot
     against bots that do not, and what kills whom.
@@ -214,7 +214,7 @@ REFERENCES
     [2] Journal 0005, <0005.20261012@treadcore.org>: the Fortifier
         and fortification_pays.
     [3] documentation/ROADMAP.md step 6d and backlog item 14;
-        documentation/SPEC-WINBOLO-1.14.md section 16, BRN-12.
+        documentation/SPEC-PRIOR-ART-1.14.md section 16, BRN-12.
 
 APPENDIX A. COMMITS
 

@@ -186,7 +186,7 @@ typed twice.
 
 `map.rs`: a `Vec<u8>` of terrain, row-major, with `Terrain::from_u8`,
 sized by the map (`w`, `h`): the generator makes 128 x 128, a map file
-declares its own `size`, and the converted Bolo maps are 256 x 256. The
+declares its own `size`, and the converted prior-art maps are 256 x 256. The
 map is also a text file (`to_text`, `from_text`, documentation/MAPS.md):
 one glyph per tile and then the places, which any text editor edits.
 
@@ -356,7 +356,7 @@ pub trait Brain: Send {
 }
 ```
 
-This is Bolo's Brain. Observation in, commands out, and the world
+This is the prior art's Brain. Observation in, commands out, and the world
 validates the commands exactly as a human's. A Brain cannot cheat
 because it has no more access than a keyboard: `Observation` is what
 the host already filtered.

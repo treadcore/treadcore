@@ -7,7 +7,7 @@ Message-ID: <0002.20261012@treadcore.org>
 In-Reply-To: <0001.20261012@treadcore.org>
 Organization: treadcore.org
 Keywords: step-zero, udp, pathfinding, rule-bot, sixteen-players,
-          governance, release-cycle, bolo-builder
+          governance, release-cycle, prior-art-builder
 X-Session: the same Alpine 3.24.1 aarch64 guest under UTM/QEMU, now
            with 8192 MB; Hyprland/Wayland; Claude Code (Claude Fable
            5.1) as the pair; Paul directing in four messages
@@ -38,7 +38,7 @@ ABSTRACT
     brief grew to sixteen players, mostly defenders, with alliances
     and betrayal; sixteen seats were built the same evening and
     sixteen bots fight a traced match in under a second. A requirement
-    that the Pillboys follow Bolo's builder was checked and written
+    that the Pillboys follow the prior art's builder was checked and written
     into the design. The organization's rules (how to join, propose,
     review, leave, be recognised) and the release cycle were written
     down before a second contributor exists. The window does not open
@@ -48,7 +48,7 @@ INDEX TERMS
 
     step zero, cargo test, UDP datagram truncation, A* routing,
     rule-based doctrine, sixteen players, release candidates,
-    governance, Developer Certificate of Origin, Bolo builder.
+    governance, Developer Certificate of Origin, the prior art builder.
 
 
 I. INTRODUCTION
@@ -64,7 +64,7 @@ I. INTRODUCTION
     enlarging it: read everything and recommend (the start); write the
     roadmap's backlog, define the implementation and release cycle,
     and set up the organization with its processes; take a pasted
-    audit of a Bolo tutorial as the requirement for the Pillboys and
+    audit of a prior-art tutorial as the requirement for the Pillboys and
     report on it; and change the game to sixteen players, most of them
     base-defence brains, with alliances, friendly fire off inside
     them, and betrayals under a three-way balance. The session did the
@@ -126,7 +126,7 @@ III. METHOD
       brake to a crawl for        4-connected A* with   diagonals look
       corners; re-plan when       axis-aligned legs     right; the brake
       blocked                                           is a momentum
-                                                        model Bolo also
+                                                        model the prior art also
                                                         has
       sixteen seats the default   keep four, allow      Paul: "abso-
       everywhere                  sixteen               lutely"; a 4-bot
@@ -149,11 +149,11 @@ III. METHOD
       playtesters, one not a      word                  for "user
       maintainer                                        testing
                                                         confirmed"
-      Pillboys = Bolo's builder,  a unit the player     the tank is the
+      Pillboys = the prior art's builder,  a unit the player     the tank is the
       an order the tank gives     drives                one thing
                                                         driven; the
                                                         audit says that
-                                                        is Bolo too
+                                                        is the prior art too
       write the vision            start coding it       roadmap rule:
       (defenders, alliances,                            replay and hash
       betrayal) as roadmap                              first
@@ -264,11 +264,11 @@ IV. CHRONOLOGY
     17. Six commits (Appendix A), this entry, CHANGELOG.
 
     18. After the push, Paul sent a clean-room functional
-        specification of WinBolo/LinBolo 1.14 (256 requirements with
+        specification of the prior art, version 1.14 (256 requirements with
         IDs, sources and basis codes, by @Micro) with the instruction
         to write it into a document, keep none of the Macintosh
         AppleTalk networking, and have the backlog reference it.
-        Written as documentation/SPEC-WINBOLO-1.14.md with a preface
+        Written as documentation/SPEC-PRIOR-ART-1.14.md with a preface
         mapping each of its sections to adopted, adapted or not
         adopted; its networking section is reference only. ROADMAP
         steps 3, 5, 6, 6b, 6c, 6d cite its IDs; the backlog gained
@@ -443,7 +443,7 @@ VIII. NEXT STEPS
 ACKNOWLEDGMENTS
 
     Paul, for the direction, the number sixteen, and the Pillboys. The
-    author of the Bolo tutorial audit, whose corrections became the
+    author of the prior-art tutorial audit, whose corrections became the
     Pillboy requirement. Stuart Cheshire, again.
 
 REFERENCES
@@ -451,7 +451,7 @@ REFERENCES
     [1] Journal 0001, <0001.20261012@treadcore.org>, this directory.
     [2] documentation/ROADMAP.md, step 0 and the backlog.
     [3] documentation/LAB-REPORT-PILLBOYS.md and the audit it cites:
-        the Bolo manual at dialup.party/~jolo/bolo/guides/bolomanual/
+        the prior-art manual as reproduced online
         [Accessed via the pasted audit, 12-Oct-2026].
     [4] Linux recvfrom(2): "If a message is too long to fit in the
         supplied buffer, excess bytes may be discarded depending on
@@ -471,13 +471,13 @@ APPENDIX A. COMMITS
     94e0a90  brain: firing position, recon over the objective, patience
              per bot
     ac5eb19  docs: the Pillboys decision, the backlog, sixteen tanks;
-             lab report on the Bolo audit
+             lab report on the prior art audit
     e02e912  governance: how the organization is run; the release cycle;
              GitHub templates
     c5cf40c  build: shellcheck directives for the sourced common.sh
     f0a7c5b  journal: 0002, proving the world; CHANGELOG
     0ac561d  journal: 0002 wrapped to 72 columns
-    (next)   docs: the WinBolo 1.14 functional specification; the
+    (next)   docs: The prior art, version 1.14 functional specification; the
              roadmap cites it
 
 
@@ -487,7 +487,7 @@ APPENDIX B. ARTIFACTS
                     passes) and debug-20261012-18*.log (sixteen bots),
                     with trace-*.jsonl beside each (local, gitignored)
     Lobby logs      build/logs/lobby-20261012-18*-peer{1,2,3,4}.log
-    Documents       documentation/{GOVERNANCE,RELEASE,SPEC-WINBOLO-1.14,
+    Documents       documentation/{GOVERNANCE,RELEASE,SPEC-PRIOR-ART-1.14,
                     LAB-REPORT-PILLBOYS}.md (new); DESIGN, CONCEPT,
                     ROADMAP,
                     PROTOCOL, BUILD, LAB-REPORT (changed)

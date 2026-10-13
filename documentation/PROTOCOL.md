@@ -36,7 +36,7 @@ winner is the **connectivity route**: each peer's next hop toward the
 host is its parent in that tree, the host itself when the link is
 direct, a neighbour when it is not.
 
-This is Bolo's ring, generalised: a ring forwards everything through
+This is the prior art's ring, generalised: a ring forwards everything through
 everyone; a tree forwards only for the peers that need it, and the host
 is the peer the tree is shortest from.
 

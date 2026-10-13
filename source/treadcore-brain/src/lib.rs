@@ -1,6 +1,6 @@
 //! treadcore-brain -- the controller interface, and one controller.
 //!
-//! Bolo called them Brains: a program that takes the tank's place at the
+//! The prior art called them Brains: a program that takes the tank's place at the
 //! controls, given only what the tank can see. Same idea here. A Brain
 //! gets an `Observation` -- the player's view of the world, filtered by
 //! the host, nothing a human client does not also get -- and returns
@@ -101,7 +101,7 @@ pub struct RuleBot {
     pub pillboys: bool,
     /// What the world refused and why it will stay refused: pillboxes
     /// the squad cannot reach, and tiles the tank cannot drive to. On an
-    /// island map (the converted Bolo maps) half the objectives are
+    /// island map (the converted prior-art maps) half the objectives are
     /// across water, and a bot that forgot was refused four times a
     /// second for the whole match.
     unreachable_pillboxes: Vec<EntityId>,

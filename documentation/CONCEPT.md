@@ -3,7 +3,7 @@
 This document goes back to the original brief for the game, sets out
 what it asked for, and shows how the specification that came out of it
 is an improvement on the base concept it started from: the multiplayer
-tank battle, as Bolo defined it in 1987, carried forward to the
+tank battle, as the prior art defined it in 1987, carried forward to the
 battlefield that the war in Ukraine has produced.
 
 ## 1. The brief
@@ -26,7 +26,7 @@ The brief asked for:
 6. Rust, with Bevy; a build system of bash scripts called from
    Makefiles, with `make configure`, `make build`, and `make debug`
    capturing verbose logs for AI-assisted development and debugging.
-7. A reference document on Bolo for the Macintosh: its interface,
+7. A reference document on the prior art for the Macintosh: its interface,
    AppleTalk networking (a ring of peers forwarding to their
    neighbour, with new players placed to minimise ring latency), its
    map editor, its tutorial, and its Brains (external programs that
@@ -35,9 +35,9 @@ The brief asked for:
 Everything in the specification traces to one of those seven lines.
 The rest of this document takes them in turn.
 
-## 2. The base concept: Bolo
+## 2. The base concept: The prior art
 
-Bolo's enduring idea is not tank combat. It is that a world can be
+The prior art's enduring idea is not tank combat. It is that a world can be
 simultaneously playable, editable, networked and programmable: a
 shared, mutable terrain; many independent machines in one game; and a
 controller interface open to programs as well as people. Its network
@@ -76,7 +76,7 @@ The reporting gathered in RESEARCH.md says four things plainly:
 ## 4. The new mobile command: the tank with tech deployment
 
 The specification's one central decision follows from those four
-points. In Bolo the tank is a vehicle you drive. In treadcore the tank
+points. In the prior art the tank is a vehicle you drive. In treadcore the tank
 is a **mobile command**: a platform that deploys technology around
 itself and is only as safe as what it has deployed. Its systems:
 
@@ -105,13 +105,13 @@ recon the tank's main vulnerability.
 
 ## 5. Why this is an improvement on the base concept
 
-**The combat has a second layer.** Bolo's fight is on the ground.
+**The combat has a second layer.** The prior art's fight is on the ground.
 treadcore's is on the ground and in a ring of air above each tank, and
 the two layers interact through one number (the link) and one weapon
 (the shell). A player is managing an airspace, a supply, and a gun at
 once, and every one of them is visible on the overlay.
 
-**The network is the same idea done properly.** Bolo's ring forwarded
+**The network is the same idea done properly.** The prior art's ring forwarded
 every packet through every peer. treadcore's clients measure the
 latency between every pair, publish the rows, and run the same pure
 election function on the same matrix: the host is the peer whose worst
@@ -121,7 +121,7 @@ only that peer pays the relay. No referee, no setup, and the "ring"
 only exists where it is needed. That is the connectivity route the
 brief asked for.
 
-**The Brain interface is the client interface.** Bolo's Brains were an
+**The Brain interface is the client interface.** The prior art's Brains were an
 add-on API. In treadcore the observation a bot thinks from is the
 observation the window draws, filtered by the host the same way; a bot
 cannot see or do anything a keyboard cannot. An external program plays
@@ -142,7 +142,7 @@ a model of a real doctrine shift, not a reskin.
 
 - Alliances and team play. The seat model supports four independent
   players; teams are a rules change, not an architecture change.
-- Map editing and map files. Bolo's editor was half its longevity.
+- Map editing and map files. The prior art's editor was half its longevity.
   treadcore generates from a seed for now; the map is a `Vec<u8>` and
   a file format is a small step.
 - Client-side prediction. Snapshots are interpolated forward by wall
@@ -155,7 +155,7 @@ a model of a real doctrine shift, not a reskin.
 ## 7. Where the vision goes: Pillboys and pillboxes
 
 The brief grew by evening. The original idea was a new take on the RTS
-territory game Bolo defined: capture pillboxes, build, repair, hold
+territory game the prior art defined: capture pillboxes, build, repair, hold
 ground. What changes is where it is done from. The tank is the control
 centre, and it deploys two kinds of technology:
 
@@ -165,7 +165,7 @@ centre, and it deploys two kinds of technology:
   things a tank cannot do from inside: capture a pillbox, repair it,
   build an emplacement, fix the hull in the field.
 
-Pillboxes return as Bolo had them, stationary automated defences, with
+Pillboxes return as the prior art had them, stationary automated defences, with
 one addition: in this world they engage drones too, so a captured
 pillbox extends the bubble over ground the tank is not on. Territory is
 the ground pillboxes cover; building is roads, bridges and
@@ -194,7 +194,7 @@ to be read.
 ## 9. The brief grows again: sixteen tanks, most of them digging in
 
 Added the evening of 12 October 2026, after the first traces ran.
-Paul's direction, in substance: sixteen players, Bolo's number. Most
+Paul's direction, in substance: sixteen players, the prior art's number. Most
 of them are the simplest possible defensive brains: they gather trees
 for wall material, build a defensive maze around a pillbox and a
 recharge depot so that the pillbox gets the kills, ring themselves
@@ -221,7 +221,7 @@ the point of having built the world first:
   (DESIGN.md, "Pillboys and pillboxes"): `Build { what, at }` grows to
   cover wall, road, mine and pillbox, each costing material the tank
   carries, and material is harvested from forest by the same squad.
-  Mines are Bolo's, with one of this game's rules on top: a strike
+  Mines are the prior art's, with one of this game's rules on top: a strike
   drone over a minefield is not stopped by it, so a moat is a defence
   against tanks and Pillboys, not against the air.
 - **Alliances** are roadmap step 6 (teams) with two rules named: no

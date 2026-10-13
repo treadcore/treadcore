@@ -1,10 +1,9 @@
-# WinBolo / LinBolo 1.14: clean-room functional specification
+# The prior art, version 1.14: clean-room functional specification
 
 Received 12 October 2026 (author: @Micro) and kept here as the
-reference specification for the Bolo-derived layer of treadcore:
+reference specification for the prior-art-derived layer of treadcore:
 builder, pillboxes, refuelling bases, mines, terrain, alliances,
-visibility and game lifecycle. It restates the behaviour of WinBolo /
-LinBolo 1.14 as observable from its user manual, in new words, so that
+visibility and game lifecycle. It restates the behaviour of the prior art, version 1.14 as observable from its user manual, in new words, so that
 a team that has never seen the program or its code can build a
 compatible game. treadcore does not build a compatible game; it builds
 a descendant. The preface says which parts it takes.
@@ -22,13 +21,13 @@ a descendant. The preface says which parts it takes.
 
 | 8 Pillboxes | **adopted**: PIL-01 to PIL-05, PIL-07 to PIL-17; added: pillboxes engage drones at short range; pillboxes hold shells (BAS-01 shape) | ROADMAP 3, 6c |
 | 9 Refuelling bases | **adopted** as depots, already in: BAS-02, BAS-04 to BAS-06, BAS-11; BAS-07 to BAS-09 (armour as the gate) not adopted, decided 13 October 2026: the depot is time-gated, the pillbox shell-gated (ROADMAP backlog 9) | DESIGN.md "Depots" |
-| 10 Visibility | **adopted**: VIS-02 as written (a 2 x 2 block of forest conceals a tank beyond 3 tiles) and PIL-07 with it, beside treadcore's halved vision into single trees; drones add sensors Bolo did not have | DESIGN.md "The world" |
-| 10 Alliances | **adopted** (steps 6 and 6b, done): ALL-01 to ALL-06, ALL-08 to ALL-10 as written; ALL-07 falls out of per-player ownership; treadcore adds proposals to defect, recruit, swap and merge, under a three-way rule Bolo did not have | ROADMAP 6, 6b |
+| 10 Visibility | **adopted**: VIS-02 as written (a 2 x 2 block of forest conceals a tank beyond 3 tiles) and PIL-07 with it, beside treadcore's halved vision into single trees; drones add sensors the prior art did not have | DESIGN.md "The world" |
+| 10 Alliances | **adopted** (steps 6 and 6b, done): ALL-01 to ALL-06, ALL-08 to ALL-10 as written; ALL-07 falls out of per-player ownership; treadcore adds proposals to defect, recruit, swap and merge, under a three-way rule the prior art did not have | ROADMAP 6, 6b |
 
 
 | 10 Ownership | adopted: OWN-01 to OWN-03 | ROADMAP 3, 6 |
 | 11 Game setup and lifecycle | adapted: the three game types are `Scenario.game_type`, what a tank starts with (open, tournament, strict); start delay, time limit, player limit 16 (GAM-16) are the shape of `Scenario`; tutorial not planned; rejoin (GAM-12) deferred to roadmap steps 7 and 8 | ROADMAP backlog |
-| 12 Networking | **not adopted**. treadcore has no dedicated server as the only option, no tracker, no statistics site, and no TCP; peers elect a host from a measured latency matrix over UDP (PROTOCOL.md). NET-02 and NET-03 (authoritative server, client prediction) are treadcore's too, by other means: the host is authoritative and a client predicts its own tank and yields to every snapshot (ROADMAP 4, PROTOCOL.md Prediction). Recorded for reference only. The Macintosh Bolo AppleTalk ring is not in this specification and not in treadcore. | PROTOCOL.md |
+| 12 Networking | **not adopted**. treadcore has no dedicated server as the only option, no tracker, no statistics site, and no TCP; peers elect a host from a measured latency matrix over UDP (PROTOCOL.md). NET-02 and NET-03 (authoritative server, client prediction) are treadcore's too, by other means: the host is authoritative and a client predicts its own tank and yields to every snapshot (ROADMAP 4, PROTOCOL.md Prediction). Recorded for reference only. The the Macintosh-era prior art AppleTalk ring is not in this specification and not in treadcore. | PROTOCOL.md |
 | 13 to 15 Window, dialogs, menus | not adopted; treadcore's HUD is the telemetry overlay. UI-10 (pillbox view) and the colour code (red hostile, green friendly) are worth taking | client |
 | 16 Brains | adopted in principle: treadcore's Brain is the client's own interface (observation in, commands out); BRN-12 ("advantage") is `Scenario.advantage`, `--advantage` (step 6d); BRN-05 (a brain as stand-in or ally) is how bot seats work | treadcore-brain |
 | 17 Dedicated server | not adopted as specified; `treadcore-server --listen` (ROADMAP 8) is the analogue; console commands lock/unlock/savemap/say/info are a good list | ROADMAP 8 |
@@ -43,14 +42,13 @@ except its formatting into tables and the removal of nothing.
 
 ## 1. About this spec
 
-This spec restates the behaviour of WinBolo/LinBolo 1.14 that is
+This spec restates the behaviour of the prior art, version 1.14 that is
 observable from its user manual, so a team that has never seen the
 program or its code can build a compatible game.
 
-- **Single source.** Everything here comes from the Lin/WinBolo
-  Manual, version 1.14 (John Morrison, 49 pages), including its
+- **Single source.** Everything here comes from the prior art's manual, version 1.14 (John Morrison, 49 pages), including its
   screenshots and version history. No binary, source code, sample code
-  or other Bolo document was consulted.
+  or other prior-art document was consulted.
 - **Original wording.** Behaviour is described in new words. Only
   interface literals are kept exact: file names, command-line flags,
   menu and dialog labels, and default values.
@@ -83,18 +81,18 @@ runs inside one client and controls only that client's tank.
 
 | component | role | source |
 | --- | --- | --- |
-| Game client (WinBolo.exe, Linbolo) | Draws the game, takes input and hosts every dialog; can also start a server inside itself | §2.6, §2.7, v1.14 |
-| Dedicated server (WinBoloDS.exe, Linbolods) | Hosts a game from the command line with no graphics and holds the master game state | §3.3, §3.6 |
+| Game client (the Windows and Linux client programs) | Draws the game, takes input and hosts every dialog; can also start a server inside itself | §2.6, §2.7, v1.14 |
+| Dedicated server (the Windows and Linux server programs) | Hosts a game from the command line with no graphics and holds the master game state | §3.3, §3.6 |
 | Internet tracker | Outside directory that hosts notify and clients query for running games | §3.1.7, §3.1.8 |
-| WinBolo.net | Outside statistics site that receives game results when players opt in | §4 |
+| The prior art.net | Outside statistics site that receives game results when players opt in | §4 |
 | Brains | Plug-in AI modules the client loads to drive or assist a tank | §2.10 |
-| Sounds file (BoloSounds.bsd) | Holds the built-in sound effects | §2.6 |
+| Sounds file (.bsd) | Holds the built-in sound effects | §2.6 |
 
 | ID | requirement | source | basis |
 | --- | --- | --- | --- |
 | SYS-01 | A game supports up to 16 players, each on a separate computer with a private view of the world. | §2.1 | S |
 | SYS-02 | Windows and Linux builds of the client and server join the same games. | §2.2, §2.8 | S |
-| SYS-03 | Network compatibility with Macintosh Bolo is not provided. | §2.8 | S |
+| SYS-03 | Network compatibility with the Macintosh-era prior art is not provided. | §2.8 | S |
 | SYS-04 | Play is real time with all players acting at once. There is no pause function. | §2.10, §6.4 | S |
 | SYS-05 | The client can host a game itself without launching a separate server program. | v1.14 | H |
 | SYS-06 | The client needs a display of at least 16-bit colour and refuses to run in a palette mode. | §2.3, §3.5.1 | S |
@@ -512,7 +510,7 @@ is not adopted; see the preface.)*
 | NET-14 | If two players try to join at the same moment with the same name, only one succeeds. | v1.02 | H |
 | NET-15 | A joining client downloads the map and game state before play. | §3.1.6, v1.01 | S |
 | NET-16 | A password-protected game prompts for the password. A wrong one returns the player to the join screen. | §3.1.10 | S |
-| NET-17 | A winbolo:// URL launches the client and joins the game it names. | v1.11 | H |
+| NET-17 | A URL in the program's own scheme launches the client and joins the game it names. | v1.11 | H |
 | NET-18 | The game looks up each player's host name by reverse DNS and shows it when available. | v1.09 | H |
 
 ### Locking
@@ -532,19 +530,19 @@ is not adopted; see the preface.)*
 | NET-24 | A game started from the LAN finder never notifies the tracker. | §3.1.8 | S |
 | NET-25 | With Use Tracker on, a host notifies the tracker periodically so the game appears in the Internet finder. | §3.1.8 | S |
 | NET-26 | The Internet finder queries the configured tracker for the game list even when Use Tracker is off. | §3.1.8 | S |
-| NET-27 | The default tracker is tracker.winbolo.com, port 50000. | §3.1.8, §3.3 | F |
+| NET-27 | The default tracker is the publisher's tracker host, port 50000. | §3.1.8, §3.3 | F |
 | NET-28 | For each listed game the finder shows server address, server port, version, map name, number of players, game type, free bases, free pillboxes, hidden mines, password, and brains (no, yes, or yes with advantage). | §3.1.7 | F |
 | NET-29 | The tracker supplies a message of the day that the finder can display. | §3.1.7 | S |
 | NET-30 | A tracker reply is awaited for up to 10 seconds. | v1.03 | H |
 | NET-31 | A tracker host name is resolved before the game starts. If the lookup fails, a warning is shown and tracker notification is disabled for that game. | §3.5.1, §3.6 | S |
 | NET-32 | In a game-information packet, a server address of 0.0.0.0 means the packet came from the server itself, and the receiver uses the packet's source address. | v1.01 | H |
 
-### WinBolo.net
+### The prior art.net
 
 | ID | requirement | source | basis |
 | --- | --- | --- | --- |
-| NET-33 | Reporting to WinBolo.net is optional per player and per game. The player sets a WinBolo.net password and an on/off switch before entering a game. | §3.1.5, §4 | S |
-| NET-34 | A server can disable WinBolo.net reporting for its game. | §3.3 | S |
+| NET-33 | Reporting to the publisher's net service is optional per player and per game. The player sets a net-service password and an on/off switch before entering a game. | §3.1.5, §4 | S |
+| NET-34 | A server can disable the publisher's net service reporting for its game. | §3.3 | S |
 | NET-35 | A participating game reports its statistics, lock status and version. | §3.3, v1.14 | S |
 | NET-36 | Participating players are marked with an asterisk beside their names. | v1.13 | H |
 
@@ -571,7 +569,7 @@ throughout: red for hostile, green for friendly.
 | UI-04 | Below the base icons, three bars show the shells, mines and armour held by the nearest friendly base, when one is nearby. | §2.9.11 | S |
 | UI-05 | Beside them, four bars show the tank's own shells, mines, armour and trees. | §2.9.11 | S |
 | UI-06 | A message pane shows incoming messages and scrolls. | §3.2.2, v1.09 | S |
-| UI-07 | A menu bar offers File, Edit, WinBolo, Players, Brains and Help (section 15). | §3.2 | S |
+| UI-07 | A menu bar offers File, Edit, the prior art, Players, Brains and Help (section 15). | §3.2 | S |
 
 ### Colour and symbol code
 
@@ -651,10 +649,10 @@ F); behaviour comes from the text.
 
 | ID | window | controls | behaviour | source |
 | --- | --- | --- | --- | --- |
-| DLG-01 | Network Selection | One choice of Tutorial, Practice (single player), TCP/IP, Local Network (broadcast search) or Internet (tracker search). Buttons WinBolo.net, Skins, Languages, Help, OK, Quit. A "Skip this Dialog Next Time" tick box. | Shown at start-up and after File > New. OK goes on: Tutorial starts play, Practice opens Game Setup, TCP/IP opens UDP Setup, the other two open the game finder. Help opens the manual. Quit exits. | §3.1.2 |
+| DLG-01 | Network Selection | One choice of Tutorial, Practice (single player), TCP/IP, Local Network (broadcast search) or Internet (tracker search). Buttons the publisher's net service, Skins, Languages, Help, OK, Quit. A "Skip this Dialog Next Time" tick box. | Shown at start-up and after File > New. OK goes on: Tutorial starts play, Practice opens Game Setup, TCP/IP opens UDP Setup, the other two open the game finder. Help opens the manual. Quit exits. | §3.1.2 |
 | DLG-02 | Language Select | List of language sets. Panel with the selected set's name, author and notes. OK, Cancel. | Lists English (default) plus each language file found. Text missing from a set falls back to English. | §3.1.3 |
 | DLG-03 | Skin Selection | List of skins headed by "No Skin (Default)". Panel with name, author and notes. OK, Cancel. | Items missing from a skin fall back to the built-in graphics and sounds. | §3.1.4 |
-| DLG-04 | WinBolo.net Settings | Password. Participation on or off. | Applies to games entered afterwards (NET-33). | §3.1.5 |
+| DLG-04 | The prior art.net Settings | Password. Participation on or off. | Applies to games entered afterwards (NET-33). | §3.1.5 |
 | DLG-05 | Game Setup | Choose Map button with the current map's name. Three game-type choices. Allow Hidden Mines. Allow Computer Tanks, with "and give them an advantage". Game Password and its field. Game start delay in seconds. Game time limit in minutes. OK, Cancel. | Shown when starting any new game. Options as in section 11. | §3.1.6 |
 | DLG-06 | Open Map | File chooser with a preview of the selected map (Windows only). | Very long paths and file names are accepted. | v1.06, v1.03 |
 | DLG-07 | Game Finder, LAN and Internet | List of games. Selected Game Information panel (fields in NET-28). Status line. Buttons Tracker Setup, Join By Address, Join, Set Player Name, Refresh, Rejoin, Message of the Day, New, Cancel. | Refresh starts the search and the status line reports progress. Selecting a game fills the panel. Join By Address opens UDP Setup and carries the tracker details across. | §3.1.7, v1.06 |
@@ -690,20 +688,20 @@ The menu bar has six menus, and every item in the manual's reference
 | Edit | Tank Labels | Choice | Sets the length of name labels beside tanks. |
 | Edit | Pillbox Labels | Toggle | Draws labels on pillboxes. |
 | Edit | Base Labels | Toggle | Draws labels on bases. |
-| WinBolo | Allow New Players | Toggle | This player's vote on the client lock (NET-19). |
-| WinBolo | Allow Alliance Request | Toggle | Accepts or ignores alliance requests (ALL-05). |
-| WinBolo | Set Keys | Command | Opens DLG-15. |
-| WinBolo | Change Player Name | Command | Opens DLG-17. |
-| WinBolo | Sound Effects | Toggle | Turns sound effects on or off. |
-| WinBolo | Background Sound | Toggle | Plays sound while the program is not the active application. Windows only. |
-| WinBolo | ISA Sound Card | Toggle | Performance aid for old sound hardware. Windows only, on by default, unavailable when sound could not start (§3.6). |
-| WinBolo | Newswire Messages | Toggle | Shows or hides game event messages. |
-| WinBolo | Assistant Messages | Toggle | Shows or hides builder messages. |
-| WinBolo | AI Brain Messages | Toggle | Shows or hides messages from the active brain. |
-| WinBolo | Network Status Messages | Toggle | Shows or hides server notices. On by default (v1.03). |
-| WinBolo | Network Debug Messages | Toggle | Shows or hides network diagnostics. |
-| WinBolo | Request Alliance | Command | Sends a request to the players marked on the Players menu (ALL-02). Unavailable while in an alliance. |
-| WinBolo | Leave Alliance | Command | Leaves the current alliance (ALL-06). Unavailable while not in one. |
+| The prior art | Allow New Players | Toggle | This player's vote on the client lock (NET-19). |
+| The prior art | Allow Alliance Request | Toggle | Accepts or ignores alliance requests (ALL-05). |
+| The prior art | Set Keys | Command | Opens DLG-15. |
+| The prior art | Change Player Name | Command | Opens DLG-17. |
+| The prior art | Sound Effects | Toggle | Turns sound effects on or off. |
+| The prior art | Background Sound | Toggle | Plays sound while the program is not the active application. Windows only. |
+| The prior art | ISA Sound Card | Toggle | Performance aid for old sound hardware. Windows only, on by default, unavailable when sound could not start (§3.6). |
+| The prior art | Newswire Messages | Toggle | Shows or hides game event messages. |
+| The prior art | Assistant Messages | Toggle | Shows or hides builder messages. |
+| The prior art | AI Brain Messages | Toggle | Shows or hides messages from the active brain. |
+| The prior art | Network Status Messages | Toggle | Shows or hides server notices. On by default (v1.03). |
+| The prior art | Network Debug Messages | Toggle | Shows or hides network diagnostics. |
+| The prior art | Request Alliance | Command | Sends a request to the players marked on the Players menu (ALL-02). Unavailable while in an alliance. |
+| The prior art | Leave Alliance | Command | Leaves the current alliance (ALL-06). Unavailable while not in one. |
 | Players | Send Message | Command | Opens DLG-16. |
 | Players | Select All | Command | Marks every player. |
 | Players | Select None | Command | Clears all marks. |
@@ -728,7 +726,7 @@ source.
 
 | ID | requirement | source | basis |
 | --- | --- | --- | --- |
-| BRN-01 | Brains are found at start-up in the Brains folder beside the program and listed on the Brains menu. On Linux a brains folder inside .linbolo in the user's home directory is searched as well. | §2.10, §3.4 | S |
+| BRN-01 | Brains are found at start-up in the Brains folder beside the program and listed on the Brains menu. On Linux a brains folder inside a dot-folder in the user's home directory is searched as well. | §2.10, §3.4 | S |
 | BRN-02 | A missing Brains folder produces a non-fatal warning and no brains are loaded. | §3.5.1 | S |
 | BRN-03 | One client runs at most one brain at a time. | §2.10 | S |
 | BRN-04 | A brain can be started only in a game that allows computer tanks. | §3.1.6 | S |
@@ -768,7 +766,7 @@ signals (§3.3).
 | -logfile | File name | No | Screen | Writes server output to the file instead of the screen. |
 | -quiet | None | No | Off | No screen output and no keyboard input. |
 | -noinput | None | No | Off | No keyboard input; output unchanged. |
-| -nowinbolonet | None | No | Off | Does not report the game to WinBolo.net. |
+| (opt-out flag) | None | No | Off | Does not report the game to the publisher's net service. |
 
 | ID | requirement | source | basis |
 | --- | --- | --- | --- |
@@ -809,16 +807,16 @@ From §2.6, §2.7 and §3.4.
 
 | item | Windows | Linux | purpose |
 | --- | --- | --- | --- |
-| Client | WinBolo.exe | Linbolo | Game program |
-| Server | WinBoloDS.exe | Linbolods | Dedicated server |
-| Sounds file | BoloSounds.bsd | BoloSounds.bsd | Built-in sound effects |
+| Client | the Windows client program | the Linux client program | Game program |
+| Server | the Windows server program | the Linux server program | Dedicated server |
+| Sounds file | a .bsd file | a .bsd file | Built-in sound effects |
 | Brains folder | Brains | brains | Plug-in brains |
 | Languages folder | Languages | None | Language sets |
 | Maps folder | Maps | maps | Map files |
 | Sound override folder | Sounds | None | Replacement sound files |
 | Manual folder | Manual | manual | The manual as a PDF, opened by Help |
 | Sample code folder | Sample Code | sample_code | Material for brain and tool authors |
-| Per-user folder | None | .linbolo in the home directory | Preferences and a second brains folder |
+| Per-user folder | None | a dot-folder in the home directory | Preferences and a second brains folder |
 | Display font | System font Courier | cour.ttf in the program folder | Required; the program will not run without it |
 
 ### Sound events
@@ -878,7 +876,7 @@ There are 24 sound effects. Each file name below takes the extension
 | ID | requirement | source | basis |
 | --- | --- | --- | --- |
 | CUS-12 | Key bindings, options and menu settings persist in an ini-format preferences file. | v1.05 | H |
-| CUS-13 | On Linux, preferences live in .linbolo in the user's home directory, created on first run. | §3.4 | S |
+| CUS-13 | On Linux, preferences live in a dot-folder in the user's home directory, created on first run. | §3.4 | S |
 | CUS-14 | An unreadable preferences file is replaced with defaults and the player is told. | v1.01 | H |
 
 ## 19. Error and warning conditions
@@ -922,19 +920,19 @@ spec adopts.
 | 1 | Default key for laying a mine | Tab (§2.9.1, §2.9.9) | The Key Setup screenshot appears to show Shift (§3.1.14) | Tab. The screenshot is hard to read and may show a customised set-up. |
 | 2 | Gun range keys | "+" shortens the range and "9" lengthens it, in a sentence that looks damaged (§2.9.10) | The Key Setup screenshot shows "+" for increase and "-" for decrease (§3.1.14) | "+" longer, "-" shorter. |
 | 3 | Number of start modes | Six options (§3.1.2) | Five are listed, and five appear in the screenshot | Five (GAM-07). |
-| 4 | Extra buttons in Network Selection | "Two other buttons" (§3.1.2) | Four are then named: Language, WinBolo.net, Skins, Help | Four, as in DLG-01. |
+| 4 | Extra buttons in Network Selection | "Two other buttons" (§3.1.2) | Four are then named: Language, the publisher's net service, Skins, Help | Four, as in DLG-01. |
 | 5 | Server example, mines and brains | The example passes -ai yes -mines no (§3.3) | Its explanation says hidden mines are allowed and brains are not | The flag definitions win: brains allowed, hidden mines off. |
-| 6 | Server example, tracker host | tracker.winbolo.com:50000 in the command (§3.3) | "bolo.zoid.com on port 50000" in the explanation | tracker.winbolo.com, which matches the Tracker Config screenshot. |
+| 6 | Server example, tracker host | the publisher's tracker host:50000 in the command (§3.3) | "an older tracker host on port 50000" in the explanation | the publisher's tracker host, which matches the Tracker Config screenshot. |
 | 7 | Forest concealment | A tank must be completely enclosed by forest on all sides (§2.9.3) | Tanks hide in a 2 by 2 block of trees, down from 3 by 3, and stay visible within 3 squares (v1.01) | The later, more precise rule (VIS-02). |
 | 8 | Message flood limit | Send is disabled for a few seconds (§3.1.15) | One message per second (v1.03) | A floor of 1 second (UI-23); the exact figure is open. |
 | 9 | savemap | A command typed while the server runs (§3.3) | A "-savemap" server command, written like a flag (v1.13) | Console command. |
-| 10 | Name of the menu holding alliance commands | "Bolo" menu (§2.9.7, §3.6) | "WinBolo" menu (§3.2.3) | WinBolo. |
+| 10 | Name of the menu holding alliance commands | "the prior art" menu (§2.9.7, §3.6) | "the prior art" menu (§3.2.3) | The prior art. |
 | 11 | Alliance request switch | "Allow Alliance Request" (§3.2.3) | "Ignore Alliance Request" (v1.11) | Allow Alliance Request: same function, opposite sense. |
 | 12 | Base passability | Bases have a medium top speed (§2.9.3) | Enemy tanks cannot drive onto a base that has armour (§2.9.5) | Medium for tanks allowed on; a barrier to enemies until armour is gone (BAS-07). |
 | 13 | Binding a key | Click the box beside the action, then press the new key (§3.1.14) | Tick the action, then a small window asks for the key (§3.6) | Either interaction; the outcome in UI-18 is what matters. |
 | 14 | Client lock and server lock | A server lock overrides a client lock (§3.3) | The server cannot unlock a game the clients have locked (§3.3) | Two independent locks; joins need both open (NET-21). |
 | 15 | Forming a two-player alliance | Both players select Request Alliance (§2.9.7) | One request plus an acceptance forms an alliance (§2.9.7, §3.6) | One request and one acceptance are enough. |
-| 16 | Linux brains folders | The sentence naming them is damaged (§3.4) | A brains folder exists in both the program folder and .linbolo (§2.7, §3.4) | Both are searched (BRN-01). |
+| 16 | Linux brains folders | The sentence naming them is damaged (§3.4) | A brains folder exists in both the program folder and a dot-folder in the home directory (§2.7, §3.4) | Both are searched (BRN-01). |
 | 17 | Section numbers | Skins are cited as section 3.8, How to Play as 2.7 and Brains as 2.9 (§1.2, §2, §3.1.4) | In the body they are 3.9, 2.9 and 2.10 | Body numbering throughout this spec. |
 
 ## 21. Unspecified behaviour
@@ -960,8 +958,8 @@ treadcore needs becomes a constant with a sentence in `rules.rs`.)*
 | Visibility | Visual range. The radius meant by "nearby" for messages, sounds, quick-mine sighting and Select Nearby Tanks. |
 | Game end | What happens when one side holds every base or when time runs out, and whether a winner is declared. |
 | Maps | File format. World dimensions. How start squares, pillboxes and bases are encoded. The layout of Everard Island. |
-| Network | Packet formats and update rates. The TCP port. The LAN broadcast format. The tracker protocol. The winbolo:// URL syntax. The WinBolo.net reporting interface. How passwords travel. How rejoin identifies a player beyond the name. The anti-cheat rules. |
-| Files | Formats of BoloSounds.bsd, .wbl language sets and the preferences file. The arrangement of images inside skin.bmp. The size of screen.bmp. |
+| Network | Packet formats and update rates. The TCP port. The LAN broadcast format. The tracker protocol. The URL scheme's syntax. The prior art.net reporting interface. How passwords travel. How rejoin identifies a player beyond the name. The anti-cheat rules. |
+| Files | Formats of the .bsd sounds file, .wbl language sets and the preferences file. The arrangement of images inside skin.bmp. The size of screen.bmp. |
 | Brains | The whole plug-in interface beyond the fragments in section 16. |
 | Interface | Frame-rate and label-length choices. Exact window layout and sizes. Where Hide Main View lives. The tutorial script. Limits on name, password and message length. The default state of each toggle. |
 | Licensing | §2.4 sets terms for the original software. Whether they bear on a re-implementation is a legal question this spec does not answer. |
@@ -975,11 +973,11 @@ section 2.
 | manual section | spec sections |
 | --- | --- |
 | 1 Quick Start | 11, 14 |
-| 2.1 to 2.2 What Bolo and WinBolo are | 2 |
+| 2.1 to 2.2 What the prior art and the prior art are | 2 |
 | 2.3 System Requirements | 2, for reference only |
 | 2.4 Shareware Information, 2.5 History | Out of scope |
 | 2.6 to 2.7 Archive contents | 2, 18 |
-| 2.8 Compatibility with Macintosh Bolo | 2 |
+| 2.8 Compatibility with the Macintosh-era prior art | 2 |
 | 2.9.1 Driving the Tank | 5, 13 |
 | 2.9.2 Beginning the Game | 5 |
 | 2.9.3 Terrain | 4 |
@@ -997,10 +995,10 @@ section 2.
 | 3.3 Dedicated Server | 17 |
 | 3.4 Linux Specific Information | 2, 16, 18 |
 | 3.5 Error Messages | 19 |
-| 3.6 Differences Between Bolo and WinBolo | 10, 12, 13 |
+| 3.6 Differences Between the prior art and the prior art | 10, 12, 13 |
 | 3.7 Improving Performance | 13, 15 |
 | 3.8 to 3.9 Customised Sounds and Skins | 18 |
 | 3.10 to 3.12 Bug Reporting, Known Issues, Future Plans | Not behaviour; 3.12 is cited once in section 2 |
-| 4 WinBolo.net | 12 |
+| 4 the publisher's net service | 12 |
 | 5 Version History | Throughout, as basis H |
 | 6 Further Reference | Out of scope, except 6.4, cited in sections 5 and 10 |

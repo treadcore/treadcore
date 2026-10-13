@@ -13,7 +13,7 @@ the airspace in a ring around it, and what it does with its gun is reach
 out past that ring.
 
 treadcore is that vehicle as a game. One per player, up to sixteen
-players (Bolo's number; bots in the seats people do not take), an
+players (the prior art's number; bots in the seats people do not take), an
 island, depots, and a neutral swarm that comes in off the edge so the
 ring is never optional.
 
@@ -40,7 +40,7 @@ lets a trace be replayed, and what lets a bot be tested.
   forest), 12 from a recon drone, 4 from any other drone. The observation
   a client or Brain gets is the host's world with everything outside
   those discs removed.
-- Cover: a tank inside a 2 x 2 block of forest is concealed (Bolo's
+- Cover: a tank inside a 2 x 2 block of forest is concealed (the prior art's
   VIS-02): unseen by any eye, a recon's included, and untargeted by any
   pillbox (PIL-07), beyond 3 tiles. A shell at it is a blind shell.
   Tree cover against the air is the oldest counter to it, and the one
@@ -51,7 +51,7 @@ lets a trace be replayed, and what lets a bot be tested.
 100 armor, 24 shells, 600 fuel, a bay of 2 recon, 6 interceptors, 3
 strikes. Drives 4 tiles a second on open ground. Sees 7 tiles.
 
-What it starts with is the scenario's game type, Bolo's three: open
+What it starts with is the scenario's game type, the prior art's three: open
 (shells and material full), tournament (half the shells, no material),
 strict (neither: the first thing anyone does is drive to a depot).
 
@@ -159,17 +159,17 @@ recruit the owner of the nearest depot that is not its side's, and
 accepts any proposal from a player who has never hurt it; the three-way
 rule does the rest. `JsonBrain` runs an external program over
 stdin/stdout so a bot can be written in anything. With the scenario's
-`advantage` flag (Bolo's BRN-12) a bot seat is told where every tank
+`advantage` flag (the prior art's BRN-12) a bot seat is told where every tank
 is; it is a handicap for a human against bots and is never on in a
 proof.
 
 ## Pillboys and pillboxes: the decision
 
 Decided 12 October 2026, before any code (ROADMAP step 3 asks for
-that), and checked against the game this descends from. Bolo's
+that), and checked against the game this descends from. The prior art's
 *builder* leaves the tank, walks to the square the player clicked,
 does the work (build, repair, lay, harvest), and walks back; it can be
-killed while out, and the work needs material the tank carries. Bolo's
+killed while out, and the work needs material the tank carries. The prior art's
 *refuelling bases* are a different thing: the tank drives onto one to
 take on shells, mines and armor, and holds it by being there; there is
 no "repair the base" action. The audit of a tutorial that confused the
@@ -179,7 +179,7 @@ following in place.
 **Pillboys are the builder: an order the tank gives, not a unit the
 player drives.** The tank is the one thing the player drives; that is
 the premise. The squad is state on the tank, and the player's
-interaction is one order, the way a click in Bolo is one order to the
+interaction is one order, the way a click in the prior art is one order to the
 builder:
 
     Command::Deploy { task: PillboyTask }
@@ -202,7 +202,7 @@ touches a depot. `Repair { target }` is for pillboxes, and later for
 the tank's own hull in the field (slower than a depot, at the cost of
 the squad's exposure).
 
-**Pillboxes are Bolo's, with one addition.** Stationary, owned or
+**Pillboxes are the prior art's, with one addition.** Stationary, owned or
 neutral, with health; a gun that engages enemy tanks within
 `PILLBOX_RANGE` and, in this world, enemy drones within a shorter
 `PILLBOX_AIR_RANGE`, with the same kill-probability shape as an
@@ -215,9 +215,9 @@ captured pillbox extends the bubble over ground the tank is not on.
 
 **What this does not change.** Drone and shell mechanics; the gun's
 indirect and direct modes (the aim point is already a map coordinate,
-which is Bolo's range cursor generalised); the tank's movement model
+which is the prior art's range cursor generalised); the tank's movement model
 (acceleration, terrain-limited speed, a brake for corners), which is
-Bolo's momentum model with the manual steering replaced by a routed
+the prior art's momentum model with the manual steering replaced by a routed
 destination.
 
 **Where this is implemented.** `treadcore-sim`, since 12 October 2026
@@ -239,7 +239,7 @@ seconds for four material; the tank carries eight at most. `Build`
 lays a wall (one material, three seconds: impassable, blocks a flat
 shot, a splash knocks it to rubble), a road (one material; a bridge
 when the tile is water, built from the bank), or a mine (one material,
-three seconds). A mine is Bolo's: hidden from everyone but its layer
+three seconds). A mine is the prior art's: hidden from everyone but its layer
 until a tank or squad comes within a tile and a half; set off by a
 tank or squad on its tile, by a shell's splash, or by a mine on an
 orthogonally adjacent tile, so a line chains and a chequerboard does
@@ -255,7 +255,7 @@ as well as depots.
 
 ## Teams and alliances
 
-Players start each on a side of their own, as in Bolo, unless the
+Players start each on a side of their own, as in the prior art, unless the
 scenario deals them into teams. An alliance is a team formed in play:
 a player alone asks another; any member of the alliance asked may
 accept; the newcomer takes that team; anyone may leave at any time and
@@ -287,8 +287,8 @@ sides with a living tank or give one side more than half the living
 tanks. Three is the smallest number of sides in which an alliance is a
 choice rather than the end of the match, and half is where a side
 stops needing anyone. Every resolution is announced to everyone, so a
-betrayal is public the moment it happens. Bolo's alliance request is a
-join proposal with Bolo's own extra rule: leave your alliance before
+betrayal is public the moment it happens. The prior art's alliance request is a
+join proposal with the prior art's own extra rule: leave your alliance before
 you ask to join another. A join proposed in so many words is a
 defection, and allowed.
 

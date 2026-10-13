@@ -99,9 +99,9 @@ In the game: the neutral swarm, four FPVs off a random edge every 45
 seconds at the nearest tank. Interceptors are a consumable restocked at
 depots, interceptors first.
 
-## Bolo
+## The prior art
 
-Stuart Cheshire's Bolo (BBC Micro 1987, Macintosh later) is the
+Stuart Cheshire's prior art (BBC Micro 1987, Macintosh later) is the
 ancestor: a shared, mutable overhead world; up to sixteen players on
 separate machines; external "Brains" that could drive a tank through
 the same interface a player used; and a network that was a ring of

@@ -11,7 +11,7 @@ use crate::{PlayerId, Rng, MAX_PLAYERS, V2};
 use serde::{Deserialize, Serialize};
 
 /// The generated map's size: 128 tiles of 25 m is a 3.2 km island. A
-/// map file declares its own `size` (1 to 1024; Bolo's maps are 256)
+/// map file declares its own `size` (1 to 1024; the prior art's maps are 256)
 /// and the world is built at the size it reads.
 pub const MAP_W: usize = 128;
 pub const MAP_H: usize = 128;
@@ -81,7 +81,7 @@ pub struct MapDepot {
 }
 
 /// A pillbox as the map places it: where, and whose at the start
-/// (None is neutral, Bolo's default).
+/// (None is neutral, the prior art's default).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MapPillbox {
     pub pos: V2,
@@ -221,7 +221,7 @@ impl Map {
         // Pillboxes: a third of the way in on every spoke (ten tiles
         // past the start's depot, eight short of where a bot stands to
         // fire), and a square of four round the centre depot. All
-        // neutral: Bolo's, shooting at everyone until someone's squad
+        // neutral: The prior art's, shooting at everyone until someone's squad
         // takes them.
         let mut pillboxes: Vec<MapPillbox> = starts.iter().map(|s| MapPillbox { pos: s.lerp(center, 0.36), owner: None }).collect();
         let ring = 9.0 * w as f32 / 128.0;
@@ -567,7 +567,7 @@ impl Map {
     /// Read a map file. Refuses, with the line, anything it cannot
     /// use: the wrong format line, a row of the wrong length, a glyph
     /// it does not know, a place off the map, a start or depot on water
-    /// or a wall, no starts, more than sixteen. Repairs what Bolo's
+    /// or a wall, no starts, more than sixteen. Repairs what the prior art's
     /// loader repaired: a pillbox owner that is not a seat is neutral.
     pub fn from_text(text: &str) -> Result<Map, MapError> {
         let err = |line: usize, msg: &str| MapError { line, msg: msg.to_string() };
@@ -652,7 +652,7 @@ impl Map {
                                 None | Some("neutral") | Some("-") => None,
                                 Some(s) => match s.parse::<usize>() {
                                     Ok(o) if o < MAX_PLAYERS => Some(o as PlayerId),
-                                    _ => None, // Bolo's repair: an owner that is no seat is neutral
+                                    _ => None, // the prior art's repair: an owner that is no seat is neutral
                                 },
                             };
                             pillboxes.push(MapPillbox { pos: p, owner });

@@ -23,7 +23,7 @@ ABSTRACT
     Step 6c gives the squad things to build. The squad fells a forest
     tile for four material and builds walls (impassable, block a flat
     shot, a splash knocks them to rubble), roads (bridges over water,
-    built from the bank) and mines, Bolo's: hidden from all but the
+    built from the bank) and mines, the prior art's: hidden from all but the
     layer until found within a tile and a half, set off by a tank or
     squad on the tile, a shell's splash or an orthogonal neighbour, 50
     to the tank on it and 20 around, a squad in the blast lost, the
@@ -77,7 +77,7 @@ III. METHOD
       own, or within 1.5 of own   revealed mines        in sync; a found
       tank or squad                                     mine is near the
                                                         finder anyway
-      a tank's own mines never    Bolo: a mine hurts    a defender's
+      a tank's own mines never    the prior art: a mine hurts    a defender's
       hurt it                     anyone                moat needs no
                                                         gate; the first
                                                         proof showed why
@@ -92,7 +92,7 @@ III. METHOD
       TerrainChanged event for    re-send the map       16 KiB; the
       every changed tile                                client already
                                                         applies craters
-      material cap 8, harvest 4   Bolo's half-tree      whole numbers; a
+      material cap 8, harvest 4   the prior art's half-tree      whole numbers; a
                                   costs                 ring is eight
                                                         mines
       the Fortifier reads its     give it the map       the world
@@ -226,14 +226,14 @@ VIII. NEXT STEPS
 
 ACKNOWLEDGMENTS
 
-    Paul, for the order of work; the WinBolo manual as restated in
-    SPEC-WINBOLO-1.14.md, sections 6 and 7.
+    Paul, for the order of work; the prior-art manual as restated in
+    SPEC-PRIOR-ART-1.14.md, sections 6 and 7.
 
 REFERENCES
 
     [1] Journal 0004, <0004.20261012@treadcore.org>.
     [2] documentation/ROADMAP.md, step 6c; documentation/DESIGN.md.
-    [3] documentation/SPEC-WINBOLO-1.14.md, sections 6, 7 and 4.
+    [3] documentation/SPEC-PRIOR-ART-1.14.md, sections 6, 7 and 4.
 
 APPENDIX A. COMMITS
 

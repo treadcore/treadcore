@@ -1,7 +1,7 @@
 treadcore map 1
 size 256 256
 seed 0
-# converted from the Bolo map "FortressIslesX.map" by scripts/bolo2map.py:
+# converted from the prior-art map "FortressIslesX.map" by scripts/priorart2map.py:
 # the whole 256x256 grid; buildings are walls,
 # swamp, craters and shot buildings are rubble, sea and boats are water;
 # starts moved from their boats to the nearest land.

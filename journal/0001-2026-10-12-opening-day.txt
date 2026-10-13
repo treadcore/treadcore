@@ -5,7 +5,7 @@ Subject: [JOURNAL 0001] Opening day: the brief, the world, the wire,
          the window, and the machine that could not build it
 Message-ID: <0001.20261012@treadcore.org>
 Organization: treadcore.org
-Keywords: bolo, indirect-fire, drone-bubble, host-election, bevy,
+Keywords: prior-art, indirect-fire, drone-bubble, host-election, bevy,
           rust-workspace, build-memory
 X-Session: Alpine 3.24.1 aarch64 guest under UTM/QEMU on a Mac host,
            Hyprland/Wayland; Claude Code (Claude Fable 5.1) as the
@@ -86,7 +86,7 @@ II. BACKGROUND
       6. Rust with Bevy (or at least Rust); a build system of bash
          scripts called from Makefiles; make configure, make build,
          make debug with logs captured for AI-assisted development.
-      7. A pasted reference document on Bolo for the Macintosh [9]:
+      7. A pasted reference document on the prior art for the Macintosh [9]:
          interface, AppleTalk ring networking, map editor, tutorial,
          Brains, and a "WorldLab" proposal for a modern successor.
 
@@ -120,7 +120,7 @@ II. BACKGROUND
 
     C. Prior art consulted
 
-    Bolo [9]; Tiled and PyBolo as mentioned in the pasted document;
+    the prior art [9]; Tiled and a Python port of the prior art as mentioned in the pasted document;
     the trade and institutional reporting in Section III.B.
 
 III. METHOD
@@ -187,7 +187,7 @@ III. METHOD
       elected from a matrix                                recovery;
                                                            relay where
                                                            needed is
-                                                           Bolo's ring
+                                                           the prior art's ring
                                                            generalised
       Rejections are events        Result<(), Error>       the reason
                                                            reaches the
@@ -520,7 +520,7 @@ VIII. NEXT STEPS
 
 ACKNOWLEDGMENTS
 
-    Stuart Cheshire, for Bolo and for showing in 1989 that a world can
+    Stuart Cheshire, for the prior art and for showing in 1989 that a world can
     be playable, editable, networked and programmable at once. The
     reporters and institutes cited below, for the facts the rules are
     modelled on. The Bevy and Rust projects.
@@ -558,9 +558,9 @@ REFERENCES
         swarms," Oct. 2026. [Online]. Available: https://
         breakingdefense.com/2026/10/bringing-real-autonomy-to-
         battlefield-drone-swarms/ [Accessed: 12-Oct-2026].
-    [9] S. Cheshire, "Macintosh Bolo instructions," as reproduced at
+    [9] S. Cheshire, "Macintosh-era prior-art instructions," as reproduced at
         dialup.party and summarised in the reference document pasted
-        into the brief; and "Bolo (1989)," MobyGames. [Accessed:
+        into the brief; and "the prior art (1989)," MobyGames. [Accessed:
         12-Oct-2026 via the brief].
    [10] Bevy Engine, "Bevy 0.17 released," 30 Sep. 2025. [Online].
         Available: https://bevy.org/news/ [Accessed: 12-Oct-2026].

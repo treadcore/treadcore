@@ -22,11 +22,11 @@ ABSTRACT
 
     Roadmap step 3 was built as DESIGN.md decided it the same
     afternoon: the Pillboys are state on the tank driven by one order,
-    `Deploy { task }`, Bolo's builder with the tank as the thing driven.
+    `Deploy { task }`, the prior art's builder with the tank as the thing driven.
     The squad walks the world's route at 1.5 tiles a second, captures a
     neutral or dead pillbox by standing on it for ten seconds, repairs
     and builds for material, and walks home; a shell's splash over it
-    costs two of four men. Pillboxes are Bolo's with one addition: a
+    costs two of four men. Pillboxes are the prior art's with one addition: a
     short-range gun against drones with an interceptor's odds. Twenty
     neutral ones start on the map. A tank's route now keeps out of the
     ring of any live pillbox that would shoot it, because the spoke
@@ -47,7 +47,7 @@ I. INTRODUCTION
 
     Step 3 is the first change to the step function since the replay
     and the hash were built to catch exactly such changes, and the
-    first mechanic taken from the WinBolo specification (section 6,
+    first mechanic taken from the prior art specification (section 6,
     the builder; section 8, the pillbox). The question was whether the
     decided control model, an order rather than a unit, plays: does
     sending the squad and waiting for it pay, against the same doctrine
@@ -57,7 +57,7 @@ II. BACKGROUND
 
     Carried from 0003: the cross-machine replay proof, a replay corpus,
     the window, two machines. The design was written (DESIGN.md,
-    "Pillboys and pillboxes: the decision") and checked against Bolo
+    "Pillboys and pillboxes: the decision") and checked against the prior art
     (LAB-REPORT-PILLBOYS.md); the spec IDs it implements are on the
     roadmap step: BLD-01 to 03, 05, 06, 09, 10, 13; PIL-01 to 05, 07
     to 17; OWN-01, 02.
@@ -75,7 +75,7 @@ III. METHOD
                                                         Direct shell is
                                                         a new Shell
                                                         field
-      capture only when neutral   capture any pillbox   Bolo: pick up a
+      capture only when neutral   capture any pillbox   the prior art: pick up a
       or dead                     by standing on it     dead one; a live
                                                         enemy pillbox is
                                                         shot first, from
@@ -86,7 +86,7 @@ III. METHOD
                                                         a tank whose
                                                         only road is
                                                         through
-      the squad is not shot by    pillboxes shoot       Bolo's pillboxes
+      the squad is not shot by    pillboxes shoot       the prior art's pillboxes
       pillboxes; splash hurts it  squads                shoot tanks; the
                                                         shell is the
                                                         squad's danger
@@ -95,7 +95,7 @@ III. METHOD
                                                         the wait is the
                                                         cost the proof
                                                         weighs
-      twenty neutral pillboxes    per-player pillboxes  Bolo starts
+      twenty neutral pillboxes    per-player pillboxes  prior-art starts
       from the generator          at the start          neutral; capture
                                                         is the game
       material from depots now    harvest forest now    harvesting is 6c
@@ -201,7 +201,7 @@ VI. DISCUSSION
     its pillbox where the road must pass.
 
     The route-cost change was the session's real design decision. A
-    pillbox on the road is Bolo's whole territory game: the gun
+    pillbox on the road is the prior art's whole territory game: the gun
     controls the road. With the router steering round rings, the gun
     controls nothing a tank cannot detour; with no avoidance, every bot
     drove through two guns and died in the first minute. The multiplier
@@ -228,15 +228,15 @@ VIII. NEXT STEPS
 
 ACKNOWLEDGMENTS
 
-    Paul, for the control model; John Morrison's WinBolo manual, as
-    restated in SPEC-WINBOLO-1.14.md, for the builder's rules.
+    Paul, for the control model; John Morrison's prior-art manual, as
+    restated in SPEC-PRIOR-ART-1.14.md, for the builder's rules.
 
 REFERENCES
 
     [1] Journal 0003, <0003.20261012@treadcore.org>.
     [2] documentation/DESIGN.md, "Pillboys and pillboxes: the
         decision"; documentation/LAB-REPORT-PILLBOYS.md.
-    [3] documentation/SPEC-WINBOLO-1.14.md, sections 6 and 8.
+    [3] documentation/SPEC-PRIOR-ART-1.14.md, sections 6 and 8.
 
 APPENDIX A. COMMITS
 

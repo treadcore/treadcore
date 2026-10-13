@@ -28,7 +28,7 @@
 #   make map         write the generated map for SEED to MAP (default
 #                    maps/generated-SEED.map): the start of a hand-made one;
 #                    MAP=maps/x.map make debug|run|host plays on it
-#   make convert BOLO=file.map  convert a Macintosh Bolo map into maps/bolo/
+#   make convert FROM=file.map  convert a Macintosh-era prior-art map into maps/prior-art/
 #   make replay      play back the newest build/logs/replay-*.json (or
 #                    REPLAY=file) and check every world hash it recorded;
 #                    the regression test for a change to the rules
@@ -124,9 +124,9 @@ replay: configure
 	@scripts/replay.sh $(REPLAY)
 
 convert:
-	@test -n "$(BOLO)" || { echo 'usage: make convert BOLO=path/to/Some.map'; exit 2; }
-	@mkdir -p maps/bolo
-	@python3 -I scripts/bolo2map.py "$(BOLO)" "maps/bolo/$$(basename "$(BOLO)" .map | tr 'A-Z' 'a-z' | tr -d "'" | tr ' ' '-').map"
+	@test -n "$(FROM)" || { echo 'usage: make convert FROM=path/to/Some.map'; exit 2; }
+	@mkdir -p maps/prior-art
+	@python3 -I scripts/priorart2map.py "$(FROM)" "maps/prior-art/$$(basename "$(FROM)" .map | tr 'A-Z' 'a-z' | tr -d "'" | tr ' ' '-').map"
 
 map: configure
 

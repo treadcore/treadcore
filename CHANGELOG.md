@@ -51,7 +51,7 @@ Journal: [0010](journal/0010-2026-10-13-the-defender.txt).
   seconds), counts blind as low, recalls its squad and moves when hit,
   and storms a depot whose defender has been in view for twice its
   patience: the guns first, then the depot.
-- New: `Scenario.advantage` and `--advantage` (Bolo's BRN-12): bot
+- New: `Scenario.advantage` and `--advantage` (the prior art's BRN-12): bot
   seats are told where every tank is.
 - Proof, `defenders_hold`: ten seeds of sixteen bots, four attacking:
   every match to the time limit; attackers alive 2 of 40, defenders
@@ -73,10 +73,10 @@ Journal: [0009](journal/0009-2026-10-13-the-backlog.txt).
 - New: `Command::Retask { drone, task }` (a recon's orbit, a strike's
   target, one drone's recall) and `DroneRetasked`; the rule bot moves
   its recon instead of doubling it (backlog 3).
-- New: Bolo's forest concealment, VIS-02 and PIL-07: a tank in a 2 x 2
+- New: The prior art's forest concealment, VIS-02 and PIL-07: a tank in a 2 x 2
   block of forest is unseen and untargeted beyond `CONCEAL_RANGE` (3)
   (backlog 13).
-- New: `Scenario.game_type`, Bolo's open / tournament / strict as what
+- New: `Scenario.game_type`, the prior art's open / tournament / strict as what
   a tank starts with; `--game-type`, `GAMETYPE=` (backlog 11).
 - New: the match report at the end of every match and replay: shells
   by kind and spotted, intercept rate, strikes through, kills by cause,
@@ -102,7 +102,7 @@ Journal: [0008](journal/0008-2026-10-12-proposals.txt).
   stands 30 s; the three-way rule (`MIN_SIDES` 3, no side over half
   the living tanks) refuses an outcome, with the reason, when proposed
   and when accepted; `Proposed` and `ProposalResolved` events, the
-  latter to everyone. Bolo's alliance commands are sugar over this.
+  latter to everyone. The prior art's alliance commands are sugar over this.
 - Changed: `AllianceRequest` and its two events gone; the observation
   carries `proposals`. Wire `VERSION` 8.
 - Proof: a recorded match in which two sides of eight refuse every
@@ -124,7 +124,7 @@ Journal: [0007](journal/0007-2026-10-12-teams-and-alliances.txt).
   leave allies alone; a strike at an ally is refused. `Command::Chat {
   text, to: All | Team }`. The match ends when one team stands;
   `MatchOver { winner, team }`.
-- New: Bolo's alliance protocol in play, `Command::Alliance(Request |
+- New: The prior art's alliance protocol in play, `Command::Alliance(Request |
   Accept | Decline | Leave)`: a request stands 30 s, any member of the
   alliance asked may accept, leave at will; all events. The
   observation carries every player's team and the requests a player
@@ -136,7 +136,7 @@ Journal: [0007](journal/0007-2026-10-12-teams-and-alliances.txt).
   form, admit, refuse, lapse and break; the match ends by team. 30
   tests; four teams of four traced (61 of 79 shells spotted).
 
-## 2026-10-12, night: map files (roadmap step 5), five Bolo maps
+## 2026-10-12, night: map files (roadmap step 5), five prior-art maps
 
 
 Journal: [0006](journal/0006-2026-10-12-map-files.txt).
@@ -150,22 +150,22 @@ Journal: [0006](journal/0006-2026-10-12-map-files.txt).
   Server `--map`, `--save-map`, `--write-map`; `make map`; `MAP=file`
   on debug, run and host; the window's `--map`.
 - New: the world is built at the size the map declares. The generator
-  still makes 128 x 128 (bit-identical to day one); Bolo's maps are
+  still makes 128 x 128 (bit-identical to day one); the prior art's maps are
   256 x 256. `Observation` carries `map_w`, `map_h`; swarm edges, the
   brains and the client take the size from the map.
 - New: `Packet::Chunk` for anything too big for a datagram; `Welcome`
   (now the whole `Map`, up to 130 KiB with a map file) goes in pieces
   (backlog item 6 done). Wire `VERSION` 6.
-- New: `scripts/bolo2map.py` and `make convert BOLO=file` turn a
-  Macintosh Bolo map (`BMAPBOLO` v1) into a treadcore map; five
-  community maps converted into `maps/bolo/` (provenance and the
+- New: `scripts/priorart2map.py` and `make convert FROM=file` turn a
+  Macintosh-era prior-art map (its binary format, v1) into a treadcore map; five
+  community maps converted into `maps/prior-art/` (provenance and the
   licence question in `vendor/THIRD-PARTY.md`); `maps/island.map` is
   the generated default written out.
 - Changed: the RuleBot remembers what the world refused as
   unreachable (a squad's site, a tank's destination) instead of
   re-ordering it four times a second, which island maps exposed.
 - Proof: a generated map round-trips through text to the bit;
-  sixteen bots play a converted Bolo map, on which pillboxes fire in
+  sixteen bots play a converted prior-art map, on which pillboxes fire in
   bot play for the first time. 28 tests pass; replay and lobby-test
   pass.
 
@@ -277,12 +277,12 @@ Journal: [0002](journal/0002-2026-10-12-proving-the-world.txt).
   `RELEASE.md` (the implementation cycle, versions, release monuments,
   candidates confirmed by playtest), `CONTRIBUTING.md`,
   `CONTRIBUTORS.md`, `.github/` templates and `CODEOWNERS`.
-  `SPEC-WINBOLO-1.14.md`: the clean-room functional specification of
-  WinBolo 1.14 (256 requirements), with a preface on what treadcore
-  adopts, adapts and leaves; the roadmap's Bolo-derived steps and
+  `SPEC-PRIOR-ART-1.14.md`: the clean-room functional specification of
+  the prior art, version 1.14 (256 requirements), with a preface on what treadcore
+  adopts, adapts and leaves; the roadmap's prior-art-derived steps and
   backlog cite its IDs.
   `LAB-REPORT-PILLBOYS.md`: the Pillboy requirement checked against
-  Bolo's builder; `DESIGN.md` gained the Pillboys decision; `CONCEPT.md`
+  the prior art's builder; `DESIGN.md` gained the Pillboys decision; `CONCEPT.md`
 
   section 9: sixteen tanks, defenders, alliances, betrayal; `ROADMAP.md`
   gained a backlog and steps 0b, 6b, 6c, 6d.

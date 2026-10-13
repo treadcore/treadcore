@@ -36,7 +36,7 @@ pub use rules::*;
 /// snapshot every other tick to a tenth of a second.
 pub const TICK_HZ: u32 = 20;
 pub const DT: f32 = 1.0 / TICK_HZ as f32;
-/// Sixteen seats, Bolo's number. Empty ones are filled by bots. The
+/// Sixteen seats, the prior art's number. Empty ones are filled by bots. The
 /// default scenario seats four; `--players N` on the server seats more.
 pub const MAX_PLAYERS: usize = 16;
 
@@ -304,7 +304,7 @@ impl BuildKind {
     }
 }
 
-/// A mine on a tile. Bolo's: the layer and (later) their allies see it;
+/// A mine on a tile. The prior art's: the layer and (later) their allies see it;
 /// everyone else finds it the hard way, or by coming within
 /// `MINE_REVEAL` of it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -315,7 +315,7 @@ pub struct Mine {
     pub owner: PlayerId,
 }
 
-/// An order to the squad. Bolo's builder: the click is the order, the
+/// An order to the squad. The prior art's builder: the click is the order, the
 /// squad leaves the tank, walks the world's route, does the work if the
 /// material is there, and walks back. The player drives nothing but the
 /// tank.
@@ -379,7 +379,7 @@ impl Pillboys {
     }
 }
 
-/// Bolo's pillbox, with one addition: it shoots drones too, at short
+/// the prior art's pillbox, with one addition: it shoots drones too, at short
 /// range, so a captured pillbox extends the bubble over ground the tank
 /// is not on. Owned by a seat or by nobody; neutral ones shoot everyone.
 /// Captured by a squad standing on it (neutral or dead), repaired and
@@ -490,7 +490,7 @@ pub enum ChatTo {
 /// the world under the three-way rule, and announced to everyone.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Terms {
-    /// I join your team (Bolo's alliance request; also a defection).
+    /// I join your team (the prior art's alliance request; also a defection).
     Join,
     /// You join my team.
     Recruit,
@@ -500,7 +500,7 @@ pub enum Terms {
     Merge,
 }
 
-/// Bolo's alliance protocol (SPEC ALL-02 to ALL-06) as sugar over
+/// the prior art's alliance protocol (SPEC ALL-02 to ALL-06) as sugar over
 /// proposals: `Request` is a `Join` proposal, `Accept` and `Decline`
 /// answer the pending one from that player, `Leave` is a side of one's
 /// own again. What the leaver captured stays the leaver's: ownership is
@@ -545,7 +545,7 @@ pub enum Command {
     /// An order to the Pillboys. One at a time; a new one while they are
     /// out is refused, except Return.
     Deploy { task: PillboyTask },
-    /// Ask, answer, leave: Bolo's words for the proposals below.
+    /// Ask, answer, leave: The prior art's words for the proposals below.
     Alliance(AllianceCmd),
     /// A change of sides, put to another player. Refused at once if the
     /// outcome would break the three-way rule.
@@ -666,7 +666,7 @@ impl MapSource {
     }
 }
 
-/// Bolo's three game types (SPEC section 11), as what a tank starts
+/// the prior art's three game types (SPEC section 11), as what a tank starts
 /// with. Everything else about a match is the scenario's other fields.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GameType {
@@ -716,18 +716,18 @@ pub struct Scenario {
     /// own source.
     pub seed: u64,
     pub map: MapSource,
-    /// What a tank starts with (Bolo's game types). Defaults when
+    /// What a tank starts with (the prior art's game types). Defaults when
     /// absent, so a replay recorded before it existed still reads (and
     /// then fails its hashes honestly, if the rules have moved).
     #[serde(default)]
     pub game_type: GameType,
-    /// Bolo's brain advantage (SPEC BRN-12, GAM-03): a bot seat is told
+    /// the prior art's brain advantage (SPEC BRN-12, GAM-03): a bot seat is told
     /// where every tank is, regardless of range. Off by default; a
     /// handicap for a human against bots, never on in a bot-only proof.
     #[serde(default)]
     pub advantage: bool,
     pub players: Vec<(String, bool)>,
-    /// A team per seat, or none: everyone starts alone, as in Bolo
+    /// A team per seat, or none: everyone starts alone, as in the prior art
     /// (ALL-01), and allies by request in play.
     pub teams: Option<Vec<TeamId>>,
     /// Ticks between neutral FPV swarms from the map edge; 0 disables them.
@@ -1027,7 +1027,7 @@ impl World {
             .any(|d| self.allied(d.owner, p) && d.kind == DroneKind::Recon && d.link >= LINK_FLOOR && d.pos.dist(at) <= reach)
     }
 
-    /// Bolo's cover (VIS-02): `at` lies in a 2 x 2 block of forest. A
+    /// the prior art's cover (VIS-02): `at` lies in a 2 x 2 block of forest. A
     /// tank standing there is hidden from everything beyond
     /// `CONCEAL_RANGE`, pillboxes included (PIL-07).
     pub fn concealed(&self, at: V2) -> bool {
@@ -1398,14 +1398,14 @@ impl World {
         }
     }
 
-    /// Bolo's alliance protocol in the proposal's words: a request is a
+    /// the prior art's alliance protocol in the proposal's words: a request is a
     /// Join proposal; accepting and declining answer the pending one
     /// from that player; leaving is a side of one's own again.
     fn apply_alliance(&mut self, o: &Order, cmd: AllianceCmd) {
         let me = o.player;
         match cmd {
             AllianceCmd::Request { to } => {
-                // Bolo's rule for its own request (ALL-02): leave before
+                // the prior art's rule for its own request (ALL-02): leave before
                 // you ask elsewhere. A Join proposed in so many words is
                 // a defection, and allowed.
                 if self.team_members(self.team_of(me).unwrap()).len() > 1 {
@@ -3392,7 +3392,7 @@ mod tests {
         assert!(w.drones.iter().filter(|d| d.owner == 2 && d.kind == DroneKind::Recon).count() >= 1, "the ally's recon was shot down by its own side");
     }
 
-    /// Bolo's alliance protocol, the three-way rule on it, and the match
+    /// the prior art's alliance protocol, the three-way rule on it, and the match
     /// ending by team. Six players: with four, a second ally would leave
     /// two sides, which the rule forbids.
     #[test]

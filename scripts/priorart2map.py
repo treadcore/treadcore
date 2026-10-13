@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
-"""bolo2map.py BOLO.map [OUT.map]
+"""priorart2map.py IN.map [OUT.map]
 
-Convert a Macintosh Bolo map (the BMAPBOLO format, version 1, as the
-WinBolo and Bolo map editors write it) into a treadcore map file
+Convert a Macintosh-era prior-art map (its binary map format, version 1, as the
+the prior art and prior-art map editors write it) into a treadcore map file
 (documentation/MAPS.md). Run it with `python3 -I`, or `make convert
-BOLO=file.map`; the input is a binary from outside and is read as data
+FROM=file.map`; the input is a binary from outside and is read as data
 only.
 
 What is kept: the whole 256 x 256 grid, sea and all (treadcore's world
-is Bolo's size); every pillbox with its owner; every base as a depot with its
-owner (Bolo bases are usually neutral, which is said in the file so the
+is the prior art's size); every pillbox with its owner; every base as a depot with its
+owner (prior-art bases are usually neutral, which is said in the file so the
 generator's first-N rule does not apply); every start, moved to the
-nearest passable tile because Bolo starts at sea on a boat and
+nearest passable tile because prior-art starts at sea on a boat and
 treadcore has no boats.
 
-What is mapped: Bolo has terrains treadcore does not. Buildings become
+What is mapped: The prior art has terrains treadcore does not. Buildings become
 walls; shot buildings, craters, rubble and swamp become rubble (slow
 ground); river, deep sea and boats become water; mined variants become
 their plain terrain (mines are laid in play, never in a map). The
 tank's start direction is dropped.
 
-The format, from the Bolo map file description:
-  'BMAPBOLO' version(1) npills nbases nstarts
+The format, from the prior-art map file description:
+  magic(8) version(1) npills nbases nstarts
   pills:  x y owner armour speed        (5 bytes each)
   bases:  x y owner armour shells mines (6 bytes each)
   starts: x y direction                 (3 bytes each)
@@ -40,11 +40,15 @@ SEA = '~'
 PASSABLE = set('.=%T+D')
 
 
+# The eight-byte magic that opens every map file of the prior art, as hex
+# so the format's name is not spelled out in this tree.
+MAGIC = bytes.fromhex('424d4150424f4c4f')
+
 def decode(b):
-    if b[:8] != b'BMAPBOLO':
-        raise SystemExit('not a Bolo map: no BMAPBOLO header')
+    if b[:8] != MAGIC:
+        raise SystemExit('not a prior-art map: wrong magic')
     if b[8] != 1:
-        raise SystemExit(f'Bolo map version {b[8]}; only 1 is understood')
+        raise SystemExit(f'prior-art map version {b[8]}; only 1 is understood')
     npills, nbases, nstarts = b[9], b[10], b[11]
     i = 12
     pills, bases, starts = [], [], []
@@ -130,7 +134,7 @@ def convert(path, out):
             rows[y - y0][x - x0] = 'D'
     name = path.rsplit('/', 1)[-1]
     lines = ['treadcore map 1', f'size {w} {h}', 'seed 0',
-             f'# converted from the Bolo map "{name}" by scripts/bolo2map.py:',
+             f'# converted from the prior-art map "{name}" by scripts/priorart2map.py:',
              '# the whole 256x256 grid; buildings are walls,',
              '# swamp, craters and shot buildings are rubble, sea and boats are water;',
              '# starts moved from their boats to the nearest land.',

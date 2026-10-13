@@ -45,7 +45,7 @@ I. INTRODUCTION
 
     The brief wanted betrayal: a mid-match proposal to swap sides or
     recruit, "but only in a three way balance type way." Step 6 built
-    sides and Bolo's way of forming them; this step builds the way of
+    sides and the prior art's way of forming them; this step builds the way of
     changing them, and the rule that keeps a change from being the end
     of the game.
 
@@ -62,16 +62,16 @@ III. METHOD
       decision                    rejected              why
       --------------------------  --------------------  ----------------
       one protocol: proposals;    two: alliances and    one store, one
-      Bolo's request is a Join    proposals side by     rule, one event
+      the prior art's request is a Join    proposals side by     rule, one event
       proposal                    side                  stream
       the rule applies to every   proposals only        an alliance
-      change of sides, Bolo's                           accept is a
+      change of sides, the prior art's                           accept is a
       requests included                                 change of sides
-      a Join proposed outright    Bolo's "leave first"  a defection is
+      a Join proposed outright    the prior art's "leave first"  a defection is
       is a defection, allowed     for every Join        the point;
-                                                        Bolo's
+                                                        the prior art's
                                                         rule stays on
-                                                        Bolo's command
+                                                        the prior art's command
       check the rule twice:       once, when proposed   the world moves
       proposed and accepted                             in thirty
                                                         seconds
@@ -101,7 +101,7 @@ IV. CHRONOLOGY
         one's head.
      4. 30 tests pass, one new fails: a Join in two sides of eight was
         refused for "leave your alliance first", not for the rule. The
-        Bolo request keeps that rule; a Join proposed in so many words
+        the prior art request keeps that rule; a Join proposed in so many words
         is a defection and goes to the three-way check. 31 pass.
      5. Default trace, replay (36 of 36), lobby-test: pass. Documents,
         this entry, commits, push.

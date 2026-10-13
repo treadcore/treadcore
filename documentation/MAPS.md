@@ -1,7 +1,7 @@
 # Map files
 
 A treadcore map is a text file. The editor is any text editor: that
-was Bolo's second editor too, after the graphical one, and it is this
+was the prior art's second editor too, after the graphical one, and it is this
 game's first. `make map` writes the generated map out as a starting
 point; `MAP=maps/x.map make debug` (or `make run`, `make host`) plays
 on one; `--save-map FILE` on the server writes the map as it was
@@ -25,7 +25,7 @@ match can start where this one ended.
 | line | meaning |
 | --- | --- |
 | `treadcore map 1` | the first line, exactly; anything else is not a map |
-| `size W H` | the grid, and the size the world is built at: the generator makes 128 x 128, the loader takes 1 to 1024, and a game on a 256 x 256 Bolo map is 256 x 256 |
+| `size W H` | the grid, and the size the world is built at: the generator makes 128 x 128, the loader takes 1 to 1024, and a game on a 256 x 256 prior-art map is 256 x 256 |
 | `seed N` | informational: which seed the map came from, if any (`0x...` or decimal) |
 | a row | `W` glyphs, one per tile, west to east; `H` of them, north row first |
 | `start x y` | a tank's start, in seat order: the first line is seat 0 (north), and a scenario of N players uses the first N; one to sixteen of them |
@@ -58,7 +58,7 @@ map does not carry them.
 The loader refuses, naming the line: a first line that is not the
 format line; a row of the wrong length or with a glyph it does not
 know; a place off the map; a start or a depot on water or a wall; a
-pillbox on water; no starts; more than sixteen. It repairs, as Bolo's
+pillbox on water; no starts; more than sixteen. It repairs, as the prior art's
 loader did, a pillbox owner that is not a seat: it becomes neutral.
 `treadcore-server --map FILE` checks the file before anything starts
 and exits with the reason if it cannot be used.
@@ -86,31 +86,31 @@ The maps in `maps/`:
 | file | what |
 | --- | --- |
 | `maps/island.map` | the generated default (seed 0x7EADC0DE), written by `make map`, so a reader can see the format at full size |
-| `maps/bolo/*.map` | five Macintosh Bolo maps converted by `scripts/bolo2map.py` (below) |
+| `maps/prior-art/*.map` | five Macintosh-era prior-art maps converted by `scripts/priorart2map.py` (below) |
 
-## Converting Bolo maps
+## Converting prior-art maps
 
-`scripts/bolo2map.py` reads a Macintosh Bolo map (the `BMAPBOLO`
-format, version 1, as the Bolo and WinBolo editors wrote it) and writes
-a treadcore map at Bolo's size, 256 x 256:
+`scripts/priorart2map.py` reads a Macintosh-era prior-art map (the binary
+format, version 1, as the prior art and prior-art editors wrote it) and writes
+a treadcore map at the prior art's size, 256 x 256:
 
-    make convert BOLO=path/to/Some.map        # -> maps/bolo/some.map
-    python3 -I scripts/bolo2map.py Some.map out.map
+    make convert FROM=path/to/Some.map        # -> maps/prior-art/some.map
+    python3 -I scripts/priorart2map.py Some.map out.map
 
-Bolo's terrains that treadcore has not got are mapped: buildings become
+The prior art's terrains that treadcore has not got are mapped: buildings become
 walls; shot buildings, craters, rubble and swamp become rubble; river,
 deep sea and boats become water; mined variants become their plain
 terrain (mines are laid in play). Every pillbox and base keeps its
-owner (Bolo's bases are usually neutral, and the file says so). Starts,
-which Bolo puts at sea on a boat, move to the nearest passable tile,
+owner (the prior art's bases are usually neutral, and the file says so). Starts,
+which the prior art puts at sea on a boat, move to the nearest passable tile,
 because treadcore has no boats. The start direction is dropped. The
 input is read as data only; run the script with `python3 -I`.
 
-The five in `maps/bolo/` came from the author's own collection of Bolo
+The five in `maps/prior-art/` came from the author's own collection of the prior art
 community maps (`vendor/THIRD-PARTY.md` records their provenance and
 the open question of their licence):
 
-| file | Bolo name | starts | depots | pillboxes | walls | forest |
+| file | prior-art name | starts | depots | pillboxes | walls | forest |
 | --- | --- | --- | --- | --- | --- | --- |
 | `constanine.map` | Constanine | 10 | 16 | 16 | 1 059 | 6 301 |
 | `fidos-airstrip.map` | Fido's Airstrip | 16 | 16 | 5 | 826 | 3 837 |
@@ -118,9 +118,9 @@ the open question of their licence):
 | `fortressislesx.map` | FortressIslesX | 16 | 12 | 16 | 7 361 | 5 320 |
 | `godzilla.map` | Godzilla | 16 | 16 | 16 | 0 | 2 229 |
 
-`MAP=maps/bolo/godzilla.map make debug` plays sixteen bots on one. The
+`MAP=maps/prior-art/godzilla.map make debug` plays sixteen bots on one. The
 bots' doctrine (firing position 25 tiles short of an objective, a squad
-sent 20 tiles) was written for a 128-tile island; on a Bolo map the
+sent 20 tiles) was written for a 128-tile island; on a prior-art map the
 distances are double and the islands are often several, so expect
 refused moves across water and little capturing until step 6d.
 

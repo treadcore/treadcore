@@ -1,6 +1,6 @@
 //! treadcore-net -- sockets, discovery, negotiation, and the session.
 //!
-//! The question this crate answers is the one the original Bolo answered
+//! The question this crate answers is the one the original the prior art answered
 //! with a ring: four computers, no server anybody set up, who runs the
 //! game? Here:
 //!

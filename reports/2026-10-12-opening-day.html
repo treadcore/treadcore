@@ -67,7 +67,7 @@
 
 <h2>Where it came from</h2>
 <p>It started with the news. Programmes about Ukrainian tanks fighting Russian tech-laden tanks, and the thing both sides had learned: a tank that drives up to the enemy dies to a thousand-dollar drone, and a tank that sits back and fires like artillery, under its own cover, lives. The tank's job had changed while nobody was looking.</p>
-<p>Paul's vision, that afternoon, was a game about the new job. Not a tank you drive at things. A tank that is a <b>control centre</b>: it sits in the field, it reaches out with high-calibre indirect fire, and it deploys its own technology around itself. Drones in the air. And, on the ground, the <b>Pillboys</b>: the tech infantry who ride with the tank, the crew who run its systems, who jump off to capture a pillbox, repair it, build the next one. The old Bolo loop of territory, pillboxes, bases, building and repairing, but with the tank as the headquarters it is done from, and a layer of air on top of it.</p>
+<p>Paul's vision, that afternoon, was a game about the new job. Not a tank you drive at things. A tank that is a <b>control centre</b>: it sits in the field, it reaches out with high-calibre indirect fire, and it deploys its own technology around itself. Drones in the air. And, on the ground, the <b>Pillboys</b>: the tech infantry who ride with the tank, the crew who run its systems, who jump off to capture a pillbox, repair it, build the next one. The old the prior art loop of territory, pillboxes, bases, building and repairing, but with the tank as the headquarters it is done from, and a layer of air on top of it.</p>
 <div class="pull">The tank is the mobile command. Everything it deploys, it deploys from itself.</div>
 
 <h2>What was researched</h2>
@@ -78,7 +78,7 @@
 <div class="card"><b>The crew sees through the drones</b>Elbit IronVision: see-through armour on the crew's eyes, one button to switch to the drone's video, the tactical picture as an overlay. The crew's picture is telemetry.</div>
 <div class="card"><b>Interceptors as ammunition</b>Portable interceptor factories, sub-million interceptors, swarm control software with on-screen mission overlays. Supply is part of the fight.</div>
 </div>
-<p>And the ancestor: Stuart Cheshire's Bolo, with its shared mutable world, up to sixteen machines in one game, external "Brains" that could drive a tank, and a network that was a ring of peers forwarding to their neighbour. Treadcore keeps the ideas and replaces the ring.</p>
+<p>And the ancestor: Stuart Cheshire's prior art, with its shared mutable world, up to sixteen machines in one game, external "Brains" that could drive a tank, and a network that was a ring of peers forwarding to their neighbour. Treadcore keeps the ideas and replaces the ring.</p>
 
 <h2>What was built</h2>
 <p>A Rust workspace of six crates, a build system, and a website, in one day. Repository: <a href="https://github.com/treadcore/treadcore">github.com/treadcore/treadcore</a>. Site: <a href="https://treadcore.org">treadcore.org</a>.</p>
@@ -103,7 +103,7 @@
 </ul>
 
 <h3>The network that carries the brief</h3>
-<p>The brief asked that the clients negotiate who is the server by forming a connectivity route. Each process measures its latency to every other, publishes its row, and every process runs the same election on the same matrix. No vote, no referee: compute and compare. The host is the peer whose worst link to anyone is best. Peers the host cannot reach send through the neighbour that can, and only they pay for the relay. Bolo's ring, as a tree. <a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">The protocol</a>.</p>
+<p>The brief asked that the clients negotiate who is the server by forming a connectivity route. Each process measures its latency to every other, publishes its row, and every process runs the same election on the same matrix. No vote, no referee: compute and compare. The host is the peer whose worst link to anyone is best. Peers the host cannot reach send through the neighbour that can, and only they pay for the relay. The prior art's ring, as a tree. <a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">The protocol</a>.</p>
 
 <h3>The build system</h3>
 <p>A Makefile in front of bash scripts in front of cargo, as in Paul's other projects. <code>make configure</code> checks the machine and writes a config the other scripts refuse to run without. <code>make debug</code> runs a four-bot match flat out with every log level on and writes two files: a log that reads as the story of the fight, and a JSON event stream. Both are for reading by a person, or by an AI with the source beside it.</p>
@@ -121,7 +121,7 @@
 <h2>What was written</h2>
 <table>
 <tr><th>document</th><th>covers</th></tr>
-<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">CONCEPT.md</a></td><td>the brief, line by line; Bolo as the base; what the war changed; the tank as mobile command with tech deployment; why it is an improvement</td></tr>
+<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">CONCEPT.md</a></td><td>the brief, line by line; the prior art as the base; what the war changed; the tank as mobile command with tech deployment; why it is an improvement</td></tr>
 <tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">DESIGN.md</a></td><td>the rules and every number, with the reason beside it</td></tr>
 <tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">PROTOCOL.md</a></td><td>packets, discovery, election, relay, session</td></tr>
 <tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">RESEARCH.md</a></td><td>what it is modelled on, with sources</td></tr>
@@ -134,7 +134,7 @@
 <p>The afternoon's vision is bigger than the evening's build, and the gap is the plan.</p>
 <ul>
 <li><b>Pillboys.</b> The tank's tech infantry: a squad that rides with it and deploys from it. They are what captures a pillbox, repairs it, and builds. Design question for tomorrow: are they one unit the player moves, or an order the tank gives ("Pillboys: take that pillbox") that resolves over time and under fire?</li>
-<li><b>Pillboxes.</b> Bolo's stationary guns, back: automated defences that engage tanks and, in this world, drones. Captured by Pillboys, repaired, repositioned, and the thing a recon drone is sent to find.</li>
+<li><b>Pillboxes.</b> the prior art's stationary guns, back: automated defences that engage tanks and, in this world, drones. Captured by Pillboys, repaired, repositioned, and the thing a recon drone is sent to find.</li>
 <li><b>Building and repair.</b> Roads, bridges, pillbox emplacements, from material the tank carries; repair of the tank itself by its Pillboys in the field, slower than a depot.</li>
 <li><b>Territory.</b> Depots are the start; pillbox coverage of ground is the shape territory takes.</li>
 <li>Then the things already listed as deferred: teams, map files and an editor, client prediction, NAT traversal, sound.</li>

@@ -17,7 +17,7 @@
 //!                allowed to see.
 //!   relay        Relay. A packet for a peer the sender cannot reach
 //!                directly, handed to one it can, with the final address
-//!                inside. This is Bolo's ring, generalised to a tree.
+//!                inside. This is the prior art's ring, generalised to a tree.
 //!
 //! Nothing here knows about sockets. treadcore-net owns those.
 

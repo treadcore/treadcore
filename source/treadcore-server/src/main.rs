@@ -151,7 +151,7 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
                      full), tournament (half the shells, no material),
                      strict (neither) (open)
   --advantage        bot seats are told where every tank is, regardless
-                     of range (Bolo's brain advantage; a handicap for a
+                     of range (the prior art's brain advantage; a handicap for a
                      human against bots)
   --map FILE       play on this map file (documentation/MAPS.md)
                      instead of the one generated from --seed
