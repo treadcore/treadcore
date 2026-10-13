@@ -111,6 +111,7 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/DESIGN.md](documentation/DESIGN.md): the rules, the numbers, and why.
 - [documentation/PROTOCOL.md](documentation/PROTOCOL.md): the wire protocol and the host election.
 - [documentation/RESEARCH.md](documentation/RESEARCH.md): what the game is modelled on, with sources.
+- [documentation/ROADMAP.md](documentation/ROADMAP.md): the next architectural steps, in dependency order.
 - [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
 

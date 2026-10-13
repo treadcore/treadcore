@@ -22,13 +22,15 @@
 #   make seat        headless bot that joins a LAN lobby (run four: a test)
 #   make lobby-test  four headless seats on this machine negotiate a host
 #   make test        cargo test, every crate
+#   make mem         one line every 2 s of free/available/swap/rustc count,
+#                    for a second terminal beside make warm (N=5 for 5 s)
 #   make schema      print the JSON brain's observation and command examples
 #   make clean       remove build output, keep the cargo cache
 #   make distclean   remove build/ and target/ both
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm build headless debug run lan host seat lobby-test test schema clean distclean
+.PHONY: help configure warm build headless debug run lan host seat lobby-test test mem schema clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -79,6 +81,9 @@ lobby-test: configure
 
 test:
 	@scripts/build.sh test
+
+mem:
+	@scripts/memwatch.sh $(or $(N),2)
 
 schema:
 	@cargo run -q -p treadcore-server -- --brain-schema
