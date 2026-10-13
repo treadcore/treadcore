@@ -135,7 +135,10 @@ fn parse_args() -> Args {
 
 fn main() {
     let args = parse_args();
-    let mut window = Window { title: "treadcore".into(), present_mode: PresentMode::AutoVsync, ..default() };
+    // `name` is the Wayland app_id and the X11 WM_CLASS: it must match the
+    // desktop entry make install writes (org.treadcore.treadcore.desktop)
+    // for launchers and taskbars to give the window its name and icon.
+    let mut window = Window { title: "treadcore".into(), name: Some("org.treadcore.treadcore".into()), present_mode: PresentMode::AutoVsync, ..default() };
     if let Some([x, y, w, h]) = args.window {
         window.title = format!("treadcore -- {}", args.name);
         window.position = WindowPosition::At(IVec2::new(x, y));

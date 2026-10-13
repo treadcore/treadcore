@@ -31,6 +31,19 @@ Journal: [0019](journal/0019-2026-10-13-the-first-minute.txt).
   networked through the LAN lobby over loopback, tiled two by two;
   `CLIENTS=n`, `MATCH_SECONDS=n`. The window takes `--window X,Y,W,H`.
 
+- New: `make deps` (`scripts/deps.sh`, `scripts/platform.sh`): the
+  window's system packages for Copal, Alpine, Arch, Omarchy, Debian,
+  Ubuntu, Gentoo and Fedora, printed, or run with `APPLY=1`.
+  `make configure` and `make install` print the same line when
+  something is missing.
+- Changed: `make install` on Linux adds a desktop entry and an icon
+  (drawn in rectangles), so Treadcore is in the application menu;
+  on musl (Copal, Alpine) the window goes behind a wrapper that
+  preloads bigstack.so. Tested on Copal: in the Super+Space menu,
+  launched from it, uninstalled cleanly.
+- Changed: the window's app id is `org.treadcore.treadcore`, matching
+  the desktop entry, so taskbars give it its name and icon.
+
 ## 0.1.0-rc.1 (2026-10-13): the first candidate
 
 Journal: [0018](journal/0018-2026-10-13-first-candidate.txt). Offered

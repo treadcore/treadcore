@@ -15,6 +15,11 @@ PLAYERS=4 make run       # against three
 make lan                 # a LAN game: waits for peers, elects a host
 ```
 
+Or `make install`, which puts Treadcore in your desktop's application
+menu (on Copal, Super+Space, under Games). If the window's system
+packages are missing, `make deps` says what to install for your
+distribution.
+
 Or, from crates.io, `cargo install treadcore-client` puts the window
 on your path as `treadcore`; `treadcore --solo` starts the same solo
 match. The headless server is `cargo install treadcore-server`.

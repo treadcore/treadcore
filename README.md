@@ -76,17 +76,23 @@ make publish     # publish the five crates in dependency order; DRY=1 to verify 
 ```
 
 Needs Rust 1.85+. The window needs `wayland-client`, `xkbcommon`, `alsa`
-and `libudev` dev packages (on Alpine: `wayland-dev libxkbcommon-dev
-alsa-lib-dev eudev-dev`), and a Vulkan driver: on a machine with no
-GPU, `mesa-vulkan-swrast`. Without them the headless crates still
-build. On a musl machine `make configure` also builds a tiny preload
+and `libudev` dev packages and a Vulkan driver (on a machine with no
+GPU, lavapipe). `make deps` prints the command that installs them for
+this distribution, and `APPLY=1 make deps` runs it through doas or
+sudo: Copal, Alpine, Arch, Omarchy, Debian, Ubuntu, Gentoo and Fedora
+are known. `make configure` prints the same line when something is
+missing. Without them the headless crates still build. On a musl machine `make configure` also builds a tiny preload
 that gives lavapipe's shader compiler a stack it can live on
 (`documentation/BUILD.md`). On macOS nothing extra is needed: the
 window uses Cocoa, Metal and CoreAudio from the system.
 
 `make install` puts `treadcore` and `treadcore-server` in
-`~/.local/bin` (`PREFIX=/usr/local` for elsewhere) and, on macOS,
-`Treadcore.app` in `~/Applications`; `make uninstall` takes them out.
+`~/.local/bin` (`PREFIX=/usr/local` for elsewhere). On Linux it adds a
+desktop entry and an icon, so Treadcore is in the application menu:
+Copal's Super+Space, Omarchy's launcher, GNOME's, KDE's. On Copal and
+Alpine the window is installed behind a small wrapper that preloads
+the stack fix musl needs. On macOS it adds `Treadcore.app` in
+`~/Applications`. `make uninstall` takes all of it out.
 
 ## Running
 

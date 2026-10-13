@@ -69,6 +69,10 @@
 #   make sysprep     show the root-level memory changes for this VM
 #                    (disk swapfile behind zram, zstd); apply with doas
 #   make schema      print the JSON brain's observation and command examples
+#   make deps        the system packages the window needs, for this
+#                    distribution (Copal, Alpine, Arch, Omarchy, Debian,
+#                    Ubuntu, Gentoo, Fedora); prints the command,
+#                    APPLY=1 runs it through doas or sudo
 #   make install     the release binaries into PREFIX/bin (~/.local; on
 #                    macOS also ~/Applications/Treadcore.app, APP=0 not)
 #   make uninstall   remove what make install put there
@@ -77,7 +81,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce quad lobby-test replay map convert test shoot release token publish mem quiet loud sysprep schema install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce quad lobby-test replay map convert test shoot release token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -213,6 +217,9 @@ sysprep:
 
 schema:
 	@cargo run -q -p treadcore-server -- --brain-schema
+
+deps:
+	@scripts/deps.sh
 
 install: configure
 	@scripts/install.sh install

@@ -18,6 +18,7 @@ echo "  cargo        $(cargo --version | awk '{print $2}')"
 # what is here so build.sh can say why the window will not build rather
 # than let the linker say it.
 HAVE_WINDOW=1
+NEED_DEPS=0
 if [ "$(uname -s)" = Darwin ]; then
     # macOS: winit, CoreAudio and Metal come with the system.
     echo "  display      macOS (Cocoa, Metal, CoreAudio)"
@@ -27,12 +28,12 @@ elif command -v pkg-config >/dev/null; then
             printf '  %-13s%s\n' "$lib" "$(pkg-config --modversion "$lib")"
         else
             warn "  $lib: missing (the window will not build; headless crates will)"
-            HAVE_WINDOW=0
+            HAVE_WINDOW=0; NEED_DEPS=1
         fi
     done
 else
     warn "  pkg-config missing: cannot check display libraries"
-    HAVE_WINDOW=0
+    HAVE_WINDOW=0; NEED_DEPS=1
 fi
 if [ "$(uname -s)" = Darwin ]; then
     :
@@ -92,7 +93,8 @@ elif ls /usr/share/vulkan/icd.d/*.json >/dev/null 2>&1; then
     ICDS="$(ls /usr/share/vulkan/icd.d/ | sed 's/_icd.*//' | tr '\n' ' ')"
     echo "  vulkan       $ICDS"
 else
-    warn "  vulkan       no driver under /usr/share/vulkan/icd.d/: the window will panic 'unable to find a GPU' (Alpine: apk add mesa-vulkan-swrast)"
+    warn "  vulkan       no driver under /usr/share/vulkan/icd.d/: the window will panic 'unable to find a GPU'"
+    NEED_DEPS=1
 fi
 # musl gives a thread 128 KiB of stack; lavapipe's shader JIT needs more
 # and segfaults on its own thread. scripts/bigstack.c raises the default
@@ -107,8 +109,16 @@ if ls /lib/ld-musl-*.so.1 >/dev/null 2>&1; then
             warn "  libc         musl, and scripts/bigstack.c did not build: the window may segfault on lavapipe"
         fi
     else
-        warn "  libc         musl, and no C compiler to build scripts/bigstack.c: the window may segfault on lavapipe (apk add gcc)"
+        warn "  libc         musl, and no C compiler to build scripts/bigstack.c: the window may segfault on lavapipe"
+        NEED_DEPS=1
     fi
+fi
+
+# Something the window needs is missing: say what to install, by this
+# distribution's names (scripts/deps.sh, make deps).
+if [ "${NEED_DEPS:-0}" = 1 ]; then
+    warn "  the window's system packages are not all here. For this machine:"
+    "$ROOT/scripts/deps.sh" | sed 's/^/  /' || true
 fi
 
 cat > "$BUILDDIR/config.env" <<CFG
