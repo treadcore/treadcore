@@ -7,7 +7,7 @@ say "treadcore configure"
 command -v cargo >/dev/null || die "cargo not found: install Rust (https://rustup.rs)"
 command -v rustc >/dev/null || die "rustc not found"
 RUST_VER="$(rustc --version | awk '{print $2}')"
-MIN_RUST="$(sed -n 's/^rust-version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
+MIN_RUST="$(awk -F'"' '/^rust-version *= /{print $2; exit}' "$ROOT/Cargo.toml")"
 if [ "$(printf '%s\n%s\n' "$MIN_RUST" "$RUST_VER" | sort -V | head -1)" != "$MIN_RUST" ]; then
     die "rustc $RUST_VER is older than the $MIN_RUST this workspace needs"
 fi

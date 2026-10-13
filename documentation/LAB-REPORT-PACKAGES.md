@@ -391,6 +391,18 @@ if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
 fi
 ```
 
+Why had the release commit not been made? Every script read the
+version as `sed -n 's/^version = .../p' Cargo.toml | head -1`.
+`Cargo.toml` has two lines that match, the workspace's version and
+Bevy's `version = "0.17"`; `head` exits after the first, and when `sed`
+writes the second after that, `sed` dies of SIGPIPE. Under `set -o
+pipefail` the script then exits 141 with no message, sometimes: a race.
+Read the first match and stop, so nothing writes into a closed pipe:
+
+```bash
+VERSION="$(awk -F'"' '/^version *= /{print $2; exit}' Cargo.toml)"
+```
+
 Hooks are not cloned with a repository; each checkout turns them on:
 
 ```make
@@ -563,7 +575,7 @@ next step. rc.4 calls WiX by its path and publishes any build error as
 an annotation. WiX itself cannot be tried off Windows: on Linux it
 warns that it supports only Windows and then misreads every backslash.
 
-**0.1.0-rc.4**: see the addendum, written when its run finished.
+**0.1.0-rc.4** was tagged on the wrong commit (section VI) and refused by the workflow's version job. **0.1.0-rc.5** carries its changes: see the addendum, written when its run finished.
 
 ## XII. What to take from this
 

@@ -106,7 +106,7 @@ if [ "$DARWIN" = 0 ] && [ "$HAVE_WINDOW" = 1 ]; then
 fi
 
 if [ "$DARWIN" = 1 ] && [ "${APP:-1}" = 1 ] && [ "$HAVE_WINDOW" = 1 ]; then
-    VERSION="$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
+    VERSION="$(awk -F'"' '/^version *= /{print $2; exit}' "$ROOT/Cargo.toml")"
     rm -rf "$APPBUNDLE"
     mkdir -p "$APPBUNDLE/Contents/MacOS"
     install -m 755 "$ROOT/target/release/treadcore" "$APPBUNDLE/Contents/MacOS/treadcore"

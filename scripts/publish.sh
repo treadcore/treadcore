@@ -14,7 +14,7 @@
 MODE="${1:-dry}"
 CREDS="${CARGO_HOME:-$HOME/.cargo}/credentials.toml"
 CRATES=(treadcore-sim treadcore-proto treadcore-net treadcore-brain treadcore-client)
-VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
+VERSION="$(awk -F'"' '/^version *= /{print $2; exit}' "$ROOT/Cargo.toml")"
 
 case "$MODE" in
     token)

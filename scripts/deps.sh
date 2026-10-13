@@ -55,7 +55,7 @@ if [ "$PLATFORM" = gentoo ]; then
     echo "  and for a machine with no GPU, VIDEO_CARDS=\"lavapipe\" with USE=vulkan on media-libs/mesa"
 fi
 if ! command -v cargo >/dev/null; then
-    echo "  Rust: https://rustup.rs (the distribution's own rust package works too if it is $(sed -n 's/^rust-version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1) or newer)"
+    echo "  Rust: https://rustup.rs (the distribution's own rust package works too if it is $(awk -F'"' '/^rust-version *= /{print $2; exit}' "$ROOT/Cargo.toml") or newer)"
 fi
 if [ "${APPLY:-0}" = 1 ]; then
     [ -n "$SUDO" ] || [ "$(id -u)" = 0 ] || die "neither doas nor sudo, and not root: run the line above as root"

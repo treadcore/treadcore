@@ -18,7 +18,7 @@
 #   6. what is left to do by hand: the tag, the publish
 . "$(dirname "$0")/common.sh"
 need_config
-VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
+VERSION="$(awk -F'"' '/^version *= /{print $2; exit}' "$ROOT/Cargo.toml")"
 IMG="$ROOT/reports/images"
 GUIDE="$ROOT/documentation/HOW-TO-PLAY.md"
 fail=0

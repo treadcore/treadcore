@@ -17,8 +17,8 @@ Website: [treadcore.org](https://treadcore.org). Repository:
 Crates: [treadcore-client](https://crates.io/crates/treadcore-client)
 (the window, installed as `treadcore`), [treadcore-server](https://crates.io/crates/treadcore-server),
 and the libraries they are built from, `treadcore-sim`, `treadcore-proto`,
-`treadcore-net`, `treadcore-brain`. The current release is 0.1.0-rc.4,
-the fourth candidate (`documentation/RELEASE.md`), the first with
+`treadcore-net`, `treadcore-brain`. The current release is 0.1.0-rc.5,
+the fifth candidate (`documentation/RELEASE.md`), the first with
 packages; it is offered for playtesting, and the player's guide is
 [documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md).
 

@@ -4,7 +4,17 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
-## 0.1.0-rc.4 (2026-10-13): the fourth candidate
+## 0.1.0-rc.5 (2026-10-13): the fifth candidate
+
+What rc.4 was meant to be. The tag `v0.1.0-rc.4` was pushed from a tree
+whose release commit had not been made, so it names 0.1.0-rc.3's code;
+the workflow's version check refused it and nothing was built. The
+pre-push hook now refuses a tag pushed from a tree with uncommitted
+changes, and every script reads the version with one awk that stops at
+the first match: the old `sed | head -1` could die of SIGPIPE under
+pipefail, silently, which is how the release commit was skipped. rc.5
+carries:
+
 
 - Fixed: the Windows build, which failed in rc.3's new MSI step: WiX is
   called by its installed path, and a build error is published as an

@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: v
         run: |
-          v="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+          v="$(awk -F'"' '/^version *= /{print $2; exit}' Cargo.toml)"
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "rpmversion=${v//-/\~}" >> "$GITHUB_OUTPUT"
           if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME}" != "v$v" ]; then

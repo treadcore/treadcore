@@ -17,7 +17,7 @@ need_config
 for t in xdotool grim hyprctl python3; do command -v "$t" >/dev/null || die "shoot needs $t"; done
 python3 -c 'import PIL' 2>/dev/null || die "shoot needs python3 Pillow"
 export DISPLAY="${DISPLAY:-:0}"
-VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
+VERSION="$(awk -F'"' '/^version *= /{print $2; exit}' "$ROOT/Cargo.toml")"
 OUT="$ROOT/reports/images"
 MAP="${MAP:-$ROOT/maps/prior-art/constanine.map}"
 W=1200; H=740; X=40; Y=40
