@@ -575,7 +575,22 @@ next step. rc.4 calls WiX by its path and publishes any build error as
 an annotation. WiX itself cannot be tried off Windows: on Linux it
 warns that it supports only Windows and then misreads every backslash.
 
-**0.1.0-rc.4** was tagged on the wrong commit (section VI) and refused by the workflow's version job. **0.1.0-rc.5** carries its changes: see the addendum, written when its run finished.
+**0.1.0-rc.4** was tagged on the wrong commit (section VI) and refused by the workflow's version job. **0.1.0-rc.5** carries its changes. Every .deb, .rpm, macOS and Nix job
+passed again; the Windows build failed, and this time the public record
+said exactly why, because the MSI step now publishes WiX's own error:
+
+```
+treadcore.wxs(44) : error WIX0367: The Component/@Guid attribute's value '*' is not
+valid for this component ... Components with more than one file cannot use an
+automatically generated guid unless a versioned file is the keypath ...
+```
+
+The guide and the licence had shared a component. A Rust `.exe` carries
+no version resource, so nothing in that component was "versioned", and
+WiX could not derive its id. One file a component fixes it. The PATH
+fix of rc.4 was right: WiX ran.
+
+**0.1.0-rc.6**: see the addendum, written when its run finished.
 
 ## XII. What to take from this
 

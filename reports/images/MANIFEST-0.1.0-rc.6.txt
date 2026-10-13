@@ -1,0 +1,16 @@
+# frames taken by scripts/shoot.sh for 0.1.0-rc.6; release.sh checks each is shown
+guide-screen.png
+guide-column.png
+guide-column-armed.png
+guide-ghost.png
+guide-bottom.png
+guide-squad.png
+guide-refused.png
+guide-right.png
+guide-top.png
+guide-aim.png
+guide-events.png
+guide-close.png
+guide-lobby.png
+guide-networked.png
+guide-net-top.png

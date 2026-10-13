@@ -41,9 +41,14 @@
       <Component Directory="INSTALLFOLDER" Guid="*">
         <File Id="treadcore_server.exe" Source="$(var.BinDir)\treadcore-server.exe" KeyPath="yes" />
       </Component>
+      <!-- One file a component: WiX generates a component's id itself only
+           when its key file is versioned or it is the only file (rc.5's
+           build: WIX0367, the guide and the licence in one component). -->
       <Component Directory="INSTALLFOLDER" Guid="*">
         <File Id="HOW_TO_PLAY.md" Source="documentation\HOW-TO-PLAY.md" KeyPath="yes" />
-        <File Id="LICENSE.txt" Source="LICENSE" Name="LICENSE.txt" />
+      </Component>
+      <Component Directory="INSTALLFOLDER" Guid="*">
+        <File Id="LICENSE.txt" Source="LICENSE" Name="LICENSE.txt" KeyPath="yes" />
       </Component>
     </Feature>
   </Package>

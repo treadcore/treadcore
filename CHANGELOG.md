@@ -4,7 +4,15 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
-## 0.1.0-rc.5 (2026-10-13): the fifth candidate
+## 0.1.0-rc.6 (2026-10-13): the sixth candidate
+
+- Fixed: the MSI. rc.5's run reported WiX's error in public (WIX0367: two
+  unversioned files in one component with a generated id); the guide
+  and the licence are now a component each. Everything else in rc.5's
+  run passed: seven .deb systems, three .rpm, macOS, Nix.
+
+## 0.1.0-rc.5 (2026-10-13): the fifth candidate, tagged, not published
+
 
 What rc.4 was meant to be. The tag `v0.1.0-rc.4` was pushed from a tree
 whose release commit had not been made, so it names 0.1.0-rc.3's code;
