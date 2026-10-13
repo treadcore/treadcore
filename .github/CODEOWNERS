@@ -1,0 +1,7 @@
+# Changes to these paths need a maintainer's review (GOVERNANCE.md section 7).
+source/treadcore-sim/src/rules.rs   @treadcore/maintainers
+source/treadcore-proto/             @treadcore/maintainers
+documentation/DESIGN.md             @treadcore/maintainers
+documentation/PROTOCOL.md           @treadcore/maintainers
+documentation/GOVERNANCE.md         @treadcore/maintainers
+documentation/RELEASE.md            @treadcore/maintainers
