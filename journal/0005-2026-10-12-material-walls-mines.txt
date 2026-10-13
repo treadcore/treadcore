@@ -23,21 +23,21 @@ ABSTRACT
     Step 6c gives the squad things to build. The squad fells a forest
     tile for four material and builds walls (impassable, block a flat
     shot, a splash knocks them to rubble), roads (bridges over water,
-    built from the bank) and mines, the prior art's: hidden from all but the
-    layer until found within a tile and a half, set off by a tank or
+    built from the bank) and mines, the prior art's: hidden from all but
+    the layer until found within a tile and a half, set off by a tank or
     squad on the tile, a shell's splash or an orthogonal neighbour, 50
-    to the tank on it and 20 around, a squad in the blast lost, the
-    tile cratered, and ignored by drones. Pillboxes hold eight shells
-    for their owner's tank. A terrain-change event keeps clients'
-    maps current. A minimal defender brain, the Fortifier, harvests,
-    rings its home depot with mines and walls, and sits. The proof:
-    over twenty seeds, against a scripted attacker that drives for the
-    depot after 150 seconds, the fortified defender lived to tick
-    137 664 in total against 94 885 bare (45 percent longer), survived
-    18 matches to 5, and killed the attacker 20 times to 12, having
-    built 431 things to none. The first run of that proof found a gate
-    in the moat on the very road the attacker used; the second found a
-    brain re-ordering the same refused build four times a second.
+    to the tank on it and 20 around, a squad in the blast lost, the tile
+    cratered, and ignored by drones. Pillboxes hold eight shells for
+    their owner's tank. A terrain-change event keeps clients' maps
+    current. A minimal defender brain, the Fortifier, harvests, rings
+    its home depot with mines and walls, and sits. The proof: over
+    twenty seeds, against a scripted attacker that drives for the depot
+    after 150 seconds, the fortified defender lived to tick 137 664 in
+    total against 94 885 bare (45 percent longer), survived 18 matches
+    to 5, and killed the attacker 20 times to 12, having built 431
+    things to none. The first run of that proof found a gate in the moat
+    on the very road the attacker used; the second found a brain
+    re-ordering the same refused build four times a second.
 
 INDEX TERMS
 
@@ -77,7 +77,8 @@ III. METHOD
       own, or within 1.5 of own   revealed mines        in sync; a found
       tank or squad                                     mine is near the
                                                         finder anyway
-      a tank's own mines never    the prior art: a mine hurts    a defender's
+      a tank's own mines never    the prior art: a      a defender's
+                                  mine hurts
       hurt it                     anyone                moat needs no
                                                         gate; the first
                                                         proof showed why
@@ -92,7 +93,8 @@ III. METHOD
       TerrainChanged event for    re-send the map       16 KiB; the
       every changed tile                                client already
                                                         applies craters
-      material cap 8, harvest 4   the prior art's half-tree      whole numbers; a
+      material cap 8, harvest 4   the prior art's       whole numbers; a
+                                  half-tree
                                   costs                 ring is eight
                                                         mines
       the Fortifier reads its     give it the map       the world

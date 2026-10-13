@@ -120,8 +120,9 @@ II. BACKGROUND
 
     C. Prior art consulted
 
-    the prior art [9]; a tile map editor and a Python port of the prior art as mentioned in the pasted document;
-    the trade and institutional reporting in Section III.B.
+    the prior art [9]; a tile map editor and a Python port of the prior
+    art as mentioned in the pasted document; the trade and institutional
+    reporting in Section III.B.
 
 III. METHOD
 
@@ -187,7 +188,8 @@ III. METHOD
       elected from a matrix                                recovery;
                                                            relay where
                                                            needed is
-                                                           the prior art's ring
+                                                           the prior
+                                                           art's ring
                                                            generalised
       Rejections are events        Result<(), Error>       the reason
                                                            reaches the
@@ -540,8 +542,9 @@ REFERENCES
         replace artillery," 5 May 2025. [Online]. Available: https://
         smallwarsjournal.com/2025/05/05/beyond-the-hype-why-drones-
         cannot-replace-artillery/ [Accessed: 12-Oct-2026].
-    [4] Militarnyi, "Interceptor drones integrated into a wheeled armored
-        vehicle." [Online]. Available: https://militarnyi.com/en/news/
+    [4] Militarnyi, "Interceptor drones integrated into a wheeled
+        armored vehicle." [Online]. Available:
+        https://militarnyi.com/en/news/
         interceptor-drones-boxer-armored-vehicle/ [Accessed:
         12-Oct-2026].
     [5] Interesting Engineering, "Franco-German tank concept pairs
@@ -551,17 +554,18 @@ REFERENCES
     [6] Hensoldt, "The future of the tank in the age of drones."
         [Online]. Available: https://www.hensoldt.net/insights/future-
         of-tanks-in-the-drone-era [Accessed: 12-Oct-2026].
-    [7] A see-through-armour helmet display, maker's page. [Online]. Available: https://
+    [7] A see-through-armour helmet display, maker's page. [Online].
+        Available: https://
         www.elbitsystems.com/air-space/aircraft-systems/helmet-mounted-
         display/ironvision [Accessed: 12-Oct-2026].
     [8] Breaking Defense, "Bringing real autonomy to battlefield drone
         swarms," Oct. 2026. [Online]. Available: https://
         breakingdefense.com/2026/10/bringing-real-autonomy-to-
         battlefield-drone-swarms/ [Accessed: 12-Oct-2026].
-    [9] The prior art's author, "prior-art instructions," as reproduced at
-        dialup.party and summarised in the reference document pasted
-        into the brief; and "the prior art (1989)," MobyGames. [Accessed:
-        12-Oct-2026 via the brief].
+    [9] The prior art's author, "prior-art instructions," as reproduced
+        at dialup.party and summarised in the reference document pasted
+        into the brief; and "the prior art (1989)," MobyGames.
+        [Accessed: 12-Oct-2026 via the brief].
    [10] Bevy Engine, "Bevy 0.17 released," 30 Sep. 2025. [Online].
         Available: https://bevy.org/news/ [Accessed: 12-Oct-2026].
    [11] Full source list: documentation/RESEARCH.md in this repository.

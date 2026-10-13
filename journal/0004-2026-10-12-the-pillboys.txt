@@ -20,17 +20,18 @@ X-Commits: d45eb29
 
 ABSTRACT
 
-    Roadmap step 3 was built as DESIGN.md decided it the same
-    afternoon: the Pillboys are state on the tank driven by one order,
-    `Deploy { task }`, the prior art's builder with the tank as the thing driven.
+    Roadmap step 3 was built as DESIGN.md decided it the same afternoon:
+    the Pillboys are state on the tank driven by one order,
+    `Deploy { task }`, the prior art's builder with the tank as the thing
+    driven.
     The squad walks the world's route at 1.5 tiles a second, captures a
     neutral or dead pillbox by standing on it for ten seconds, repairs
     and builds for material, and walks home; a shell's splash over it
-    costs two of four men. Pillboxes are the prior art's with one addition: a
-    short-range gun against drones with an interceptor's odds. Twenty
-    neutral ones start on the map. A tank's route now keeps out of the
-    ring of any live pillbox that would shoot it, because the spoke
-    roads run straight through them. The proof asked for was run:
+    costs two of four men. Pillboxes are the prior art's with one
+    addition: a short-range gun against drones with an interceptor's
+    odds. Twenty neutral ones start on the map. A tank's route now keeps
+    out of the ring of any live pillbox that would shoot it, because the
+    spoke roads run straight through them. The proof asked for was run:
     over twenty seeds of eight bots, the four with squads beat the four
     without 18 wins to 2, 20 945 points to 13 655, 37 survivors to 32,
     with 248 captures. One caveat is recorded: in the default
@@ -57,10 +58,10 @@ II. BACKGROUND
 
     Carried from 0003: the cross-machine replay proof, a replay corpus,
     the window, two machines. The design was written (DESIGN.md,
-    "Pillboys and pillboxes: the decision") and checked against the prior art
-    (LAB-REPORT-PILLBOYS.md); the spec IDs it implements are on the
-    roadmap step: BLD-01 to 03, 05, 06, 09, 10, 13; PIL-01 to 05, 07
-    to 17; OWN-01, 02.
+    "Pillboys and pillboxes: the decision") and checked against the
+    prior art (LAB-REPORT-PILLBOYS.md); the spec IDs it implements are
+    on the roadmap step: BLD-01 to 03, 05, 06, 09, 10, 13; PIL-01 to 05,
+    07 to 17; OWN-01, 02.
 
 III. METHOD
 
@@ -75,7 +76,8 @@ III. METHOD
                                                         Direct shell is
                                                         a new Shell
                                                         field
-      capture only when neutral   capture any pillbox   the prior art: pick up a
+      capture only when neutral   capture any pillbox   the prior art:
+                                                        pick up a
       or dead                     by standing on it     dead one; a live
                                                         enemy pillbox is
                                                         shot first, from
@@ -86,7 +88,8 @@ III. METHOD
                                                         a tank whose
                                                         only road is
                                                         through
-      the squad is not shot by    pillboxes shoot       the prior art's pillboxes
+      the squad is not shot by    pillboxes shoot       the prior art's
+                                                        pillboxes
       pillboxes; splash hurts it  squads                shoot tanks; the
                                                         shell is the
                                                         squad's danger

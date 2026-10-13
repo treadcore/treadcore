@@ -22,20 +22,20 @@ X-Commits: 68227ed
 ABSTRACT
 
     Step 6 gives the world sides. A player has a team; a scenario deals
-    the seats into teams or leaves everyone alone, the prior art's start, to
-    ally in play by the prior art's protocol: ask, be accepted by any member,
-    leave at will, a request standing thirty seconds, all of it events.
-    A team shares its picture (an ally's recon spots for your gun), its
-    depots, its pillboxes' shells and the knowledge of its mines, and
-    is spared friendly fire: an ally's shell, strike, splash or mine
-    does nothing and the trace says so; one's own shells still hurt.
-    Interceptors and pillboxes leave allies alone; a strike at an ally
-    is refused. Team chat. The match ends when one team stands; the
-    winning team's top scorer is the winner. The proof the roadmap
-    asked for runs as a test: a shell fired at what only an ally's
-    drone sees is spotted, and a shell landing on a teammate does no
-    damage. A four-team trace of sixteen bots: 61 of 79 shells spotted.
-    30 tests pass. Wire version 7.
+    the seats into teams or leaves everyone alone, the prior art's
+    start, to ally in play by the prior art's protocol: ask, be accepted
+    by any member, leave at will, a request standing thirty seconds, all
+    of it events. A team shares its picture (an ally's recon spots for
+    your gun), its depots, its pillboxes' shells and the knowledge of
+    its mines, and is spared friendly fire: an ally's shell, strike,
+    splash or mine does nothing and the trace says so; one's own shells
+    still hurt. Interceptors and pillboxes leave allies alone; a strike
+    at an ally is refused. Team chat. The match ends when one team
+    stands; the winning team's top scorer is the winner. The proof the
+    roadmap asked for runs as a test: a shell fired at what only an
+    ally's drone sees is spotted, and a shell landing on a teammate does
+    no damage. A four-team trace of sixteen bots: 61 of 79 shells
+    spotted. 30 tests pass. Wire version 7.
 
 INDEX TERMS
 
@@ -49,14 +49,16 @@ I. INTRODUCTION
     bracket. The brief (CONCEPT.md section 9) asked for alliances that
     turn friendly fire off so allies can stampede together, and later
     for betrayal under a three-way rule. Step 6 is the first half: the
-    team as a thing in the world, and the prior art's way of forming one.
+    team as a thing in the world, and the prior art's way of forming
+    one.
 
 II. BACKGROUND
 
     Carried from 0006: doctrine distances tuned for 128; 65 536 tile
-    sprites on a prior-art map; the prior-art maps' licence; forest regrowth; the
-    cross-machine replay; the window; two machines. The spec's ALL-01
-    to ALL-10 and OWN-03 say what an alliance is in the prior art.
+    sprites on a prior-art map; the prior-art maps' licence; forest
+    regrowth; the cross-machine replay; the window; two machines. The
+    spec's ALL-01 to ALL-10 and OWN-03 say what an alliance is in the
+    prior art.
 
 III. METHOD
 
@@ -73,7 +75,8 @@ III. METHOD
                                                         ally
       the leaver gets the         the leaver's old id   the old id is
       smallest unused team id                           still the team's
-      any member may accept a     only the one asked    the prior art (ALL-04):
+      any member may accept a     only the one asked    the prior art
+                                                        (ALL-04):
       request to their team                             any member
                                                         admits
       scores stay per player;     a team score field    a team's
@@ -152,11 +155,11 @@ VI. DISCUSSION
     teammate) ran as written, once the test stopped killing its own
     recon with its own first shell, which is the rules working.
 
-    The alliance protocol is the prior art's and is deliberately plain. The
-    constraint the brief asked for, that sides may change only while
+    The alliance protocol is the prior art's and is deliberately plain.
+    The constraint the brief asked for, that sides may change only while
     three remain, is not here: step 6b adds proposals, swaps and the
-    three-way rule on top of this, and this step's `Leave` and
-    `Request` will be the primitives it builds from.
+    three-way rule on top of this, and this step's `Leave` and `Request`
+    will be the primitives it builds from.
 
 VII. OPEN PROBLEMS
 

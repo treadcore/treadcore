@@ -28,21 +28,21 @@ ABSTRACT
     time, including the Bevy client; the dev-profile engine finished
     building as a side effect of `cargo test --workspace` in 4 min 28 s
     on the VM, now 8 GB. The tests then found three bugs the compiler
-    could not: a UDP receive buffer too small for the Welcome packet
-    (no client could ever join), a straight-line Move that stopped at
-    the river (a bot parked on the bank for a whole match), and the
+    could not: a UDP receive buffer too small for the Welcome packet (no
+    client could ever join), a straight-line Move that stopped at the
+    river (a bot parked on the bank for a whole match), and the
     Makefile's SECONDS colliding with bash's own counter. The first
     traced match was a twenty-second melee with no indirect fire; the
     rule bot's doctrine was rewritten in four passes until a trace
     showed the design: 15 shells, 13 of them spotted. Mid-session the
-    brief grew to sixteen players, mostly defenders, with alliances
-    and betrayal; sixteen seats were built the same evening and
-    sixteen bots fight a traced match in under a second. A requirement
-    that the Pillboys follow the prior art's builder was checked and written
-    into the design. The organization's rules (how to join, propose,
-    review, leave, be recognised) and the release cycle were written
-    down before a second contributor exists. The window does not open
-    in this VM: it has no Vulkan driver.
+    brief grew to sixteen players, mostly defenders, with alliances and
+    betrayal; sixteen seats were built the same evening and sixteen bots
+    fight a traced match in under a second. A requirement that the
+    Pillboys follow the prior art's builder was checked and written into
+    the design. The organization's rules (how to join, propose, review,
+    leave, be recognised) and the release cycle were written down before
+    a second contributor exists. The window does not open in this VM: it
+    has no Vulkan driver.
 
 INDEX TERMS
 
@@ -62,15 +62,15 @@ I. INTRODUCTION
 
     Paul's direction arrived in four messages during the session, each
     enlarging it: read everything and recommend (the start); write the
-    roadmap's backlog, define the implementation and release cycle,
-    and set up the organization with its processes; take a pasted
-    audit of a prior-art tutorial as the requirement for the Pillboys and
-    report on it; and change the game to sixteen players, most of them
-    base-defence brains, with alliances, friendly fire off inside
-    them, and betrayals under a three-way balance. The session did the
-    first three in full and the mechanical part of the fourth; the
-    rest of the fourth is written into CONCEPT.md and the roadmap as
-    steps with proofs.
+    roadmap's backlog, define the implementation and release cycle, and
+    set up the organization with its processes; take a pasted audit of a
+    prior-art tutorial as the requirement for the Pillboys and report on
+    it; and change the game to sixteen players, most of them
+    base-defence brains, with alliances, friendly fire off inside them,
+    and betrayals under a three-way balance. The session did the first
+    three in full and the mechanical part of the fourth; the rest of the
+    fourth is written into CONCEPT.md and the roadmap as steps with
+    proofs.
 
 II. BACKGROUND
 
@@ -126,7 +126,8 @@ III. METHOD
       brake to a crawl for        4-connected A* with   diagonals look
       corners; re-plan when       axis-aligned legs     right; the brake
       blocked                                           is a momentum
-                                                        model the prior art also
+                                                        model the prior
+                                                        art also
                                                         has
       sixteen seats the default   keep four, allow      Paul: "abso-
       everywhere                  sixteen               lutely"; a 4-bot
@@ -149,11 +150,13 @@ III. METHOD
       playtesters, one not a      word                  for "user
       maintainer                                        testing
                                                         confirmed"
-      Pillboys = the prior art's builder,  a unit the player     the tank is the
+      Pillboys = the prior art's  a unit the player     the tank is the
+      builder,
       an order the tank gives     drives                one thing
                                                         driven; the
                                                         audit says that
-                                                        is the prior art too
+                                                        is the prior art
+                                                        too
       write the vision            start coding it       roadmap rule:
       (defenders, alliances,                            replay and hash
       betrayal) as roadmap                              first
@@ -263,16 +266,15 @@ IV. CHRONOLOGY
 
     17. Six commits (Appendix A), this entry, CHANGELOG.
 
-    18. After the push, Paul sent a clean-room functional
-        specification of the prior art, version 1.14 (256 requirements with
-        IDs, sources and basis codes, by the spec's author) with the
-        instruction to write it into a document, keep none of the
-        1980s LAN ring networking, and have the backlog reference it.
-        Written as documentation/SPEC-PRIOR-ART-1.14.md with a preface
-        mapping each of its sections to adopted, adapted or not
-        adopted; its networking section is reference only. ROADMAP
-        steps 3, 5, 6, 6b, 6c, 6d cite its IDs; the backlog gained
-        items 9 to 13 from it.
+    18. After the push, Paul sent a clean-room functional specification
+        of the prior art, version 1.14 (256 requirements with IDs,
+        sources and basis codes, by the spec's author) with the
+        instruction to write it into a document, keep none of the 1980s
+        LAN ring networking, and have the backlog reference it. Written
+        as documentation/SPEC-PRIOR-ART-1.14.md with a preface mapping
+        each of its sections to adopted, adapted or not adopted; its
+        networking section is reference only. ROADMAP steps 3, 5, 6, 6b,
+        6c, 6d cite its IDs; the backlog gained items 9 to 13 from it.
 
 V. RESULTS
 
@@ -477,8 +479,8 @@ APPENDIX A. COMMITS
     c5cf40c  build: shellcheck directives for the sourced common.sh
     f0a7c5b  journal: 0002, proving the world; CHANGELOG
     0ac561d  journal: 0002 wrapped to 72 columns
-    (next)   docs: The prior art, version 1.14 functional specification; the
-             roadmap cites it
+    (next)   docs: The prior art, version 1.14 functional specification;
+             the roadmap cites it
 
 
 APPENDIX B. ARTIFACTS
@@ -487,10 +489,10 @@ APPENDIX B. ARTIFACTS
                     passes) and debug-20261012-18*.log (sixteen bots),
                     with trace-*.jsonl beside each (local, gitignored)
     Lobby logs      build/logs/lobby-20261012-18*-peer{1,2,3,4}.log
-    Documents       documentation/{GOVERNANCE,RELEASE,SPEC-PRIOR-ART-1.14,
-                    LAB-REPORT-PILLBOYS}.md (new); DESIGN, CONCEPT,
-                    ROADMAP,
-                    PROTOCOL, BUILD, LAB-REPORT (changed)
+    Documents       documentation/{GOVERNANCE,RELEASE,
+                    SPEC-PRIOR-ART-1.14,LAB-REPORT-PILLBOYS}.md (new);
+                    DESIGN, CONCEPT,
+                    ROADMAP, PROTOCOL, BUILD, LAB-REPORT (changed)
     Organization    CONTRIBUTING.md, CONTRIBUTORS.md, .github/
     Journal         journal/0002-2026-10-12-proving-the-world.txt (this)
 

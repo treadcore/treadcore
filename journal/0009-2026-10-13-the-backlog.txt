@@ -20,20 +20,19 @@ X-Commits: 76908d3
 
 ABSTRACT
 
-    The roadmap's backlog, fourteen items carried from the first
-    traces (journal 0002), was worked through in one session: eight
-    done, three decided from a trace with no change, three deferred to
-    the step that owns them. The instrument came first: a match
-    report at the end of every match and replay (item 8), then eight
-    seeds of sixteen bots for 300 game seconds per variant. The one
-    rule change that mattered: interceptors no longer engage
-    interceptors. With it the kills a match go from 7.0 by shell and
-    5.9 by strike to 8.8 and 2.9, the gun is the weapon, and item 7
-    (the strike is the kill) answers itself. Tank speed 2.5 was tried
-    and rejected: inside the noise, and the four-bot complaint was of
-    a map that no longer exists. Added: Retask, forest concealment as
-    the prior art had it, the three game types, the host's rtt in the HUD. 34
-    tests pass; wire version 9.
+    The roadmap's backlog, fourteen items carried from the first traces
+    (journal 0002), was worked through in one session: eight done, three
+    decided from a trace with no change, three deferred to the step that
+    owns them. The instrument came first: a match report at the end of
+    every match and replay (item 8), then eight seeds of sixteen bots
+    for 300 game seconds per variant. The one rule change that mattered:
+    interceptors no longer engage interceptors. With it the kills a
+    match go from 7.0 by shell and 5.9 by strike to 8.8 and 2.9, the gun
+    is the weapon, and item 7 (the strike is the kill) answers itself.
+    Tank speed 2.5 was tried and rejected: inside the noise, and the
+    four-bot complaint was of a map that no longer exists. Added:
+    Retask, forest concealment as the prior art had it, the three game
+    types, the host's rtt in the HUD. 34 tests pass; wire version 9.
 
 INDEX TERMS
 
@@ -96,7 +95,8 @@ III. METHOD
       VIS-02 as written,       halved radius only    cover against the
       2 x 2 block, 3 tiles                           air is the oldest
                                                      counter to it
-      game types as what a     the prior art's base-count     one enum, three
+      game types as what a     the prior art's       one enum, three
+                               base-count
       tank starts with         shell formula         numbers; the rest
                                                      is the depots'
       old replays read and     fail to parse on the  a replay that

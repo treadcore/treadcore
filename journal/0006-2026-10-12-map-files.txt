@@ -26,22 +26,21 @@ X-Commits: 0d06c82
 
 ABSTRACT
 
-    Step 5 makes the map a text file: a format line, `size`, `seed`,
-    one glyph per tile, then `start`, `depot` and `pillbox` lines, so
-    any text editor is the editor. The loader refuses what it cannot
-    use and names the line; the writer and reader round-trip a
-    generated map to the bit. A scenario names its map as the
-    scenario's seed, another seed, or the text of a file carried
-    whole, so replays and Welcomes are self-contained. Mid-session
-    Paul produced five prior-art maps (the binary
-    format); a converter was written, the maps turned out to be 256 x
-    256, and the world was made to take its size from the map after a
-    detour through making 256 the default and back. Welcome, now up to
-    130 KiB, goes in chunks. Sixteen bots play a converted prior-art map,
-    and on it the pillboxes fire: The prior art's roads give the router no way
-    round. Rejections on island maps (squads and tanks sent across
-    water) fell from 863 to 396 once the bot remembered what
-    the world refused. 28 tests pass.
+    Step 5 makes the map a text file: a format line, `size`, `seed`, one
+    glyph per tile, then `start`, `depot` and `pillbox` lines, so any
+    text editor is the editor. The loader refuses what it cannot use and
+    names the line; the writer and reader round-trip a generated map to
+    the bit. A scenario names its map as the scenario's seed, another
+    seed, or the text of a file carried whole, so replays and Welcomes
+    are self-contained. Mid-session Paul produced five prior-art maps
+    (the binary format); a converter was written, the maps turned out to
+    be 256 x 256, and the world was made to take its size from the map
+    after a detour through making 256 the default and back. Welcome, now
+    up to 130 KiB, goes in chunks. Sixteen bots play a converted
+    prior-art map, and on it the pillboxes fire: The prior art's roads
+    give the router no way round. Rejections on island maps (squads and
+    tanks sent across water) fell from 863 to 396 once the bot
+    remembered what the world refused. 28 tests pass.
 
 INDEX TERMS
 
@@ -88,7 +87,8 @@ III. METHOD
                                                         proofs went
                                                         wrong when it
                                                         did not
-      the world takes its size    crop prior-art maps to     a one-tile road
+      the world takes its size    crop prior-art maps   a one-tile road
+                                  to
       from the map                128, or scale them    does not scale;
                                                         the file says
                                                         its
@@ -104,7 +104,8 @@ III. METHOD
                                   Welcome, rebuild      not fit a
                                   from the scenario     datagram; the
                                                         chunk is generic
-      depot lines may say an      first-N rule only     the prior art's bases are
+      depot lines may say an      first-N rule only     the prior art's
+                                                        bases are
       owner                                             neutral, and the
                                                         file should be
                                                         able to say so
@@ -112,7 +113,7 @@ III. METHOD
       nearest land
       prior-art maps in maps/prior-art/     vendor/ rule: no      Paul's
                                                         direction;
-      with provenance recorded    prior-art maps             provenance and
+      with provenance recorded    prior-art maps        provenance and
                                                         the licence
                                                         question written
                                                         down, removable
@@ -133,14 +134,13 @@ IV. CHRONOLOGY
         Welcome's map used as is. MAPS.md written.
      2. Paul: look in ~/Downloads/SharedVM for .map files. Five there:
         Constanine, Fido's Airstrip, FortressIsles2, FortressIslesX,
-        big-lizard. The binary format, version 1: pills (5 bytes), bases (6),
-        starts (3), then run-length rows: a run is datalen, y, startx,
-        endx, nibbles; a nibble under 8 means that many plus one
-        literal terrains follow, 8 or more means the next nibble
-        repeats n - 6 times; a run with no data ends the map; tiles no
-        run covers are deep sea. One file ends its runs with 99 99 99
-        where the others use ff ff ff; any dataless run is taken as
-        the end.
+        big-lizard. The binary format, version 1: pills (5 bytes), bases
+        (6), starts (3), then run-length rows: a run is datalen, y,
+        startx, endx, nibbles; a nibble under 8 means that many plus one
+        literal terrains follow, 8 or more means the next nibble repeats
+        n - 6 times; a run with no data ends the map; tiles no run
+        covers are deep sea. One file ends its runs with 99 99 99 where
+        the others use ff ff ff; any dataless run is taken as the end.
      3. A decoder in Python; the maps' land areas: 168 x 112 to 203 x
         211 of the 256 grid. None fits 128.
      4. Thirteen places assumed 128: swarm edges, the brains' clamps
@@ -240,13 +240,12 @@ VI. DISCUSSION
     it was given. The code that assumed 128 was thirteen lines and
     all of it was wrong in the same way.
 
-    Third, the ancestor's maps make the pillbox fire. On the
-    generated island the router steers round every gun; on the prior art's
-    islands the road is the only way, and the first pillbox kill in
-    bot play happened on big-lizard without any change to the rules.
-    Backlog item 14 is still a design question for the generated map,
-    but it is answered for the hand-made ones, which is what maps
-    were for.
+    Third, the ancestor's maps make the pillbox fire. On the generated
+    island the router steers round every gun; on the prior art's islands
+    the road is the only way, and the first pillbox kill in bot play
+    happened on big-lizard without any change to the rules. Backlog item
+    14 is still a design question for the generated map, but it is
+    answered for the hand-made ones, which is what maps were for.
 
 VII. OPEN PROBLEMS
 
@@ -255,8 +254,8 @@ VII. OPEN PROBLEMS
        their objectives. A doctrine that reads the map's size and
        routes round water (a route-reachability question to the
        world, or a reachable-depots list in the Observation).
-    2. The client draws one sprite per tile: 65 536 on a prior-art map, to
-       be measured when the window opens.
+    2. The client draws one sprite per tile: 65 536 on a prior-art map,
+       to be measured when the window opens.
     3. The licence of the five prior-art maps is not established
        (vendor/THIRD-PARTY.md).
     4. Forest regrowth; the cross-machine replay; the window; two
@@ -287,8 +286,8 @@ REFERENCES
 APPENDIX A. COMMITS
 
     0d06c82  sim, proto, net, server, client, brain: map files, any map
-             size, chunked Welcome, the prior art converter (roadmap step 5);
-             wire version 6
+             size, chunked Welcome, the prior art converter (roadmap
+             step 5); wire version 6
     (next)   docs, vendor, journal: step 5 done; the prior-art maps'
              provenance; journal 0006
 
