@@ -22,8 +22,8 @@ ABSTRACT
 
     Roadmap step 3 was built as DESIGN.md decided it the same afternoon:
     the Pillboys are state on the tank driven by one order,
-    `Deploy { task }`, the prior art's builder with the tank as the thing
-    driven.
+    `Deploy { task }`, the prior art's builder with the tank as the
+    thing driven.
     The squad walks the world's route at 1.5 tiles a second, captures a
     neutral or dead pillbox by standing on it for ten seconds, repairs
     and builds for material, and walks home; a shell's splash over it
