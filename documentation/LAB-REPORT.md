@@ -14,11 +14,11 @@ As of 13 October 2026 (the earlier tables are in the history; journal
 | --- | --- | --- | --- |
 | treadcore-sim | ~4700 | yes | 24 pass (determinism, prediction drives the tank as the host does, a team shares recon and spares its own, alliances form and break and teams end the match, proposals change sides under the three-way rule, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, retask moves a recon and recalls one drone, a forest block conceals a tank, game types set the start, sixteen seats, a world from a map file, map determinism, every start reaches the centre, a map survives the file round trip, bad map files are refused with a line) |
 | treadcore-proto | ~330 | yes | 3 pass (round trip, snapshot split and reassembly, big packets chunk and reassemble) |
-| treadcore-net | ~1570 | yes | 6 pass (4 election, 1 loopback session, 1 prediction under 200 ms of lag: the predicted tank moves 250 ms before the snapshot shows it, zero mismatches) |
+| treadcore-net | ~2000 | yes | 9 pass (4 election, 1 loopback session, 1 prediction under 200 ms of lag: the predicted tank moves 250 ms before the snapshot shows it, zero mismatches; 1 rejoin: a dropped client's seat given back at a later tick; 2 introducer: two silent peers meet through one, the identity file round-trips) |
 | treadcore-brain | ~1150 | yes | 4 pass (sixteen bots fight to a result; `pillboys_pay`: over twenty seeds, bots that capture pillboxes outscore and outlive the same doctrine without the squad; `fortification_pays`: a fortified depot outlives a bare one against a scripted attack; `defenders_hold`: twelve Defenders against four attackers, ten seeds, every match to the time limit, the defenders outliving the attackers and keeping their depots) |
 
 
-| treadcore-server | ~760 | yes; `make debug` and `make lobby-test` run (`LAG=200` for the lagged one) | none |
+| treadcore-server | ~800 | yes; `make debug` and `make lobby-test` run (`LAG=200` for the lagged one, `INTRODUCER=1` to meet through an introducer alone, `REJOIN=1` to kill a seat and bring it back) | none |
 | treadcore-client | ~1320 | yes, against Bevy 0.17.3; three dead-code warnings | none |
 | treadcore-warm | ~45 | yes; the window panics in this VM for want of a Vulkan driver (BUILD.md) | none |
 
@@ -346,6 +346,43 @@ runs host and client on loopback with `Socket::set_lag(100 ms)` each
 way and asserts zero mismatches and a 250 ms lead. The transport's lag
 queue (`TREADCORE_LAG_MS`) is what stands in for `tc netem` on a
 machine without root.
+
+### 5.5 The introducer is a map and a timer
+
+```rust
+pub struct Introducer { entries: BTreeMap<(String, PeerId), Entry>, last_push: Instant, .. }
+pub fn poll(&mut self, sock: &mut Socket)      // registrations in, introductions out, lapses
+pub struct Registration { pub addr: SocketAddr, .. }
+pub fn poll(&mut self, sock: &mut Socket, every: Duration, hosting: bool)
+```
+
+Step 7's service (`introducer.rs`) is the same shape as everything
+else in the crate: a struct with a `poll`, no thread, no blocking, so
+the server runs it in a loop and the test runs it in the same thread
+as the two lobbies it introduces. Its whole state is a map from (lobby
+name, peer) to the two addresses and a timestamp; an entry lapses at
+thirty seconds. It has no idea what a game is.
+
+The lobby's side is three small additions: `candidates`, the addresses
+a peer might be at (the introducer's two, and any a third party's
+`Hello` named); `heard`, the peers a packet has come from directly;
+and `targets(id)`, which is the one known address once heard and
+every candidate until then. `punch` sends a `Hello` (or a `Ping`, to a
+host, which runs no lobby) to every target of every unheard peer
+every 250 ms, and the probe's `Ping`s go to the targets too. The
+packet that comes back settles the address in `heard_from`. That is
+all hole punching is, once the introducer has told each side what to
+aim at.
+
+Rejoin rides on the same pieces plus one number: `Join { session }`,
+random per process. The host's seat remembers it; a Join with another
+session is a restart, and the seat's `next_seq`, `pending`,
+`events_out` go back to the start. The alternative, resetting on any
+Join from a seat that was already joined, breaks under lag: two Joins
+from one process can be in flight at once, and the second would wipe
+sequences the client had already used. `identity_from_file` is
+sixteen hex digits in a file, made the first time; the host's seat is
+keyed by that id, so the returning process is the same player.
 
 ## 6. treadcore-brain: the controller interface
 

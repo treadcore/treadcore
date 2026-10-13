@@ -1,6 +1,6 @@
 # treadcore protocol
 
-Version 10. One UDP socket per process, default port 47296. Every datagram
+Version 11. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 
@@ -40,13 +40,73 @@ This is the prior art's ring, generalised: a ring forwards everything through
 everyone; a tree forwards only for the peers that need it, and the host
 is the peer the tree is shortest from.
 
+## Across the Internet: the introducer
+
+Nothing above reaches past the LAN: the beacon is a broadcast, and a
+peer behind a home router has an address only its router knows. Roadmap
+step 7 adds the smallest thing that fixes it, the **introducer**
+(`source/treadcore-net/src/introducer.rs`; `treadcore-server
+--introduce`): a UDP service that hosts no game, keeps no state past
+thirty seconds, and tells the peers registered under one lobby name
+each other's addresses. It is not a server anyone plays on; a group
+runs one anywhere with a public address, or borrows one.
+
+- `Register { peer, name, game, local, hosting }` from a peer to the
+  introducer: every second while looking for a game, every five while
+  hosting one. `local` is the address the peer sees for itself (its
+  LAN address, guessed from the interface the default route uses); the
+  introducer notes the address the datagram came from beside it, which
+  is the peer's public address as its router rewrote it. `hosting` says
+  a match is running here.
+- `Introduce { game, peers }` from the introducer to every peer in
+  `game`: every second, and at once when someone new registers. Each
+  entry is a peer id, name, public address, local address, and whether
+  it is hosting. A registration lapses after thirty seconds of silence.
+
+A lobby given `--introducer HOST:PORT` registers in its Discover phase
+and, with `--no-beacon`, shouts nothing on the LAN. Every peer it is
+introduced to is greeted at both addresses, every 250 ms in Discover
+and with every probe in Probe, until a packet comes back from the peer
+directly; whichever address it came from is the peer's address from
+then on (the same rule already settled addresses behind a NAT that
+rewrites ports). That is hole punching in its plain form: each side's
+first packet out opens its own router for the other's packets in. The
+local address is what works for two peers behind the same router. A
+pair whose routers never pass a packet either way (symmetric NAT on
+both sides) shows in the matrix as an unmeasured link, and the
+election routes it through a peer that reaches both, exactly as on a
+LAN with a broken segment. Nothing in the election, the relay, or the
+session changed for this step.
+
+**Rejoin** (SPEC GAM-12, backlog item 10). A seat belongs to a peer id,
+and `--identity FILE` keeps a peer id across restarts (made the first
+time, sixteen hex digits). A host keeps registering while it hosts,
+with `hosting` set. A peer that drops and starts again registers under
+the same lobby name, is told who is hosting, pings that host at both
+its addresses until it answers (a host answers a `Ping` from any peer
+that has a seat), and decides for it without an election. Its `Join`
+carries a `session` number, random per process; the host sees the
+same peer id with a new session, gives the seat back at the tick the
+match has reached, and starts the seat's sequence numbers over, so the
+newcomer's first order (seq 1 again) is applied. A repeated `Join`
+from the same process (a lost Welcome) has the same session number and
+resets nothing. On the way back the host also pings every address the
+introducer gives for a seated peer that is not joined, which opens the
+host's router for the returning `Join`. What was the player's is still
+theirs: the seat never left the world, its tank drove on under no
+orders, its pillboxes and depots kept their owner. There is no window:
+the seat waits as long as the match. One lobby name is one match: a
+fresh group that picks the name of a running match is told its host
+and refused by it ("no seat for this peer").
+
 ## The session
 
 Host-authoritative. The host owns the world; clients send orders and
 receive their view.
 
-- `Join { peer, name }` from a client, repeated every 500 ms until
-  `Welcome { player, scenario, tick, map }` or `Refuse`. `Welcome`
+- `Join { peer, name, session }` from a client, repeated every 500 ms
+  until `Welcome { player, scenario, tick, map }` or `Refuse`.
+  `session` is the client process's number (rejoin, above). `Welcome`
   carries the whole `Map` as it is at that tick (cells, starts, depots,
   pillboxes), not just the cells, because a map from a file is not
   something a client can regenerate from a seed. Encoded, it is 17 KiB
@@ -108,13 +168,19 @@ one tick at the tick rate by the same function the host runs
 (`World::predict`, which calls the host's `drive_tank`). Every
 snapshot replaces the copy's tank with the host's, re-applies the
 orders with seq after the snapshot's `acked`, and drives the ticks the
-client was ahead again. Nothing predicted leaves the client; the host
-never hears of it.
+client was ahead again. A terrain event (a crater, a wall) for a tick
+the client has already predicted past does the same from the last
+snapshot's tank: the ticks up to the event's are driven over the old
+map, the rest over the new one, because the host changes its map after
+that tick's drive. Nothing predicted leaves the client; the host never
+hears of it.
 
 The check: whenever none of the client's orders is in flight across a
-snapshot's span, the tank the host reports at tick T must equal the
-tank predicted at T bit for bit (position, heading, speed, waypoint,
-route length). A difference is logged as a mismatch with the distance,
+snapshot's span, and a snapshot has been adopted before (the first one
+after a Welcome is the baseline: a seat that comes back mid-match has
+a copy built from the scenario's start), the tank the host reports at
+tick T must equal the tank predicted at T bit for bit (position,
+heading, speed, waypoint, route length). A difference is logged as a mismatch with the distance,
 counted, and shown on the HUD. `make lobby-test LAG=200` holds every
 received datagram 200 ms (`TREADCORE_LAG_MS`, the transport's stand-in
 for `tc netem`, which needs root) and requires zero mismatches across

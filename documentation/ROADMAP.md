@@ -124,6 +124,10 @@ match report (item 8), figures per match.
     their seat and what was theirs (SPEC GAM-12, OWN-04). Needs a
     peer identity that survives a process restart. **Deferred to steps
     7 and 8**, where identity across processes is designed once.
+    **Done in step 7** (journal 0012): `--identity FILE`, the host's
+    standing registration with the introducer, a `session` number on
+    `Join`. The seat waits as long as the match, not five minutes, and
+    what was the player's never changed hands.
 11. **Game types.** Open, Tournament and Strict Tournament (SPEC
     section 11) as `Scenario` presets once pillboxes and material exist.
     **Done**: `Scenario.game_type`, what a tank starts with (open: 24
@@ -529,6 +533,48 @@ pillbox), 8.5 of 16 alive at five minutes and the same at ten.
 
 ## 7. Across the Internet
 
+**Done as far as one machine proves it, 13 October 2026 (journal
+0012).** `treadcore-net/src/introducer.rs`: the introducer (`Introducer`,
+`treadcore-server --introduce`, `make introduce`), a peer's
+`Registration` with it, the LAN-address guess, and `identity_from_file`
+(`--identity FILE`): a peer id that survives a restart. `Register` and
+`Introduce` on the wire (version 11, with `Join { session }`). The
+lobby registers in Discover (`--introducer HOST:PORT`; `--no-beacon`
+keeps it off the LAN), greets every introduced peer at its public and
+its local address every 250 ms and with every probe until the peer
+answers, and takes the answering address: the hole punch in its plain
+form. The election and the relay are untouched: a pair that never gets
+through is an unmeasured link, routed around. Rejoin (backlog item 10,
+SPEC GAM-12) came with it, because it is the introducer's business: a
+host keeps registering with `hosting` set; a returning peer with the
+same identity is told its host, pings it until it answers, joins it
+with no election, and the host gives the seat back with its sequence
+numbers started over, telling a restart from a repeated Join by the
+session number. Proof so far: `introducer_brings_two_silent_peers_
+together` (no beacon, no seed, two lobbies and an introducer in one
+thread); `seat_comes_back_after_a_restart` (a client dropped mid-match,
+a new one with the same peer id welcomed to the same seat at a later
+tick, its first order applied); `INTRODUCER=1 make lobby-test` (four
+peers, no broadcast, no seed address, met through the introducer
+alone) and `REJOIN=1 make lobby-test` (a seat that is not hosting
+killed outright at twenty seconds, started again, back in its seat at
+the tick the match has reached, sees the match end), plain and under
+`LAG=200`. Two findings on the way: the first run killed the host (the
+election had picked peer 4) and the match died with it, which is step
+8's problem and not this one's, so the script now kills a seat that is
+not hosting; and the returning seat's predictor logged one mismatch at
+zero tiles two ticks after its Welcome, because its copy was the
+scenario's start and the host's tank had turned to fire in the
+meantime, so the first snapshot after a Welcome is now a baseline, not
+a check. A third, older than this step: a shell cratering the road two
+ticks ahead of a client was a mismatch of a fifth of a tile, once in
+some 2 400 checks, the kind journal 0011 said would show first here;
+the predictor now re-drives from the last snapshot's tank when a
+terrain event lands under ticks it has predicted. **Not proven:** two
+peers behind two home routers. That is
+the roadmap's proof clause and it needs two machines on two networks;
+the code for it is in, and the first such run is the next journal's.
+
 **Change.** `treadcore-net`: a rendezvous step before the lobby. Not a
 server that hosts games; a tiny UDP service that tells peers each
 other's public address and port (the "introducer"). The lobby's
@@ -550,6 +596,10 @@ accepts joins from any lobby that elected it (a peer can be told to
 prefer a listed address as host), writes traces and replays per match
 to a directory, serves a small HTTP status page. This is the "someone
 runs one for the group" option without making it the only option.
+The introducer (step 7) is the natural place for the listing: a
+`--listen` server registers as hosting under a lobby name, and the
+"prefer a listed address" is a weight in the election for the peer
+that registered so.
 
 **Proof.** `make lobby-test` against a running `--listen` server
 elects it when it has the best links and ignores it when it does not.
@@ -569,8 +619,9 @@ thin LTO for binaries; `cargo dist` or a plain tarball per platform.
                                                                                               └─ 9 sound/art/dist
 
 Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
-worked through, 6d and 4 done on 13 October (journals 0009 to 0011).
-Next: 7 and 8, which need a second machine; 9 last.
+worked through, 6d and 4 done on 13 October (journals 0009 to 0011);
+7 built and proven on one machine the same day (journal 0012). Next:
+7's two-router proof when a second machine is on the table; 8; 9 last.
 
 ```
 

@@ -4,6 +4,52 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13, night: across the Internet (roadmap step 7)
+
+Journal: [0012](journal/0012-2026-10-13-across-the-internet.txt).
+
+- New: the introducer (`treadcore-net/src/introducer.rs`;
+  `treadcore-server --introduce`, `make introduce`): a UDP rendezvous
+  service that hosts nothing and keeps a registration thirty seconds.
+  Peers in one lobby name register (`--introducer HOST:PORT`;
+  `--no-beacon` keeps a peer off the LAN broadcast) and are told each
+  other's public and local addresses; the lobby greets both until one
+  answers (the hole punch) and takes the answering address. The
+  election and the relay are untouched: a pair that never gets
+  through is routed around, as on a LAN.
+- New: `--identity FILE`, a peer id that survives a restart (made the
+  first time; `build/identity` by default from `make lan|host|seat`).
+- New: rejoin (backlog item 10, SPEC GAM-12). A host keeps registering
+  with `hosting` set; a returning peer with the same identity is told
+  its host, pings it until it answers, joins without an election, and
+  gets its seat back at the tick the match has reached, with its
+  sequence numbers started over. `Join` carries a `session` number,
+  random per process, so a restart is told from a repeated Join.
+- Changed: wire version 11 (`Register`, `Introduce`, `Introduced`,
+  `Join { session }`).
+- Changed: `make lobby-test` takes `INTRODUCER=1` (no broadcast, no
+  seed address: the four meet through an introducer alone) and
+  `REJOIN=1` (a seat that is not hosting killed outright at
+  `REJOIN_AFTER` seconds, 20, and started again with its identity
+  file; must come back to the same seat at a later tick).
+- Changed: the predictor's first snapshot after a Welcome is a
+  baseline, not a check: a seat that comes back mid-match has a copy
+  built from the scenario's start, and the host's tank is not there.
+- Fixed: a terrain change (a shell's crater, a wall) landing under
+  ticks the client had already predicted was a mismatch of a fifth of
+  a tile, one in some 2 400 checks. The predictor now keeps the last
+  snapshot's tank as an anchor and, on such an event, drives the ticks
+  ahead again: over the old map up to the event's tick, the new one
+  after. `Predictor::events` takes the events' tick.
+- Proof: `introducer_brings_two_silent_peers_together`,
+  `seat_comes_back_after_a_restart`, `identity_file_round_trips`;
+  `make lobby-test` plain, `INTRODUCER=1`, `REJOIN=1` and `LAG=200
+  REJOIN=1` all PASS with zero prediction mismatches, the killed seat
+  back in its own seat at tick 371 and 376. Not proven: two peers
+  behind two home routers, which needs two machines on two networks
+  (ROADMAP step 7 says so).
+  40 tests (sim 24, proto 3, net 9, brain 4).
+
 ## 2026-10-13, evening: client-side prediction (roadmap step 4)
 
 Journal: [0011](journal/0011-2026-10-13-prediction.txt).

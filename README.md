@@ -9,6 +9,8 @@ Rust, Bevy for the window, plain `std` UDP for the network. The
 clients find each other on the LAN, measure the links between them, and
 elect a host by themselves: the one whose worst link is best, with
 anyone the host cannot reach routed through a neighbour that can.
+Across the Internet a tiny introducer tells them each other's
+addresses and they punch through; nobody runs a game server.
 
 Website: [treadcore.org](https://treadcore.org). Repository:
 [github.com/treadcore/treadcore](https://github.com/treadcore/treadcore).
@@ -70,7 +72,15 @@ make host        # headless host on the LAN, bots in empty seats
 make seat        # headless bot that joins a LAN lobby
 make lobby-test  # four headless peers on this machine elect a host
 LAG=200 make lobby-test   # the same with 200 ms of lag on every receive: prediction's proof
+INTRODUCER=1 make lobby-test   # no broadcast: the four meet through an introducer alone
+REJOIN=1 make lobby-test       # a seat killed outright at 20 s comes back to the same seat
 ```
+
+Across the Internet (`documentation/PROTOCOL.md`, "the introducer"):
+someone with a public address runs `make introduce` (it hosts nothing),
+and everyone else plays with `INTRODUCER=that.host:47296 BEACON=0 make
+lan` (or `host`, `seat`). The peer id lives in `build/identity`, so a
+player whose game drops gets the same seat back by starting again.
 
 Controls are on screen (Tab hides them). Left click drives (the world
 routes around water, over bridges and round hostile pillboxes), right
@@ -127,7 +137,8 @@ schema` prints an example of each. See `source/treadcore-brain`.
 ```
 source/treadcore-sim      the world: map, tanks, drones, shells. Headless, deterministic.
 source/treadcore-proto    the packets: commands, snapshots, events, negotiation.
-source/treadcore-net      UDP, LAN discovery, RTT matrix, host election, relay, Host/Client.
+source/treadcore-net      UDP, LAN discovery, RTT matrix, host election, relay, Host/Client,
+                          prediction, the introducer (Internet rendezvous) and rejoin.
 source/treadcore-brain    the Brain trait, RuleBot, JsonBrain.
 source/treadcore-server   headless: bot matches, LAN host, LAN bot seat.
 source/treadcore-client   the Bevy window.

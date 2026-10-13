@@ -1,0 +1,330 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 09:20:00 -0700
+Subject: [JOURNAL 0012] Across the Internet: roadmap step 7, and rejoin
+Message-ID: <0012.20261013@treadcore.org>
+In-Reply-To: <0011.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: introducer, hole punching, NAT, identity, rejoin, session,
+          lobby-test, proof
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "read backlog. continue with roadmap.
+           read index.md"
+X-Commits: b6060c5
+
+          ACROSS THE INTERNET: ROADMAP STEP 7, AND REJOIN
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    Step 7 takes the lobby past the LAN. An introducer, a UDP service
+    that hosts nothing and keeps a registration thirty seconds, tells
+    the peers registered under one lobby name each other's public and
+    LAN addresses; the lobby greets both until one answers and takes
+    the answering one, which is hole punching in its plain form. The
+    election and the relay are untouched. Rejoin came with it, because
+    identity across processes is the introducer's business: a peer id
+    kept in a file, a host that keeps registering, a session number on
+    Join, and a seat given back at the tick the match has reached.
+    Four peers with no broadcast and no seed address met through the
+    introducer alone; a seat killed outright at twenty seconds came
+    back to the same seat at tick 371, plain and under 200 ms of lag.
+    Two findings on the way were the script killing the host, and the
+    predictor checking a tank it had never been shown; a third, older
+    than the step, was a crater landing under ticks already predicted.
+    40 tests. What is not proven is the roadmap's own proof clause,
+    two peers behind two home routers, which needs two machines.
+
+INDEX TERMS
+
+    introducer, Register, Introduce, hole punching, candidates, heard,
+    identity file, session number, rejoin, anchor, lobby-test.
+
+
+I. INTRODUCTION
+
+    After 0011 the roadmap had two steps left that a single machine
+    cannot prove end to end, 7 and 8, and 9 last. The instruction was
+    to go on with the roadmap. Step 7 is first in the dependency
+    order, its code is all on this side of the router, and the backlog
+    had parked rejoin (item 10) on it: "where identity across
+    processes is designed once". So the question for the session was
+    how much of step 7 one machine can build and prove honestly, and
+    whether rejoin falls out of it.
+
+II. BACKGROUND
+
+    Carried from 0011: the window unproven in this VM; the predicted
+    tank corrected, never smoothed; only the own tank predicted;
+    rejoin and the pillbox view where they were. The lobby at the
+    start of the session: beacon on the LAN broadcast, `--peer` to
+    greet an address by hand, Hello carrying the sender's peer list,
+    probe, share, elect. Nothing of it reaches past a home router, and
+    a peer behind one has no address it can give.
+
+    The environment is 0011's: Alpine, rustc 1.98.1, four jobs, 8 GB.
+    No second machine, no second network, no root.
+
+III. METHOD
+
+    The wire first (two packets and a field, version 11), then the
+    service as a struct with a poll like everything else in the crate,
+    then the lobby's side, then the host's side of rejoin, then the
+    flags, then the scripts, then the documents. Each piece was built
+    and its crate tested before the next; the lobby tests ran in the
+    background while the documents were written.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      an introducer that       a server that hosts    the brief's
+      only names addresses     games                  premise: nobody
+                                                      sets up a server;
+                                                      step 8 is the
+                                                      option, not the
+                                                      rule
+      two addresses per peer,  the public one only    two peers behind
+      public and LAN                                  one router cannot
+                                                      always reach
+                                                      their own public
+                                                      address
+      greet every candidate    a STUN-style probe     the lobby already
+      until one answers;       first, then one        sends and
+      the answer's address     address                listens; the
+      wins                                            first packet
+                                                      back is the
+                                                      probe
+      the election untouched;  a special case for     a pair that
+      an unpunched pair is     NAT failure            cannot talk is a
+      an unmeasured link                              broken link, and
+                                                      the matrix and
+                                                      Dijkstra already
+                                                      route round one
+      a host answers Ping      a host runs a lobby    a host's socket
+      from a seated peer and   too                    is the session's;
+      nothing else                                    one more packet
+                                                      kind answered is
+                                                      the smallest
+                                                      door
+      a session number on      reset the seat on      two Joins from
+      Join; a new one resets   any Join to a joined   one process can
+      the seat's sequences     seat                   be in flight
+                                                      under lag; the
+                                                      second would
+                                                      wipe sequences
+                                                      in use
+      the seat waits for the   a five-minute window   nothing is
+      match                    (SPEC GAM-12)          gained by a
+                                                      timer; the seat
+                                                      is a peer id's
+      the first snapshot       check from the         a returning
+      after a Welcome is a     Welcome                seat's copy is
+      baseline                                        the scenario's
+                                                      start; the host's
+                                                      tank is not
+      re-drive on a terrain    accept the mismatch    the check's
+      event under predicted                           value is that
+      ticks                                           zero means zero
+
+IV. CHRONOLOGY
+
+     1. Read the backlog (every item done or decided; 10 deferred to
+        here), the roadmap, INDEX.md, and the net crate end to end.
+     2. treadcore-proto: `Register`, `Introduce`, `Introduced`, and
+        `Join { session }`; version 11.
+     3. treadcore-net/introducer.rs: `Introducer` (a map from (lobby,
+        peer) to two addresses and a time; `poll` reads registrations,
+        drops lapses, pushes introductions every second and at once
+        for a newcomer), `Registration` (the peer's timer), the LAN
+        address by the default-route trick (no packet sent), and
+        `identity_from_file`. The test: two lobbies with no beacon and
+        no seed, and an introducer, in one thread; both decide on one
+        host, each measured the other.
+     4. The lobby: `candidates`, `heard`, `targets`, `heard_from`,
+        `punch`. A peer named as hosting is pinged, not greeted, and
+        joined without an election once it answers; Discover waits
+        for it rather than counting it as a peer.
+     5. The host: registers every five seconds with `hosting`; answers
+        a Ping from a seated peer; on an Introduce naming a seated peer
+        that is not joined, pings its addresses (the host's half of
+        the punch); on a Join with a new session, gives the seat back
+        and starts its sequences over. The client: a session number
+        per process. The test `seat_comes_back_after_a_restart`: a
+        client dropped mid-match with no Leave, a new one with the
+        same peer id welcomed to the same seat 30 ticks later, its
+        first order (seq 1 again) applied. 9 net tests.
+     6. The server: `--introduce`, `--introducer`, `--no-beacon`,
+        `--identity`. The window: the last three. `make introduce`;
+        `INTRODUCER`, `BEACON`, `IDENTITY` on `make lan|host|seat`;
+        `INTRODUCER=1` and `REJOIN=1` on `make lobby-test`.
+     7. First proof run, in the background: `make test` 40 of 40; the
+        plain lobby test PASS; `INTRODUCER=1` played a full match and
+        then the script died on its own summary (a `grep -c` on a log
+        that only exists under REJOIN, under `set -e -o pipefail`);
+        `REJOIN=1` killed peer 4, and peer 4 was the host: the three
+        seats lost it, the restarted peer found nobody and hosted
+        alone with bots. False start, marked: the script now kills
+        the highest-numbered seat that is not hosting. `LAG=200
+        REJOIN=1`: everything passed except one prediction mismatch
+        at 0.000 tiles two ticks after the returning seat's Welcome:
+        its copy was the scenario's start, the host's tank had turned
+        to fire. The first snapshot is now a baseline, not a check.
+     8. Second run: plain PASS, `INTRODUCER=1` PASS (12 introductions
+        logged across the four, the host registered as hosting), `LAG=
+        200 REJOIN=1` PASS (peer 4 back in seat 0 at tick 371, the
+        host gave a seat back once, joined with no election). `REJOIN=
+        1` without lag: rejoin itself passed, and a seat that was not
+        the returning one logged one mismatch of 0.178 tiles at tick
+        606. The log: a shell's splash at tick 604 cratered the road
+        under that tank, the Events packet for 604 arrived after the
+        client had predicted 605 and 606 over the old map. The class
+        of mismatch 0011 said would show up first here. The predictor
+        now keeps the last snapshot's tank as an anchor and re-drives
+        from it on a terrain event under predicted ticks: the old map
+        to the event's tick, the new one after.
+     9. Third run, all four: below.
+    10. Documents: PROTOCOL.md ("Across the Internet: the introducer",
+        rejoin, the baseline and the re-drive), ROADMAP.md step 7 and
+        backlog 10, LAB-REPORT.md 5.5, README, INDEX.md, the spec's
+        preface table, CHANGELOG; this entry.
+
+V. RESULTS
+
+      proof                                 result
+      ------------------------------------  ----------------------------
+      make test                             40 pass (sim 24, proto 3,
+                                            net 9, brain 4)
+      introducer_brings_two_silent_peers_   both decide one host; each
+      together                              measured the other
+      seat_comes_back_after_a_restart       same seat, 30 ticks later,
+                                            seq 1 applied again
+      make lobby-test                       PASS; 1 435 checks, 0
+                                            mismatches
+      INTRODUCER=1 make lobby-test          PASS; 12 introductions,
+                                            the host registered as
+                                            hosting; 1 551 checks, 0
+      REJOIN=1 make lobby-test              PASS; peer3 back in seat 1
+                                            at tick 371, no election;
+                                            1 259 checks, 0
+      LAG=200 REJOIN=1 make lobby-test      PASS; peer4 back in seat 0
+                                            at tick 376, no election;
+                                            1 194 checks, 0
+
+    New and changed, in lines: introducer.rs 298 (new); lobby.rs 391
+    to 573; session.rs 664 to 818; predict.rs 195 to 246; proto 329
+    to 365; server main.rs 758 to 813; lobby-test.sh 61 to 141. Wire
+    version 11.
+
+VI. DISCUSSION
+
+    The step was smaller than its name because the lobby already had
+    the shape: it greets addresses, listens, and takes what answers.
+    The introducer only supplies addresses the beacon cannot, and the
+    punch is the greeting repeated at two of them. The election did
+    not change by a line, which was the roadmap's "must not change"
+    and is the real argument that a pair of symmetric NATs is not a
+    special case: it is a link with no measurement, and that was
+    already routed round on the day the matrix was written.
+
+    Rejoin cost one number. The seat was already a peer id's, and a
+    peer id was already what the host keyed its table by; what was
+    missing was a peer id that outlives a process and a way to tell a
+    restart from a repeated Join. The identity file is the first; the
+    session number is the second, and the lagged lobby test is why it
+    is a number and not "any Join to a joined seat".
+
+    The first run's failures were both the script's and both worth
+    keeping in the record. Killing the host was a design error in the
+    test, not the code, and it put a line in the roadmap: a host that
+    drops is step 8's problem. The 0.000-tile mismatch was the check
+    doing its job again, as in 0011: a standing tank, state unequal,
+    and the cause found by reading which tick, not by watching.
+
+    The 0.178-tile mismatch is the more interesting one because it was
+    there before this session and the previous session's runs did not
+    hit it. A crater is a terrain change that arrives as an event,
+    reliably but late; the snapshot for the same tick arrives first,
+    unreliably but at once. The predictor had already re-driven the
+    ticks ahead over the old map when the event changed it. The fix
+    is reconcile's tail run again from the snapshot's tank, with the
+    event applied at the tick the host applied it. That the host
+    changes its map after a tick's drive, not before, is what makes
+    "old map up to the event's tick" the right order, and it is the
+    kind of fact that a bit-for-bit check forces one to know.
+
+    What this session cannot say: that any of it works across a NAT.
+    The addresses on loopback are the same on both sides, the punch
+    is a formality, and the LAN address the introducer was given
+    (192.168.64.39) was never used. The code paths ran; the routers
+    did not.
+
+VII. OPEN PROBLEMS
+
+    1. The roadmap's proof clause for step 7: two peers behind two
+       home routers reach Playing. Two machines, two networks.
+    2. A host that drops ends the match for everyone. Step 8 (the
+       server as a service) is where a standing host lives; a
+       re-election mid-match is a design question for then.
+    3. A fresh group that picks the lobby name of a running match is
+       told its host and refused by it. One name, one match; the
+       introducer could carry a match id, and should when step 8
+       hosts match after match.
+    4. The restarted peer that finds no host (introducer down, host
+       gone) waits out Discover and hosts alone with bots, which is
+       the lobby's old behaviour and probably not what a returning
+       player wants.
+    5. Carried: the window unproven here; the predicted tank corrected,
+       never smoothed; the pillbox view.
+
+VIII. NEXT STEPS
+
+    1. The two-router run, when a second machine is on the table: an
+       introducer on any public address, `INTRODUCER=that:47296
+       BEACON=0 make lan` on both sides, read both logs for
+       "answers at".
+    2. Step 8.
+    3. Step 9 last.
+
+ACKNOWLEDGMENTS
+
+    Paul, for "continue with roadmap".
+
+REFERENCES
+
+    [1] Journal 0011, <0011.20261013@treadcore.org>: prediction, and
+        the mismatches it said a client would see first.
+    [2] Journal 0009, <0009.20261013@treadcore.org>: backlog item 10.
+    [3] documentation/ROADMAP.md step 7; documentation/PROTOCOL.md,
+        "Across the Internet: the introducer".
+    [4] documentation/SPEC-PRIOR-ART-1.14.md, GAM-12 and OWN-04: the
+        prior art's rejoin.
+    [5] B. Ford, P. Srisuresh, D. Kegel, "Peer-to-Peer Communication
+        Across Network Address Translators," USENIX ATC 2005.
+        [Online]. Available: https://bford.info/pub/net/p2pnat/.
+        [Accessed: 13-Oct-2026]. The hole punch and the introducer's
+        role, as written up twenty years ago.
+
+APPENDIX A. COMMITS
+
+    b6060c5  proto, net, server, client, scripts: the introducer,
+             hole punching, identity and rejoin (roadmap step 7);
+             wire version 11
+    (next)   docs, journal: step 7 done as far as one machine proves
+             it; journal 0012
+
+APPENDIX B. ARTIFACTS
+
+    Journal         journal/0012-2026-10-13-across-the-internet.txt
+                    (this)
+    Lobby logs      build/logs/lobby-20261013-085011-* (the first
+                    run: the host killed), lobby-20261013-085737-*
+                    (the 0.178-tile mismatch), lobby-20261013-09*-*
+                    (the third run: the four passes)
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -1,17 +1,19 @@
 # treadcore: code structure index
 
-An index of the repository as of commit `0874ff5` (13 October 2026):
-the tree, an outline of every file, a glossary, and a keyword
-cross-reference. Line numbers are those of that commit; `grep -n` is
-the authority when they drift. The walk-through with the reasoning is
-LAB-REPORT.md; this is the map.
+An index of the repository as of commit `0874ff5` (13 October 2026),
+with the step 7 additions (the introducer and rejoin, journal 0012) at
+their own line numbers: the tree, an outline of every file, a glossary,
+and a keyword cross-reference. Line numbers are those of those commits;
+`grep -n` is the authority when they drift. The walk-through with the
+reasoning is LAB-REPORT.md; this is the map.
 
 ## 1. The tree
 
 ```
 Cargo.toml            workspace: seven crates in source/, one profile set
 Makefile              every entry point: configure, warm, build, debug, run,
-                      lan, host, seat, lobby-test, replay, map, convert, test
+                      lan, host, seat, introduce, lobby-test, replay, map,
+                      convert, test
 README.md             what the game is, how to build and run it, the documents
 CHANGELOG.md          what changed, by date, newest first
 CONTRIBUTING.md       how to send a change
@@ -39,11 +41,13 @@ treadcore-sim      the world: map, tanks, drones, shells, squads, pillboxes,
                    depots, mines, teams, proposals; deterministic; no I/O
 treadcore-proto    the wire vocabulary: one Packet enum, chunking, snapshots
 treadcore-net      UDP transport, lobby and election, host and client
-                   sessions, the relay route, client-side prediction
+                   sessions, the relay route, client-side prediction,
+                   the introducer (Internet rendezvous), rejoin
 treadcore-brain    the Brain trait and three brains: RuleBot, Defender,
                    JsonBrain (an external program over stdin/stdout)
 treadcore-server   headless binary: --local bot matches with a trace and a
-                   match report, --net lobby then host or seat, --replay
+                   match report, --net lobby then host or seat, --replay,
+                   --introduce (the introducer)
 treadcore-client   the window (Bevy): session, render, hud, input
 treadcore-warm     a tiny Bevy program that exists to build the engine once
 ```
@@ -147,14 +151,15 @@ drone crew (61), pillboys and pillboxes (98), mines (132), depots
 254 (186, 214), `drone_speed` (216). A change here is a proposal under
 GOVERNANCE.md section 5 and wants a trace.
 
-### 2.4 source/treadcore-proto/src/lib.rs (329 lines)
+### 2.4 source/treadcore-proto/src/lib.rs (365 lines)
 
 | item | line | what |
 | --- | --- | --- |
-| `MAGIC`, `VERSION` | 27 | `TRDC`, 10 |
+| `MAGIC`, `VERSION` | 27 | `TRDC`, 11 |
 | `PORT`, `MAX_DATAGRAM` | 35 | 47296, 1200 bytes |
-| `PeerId` | 43 | u64 for the life of a process |
-| `Packet` | 46 | Beacon, Hello, Ping, Pong, RttRow, Elect; Join, Welcome, Refuse, Command, CommandAck, Snapshot (with `acked`), Events, EventsAck, Leave, Heartbeat, Chunk; Relay |
+| `PeerId` | 43 | u64; for the life of a process, or of an identity file |
+| `Packet` | 46 | Beacon, Hello, Ping, Pong, RttRow, Elect; Register, Introduce (the introducer); Join (with `session`), Welcome, Refuse, Command, CommandAck, Snapshot (with `acked`), Events, EventsAck, Leave, Heartbeat, Chunk; Relay |
+| `Introduced` | 152 | one peer as the introducer knows it: public and local address, hosting |
 | `DecodeError` | 129 | TooShort, BadMagic, Version, Body |
 | `encode`, `decode`, `sender` | 148 | framing |
 | `chunk_packets`, `ChunkAssembler` | 191 | a big packet in pieces (Welcome's map) |
@@ -163,40 +168,63 @@ GOVERNANCE.md section 5 and wants a trace.
 
 ### 2.5 source/treadcore-net/src/
 
-**lib.rs (49)**: the crate's five parts in a comment; `new_peer_id` 42.
+**lib.rs (55)**: the crate's six parts in a comment; `new_peer_id` 48.
 
 **transport.rs (131)**: `LAG_ENV` 15 (`TREADCORE_LAG_MS`); `Socket` 17
 with `bind` 31, `set_lag` 53, `send` 57, `broadcast` 70, `recv` 85
 (the 64 KiB buffer; the lag queue), `local_with_loopback` 125.
 
-**lobby.rs (391)**: `LobbyConfig` 27, `Phase` 59 (Discover, Probe,
-Share, Decide, Done), `Peer` 68, `LobbyResult` 88 (`i_host`,
-`addr_of`), `Lobby` 106 with `poll` 198 (the state machine), `compute`
-299 (calls the election), `handle` 331 (every negotiation packet).
+**lobby.rs (573)**: `LobbyConfig` 27 (`beacon` 46, `introducer` 48),
+`Phase` (Discover, Probe, Share, Decide, Done), `Peer`, `LobbyResult`
+(`i_host`, `addr_of`), `Lobby` with `candidates` 130, `heard` 133,
+`hosting` 135; `set_local` 191, `take_registration` 196, `targets`
+202 (one address once heard, every candidate until then),
+`heard_from` 217, `candidate` 230, `punch` 243 (Hello, or Ping to a
+host, at every target every 250 ms); `poll` (registers in Discover,
+punches, joins a hosting peer without an election), `compute` (calls
+the election), `handle` (every negotiation packet; `Introduce` 523).
 
 **election.rs (145)**: `Row` 16, `Decision` 19 (host, route), `link`
 30, `dijkstra` 40, `elect` 64 (the pure function); tests
 central_peer_hosts, unreachable_peer_routes_through_neighbour,
 relay_needed_when_host_cannot_see_peer, solo.
 
-**session.rs (664)**: constants 25 (RESEND 120 ms, `HASH_EVERY` 1000,
+**session.rs (818)**: constants (RESEND 120 ms, `HASH_EVERY` 1000,
 HEARTBEAT 500 ms, TIMEOUT 6 s, SNAPSHOT_EVERY 2, EVENT_BACKLOG 64);
-`RouteTable` 37 (`resolve`, `send`, `relay`); `Seat` 81; `Host` 96
-with `new` 118, `record` 145, `poll` 158 (joins, orders, acks,
-heartbeats, timeouts), `tick` 251 (step, hash, snapshots with `acked`,
-events), `shutdown` 294; `ClientState` 309; `Client` 316 with `new`
-352, `send` 382 (also to the predictor), `predict_tick` 394,
-`predicted_tank` 404, `take_observation` 408, `drain_events` 412,
-`poll` 424 (Welcome builds the predictor; snapshots reconcile it;
-events keep the maps up), `leave` 541 (logs the prediction summary);
-tests loopback_session 557,
-prediction_hides_the_lag_and_matches_the_host 599.
+`RouteTable` (`resolve`, `send`, `relay`); `Seat` (`session` 98,
+`rejoins` 100); `Host` (`registration` 128) with `new`, `record`,
+`poll` (registers while hosting; `Introduce` 191 pings a seated peer's
+addresses; a Join with a new session gives the seat back and starts
+its sequences over; joins, orders, acks, heartbeats, `Ping` 276
+answered for a seated peer, timeouts), `tick` (step, hash, snapshots
+with `acked`, events), `shutdown`; `ClientState`; `Client` (`session`
+381, random per process) with `new`, `send` (also to the predictor),
+`predict_tick`, `predicted_tank`, `take_observation`, `drain_events`,
+`poll` (Welcome builds the predictor; snapshots reconcile it; events
+keep the maps up), `leave` (logs the prediction summary); tests
+loopback_session, prediction_hides_the_lag_and_matches_the_host,
+seat_comes_back_after_a_restart 734.
 
 **predict.rs (195)**: the header comment is the design; `HISTORY` 64
 ticks, `MAX_AHEAD` 40; `Predictor` 36 with `new` 61 (from a Welcome),
 `tank` 69, `order` 75, `tick` 87, `map_keeps_up` 108 (craters and
 terrain events, shared with the window), `reconcile` 126 (check,
-adopt, re-apply, re-drive), `in_flight` 187, `summary` 192.
+adopt, re-apply, re-drive; the first snapshot after a Welcome is a
+baseline, `baselined`, not a check; the tank it adopted is `anchor`),
+`events` (a terrain change under predicted ticks: re-drive from the
+anchor, old map to the event's tick, new map after), `in_flight`,
+`summary`.
+
+**introducer.rs (298)**: the header comment is the design (roadmap
+step 7); `EXPIRE` 43 (30 s), `REGISTER_LOOKING` 1 s, `REGISTER_HOSTING`
+5 s; `Introducer` 64 (the service: a map from (lobby, peer) to two
+addresses and a time) with `poll` 89 (registrations in, lapses,
+introductions out) and `push` 137; `Registration` 156 (a peer's side:
+the introducer's address and a timer) with `poll` 173, `is_from`;
+`lan_address` 191 (the default route's interface, no packet sent);
+`identity_from_file` 201 (sixteen hex digits, made the first time);
+tests introducer_brings_two_silent_peers_together 235,
+identity_file_round_trips 286.
 
 ### 2.6 source/treadcore-brain/src/lib.rs (1 158 lines)
 
@@ -215,10 +243,13 @@ adopt, re-apply, re-drive), `in_flight` 187, `summary` 192.
 | `JsonBrain` | 839 | an external program: one JSON observation out per think, one JSON command list in; `spawn`, `schema_examples` 897 |
 | tests | 921 | pillboys_pay, fortification_pays, defenders_hold, bots_fight_to_a_result |
 
-### 2.7 source/treadcore-server/src/main.rs (758 lines)
+### 2.7 source/treadcore-server/src/main.rs (813 lines)
 
-`Args` 24 and `parse` 58 (`HELP` 136 lists every flag); `main` 195
-dispatches to `run_replay` 233, `run_local` 582, `run_net` 616.
+`Args` 24 and `parse` (`HELP` lists every flag; `--introduce`,
+`--introducer`, `--no-beacon`, `--identity` at 113); `main` dispatches
+to `run_replay`, `run_introducer` 648 (the service, forever),
+`run_local`, `run_net` (the identity file, the lobby's registration
+handed to the host).
 `make_brain`, `make_brain_kind` 272 (RuleBot, Defender, or an external
 `--brain`); `Report` 304 with `tally` 331 and `print` 394 (the match
 report: shells, drones, kills by cause, pillboxes, depots, proposals);
@@ -229,9 +260,9 @@ and the seat loop predicts at 20 Hz.
 
 ### 2.8 source/treadcore-client/src/
 
-**main.rs (160)**: `TILE` 31 (8 px), `Args` 34 and `parse_args` 50,
-`main` 106 (the plugins), `to_screen`, `to_tile` 134, `player_color`
-145.
+**main.rs (175)**: `TILE` 31 (8 px), `Args` 34 (`introducer`,
+`beacon`, `identity` with the rest) and `parse_args`, `main` (the
+plugins), `to_screen`, `to_tile`, `player_color`.
 
 **session.rs (374)**: `SessionPlugin` 22; `Orders` 36; `View` 40 (obs,
 map, me, log, status, net, received, predicted); `NetStats` 55;
@@ -271,14 +302,15 @@ with no game code in the way.
 | build.sh | `build.sh PROFILE WHAT` (`make build`, `make headless`) |
 | debug.sh | the bot-only trace: log, trace.jsonl, replay.json (`make debug`; knobs GAME_SECONDS, SEED, PLAYERS, DEFENDERS, TEAMS, GAMETYPE, MAP, BRAIN) |
 | replay.sh | plays a replay back and checks every checkpoint (`make replay`) |
-| run.sh | the window or headless in a mode: run, lan, host, seat |
-| lobby-test.sh | four headless peers on loopback; asserts one host, three welcomed, all ended, one hash, zero prediction mismatches (`make lobby-test`, `LAG=200`) |
+| run.sh | the window or headless in a mode: run, lan, host, seat, introduce; `INTRODUCER`, `BEACON=0`, `IDENTITY` (default build/identity) on the networked ones |
+| lobby-test.sh | four headless peers on loopback; asserts one host, three welcomed, all ended, one hash, zero prediction mismatches (`make lobby-test`, `LAG=200`); `INTRODUCER=1` runs an introducer and no broadcast or seed, asserts the four were introduced; `REJOIN=1` kills the highest-numbered seat that is not hosting at `REJOIN_AFTER` s, restarts it with its identity file, asserts the same seat back at a later tick with no election |
 | memwatch.sh | memory every N seconds (`make mem`) |
 | priorart2map.py | converts a prior-art binary map to a treadcore map (`make convert FROM=`) |
 
 The Makefile's knobs (line 50 on): BUILDDIR, LOGDIR, GAME_SECONDS,
 SEED, NAME, JOBS, VERBOSE, GAME, WANT, PEER, PLAYERS, DEFENDERS, LAG,
-TEAMS, GAMETYPE, MAP, BRAIN.
+INTRODUCER, BEACON, IDENTITY, REJOIN, REJOIN_AFTER, PORT, TEAMS,
+GAMETYPE, MAP, BRAIN.
 
 ## 3. Glossary
 
@@ -311,6 +343,12 @@ TEAMS, GAMETYPE, MAP, BRAIN.
 - **game type**: Open, Tournament, Strict: what a tank starts with.
 - **hash**: `World::hash`, FNV-1a over the bincode of the world;
   carried in heartbeats; the replay's checkpoints.
+- **identity**: a peer id kept in a file (`--identity`), so a restarted
+  process is the same peer and gets its seat back.
+- **introducer**: the rendezvous service for peers across the Internet
+  (`--introduce`; `--introducer HOST:PORT` to use one): tells the
+  peers in one lobby each other's public and local addresses; keeps a
+  registration thirty seconds.
 - **in flight**: an order sent and not yet seen applied in a snapshot.
 - **interceptor**: the drone that orbits the tank and kills strikes.
 - **lag queue**: `TREADCORE_LAG_MS`; the transport holds received
@@ -335,7 +373,13 @@ TEAMS, GAMETYPE, MAP, BRAIN.
   its later ports; SPEC-PRIOR-ART-1.14.md restates its manual.
 - **proposal**: an offer of alliance terms (`Terms`), answered within
   `PROPOSAL_TICKS`, refused if it would break the three-way rule.
+- **punch**: greeting every address a peer might be at until it
+  answers; the first packet out opens this side's router for the
+  other's packets in.
 - **recon**: the drone that sees `RECON_VISION` and spots for the gun.
+- **rejoin**: a peer with the same identity coming back to its seat
+  mid-match: told its host by the introducer, joined with no election,
+  the seat's sequences started over.
 - **reconcile**: on a snapshot, replace the predicted tank with the
   host's, re-apply what is in flight, re-drive the ticks ahead.
 - **relay**: a packet for a peer the sender cannot reach, through one
@@ -345,7 +389,10 @@ TEAMS, GAMETYPE, MAP, BRAIN.
 - **scenario**: everything that makes a match: seed, map, game type,
   players, teams, swarm, time limit.
 - **scoot**: the RuleBot moving after it fires.
-- **seat**: a player slot, 0..16, named for its start.
+- **seat**: a player slot, 0..16, named for its start; on the host, a
+  peer id's.
+- **session** (on `Join`): a random number per client process; the
+  host tells a restart (new session) from a repeated Join (same).
 - **snapshot**: an observation on the wire, every other tick.
 - **spoke**: a road from a side start to the centre; a neutral pillbox
   sits on each.
@@ -375,7 +422,7 @@ TEAMS, GAMETYPE, MAP, BRAIN.
 | documentation/RELEASE.md | the cycle, versions, releases, playtesting |
 | documentation/GOVERNANCE.md | roles, joining, proposals (section 5: a change to rules.rs wants a trace), review, leaving |
 | documentation/INDEX.md | this |
-| journal/0001 to 0011 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction |
+| journal/0001 to 0012 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet |
 
 ## 5. Keyword cross-reference
 
@@ -429,6 +476,12 @@ per file at this commit (`treadcore-sim/lib.rs` means
 | `advantage` | treadcore-sim/lib.rs (5), treadcore-server/main.rs (7) |
 | `TICK_HZ` | treadcore-sim/lib.rs (26), treadcore-sim/rules.rs (14), treadcore-brain/lib.rs (12), treadcore-server/main.rs (5), treadcore-client/main.rs (4), treadcore-client/hud.rs (2), treadcore-client/session.rs (2) |
 | `LAG` | Makefile (2), scripts/lobby-test.sh (2), treadcore-net/transport.rs (1), treadcore-server/main.rs (1) |
+| `Introducer` | treadcore-net/introducer.rs (7), treadcore-server/main.rs (2), treadcore-net/lib.rs (1) |
+| `Registration` | treadcore-net/introducer.rs (4), treadcore-net/lobby.rs (4), treadcore-net/session.rs (2), treadcore-net/lib.rs (1) |
+| `Introduce` | treadcore-proto/lib.rs (2), treadcore-net/introducer.rs (1), treadcore-net/lobby.rs (1), treadcore-net/session.rs (1) |
+| `hosting` | treadcore-net/introducer.rs (12), treadcore-net/lobby.rs (12), scripts/lobby-test.sh (5), treadcore-proto/lib.rs (4), treadcore-client/session.rs (2), treadcore-net/session.rs (2), treadcore-server/main.rs (1) |
+| `identity` | treadcore-server/main.rs (8), treadcore-client/main.rs (5), treadcore-net/introducer.rs (3), scripts/lobby-test.sh (3), treadcore-client/session.rs (2), scripts/run.sh (2), treadcore-net/lib.rs (1), treadcore-proto/lib.rs (1), Makefile (1) |
+| `punch` | treadcore-net/lobby.rs (2), treadcore-net/introducer.rs (1) |
 
 To refresh the table: `grep -c -w NAME` over `source/*/src/*.rs`,
 `scripts/*`, `Makefile`.
