@@ -488,7 +488,8 @@ APPENDIX B. ARTIFACTS
                     with trace-*.jsonl beside each (local, gitignored)
     Lobby logs      build/logs/lobby-20261012-18*-peer{1,2,3,4}.log
     Documents       documentation/{GOVERNANCE,RELEASE,SPEC-WINBOLO-1.14,
-                    LAB-REPORT-PILLBOYS}.md (new); DESIGN, CONCEPT, ROADMAP,
+                    LAB-REPORT-PILLBOYS}.md (new); DESIGN, CONCEPT,
+                    ROADMAP,
                     PROTOCOL, BUILD, LAB-REPORT (changed)
     Organization    CONTRIBUTING.md, CONTRIBUTORS.md, .github/
     Journal         journal/0002-2026-10-12-proving-the-world.txt (this)
