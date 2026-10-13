@@ -12,7 +12,8 @@ interceptors around. The vehicle becomes a small carrier: what it owns is
 the airspace in a ring around it, and what it does with its gun is reach
 out past that ring.
 
-treadcore is that vehicle as a game. One per player, four players, an
+treadcore is that vehicle as a game. One per player, up to sixteen
+players (Bolo's number; bots in the seats people do not take), an
 island, depots, and a neutral swarm that comes in off the edge so the
 ring is never optional.
 
@@ -39,6 +40,16 @@ lets a trace be replayed, and what lets a bot be tested.
 
 100 armor, 24 shells, 600 fuel, a bay of 2 recon, 6 interceptors, 3
 strikes. Drives 4 tiles a second on open ground. Sees 7 tiles.
+
+A `Move` names a destination; the world routes to it with the map's
+own A* (roads preferred, water avoided, bridges where the roads cross
+the river) and the tank follows the waypoints, braking to a crawl to
+pivot at a corner. A tank that finds water in front of it stops and
+plans again from where it is. Neither a client nor a Brain holds the
+map in its observation, so the routing has to be the world's: the
+first traced match had a bot parked at the river bank for its whole
+life because the straight line to the centre crossed the water beside
+the bridge.
 
 ### The gun
 
@@ -85,7 +96,9 @@ At most 10 of a player's drones in the air at once.
 
 ## Depots
 
-Five: one near each start, one in the centre. A tank inside 2 tiles of a
+Seventeen: one near each of the sixteen starts, one in the centre. A
+depot whose start is unseated is neutral, and worth capturing. A tank inside 2 tiles of a
+
 friendly depot resupplies: a shell, 4 armor and 40 fuel every half
 second, and one drone, interceptors first. Inside 2 tiles of anyone
 else's, alone, for 10 seconds, captures it. Two tanks there: contested,
@@ -112,10 +125,73 @@ recon sees and moves after firing, goes home to resupply when low, and
 sends a strike at any enemy whose ring is thin. `JsonBrain` runs an
 external program over stdin/stdout so a bot can be written in anything.
 
+## Pillboys and pillboxes: the decision
+
+Decided 12 October 2026, before any code (ROADMAP step 3 asks for
+that), and checked against the game this descends from. Bolo's
+*builder* leaves the tank, walks to the square the player clicked,
+does the work (build, repair, lay, harvest), and walks back; it can be
+killed while out, and the work needs material the tank carries. Bolo's
+*refuelling bases* are a different thing: the tank drives onto one to
+take on shells, mines and armor, and holds it by being there; there is
+no "repair the base" action. The audit of a tutorial that confused the
+two (`documentation/LAB-REPORT-PILLBOYS.md`) is what fixed the
+following in place.
+
+**Pillboys are the builder: an order the tank gives, not a unit the
+player drives.** The tank is the one thing the player drives; that is
+the premise. The squad is state on the tank, and the player's
+interaction is one order, the way a click in Bolo is one order to the
+builder:
+
+    Command::Deploy { task: PillboyTask }
+    PillboyTask::Capture { pillbox } | Repair { target } | Build { what, at } | Return
+
+The squad: `Pillboys { strength: u8 (0..PILLBOY_MAX), aboard: bool,
+pos: V2, task: Option<PillboyTask>, progress: u16, material: u8 }` on
+`Tank`. Deployed, it walks at `PILLBOY_SPEED` (slower than the tank,
+faster than nothing) along the world's route to the task, works for
+`CAPTURE_TICKS` / `REPAIR_TICKS` / `BUILD_TICKS`, and walks back.
+Deployed, it is a ground target: a shell's splash or a strike drone
+over it reduces `strength`; at zero the order fails and the tank
+has no squad until a depot replaces it. Deploying under a thin bubble
+is therefore a decision, which is the point. The HUD shows the squad
+beside the drones: strength, where, what, how far along.
+
+**Depots stay refuelling bases.** Drive onto one to resupply; stay on
+another's to capture it; two tanks there contest it. No Pillboy task
+touches a depot. `Repair { target }` is for pillboxes, and later for
+the tank's own hull in the field (slower than a depot, at the cost of
+the squad's exposure).
+
+**Pillboxes are Bolo's, with one addition.** Stationary, owned or
+neutral, with health; a gun that engages enemy tanks within
+`PILLBOX_RANGE` and, in this world, enemy drones within a shorter
+`PILLBOX_AIR_RANGE`, with the same kill-probability shape as an
+interceptor (a link to the owner tank's radar if in range, else its
+own sensor). A pillbox is captured by a squad that stays on it
+uncontested for `CAPTURE_TICKS`; repaired by a squad with material;
+built, as an emplacement, from material the tank carries. Territory
+is the ground pillboxes cover. Pillboxes shoot drones so that a
+captured pillbox extends the bubble over ground the tank is not on.
+
+**What this does not change.** Drone and shell mechanics; the gun's
+indirect and direct modes (the aim point is already a map coordinate,
+which is Bolo's range cursor generalised); the tank's movement model
+(acceleration, terrain-limited speed, a brake for corners), which is
+Bolo's momentum model with the manual steering replaced by a routed
+destination.
+
+**Where this is implemented.** Nowhere yet. ROADMAP step 3, after the
+replay and the hash (steps 1 and 2) exist to prove it did only what it
+meant to.
+
 ## What is not here yet
 
+- Pillboys and pillboxes: decided above; not built.
 - Alliances and team play. The seat model supports it; the rules do not
   yet.
+
 - Map editing. The map is generated from a seed; a file format and an
   editor would let a map be authored and shared.
 - Client-side prediction of the player's own tank. Snapshots are

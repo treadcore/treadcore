@@ -8,17 +8,79 @@ and every layer above it keeps driving it through `step` and `observe`.
 
 ## 0. Prove what exists (before any of the below)
 
-- `make warm`, measured: wall time, peak memory, swap. Journal 0002.
-- `make test`: the compiler's verdict on proto, net, brain, server.
-- `cargo build -p treadcore-client`; `target/release/treadcore-warm`
-  to see whether wgpu finds an adapter in this VM. If it does not, the
-  fallback is Bevy's software path or developing the window on the
-  Mac host; the headless crates do not care either way.
-- `make debug` and read the trace for balance.
-- `make lobby-test`, then two machines.
+Status after the second session (12 October 2026, evening; journal
+0002):
+
+- [x] `make test`: every crate compiles, 16 tests pass. The dev-profile
+  engine built as a side effect in 4 min 28 s on the 8 GB VM. The
+  release-profile engine (`make warm`, `make run`) is not yet built or
+  measured.
+- [x] `make debug`, read: three bugs and two balance findings, below.
+  Fixed: the UDP receive buffer (no client could ever join), `Move`
+  across water (the sim now routes), the bash `SECONDS` collision in
+  the Makefile. Rewritten: the rule bot's doctrine, so a trace
+  exercises indirect fire. Still open: the balance items in the
+  backlog.
+- [x] `make lobby-test`, with a real assertion (three clients welcomed,
+  all saw the match end). Two machines: not yet.
+- [ ] The window. `treadcore-warm` panics in this VM: no Vulkan driver
+  is installed (`BUILD.md`, "The window in this VM"). One package,
+  `mesa-vulkan-swrast`, needs root. Until it is in, the window is
+  unproven here.
 
 Nothing below should start until step 0's open problems are closed, or
 every later step is built on a guess.
+
+## Backlog: what the first traces found
+
+Carried from journal 0002. Each is a proposal in waiting
+(`GOVERNANCE.md` section 5): a decision, with a trace to argue from.
+
+1. **Interceptors fight interceptors.** When two bubbles overlap
+   (tanks inside 2 x bubble + margin of each other) both rings
+   annihilate each other in two seconds, and the bots refill them from
+   the bay until it is empty; the first trace shows 22 intercepts in 20
+   seconds and three tanks dead to strikes through the stripped rings.
+   Decision wanted: should an interceptor on station engage a hostile
+   *interceptor* at all, or only strikes and recon? The real-world
+   analogue says engage anything; the game may want otherwise.
+2. **Tank speed.** 4 tiles/s is 360 km/h; the map is crossed in
+   fifteen seconds and a match of four bots ends in under two minutes.
+   `rules.rs` already calls it a game speed. Try 2.5 and read the
+   trace.
+3. **Retasking a drone.** The only way to move a recon is `Recall`,
+   which brings every drone home. A `Command::Retask { drone, task }`
+   (recon orbit centre; a single drone's recall) is small, and both the
+   bot and a human need it. Interceptors stay the world's to task.
+4. **Rejected orders repeat.** A bot whose `Move` is refused (a point in
+   water) re-issues it four times a second. Harmless; noisy in the
+   trace. The bot should remember a refusal for a few seconds.
+5. **The HUD's rtt is not an rtt.** The client shows snapshot tick
+   minus last-heartbeat tick, which is mostly heartbeat age. Use the
+   host's `rtt_ticks`, sent back in `Heartbeat`.
+6. **`Welcome` is one 16.5 KiB datagram.** Fine on a LAN, fragile on
+   the Internet; split it like snapshots before step 7.
+7. **The strike is the kill.** In every trace so far the tanks die to
+   strike drones (35 x 3 in the bay) after the rings are stripped, not
+   to shells. If the premise is that the gun is the weapon, either
+   strikes need a longer approach (battery) or interceptors need to
+   survive their own melee (item 1).
+8. **A match report.** `make debug` should end with the numbers a
+   balance reader wants (shells by kind and spotted, intercept rate,
+   kills by cause, time to first kill) instead of a reader counting
+   JSON lines.
+
+
+## 0b. Sixteen seats (done the same evening)
+
+`MAX_PLAYERS` 16; sixteen starts round the map's edge (the four sides
+first, then the corners, then the eight between), a depot each and the
+centre, a ring road through every start and spokes from the four sides;
+`--players N` on the server and the window, `PLAYERS=n` on `make`;
+seats named for their starts. Proof: `sixteen_seats` and
+`every_start_can_reach_the_centre` pass; `make debug` runs sixteen
+bots for 180 game seconds in under a second of wall time with 62
+shells, 128 intercepts, 10 kills and 8 captures on the default seed.
 
 ## 1. The replay: traces that run
 
@@ -52,13 +114,18 @@ observed the same hash sequence.
 
 ## 3. Pillboys: the control model, then the unit
 
-**Decision first.** Written into DESIGN.md before code: Pillboys are an
-*order the tank gives*, not a unit the player drives. The tank is the
-one thing the player drives; that is the premise. `Command::Deploy {
-task: PillboyTask }` where the task is `Capture { pillbox }`, `Repair {
+**Decision first.** Written into DESIGN.md on 12 October 2026 ("Pillboys
+and pillboxes: the decision"), checked against Bolo's builder and
+refuelling bases (`LAB-REPORT-PILLBOYS.md`): Pillboys are an *order the
+tank gives*, not a unit the player drives. The tank is the one thing
+the player drives; that is the premise. `Command::Deploy { task:
+PillboyTask }` where the task is `Capture { pillbox }`, `Repair {
 target }`, `Build { what, at }`, `Return`. The squad is a state on the
 tank (strength 0..N, deployed/aboard, position when deployed, task,
-progress) that the HUD shows beside the drones.
+progress, material) that the HUD shows beside the drones. Depots are
+not a Pillboy's business: they are refuelling bases, taken and used by
+driving onto them, as now.
+
 
 **Change.** `treadcore-sim`: `Pillboy` squad struct on `Tank`; a
 `step_pillboys` pass; squads are vulnerable to splash and to strikes
@@ -111,14 +178,73 @@ a seed cannot do that.
 
 **Change.** `Player.team: u8`. `visible_to` unions a team's sensors;
 `event_for` extends to teammates; interceptors do not engage team
-drones; scores are per team. `Command::Chat` gains `to: Team | All`.
-Two-versus-two is the first scenario.
+drones; shells and strikes do no damage within a team (friendly fire
+off, so an alliance can stampede together, CONCEPT.md section 9);
+scores are per team. `Command::Chat` gains `to: Team | All`. Four
+teams of four is the first scenario; two-versus-two the smallest.
 
-**Must not change.** The four-seat limit; the election; the wire
+**Must not change.** The sixteen-seat limit; the election; the wire
 format beyond one field.
 
 **Proof.** Two bots on a team share recon: a shell fired by one at a
-target only the other's drone sees is `spotted`.
+target only the other's drone sees is `spotted`; a shell landing on a
+teammate does no damage and says so in the trace.
+
+## 6b. Betrayal and recruitment: the proposal protocol
+
+**Change.** `treadcore-sim`: `Command::Propose { to: PlayerId, terms:
+Terms }`, `Command::Answer { proposal, accept: bool }`; `Terms::Join {
+team }` (recruit, or defect to), `Terms::Swap` (two tanks exchange
+teams). A proposal is an entity with a deadline (`PROPOSAL_TICKS`);
+the world resolves it when answered or expired and emits
+`Event::ProposalResolved` to everyone, so a betrayal is public the
+moment it happens. **The three-way rule**: the world refuses, with the
+reason, any proposal whose outcome would leave fewer than three teams
+with a living tank, or give one team more than half the living tanks.
+
+**Why.** Sixteen players with alliances and no way to change them is a
+fixed bracket; with unconstrained changes it collapses to one side.
+The rule keeps three sides in play, which is the smallest number in
+which an alliance is a choice.
+
+**Must not change.** Validation stays in `apply`; a Brain cannot
+propose anything a human cannot.
+
+**Proof.** A scripted replay: two teams of eight, a proposal that would
+merge them is refused; one that moves one tank to a third team is
+accepted and the trace shows the team change and the shared recon.
+
+## 6c. Material, walls, mines, roads: what a Pillboy builds
+
+**Change.** `treadcore-sim`: `Terrain::Wall` (impassable, blocks direct
+fire, cratered by indirect) and `Terrain::Mine` (hidden to others;
+destroys a tank or squad that enters it; cleared by a shell's splash;
+ignored by drones, so a moat is no defence against the air).
+`PillboyTask::Build { what: Wall | Road | Mine | Pillbox, at }` costs
+`material`; `PillboyTask::Harvest { at }` turns a forest tile to grass
+and adds material. Pillboxes carry shells: a tank inside `DEPOT_RADIUS`
+of its own pillbox resupplies shells (not drones) from it, so ammo
+comes from pillboxes and depots, as the brief says.
+
+**Must not change.** Drone mechanics; the depot rules; the step order.
+
+**Proof.** A bot that harvests, walls and mines a square round its
+depot survives a scripted attack longer than one that does not, over
+twenty seeds, by a margin the trace shows.
+
+## 6d. The defender brain
+
+**Change.** `treadcore-brain`: `Defender`, the simplest doctrine that
+plays the brief's defensive game: harvest the nearest forest, wall a
+maze round the home depot and a pillbox it builds at the maze's mouth,
+mine the approaches, lay a road from depot to pillbox so the squad can
+reach it to repair, keep two interceptors up, never leave. A scenario
+option `attackers: u8` seats that many `RuleBot`s (the attackers, a
+quarter by default) and `Defender`s in the rest.
+
+**Proof.** Sixteen bots, four attacking: the match lasts to the time
+limit more often than not, and most kills are pillbox kills.
+
 
 ## 7. Across the Internet
 
@@ -156,12 +282,15 @@ thin LTO for binaries; `cargo dist` or a plain tarball per platform.
 ## Sequencing
 
 ```
-0 prove ─┬─ 1 replay ── 2 hash ─┬─ 4 prediction
-         │                      └─ 7 internet ── 8 service
-         └─ 3 pillboys ── 5 maps ── 6 teams
-                                           └─ 9 sound/art/dist
+0 prove ── 0b sixteen ─┬─ 1 replay ── 2 hash ─┬─ 4 prediction
+                       │                      └─ 7 internet ── 8 service
+                       └─ 3 pillboys ── 6c material ── 5 maps ── 6 teams ── 6b proposals ── 6d defender
+                                                                                              └─ 9 sound/art/dist
 ```
 
 Two tracks after step 0, independent until step 6, which wants both
 the hash (for team-shared prediction) and the maps (for a balanced
-two-versus-two layout). Each step is one journal entry's work, or two.
+layout of sixteen). The defender brain comes last on its track because
+it needs everything it defends with. Each step is one journal entry's
+work, or two.
+

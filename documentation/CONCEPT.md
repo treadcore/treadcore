@@ -190,3 +190,52 @@ headless; the window, the server, the bots and the tests all drive the
 same one. Rust, Bevy for the window, `std` UDP for the wire, a Makefile
 in front of bash scripts in front of cargo, and a debug trace written
 to be read.
+
+## 9. The brief grows again: sixteen tanks, most of them digging in
+
+Added the evening of 12 October 2026, after the first traces ran.
+Paul's direction, in substance: sixteen players, Bolo's number. Most
+of them are the simplest possible defensive brains: they gather trees
+for wall material, build a defensive maze around a pillbox and a
+recharge depot so that the pillbox gets the kills, ring themselves
+with water by laying mines, and lay roads so their Pillboys can reach
+the pillbox to repair it. About a quarter of the brains attack. Ammo
+comes from pillboxes and from the depot; repair is a Pillboy's job,
+paid for in trees. Alliances are real: an alliance turns friendly fire
+off within it, so allied tanks can stampede together. And there must
+be betrayal: a proposal, mid-game, for tanks to swap sides or be
+recruited, allowed only where it keeps a three-way balance.
+
+What this changes in the architecture is less than it sounds, which is
+the point of having built the world first:
+
+- **Sixteen seats** is a constant and a map layout. Done the same
+  evening: `MAX_PLAYERS` is 16, the map has sixteen starts round its
+  edge with a depot each and a ring road through them, a scenario
+  seats any number up to sixteen, and sixteen rule bots fight a traced
+  match in a second of wall time.
+- **Defender brains** are a second `Brain`, not a second world. The
+  observation and the commands are the same ones a human has.
+- **Trees, walls, mines, roads, pillboxes** are terrain and entities
+  in the simulation, every one of them placed by a Pillboy order
+  (DESIGN.md, "Pillboys and pillboxes"): `Build { what, at }` grows to
+  cover wall, road, mine and pillbox, each costing material the tank
+  carries, and material is harvested from forest by the same squad.
+  Mines are Bolo's, with one of this game's rules on top: a strike
+  drone over a minefield is not stopped by it, so a moat is a defence
+  against tanks and Pillboys, not against the air.
+- **Alliances** are roadmap step 6 (teams) with two rules named: no
+  damage and no interception within an alliance, and shared sensors.
+- **Betrayal and recruitment** are a proposal protocol in the
+  simulation: `Command::Propose { to, terms }`, `Accept`, `Decline`,
+  resolved by the world at the end of a short window, visible to all
+  as events. "Three-way balance" is the constraint the world enforces:
+  a proposal that would leave fewer than three sides in play, or make
+  one side larger than half the living tanks, is refused with the
+  reason, like any other invalid order.
+
+The order of work follows the roadmap's dependency rule: the replay
+and the hash first, so that each of these can be shown to have done
+only what it meant to; then the Pillboys and the things they build;
+then alliances and the proposal protocol; then the defender brain,
+which needs all of the above to have something to defend with.

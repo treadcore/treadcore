@@ -1,6 +1,6 @@
 # treadcore protocol
 
-Version 1. One UDP socket per process, default port 47296. Every datagram
+Version 2. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 
@@ -46,7 +46,13 @@ Host-authoritative. The host owns the world; clients send orders and
 receive their view.
 
 - `Join { peer, name }` from a client, repeated every 500 ms until
-  `Welcome { player, scenario, tick, map_cells }` or `Refuse`.
+  `Welcome { player, scenario, tick, map_cells }` or `Refuse`. `Welcome`
+  is one datagram of about 16.5 KiB (the map), which IP fragments on
+  an Ethernet LAN and arrives; across the Internet, where fragments
+  are often dropped, it will need splitting the way snapshots are
+  (roadmap step 7). The receive buffer is 64 KiB for this reason: a
+  2 KiB buffer truncated it silently and no client ever joined.
+
 - `Command { seq, cmd }`: an order. Per-client monotonic `seq`; resent
   every 120 ms until `CommandAck { seq }`. The host applies each seq
   once, in order, buffering any that arrive early.

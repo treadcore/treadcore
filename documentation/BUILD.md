@@ -132,7 +132,35 @@ copal's and a redeploy may restore it). The lever neither script can
 pull is the VM's memory in UTM: 8 GB instead of 6 would end this class
 of problem.
 
+## The window in this VM
+
+Measured 12 October 2026, evening, after `cargo test --workspace`
+had built the dev-profile engine: `target/debug/treadcore-warm` panics
+in `bevy_render` at startup, "unable to find a GPU". wgpu's Vulkan
+backend finds the loader (`vulkan-loader`) and no driver behind it:
+there is no `/usr/share/vulkan/icd.d/`, because no Mesa Vulkan driver
+is installed. `WGPU_BACKEND=gl` fails the same way. The guest has
+Mesa's GL (`mesa-gl`, `mesa-egl`, `mesa-dri-gallium`) but not its
+software Vulkan rasteriser.
+
+The fix is one package, and it needs root:
+
+    doas apk add mesa-vulkan-swrast     # lavapipe: Vulkan on the CPU
+
+Then `target/debug/treadcore-warm` again. If it opens, `make run` will.
+Slow (every pixel is the CPU's), but the overlay is lines and 16 384
+small sprites, which llvmpipe draws at a playable rate on four cores.
+The alternative the roadmap names, developing the window on the Mac
+host, stays open: the headless crates do not care either way.
+
+Also measured: with 8 GB (the VM was given 8192 MB in UTM after the
+first day), `make configure` sizes 4 jobs, and `cargo test
+--workspace` compiled the remaining 170 engine crates plus every game
+crate in 4 min 28 s wall (13 min CPU) with swap untouched. The memory
+lesson of day one was about 6 GB; at 8 GB it does not bite.
+
 ## What is deliberately not done
+
 
 - **sccache / a shared cache.** Useful across machines; nothing to gain
   on one.

@@ -7,20 +7,28 @@ Site: [treadcore.org](https://treadcore.org).
 
 ## 1. Status, first
 
+As of the evening of 12 October 2026 (the morning's table is in the
+history; journal 0002 has the chronology):
+
 | crate | lines | compiled | tests |
 | --- | --- | --- | --- |
-| treadcore-sim | ~1050 | yes | 6 pass (determinism, launch validation, shell flight, swarm vs bubble, map determinism, every start reaches the centre) |
-| treadcore-proto | ~210 | written, build cancelled before it finished | 2 written |
-| treadcore-net | ~820 | written, build cancelled | 5 written (4 election, 1 loopback session) |
-| treadcore-brain | ~290 | written, build cancelled | 1 written (four bots fight to a result) |
-| treadcore-server | ~330 | written, build cancelled | none |
-| treadcore-client | ~780 | written, build cancelled; Bevy 0.17 dependency build was at ~240 of ~500 crates | none |
+| treadcore-sim | ~1400 | yes | 7 pass (determinism, launch validation, shell flight, swarm vs bubble, a Move routed across the river, map determinism, every start reaches the centre) |
+| treadcore-proto | ~240 | yes | 2 pass (round trip, snapshot split and reassembly) |
+| treadcore-net | ~830 | yes | 5 pass (4 election, 1 loopback session) |
+| treadcore-brain | ~370 | yes | 1 pass (four bots fight to a result: more than ten shells and ten launches in six minutes) |
+| treadcore-server | ~360 | yes; `make debug` and `make lobby-test` run | none |
+| treadcore-client | ~800 | yes, against Bevy 0.17.3; three dead-code warnings | none |
+| treadcore-warm | ~45 | yes; the window panics in this VM for want of a Vulkan driver (BUILD.md) | none |
 
-So: the world is proven; everything above it is written against it but
-not yet proven by the compiler. Expect a round of small fixes in the
-upper crates when the build runs. The one ambiguity the compiler had
-flagged (Bevy's prelude and the sim both export `Command` and `Event`)
-is already resolved with an explicit import.
+The round of small fixes the morning predicted was three, and none of
+them was a compile error: the compiler accepted every crate first
+time. They were a UDP receive buffer too small for `Welcome` (found by
+the loopback test), a straight-line `Move` that could not cross the
+river (found by the first trace), and the Makefile's `SECONDS` colliding
+with bash's own (found by reading the trace header). The rule bot was
+rewritten after the first trace showed a twenty-second melee with no
+indirect fire.
+
 
 ## 2. The shape: six crates, one direction
 
@@ -167,6 +175,14 @@ typed twice.
 ### 3.6 The map
 
 `map.rs`: a `Vec<u8>` of terrain, row-major, with `Terrain::from_u8`.
+Since the evening of day one the world calls `route` itself when it
+applies a `Move`, keeps the waypoints on the tank, brakes the tank to a
+crawl for corners, and plans again from where it stands if water is in
+front of it. The reason is in the first trace: a bot drove the straight
+line from its start to the centre, met the river a tile from the
+bridge, and sat there for the whole match. Neither a client nor a Brain
+has the map in its observation, so the pathfinding has to be the
+world's.
 `u8` rather than `Vec<Terrain>` because the map crosses the wire once in
 `Welcome` and 16 KiB is the right size for it. Generation is value noise
 for forest, a wandering line for the river, and roads walked from each
@@ -396,10 +412,14 @@ workspace makes that a compile-time fact.
 
 ## 11. What to do next
 
-1. Run the build (below). Fix what the compiler finds in proto, net,
-   brain, server; then the client.
-2. `make test`, then `make debug`, and read the trace for balance:
-   do bots die too fast, do swarms get through, does recon matter.
-3. `make lobby-test` for the election on one machine; then two machines.
-4. Then the things DESIGN.md lists as not here: teams, map files,
-   prediction, NAT.
+1. The window: `doas apk add mesa-vulkan-swrast`, then
+   `target/debug/treadcore-warm`, then `make run`. Or build the
+   window on a machine with a GPU; the headless crates do not care.
+2. `make warm` for the release profile, measured, so `make run` is a
+   link and not an hour.
+3. `make lobby-test` on two machines.
+4. The backlog in ROADMAP.md: the interceptor-versus-interceptor
+   decision, tank speed, drone retasking, the match report.
+5. Then roadmap steps 1 and 2 (replay, hash), and the Pillboys
+   (step 3) whose design is now written.
+

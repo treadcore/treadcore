@@ -1,11 +1,11 @@
 # treadcore
 
-A four-player overhead tank game for the battlefield the tank was just
+A sixteen-player overhead tank game for the battlefield the tank was just
 handed: the gun fires indirect like artillery, and the tank keeps itself
 alive the way a carrier does, by owning the airspace around it with a
 drone crew flown off its own hull.
 
-Rust, Bevy for the window, plain `std` UDP for the network. The four
+Rust, Bevy for the window, plain `std` UDP for the network. The
 clients find each other on the LAN, measure the links between them, and
 elect a host by themselves: the one whose worst link is best, with
 anyone the host cannot reach routed through a neighbour that can.
@@ -15,8 +15,9 @@ Website: [treadcore.org](https://treadcore.org). Repository:
 
 ## The game
 
-Each player has one tank on a 128 x 128 tile island (one tile is 25 m).
-The tank carries a bay of drones:
+Up to sixteen players, one tank each, on a 128 x 128 tile island (one
+tile is 25 m); bots fill the seats people do not. The tank carries a
+bay of drones:
 
 | drone | job | the number that matters |
 | --- | --- | --- |
@@ -55,22 +56,24 @@ alsa-lib-dev eudev-dev`). Without them the headless crates still build.
 ## Running
 
 ```
-make run         # the window, solo against three bots
+make run         # the window, solo against fifteen bots (PLAYERS=4 for three)
 make lan         # the window, LAN lobby; WANT=2 to start with two
 make host        # headless host on the LAN, bots in empty seats
 make seat        # headless bot that joins a LAN lobby
 make lobby-test  # four headless peers on this machine elect a host
 ```
 
-Controls are on screen (Tab hides them). Left click drives, right click
-fires, 1/2/3 launch interceptor / recon / strike, R recalls, [ ] set
-the bubble.
+Controls are on screen (Tab hides them). Left click drives (the world
+routes around water and over bridges), right click fires, 1/2/3 launch
+interceptor / recon / strike, R recalls, [ ] set the bubble.
+
 
 ## The debug trace
 
 ```
-make debug                      # 3 game minutes of four bots, flat out
-SECONDS=600 SEED=0x1234 make debug
+make debug                      # 3 game minutes of sixteen bots, flat out
+GAME_SECONDS=600 SEED=0x1234 PLAYERS=4 make debug
+
 BRAIN='python3 mybot.py' make debug   # an external brain in seat 0
 ```
 
@@ -114,6 +117,10 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/ROADMAP.md](documentation/ROADMAP.md): the next architectural steps, in dependency order.
 - [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
+- [documentation/LAB-REPORT-PILLBOYS.md](documentation/LAB-REPORT-PILLBOYS.md): the Pillboy requirement checked against Bolo's builder, and what was decided.
+- [documentation/RELEASE.md](documentation/RELEASE.md): the implementation cycle, versions, release monuments, candidates and playtesting.
+- [documentation/GOVERNANCE.md](documentation/GOVERNANCE.md): how the organization is run: roles, joining, proposals, review, leaving, recognition.
+- [CONTRIBUTING.md](CONTRIBUTING.md): the short version for a first pull request.
 
 ## License
 
