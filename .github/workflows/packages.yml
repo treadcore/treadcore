@@ -9,7 +9,12 @@
 #   treadcore-<version>-macos-arm64.zip     Treadcore.app, ad-hoc signed
 #   SHA256SUMS
 #
-# and put them on a DRAFT GitHub release. Nothing is public until a
+# test each one where its users are (install the .deb on fresh Debian,
+# Ubuntu and Linux Mint, the .rpm on fresh Fedora, unzip on Windows
+# and macOS; then run the installed programs: a headless bot match,
+# the window's --help, every linked library found), build the Nix
+# flake, and only when the packages' tests pass, put them on a DRAFT
+# GitHub release. Nothing is public until a
 # person publishes the draft, no sooner than a day after the tag
 # (RELEASE.md section 6). download.html links to these names.
 #
@@ -120,8 +125,100 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: macos, path: "*.zip" }
 
+  # The packages, installed where their users are. The window cannot
+  # open without a display here; `treadcore --help` and ldd prove the
+  # binary loads with what the package brought, and a 60-second bot
+  # match from the installed treadcore-server proves the game runs.
+  test-deb:
+    needs: [version, deb]
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:12", "debian:13", "ubuntu:22.04", "ubuntu:24.04", "linuxmintd/mint22-amd64"]
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: deb-amd64 }
+      - name: install the package (apt resolves its dependencies)
+        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y ./treadcore-*-linux-amd64.deb
+      - name: run what it installed
+        run: |
+          set -x
+          treadcore --help
+          ! ldd /usr/bin/treadcore | grep "not found"
+          test -f /usr/share/applications/org.treadcore.treadcore.desktop
+          test -f /usr/share/icons/hicolor/scalable/apps/treadcore.svg
+          treadcore-server --local --seconds 60 --swarm 0 2>&1 | tee match.log | tail -5
+          grep -q "match over" match.log
+
+  test-rpm:
+    needs: [version, rpm]
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["fedora:41", "fedora:42"]
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: rpm-x86_64 }
+      - name: install the package (dnf resolves its dependencies)
+        run: dnf install -y ./treadcore-*-linux-x86_64.rpm
+      - name: run what it installed
+        run: |
+          set -x
+          treadcore --help
+          ! ldd /usr/bin/treadcore | grep "not found"
+          test -f /usr/share/applications/org.treadcore.treadcore.desktop
+          treadcore-server --local --seconds 60 --swarm 0 2>&1 | tee match.log | tail -5
+          grep -q "match over" match.log
+
+  test-windows:
+    needs: [version, windows]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: windows }
+      - name: unzip and run
+        shell: pwsh
+        run: |
+          Expand-Archive -Path *.zip -DestinationPath .
+          $d = Get-ChildItem -Directory treadcore-*-windows-x86_64 | Select-Object -First 1
+          & "$d/treadcore.exe" --help
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & "$d/treadcore-server.exe" --local --seconds 60 --swarm 0 2>&1 | Tee-Object match.log | Select-Object -Last 5
+          if (-not (Select-String -Path match.log -Pattern "match over" -Quiet)) { exit 1 }
+
+  test-macos:
+    needs: [version, macos]
+    runs-on: macos-14
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: macos }
+      - name: unzip and run
+        run: |
+          set -x
+          ditto -x -k treadcore-*-macos-arm64.zip .
+          d="$(ls -d treadcore-*-macos-arm64 | head -1)"
+          codesign --verify --deep "$d/Treadcore.app"
+          "$d/Treadcore.app/Contents/MacOS/treadcore" --help
+          "$d/treadcore-server" --local --seconds 60 --swarm 0 2>&1 | tee match.log | tail -5
+          grep -q "match over" match.log
+
+  # The flake, built from this tag the way a Nix user would. Not a gate
+  # on the release: the flake is new, and a failure here is a finding
+  # for the next candidate, not a reason to hold the packages back.
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix build .#default -L
+      - run: ./result/bin/treadcore --help && ./result/bin/treadcore-server --local --seconds 60 --swarm 0 2>&1 | tail -3
+
   release:
-    needs: [version, deb, rpm, windows, macos]
+    needs: [version, deb, rpm, windows, macos, test-deb, test-rpm, test-windows, test-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

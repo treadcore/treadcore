@@ -4,7 +4,7 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
-## Unreleased
+## 0.1.0-rc.2 (2026-10-13): the second candidate
 
 Journal: [0019](journal/0019-2026-10-13-the-first-minute.txt).
 
