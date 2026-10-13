@@ -83,8 +83,9 @@ III. METHOD
       a tank's route pays 5x      hard wall round       the first test
       inside a live hostile ring  rings; no avoidance   drive died; a
                                                         wall strands
-                                                        a tank whose only
-                                                        road is through
+                                                        a tank whose
+                                                        only road is
+                                                        through
       the squad is not shot by    pillboxes shoot       Bolo's pillboxes
       pillboxes; splash hurts it  squads                shoot tanks; the
                                                         shell is the
