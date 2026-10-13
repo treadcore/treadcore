@@ -147,12 +147,40 @@ border-top:3px double var(--ink);border-bottom:1px solid var(--ink)}
 .back{text-align:center;margin:1.6rem 0 .4rem}
 .back a{font-family:var(--sans);font-size:.95rem;text-decoration:none;border:1px solid var(--rule);border-radius:999px;padding:.45rem 1.2rem}
 @media print{.below{background:#fff}.paper{box-shadow:none;max-width:none}}
+
+.hero2{text-align:center;padding:2.6rem 0 1.4rem}
+.hero2 h1{font-size:3rem;letter-spacing:-.03em;margin:0 0 .4rem}
+.hero2 .lede{margin:0 auto 1.4rem;max-width:38rem}
+.hero2 .cta{justify-content:center}
+.shot img{margin-top:1.4rem}
+section.s{padding:2.2rem 0;border-bottom:1px solid var(--line)}
+section.s h2{font-size:1.5rem;margin:0 0 .3rem;letter-spacing:-.01em}
+section.s .sub{color:var(--dim);margin:0 0 1.2rem}
+.sys{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))}
+.sys a{display:block;text-decoration:none;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.8rem .9rem}
+.sys a:hover{border-color:var(--accent)}
+.sys .t{display:flex;align-items:center;gap:.6rem;font-weight:700}
+.sys .t small{display:block;font-weight:400;color:var(--faint);font-size:.75rem}
+.sys code{display:block;margin:.55rem 0 .4rem;font-size:.78rem;white-space:nowrap;overflow-x:auto}
+.sys .dep{font-size:.78rem;color:var(--dim)}
+.sys .dep b{color:var(--fg);font-weight:600}
+.pico{width:2.1rem;height:2.1rem;flex:none;border-radius:.3rem}
+.tiles{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr))}
+.tiles a{display:block;text-decoration:none;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:.6rem;overflow:hidden}
+.tiles a:hover{border-color:var(--accent)}
+.tiles img{display:block;width:100%;height:9.5rem;object-fit:cover;object-position:left top;margin:0;border:0;border-radius:0;image-rendering:pixelated;background:#000}
+.tiles .cap{padding:.55rem .75rem .7rem}
+.tiles .cap b{display:block;font-size:.98rem}
+.tiles .cap span{font-size:.82rem;color:var(--dim)}
+.links{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0 0;padding:0;list-style:none}
+.links a{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:.35rem .8rem;font-size:.88rem;color:var(--fg);background:var(--card)}
+.links a:hover{border-color:var(--accent)}
 </style>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"VideoGame",
 "name":"treadcore","description":"A sixteen-player overhead tank game for the drone battlefield: the gun fires indirect at points a recon drone is watching, interceptors hold a ring round the hull, and the players find each other on a LAN or across the Internet with no server.",
 "url":"https://treadcore.org/","applicationCategory":"Game","genre":"Strategy","operatingSystem":"Linux",
-"softwareVersion":"0.1.0-rc.3","license":"https://opensource.org/licenses/MIT",
+"softwareVersion":"0.1.0-rc.4","license":"https://opensource.org/licenses/MIT",
 "author":{"@type":"Person","name":"Paul Richeson"},
 "keywords":"tank game, drone, indirect fire, interceptor, multiplayer, peer to peer, no server, Rust, Bevy, Bolo"}
 </script>
@@ -173,108 +201,63 @@ border-top:3px double var(--ink);border-bottom:1px solid var(--ink)}
   <symbol id="i-windows" viewBox="0 0 16 16"><rect width="16" height="16" fill="#0a5aa8"/><rect x="2" y="2" width="5.5" height="5.5" fill="#fff"/><rect x="8.5" y="2" width="5.5" height="5.5" fill="#fff"/><rect x="2" y="8.5" width="5.5" height="5.5" fill="#fff"/><rect x="8.5" y="8.5" width="5.5" height="5.5" fill="#fff"/></symbol>
   <symbol id="i-cargo" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3b2a1c"/><rect x="3" y="5" width="10" height="7" fill="#c97a3a"/><rect x="3" y="5" width="10" height="2" fill="#e8a067"/><rect x="7" y="7" width="2" height="5" fill="#8a4f20"/></symbol>
 </svg>
-<header class="hero"><div class="wrap">
-<p class="eyebrow">Sixteen tanks &middot; one island &middot; the airspace round each one</p>
-<h1>A tank game for the battlefield the tank was just handed</h1>
-<p class="lede">Your gun fires <strong>indirect</strong>, like artillery, at a point on the map a
-<strong>recon drone</strong> is watching. Your tank stays alive the way a carrier
-does: <strong>interceptors</strong> hold a ring round the hull and ram what flies in.
-Sixteen players find each other on a LAN or across the Internet, measure
-the links between them and elect a host. <strong>Nobody runs a server.</strong></p>
-<ul class="badges">
-<li>Free, MIT</li><li>cargo install</li><li>Up to sixteen players</li>
-<li>No server</li><li>Bots fill empty seats</li><li>Linux, macOS, Windows</li>
-</ul>
+<header class="hero2"><div class="wrap">
+<p class="eyebrow">Sixteen tanks &middot; one island &middot; no server</p>
+<h1>treadcore</h1>
+<p class="lede">An overhead tank game for the drone battlefield. Your gun fires where your recon drone looks; your interceptors keep the sky over you.</p>
 <div class="cta">
 <a class="primary" href="download.html">Download</a>
-<a href="#get-started">Get started</a>
 <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a>
-<a href="#paper">The paper</a>
-<a href="https://github.com/treadcore/treadcore">Source</a>
-<a href="https://crates.io/crates/treadcore-client">crates.io</a>
+<a href="#build">Build from source</a>
 </div>
-<div class="shot">
-<img src="reports/images/guide-screen.png" width="1200" height="740"
-     alt="The window: the orders column on the left, the map in the middle with the tank at its centre, the roster and lamps on the right, the stock along the bottom, the newswire under it">
-</div>
-<p class="caption">The frame, laid out as Bolo's was in 1987: orders down the left, the map in
-the middle with your tank at its centre, everyone's state down the right, your
-stock along the bottom, one line of news. Every picture on this page is taken
-by a script from the build it describes.</p>
+<div class="shot"><img src="reports/images/guide-screen.png" width="1200" height="740" alt="The game: orders on the left, the map in the middle, everyone's state on the right, your stock along the bottom"></div>
+<p class="caption" style="margin:.6rem auto 0;text-align:center">MIT &middot; <code>0.1.0-rc.4</code> &middot; Linux, macOS, Windows &middot; bots fill empty seats</p>
 </div></header>
 
-<div class="wrap"><section class="facts">
-<div class="fact"><h2>The gun fires indirect</h2><p>Twelve to sixty tiles, six seconds in the air at
-full range, a seventy-point splash. <strong>Where it lands is the recon's doing</strong>:
-within a tile if a drone of yours can see the point, within four if not.</p></div>
-<div class="fact"><h2>The drone crew</h2><p>A bay of two recon, six interceptors and three
-strikes, flown off your own hull. Each has a link back to the tank that thins
-with distance; a drone that loses it flies home on its own judgement.</p></div>
-<div class="fact"><h2>The bubble</h2><p>Interceptors orbit the tank on a ring you set. Wide
-catches a strike early but spreads the ring thin and stretches every link.
-<strong>It is a shield, not a sword</strong>: interceptors never fight interceptors.</p></div>
-<div class="fact"><h2>The ground</h2><p>A squad of four rides with you. They fell forest for
-material, lay roads and bridges, raise walls, bury mines, and build, repair and
-capture <strong>pillboxes</strong>: automatic guns that hold ground for whoever owns them.</p></div>
-<div class="fact"><h2>No server</h2><p>Each window beacons the LAN, pings every peer it finds,
-publishes a row of the latency matrix, and runs the same election on it. Across
-the Internet a tiny introducer tells peers each other's addresses. A player who
-drops <strong>gets the same seat back</strong>.</p></div>
-<div class="fact"><h2>Brains</h2><p>A bot sees exactly what a player sees and gives the same
-orders. The rule bot fills empty seats; a Brain in any language is a program
-that reads one JSON line and writes one. <a href="#paper">The paper</a> has the
-numbers from eight traced matches.</p></div>
-</section></div>
+<div class="wrap">
+<section class="s" id="get-it">
+<h2>Get it</h2>
+<p class="sub">One line for your system. The package brings what the game needs.</p>
+<div class="sys">
+<a href="download.html#debian"><div class="t"><svg class="pico"><use href="#i-debian"/></svg><span>Debian, Ubuntu<small>Linux Mint, .deb</small></span></div><code>sudo apt install ./treadcore-*.deb</code><div class="dep"><b>installs</b> Wayland, xkbcommon, Vulkan loader, Mesa Vulkan drivers</div></a>
+<a href="download.html#fedora"><div class="t"><svg class="pico"><use href="#i-fedora"/></svg><span>Fedora<small>.rpm</small></span></div><code>sudo dnf install ./treadcore-*.rpm</code><div class="dep"><b>installs</b> Wayland, xkbcommon, vulkan-loader, mesa-vulkan-drivers</div></a>
+<a href="download.html#windows"><div class="t"><svg class="pico"><use href="#i-windows"/></svg><span>Windows<small>.msi installer</small></span></div><code>treadcore-*-windows-x86_64.msi</code><div class="dep"><b>installs</b> nothing: DirectX 12 or Vulkan from the GPU driver</div></a>
+<a href="download.html#macos"><div class="t"><svg class="pico"><use href="#i-macos"/></svg><span>macOS<small>Apple silicon, .app</small></span></div><code>Treadcore.app</code><div class="dep"><b>installs</b> nothing: Metal</div></a>
+<a href="download.html#nix"><div class="t"><svg class="pico"><use href="#i-nix"/></svg><span>NixOS, Nix<small>flake</small></span></div><code>nix run github:treadcore/treadcore</code><div class="dep"><b>installs</b> everything, from the flake</div></a>
+<a href="download.html#copal"><div class="t"><svg class="pico"><use href="#i-copal"/></svg><span>Copal, Alpine<small>make install</small></span></div><code>make deps && make install</code><div class="dep"><b>installs</b> apk: wayland, xkbcommon, alsa, eudev, vulkan, mesa-vulkan-swrast</div></a>
+<a href="download.html#arch"><div class="t"><svg class="pico"><use href="#i-arch"/></svg><span>Arch, Omarchy<small>make install</small></span></div><code>make deps && make install</code><div class="dep"><b>installs</b> pacman: wayland, libxkbcommon, alsa-lib, vulkan-icd-loader, vulkan-swrast</div></a>
+<a href="download.html#gentoo"><div class="t"><svg class="pico"><use href="#i-gentoo"/></svg><span>Gentoo<small>make install</small></span></div><code>make deps && make install</code><div class="dep"><b>installs</b> emerge: wayland, libxkbcommon, alsa-lib, vulkan-loader, mesa</div></a>
+<a href="download.html#cargo"><div class="t"><svg class="pico"><use href="#i-cargo"/></svg><span>Anywhere<small>cargo install</small></span></div><code>cargo install treadcore-client</code><div class="dep"><b>installs</b> your own Rust 1.85+, and make deps for the system</div></a>
+</div>
+</section>
 
-<div class="wrap"><main class="site" id="treadcore">
-<h1 id="treadcore">treadcore</h1>
-<p><strong>An overhead tank game for the drone battlefield. Sixteen players, no server. Linux, macOS, Windows.</strong></p>
-<p>MIT &middot; <code>0.1.0-rc.3</code>, the third release candidate &middot; <code>cargo install treadcore-client</code></p>
-<p><strong><a href="https://treadcore.org/">treadcore.org</a></strong> &mdash; this page, the
-<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">player's guide</a>,
-and <a href="#paper">the paper</a>: the rules, and a review of the balance and the network.</p>
-<pre><code>cargo install treadcore-client      # the window, on your path as `treadcore`
-treadcore --solo                    # you against fifteen bots
-treadcore --lan                     # a LAN game: waits for peers, elects a host</code></pre>
-<p>Or from a clone, which also gives you the headless server, the traces and the scripts:</p>
-<pre><code>git clone https://github.com/treadcore/treadcore.git
-cd treadcore
-make configure
-make run         # solo against fifteen bots (PLAYERS=4 for three)
-make lan         # LAN lobby, elects a host
-make debug       # a full bot match, traced to build/logs/</code></pre>
-<hr>
-<h2 id="what-you-get">What you get</h2>
-<table><tbody>
-<tr><td><strong>A gun that needs a spotter</strong></td><td>Indirect fire between 12 and 60 tiles, six seconds of flight at full range. A recon drone over the target puts the shell within a tile; without one, within four.</td></tr>
-<tr><td><strong>A crew of drones</strong></td><td>Two recon, six interceptors, three strike FPVs in the bay. Every link, battery and task is on the screen. The bay refills at a depot.</td></tr>
-<tr><td><strong>A ring to hold</strong></td><td>The bubble: interceptors on station round the hull, ramming any strike that flies in. Narrow is thick and short-linked; wide is early and thin.</td></tr>
-<tr><td><strong>Ground to take</strong></td><td>Seventeen depots, twenty pillboxes, forest for material, and a squad that builds roads, bridges, walls and mines and captures what it can reach.</td></tr>
-<tr><td><strong>Fifteen others</strong></td><td>Up to sixteen seats; bots take the empty ones. Alliances, proposals to defect, recruit, swap and merge, under a three-way rule that keeps the match a match.</td></tr>
-<tr><td><strong>No server</strong></td><td>The windows elect a host among themselves and route round links that fail. A seat waits for a player who drops. An introducer, not a server, for the Internet.</td></tr>
-<tr><td><strong>A world you can replay</strong></td><td>Every match records; every replay must hash the same. Bots are tested against traces, and a change to the rules is a change the trace shows.</td></tr>
-</tbody></table>
-<hr>
-<h2 id="get-it">Get it for your system</h2>
-<p>A package where there is a package manager to take it, <code>make install</code> where
-building from source is the custom, a zip where there is neither, and <code>cargo install</code>
-anywhere. Pick yours on the <a href="download.html">download page</a>.</p>
-<ul class="platforms" role="list">
-<li><a href="download.html#debian"><svg class="pico"><use href="#i-debian"/></svg><span>Debian<small>.deb</small></span></a></li>
-<li><a href="download.html#ubuntu"><svg class="pico"><use href="#i-ubuntu"/></svg><span>Ubuntu<small>.deb</small></span></a></li>
-<li><a href="download.html#mint"><svg class="pico"><use href="#i-mint"/></svg><span>Linux Mint<small>Cinnamon, .deb</small></span></a></li>
-<li><a href="download.html#fedora"><svg class="pico"><use href="#i-fedora"/></svg><span>Fedora<small>.rpm</small></span></a></li>
-<li><a href="download.html#nix"><svg class="pico"><use href="#i-nix"/></svg><span>NixOS, Nix<small>flake</small></span></a></li>
-<li><a href="download.html#windows"><svg class="pico"><use href="#i-windows"/></svg><span>Windows<small>.msi, zip</small></span></a></li>
-<li><a href="download.html#macos"><svg class="pico"><use href="#i-macos"/></svg><span>macOS<small>zip, make install</small></span></a></li>
-<li><a href="download.html#copal"><svg class="pico"><use href="#i-copal"/></svg><span>Copal Linux<small>make install</small></span></a></li>
-<li><a href="download.html#alpine"><svg class="pico"><use href="#i-alpine"/></svg><span>Alpine<small>make install</small></span></a></li>
-<li><a href="download.html#arch"><svg class="pico"><use href="#i-arch"/></svg><span>Arch<small>make install</small></span></a></li>
-<li><a href="download.html#omarchy"><svg class="pico"><use href="#i-omarchy"/></svg><span>Omarchy<small>make install</small></span></a></li>
-<li><a href="download.html#gentoo"><svg class="pico"><use href="#i-gentoo"/></svg><span>Gentoo<small>make install</small></span></a></li>
-<li><a href="download.html#cargo"><svg class="pico"><use href="#i-cargo"/></svg><span>Anywhere<small>cargo install</small></span></a></li>
+<section class="s" id="play">
+<h2>Play</h2>
+<p class="sub">The mouse drives and fires; the keys give orders. <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">The guide</a> has the rest.</p>
+<div class="tiles">
+<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#3-driving-and-firing"><img src="reports/images/guide-aim.png" alt="Aim" loading="lazy"><div class="cap"><b>Aim</b><span>Hold right: the gun's reach lights. Release to fire.</span></div></a>
+<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#4-the-orders-column"><img src="reports/images/guide-column-armed.png" alt="Order" loading="lazy" style="object-position:left 72%"><div class="cap"><b>Order</b><span>Pick a mode on the left, click a square.</span></div></a>
+<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#6-pillboxes-and-depots"><img src="reports/images/guide-right.png" alt="Watch" loading="lazy"><div class="cap"><b>Watch</b><span>Every tank, pillbox and depot, by owner.</span></div></a>
+<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#10-over-a-network"><img src="reports/images/guide-networked.png" alt="Play together" loading="lazy"><div class="cap"><b>Play together</b><span>Up to sixteen. The windows elect a host.</span></div></a>
+</div>
+</section>
+
+<section class="s" id="build">
+<h2>Build it</h2>
+<p class="sub">With your own Rust, 1.85 or newer.</p>
+<pre><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
+make deps        # what this system needs, by its own names (APPLY=1 installs it)
+make install     # into ~/.local, with a menu entry
+make run         # or play from the tree, against fifteen bots</code></pre>
+<ul class="links">
+<li><a href="https://github.com/treadcore/treadcore/blob/main/README.md#building">README: building</a></li>
+<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/BUILD.md">BUILD.md</a></li>
+<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PACKAGES.md">How the packages are made</a></li>
+<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RELEASE.md">The release procedure</a></li>
 </ul>
-<hr>
+</section>
+
+<section class="s">
 <h2 id="where-built">Where it is built, and for what</h2>
 <p>Every build of the current release, the system it is for, what it needs there, and whether it was
 built, installed and played on that system before the release, and published. A release is not
@@ -284,7 +267,7 @@ published until every package's test passes (<a href="https://github.com/treadco
 <tbody></tbody>
 </table>
 <p class="builtmeta" id="build-meta"></p>
-<script type="application/json" id="builds"><!-- BUILDS: written by make builds -->{"generated":"2026-10-13 21:28 UTC","release":null,"crate":{"version":"0.1.0-rc.1","date":"2026-10-13"},"rows":[{"system":"Debian 12, 13","arch":"x86-64","kind":".deb","deps":"libwayland-client0, libxkbcommon0, libvulkan1, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Debian 12, 13","arch":"ARM64","kind":".deb","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Ubuntu 22.04, 24.04","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Linux Mint 22","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"x86-64","kind":".rpm","deps":"libwayland-client, libxkbcommon, vulkan-loader, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"AArch64","kind":".rpm","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":".msi","deps":"none (DirectX 12 or Vulkan from the GPU driver)","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":"zip","deps":"none","built":false,"tested":false,"published":false,"url":null},{"system":"macOS 11+","arch":"Apple silicon","kind":"zip","deps":"none (Metal)","built":false,"tested":false,"published":false,"url":null},{"system":"NixOS, Nix","arch":"x86-64, AArch64","kind":"flake","deps":"in the flake","built":true,"tested":false,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Copal, Alpine","arch":"AArch64, x86-64","kind":"make install","deps":"make deps: apk","built":true,"tested":"hand","published":true,"url":"https://treadcore.org/download.html"},{"system":"Arch, Omarchy","arch":"x86-64","kind":"make install","deps":"make deps: pacman","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Gentoo","arch":"any","kind":"make install","deps":"make deps: emerge","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Any, with Rust","arch":"any","kind":"cargo install","deps":"make deps for the system","built":true,"tested":null,"published":true,"url":"https://crates.io/crates/treadcore-client"}]}</script>
+<script type="application/json" id="builds"><!-- BUILDS: written by make builds -->{"generated":"2026-10-13 21:47 UTC","release":null,"crate":{"version":"0.1.0-rc.1","date":"2026-10-13"},"rows":[{"system":"Debian 12, 13","arch":"x86-64","kind":".deb","deps":"libwayland-client0, libxkbcommon0, libvulkan1, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Debian 12, 13","arch":"ARM64","kind":".deb","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Ubuntu 22.04, 24.04","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Linux Mint 22","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"x86-64","kind":".rpm","deps":"libwayland-client, libxkbcommon, vulkan-loader, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"AArch64","kind":".rpm","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":".msi","deps":"none (DirectX 12 or Vulkan from the GPU driver)","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":"zip","deps":"none","built":false,"tested":false,"published":false,"url":null},{"system":"macOS 11+","arch":"Apple silicon","kind":"zip","deps":"none (Metal)","built":false,"tested":false,"published":false,"url":null},{"system":"NixOS, Nix","arch":"x86-64, AArch64","kind":"flake","deps":"in the flake","built":true,"tested":false,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Copal, Alpine","arch":"AArch64, x86-64","kind":"make install","deps":"make deps: apk","built":true,"tested":"hand","published":true,"url":"https://treadcore.org/download.html"},{"system":"Arch, Omarchy","arch":"x86-64","kind":"make install","deps":"make deps: pacman","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Gentoo","arch":"any","kind":"make install","deps":"make deps: emerge","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Any, with Rust","arch":"any","kind":"cargo install","deps":"make deps for the system","built":true,"tested":null,"published":true,"url":"https://crates.io/crates/treadcore-client"}]}</script>
 <script>
 // The grid, from data written into this page by `make builds` when a
 // release is published: no API call per visitor.
@@ -299,290 +282,25 @@ published until every package's test passes (<a href="https://github.com/treadco
   document.getElementById('build-meta').innerHTML = `${rel}${crate}; this table written ${d.generated}.`;
 })();
 </script>
-<hr>
-<h2 id="get-started">Get started</h2>
-<pre><code>treadcore --solo</code></pre>
-<p>The window opens on a lobby screen, then the match: your tank in the middle of
-the island, fifteen bots round the edge, a swarm of neutral strike drones due in
-forty-five seconds. <strong>Left click</strong> drives. <strong>Hold the right button</strong> to
-see the gun's reach and <strong>release to fire</strong>. <code>1</code> puts an interceptor up.
-The rest is the column on the left.</p>
-<div class="pair">
-<figure><img src="reports/images/guide-aim.png" width="600" height="440" alt="Aiming: the right button held, the gun's reach lit as rings round the tank"><figcaption><b>Aiming.</b> The orange rings are the indirect gun's minimum and maximum, the white one direct fire's. A shell at a point a recon can see lands within a tile; blind, within four.</figcaption></figure>
-<figure><img src="reports/images/guide-close.png" width="600" height="400" alt="The models close: the tank with its turret in your colour, a depot, a pillbox"><figcaption><b>Up close.</b> Everything on the map is a stack of small cubes. Damage chips cubes off; a shell throws loose ones out of whatever it hits. No images anywhere: every element is a rectangle.</figcaption></figure>
-</div>
-<p><strong><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></strong>
-walks the whole screen with these pictures, section by section, and ends with every key.</p>
-<hr>
-<h2 id="the-orders-column">The orders column</h2>
-<div class="pair">
-<figure><img src="reports/images/guide-column-armed.png" width="170" height="544" alt="The orders column with pillbox mode armed: five drone tiles, then the five builder modes with a lamp each, the pillbox lamp red"><figcaption><b>Eleven tiles.</b> Each a picture of what the order makes, with its key. The top five are the drones. The lower five are the builder's modes, in the order Bolo had them: farm, road, wall, pillbox, mine. Arm one and its lamp is the one red lamp in the column.</figcaption></figure>
-<figure><img src="reports/images/guide-ghost.png" width="480" height="400" alt="The square under the cursor outlined while a builder mode is armed"><figcaption><b>Then click the square.</b> With a mode armed, the square under the cursor is outlined in the colour of what the squad would make there. The click sends them; the mode drops as they go. Esc drops it unused.</figcaption></figure>
-</div>
-<p>The mouse drives and fires; the keys give orders; a key dims when its order
-cannot be given. A refused order stays on the newswire long enough to read why.</p>
-<hr>
-<h2 id="everyone">Everyone's state, and yours</h2>
-<div class="pair">
-<figure><img src="reports/images/guide-right.png" width="285" height="544" alt="The right column: the roster, a lamp per tank, kills and deaths, a lamp per pillbox and per depot"><figcaption><b>The right column.</b> The roster; a lamp per tank; kills and deaths; a lamp per pillbox and per depot in its owner's colour. Click a pillbox lamp and the view jumps to it.</figcaption></figure>
-<figure><img src="reports/images/guide-events.png" width="530" height="304" alt="The events scrollback over the map"><figcaption><b>What happened.</b> Tab opens the scrollback over the map: the last forty events, each stamped with its tick. The newswire below always has the latest line.</figcaption></figure>
-</div>
-<img src="reports/images/guide-bottom.png" width="1200" height="136" alt="The bottom strip: shells, the bay, the squad and material, armor and fuel, the air table, and the newswire">
-<p>Along the bottom: twenty-four shells as lamps, the bay by kind, the squad and its
-material, armor and fuel, and the air: every drone of yours up, with its link and
-battery, and what hostile air is inside your detection ring.</p>
-<hr>
-<h2 id="network">Over a network</h2>
-<pre><code>make lan                              # on each machine; they find each other and elect a host
-make introduce                        # one machine, for the Internet: tells peers each other's addresses
-INTRODUCER=host:port make lan         # the others</code></pre>
-<p>Each window beacons the LAN, pings every peer it finds, publishes a row of the
-latency matrix, and runs the same election on the same matrix: the host is the
-peer whose worst link to anyone is best, and anyone the host cannot reach
-directly sends through a neighbour who can. A player whose game drops starts it
-again and gets the same seat back, with everything that was theirs.
-<a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">PROTOCOL.md</a>
-has the reasons; <a href="#paper-network">section VII of the paper</a> has the measurements.</p>
-<hr>
-<h2 id="brains">Brains</h2>
-<p>A Brain gets the same observation the window draws and returns commands the
-world validates like anyone's. A bot in Python is a program that reads one JSON
-line and writes one; <code>make schema</code> prints an example of each.
-<code>BRAIN='python3 mybot.py' make debug</code> puts it in seat 0 against fifteen rule
-bots and writes the trace.</p>
-<hr>
-<h2 id="commands">Commands</h2>
-<table><tbody>
-<tr><td><code>make run</code></td><td>the window, solo against fifteen bots; <code>PLAYERS=4</code> for three</td></tr>
-<tr><td><code>make lan</code>, <code>make host</code>, <code>make seat</code></td><td>a window, a headless host, a headless bot seat on the LAN</td></tr>
-<tr><td><code>make introduce</code></td><td>the introducer for the Internet; <code>INTRODUCER=host:port</code> on the others</td></tr>
-<tr><td><code>make debug</code></td><td>three game minutes of sixteen bots, traced; <code>SEED</code>, <code>PLAYERS</code>, <code>TEAMS</code>, <code>DEFENDERS</code>, <code>GAMETYPE</code>, <code>MAP</code></td></tr>
-<tr><td><code>make replay</code></td><td>play the newest trace back; every world hash must match</td></tr>
-<tr><td><code>make map</code>, <code>make convert</code></td><td>write the generated map to edit; convert a prior-art map</td></tr>
-<tr><td><code>make shoot</code>, <code>make release</code></td><td>take the release frames; the release procedure</td></tr>
-</tbody></table>
-<p><code>make</code> on its own lists them all.</p>
-<hr>
-<h2 id="in-play">In play</h2>
-<div class="gallery">
-<figure><img src="reports/images/playtest-19-solid-tiles.png" width="1200" height="740" alt="A prior-art map drawn in solid tiles: bright green forest, dark green grass, grey road, cyan river, tan wall blocks, brown craters"><figcaption><b>A map from 1993.</b> One of five community maps converted from the prior art, drawn in the colours Bolo drew it: forest, grass, road, river, tan walls three levels high, craters two levels down.</figcaption></figure>
-<figure><img src="reports/images/playtest-20-builder-modes.png" width="1200" height="740" alt="The frame with the builder column on the left and pillbox mode armed"><figcaption><b>Pillbox mode armed.</b> Press 7 or click the tile; the next click on the map sends the Pillboys there. On a pillbox they repair it, or capture it if it is dead or nobody's.</figcaption></figure>
-<figure><img src="reports/images/playtest-14-events-scrollback.png" width="1200" height="740" alt="The frame in play with the events scrollback open over the map"><figcaption><b>Under fire.</b> Three pillboxes red on the right, the depot lamps by owner, and the scrollback telling what hit whom.</figcaption></figure>
-<figure><img src="reports/images/playtest-09-back-in-seat-0.png" width="1200" height="740" alt="The window restarted after being killed, playing as seat 0 again at tick 820"><figcaption><b>Your seat waits for you.</b> This window was killed at eight seconds and started again. It asked the introducer who was hosting, and was back in seat 0 with its depot and its score.</figcaption></figure>
-</div>
-<hr>
-<h2 id="learn-more">Learn more</h2>
-<table><tbody>
-<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></td><td>the player's guide, with pictures: the screen, driving and firing, the drones, the builder, pillboxes and depots, every key</td></tr>
-<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">Concept</a> and <a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">Design</a></td><td>the brief, and the rules with their numbers and why</td></tr>
-<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">Research</a></td><td>what the game is modelled on, with sources</td></tr>
-<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">Protocol</a></td><td>the wire, the election, the relay, rejoin</td></tr>
-<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/INTERFACE.md">Interface</a> and <a href="https://github.com/treadcore/treadcore/blob/main/documentation/SPEC-PRIOR-ART-1.14.md">the prior art's specification</a></td><td>where the screen comes from, and the clean-room spec of the game it descends from</td></tr>
-<tr><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RELEASE.md">Release</a></td><td>the cycle, versions, candidates, and the procedure that refuses a release whose pictures are stale</td></tr>
-<tr><td><a href="https://github.com/treadcore/treadcore/tree/main/journal">The journal</a></td><td>one plain-text entry per working session, from the first day</td></tr>
-<tr><td><a href="reports/2026-10-12-opening-day.html">Opening day</a></td><td>the report on the first day: the vision, the research, what was built and learned</td></tr>
-</tbody></table>
-</main></div>
+</section>
 
-<div class="below">
-<main class="paper" id="paper">
-  <div class="runhead"><span>treadcore: an overhead tank game for the drone battlefield</span><span>October 2026</span></div>
-  <div class="titleblock">
-    <h1>Treadcore: An Overhead Tank Game for the Drone Battlefield, Its Rules, and a Review of Its Balance and Its Network</h1>
-    <p class="author">Paul Richeson</p>
-    <p class="affil">treadcore.org, United States</p>
-  </div>
-
-  <div class="cols">
-    <p class="abstract" id="abstract"><i>Abstract</i>—Treadcore is a sixteen-player overhead tank game whose premise is the tank as it stands in 2026: an indirect-fire platform that lives or dies by the drones flown off its own hull. The gun lobs shells at map coordinates and lands them well only where a recon drone is watching; interceptors hold a ring round the tank and ram the strike drones that come for it; a squad of four takes and holds the ground with roads, walls, mines and pillboxes, in the manner of the 1987 game the design descends from. The world is a deterministic simulation stepped twenty times a second, hashed and replayable, that every client and every bot sees only through a filtered observation. There is no server: the players' processes measure the links between them and elect a host, route round links that fail, and keep a seat for a player who drops. This paper states the rules and their numbers, then reviews two things with measurements. The balance review runs the rule bots through eight traced matches and finds that the gun is the weapon (shells account for 72 percent of kills, strikes 21), that the interceptor ring stops 63 to 82 percent of what it sees and lets 5 to 13 percent of strikes through, that pillboxes hold ground rather than kill, and that four tanks on a sixteen-start island barely meet. The network review reports the election, relay and rejoin tests and a client's measured round trip and prediction record. A last section sets the game against the clean-room specification of its ancestor and against what is real.</p>
-    <p class="terms"><i>Index Terms</i>—Deterministic simulation, drone warfare, game balance, host election, indirect fire, lockstep, overhead tank game, peer-to-peer, prediction, swarm.</p>
-
-    <h2>I. The Game</h2>
-    <p class="dropcap"><span class="lead">The</span> island is 128 by 128 tiles, a tile 25 m, so a map 3.2 km across. Up to sixteen players each drive one tank from a start near the edge; a rule bot takes every seat a person does not. Seventeen depots resupply and repair, one near each start and one in the centre. Twenty neutral pillboxes shoot anyone within eight tiles. Every forty-five seconds four neutral strike drones come in off a random edge at the nearest tank, so a solo game is a game. The match ends when one tank, or one team, is left standing, or at the time limit with the highest score: a kill is 100, a capture 25, an intercept 5.</p>
-    <p>The world is headless and deterministic (<code>treadcore-sim</code>). The same seed and the same orders give the same world, which is what lets one process be authoritative and the rest draw its view, what lets a match be recorded and replayed to the same hashes, and what lets a bot be tested. A tick applies that tick's orders, moves tanks, drones and shells, resolves intercepts, strikes, impacts, captures and resupply, spawns the swarm if due, and checks for a result. Fog of war is cut in the world before anything leaves it: a player sees seven tiles from the tank, twelve from a recon drone, four from any other drone, and a tank wholly inside a two-by-two block of forest is unseen beyond three tiles by any eye or pillbox.</p>
-    <p><span class="runin">The window.</span> The screen is laid out as the ancestor's was: orders down the left, the map in the middle with the player's tank at its centre, the state of everyone and everything down the right as lamps coloured by owner, the tank's stock along the bottom, and one line of news. Everything drawn is a rectangle; the things on the map are stacks of small cubes whose damage shows as cubes chipped off. Fig. 1 is the frame; the player's guide walks it.</p>
-  </div>
-  <figure class="fig">
-    <img src="reports/images/guide-screen.png" width="1200" height="740" alt="The window: the orders column, the map, the roster and lamps, the stock, the newswire">
-    <figcaption>Fig. 1. The frame, 0.1.0-rc.1, on a converted 1993 map. Left, the orders column; centre, the map with the tank at its middle; right, the roster, a lamp per tank, kills and deaths, a lamp per pillbox and per depot; bottom, shells, the bay, the squad, armor and fuel, the air, and the newswire.</figcaption>
-  </figure>
-
-  <h2>II. The Tank and the Gun</h2>
-  <div class="cols">
-    <p>A tank has 100 armor, 24 shells, 600 fuel and a bay of drones; it drives four tiles a second on open ground, sees seven, and what it starts with is the game type's: open (everything full), tournament (half the shells, no material) or strict (neither, so the first act is a drive to a depot). A <i>Move</i> names a destination and the world routes to it with the map's own A*, roads preferred and water avoided; neither a client nor a bot holds the map in its observation, so the routing has to be the world's. The first traced match had a bot parked at a river bank for its whole life because the straight line to the centre crossed the water beside the bridge.</p>
-    <p>The gun is the weapon, and its first mode is indirect: any point between 12 and 60 tiles, flight time the range over ten tiles a second, so six seconds at full range. Scatter is a uniform disc of radius 0.6 tiles if a friendly recon has the aim point in view at launch and 4 tiles if not. The impact does 70 at the centre falling to 17 at the edge of a 2.5-tile splash, craters the ground, and kills every drone inside two tiles, so a shell does plenty to a bubble and a bubble nothing to a shell. Direct fire is kept for anything inside ten tiles with a clear line: 45 damage, a third of a second. Table I has the numbers.</p>
-  </div>
-  <div class="tablewrap">
-    <table>
-      <caption><span class="tnum">TABLE I</span><span class="ttitle">The Tank and the Gun</span></caption>
-      <thead><tr><th scope="col">Quantity</th><th scope="col">Value</th><th scope="col">Note</th></tr></thead>
-      <tbody>
-        <tr><td>Armor, shells, fuel</td><td class="n">100, 24, 600</td><td>fuel at one a tile; a depot gives a shell, 4 armor and 40 fuel every half second</td></tr>
-        <tr><td>Speed, tiles/s</td><td class="n">4</td><td>360 km/h at the map's scale; kept after a trace at 2.5 changed nothing</td></tr>
-        <tr><td>Vision, tiles</td><td class="n">7</td><td>halved into single trees; nothing beyond 3 into a 2 by 2 block</td></tr>
-        <tr><td>Indirect range, tiles</td><td class="n">12 to 60</td><td>300 m to 1.5 km</td></tr>
-        <tr><td>Shell speed, tiles/s</td><td class="n">10</td><td>six seconds at full range</td></tr>
-        <tr><td>Scatter, spotted / blind, tiles</td><td class="n">0.6 / 4</td><td>uniform disc; spotted means a friendly recon sees the point at launch</td></tr>
-        <tr><td>Splash damage and radius</td><td class="n">70 in 2.5</td><td>17 at the edge; drones inside 2 tiles die</td></tr>
-        <tr><td>Reload, s</td><td class="n">4</td><td></td></tr>
-        <tr><td>Direct range, damage, flight</td><td class="n">10, 45, 0.3 s</td><td>needs a clear line, no forest between</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h2>III. The Drone Crew and the Bubble</h2>
-  <div class="cols">
-    <p>The bay holds two recon, six interceptors and three strikes; at most ten of a player's drones fly at once. Every tethered drone has a link quality from one at the tank to zero at its link range, and below 0.12 it has lost contact and turns for home on its own, except a strike already in its dive, which is what makes strikes dangerous. A drone that gets home goes back in the bay; one with a low battery goes home first. The bay refills at a depot, interceptors first.</p>
-    <p>Interceptors orbit the tank on the <i>bubble</i>, a ring the player sets between 2 and 12 tiles (default 5); detection reaches four tiles past it. When a hostile strike enters detection the nearest free interceptor is assigned, closes and rams: a one-shot kinetic kill with probability 0.5 + 0.4 times link quality, because the tank's radar is what gives it a vector and on its own camera it gets it right half the time. A wide bubble meets the threat early but spreads the ring thin and runs the interceptors near the end of their link. Interceptors never engage interceptors; section VI says what happened when they did. An enemy recon inside the bubble is intercepted too, since it is spotting for someone's gun. Recon drones orbit a chosen point and spot; strikes fly to a target tank and dive for 35.</p>
-  </div>
-  <div class="tablewrap">
-    <table>
-      <caption><span class="tnum">TABLE II</span><span class="ttitle">The Bay</span></caption>
-      <thead><tr><th scope="col"></th><th scope="col">Recon</th><th scope="col">Interceptor</th><th scope="col">Strike</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">In the bay</th><td class="n">2</td><td class="n">6</td><td class="n">3</td></tr>
-        <tr><th scope="row">Speed, tiles/s</th><td class="n">5</td><td class="n">9</td><td class="n">6.5</td></tr>
-        <tr><th scope="row">Battery, s</th><td class="n">150</td><td class="n">90</td><td class="n">45</td></tr>
-        <tr><th scope="row">Link range, tiles</th><td class="n">40</td><td class="n">18</td><td class="n">18</td></tr>
-        <tr><th scope="row">Vision, tiles</th><td class="n">12</td><td class="n">4</td><td class="n">4</td></tr>
-        <tr><th scope="row">Does</th><td>orbits a point, spots for the gun</td><td>holds the bubble, rams a strike: kill 0.5 + 0.4 × link</td><td>flies to a tank and dives for 35</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h2>IV. The Builder and the Ground</h2>
-  <div class="cols">
-    <p>A squad of four, the Pillboys, rides with the tank and is the ancestor's builder: an order the tank gives, not a unit the player drives. The order is one of five modes, in the ancestor's order (farm, road, wall, pillbox, mine), armed by a key or a click on its tile and given by a click on a square; the squad walks there at 1.5 tiles a second, does the work, and walks back. Farming a forest tile takes four seconds and yields four material, of eight the squad can carry; a road or bridge, a wall, or a mine costs one and takes three seconds; a pillbox costs two and takes fifteen. The squad outside the tank can be killed by a shell or a mine blast and comes back a man at a time at a depot; a dead squad's order is forgotten.</p>
-    <p>A pillbox is an automatic gun with 60 health, eight shells regrown one every ten seconds, range eight tiles against tanks and four against drones, 15 damage every two seconds. It never leaves the map. Shot dead, it is captured by a squad standing on it for ten seconds, and comes back at half health for its new owner; the builder repairs any pillbox, whoever owns it, for one material in six seconds, and repair never changes the owner. A wall stands three levels high, blocks tanks, shots and a pillbox's line of fire, and a shell's splash knocks it to rubble. A mine is hidden until a hostile comes within a tile and a half, does 50 to a tank on it and 20 around, and sets off its orthogonal neighbours but not its diagonal ones. The traces of section VI say what each of these does to a match.</p>
-  </div>
-  <figure class="fig">
-    <img src="reports/images/guide-column-armed.png" width="170" height="544" alt="The orders column with pillbox mode armed" style="max-width:12rem">
-    <figcaption>Fig. 2. The orders column with pillbox mode armed. The lower five tiles are the ancestor's five builder modes in its order; the one red lamp is the armed mode, and the next click on the map gives it.</figcaption>
-  </figure>
-
-  <h2>V. Alliances and the Three-Way Rule</h2>
-  <div class="cols">
-    <p>Players start each on a side of their own unless the scenario deals teams. Every change of sides in play is a proposal from one player to another, to join them, recruit them, swap teams or merge whole teams, and the one asked, or anyone on their team, accepts or declines within thirty seconds. A team shares its picture, so a shell at what only an ally's recon sees is spotted; its depots and its pillboxes' shells; the knowledge of its mines; and chat. It is spared friendly fire from allies, though a player's own shells still hurt them, because that is a mistake and not an ally.</p>
-    <p>The world refuses a proposal, with the reason, when it is made and again when it is accepted, if the outcome would leave fewer than three sides with a living tank or give one side more than half the living tanks. Three is the smallest number of sides in which an alliance is a choice rather than the end of the match, and half is where a side stops needing anyone. Every resolution is announced to everyone, so a betrayal is public the moment it happens. The defender trace of Table IV shows the rule in use: fifteen proposals, three accepted.</p>
-  </div>
-
-  <h2>VI. Balance Review</h2>
-  <div class="cols">
-    <p>The review is the headless server running rule bots in every seat for three game minutes, written to a trace, with a report after the scoreboard: shells by kind and whether spotted, drones launched, intercepts and the share of strikes that got through, kills by cause and the time of the first, and what was captured and built. The same seed and orders always give the same match, and a replay must reproduce every recorded hash. Two sets are reported: the eight-seed study of 13 October 2026 that fixed the interceptor rule (Table III), and the eight matches run on the release candidate for this paper (Table IV).</p>
-    <p><span class="runin">The interceptor rule.</span> The first traces had interceptors engage anything that flew. Two bubbles that overlapped stripped each other in seconds, the bots refilled them from the bay until it was empty, and the strikes came through the gap: 32 interceptors shot down a match, 24 percent of strikes through, and the kills nearly even between shell and strike. With interceptors engaging strikes only, and a recon inside the bubble, the gun became the weapon: 8.8 kills by shell to 2.9 by strike, six interceptors lost, 15 percent through. Slowing the tank to 2.5 tiles a second moved the figures within the noise and was not kept. The bubble is a shield, not a sword, and the analogue of a fighter screen was rejected for the game's sake.</p>
-  </div>
-  <div class="tablewrap">
-    <table>
-      <caption><span class="tnum">TABLE III</span><span class="ttitle">Eight Seeds of Sixteen Bots, 300 Game Seconds, per Match (13 October 2026)</span></caption>
-      <thead><tr><th scope="col">Variant</th><th scope="col">Kills</th><th scope="col">by shell</th><th scope="col">by strike</th><th scope="col">Interceptors shot down</th><th scope="col">Alive at end</th><th scope="col">Strikes through</th></tr></thead>
-      <tbody>
-        <tr><td>Baseline: interceptors engage everything</td><td class="n">13.2</td><td class="n">7.0</td><td class="n">5.9</td><td class="n">32</td><td class="n">2.8</td><td class="n">24%</td></tr>
-        <tr><td>Strikes only</td><td class="n">11.9</td><td class="n">8.8</td><td class="n">2.9</td><td class="n">6</td><td class="n">4.1</td><td class="n">15%</td></tr>
-        <tr><td>Strikes only, tank at 2.5 tiles/s</td><td class="n">12.0</td><td class="n">9.8</td><td class="n">2.2</td><td class="n">3</td><td class="n">4.0</td><td class="n">10%</td></tr>
-        <tr><td>Final: strikes only, brain fixes</td><td class="n">11.8</td><td class="n">9.2</td><td class="n">2.5</td><td class="n">6</td><td class="n">4.2</td><td class="n">10%</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="cols">
-    <p><span class="runin">The candidate.</span> Table IV is the release candidate, eight matches on the generated sixteen-start map. Across the three plain seeds, 33 kills fell in 540 game seconds, 28 of them to shells and 5 to strikes; the first kill came between ten and fifteen seconds, which is the first minute's problem the playability review ranks first; between three and six of sixteen tanks were alive at the end. The ring stopped 69 to 78 percent of what it engaged and let 5 to 13 percent of strikes through, two thirds of them the swarm's. Of 67 to 70 indirect shells a match, two thirds to four fifths were spotted. Every match captured fourteen to sixteen of the twenty pillboxes and six or seven depots, and pillboxes fired at most once: with the router keeping tanks out of hostile rings, a pillbox's job is to make a depot untakeable by a tank, not to kill, and sixteen of seventeen depots were held at the end of every match. Strict tournament, where nobody starts with a shell, shot 28 shells, every one spotted: the bots that drove to a depot first shot last and best.</p>
-    <p><span class="runin">Defenders, teams, four players.</span> With twelve Defender brains dug in at their depots against four attackers, the match turns into the ground game: six walls and six pillboxes built, 113 mines left, three of eight kills by mine, and the only proposals of the set. Four teams of four share recon, and the one match in which pillboxes fired (six times) is that one, where allies drove through each other's rings. Four players on the sixteen-start island do not meet: no indirect shell was fired in three minutes, the one kill came at 151 seconds, and the time limit decides. A fifteen-minute limit on the default seed ended by last tank standing at 499 seconds with fifteen kills, eleven by shell, after 24 depot captures.</p>
-  </div>
-  <div class="tablewrap">
-    <table>
-      <caption><span class="tnum">TABLE IV</span><span class="ttitle">The Release Candidate, 0.1.0-rc.1: Eight Traced Matches, 180 Game Seconds unless Stated</span></caption>
-      <thead><tr><th scope="col">Match</th><th scope="col">Kills (shell / strike / other)</th><th scope="col">First kill, s</th><th scope="col">Alive at end</th><th scope="col">Indirect shells (spotted)</th><th scope="col">Intercepts</th><th scope="col">Strikes through</th><th scope="col">Pillboxes captured</th><th scope="col">Depots captured</th><th scope="col">Pillbox shots</th></tr></thead>
-      <tbody>
-        <tr><td>16 bots, seed 7EADC0DE</td><td class="n">10 (10 / 0 / 0)</td><td class="n">9.9</td><td class="n">6</td><td class="n">67 (44)</td><td class="n">65 of 83, 78%</td><td class="n">3 of 64, 5%</td><td class="n">15</td><td class="n">7</td><td class="n">0</td></tr>
-        <tr><td>16 bots, seed 1234</td><td class="n">10 (8 / 2 / 0)</td><td class="n">13.6</td><td class="n">6</td><td class="n">70 (55)</td><td class="n">76 of 99, 77%</td><td class="n">4 of 81, 5%</td><td class="n">16</td><td class="n">7</td><td class="n">0</td></tr>
-        <tr><td>16 bots, seed BEEF</td><td class="n">13 (10 / 3 / 0)</td><td class="n">14.4</td><td class="n">3</td><td class="n">56 (49)</td><td class="n">103 of 149, 69%</td><td class="n">12 of 92, 13%</td><td class="n">14</td><td class="n">6</td><td class="n">1</td></tr>
-        <tr><td>12 Defenders, 4 attackers</td><td class="n">8 (3 / 2 / 3 mine)</td><td class="n">11.4</td><td class="n">8</td><td class="n">26 (25)</td><td class="n">83 of 131, 63%</td><td class="n">3 of 32, 9%</td><td class="n">14, and 6 built</td><td class="n">4</td><td class="n">0</td></tr>
-        <tr><td>Four teams of four</td><td class="n">9 (6 / 3 / 0)</td><td class="n">13.7</td><td class="n">7</td><td class="n">68 (43)</td><td class="n">80 of 120, 67%</td><td class="n">7 of 74, 9%</td><td class="n">16</td><td class="n">6</td><td class="n">6</td></tr>
-        <tr><td>Strict tournament</td><td class="n">11 (9 / 1 / 1 swarm)</td><td class="n">10.1</td><td class="n">5</td><td class="n">28 (28)</td><td class="n">58 of 71, 82%</td><td class="n">6 of 62, 10%</td><td class="n">15</td><td class="n">11</td><td class="n">0</td></tr>
-        <tr><td>Four players</td><td class="n">1 (1 / 0 / 0)</td><td class="n">150.9</td><td class="n">3</td><td class="n">0 (0)</td><td class="n">18 of 26, 69%</td><td class="n">1 of 18, 6%</td><td class="n">13</td><td class="n">10</td><td class="n">0</td></tr>
-        <tr><td>16 bots, 900 s limit, ended at 499 s</td><td class="n">15 (11 / 3 / 1 swarm)</td><td class="n">9.9</td><td class="n">1</td><td class="n">74 (50)</td><td class="n">126 of 173, 73%</td><td class="n">15 of 113, 13%</td><td class="n">17</td><td class="n">24</td><td class="n">1</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="cols">
-    <p><span class="runin">What the review says.</span> The gun is the weapon by a factor of three or four, and the recon is what makes it one: the spotted share of shells tracks the kill rate. The ring does what a shield should and no more. The two things the numbers call for are in the window and the brain, not the rules: a bot opening that does not fire at a tank which has not moved for its first minute, because a first kill at ten seconds is a newcomer dead reading the help; and a bot that stands in forest, since the concealment rule is in and nobody uses it. The four-player result is the map's, not the rules': sixteen starts spaced for sixteen keep four apart, and a four-start map is the answer.</p>
-  </div>
-
-  <h2 id="paper-network">VII. The Network Without a Server</h2>
-  <div class="cols">
-    <p>Each process beacons the LAN, pings every peer it finds, and publishes a row of the latency matrix; every peer runs the same election on the same matrix, so they agree without a vote: the host is the peer whose worst link to anyone is best, and anyone the host cannot reach directly sends through the neighbour who can. The host is authoritative; a client predicts its own tank and yields to every snapshot, and a prediction mismatch is counted and corrected, never argued. Across the Internet a small introducer registers hosts and tells peers each other's addresses, and the peers punch through; it hosts nothing. A seat belongs to a peer identity that survives a restart, so a player whose game drops starts it again and is back in the same seat with everything that was theirs, for as long as the match lasts.</p>
-    <p>Table V is the record: the lobby test runs four headless seats on one machine through the election, with lag, through the introducer only, and with a seat killed and brought back; and the first playtest build measured a window as a client. The round trip the HUD first showed was not a round trip but a heartbeat's age, and once the host echoed the client's own stamp it read 50 to 150 ms with 30 ms of lag each way. In 784 prediction checks under lag there were no mismatches, which is why the smoothing of a correction is deferred until one is seen.</p>
-  </div>
-  <div class="tablewrap">
-    <table>
-      <caption><span class="tnum">TABLE V</span><span class="ttitle">The Network, as Tested and Measured (13 October 2026)</span></caption>
-      <thead><tr><th scope="col">Proof</th><th scope="col">Result</th></tr></thead>
-      <tbody>
-        <tr><td>Four headless seats on one machine elect a host</td><td>pass; 1 435 prediction checks, 0 mismatches</td></tr>
-        <tr><td>The same through the introducer only, no LAN broadcast</td><td>pass; 12 introductions; 1 551 checks, 0 mismatches</td></tr>
-        <tr><td>A seat killed and brought back</td><td>back in its seat at tick 371, no election; 1 259 checks, 0</td></tr>
-        <tr><td>The same with 200 ms of lag</td><td>back in seat 0 at tick 376; 1 194 checks, 0</td></tr>
-        <tr><td>Two silent peers brought together by the introducer</td><td>both decide one host; each measured the other</td></tr>
-        <tr><td>Lobby to playing, three peers, introducer only</td><td>under 3 s</td></tr>
-        <tr><td>Round trip on the HUD, 30 ms of lag each way</td><td>50 to 150 ms (200 to 450 before the echo fix)</td></tr>
-        <tr><td>A window killed outright and restarted</td><td>about 6 s to playing again, in its seat, the window's start most of it</td></tr>
-        <tr><td>Tick rate, one window, eight seats, software rasteriser</td><td>20.0 Hz held</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h2>VIII. Brains</h2>
-  <div class="cols">
-    <p>A Brain is anything that takes an observation and returns commands. The observation is the player's view as the host filters it, so a bot cannot see or do anything a keyboard cannot; the same rule keeps the destruction in the window, where a cube is a cube, out of the simulation, where it is not a thing. The rule bot fills empty seats: it moves and shoots at what its recon sees, keeps its ring up, sends the squad for pillboxes and forest, and makes and answers proposals under the three-way rule. The Defender digs in at a depot with a pillbox at the mouth of its road. An external brain is a program that reads one JSON observation per line and writes one JSON array of commands, in any language, and the debug trace puts it in a seat against fifteen rule bots.</p>
-  </div>
-
-  <h2>IX. Against the Prior Art</h2>
-  <div class="cols">
-    <p>The design descends from a 1987 home-computer tank game and its 1989 desktop port: a shared, mutable overhead world, up to sixteen players on separate machines, external brains driving tanks through the player's own interface, and a network that was a ring of peers. A clean-room functional specification of that game, written from its manual in new words, is kept with the source, and a preface says what treadcore adopts: the builder as the squad, the pillboxes and their capture, the mines, the three game types, the alliance rules, forest concealment, and the screen. Not adopted: boats and deep sea, the base's armour as its gate (a trace argued for a time gate instead), the dedicated server, and the asset files, because nothing here is an image.</p>
-    <p>The screen was then held against the ancestor's pixel by pixel. Its builder column has five buttons at a 50-pixel pitch, each a three-by-three-square picture of the real sprites, with one red lamp for the active mode; treadcore's had fourteen abstract tiles and thirteen lit lamps, which said nothing, and the mode-then-click of the specification's BLD-01 was not followed at all. It is now, in the ancestor's order, and the lamp is the one lamp lit. A repair that refused any pillbox but the player's own (BLD-05) was found the same way and corrected in the simulation. The remaining divergences are chosen: the gun takes a point a recon sees rather than a range, and the mouse drives.</p>
-  </div>
-
-  <h2>X. What Is Real and What Is Not</h2>
-  <div class="cols">
-    <p>The premise is reported, not invented. Analyses of the Russian tank force in 2026 describe tanks firing indirect at up to 10 km from prepared positions and moving, with FPV drones accounting for over two thirds of losses since 2024 <a class="c" href="#ref-1">[1]</a>; China is reported developing indirect fire for its next tank <a class="c" href="#ref-2">[2]</a>; and the artillery trade argues that drones fill a shell shortage inside a kill chain of reconnaissance and fire control rather than replacing the gun <a class="c" href="#ref-3">[3]</a>, <a class="c" href="#ref-4">[4]</a>. Armoured vehicles with their own interceptor drones are prototypes and products: a wheeled carrier with five interceptors and a drone operator in the crew <a class="c" href="#ref-5">[5]</a>, a tank concept with recon drones ahead and tube-launched interceptors <a class="c" href="#ref-6">[6]</a>, a vehicle-mounted radar and interceptor launcher in service since 2024 <a class="c" href="#ref-7">[7]</a>. A closed-down crew seeing through the hull on a helmet display, with the drone's video one button away, is a fielded system <a class="c" href="#ref-8">[8]</a>; swarms that pool what they see so the operator confirms rather than flies, and interceptors made as a consumable, are the reported direction <a class="c" href="#ref-9">[9]</a>, <a class="c" href="#ref-10">[10]</a>.</p>
-    <p>The numbers are the game's. A tile is 25 m and the gun's 12 to 60 tiles are 300 m to 1.5 km, scaled to a 3.2 km island rather than to any gun; four tiles a second is 360 km/h. A one-shot kinetic interceptor whose kill chance depends on the telemetry link is a rule that stands for the radar's vector, not a measurement. Forest that hides a tank from a drone's camera is the oldest counter to the air and the one reason to leave trees standing; that a tank in a two-by-two block is invisible beyond three tiles is the ancestor's rule, kept. The squad of four that builds a pillbox in fifteen seconds is a game. The one thing taken from the ancestor without change is the shape of the screen, because thirty-nine years of players found it readable.</p>
-  </div>
-
-  <h2>XI. Conclusion</h2>
-  <div class="cols">
-    <p>A deterministic world, a gun that needs a spotter, a ring that is a shield, a squad that takes the ground, and a network that elects its own host make a sixteen-player game that runs on a CPU rasteriser at twenty ticks a second and can be replayed to the hash. The review finds the balance it was designed for: shells kill, strikes threaten, the ring holds, pillboxes hold ground, and alliances are a choice. What it finds wanting is in the first minute and the map, and both are named in the playability review with their cost. The release candidate is offered for playtesting, and the procedure that built it refuses any release whose pictures are not the window it ships.</p>
-  </div>
-
-  <section>
-    <h2>References</h2>
-    <div class="cols">
-      <ol class="refs">
-        <li id="ref-1">Adapt Institute, “The future of the Russian tank forces,” Mar. 2026. [Online]. Available: https://www.adaptinstitute.org/future-of-the-russian-tank-forces/09/03/2026/</li>
-        <li id="ref-2">UNITED24 Media, “China developing indirect-fire capabilities for tanks following war in Ukraine trends,” 2026. [Online]. Available: https://united24media.com/latest-news/china-developing-indirect-fire-capabilities-for-tanks-following-war-in-ukraine-trends-12491</li>
-        <li id="ref-3">Small Wars Journal, “Beyond the hype: Why drones cannot replace artillery,” May 2025. [Online]. Available: https://smallwarsjournal.com/2025/05/05/beyond-the-hype-why-drones-cannot-replace-artillery/</li>
-        <li id="ref-4">New Geopolitics, “The artillery: New warfare, new role,” Jul. 2025. [Online]. Available: https://www.newgeopolitics.org/2025/07/23/the-artillery-new-warfare-new-role/</li>
-        <li id="ref-5">Militarnyi, “Interceptor drones on a Boxer armored vehicle,” 2026. [Online]. Available: https://militarnyi.com/en/news/interceptor-drones-boxer-armored-vehicle/</li>
-        <li id="ref-6">Interesting Engineering, “Armored tank pairs unmanned turret with drone,” 2026. [Online]. Available: https://interestingengineering.com/innovation/armored-tank-pairs-unmanned-turret-with-drone</li>
-        <li id="ref-7">Wikipedia, “Merops (weapon).” [Online]. Available: https://en.wikipedia.org/wiki/Merops_(weapon)</li>
-        <li id="ref-8">Elbit Systems, “IronVision helmet mounted display.” [Online]. Available: https://www.elbitsystems.com/air-space/aircraft-systems/helmet-mounted-display/ironvision</li>
-        <li id="ref-9">Breaking Defense, “Bringing real autonomy to battlefield drone swarms,” Oct. 2026. [Online]. Available: https://breakingdefense.com/2026/10/bringing-real-autonomy-to-battlefield-drone-swarms/</li>
-        <li id="ref-10">Defense News, “Infrastructure is the weapon: Inside the race to build portable interceptor factories,” Apr. 2026. [Online]. Available: https://www.defensenews.com/news/your-military/2026/04/01/infrastructure-is-the-weapon-inside-the-race-to-build-portable-interceptor-factories/</li>
-        <li id="ref-11">P. Richeson, “The prior art, version 1.14: Clean-room functional specification,” treadcore, documentation/SPEC-PRIOR-ART-1.14.md, Oct. 2026. [Online]. Available: https://github.com/treadcore/treadcore/blob/main/documentation/SPEC-PRIOR-ART-1.14.md</li>
-        <li id="ref-12">P. Richeson, “Design: The rules, the numbers, and why,” treadcore, documentation/DESIGN.md, Oct. 2026. [Online]. Available: https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md</li>
-        <li id="ref-13">P. Richeson, “The creation journal,” treadcore, journal/0001 to 0018, Oct. 2026. [Online]. Available: https://github.com/treadcore/treadcore/tree/main/journal</li>
-        <li id="ref-14">P. Richeson, “Making treadcore playable: A review,” treadcore, documentation/PLAYABILITY.md, Oct. 2026. [Online]. Available: https://github.com/treadcore/treadcore/blob/main/documentation/PLAYABILITY.md</li>
-      </ol>
-    </div>
-  </section>
-  <p class="back"><a href="#treadcore">Back to the top</a></p>
-</main>
+<section class="s" id="more">
+<h2>Read more</h2>
+<ul class="links">
+<li><a href="paper.html">The paper: rules, balance, network</a></li>
+<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">Design</a></li>
+<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">Concept</a></li>
+<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">Research</a></li>
+<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">Protocol</a></li>
+<li><a href="https://github.com/treadcore/treadcore/tree/main/journal">The journal</a></li>
+<li><a href="reports/2026-10-12-opening-day.html">Opening day</a></li>
+</ul>
+</section>
 </div>
 
-<footer><div class="wrap"><ul class="nav"><li><strong>Overview</strong></li><li><a href="download.html">Download</a></li><li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li><li><a href="#paper">The paper</a></li><li><a href="reports/2026-10-12-opening-day.html">Opening day</a></li><li><a href="https://github.com/treadcore/treadcore">GitHub</a></li><li><a href="https://crates.io/crates/treadcore-client">crates.io</a></li></ul>
-<p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson. No assets: everything drawn is a rectangle or a line.
-Built and played on <a href="https://github.com/copallinux/copal">Copal Linux</a>, a distillation of Alpine Linux.
-<a href="https://github.com/treadcore/treadcore">Source</a> &middot;
-<a href="https://crates.io/crates/treadcore-client">crates.io</a> &middot;
-<a href="https://github.com/treadcore/treadcore/tree/main/journal">Journal</a></p>
+<footer><div class="wrap"><ul class="nav"><li><a href="download.html">Download</a></li><li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li><li><a href="paper.html">Paper</a></li><li><a href="https://github.com/treadcore/treadcore/releases">Releases</a></li><li><a href="https://crates.io/crates/treadcore-client">crates.io</a></li><li><a href="https://github.com/treadcore/treadcore">GitHub</a></li></ul>
+<p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson. No assets: everything drawn is a rectangle.
+Made on <a href="https://github.com/copallinux/copal">Copal Linux</a>.</p>
 </div></footer>
 </body>
 </html>

@@ -54,7 +54,23 @@ IV. CHRONOLOGY
         API per visitor.
      8. documentation/LAB-REPORT-PACKAGES.md, the pipeline as a Cargo
         tutorial.
-     9. rc.3 cut and pushed; its run: (below, when it finishes).
+     9. rc.3 cut and pushed. The .deb on all seven systems, ARM
+        included, and the .rpm on all three Fedoras passed: the .rpm
+        fix holds. The Windows build failed in the new MSI step; no
+        public reason, because only the tests reported. No draft.
+    10. Looking at the new index's tiles showed the rc.3 frames held a
+        terminal over the game: the shoot captured a screen region and
+        Paul was typing there. grim -T by the window's stableId now
+        captures the window alone; a bezel check refuses anything
+        else. The check of files had passed them all.
+    11. index.html made short: a hero with three buttons, a card per
+        system with its one command and what it installs, four
+        picture tiles, three build commands with links to the README
+        and BUILD.md (nothing on the site had linked the build
+        instructions), the build grid, links. The paper moved,
+        unchanged, to paper.html.
+    12. The MSI step calls wix by its path and publishes its error.
+        rc.4 cut to run it all again.
 
 --
 Paul Richeson <paulr@sdf.org>

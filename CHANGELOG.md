@@ -4,10 +4,24 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
-## 0.1.0-rc.3 (2026-10-13): the third candidate
+## 0.1.0-rc.4 (2026-10-13): the fourth candidate
 
-Journal: [0021](journal/0021-2026-10-13-release-pipeline.txt). Lab
-report: [LAB-REPORT-PACKAGES.md](documentation/LAB-REPORT-PACKAGES.md).
+- Fixed: the Windows build, which failed in rc.3's new MSI step: WiX is
+  called by its installed path, and a build error is published as an
+  annotation.
+- Fixed: the release frames are captured from the game window itself
+  (grim -T), not a region of the screen; rc.3's first frames showed a
+  terminal that sat over the window. Any frame that is not the window
+  stops the shoot.
+- Changed: index.html, short: what it is, a card per system with its
+  command and what it installs, four pictures, how to build (with the
+  links to the README and BUILD.md the site lacked), the build grid.
+  The paper is now paper.html.
+
+## 0.1.0-rc.3 (2026-10-13): the third candidate, tagged, not published
+
+Its run: every .deb and .rpm installed and played on its systems; the
+Windows build failed; no draft.
 
 - New: a Windows installer, `treadcore-<version>-windows-x86_64.msi`
   (WiX, `packaging/windows/treadcore.wxs`): Program Files, a Start Menu

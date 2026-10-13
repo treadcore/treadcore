@@ -378,6 +378,19 @@ done
 exit "$status"
 ```
 
+The hook must also refuse a working tree with uncommitted changes. The
+check runs on the files on disk, and the tag names a commit: the first
+tag for rc.4 was pushed from a tree whose release commit had silently
+not been made, the check passed the tree, and the tag named rc.3's
+code. The workflow's version job refused it, but the hook should have:
+
+```bash
+if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
+    echo "pre-push: the working tree has uncommitted changes; commit them so the check runs on what $tag names" >&2
+    status=1; continue
+fi
+```
+
 Hooks are not cloned with a repository; each checkout turns them on:
 
 ```make
@@ -416,6 +429,22 @@ while read -r f; do
     grep -q "$f" "$GUIDE" "$ROOT/index.html" || bad "$f is taken but no document shows it"
 done < "$MAN"
 ```
+
+**Capture the window, not the screen.** The first frames for rc.3 were
+taken as a region of the screen where the game window stood, and a
+terminal the author was typing in sat over it: the pictures showed the
+terminal, and every check above passed, because the files were there,
+fresh and shown. The shoot now captures the game window by its
+compositor id, whatever is on screen, and refuses any frame that is not
+the window's size or lacks the bezel's grey down its left edge:
+
+```bash
+sid_of() { hyprctl clients -j | python3 -c "import json,sys; c=[c for c in json.load(sys.stdin) if c['pid']==$1]; print(c[0]['stableId'] if c else '')"; }
+frame() { grim -T "$(sid_of "$PID")" "$S/$1.png"; }    # the toplevel, not a region
+```
+
+A check that a file exists is not a check of what it shows; a check of
+what it shows can be cheap: one column of pixels.
 
 A feature is not done until the guide shows it: its frame is added to
 `scripts/shoot.sh`, the guide's section is written against the frame,
@@ -515,7 +544,26 @@ that (musl) binary but not something to trust blind. rc.3 makes the
 `.rpm` with RPM's own generator inside the Fedora build container, and
 every test now publishes its failing output.
 
-**0.1.0-rc.3**: see the addendum below, written when its run finished.
+**0.1.0-rc.3**:
+
+| job | result |
+| --- | --- |
+| build: .deb amd64 and arm64, .rpm x86_64 and aarch64, macOS | all passed |
+| .deb installed and played: Debian 12 (amd64, arm64), Debian 13, Ubuntu 22.04, Ubuntu 24.04 (amd64, arm64), Linux Mint 22 | all seven passed |
+| .rpm installed and played: Fedora 41, Fedora 42 (x86_64, aarch64) | **all three passed**: RPM's own generator fixed it |
+| macOS app verified and run; Nix flake built and run | passed |
+| Windows: build | **failed**, in the new MSI step |
+| draft release | not made: the gate held again |
+
+The Windows failure is the lesson of rc.2 again, one step over: the
+tests now published their errors, the build steps did not, so the
+public record said "exit code 1". The likely cause is that `dotnet tool
+install --global` puts `wix` in a folder that joins PATH only in the
+next step. rc.4 calls WiX by its path and publishes any build error as
+an annotation. WiX itself cannot be tried off Windows: on Linux it
+warns that it supports only Windows and then misreads every backslash.
+
+**0.1.0-rc.4**: see the addendum, written when its run finished.
 
 ## XII. What to take from this
 

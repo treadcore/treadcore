@@ -29,6 +29,13 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         echo "pre-push: $tag is not the checked-out commit; check it out and push again, so the check runs on what the tag names" >&2
         status=1; continue
     fi
+    # The check runs on the working tree, so the tree must be the commit:
+    # rc.4's first tag was pushed from a tree whose release commit had not
+    # been made, and the check passed the tree while the tag named rc.3.
+    if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
+        echo "pre-push: the working tree has uncommitted changes; commit them (or stash them) so the check runs on exactly what $tag names" >&2
+        status=1; continue
+    fi
     echo "pre-push: $tag: running the release check (make release) before it leaves this machine" >&2
     if ! "$ROOT/scripts/release.sh" >&2; then
         echo "pre-push: the release check failed; $tag was not pushed" >&2

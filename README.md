@@ -17,8 +17,8 @@ Website: [treadcore.org](https://treadcore.org). Repository:
 Crates: [treadcore-client](https://crates.io/crates/treadcore-client)
 (the window, installed as `treadcore`), [treadcore-server](https://crates.io/crates/treadcore-server),
 and the libraries they are built from, `treadcore-sim`, `treadcore-proto`,
-`treadcore-net`, `treadcore-brain`. The current release is 0.1.0-rc.3,
-the third candidate (`documentation/RELEASE.md`), the first with
+`treadcore-net`, `treadcore-brain`. The current release is 0.1.0-rc.4,
+the fourth candidate (`documentation/RELEASE.md`), the first with
 packages; it is offered for playtesting, and the player's guide is
 [documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md).
 
@@ -208,6 +208,7 @@ journal/                  the creation journal: one plain-text entry per session
 
 ## Documents
 
+- [paper.html](https://treadcore.org/paper.html): the paper, in the IEEE form: the rules, a balance review from traced matches, the network's test record.
 - [documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md): the player's guide, with pictures of the build it ships with: the screen, driving and firing, the drones, the builder's five modes, pillboxes and depots, every key.
 - [documentation/CONCEPT.md](documentation/CONCEPT.md): the brief, reviewed; how the design improves on the base concept.
 - [documentation/DESIGN.md](documentation/DESIGN.md): the rules, the numbers, and why.

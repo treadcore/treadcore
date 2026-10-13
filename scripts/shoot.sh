@@ -36,7 +36,11 @@ hyprctl dispatch resizewindowpixel "exact $W $H,pid:$PID" >/dev/null
 hyprctl dispatch movewindowpixel "exact $X $Y,pid:$PID" >/dev/null
 hyprctl dispatch focuswindow "pid:$PID" >/dev/null
 sleep 5
-frame() { grim -g "$X,$Y ${W}x$H" "$S/$1.png"; }
+# The game window itself, by its toplevel id (grim -T): not the screen
+# at its position. rc.3's first frames were taken by screen region while
+# a terminal sat over the window, and showed the terminal.
+sid_of() { hyprctl clients -j | python3 -c "import json,sys; c=[c for c in json.load(sys.stdin) if c['pid']==$1]; print(c[0]['stableId'] if c else '')"; }
+frame() { grim -T "$(sid_of "$PID")" "$S/$1.png"; }
 # A key held for a moment: a press and release inside one frame of a
 # software rasteriser can be missed.
 key() { xdotool keydown "$1"; sleep 0.2; xdotool keyup "$1"; }
@@ -82,14 +86,14 @@ PID=$!
 # a software rasteriser the window's first frame comes about as late:
 # so the lobby is caught as the window appears, at whatever size the
 # compositor gave it, in a burst, before it is floated and sized.
-geom=""
+sid=""
 for i in $(seq 1 100); do
-    geom="$(hyprctl clients -j | python3 -c "import json,sys; c=[c for c in json.load(sys.stdin) if c['pid']==$PID]; print('%d,%d %dx%d' % (c[0]['at'][0], c[0]['at'][1], c[0]['size'][0], c[0]['size'][1]) if c else '')")"
-    [ -n "$geom" ] && break
+    sid="$(sid_of "$PID")"
+    [ -n "$sid" ] && break
     sleep 0.2
 done
-[ -n "$geom" ] || die "the networked window never appeared: see $LOGDIR/shoot-window-net-$STAMP.log"
-for i in $(seq 1 16); do grim -g "$geom" "$S/lobby-$i.png"; sleep 0.5; done
+[ -n "$sid" ] || die "the networked window never appeared: see $LOGDIR/shoot-window-net-$STAMP.log"
+for i in $(seq 1 16); do grim -T "$sid" "$S/lobby-$i.png"; sleep 0.5; done
 kill -0 "$PID" 2>/dev/null || die "the networked window died: see $LOGDIR/shoot-window-net-$STAMP.log"
 hyprctl dispatch togglefloating "pid:$PID" >/dev/null
 hyprctl dispatch resizewindowpixel "exact $W $H,pid:$PID" >/dev/null
@@ -106,6 +110,22 @@ python3 - "$S" "$OUT" "$VERSION" <<'PY'
 import sys, os
 from PIL import Image
 S, OUT, VERSION = sys.argv[1:4]
+# Every full frame must be the game window at the frame's size, with the
+# bezel's grey down its left edge: anything else (another window, a
+# desktop) stops the shoot rather than becoming a picture in the guide.
+def is_game(path, size=(1200, 740)):
+    im = Image.open(path).convert("RGB")
+    if abs(im.width - size[0]) > 2 or abs(im.height - size[1]) > 2:
+        return f"{os.path.basename(path)} is {im.width}x{im.height}, not the window's {size[0]}x{size[1]}"
+    greys = sum(1 for y in range(100, 600, 25) for r, g, b in [im.getpixel((2, y))] if abs(r - g) < 12 and abs(g - b) < 12 and 90 < r < 150)
+    if greys < 15:
+        return f"{os.path.basename(path)} has no bezel down its left edge: not the game window"
+    return None
+for f in ("screen", "armed", "squad-out", "refused", "aim", "events", "close", "networked"):
+    why = is_game(f"{S}/{f}.png")
+    if why:
+        sys.exit("shoot: " + why)
+
 def crop(src, box, name, scale=1):
     im = Image.open(f"{S}/{src}.png").crop(box)
     if scale != 1:
