@@ -46,4 +46,7 @@ esac
 [ -n "${MAP:-}" ] && ARGS+=(--map "$MAP")
 say "$BIN ${ARGS[*]}  (log: $LOG)"
 
+# The window on a musl machine with lavapipe: build/bigstack.so from
+# configure (scripts/bigstack.c says why). Headless modes need nothing.
+case "$MODE" in solo|lan) [ -n "${PRELOAD:-}" ] && export LD_PRELOAD="$PRELOAD" ;; esac
 RUST_LOG="${RUST_LOG:-debug}" RUST_BACKTRACE=1 "$BIN" "${ARGS[@]}" 2>&1 | tee "$LOG"

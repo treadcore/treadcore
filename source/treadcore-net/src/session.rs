@@ -533,6 +533,12 @@ impl Client {
                     self.unacked.remove(&seq);
                 }
                 Packet::Snapshot { tick, part, parts, acked, bytes } => {
+                    // The newest host tick seen, for the heartbeat to echo:
+                    // from snapshots (every other tick), not only from the
+                    // host's heartbeats (every half second), or the rtt the
+                    // host measures is mostly heartbeat age. The first
+                    // window playtest read 200 to 450 ms on a 60 ms link.
+                    self.host_tick = self.host_tick.max(tick);
                     if let Some(obs) = self.asm.push(tick, part, parts, bytes) {
                         if let Some(pr) = self.predictor.as_mut() {
                             pr.reconcile(&obs, acked);
@@ -554,7 +560,7 @@ impl Client {
                     }
                 }
                 Packet::Heartbeat { tick, hash_tick, hash, rtt_ticks, .. } => {
-                    self.host_tick = tick;
+                    self.host_tick = self.host_tick.max(tick);
                     self.rtt_ticks = rtt_ticks;
                     if hash_tick > 0 && (hash_tick, hash) != self.host_hash {
                         self.host_hash = (hash_tick, hash);

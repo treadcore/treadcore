@@ -4,6 +4,35 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13, later: the first playtest build, with pictures
+
+Journal: [0013](journal/0013-2026-10-13-first-playtest.txt). Report:
+[LAB-REPORT-PLAYTEST.md](documentation/LAB-REPORT-PLAYTEST.md).
+
+- New: the window runs in the VM. `mesa-vulkan-swrast` (lavapipe) is
+  the driver; copal's full monty installs it now. `scripts/bigstack.c`,
+  built by `make configure` on a musl machine and preloaded by `make
+  run` and `make lan`, raises the default thread stack to 8 MiB:
+  lavapipe compiles shaders with LLVM on its own thread, musl gives it
+  128 KiB, and every Bevy binary segfaulted in
+  `llvm::AsmPrinter::doFinalization` before its first frame.
+  `configure` reports the Vulkan drivers it finds, and `PRELOAD` in
+  config.env.
+- Fixed: the HUD's rtt was heartbeat age (200 to 450 ms on a 60 ms
+  link): the client echoed the host tick from the last heartbeat; it
+  now echoes the newest snapshot tick, and reads 50 to 150 ms.
+- New: nine frames in `reports/images/`, a gallery on the front page,
+  the report link under Reports.
+- New: `documentation/INTERFACE.md`, the layout study: Bolo's mode
+  column, lamp grids, pillbox strip and newswire; the garage's
+  between-screens; the HUD graphics' centred rings; and treadcore's
+  layout drawn from them, in five steps.
+- Found, not fixed: the two top HUD panels overlap below about
+  700 px; the controls overlay covers the map until Tab; the event
+  log stamps tick 0 after a rejoin until the first snapshot; a seam
+  at the NET panel's edge under Xwayland at a guessed 1.083 scale; a
+  standing human dies to fifteen bots in about thirty seconds.
+
 ## 2026-10-13, night: across the Internet (roadmap step 7)
 
 Journal: [0012](journal/0012-2026-10-13-across-the-internet.txt).

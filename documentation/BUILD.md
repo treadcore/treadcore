@@ -153,6 +153,18 @@ small sprites, which llvmpipe draws at a playable rate on four cores.
 The alternative the roadmap names, developing the window on the host machine
 host, stays open: the headless crates do not care either way.
 
+**Done, 13 October 2026** (`LAB-REPORT-PLAYTEST.md`): the package went
+in, and copal's full monty now installs it. Then every Bevy binary
+segfaulted before its first frame, in `llvm::AsmPrinter::doFinalization`
+on a thread lavapipe made to compile a shader: musl gives a thread
+128 KiB of stack and LLVM's code generator wants more. The fix is
+`scripts/bigstack.c`, a constructor that raises the default thread
+stack to 8 MiB with `pthread_setattr_default_np`; `make configure`
+builds it into `build/bigstack.so` on a musl machine (and reports the
+Vulkan drivers it finds), and `make run` and `make lan` preload it.
+With it the window holds 20 ticks a second on four cores at 86 to 93 %
+of the CPU. A glibc machine needs none of this, and gets none.
+
 Also measured: with 8 GB (the VM was given 8192 MB in UTM after the
 first day), `make configure` sizes 4 jobs, and `cargo test
 --workspace` compiled the remaining 170 engine crates plus every game

@@ -1,0 +1,287 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 09:50:00 -0700
+Subject: [JOURNAL 0013] The first playtest build: the window, pictures,
+         the multiclient
+Message-ID: <0013.20261013@treadcore.org>
+In-Reply-To: <0012.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: lavapipe, musl, stack, segfault, window, playtest, xdotool,
+          introducer, rejoin, gallery, interface
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "lets take pictures. write a lab-report
+           about the first playtest run build. take pictures. explain
+           the multiclient. create a gallery to sell this game in the
+           index.html"; then "consider the interface of these tank
+           games"
+X-Commits: (next)
+
+      THE FIRST PLAYTEST BUILD: THE WINDOW, PICTURES, THE MULTICLIENT
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    The window opened in this VM for the first time, a day after the
+    headless game was proven. The Vulkan driver was one package; the
+    package brought a segfault in LLVM on every Bevy binary, which was
+    musl's 128 KiB thread stack under lavapipe's shader compiler, and
+    the fix is a twelve-line preload the build now makes. A solo match
+    and three multiclient matches through the introducer were played
+    by script and photographed: nine frames, a lab report with the
+    multiclient explained end to end, a gallery on the front page.
+    The HUD's rtt turned out to be heartbeat age and was fixed; five
+    more findings were recorded and not fixed. An interface study
+    from the prior art's screen and two other kinds of tank interface
+    ends with a layout. 40 tests; 20 Hz held on the CPU rasteriser.
+
+INDEX TERMS
+
+    mesa-vulkan-swrast, lavapipe, musl, pthread_setattr_default_np,
+    bigstack.so, Xwayland, xdotool, grim, introducer, rejoin, rtt,
+    gallery, INTERFACE.md.
+
+
+I. INTRODUCTION
+
+    Every journal since 0002 has carried "the window: unproven in this
+    VM" as an open problem. 0012 closed step 7 on one machine and left
+    the window where it was. The instruction for this session was to
+    take pictures, which meant the window had to open, and to write
+    up the first playtest build with the multiclient explained and a
+    gallery that sells the game. Then, mid-session, to look at the
+    interfaces of other tank games and say how treadcore's should be
+    laid out.
+
+II. BACKGROUND
+
+    Carried from 0012: the window unproven; the predicted tank
+    corrected, never smoothed; rejoin and the pillbox view; the
+    two-router proof. BUILD.md had named the fix for the window since
+    12 October: `mesa-vulkan-swrast`, needing root. copal, the install
+    that made this VM, had Mesa's GL drivers in its full monty and no
+    Vulkan driver.
+
+III. METHOD
+
+    The driver first, through copal so the next machine gets it, then
+    by hand here. Then the window, and whatever it did. Then a scripted
+    playtest: xdotool for the mouse and keys, grim for the frames, the
+    same script every time so a frame can be taken again. Solo first,
+    then the multiclient: the step 7 arrangement, an introducer and no
+    broadcast, with the window as one of three peers, and a kill and
+    restart for the rejoin. Then the writing. The interface study last,
+    from the images behind the links.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      a preloaded shim that    rebuild Mesa; LP_NUM_  no root, and the
+      raises the default       THREADS; a bigger      compile thread
+      thread stack             main stack             is lavapipe's,
+                                                      not ours
+      built by configure on    a scratch file         make run must
+      musl, preloaded by                              work on the next
+      run.sh                                          machine
+      the window under         Wayland                xdotool drives
+      Xwayland for the shoot                          X11 windows; the
+                                                      game draws the
+                                                      same either way
+      a floating window        fullscreen             typing in the
+      captured by region                              terminal dropped
+                                                      fullscreen and
+                                                      a wheel click
+                                                      changed
+                                                      workspace
+      the headless peer with   leave the election     the window as
+      id 1 and lag on the      to chance              client is the
+      seats, so it hosts                              picture wanted
+      256-colour PNG frames    full PNG, JPEG         flat colour and
+                                                      text: 60 KB
+                                                      crisp; JPEG
+                                                      smears text
+      findings recorded, one   fix them all today     the rtt one was
+      fixed                                           a line; the rest
+                                                      are the layout's
+
+IV. CHRONOLOGY
+
+     1. copal: `mesa-vulkan-swrast` added to stage 17 beside the GL
+        drivers, with the reason Venus does not work under UTM;
+        `make sync-playbooks` regenerated copal-prep.sh; THEME.md.
+        Committed and pushed (05e7814). Paul installed it here.
+     2. The window: adapter found (llvmpipe, Vulkan), window created,
+        segfault. The engine-only spinner: segfault. Under Xwayland:
+        one frame presented, segfault. gdb: thread 7, lavapipe's,
+        inside llvm::AsmPrinter::doFinalization via MCJIT. musl 1.2.6
+        gives threads 128 KiB. LP_NUM_THREADS 0 and 1: segfault.
+     3. bigstack.c: a constructor, pthread_setattr_default_np, 8 MiB.
+        LD_PRELOAD, the spinner ran for its timeout. Into
+        scripts/, configure.sh (also reports the ICDs found), run.sh,
+        config.env's PRELOAD.
+     4. First shoot, fullscreen: the focus command missed the Xwayland
+        window and the frames were of the terminal. False start.
+        Focused by window address and checked, then nine frames of a
+        solo match: HUD, bubble, links, recon, a refused shot inside
+        minimum range, the tank dead at tick 1 615.
+     5. Second solo shoot with Tab first and a valid range: the
+        bubble with three interceptors and a recon, a spotted round in
+        flight, the squad refused "no forest there" one tile off, the
+        tank under fire from the swarm and a pillbox. Two frames lost
+        to a wheel click that switched workspace.
+     6. The multiclient: introducer on 47300, host with identity 1,
+        a lagged headless seat, the lagged window. Elected: the host.
+        Welcomed as player 0 at tick 1. Killed at sixty seconds, back
+        at tick 1 294: "seat 0 'alice' is back ... sequences given
+        back". But the frames: the rtt read 200 to 450 ms on a 60 ms
+        link, and several frames were of the desktop, the window
+        tiled small under the terminal Paul was typing in.
+     7. The rtt: the client echoed the host tick from the last
+        heartbeat, half a second old; now the newest snapshot tick.
+        Rebuilt in 21 s. Second multiclient shoot from a floating
+        1200 x 740 window captured by region: rtt 50 to 100 ms,
+        predict +2, 174 checks, 0 mismatches; killed, back at tick
+        776; the tank dead by then. Third shoot with the kill at eight
+        seconds: back at tick 561, dead by tick 782 all the same. A
+        standing human does not last thirty seconds against fifteen
+        bots: finding 7.
+     8. Nine frames chosen and quantised to 256 colours (49 to 70 KB),
+        reports/images/. LAB-REPORT-PLAYTEST.md: the build, the solo
+        run, the multiclient run, the multiclient explained with a
+        sequence diagram, nine findings, numbers. The gallery in
+        index.html, eight figures with captions written to sell, and
+        the report under Reports.
+     9. The links: Bing image results. Two WinBolo screenshots, a
+        Reddit Bolo screenshot, a garage screen from a free-to-play
+        tank game on Behance, three military-HUD stock graphics. The
+        images fetched with a browser user agent (the CDN gave empty
+        files without one) into an isolated directory and read.
+        INTERFACE.md: what each kind puts on the screen, treadcore's
+        layout in Bolo's frame with an ASCII mock-up, the lobby and
+        match-over screens, five steps in order.
+    10. BUILD.md, README, CHANGELOG, INDEX.md; this entry.
+
+V. RESULTS
+
+      measure                                        value
+      ---------------------------------------------  -----------------
+      window link, release, engine warm              21 s
+      tick rate held, solo, 8 seats, lavapipe        20.0 Hz
+      CPU with one window up (desktop meter)         86 to 93 %
+      lobby to "playing", 3 peers, introducer only   under 3 s
+      rtt on the HUD, 30 ms each way, before         200 to 450 ms
+      rtt on the HUD, after                          50 to 150 ms
+      prediction checks, runs 2 and 3                543 and 241, 0
+                                                     mismatches
+      rejoin, kill to "playing" again                about 6 s
+      frames published                               9; 556 KB in all
+      tests                                          40 pass
+
+    New files: scripts/bigstack.c (24 lines), documentation/
+    LAB-REPORT-PLAYTEST.md, documentation/INTERFACE.md, reports/
+    images/playtest-01 to 09. Changed: configure.sh, run.sh,
+    session.rs (the echo), index.html, BUILD.md, README, CHANGELOG,
+    INDEX.md.
+
+VI. DISCUSSION
+
+    The segfault is the session's lesson, and it is a libc lesson,
+    not a graphics one. Nothing in the backtrace was ours; nothing in
+    Mesa was wrong; LLVM did what it does on the stack it was given,
+    and musl gave what it gives. glibc's 8 MiB default hides this
+    class of fault from everyone who develops on it, which is nearly
+    everyone, and an Alpine VM with no GPU is where it surfaces. The
+    fix belongs to the build and not to the code, because the code
+    did nothing wrong, and configure is where a machine's quirks are
+    found and answered.
+
+    The rtt finding is a reminder that a number on a HUD is only as
+    good as the freshest input to it. The formula was right since
+    0009; the operand was stale. The bit-for-bit prediction check
+    beside it, zero mismatches across 784 checks under lag, is the
+    better number, and it had nothing to hide.
+
+    The playtest was scripted, which is why it was repeatable and why
+    it is not yet a playtest. A script fires at the same point every
+    time and aims the squad one tile off every time; it does not feel
+    the 250 ms of lead, and it does not get frightened. The first
+    thing a human will meet is finding 7: thirty seconds, standing,
+    dead. The bots are doing what the Defender and RuleBot journals
+    say they do; the newcomer has no first minute. That goes to the
+    interface study, which puts the first minute's six lines on the
+    lobby screen, and to the design, which may want a grace.
+
+    On the references: Bolo's screen is the one to learn from because
+    its problem was ours. Its lamp grids and its newswire are what
+    a player reads at a glance in a fight; the stock HUD graphics are
+    what a designer draws when nobody will read them. The garage
+    screen's lesson is only that a match has a before and an after.
+
+VII. OPEN PROBLEMS
+
+    1. Findings 3 to 8 of the playtest report: the panels' overlap,
+       the controls overlay, the tick-0 events after a rejoin, the
+       seam under Xwayland, the standing human's thirty seconds, the
+       harvest aim.
+    2. The window under Wayland proper (the shoot was Xwayland); and
+       two windows at once on this machine.
+    3. The interface layout, INTERFACE.md section 6, five steps.
+    4. Carried: the predicted tank corrected, never smoothed; the
+       two-router proof for step 7; step 8; step 9.
+
+VIII. NEXT STEPS
+
+    1. INTERFACE.md step 1: the columns and the bottom strip, the
+       overlay removed; findings 3 and 4 closed.
+    2. A playtest with a hand on the mouse, and its journal.
+    3. Step 8.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the package, and for the links.
+
+REFERENCES
+
+    [1] Journal 0012, <0012.20261013@treadcore.org>.
+    [2] Journal 0002, <0002.20261012@treadcore.org>: "the window in
+        this VM", where the driver was named.
+    [3] documentation/BUILD.md, "The window in this VM";
+        documentation/LAB-REPORT-PLAYTEST.md; documentation/
+        INTERFACE.md.
+    [4] musl libc, "Functional differences from glibc: thread stack
+        size". [Online]. Available: https://wiki.musl-libc.org/
+        functional-differences-from-glibc.html. [Accessed:
+        13-Oct-2026]. The 128 KiB default and
+        pthread_setattr_default_np.
+    [5] copal commit 05e7814, "Stage 17: mesa-vulkan-swrast, so a
+        wgpu program can open a window".
+    [6] The reference images: WinBolo and Bolo screenshots at
+        myabandonware.com (bolo_10.png, bolo_13.png) and reddit.com;
+        "Tank Game UI design" at behance.net; "Advanced Military Tank
+        HUD Interface" and "Tank HUD" at elements.envato.com and
+        videohive.net. [Accessed: 13-Oct-2026 through Bing image
+        results.]
+
+APPENDIX A. COMMITS
+
+    (next)   build, net, docs, site, journal: the first playtest
+             build; lavapipe and the musl stack; the rtt echo; nine
+             frames and the gallery; the interface study; journal
+             0013
+
+APPENDIX B. ARTIFACTS
+
+    Report          documentation/LAB-REPORT-PLAYTEST.md
+    Study           documentation/INTERFACE.md
+    Frames          reports/images/playtest-01 to 09
+    Site            index.html, "In play"
+    Logs            the playtest runs' logs were in the session's
+                    scratch directory and are not kept; the host's
+                    replay of the third run likewise
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

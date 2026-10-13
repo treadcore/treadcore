@@ -45,6 +45,13 @@
   .cta { display: inline-block; margin: 8px 12px 8px 0; padding: 8px 16px; border: 2px solid var(--gold); color: var(--white); text-decoration: none; letter-spacing: .1em; text-transform: uppercase; font-size: 13px; background: rgba(0,0,0,.3); }
   .cta:hover { background: var(--gold); color: #000; text-shadow: none; }
   footer { color: var(--gold); margin-top: 60px; font-size: 13px; border-top: 1px solid var(--gold-deep); padding-top: 14px; letter-spacing: .04em; }
+  .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0 8px; }
+  .gallery figure { margin: 0; background: rgba(0,0,0,.45); border: 1px solid var(--gold-deep); padding: 6px; }
+  .gallery figure.wide { grid-column: 1 / -1; }
+  .gallery img { display: block; width: 100%; height: auto; image-rendering: pixelated; border: 1px solid #000; }
+  .gallery figcaption { font-size: 13px; line-height: 1.5; padding: 8px 4px 2px; color: var(--white); }
+  .gallery figcaption b { color: var(--gold-bright); font-weight: normal; letter-spacing: .06em; text-transform: uppercase; }
+  @media (max-width: 640px) { .gallery { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -70,6 +77,19 @@ make configure
 make run         # solo against fifteen bots
 make lan         # LAN lobby, elects a host
 make debug       # a full bot match, traced to build/logs/</pre>
+
+<h2>In play</h2>
+<p>The first playtest build, 13 October 2026: a human seat among fifteen bots, and three clients that met through the introducer with no server anybody set up. Every frame is the game drawing rectangles and lines on a CPU rasteriser in a virtual machine; there is no art to buy, only a battlefield to read. The full account, with what broke and what it measured, is <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PLAYTEST.md">the playtest lab report</a>.</p>
+<div class="gallery">
+<figure class="wide"><img src="reports/images/playtest-02-bubble-and-recon.png" alt="Three interceptors on the bubble ring around the tank, a recon drone out over the road, each with a link line from the tank" width="1280" height="800" loading="lazy"><figcaption><b>Own the air around you.</b> Three interceptors hold the bubble, the blue ring at 125 m; a recon is out over the spoke, and its disc is what the gun can see. Every link from the hull is a line that goes green to red with distance. The amber ring is detection: anything crossing it is the warning.</figcaption></figure>
+<figure><img src="reports/images/playtest-03-round-out-spotted.png" alt="A shell's arc from the tank to an impact point the recon can see" width="1280" height="800" loading="lazy"><figcaption><b>Round out, spotted.</b> Right-click 30 tiles down the road. The recon sees the impact point, so the shell lands inside 0.6 tiles instead of 4. Two seconds of flight, the impact circle growing as it falls.</figcaption></figure>
+<figure><img src="reports/images/playtest-04-under-fire.png" alt="The tank at its depot under fire, the swarm and a pillbox having hit it, two interceptors left" width="1280" height="800" loading="lazy"><figcaption><b>Under fire.</b> Thirty seconds in: resupplying at the home depot, hit by the swarm off the map edge and by a neutral pillbox, one interceptor already lost to a shell's splash. The bubble does nothing to a shell; a shell does plenty to the bubble.</figcaption></figure>
+<figure><img src="reports/images/playtest-01-the-start.png" alt="The opening view: the telemetry panel, the roster, the ring road and the home depot" width="1280" height="800" loading="lazy"><figcaption><b>The start.</b> Telemetry on the left, the roster on the right, the island under fog. The ring road, the spoke south, the home depot in your colour, twenty neutral pillboxes with their 8-tile rings in red. One tank, one dial: the bubble radius.</figcaption></figure>
+<figure><img src="reports/images/playtest-05-eighty-seconds.png" alt="Zoomed out: the island, the tank destroyed, the bots' scores and captures in the roster" width="1280" height="800" loading="lazy"><figcaption><b>Eighty seconds.</b> A human who stands still at the start does not survive seven bots with recon up. The roster shows what they took while you watched. Lesson one.</figcaption></figure>
+<figure><img src="reports/images/playtest-07-predicted-driving.png" alt="A networked seat driving, the NET line reading predict +2 ticks, 174 checks, 0 mismatches" width="1200" height="740" loading="lazy"><figcaption><b>No server, and no lag to feel.</b> Seat 1 on a lagged link. The tank you drive is yours to run: the window predicts it two ticks ahead of the host's snapshots, and checks every one bit for bit. 174 checks, 0 mismatches, rtt 100 ms.</figcaption></figure>
+<figure><img src="reports/images/playtest-08-sixteen-seats.png" alt="Sixteen seats in the roster, the human seat under fire from the swarm" width="1200" height="740" loading="lazy"><figcaption><b>Sixteen seats.</b> Two humans' worth of seats and fourteen bots, four of them Defenders dug in at their depots. The three clients met through an introducer with no broadcast: the way it works across the Internet.</figcaption></figure>
+<figure class="wide"><img src="reports/images/playtest-09-back-in-seat-0.png" alt="The window restarted after being killed, playing as seat 0 again at tick 820" width="1200" height="740" loading="lazy"><figcaption><b>Your seat waits for you.</b> This window was killed outright at eight seconds and started again. It asked the introducer who was hosting, pinged the host until it answered, and was back in seat 0 at tick 561 with no election, its name, score and seat intact. The tank had been shelled meanwhile. That is the game's doing, not the network's.</figcaption></figure>
+</div>
 
 <h2>The drone crew</h2>
 <table>
@@ -119,6 +139,7 @@ hostile tanks seen 1</div>
 
 <h2>Reports</h2>
 <p><a href="reports/2026-10-12-opening-day.html">Opening day, 12 October 2026</a>: the vision, the research, what was built, what was learned, where it goes next.</p>
+<p><a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PLAYTEST.md">The first playtest build, 13 October 2026</a>: the window on a CPU rasteriser, a solo match and a three-client match through the introducer, the multiclient explained end to end, nine findings.</p>
 
 <h2>Read more</h2>
 <p><a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">Concept</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">Design</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">Protocol</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">What it is modelled on</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT.md">Lab report</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PILLBOYS.md">Pillboys and the prior art</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/SPEC-PRIOR-ART-1.14.md">the prior art spec</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/MAPS.md">Maps</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/ROADMAP.md">Roadmap</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/RELEASE.md">Releases</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/GOVERNANCE.md">Governance</a> &middot; <a href="https://github.com/treadcore/treadcore">Source</a></p>

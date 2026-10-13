@@ -74,10 +74,38 @@ if [ -z "${JOBS_FROM_USER:-}" ] && [ "$SWAP_MB" -gt 0 ] && [ $((SWAP_FREE_MB * 1
     JOBS=1
 fi
 
+# A Vulkan driver, for the window. wgpu asks the loader for a device
+# and panics without one; on a VM with no GPU the answer is lavapipe
+# (mesa-vulkan-swrast), Vulkan on the CPU.
+PRELOAD=
+if ls /usr/share/vulkan/icd.d/*.json >/dev/null 2>&1; then
+    ICDS="$(ls /usr/share/vulkan/icd.d/ | sed 's/_icd.*//' | tr '\n' ' ')"
+    echo "  vulkan       $ICDS"
+else
+    warn "  vulkan       no driver under /usr/share/vulkan/icd.d/: the window will panic 'unable to find a GPU' (Alpine: apk add mesa-vulkan-swrast)"
+fi
+# musl gives a thread 128 KiB of stack; lavapipe's shader JIT needs more
+# and segfaults on its own thread. scripts/bigstack.c raises the default
+# for every thread; built here, preloaded by run.sh. Nothing to do on
+# glibc, where the default is 8 MiB.
+if ls /lib/ld-musl-*.so.1 >/dev/null 2>&1; then
+    if command -v cc >/dev/null; then
+        if cc -shared -fPIC -O2 -o "$BUILDDIR/bigstack.so" "$ROOT/scripts/bigstack.c" 2>/dev/null; then
+            PRELOAD="$BUILDDIR/bigstack.so"
+            echo "  libc         musl: built $PRELOAD (8 MiB thread stacks for lavapipe's JIT)"
+        else
+            warn "  libc         musl, and scripts/bigstack.c did not build: the window may segfault on lavapipe"
+        fi
+    else
+        warn "  libc         musl, and no C compiler to build scripts/bigstack.c: the window may segfault on lavapipe (apk add gcc)"
+    fi
+fi
+
 cat > "$BUILDDIR/config.env" <<CFG
 # written by scripts/configure.sh on $STAMP -- do not edit, re-run make configure
 RUST_VER=$RUST_VER
 HAVE_WINDOW=$HAVE_WINDOW
 CARGO_BUILD_JOBS=$JOBS
+PRELOAD=$PRELOAD
 CFG
 echo "  wrote        $BUILDDIR/config.env"

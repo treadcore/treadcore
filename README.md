@@ -61,7 +61,11 @@ make test        # cargo test, every crate
 
 Needs Rust 1.85+. The window needs `wayland-client`, `xkbcommon`, `alsa`
 and `libudev` dev packages (on Alpine: `wayland-dev libxkbcommon-dev
-alsa-lib-dev eudev-dev`). Without them the headless crates still build.
+alsa-lib-dev eudev-dev`), and a Vulkan driver: on a machine with no
+GPU, `mesa-vulkan-swrast`. Without them the headless crates still
+build. On a musl machine `make configure` also builds a tiny preload
+that gives lavapipe's shader compiler a stack it can live on
+(`documentation/BUILD.md`).
 
 ## Running
 
@@ -164,6 +168,8 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
 - [documentation/LAB-REPORT-PILLBOYS.md](documentation/LAB-REPORT-PILLBOYS.md): the Pillboy requirement checked against the prior art's builder, and what was decided.
+- [documentation/LAB-REPORT-PLAYTEST.md](documentation/LAB-REPORT-PLAYTEST.md): the first playtest build, with pictures: the window on a CPU rasteriser, a three-client match through the introducer, the multiclient explained, nine findings.
+- [documentation/INTERFACE.md](documentation/INTERFACE.md): what Bolo, a garage screen and the military HUD graphics put on the screen, and treadcore's layout drawn from them.
 - [documentation/SPEC-PRIOR-ART-1.14.md](documentation/SPEC-PRIOR-ART-1.14.md): the clean-room functional specification of the prior art, version 1.14 that the prior-art-derived steps cite, with a preface on what treadcore adopts.
 - [documentation/MAPS.md](documentation/MAPS.md): the map file format; any text editor is the editor.
 

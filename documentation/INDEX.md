@@ -295,14 +295,15 @@ with no game code in the way.
 | file | what |
 | --- | --- |
 | common.sh | paths, `say`/`warn`/`die`, `need_config` (every script sources it) |
-| configure.sh | checks the machine, writes build/config.env (`make configure`) |
+| configure.sh | checks the machine, writes build/config.env (`make configure`); reports the Vulkan drivers; on musl builds bigstack.c into build/bigstack.so and writes `PRELOAD` |
+| bigstack.c | a constructor that raises musl's default thread stack to 8 MiB, for lavapipe's shader JIT (LAB-REPORT-PLAYTEST.md section 1) |
 | sysprep.sh | root-level memory settings for the engine build |
 | warm.sh | builds the engine alone, gently (`make warm`) |
 | buildmode.sh | makes the desktop cheap while the engine builds |
 | build.sh | `build.sh PROFILE WHAT` (`make build`, `make headless`) |
 | debug.sh | the bot-only trace: log, trace.jsonl, replay.json (`make debug`; knobs GAME_SECONDS, SEED, PLAYERS, DEFENDERS, TEAMS, GAMETYPE, MAP, BRAIN) |
 | replay.sh | plays a replay back and checks every checkpoint (`make replay`) |
-| run.sh | the window or headless in a mode: run, lan, host, seat, introduce; `INTRODUCER`, `BEACON=0`, `IDENTITY` (default build/identity) on the networked ones |
+| run.sh | the window or headless in a mode: run, lan, host, seat, introduce; `INTRODUCER`, `BEACON=0`, `IDENTITY` (default build/identity) on the networked ones; preloads `PRELOAD` into the window |
 | lobby-test.sh | four headless peers on loopback; asserts one host, three welcomed, all ended, one hash, zero prediction mismatches (`make lobby-test`, `LAG=200`); `INTRODUCER=1` runs an introducer and no broadcast or seed, asserts the four were introduced; `REJOIN=1` kills the highest-numbered seat that is not hosting at `REJOIN_AFTER` s, restarts it with its identity file, asserts the same seat back at a later tick with no election |
 | memwatch.sh | memory every N seconds (`make mem`) |
 | priorart2map.py | converts a prior-art binary map to a treadcore map (`make convert FROM=`) |
@@ -418,11 +419,14 @@ GAMETYPE, MAP, BRAIN.
 | documentation/MAPS.md | the map file format; converting prior-art maps |
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
 | documentation/LAB-REPORT-PILLBOYS.md | the Pillboy requirement audited against the prior art's builder |
+| documentation/LAB-REPORT-PLAYTEST.md | the first playtest build, 13 October 2026: the driver and the stack, a solo and a three-client match with frames, the multiclient end to end, nine findings |
+| documentation/INTERFACE.md | the interface study: Bolo, a garage screen, the HUD graphics; treadcore's layout drawn from them |
 | documentation/SPEC-PRIOR-ART-1.14.md | the clean-room functional specification of the prior art, with the preface on what treadcore takes |
 | documentation/RELEASE.md | the cycle, versions, releases, playtesting |
 | documentation/GOVERNANCE.md | roles, joining, proposals (section 5: a change to rules.rs wants a trace), review, leaving |
 | documentation/INDEX.md | this |
-| journal/0001 to 0012 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet |
+| journal/0001 to 0013 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest |
+| reports/images/ | the playtest frames, playtest-01 to 09, 256-colour PNG |
 
 ## 5. Keyword cross-reference
 
