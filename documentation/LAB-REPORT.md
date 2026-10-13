@@ -7,17 +7,15 @@ Site: [treadcore.org](https://treadcore.org).
 
 ## 1. Status, first
 
-As of the evening of 12 October 2026 (the morning's table is in the
-history; journal 0002 has the chronology):
+As of 13 October 2026 (the earlier tables are in the history; journal
+0002 has the chronology, 0009 the backlog):
 
 | crate | lines | compiled | tests |
 | --- | --- | --- | --- |
-| treadcore-sim | ~3700 | yes | 20 pass (determinism, a team shares recon and spares its own, alliances form and break and teams end the match, proposals change sides under the three-way rule,
-
- hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, sixteen seats, a world from a map file, map determinism, every start reaches the centre, a map survives the file round trip, bad map files are refused with a line) |
-| treadcore-proto | ~300 | yes | 3 pass (round trip, snapshot split and reassembly, big packets chunk and reassemble) |
-| treadcore-net | ~830 | yes | 5 pass (4 election, 1 loopback session) |
-| treadcore-brain | ~600 | yes | 3 pass (sixteen bots fight to a result; `pillboys_pay`: over twenty seeds, bots that capture pillboxes outscore and outlive the same doctrine without the squad; `fortification_pays`: a fortified depot outlives a bare one against a scripted attack) |
+| treadcore-sim | ~4600 | yes | 23 pass (determinism, a team shares recon and spares its own, alliances form and break and teams end the match, proposals change sides under the three-way rule, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, retask moves a recon and recalls one drone, a forest block conceals a tank, game types set the start, sixteen seats, a world from a map file, map determinism, every start reaches the centre, a map survives the file round trip, bad map files are refused with a line) |
+| treadcore-proto | ~330 | yes | 3 pass (round trip, snapshot split and reassembly, big packets chunk and reassemble) |
+| treadcore-net | ~1230 | yes | 5 pass (4 election, 1 loopback session) |
+| treadcore-brain | ~750 | yes | 3 pass (sixteen bots fight to a result; `pillboys_pay`: over twenty seeds, bots that capture pillboxes outscore and outlive the same doctrine without the squad; `fortification_pays`: a fortified depot outlives a bare one against a scripted attack) |
 
 
 | treadcore-server | ~360 | yes; `make debug` and `make lobby-test` run | none |

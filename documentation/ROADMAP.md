@@ -48,6 +48,11 @@ Carried from journal 0002. Each is a proposal in waiting
 Where an item has a counterpart in the reference specification, the ID
 is given.
 
+Worked through on 13 October 2026 (journal 0009): every item is done,
+decided from a trace, or deferred to the step that owns it. The traces
+are eight seeds of sixteen bots for 300 game seconds, read through the
+match report (item 8), figures per match.
+
 1. **Interceptors fight interceptors.** When two bubbles overlap
    (tanks inside 2 x bubble + margin of each other) both rings
    annihilate each other in two seconds, and the bots refill them from
@@ -56,20 +61,41 @@ is given.
    Decision wanted: should an interceptor on station engage a hostile
    *interceptor* at all, or only strikes and recon? The real-world
    analogue says engage anything; the game may want otherwise.
+   **Done: strikes only** (and a recon inside the bubble, as before).
+   Engaging everything: 7.0 kills by shell to 5.9 by strike, 32
+   interceptors shot down, 2.8 of 16 alive at the end. Strikes only:
+   8.8 to 2.9, 6 shot down (by pillboxes), 4.1 alive. The bubble is a
+   shield, not a sword; the analogue was rejected for the game's sake.
 2. **Tank speed.** 4 tiles/s is 360 km/h; the map is crossed in
    fifteen seconds and a match of four bots ends in under two minutes.
    `rules.rs` already calls it a game speed. Try 2.5 and read the
-   trace.
+   trace. **Decided: keep 4.** With item 1 in, 2.5 moved the kills
+   from 8.8 : 2.9 to 9.8 : 2.2, inside the noise; and four bots on the
+   sixteen-start map play out the time limit at either speed (first
+   kill at about 200 s). The complaint was of the four-start map. One
+   constant; a human playtest decides.
 3. **Retasking a drone.** The only way to move a recon is `Recall`,
    which brings every drone home. A `Command::Retask { drone, task }`
    (recon orbit centre; a single drone's recall) is small, and both the
    bot and a human need it. Interceptors stay the world's to task.
+   **Done.** A recon's orbit, a strike's target, or any one drone's
+   recall; `DroneRetasked` to allies. The rule bot moves its recon to
+   an enemy it cannot see instead of launching a second. The window
+   has no key for it yet.
 4. **Rejected orders repeat.** A bot whose `Move` is refused (a point in
    water) re-issues it four times a second. Harmless; noisy in the
    trace. The bot should remember a refusal for a few seconds.
+   **Done.** The rule bot already remembered what was unreachable
+   (step 5); its one repeat left was a led shot falling inside minimum
+   range, 8 a match, now aimed at the tank instead. The Fortifier
+   ordered a build with no material and no forest in sight; it waits.
+   The default trace has 0 refused orders; twelve defenders have 46,
+   one per forest tile in a ring, which is how a Fortifier with no map
+   learns where the trees are.
 5. **The HUD's rtt is not an rtt.** The client shows snapshot tick
    minus last-heartbeat tick, which is mostly heartbeat age. Use the
-   host's `rtt_ticks`, sent back in `Heartbeat`.
+   host's `rtt_ticks`, sent back in `Heartbeat`. **Done**; wire
+   version 9.
 6. **`Welcome` is one 16.5 KiB datagram.** Done with step 5: any packet
    too big for a datagram goes as `Chunk`s (PROTOCOL.md).
 
@@ -77,26 +103,42 @@ is given.
    strike drones (35 x 3 in the bay) after the rings are stripped, not
    to shells. If the premise is that the gun is the weapon, either
    strikes need a longer approach (battery) or interceptors need to
-   survive their own melee (item 1).
+   survive their own melee (item 1). **Decided by item 1.** Final
+   trace: 9.2 kills by shell to 2.5 by strike; 10 % of strikes get
+   through (24 % before). Battery and damage unchanged.
 8. **A match report.** `make debug` should end with the numbers a
    balance reader wants (shells by kind and spotted, intercept rate,
    kills by cause, time to first kill) instead of a reader counting
-   JSON lines.
+   JSON lines. **Done**: six lines after the scoreboard, in a live
+   match and a replay alike.
 9. **Depot armour as the gate.** The spec's bases cannot be driven
    onto by an enemy while they hold armour; shooting them opens them
    (SPEC BAS-07 to BAS-09). treadcore's depots are taken by standing
    on them for ten seconds. Decide whether the shell should be the key.
+   **Decided: not adopted.** Two objects, two keys: the pillbox is
+   shell-gated (shoot it dead, then the squad takes it), the depot is
+   time-gated. A gun with a 12-tile minimum would have to bombard the
+   thing it wants intact, and standing on a depot for ten seconds is
+   what makes the capture a risk. Revisit with a playtest.
 10. **Rejoin.** A player who drops and returns within a window keeps
     their seat and what was theirs (SPEC GAM-12, OWN-04). Needs a
-    peer identity that survives a process restart.
+    peer identity that survives a process restart. **Deferred to steps
+    7 and 8**, where identity across processes is designed once.
 11. **Game types.** Open, Tournament and Strict Tournament (SPEC
     section 11) as `Scenario` presets once pillboxes and material exist.
+    **Done**: `Scenario.game_type`, what a tank starts with (open: 24
+    shells, 2 material; tournament: 12, 0; strict: 0, 0); `--game-type`,
+    `GAMETYPE=strict make debug`.
 12. **Pillbox view.** Jump the camera between owned pillboxes (SPEC
     UI-10 to UI-13); the client's one Bolo feature worth having early.
-13. **Forest concealment as Bolo had it.**
- Hidden to everything beyond
+    **Deferred** to the first session with a working window (step 0's
+    open problem); a client change that cannot be seen is a guess.
+13. **Forest concealment as Bolo had it.** Hidden to everything beyond
     3 tiles when inside a 2 x 2 block of forest (SPEC VIS-02), against
-    treadcore's halved vision radius. A proposal with a trace.
+    treadcore's halved vision radius. A proposal with a trace. **Done**,
+    as written, pillboxes included (PIL-07): `CONCEAL_RANGE` 3, beside
+    the halved radius in single trees. No bot stands in forest yet, so
+    the proof is a test; a brain that uses cover is step 6d's.
 14. **Pillboxes never fire in a bot match.** With the router keeping
     tanks out of hostile rings, the default sixteen-bot trace has zero
     `PillboxFired` events in three minutes: the gun is proven by test,
@@ -104,7 +146,9 @@ is given.
     survival (37:32), and its score margin is mostly capture points.
     Step 6d's attackers need a reason to go into a ring (a depot or a
     dead pillbox inside one), and a defender needs to put its pillbox
-    where the road has to pass. Design work, with traces.
+    where the road has to pass. Design work, with traces. **Deferred to
+    6d**, with its number: 2 pillbox shots a match with sixteen
+    attackers, 0 with twelve defenders.
 
 
 
@@ -464,9 +508,9 @@ thin LTO for binaries; `cargo dist` or a plain tarball per platform.
                        └─ 3 pillboys ── 6c material ── 5 maps ── 6 teams ── 6b proposals ── 6d defender
                                                                                               └─ 9 sound/art/dist
 
-Done through 6b on 12 October 2026 (journals 0002 to 0008). Next: 6d,
-the defender and attacker brains; then 4, prediction; 7 and 8 need a
-second machine.
+Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
+worked through on 13 October (journal 0009). Next: 6d, the defender and
+attacker brains; then 4, prediction; 7 and 8 need a second machine.
 
 ```
 

@@ -21,13 +21,13 @@ a descendant. The preface says which parts it takes.
 | 7 Mines | **adopted** (step 6c, done): MIN-01 as the squad's lay, MIN-02 as material, MIN-03, MIN-05, MIN-06, MIN-09 to MIN-13; one rule added: drones ignore mines; quick mines (MIN-04) and ally sharing (MIN-08) wait for alliances | ROADMAP 6c |
 
 | 8 Pillboxes | **adopted**: PIL-01 to PIL-05, PIL-07 to PIL-17; added: pillboxes engage drones at short range; pillboxes hold shells (BAS-01 shape) | ROADMAP 3, 6c |
-| 9 Refuelling bases | **adopted** as depots, already in: BAS-02, BAS-04 to BAS-06, BAS-11; BAS-07 to BAS-09 (armour as the gate) open for a proposal | DESIGN.md "Depots" |
-| 10 Visibility | adapted: forest halves vision (VIS-02 in spirit); drones add sensors Bolo did not have | DESIGN.md "The world" |
+| 9 Refuelling bases | **adopted** as depots, already in: BAS-02, BAS-04 to BAS-06, BAS-11; BAS-07 to BAS-09 (armour as the gate) not adopted, decided 13 October 2026: the depot is time-gated, the pillbox shell-gated (ROADMAP backlog 9) | DESIGN.md "Depots" |
+| 10 Visibility | **adopted**: VIS-02 as written (a 2 x 2 block of forest conceals a tank beyond 3 tiles) and PIL-07 with it, beside treadcore's halved vision into single trees; drones add sensors Bolo did not have | DESIGN.md "The world" |
 | 10 Alliances | **adopted** (steps 6 and 6b, done): ALL-01 to ALL-06, ALL-08 to ALL-10 as written; ALL-07 falls out of per-player ownership; treadcore adds proposals to defect, recruit, swap and merge, under a three-way rule Bolo did not have | ROADMAP 6, 6b |
 
 
 | 10 Ownership | adopted: OWN-01 to OWN-03 | ROADMAP 3, 6 |
-| 11 Game setup and lifecycle | adapted: game types, start delay, time limit, player limit 16 (GAM-16) are the shape of `Scenario`; tutorial not planned; rejoin (GAM-12) is a backlog item | ROADMAP backlog |
+| 11 Game setup and lifecycle | adapted: the three game types are `Scenario.game_type`, what a tank starts with (open, tournament, strict); start delay, time limit, player limit 16 (GAM-16) are the shape of `Scenario`; tutorial not planned; rejoin (GAM-12) deferred to roadmap steps 7 and 8 | ROADMAP backlog |
 | 12 Networking | **not adopted**. treadcore has no dedicated server as the only option, no tracker, no statistics site, and no TCP; peers elect a host from a measured latency matrix over UDP (PROTOCOL.md). NET-02 and NET-03 (authoritative server, client prediction) are treadcore's too, by other means (ROADMAP 4). Recorded for reference only. The Macintosh Bolo AppleTalk ring is not in this specification and not in treadcore. | PROTOCOL.md |
 | 13 to 15 Window, dialogs, menus | not adopted; treadcore's HUD is the telemetry overlay. UI-10 (pillbox view) and the colour code (red hostile, green friendly) are worth taking | client |
 | 16 Brains | adopted in principle: treadcore's Brain is the client's own interface (observation in, commands out); BRN-05, BRN-12 ("advantage") map to scenario options | treadcore-brain |

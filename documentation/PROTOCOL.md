@@ -1,6 +1,6 @@
 # treadcore protocol
 
-Version 8. One UDP socket per process, default port 47296. Every datagram
+Version 9. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 
@@ -75,14 +75,16 @@ receive their view.
 - `Events { seq, tick, events }`: what happened that the player may know
   about. Resent every 120 ms until `EventsAck { seq }`; a kill is never
   lost. Delivered once, in order.
-- `Heartbeat { tick, hash_tick, hash }` both ways every 500 ms; six
-  seconds of silence and the other side is gone. A client's heartbeat
-  echoes the host tick it last saw, which the host turns into a latency
-  estimate. The host's carries the world hash as of the last multiple
-  of 1 000 ticks (`HASH_EVERY`); a client that runs its own world
-  compares, one that does not logs it, and four peers' logs with one
-  hash at one tick is the lobby test's proof. A client sends 0 until it
-  predicts.
+- `Heartbeat { tick, hash_tick, hash, rtt_ticks }` both ways every
+  500 ms; six seconds of silence and the other side is gone. A client's
+  heartbeat echoes the host tick it last saw, which the host turns into
+  a latency estimate (its tick minus the echoed one: a snapshot out and
+  a heartbeat back) and sends back as `rtt_ticks`; that is the HUD's
+  rtt. The host's heartbeat also carries the world hash as of the last
+  multiple of 1 000 ticks (`HASH_EVERY`); a client that runs its own
+  world compares, one that does not logs it, and four peers' logs with
+  one hash at one tick is the lobby test's proof. A client sends 0 for
+  the hash until it predicts, and 0 for `rtt_ticks` always.
 
 - `Leave`.
 

@@ -22,7 +22,7 @@ bay of drones:
 | drone | job | the number that matters |
 | --- | --- | --- |
 | recon | orbits a point, sees 12 tiles, feeds telemetry back over a 40-tile link | a shell at a target it can see lands within 0.6 tiles; blind, within 4 |
-| interceptor | holds station on a ring around the tank (the *bubble*), rams anything that flies in | kills 90 % of the time on a good link, 50 % on a dead one; one shot each |
+| interceptor | holds station on a ring around the tank (the *bubble*), rams any strike that flies in | kills 90 % of the time on a good link, 50 % on a dead one; one shot each |
 | strike | the FPV: flies to an enemy tank and dives | 35 of 100 armor, if it gets through the bubble |
 
 The gun lobs high-calibre rounds at map coordinates between 12 and 60
@@ -87,6 +87,7 @@ make debug                      # 3 game minutes of sixteen bots, flat out
 GAME_SECONDS=600 SEED=0x1234 PLAYERS=4 make debug
 DEFENDERS=12 make debug         # twelve dig in at their depots, four attack
 TEAMS=4 make debug              # four teams of four; allies share recon, spare each other
+GAMETYPE=strict make debug      # Bolo's game types: open, tournament, strict (what a tank starts with)
 
 MAP=maps/quarters.map make debug   # on a map file; make map writes one to edit
 

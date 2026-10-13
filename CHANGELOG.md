@@ -4,6 +4,38 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13: the backlog, worked through
+
+Journal: [0009](journal/0009-2026-10-13-the-backlog.txt).
+
+- Changed: interceptors engage strikes only (and a recon inside the
+  bubble), never other interceptors. Eight seeds of sixteen bots: kills
+  by shell to kills by strike go from 7.0 : 5.9 to 8.8 : 2.9 a match,
+  interceptors shot down from 32 to 6, survivors from 2.8 to 4.1
+  (backlog 1, and 7 with it).
+- New: `Command::Retask { drone, task }` (a recon's orbit, a strike's
+  target, one drone's recall) and `DroneRetasked`; the rule bot moves
+  its recon instead of doubling it (backlog 3).
+- New: Bolo's forest concealment, VIS-02 and PIL-07: a tank in a 2 x 2
+  block of forest is unseen and untargeted beyond `CONCEAL_RANGE` (3)
+  (backlog 13).
+- New: `Scenario.game_type`, Bolo's open / tournament / strict as what
+  a tank starts with; `--game-type`, `GAMETYPE=` (backlog 11).
+- New: the match report at the end of every match and replay: shells
+  by kind and spotted, intercept rate, strikes through, kills by cause,
+  first kill, pillbox shots, drones lost by reason, refused orders
+  (backlog 8).
+- Changed: `Heartbeat` carries the host's `rtt_ticks` back; the HUD's
+  rtt is that. Wire `VERSION` 9 (backlog 5).
+- Changed: the rule bot's led shot is aimed at the tank when the lead
+  falls inside minimum range; the Fortifier waits with no material and
+  no forest in sight (backlog 4).
+- Decided, no change: tank speed stays 4 (backlog 2); depots stay
+  time-gated, not shell-gated (backlog 9). Deferred: rejoin to steps 7
+  and 8 (10); the pillbox view to the first working window (12);
+  pillboxes that never fire to step 6d (14).
+- Tests: 34 pass (sim 23, proto 3, net 5, brain 3).
+
 ## 2026-10-12, night: proposals and the three-way rule (roadmap step 6b)
 
 Journal: [0008](journal/0008-2026-10-12-proposals.txt).

@@ -37,15 +37,23 @@ lets a trace be replayed, and what lets a bot be tested.
   tick's orders, the hash every five seconds) and plays back to the
   same hashes or names the first tick where it does not; `make replay`.
 - Fog of war: a player sees out to 7 tiles from the tank (half that into
-
   forest), 12 from a recon drone, 4 from any other drone. The observation
   a client or Brain gets is the host's world with everything outside
   those discs removed.
+- Cover: a tank inside a 2 x 2 block of forest is concealed (Bolo's
+  VIS-02): unseen by any eye, a recon's included, and untargeted by any
+  pillbox (PIL-07), beyond 3 tiles. A shell at it is a blind shell.
+  Tree cover against the air is the oldest counter to it, and the one
+  reason to leave some forest standing.
 
 ## The tank
 
 100 armor, 24 shells, 600 fuel, a bay of 2 recon, 6 interceptors, 3
 strikes. Drives 4 tiles a second on open ground. Sees 7 tiles.
+
+What it starts with is the scenario's game type, Bolo's three: open
+(shells and material full), tournament (half the shells, no material),
+strict (neither: the first thing anyone does is drive to a depot).
 
 A `Move` names a destination; the world routes to it with the map's
 own A* (roads preferred, water avoided, bridges where the roads cross
@@ -86,17 +94,25 @@ in the bay. Battery low, it goes home first.
 
 Interceptors orbit the tank on the *bubble*, a ring the player sets
 between 2 and 12 tiles (default 5). The tank's detection reaches 4 tiles
-past the ring. When a hostile drone enters detection the nearest free
+past the ring. When a hostile strike enters detection the nearest free
 interceptor is assigned to it, closes, and rams: a one-shot kinetic
 kill with probability 0.5 + 0.4 x link quality. A wide bubble meets the
 threat early but spreads the ring thin and runs the interceptors near
-the end of their link.
+the end of their link. Interceptors never engage interceptors: when
+they did, two bubbles that overlapped stripped each other in seconds
+and the strikes came through the gap (the traces of 13 October 2026
+put the kills at 7 by shell to 6 by strike that way, 9 to 3 this way).
+The bubble is a shield, not a sword.
 
 Recon drones orbit a chosen point and spot for the gun. An enemy recon
 drone inside the bubble gets intercepted too: it is spotting for
 someone's gun.
 
 Strikes fly to a target tank and dive for 35.
+
+`Recall` brings every drone home. `Retask` moves one: a recon's orbit,
+a strike's target, or one drone's recall. Interceptors are the world's
+to task and can only be recalled.
 
 At most 10 of a player's drones in the air at once.
 

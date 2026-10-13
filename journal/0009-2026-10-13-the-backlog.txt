@@ -1,0 +1,246 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 06:20:00 -0700
+Subject: [JOURNAL 0009] The backlog, worked through: fourteen items,
+         one morning
+Message-ID: <0009.20261013@treadcore.org>
+In-Reply-To: <0008.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: backlog, match-report, interceptor, retask, concealment,
+          game-type, rtt, balance
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "read backlog. continue."
+X-Commits: 76908d3
+
+      THE BACKLOG, WORKED THROUGH: FOURTEEN ITEMS, ONE MORNING
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    The roadmap's backlog, fourteen items carried from the first
+    traces (journal 0002), was worked through in one session: eight
+    done, three decided from a trace with no change, three deferred to
+    the step that owns them. The instrument came first: a match
+    report at the end of every match and replay (item 8), then eight
+    seeds of sixteen bots for 300 game seconds per variant. The one
+    rule change that mattered: interceptors no longer engage
+    interceptors. With it the kills a match go from 7.0 by shell and
+    5.9 by strike to 8.8 and 2.9, the gun is the weapon, and item 7
+    (the strike is the kill) answers itself. Tank speed 2.5 was tried
+    and rejected: inside the noise, and the four-bot complaint was of
+    a map that no longer exists. Added: Retask, forest concealment as
+    Bolo had it, the three game types, the host's rtt in the HUD. 34
+    tests pass; wire version 9.
+
+INDEX TERMS
+
+    backlog, match report, interceptor, retask, concealment, game
+    type, rtt, balance trace.
+
+
+I. INTRODUCTION
+
+    Every step from 0b to 6b went past the backlog on its way to the
+    next feature. This session went through it instead. The brief was
+    two words; the roadmap's backlog section says what each item is
+    and what a decision needs: a trace to argue from (GOVERNANCE.md,
+    section 5).
+
+II. BACKGROUND
+
+    Carried from 0008: no bot proposes or answers (step 6d's); no
+    proposal keys in the window; the window itself unproven in this VM
+    (step 0, no Vulkan driver). The backlog as it stood: items 1 to 5
+    and 7 to 14 open, 6 done with step 5.
+
+    Environment: the same guest; rustc 1.98.1; the headless crates
+    build in the debug profile in seconds, a 300-second sixteen-bot
+    match runs in about two seconds of wall time, which is what made
+    eight seeds a variant affordable.
+
+III. METHOD
+
+    Order of work, and why:
+
+      1. The report (item 8) first, because items 1, 2, 7 and 14 are
+         decisions and a decision wants numbers, not a reader counting
+         JSON lines.
+      2. A baseline over eight seeds; then one variant at a time,
+         rebuilt and re-run: interceptors ignoring interceptors (A);
+         A with tank speed 2.5 (B); both at four players, since the
+         item 2 complaint was of a four-bot match.
+      3. The engineering items (3, 4, 5, 11, 13) as code with a test
+         each where the sim changed.
+      4. Items 9, 10, 12, 14 as decisions written into ROADMAP.md with
+         the reason, so they are not re-argued from nothing.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected              why
+      -----------------------  --------------------  -----------------
+      interceptors engage      engage anything (the  two overlapping
+      strikes only             real-world analogue)  bubbles stripped
+                                                     each other; the
+                                                     trace, section V
+      keep tank speed 4        2.5                   inside the noise
+                                                     once A is in;
+                                                     one constant
+      depots stay time-gated   armour as the gate    two objects, two
+                               (BAS-07 to BAS-09)    keys; a 12-tile
+                                                     minimum gun would
+                                                     bombard what it
+                                                     wants intact
+      VIS-02 as written,       halved radius only    cover against the
+      2 x 2 block, 3 tiles                           air is the oldest
+                                                     counter to it
+      game types as what a     Bolo's base-count     one enum, three
+      tank starts with         shell formula         numbers; the rest
+                                                     is the depots'
+      old replays read and     fail to parse on the  a replay that
+      fail their hashes        new scenario field    cannot be read
+                                                     says nothing
+
+IV. CHRONOLOGY
+
+     1. Read the backlog, the latest journal, the sim, the brain, the
+        server. A baseline `make debug` of 300 s: 13 of 16 dead, 7 to
+        shells, 6 to strikes, 32 interceptors shot down by
+        interceptors, 0 pillbox shots, 8 refused orders (all one
+        cause: a led indirect shot inside minimum range).
+     2. The report: a `Report` struct in the server, fed every tick's
+        events, printed after the scoreboard; a kill's cause is the
+        last thing that hurt the tank, which a strike, a pillbox or a
+        mine announces in the event before the damage, and anything
+        else is a shell.
+     3. A script that runs eight seeds and aggregates the six lines.
+        Baseline, then variant A (the intruder filter in
+        `step_drones` takes strikes only), then A + speed 2.5, then
+        the four-player runs. Numbers in section V. A adopted; B not.
+     4. Retask: the command, the event, the brain's use of it (a recon
+        that cannot see the enemy is moved, not doubled). Seven
+        retasks in the default trace.
+     5. Concealment: `World::concealed` (a 2 x 2 block of forest round
+        the tile), `tank_visible_to`, `spotted_by` and the pillbox
+        target filter. The first test failed twice for reasons of its
+        own: a recon recalled from inside recovery range is simply
+        back in the bay; and the neutral pillbox the test placed six
+        tiles east shot the recon parked two tiles from it. Forest
+        also blocks a pillbox's shot by itself, so PIL-07 is belt and
+        braces; the test says so.
+     6. Game types: `Scenario.game_type`, `--game-type`, `GAMETYPE=`.
+        Then the morning's replay would not parse (missing field);
+        `#[serde(default)]` and it reads, and fails every hash from
+        tick 100, which is the honest answer.
+     7. Heartbeat `rtt_ticks`; version 9. The window crate built in
+        release in 25 s against the engine `make warm` left, with its
+        three old warnings and none new; it still cannot be run here.
+     8. The brain's two refusal causes fixed; the report shows 0
+        refused orders in the default trace.
+     9. 34 tests; fresh trace and replay (36 of 36); lobby-test; docs;
+        this entry; commits; push.
+
+V. RESULTS
+
+    Eight seeds of sixteen bots, 300 game seconds, per match:
+
+      variant               kills  shell  strike  I shot  alive  thru
+      --------------------  -----  -----  ------  ------  -----  ----
+      baseline (engage all)  13.2    7.0     5.9      32    2.8   24%
+      A: strikes only        11.9    8.8     2.9       6    4.1   15%
+      A + speed 2.5          12.0    9.8     2.2       3    4.0   10%
+      final (A, brain fixes) 11.8    9.2     2.5       6    4.2   10%
+
+      "I shot" is interceptors shot down a match; "thru" is strikes
+      that hit, as a share of strikes launched (24 of them the
+      swarm's). Four players, any variant: 0.5 kills a match, first
+      kill at 177 to 225 s, the time limit reached; the sixteen-start
+      map keeps four bots apart.
+
+    Refused orders a match: sixteen attackers 8 -> 0; twelve
+    defenders 60 -> 46, all "forest: harvest it first", one per
+    forest tile in a ring.
+
+    Tests: 34 pass (sim 23, proto 3, net 5, brain 3). New:
+    retask_moves_a_recon_and_recalls_one_drone,
+    forest_block_conceals_a_tank, game_types_set_the_start.
+
+    Backlog: done 1, 3, 4, 5, 8, 11, 13 (and 6 before); decided
+    without a change 2, 7, 9; deferred 10 (steps 7 and 8), 12 (the
+    first working window), 14 (step 6d).
+
+VI. DISCUSSION
+
+    The report paid for itself in the first hour: the baseline's "32
+    interceptors shot down" was the backlog's item 1 as a number, and
+    the variant's "6" (all pillbox air shots) was the decision. The
+    real-world analogue says an interceptor engages anything; the
+    game says the bubble is a shield. A shield that attacks the next
+    shield leaves both tanks bare, and the trace showed what came
+    through the gap.
+
+    Speed was a non-result worth recording: the complaint in journal
+    0002 was of four bots on a four-start map meeting in the middle
+    in two minutes. On sixteen starts four bots take three minutes to
+    find each other at either speed. The constant is a dial, and the
+    hand on it should be a human's in a playtest.
+
+    Concealment is in but unexercised: no brain stands in forest on
+    purpose, so the trace shows nothing and the proof is a test. That
+    is the right order; 6d's defender, which keeps forest standing
+    for material, is where it will show.
+
+    The old replay that would not parse is the lesson of the session:
+    a scenario field added without a default turns every recording
+    before it into a file that says nothing. A hash mismatch is a
+    result; a parse error is a shrug.
+
+VII. OPEN PROBLEMS
+
+    1. No key in the window for Retask, proposals or answers; the
+       window is unproven in this VM (step 0).
+    2. Pillboxes fire 0 to 2 times a match in bot play (item 14):
+       6d's design problem.
+    3. Rejoin (item 10) waits for peer identity across processes
+       (steps 7, 8).
+    4. From 0008: no bot proposes or answers.
+
+VIII. NEXT STEPS
+
+    1. Step 6d: the defender and attacker brains, with alliances, and
+       a reason for an attacker to go into a ring.
+    2. Then step 4, prediction.
+
+ACKNOWLEDGMENTS
+
+    Paul, for two words that were a whole session's brief.
+
+REFERENCES
+
+    [1] Journal 0002, <0002.20261012@treadcore.org>, where the backlog
+        was written.
+    [2] Journal 0008, <0008.20261012@treadcore.org>.
+    [3] documentation/ROADMAP.md, "Backlog: what the first traces
+        found"; documentation/SPEC-WINBOLO-1.14.md, VIS-02, PIL-07,
+        BAS-07 to BAS-09, section 11.
+
+APPENDIX A. COMMITS
+
+    76908d3  sim, proto, net, brain, server, client: the backlog,
+             worked through; wire version 9
+    (next)   docs, journal: the backlog worked through; journal 0009
+
+APPENDIX B. ARTIFACTS
+
+    Journal         journal/0009-2026-10-13-the-backlog.txt (this)
+    Traces          build/logs/debug-20261013-055609.log (baseline,
+                    300 s), debug-20261013-061303.log (final, 180 s),
+                    replay-20261013-061303.json (replays, 36 of 36);
+                    replay-20261013-055609.json (the morning's, fails
+                    every hash from tick 100 as it should)
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
