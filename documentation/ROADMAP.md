@@ -31,10 +31,22 @@ Status after the second session (12 October 2026, evening; journal
 Nothing below should start until step 0's open problems are closed, or
 every later step is built on a guess.
 
+## The reference specification
+
+`SPEC-WINBOLO-1.14.md` is the clean-room functional specification of
+WinBolo/LinBolo 1.14, received 12 October 2026. Every step below that
+touches the Bolo-derived layer (3, 5, 6, 6b, 6c, 6d) cites its
+requirement IDs, and a proposal that changes one of those mechanics
+says which IDs it keeps, adapts or drops. Its preface says which parts
+treadcore adopts; its networking (section 12) is reference only, and
+nothing of Macintosh Bolo's AppleTalk ring is in it or in treadcore.
+
 ## Backlog: what the first traces found
 
 Carried from journal 0002. Each is a proposal in waiting
 (`GOVERNANCE.md` section 5): a decision, with a trace to argue from.
+Where an item has a counterpart in the reference specification, the ID
+is given.
 
 1. **Interceptors fight interceptors.** When two bubbles overlap
    (tanks inside 2 x bubble + margin of each other) both rings
@@ -69,6 +81,21 @@ Carried from journal 0002. Each is a proposal in waiting
    balance reader wants (shells by kind and spotted, intercept rate,
    kills by cause, time to first kill) instead of a reader counting
    JSON lines.
+9. **Depot armour as the gate.** The spec's bases cannot be driven
+   onto by an enemy while they hold armour; shooting them opens them
+   (SPEC BAS-07 to BAS-09). treadcore's depots are taken by standing
+   on them for ten seconds. Decide whether the shell should be the key.
+10. **Rejoin.** A player who drops and returns within a window keeps
+    their seat and what was theirs (SPEC GAM-12, OWN-04). Needs a
+    peer identity that survives a process restart.
+11. **Game types.** Open, Tournament and Strict Tournament (SPEC
+    section 11) as `Scenario` presets once pillboxes and material exist.
+12. **Pillbox view.** Jump the camera between owned pillboxes (SPEC
+    UI-10 to UI-13); the client's one Bolo feature worth having early.
+13. **Forest concealment as Bolo had it.** Hidden to everything beyond
+    3 tiles when inside a 2 x 2 block of forest (SPEC VIS-02), against
+    treadcore's halved vision radius. A proposal with a trace.
+
 
 
 ## 0b. Sixteen seats (done the same evening)
@@ -127,6 +154,11 @@ not a Pillboy's business: they are refuelling bases, taken and used by
 driving onto them, as now.
 
 
+**Reference.** SPEC-WINBOLO-1.14.md section 6 (BLD-01 to BLD-03,
+BLD-05, BLD-06, BLD-09, BLD-10, BLD-13) for the squad; section 8
+(PIL-01 to PIL-05, PIL-07 to PIL-17) for the pillbox; OWN-01, OWN-02
+for ownership. BLD-11's parachute becomes resupply at a depot.
+
 **Change.** `treadcore-sim`: `Pillboy` squad struct on `Tank`; a
 `step_pillboys` pass; squads are vulnerable to splash and to strikes
 while deployed, so deploying under a thin bubble is a decision.
@@ -162,6 +194,9 @@ immediate and the mismatch log is empty on a straight road.
 
 ## 5. Map files and the editor
 
+**Reference.** SPEC MAP-03 to MAP-06, MAP-09, MAP-10: what a map
+defines, what a loader repairs, that a running map can be saved.
+
 **Change.** `treadcore-sim::map` gains `to_file` / `from_file`: a
 header line, then 128 rows of 128 characters (one per terrain), then
 `start x y`, `depot x y`, `pillbox x y owner` lines. Human-editable in
@@ -175,6 +210,9 @@ a seed cannot do that.
 **Proof.** `generate(seed).to_file().from_file() == generate(seed)`.
 
 ## 6. Teams and alliances
+
+**Reference.** SPEC ALL-01 to ALL-10 (request, accept, any member
+admits, leave at will, what leaves with the leaver), OWN-03.
 
 **Change.** `Player.team: u8`. `visible_to` unions a team's sensors;
 `event_for` extends to teammates; interceptors do not engage team
@@ -191,6 +229,9 @@ target only the other's drone sees is `spotted`; a shell landing on a
 teammate does no damage and says so in the trace.
 
 ## 6b. Betrayal and recruitment: the proposal protocol
+
+**Reference.** SPEC ALL-02 to ALL-05 are the request and answer; the
+swap, the recruit and the three-way rule are treadcore's additions.
 
 **Change.** `treadcore-sim`: `Command::Propose { to: PlayerId, terms:
 Terms }`, `Command::Answer { proposal, accept: bool }`; `Terms::Join {
@@ -216,6 +257,12 @@ accepted and the trace shows the team change and the shared recon.
 
 ## 6c. Material, walls, mines, roads: what a Pillboy builds
 
+**Reference.** SPEC section 6 (the mode table: costs in trees), section
+7 (MIN-01 to MIN-13: who sees a mine, what sets it off, the crater),
+TER-01 to TER-03 (walls take hits to rubble; forest farmed and
+regrowing), BAS-01 (stocks held by a structure). Not taken: boats, deep
+sea, swamp, the edge minefield (MAP-08).
+
 **Change.** `treadcore-sim`: `Terrain::Wall` (impassable, blocks direct
 fire, cratered by indirect) and `Terrain::Mine` (hidden to others;
 destroys a tank or squad that enters it; cleared by a shell's splash;
@@ -234,7 +281,11 @@ twenty seeds, by a margin the trace shows.
 
 ## 6d. The defender brain
 
-**Change.** `treadcore-brain`: `Defender`, the simplest doctrine that
+**Reference.** SPEC section 16 for what a brain is told (BRN-08 to
+BRN-12); the "advantage" option becomes a scenario flag.
+
+**Change.** `treadcore-brain`:
+ `Defender`, the simplest doctrine that
 plays the brief's defensive game: harvest the nearest forest, wall a
 maze round the home depot and a pillbox it builds at the maze's mouth,
 mine the approaches, lay a road from depot to pillbox so the squad can

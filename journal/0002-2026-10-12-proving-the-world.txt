@@ -263,6 +263,17 @@ IV. CHRONOLOGY
 
     17. Six commits (Appendix A), this entry, CHANGELOG.
 
+    18. After the push, Paul sent a clean-room functional
+        specification of WinBolo/LinBolo 1.14 (256 requirements with
+        IDs, sources and basis codes, by @Micro) with the instruction
+        to write it into a document, keep none of the Macintosh
+        AppleTalk networking, and have the backlog reference it.
+        Written as documentation/SPEC-WINBOLO-1.14.md with a preface
+        mapping each of its sections to adopted, adapted or not
+        adopted; its networking section is reference only. ROADMAP
+        steps 3, 5, 6, 6b, 6c, 6d cite its IDs; the backlog gained
+        items 9 to 13 from it.
+
 V. RESULTS
 
     A. Files changed this session
@@ -465,7 +476,10 @@ APPENDIX A. COMMITS
              GitHub templates
     c5cf40c  build: shellcheck directives for the sourced common.sh
     f0a7c5b  journal: 0002, proving the world; CHANGELOG
-    (next)   journal: 0002 wrapped to 72 columns
+    0ac561d  journal: 0002 wrapped to 72 columns
+    (next)   docs: the WinBolo 1.14 functional specification; the
+             roadmap cites it
+
 
 APPENDIX B. ARTIFACTS
 
@@ -473,8 +487,8 @@ APPENDIX B. ARTIFACTS
                     passes) and debug-20261012-18*.log (sixteen bots),
                     with trace-*.jsonl beside each (local, gitignored)
     Lobby logs      build/logs/lobby-20261012-18*-peer{1,2,3,4}.log
-    Documents       documentation/{GOVERNANCE,RELEASE,LAB-REPORT-
-                    PILLBOYS}.md (new); DESIGN, CONCEPT, ROADMAP,
+    Documents       documentation/{GOVERNANCE,RELEASE,SPEC-WINBOLO-1.14,
+                    LAB-REPORT-PILLBOYS}.md (new); DESIGN, CONCEPT, ROADMAP,
                     PROTOCOL, BUILD, LAB-REPORT (changed)
     Organization    CONTRIBUTING.md, CONTRIBUTORS.md, .github/
     Journal         journal/0002-2026-10-12-proving-the-world.txt (this)

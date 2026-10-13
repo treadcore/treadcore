@@ -118,6 +118,8 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
 - [documentation/LAB-REPORT-PILLBOYS.md](documentation/LAB-REPORT-PILLBOYS.md): the Pillboy requirement checked against Bolo's builder, and what was decided.
+- [documentation/SPEC-WINBOLO-1.14.md](documentation/SPEC-WINBOLO-1.14.md): the clean-room functional specification of WinBolo 1.14 that the Bolo-derived steps cite, with a preface on what treadcore adopts.
+
 - [documentation/RELEASE.md](documentation/RELEASE.md): the implementation cycle, versions, release monuments, candidates and playtesting.
 - [documentation/GOVERNANCE.md](documentation/GOVERNANCE.md): how the organization is run: roles, joining, proposals, review, leaving, recognition.
 - [CONTRIBUTING.md](CONTRIBUTING.md): the short version for a first pull request.

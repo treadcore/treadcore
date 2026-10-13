@@ -34,8 +34,13 @@ Journal: [0002](journal/0002-2026-10-12-proving-the-world.txt).
   `RELEASE.md` (the implementation cycle, versions, release monuments,
   candidates confirmed by playtest), `CONTRIBUTING.md`,
   `CONTRIBUTORS.md`, `.github/` templates and `CODEOWNERS`.
+  `SPEC-WINBOLO-1.14.md`: the clean-room functional specification of
+  WinBolo 1.14 (256 requirements), with a preface on what treadcore
+  adopts, adapts and leaves; the roadmap's Bolo-derived steps and
+  backlog cite its IDs.
   `LAB-REPORT-PILLBOYS.md`: the Pillboy requirement checked against
   Bolo's builder; `DESIGN.md` gained the Pillboys decision; `CONCEPT.md`
+
   section 9: sixteen tanks, defenders, alliances, betrayal; `ROADMAP.md`
   gained a backlog and steps 0b, 6b, 6c, 6d.
 - Known: the release-profile engine (`make warm`, `make run`) not yet
