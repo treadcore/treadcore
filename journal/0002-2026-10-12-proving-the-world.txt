@@ -115,52 +115,49 @@ III. METHOD
 
     Decisions, with the alternatives rejected:
 
-      decision                      rejected               hy
-      ----------------------------  ---------------------- ----------
-      the world routes a Move       give Brains and the     the obser-
-      (A* in `apply`, waypoints     client the map and      vation has
-      on the tank)                  let them route          no map and
-                                                            should not
-                                                            (16 KiB);
-                                                            one router,
-                                                            one truth
-      brake to a crawl for corners  4-connected A* with     diagonals
-      and re-plan when blocked      axis-aligned legs       look right;
-                                                            the brake is
-                                                            a momentum
-                                                            model Bolo
-                                                            also has
-      sixteen seats the default     keep four, allow        Paul: "abso-
-      everywhere                    sixteen                 lutely"; a
-                                                            4-bot game on
-                                                            16 starts is
-                                                            depot-
-                                                            collecting
-      rename SECONDS to             unset SECONDS in bash   special vars
-      GAME_SECONDS                                          cannot be
-                                                            un-specialed
-      bot patience drawn per bot    a fixed patience        four bots
-      from its seed                                         advanced on
-                                                            the same tick
-                                                            and met in
-                                                            the middle
-      DCO sign-off, no CLA          a contributor licence   MIT project;
-                                    agreement               the sign-off
-                                                            is enough and
-                                                            is in git
-      release confirmed by three    maintainer's word       the brief
-      playtesters, one not a                                asked for
-      maintainer                                            "user testing
-                                                            confirmed"
-      Pillboys = Bolo's builder,    a unit the player       the tank is
-      an order the tank gives       drives                  the one thing
-                                                            driven; the
-                                                            audit says
-                                                            that is Bolo
-                                                            too
-      write the vision (defenders,  start coding it         roadmap rule:
-      alliances, betrayal) as                               replay and
-      roadmap steps with proofs                             hash first
+      decision                    rejected              why
+      --------------------------  --------------------  ----------------
+      the world routes a Move     give Brains and the   the observation
+      (A* in `apply`, waypoints   client the map and    has no map and
+      on the tank)                let them route        should not
+                                                        (16 KiB); one
+                                                        router, one
+                                                        truth
+      brake to a crawl for        4-connected A* with   diagonals look
+      corners; re-plan when       axis-aligned legs     right; the brake
+      blocked                                           is a momentum
+                                                        model Bolo also
+                                                        has
+      sixteen seats the default   keep four, allow      Paul: "abso-
+      everywhere                  sixteen               lutely"; a 4-bot
+                                                        game on 16
+                                                        starts is depot
+                                                        collecting
+      rename SECONDS to           unset SECONDS in      special vars
+      GAME_SECONDS                bash                  cannot be un-
+                                                        specialed
+      bot patience drawn per      a fixed patience      four bots
+      bot from its seed                                 advanced on the
+                                                        same tick and
+                                                        met in the
+                                                        middle
+      DCO sign-off, no CLA        a contributor         MIT project; the
+                                  licence agreement     sign-off is
+                                                        enough and is in
+                                                        git
+      release confirmed by three  the maintainer's      the brief asked
+      playtesters, one not a      word                  for "user
+      maintainer                                        testing
+                                                        confirmed"
+      Pillboys = Bolo's builder,  a unit the player     the tank is the
+      an order the tank gives     drives                one thing
+                                                        driven; the
+                                                        audit says that
+                                                        is Bolo too
+      write the vision            start coding it       roadmap rule:
+      (defenders, alliances,                            replay and hash
+      betrayal) as roadmap                              first
+      steps with proofs
 
 IV. CHRONOLOGY
 
@@ -306,8 +303,9 @@ V. RESULTS
       1      4      4 (0)              22          9        3      100 s
       2      4      5 (0)              19          6        3       46 s
       3      4      6 (2)              31          7        3       77 s
-      4      4      15 (15, 13 spot)   40          2        1      180 s*
-      5      16     62                 128         12       10     180 s*
+      4      4      15 (15, 13 spot)   40          2        1      180 s
+      5      16     62                 128         12       10     180 s
+      (4 and 5 ended at the time limit)
       * time limit
 
     D. Build measurements
@@ -461,12 +459,13 @@ APPENDIX A. COMMITS
              wire version 2
     94e0a90  brain: firing position, recon over the objective, patience
              per bot
-    ac5eb19  docs: the Pillboys decision, the backlog, sixteen tanks; lab
-             report on the Bolo audit
+    ac5eb19  docs: the Pillboys decision, the backlog, sixteen tanks;
+             lab report on the Bolo audit
     e02e912  governance: how the organization is run; the release cycle;
              GitHub templates
     c5cf40c  build: shellcheck directives for the sourced common.sh
-    (next)   journal: 0002, proving the world; CHANGELOG
+    f0a7c5b  journal: 0002, proving the world; CHANGELOG
+    (next)   journal: 0002 wrapped to 72 columns
 
 APPENDIX B. ARTIFACTS
 
