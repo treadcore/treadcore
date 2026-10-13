@@ -221,11 +221,37 @@ as well as depots.
 
 
 
+## Teams and alliances
+
+Players start each on a side of their own, as in Bolo, unless the
+scenario deals them into teams. An alliance is a team formed in play:
+a player alone asks another; any member of the alliance asked may
+accept; the newcomer takes that team; anyone may leave at any time and
+is alone again. A request stands thirty seconds. Every step of it is
+an event everyone may see, so there are no secret pacts.
+
+What a team shares: its picture (an ally's tank or drone seeing a point
+is as good as yours, and a shell fired at what only an ally's recon
+sees is spotted), its depots and its pillboxes' shells, the knowledge
+of its mines, and team chat. What a team is spared: friendly fire.
+Shells, strikes, splash and mines from an ally do nothing to your tank,
+squad or pillbox, and the trace says so; your own shells still hurt
+you, because that is a mistake and not an ally. Interceptors and
+pillboxes do not engage an ally's drones or tanks; a strike at an ally
+is refused. Ownership stays per player, so what an ally captured is the
+ally's, and goes with them if they leave.
+
+The match ends when one team is left standing, or at the time limit
+with the highest team score; the winning team's top scorer is the
+winner. Scores stay per player, so a team's standings are its members'.
+Swapping sides and recruiting mid-match, under the rule that three
+sides must remain, are roadmap step 6b.
+
 ## What is not here yet
 
-- Pillboys and pillboxes: decided above; not built.
-- Alliances and team play. The seat model supports it; the rules do not
-  yet.
+- Pillboxes, walls, mines and roads are built; the defender brain that
+  uses them is roadmap step 6d.
+
 
 - Map editing. The map is generated from a seed; a file format and an
   editor would let a map be authored and shared.

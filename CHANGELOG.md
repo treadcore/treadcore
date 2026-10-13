@@ -4,7 +4,33 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-12, night: teams and alliances (roadmap step 6)
+
+Journal: [0007](journal/0007-2026-10-12-teams-and-alliances.txt).
+
+- New: `Player.team`; `Scenario.teams` and `with_teams(n)`; `--teams N`
+  on server and window, `TEAMS=n make debug`. A team shares sensors
+  (an ally's recon spots for your gun), depots, pillbox shells and
+  the knowledge of its mines; friendly fire is off within a team for
+  shells, strikes, splash and mines (`FriendlyFireSpared` in the
+  trace; one's own shells still hurt); interceptors and pillboxes
+  leave allies alone; a strike at an ally is refused. `Command::Chat {
+  text, to: All | Team }`. The match ends when one team stands;
+  `MatchOver { winner, team }`.
+- New: Bolo's alliance protocol in play, `Command::Alliance(Request |
+  Accept | Decline | Leave)`: a request stands 30 s, any member of the
+  alliance asked may accept, leave at will; all events. The
+  observation carries every player's team and the requests a player
+  may answer; the HUD scoreboard is by team.
+- Changed: the net host filters events by the world's rule
+  (`World::event_visible`) instead of its own copy. Wire `VERSION` 7.
+- Proof: a shell fired at what only an ally's recon sees is spotted; a
+  shell landing on a teammate does no damage and says so; alliances
+  form, admit, refuse, lapse and break; the match ends by team. 30
+  tests; four teams of four traced (61 of 79 shells spotted).
+
 ## 2026-10-12, night: map files (roadmap step 5), five Bolo maps
+
 
 Journal: [0006](journal/0006-2026-10-12-map-files.txt).
 

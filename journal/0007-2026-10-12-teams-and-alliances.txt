@@ -1,0 +1,205 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 12 Oct 2026 20:55:00 -0700
+Subject: [JOURNAL 0007] Teams and alliances: roadmap step 6
+Message-ID: <0007.20261012@treadcore.org>
+In-Reply-To: <0006.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: teams, alliance, shared-recon, friendly-fire, team-chat,
+          match-end
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "start roadmap step 6, teams and
+           alliances", then "compact and continue ... commit push
+           after. then continue."
+X-Commits: 68227ed
+
+              TEAMS AND ALLIANCES: ROADMAP STEP 6
+
+                      Paul Richeson, treadcore.org
+                            12 October 2026
+
+
+ABSTRACT
+
+    Step 6 gives the world sides. A player has a team; a scenario deals
+    the seats into teams or leaves everyone alone, Bolo's start, to
+    ally in play by Bolo's protocol: ask, be accepted by any member,
+    leave at will, a request standing thirty seconds, all of it events.
+    A team shares its picture (an ally's recon spots for your gun), its
+    depots, its pillboxes' shells and the knowledge of its mines, and
+    is spared friendly fire: an ally's shell, strike, splash or mine
+    does nothing and the trace says so; one's own shells still hurt.
+    Interceptors and pillboxes leave allies alone; a strike at an ally
+    is refused. Team chat. The match ends when one team stands; the
+    winning team's top scorer is the winner. The proof the roadmap
+    asked for runs as a test: a shell fired at what only an ally's
+    drone sees is spotted, and a shell landing on a teammate does no
+    damage. A four-team trace of sixteen bots: 61 of 79 shells spotted.
+    30 tests pass. Wire version 7.
+
+INDEX TERMS
+
+    team, alliance, request, accept, leave, shared sensors, friendly
+    fire, team chat, winning team.
+
+
+I. INTRODUCTION
+
+    Sixteen players without sides is a brawl; with fixed sides it is a
+    bracket. The brief (CONCEPT.md section 9) asked for alliances that
+    turn friendly fire off so allies can stampede together, and later
+    for betrayal under a three-way rule. Step 6 is the first half: the
+    team as a thing in the world, and Bolo's way of forming one.
+
+II. BACKGROUND
+
+    Carried from 0006: doctrine distances tuned for 128; 65 536 tile
+    sprites on a Bolo map; the Bolo maps' licence; forest regrowth; the
+    cross-machine replay; the window; two machines. The spec's ALL-01
+    to ALL-10 and OWN-03 say what an alliance is in Bolo.
+
+III. METHOD
+
+    Decisions, with the alternatives rejected:
+
+      decision                    rejected              why
+      --------------------------  --------------------  ----------------
+      a team is a u8 on Player;   a Team entity with    nothing a team
+      an alliance is two players  members               has that its
+      with one team id                                  members do not
+      friendly fire spares        spare one's own       a shell on your
+      allies, not oneself         shells too            own tank is a
+                                                        mistake, not an
+                                                        ally
+      the leaver gets the         the leaver's old id   the old id is
+      smallest unused team id                           still the team's
+      any member may accept a     only the one asked    Bolo (ALL-04):
+      request to their team                             any member
+                                                        admits
+      scores stay per player;     a team score field    a team's
+                                                        standing
+      the match sums them                               is its members'
+      the winner is the winning   no winner, a team     the HUD and the
+      team's top scorer                                 trace want a
+                                                        name
+      event visibility is the     a second filter in    one rule; the
+      world's (World::event_      treadcore-net         host's old copy
+      visible)                                          drifted once
+
+IV. CHRONOLOGY
+
+     1. Types: TeamId, Player.team, ChatTo, AllianceCmd,
+        AllianceRequest, Scenario.teams and with_teams(n); events
+        FriendlyFireSpared, AllianceRequested, AllianceDeclined,
+        AllianceFormed, AllianceLeft; MatchOver gained team; Chat
+        gained to. World.requests, winning_team.
+     2. The rules: allied, allied_opt, team_members; visible_to and
+        spotted_by over the team; damage, damage_pillbox and
+        hurt_squads spare allies; a strike at an ally refused and the
+        bay refunded; interceptors ignore allied drones; pillboxes
+        hostile by team; depots shared; mines known to allies and
+        harmless to them; routes treat allied guns and mines as safe;
+        step_match by team; apply_alliance; requests lapse.
+     3. Observation: PlayerView.team, requests, winning_team;
+        my_team, team_of, allied, allied_tanks; hostile_tanks and
+        hostile_drones by team. The brains read allies as friends
+        (depots, pillboxes, strike cover). The net host uses the
+        world's event rule instead of its own copy.
+     4. Server: --teams N, narration, a summary by team. Client:
+        --teams, scoreboard by team with ally marks, requests shown.
+        TEAMS=n on make.
+     5. Three patch blocks missed their text; applied by hand. 28 tests
+        pass, then the two new ones written.
+     6. `a_team_shares_recon_and_spares_its_own` failed on its
+        friendly-fire half: the second shell landed 3.3 tiles off,
+        blind. The first shell, at the enemy, had killed the ally's
+        recon orbiting a tile from the impact: the splash takes down
+        every drone within two tiles, as the rules say. The recon now
+        orbits five tiles off the enemy. 30 tests pass.
+     7. `TEAMS=4 make debug`: four teams of four, 180 s: 79 shells, 61
+        spotted (shared recon at work), 113 intercepts, 13 tanks
+        destroyed, 2 friendly-fire sparings, 13 pillbox captures, 36
+        refusals; winner p4 for team 0. Default trace, replay (36 of
+        36) and lobby-test pass.
+     8. Documents, this entry, commits, push.
+
+V. RESULTS
+
+    A. Tests: 30 pass (sim 19, proto 3, net 5, brain 3). New: a_team_
+       shares_recon_and_spares_its_own, alliances_form_and_break_and_
+       teams_end_the_match.
+
+    B. Four teams of four, 180 game seconds, default map
+
+      event                 count     event                 count
+      --------------------  -----     --------------------  -----
+      ShellLaunched         79        TankDestroyed         13
+      of which spotted      61        FriendlyFireSpared    2
+      Intercepted           113       PillboxCaptured       13
+      Rejected              36        winner                p4, team 0
+
+      For comparison, sixteen bots alone on the same map and seed in
+      0004: 62 shells, 128 intercepts, 10 kills. With teams the gun
+      fires more and is spotted more often: four recon drones per team.
+
+VI. DISCUSSION
+
+    The team changed one thing everywhere and nothing anywhere else:
+    every rule that asked "is this mine?" now asks "is this ours?",
+    through one function, and the drone, shell, pillbox and mine
+    mechanics are the ones they were. The proof the roadmap wrote in
+    the morning (a spotted shell through an ally's eyes; a spared
+    teammate) ran as written, once the test stopped killing its own
+    recon with its own first shell, which is the rules working.
+
+    The alliance protocol is Bolo's and is deliberately plain. The
+    constraint the brief asked for, that sides may change only while
+    three remain, is not here: step 6b adds proposals, swaps and the
+    three-way rule on top of this, and this step's `Leave` and
+    `Request` will be the primitives it builds from.
+
+VII. OPEN PROBLEMS
+
+    1. No bot forms or breaks an alliance yet; the protocol is proven
+       by test, not by play. Step 6b's proposals and 6d's defender
+       are where a bot will want an ally.
+    2. The window has no key for the alliance commands; the HUD shows
+       requests but a human cannot answer one. A small input change
+       when the window opens.
+    3. From 0006: doctrine distances; tile sprites; the Bolo maps'
+       licence; forest regrowth; the cross-machine replay; the window;
+       two machines.
+
+VIII. NEXT STEPS
+
+    1. Step 6b: Propose, Answer, Swap, Recruit, and the three-way rule.
+    2. Alliance keys in the window.
+    3. Step 6d: the defender and attacker brains, which is where a bot
+       first wants a friend.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the direction and the pace.
+
+REFERENCES
+
+    [1] Journal 0006, <0006.20261012@treadcore.org>.
+    [2] documentation/ROADMAP.md step 6; documentation/DESIGN.md,
+        "Teams and alliances".
+    [3] documentation/SPEC-WINBOLO-1.14.md, ALL-01 to ALL-10, OWN-03.
+
+APPENDIX A. COMMITS
+
+    68227ed  sim, net, brain, server, client: teams and alliances
+             (roadmap step 6); wire version 7
+    (next)   docs, journal: step 6 done; journal 0007
+
+APPENDIX B. ARTIFACTS
+
+    Traces          build/logs/debug-20261012-205*.log (four teams, and
+                    the default), replays beside them
+    Journal         journal/0007-2026-10-12-teams-and-alliances.txt
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -12,7 +12,8 @@ history; journal 0002 has the chronology):
 
 | crate | lines | compiled | tests |
 | --- | --- | --- | --- |
-| treadcore-sim | ~3000 | yes | 17 pass (determinism, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, sixteen seats, a world from a map file, map determinism, every start reaches the centre, a map survives the file round trip, bad map files are refused with a line) |
+| treadcore-sim | ~3400 | yes | 19 pass (determinism, a team shares recon and spares its own, alliances form and break and teams end the match,
+ hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, sixteen seats, a world from a map file, map determinism, every start reaches the centre, a map survives the file round trip, bad map files are refused with a line) |
 | treadcore-proto | ~300 | yes | 3 pass (round trip, snapshot split and reassembly, big packets chunk and reassemble) |
 | treadcore-net | ~830 | yes | 5 pass (4 election, 1 loopback session) |
 | treadcore-brain | ~600 | yes | 3 pass (sixteen bots fight to a result; `pillboys_pay`: over twenty seeds, bots that capture pillboxes outscore and outlive the same doctrine without the squad; `fortification_pays`: a fortified depot outlives a bare one against a scripted attack) |

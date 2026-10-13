@@ -278,7 +278,27 @@ a seed cannot do that.
 
 ## 6. Teams and alliances
 
-**Reference.** SPEC ALL-01 to ALL-10 (request, accept, any member
+**Done 12 October 2026 (journal 0007).** `Player.team`; a scenario deals
+seats into teams (`with_teams(n)`, `--teams N`, `TEAMS=n make debug`) or
+leaves everyone alone, Bolo's start. Sensors are the team's: `visible_to`
+and `spotted_by` take any ally's tank or drone, so one tank's recon is
+another's gun. Friendly fire is off within a team for shells, strikes,
+mines and splash (`FriendlyFireSpared` in the trace); one's own shells
+still hurt. Interceptors and pillboxes do not engage an ally's drones or
+tanks; a strike at an ally is refused; allies share depots and pillbox
+shells and see each other's mines; an ally's pillbox cannot be captured.
+`Command::Chat { text, to: All | Team }`. Scores stay per player; the
+match ends when one team stands, and the winning team's top scorer is
+the winner (`MatchOver { winner, team }`). Bolo's alliance protocol in
+play: `Command::Alliance(Request | Accept | Decline | Leave)` with
+thirty-second requests, any member accepting, leaving at will, all of it
+events (ALL-01 to ALL-06, ALL-08 to ALL-10). The RuleBot and Fortifier
+read allies as friends. Wire version 7. Proof: `a_team_shares_recon_
+and_spares_its_own` and `alliances_form_and_break_and_teams_end_the_
+match`; a four-team sixteen-bot trace.
+
+**Reference.**
+ SPEC ALL-01 to ALL-10 (request, accept, any member
 admits, leave at will, what leaves with the leaver), OWN-03.
 
 **Change.** `Player.team: u8`. `visible_to` unions a team's sensors;

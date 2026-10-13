@@ -86,6 +86,8 @@ set the bubble.
 make debug                      # 3 game minutes of sixteen bots, flat out
 GAME_SECONDS=600 SEED=0x1234 PLAYERS=4 make debug
 DEFENDERS=12 make debug         # twelve dig in at their depots, four attack
+TEAMS=4 make debug              # four teams of four; allies share recon, spare each other
+
 MAP=maps/quarters.map make debug   # on a map file; make map writes one to edit
 
 

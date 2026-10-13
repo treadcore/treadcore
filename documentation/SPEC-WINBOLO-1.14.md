@@ -23,7 +23,8 @@ a descendant. The preface says which parts it takes.
 | 8 Pillboxes | **adopted**: PIL-01 to PIL-05, PIL-07 to PIL-17; added: pillboxes engage drones at short range; pillboxes hold shells (BAS-01 shape) | ROADMAP 3, 6c |
 | 9 Refuelling bases | **adopted** as depots, already in: BAS-02, BAS-04 to BAS-06, BAS-11; BAS-07 to BAS-09 (armour as the gate) open for a proposal | DESIGN.md "Depots" |
 | 10 Visibility | adapted: forest halves vision (VIS-02 in spirit); drones add sensors Bolo did not have | DESIGN.md "The world" |
-| 10 Alliances | **adopted**: ALL-01 to ALL-08 as the model for step 6; ALL-07 (what leaves with the leaver) as written; betrayal and recruitment added by step 6b | ROADMAP 6, 6b |
+| 10 Alliances | **adopted** (step 6, done): ALL-01 to ALL-06, ALL-08 to ALL-10 as written; ALL-07 falls out of per-player ownership; betrayal and recruitment are step 6b | ROADMAP 6, 6b |
+
 | 10 Ownership | adopted: OWN-01 to OWN-03 | ROADMAP 3, 6 |
 | 11 Game setup and lifecycle | adapted: game types, start delay, time limit, player limit 16 (GAM-16) are the shape of `Scenario`; tutorial not planned; rejoin (GAM-12) is a backlog item | ROADMAP backlog |
 | 12 Networking | **not adopted**. treadcore has no dedicated server as the only option, no tracker, no statistics site, and no TCP; peers elect a host from a measured latency matrix over UDP (PROTOCOL.md). NET-02 and NET-03 (authoritative server, client prediction) are treadcore's too, by other means (ROADMAP 4). Recorded for reference only. The Macintosh Bolo AppleTalk ring is not in this specification and not in treadcore. | PROTOCOL.md |
