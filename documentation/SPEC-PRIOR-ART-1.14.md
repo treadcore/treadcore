@@ -1,6 +1,6 @@
 # The prior art, version 1.14: clean-room functional specification
 
-Received 12 October 2026 (author: @Micro) and kept here as the
+Received 12 October 2026 and kept here as the
 reference specification for the prior-art-derived layer of treadcore:
 builder, pillboxes, refuelling bases, mines, terrain, alliances,
 visibility and game lifecycle. It restates the behaviour of the prior art, version 1.14 as observable from its user manual, in new words, so that
@@ -27,7 +27,7 @@ a descendant. The preface says which parts it takes.
 
 | 10 Ownership | adopted: OWN-01 to OWN-03 | ROADMAP 3, 6 |
 | 11 Game setup and lifecycle | adapted: the three game types are `Scenario.game_type`, what a tank starts with (open, tournament, strict); start delay, time limit, player limit 16 (GAM-16) are the shape of `Scenario`; tutorial not planned; rejoin (GAM-12) deferred to roadmap steps 7 and 8 | ROADMAP backlog |
-| 12 Networking | **not adopted**. treadcore has no dedicated server as the only option, no tracker, no statistics site, and no TCP; peers elect a host from a measured latency matrix over UDP (PROTOCOL.md). NET-02 and NET-03 (authoritative server, client prediction) are treadcore's too, by other means: the host is authoritative and a client predicts its own tank and yields to every snapshot (ROADMAP 4, PROTOCOL.md Prediction). Recorded for reference only. The the Macintosh-era prior art AppleTalk ring is not in this specification and not in treadcore. | PROTOCOL.md |
+| 12 Networking | **not adopted**. treadcore has no dedicated server as the only option, no tracker, no statistics site, and no TCP; peers elect a host from a measured latency matrix over UDP (PROTOCOL.md). NET-02 and NET-03 (authoritative server, client prediction) are treadcore's too, by other means: the host is authoritative and a client predicts its own tank and yields to every snapshot (ROADMAP 4, PROTOCOL.md Prediction). Recorded for reference only. The the prior art LAN ring is not in this specification and not in treadcore. | PROTOCOL.md |
 | 13 to 15 Window, dialogs, menus | not adopted; treadcore's HUD is the telemetry overlay. UI-10 (pillbox view) and the colour code (red hostile, green friendly) are worth taking | client |
 | 16 Brains | adopted in principle: treadcore's Brain is the client's own interface (observation in, commands out); BRN-12 ("advantage") is `Scenario.advantage`, `--advantage` (step 6d); BRN-05 (a brain as stand-in or ally) is how bot seats work | treadcore-brain |
 | 17 Dedicated server | not adopted as specified; `treadcore-server --listen` (ROADMAP 8) is the analogue; console commands lock/unlock/savemap/say/info are a good list | ROADMAP 8 |
@@ -46,7 +46,7 @@ This spec restates the behaviour of the prior art, version 1.14 that is
 observable from its user manual, so a team that has never seen the
 program or its code can build a compatible game.
 
-- **Single source.** Everything here comes from the prior art's manual, version 1.14 (John Morrison, 49 pages), including its
+- **Single source.** Everything here comes from the prior art's manual, version 1.14 (49 pages), including its
   screenshots and version history. No binary, source code, sample code
   or other prior-art document was consulted.
 - **Original wording.** Behaviour is described in new words. Only
@@ -75,14 +75,14 @@ body, not its table of contents, which omits the Skins section.
 
 The product is a real-time tank game for up to 16 networked players,
 delivered as a graphical client and a headless server that
-interoperate between Windows and Linux (§2.1, §2.2). Clients also find
+interoperate between the first platform and Linux (§2.1, §2.2). Clients also find
 games on a local network by broadcast, without the tracker. A brain
 runs inside one client and controls only that client's tank.
 
 | component | role | source |
 | --- | --- | --- |
-| Game client (the Windows and Linux client programs) | Draws the game, takes input and hosts every dialog; can also start a server inside itself | §2.6, §2.7, v1.14 |
-| Dedicated server (the Windows and Linux server programs) | Hosts a game from the command line with no graphics and holds the master game state | §3.3, §3.6 |
+| Game client (the first platform and Linux client programs) | Draws the game, takes input and hosts every dialog; can also start a server inside itself | §2.6, §2.7, v1.14 |
+| Dedicated server (the first platform and Linux server programs) | Hosts a game from the command line with no graphics and holds the master game state | §3.3, §3.6 |
 | Internet tracker | Outside directory that hosts notify and clients query for running games | §3.1.7, §3.1.8 |
 | The prior art.net | Outside statistics site that receives game results when players opt in | §4 |
 | Brains | Plug-in AI modules the client loads to drive or assist a tank | §2.10 |
@@ -91,8 +91,8 @@ runs inside one client and controls only that client's tank.
 | ID | requirement | source | basis |
 | --- | --- | --- | --- |
 | SYS-01 | A game supports up to 16 players, each on a separate computer with a private view of the world. | §2.1 | S |
-| SYS-02 | Windows and Linux builds of the client and server join the same games. | §2.2, §2.8 | S |
-| SYS-03 | Network compatibility with the Macintosh-era prior art is not provided. | §2.8 | S |
+| SYS-02 | The first platform and Linux builds of the client and server join the same games. | §2.2, §2.8 | S |
+| SYS-03 | Network compatibility with the 1980s prior art is not provided. | §2.8 | S |
 | SYS-04 | Play is real time with all players acting at once. There is no pause function. | §2.10, §6.4 | S |
 | SYS-05 | The client can host a game itself without launching a separate server program. | v1.14 | H |
 | SYS-06 | The client needs a display of at least 16-bit colour and refuses to run in a palette mode. | §2.3, §3.5.1 | S |
@@ -108,7 +108,7 @@ Out of scope: shareware pricing, registration and licence terms
 
 ### Platform parity
 
-| capability | Windows | Linux | source |
+| capability | first platform | Linux | source |
 | --- | --- | --- | --- |
 | Play and host games across platforms | Yes | Yes | §2.2, §2.8 |
 | Language sets | Yes | No | §3.1.3, §3.4 |
@@ -597,7 +597,7 @@ All rows are from §2.9.11 unless noted.
 | UI-11 | In pillbox view the arrow keys jump to the neighbouring pillbox in that direction. | §2.9.12, v1.09 | S |
 | UI-12 | Re-entering pillbox view starts from the pillbox last viewed. | v1.07 | H |
 | UI-13 | The tank view key returns to the normal view. | §2.9.12 | S |
-| UI-14 | The window can be shown at normal, double or quad size on Windows. Skin graphics are 16 pixels per square at normal size and 32 at double. | §3.2.2, §3.9, v1.04 | S |
+| UI-14 | The window can be shown at normal, double or quad size on the first platform. Skin graphics are 16 pixels per square at normal size and 32 at double. | §3.2.2, §3.9, v1.04 | S |
 | UI-15 | The redraw rate is adjustable by the player. | §3.2.2 | S |
 | UI-16 | Tanks on screen can carry a name label of selectable length. Pillboxes and bases can carry labels, intended for brain authors. | §3.2.2 | S |
 | UI-17 | The main map view can be hidden to save processing when several copies run on one machine. | §3.7 | S |
@@ -654,7 +654,7 @@ F); behaviour comes from the text.
 | DLG-03 | Skin Selection | List of skins headed by "No Skin (Default)". Panel with name, author and notes. OK, Cancel. | Items missing from a skin fall back to the built-in graphics and sounds. | §3.1.4 |
 | DLG-04 | The prior art.net Settings | Password. Participation on or off. | Applies to games entered afterwards (NET-33). | §3.1.5 |
 | DLG-05 | Game Setup | Choose Map button with the current map's name. Three game-type choices. Allow Hidden Mines. Allow Computer Tanks, with "and give them an advantage". Game Password and its field. Game start delay in seconds. Game time limit in minutes. OK, Cancel. | Shown when starting any new game. Options as in section 11. | §3.1.6 |
-| DLG-06 | Open Map | File chooser with a preview of the selected map (Windows only). | Very long paths and file names are accepted. | v1.06, v1.03 |
+| DLG-06 | Open Map | File chooser with a preview of the selected map (the first platform only). | Very long paths and file names are accepted. | v1.06, v1.03 |
 | DLG-07 | Game Finder, LAN and Internet | List of games. Selected Game Information panel (fields in NET-28). Status line. Buttons Tracker Setup, Join By Address, Join, Set Player Name, Refresh, Rejoin, Message of the Day, New, Cancel. | Refresh starts the search and the status line reports progress. Selecting a game fills the panel. Join By Address opens UDP Setup and carries the tracker details across. | §3.1.7, v1.06 |
 | DLG-08 | Tracker Config | Tracker Address. Tracker Port. Use Tracker. OK, Cancel. | NET-24 to NET-27. | §3.1.8 |
 | DLG-09 | UDP Setup | Machine name or IP address (shown as localhost). UDP port of the server (27500). UDP port for this machine (27500). Player name. Remember player name. Tracker Setup. New, Join, Rejoin, Cancel. | New starts a game, Join joins the addressed game, Rejoin reclaims a place in it. Leading spaces are stripped from a pasted address:port. | §3.1.9, v1.09 |
@@ -693,8 +693,8 @@ The menu bar has six menus, and every item in the manual's reference
 | The prior art | Set Keys | Command | Opens DLG-15. |
 | The prior art | Change Player Name | Command | Opens DLG-17. |
 | The prior art | Sound Effects | Toggle | Turns sound effects on or off. |
-| The prior art | Background Sound | Toggle | Plays sound while the program is not the active application. Windows only. |
-| The prior art | ISA Sound Card | Toggle | Performance aid for old sound hardware. Windows only, on by default, unavailable when sound could not start (§3.6). |
+| The prior art | Background Sound | Toggle | Plays sound while the program is not the active application. The first platform only. |
+| The prior art | ISA Sound Card | Toggle | Performance aid for old sound hardware. the first platform only, on by default, unavailable when sound could not start (§3.6). |
 | The prior art | Newswire Messages | Toggle | Shows or hides game event messages. |
 | The prior art | Assistant Messages | Toggle | Shows or hides builder messages. |
 | The prior art | AI Brain Messages | Toggle | Shows or hides messages from the active brain. |
@@ -805,10 +805,10 @@ version.
 
 From §2.6, §2.7 and §3.4.
 
-| item | Windows | Linux | purpose |
+| item | first platform | Linux | purpose |
 | --- | --- | --- | --- |
-| Client | the Windows client program | the Linux client program | Game program |
-| Server | the Windows server program | the Linux server program | Dedicated server |
+| Client | the first platform's client program | the Linux client program | Game program |
+| Server | the first platform's server program | the Linux server program | Dedicated server |
 | Sounds file | a .bsd file | a .bsd file | Built-in sound effects |
 | Brains folder | Brains | brains | Plug-in brains |
 | Languages folder | Languages | None | Language sets |
@@ -842,7 +842,7 @@ There are 24 sound effects. Each file name below takes the extension
 | ID | requirement | source | basis |
 | --- | --- | --- | --- |
 | CUS-01 | Each event plays the variant that fits: the player's own action, one nearby, or one far away. | §3.8 | S |
-| CUS-02 | On Windows, a .wav file with a listed name in a Sounds folder beside the program replaces that effect. A missing file leaves the built-in effect in place. | §3.8 | S |
+| CUS-02 | On the first platform, a .wav file with a listed name in a Sounds folder beside the program replaces that effect. A missing file leaves the built-in effect in place. | §3.8 | S |
 | CUS-03 | If the sounds file is missing, or the sound device is busy or absent, the game says so and runs silently. | §3.5.1, v1.01 | S |
 
 ### Skins
@@ -856,9 +856,9 @@ There are 24 sound effects. Each file name below takes the extension
 
 | file in the archive | content |
 | --- | --- |
-| skin.bmp | Windows bitmap of the in-game graphics, 16 by 16 pixels per image |
+| skin.bmp | bitmap of the in-game graphics, 16 by 16 pixels per image |
 | skin32.bmp | The same sheet at double size, 32 by 32 pixels per image. Used for the double-size window and never rescaled for other sizes. |
-| screen.bmp | Windows bitmap of the window background |
+| screen.bmp | bitmap of the window background |
 | Any of the 24 .wav names above | Replacement sound |
 | skin.ini | A [Skin] section with Name=, Author= and Notes= lines, shown in Skin Selection |
 
@@ -866,7 +866,7 @@ There are 24 sound effects. Each file name below takes the extension
 
 | ID | requirement | source | basis |
 | --- | --- | --- | --- |
-| CUS-08 | At start-up the Windows client reads language set files, extension .wbl, from the Languages folder. | §3.1.3 | S |
+| CUS-08 | At start-up the first platform client reads language set files, extension .wbl, from the Languages folder. | §3.1.3 | S |
 | CUS-09 | A language set translates window text and in-game messages and carries a name, an author and notes. | §3.1.3 | S |
 | CUS-10 | Any text a set omits is shown in English. Removing the folder leaves English only. | §3.1.3 | S |
 | CUS-11 | English is built in. The screenshot also lists Dutch, Swedish, French and German sets. | §3.1.3 | F |
@@ -883,7 +883,7 @@ There are 24 sound effects. Each file name below takes the extension
 
 The implementation must tell these failures apart and report each to
 the user. The wording is free, and conditions the manual ties to
-particular Windows libraries are restated by their general cause (§3.5
+particular the first platform libraries are restated by their general cause (§3.5
 unless noted).
 
 | ID | condition | when | severity | required behaviour |
@@ -977,7 +977,7 @@ section 2.
 | 2.3 System Requirements | 2, for reference only |
 | 2.4 Shareware Information, 2.5 History | Out of scope |
 | 2.6 to 2.7 Archive contents | 2, 18 |
-| 2.8 Compatibility with the Macintosh-era prior art | 2 |
+| 2.8 Compatibility with the 1980s prior art | 2 |
 | 2.9.1 Driving the Tank | 5, 13 |
 | 2.9.2 Beginning the Game | 5 |
 | 2.9.3 Terrain | 4 |
@@ -990,7 +990,7 @@ section 2.
 | 2.9.11 to 2.9.12 The Screen and Remote Views | 13 |
 | 2.9.13 to 2.9.14 Notes and Other Maps | 4, 5, 6 |
 | 2.10 Brains | 16 |
-| 3.1 Windows | 14, with rules in 11 and 12 |
+| 3.1 The first platform | 14, with rules in 11 and 12 |
 | 3.2 Menus | 15 |
 | 3.3 Dedicated Server | 17 |
 | 3.4 Linux Specific Information | 2, 16, 18 |

@@ -7,7 +7,7 @@ Message-ID: <0001.20261012@treadcore.org>
 Organization: treadcore.org
 Keywords: prior-art, indirect-fire, drone-bubble, host-election, bevy,
           rust-workspace, build-memory
-X-Session: Alpine 3.24.1 aarch64 guest under UTM/QEMU on a Mac host,
+X-Session: Alpine 3.24.1 aarch64 guest under UTM/QEMU on the host,
            Hyprland/Wayland; Claude Code (Claude Fable 5.1) as the
            pair; Paul directing, reviewing, running git push by hand
 X-Commits: e5eaad3 17c71d3 3a26432 49cd8f9
@@ -86,8 +86,8 @@ II. BACKGROUND
       6. Rust with Bevy (or at least Rust); a build system of bash
          scripts called from Makefiles; make configure, make build,
          make debug with logs captured for AI-assisted development.
-      7. A pasted reference document on the prior art for the Macintosh [9]:
-         interface, AppleTalk ring networking, map editor, tutorial,
+      7. A pasted reference document on the 1980s prior art [9]:
+         interface, LAN ring networking, map editor, tutorial,
          Brains, and a "WorldLab" proposal for a modern successor.
 
     Later in the session the brief grew: the project is an "opening
@@ -101,7 +101,7 @@ II. BACKGROUND
 
       item                 value
       -------------------  --------------------------------------
-      host                 Mac, UTM/QEMU
+      host                 a laptop, UTM/QEMU
       guest                Alpine Linux 3.24.1, aarch64, musl
       kernel               6.18.52-0-lts
       session              Hyprland on Wayland (wayland-1)
@@ -120,7 +120,7 @@ II. BACKGROUND
 
     C. Prior art consulted
 
-    the prior art [9]; Tiled and a Python port of the prior art as mentioned in the pasted document;
+    the prior art [9]; a tile map editor and a Python port of the prior art as mentioned in the pasted document;
     the trade and institutional reporting in Section III.B.
 
 III. METHOD
@@ -146,7 +146,7 @@ III. METHOD
     Four web searches, extended mode, plus two follow-ups:
     vehicle-mounted counter-drone systems 2025-2026; swarm HUD and
     common operating picture; tanks in the indirect-fire role in
-    Ukraine; Bevy's current version; IronVision and crew displays;
+    Ukraine; Bevy's current version; see-through-armour crew displays;
     vehicles operating their own interceptor drones. The results and
     their URLs are in documentation/RESEARCH.md and in the References
     below. One check was done on Bevy's version against crates.io
@@ -520,7 +520,7 @@ VIII. NEXT STEPS
 
 ACKNOWLEDGMENTS
 
-    Stuart Cheshire, for the prior art and for showing in 1989 that a world can
+    The prior art's author, for showing in 1989 that a world can
     be playable, editable, networked and programmable at once. The
     reporters and institutes cited below, for the facts the rules are
     modelled on. The Bevy and Rust projects.
@@ -540,7 +540,7 @@ REFERENCES
         replace artillery," 5 May 2025. [Online]. Available: https://
         smallwarsjournal.com/2025/05/05/beyond-the-hype-why-drones-
         cannot-replace-artillery/ [Accessed: 12-Oct-2026].
-    [4] Militarnyi, "Interceptor drones integrated into Boxer armored
+    [4] Militarnyi, "Interceptor drones integrated into a wheeled armored
         vehicle." [Online]. Available: https://militarnyi.com/en/news/
         interceptor-drones-boxer-armored-vehicle/ [Accessed:
         12-Oct-2026].
@@ -551,14 +551,14 @@ REFERENCES
     [6] Hensoldt, "The future of the tank in the age of drones."
         [Online]. Available: https://www.hensoldt.net/insights/future-
         of-tanks-in-the-drone-era [Accessed: 12-Oct-2026].
-    [7] Elbit Systems, "IronVision." [Online]. Available: https://
+    [7] A see-through-armour helmet display, maker's page. [Online]. Available: https://
         www.elbitsystems.com/air-space/aircraft-systems/helmet-mounted-
         display/ironvision [Accessed: 12-Oct-2026].
     [8] Breaking Defense, "Bringing real autonomy to battlefield drone
         swarms," Oct. 2026. [Online]. Available: https://
         breakingdefense.com/2026/10/bringing-real-autonomy-to-
         battlefield-drone-swarms/ [Accessed: 12-Oct-2026].
-    [9] S. Cheshire, "Macintosh-era prior-art instructions," as reproduced at
+    [9] The prior art's author, "prior-art instructions," as reproduced at
         dialup.party and summarised in the reference document pasted
         into the brief; and "the prior art (1989)," MobyGames. [Accessed:
         12-Oct-2026 via the brief].

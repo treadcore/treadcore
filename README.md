@@ -133,7 +133,7 @@ source/treadcore-server   headless: bot matches, LAN host, LAN bot seat.
 source/treadcore-client   the Bevy window.
 scripts/                  what the Makefile calls.
 maps/                     map files (documentation/MAPS.md); make map writes a new one;
-                          maps/prior-art/ holds five converted Macintosh-era prior-art maps.
+                          maps/prior-art/ holds five converted prior-art maps.
 
 
 vendor/                   external code and blobs vendored by the author, with their licences.

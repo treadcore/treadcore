@@ -157,7 +157,7 @@ Journal: [0006](journal/0006-2026-10-12-map-files.txt).
   (now the whole `Map`, up to 130 KiB with a map file) goes in pieces
   (backlog item 6 done). Wire `VERSION` 6.
 - New: `scripts/priorart2map.py` and `make convert FROM=file` turn a
-  Macintosh-era prior-art map (its binary format, v1) into a treadcore map; five
+  prior-art map (its binary format, v1) into a treadcore map; five
   community maps converted into `maps/prior-art/` (provenance and the
   licence question in `vendor/THIRD-PARTY.md`); `maps/island.map` is
   the generated default written out.

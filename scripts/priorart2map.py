@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """priorart2map.py IN.map [OUT.map]
 
-Convert a Macintosh-era prior-art map (its binary map format, version 1, as the
+Convert a prior-art map (its binary map format, version 1, as the
 the prior art and prior-art map editors write it) into a treadcore map file
 (documentation/MAPS.md). Run it with `python3 -I`, or `make convert
 FROM=file.map`; the input is a binary from outside and is read as data

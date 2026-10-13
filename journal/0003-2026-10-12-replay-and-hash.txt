@@ -171,7 +171,7 @@ VI. DISCUSSION
 VII. OPEN PROBLEMS
 
     1. The cross-machine proof: a replay recorded here, verified on
-       another machine (the Mac host, or a CI runner). Expected to
+       another machine (the host machine, or a CI runner). Expected to
        pass: bincode is byte-exact and Rust's f32 arithmetic has no
        fused multiply-add by default; but expected is not measured.
     2. A replay corpus: a directory of recorded matches checked in or
@@ -182,7 +182,7 @@ VII. OPEN PROBLEMS
 VIII. NEXT STEPS
 
     1. Record three or four reference matches (seeds, player counts)
-       into `build/replays/` and verify them on the Mac host.
+       into `build/replays/` and verify them on the host machine.
     2. Roadmap step 3, Pillboys, now that a change to `step` can be
        shown to do only what it meant to.
     3. Tag v0.1.0-rc.1 once the window opens somewhere (RELEASE.md).

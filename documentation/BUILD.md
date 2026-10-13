@@ -150,7 +150,7 @@ The fix is one package, and it needs root:
 Then `target/debug/treadcore-warm` again. If it opens, `make run` will.
 Slow (every pixel is the CPU's), but the overlay is lines and 16 384
 small sprites, which llvmpipe draws at a playable rate on four cores.
-The alternative the roadmap names, developing the window on the Mac
+The alternative the roadmap names, developing the window on the host machine
 host, stays open: the headless crates do not care either way.
 
 Also measured: with 8 GB (the VM was given 8192 MB in UTM after the

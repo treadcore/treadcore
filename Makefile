@@ -28,7 +28,7 @@
 #   make map         write the generated map for SEED to MAP (default
 #                    maps/generated-SEED.map): the start of a hand-made one;
 #                    MAP=maps/x.map make debug|run|host plays on it
-#   make convert FROM=file.map  convert a Macintosh-era prior-art map into maps/prior-art/
+#   make convert FROM=file.map  convert a prior-art map into maps/prior-art/
 #   make replay      play back the newest build/logs/replay-*.json (or
 #                    REPLAY=file) and check every world hash it recorded;
 #                    the regression test for a change to the rules

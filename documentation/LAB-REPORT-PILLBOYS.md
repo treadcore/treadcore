@@ -3,8 +3,8 @@
 12 October 2026, evening. A requirement arrived in the form of two
 documents: a beginner's tutorial for a "Tank Pillboy Game" (a prior-art
 descendant with pillboxes, depots, momentum driving and boats), and a
-technical audit of that tutorial against Stuart Cheshire's original
-Macintosh-era prior-art manual. The audit's verdict: the tutorial matched
+technical audit of that tutorial against the prior art's original
+1980s manual. The audit's verdict: the tutorial matched
 the prior art's core loop but got three things wrong, and could not, from a
 manual alone, say anything about the game's code. This report takes
 the audit's corrections as the requirement for treadcore's Pillboys,

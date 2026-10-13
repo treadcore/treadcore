@@ -86,11 +86,11 @@ The maps in `maps/`:
 | file | what |
 | --- | --- |
 | `maps/island.map` | the generated default (seed 0x7EADC0DE), written by `make map`, so a reader can see the format at full size |
-| `maps/prior-art/*.map` | five Macintosh-era prior-art maps converted by `scripts/priorart2map.py` (below) |
+| `maps/prior-art/*.map` | five prior-art maps converted by `scripts/priorart2map.py` (below) |
 
 ## Converting prior-art maps
 
-`scripts/priorart2map.py` reads a Macintosh-era prior-art map (the binary
+`scripts/priorart2map.py` reads a prior-art map (the binary
 format, version 1, as the prior art and prior-art editors wrote it) and writes
 a treadcore map at the prior art's size, 256 x 256:
 
@@ -116,9 +116,9 @@ the open question of their licence):
 | `fidos-airstrip.map` | Fido's Airstrip | 16 | 16 | 5 | 826 | 3 837 |
 | `fortressisles2.map` | FortressIsles2 | 16 | 10 | 15 | 6 803 | 5 328 |
 | `fortressislesx.map` | FortressIslesX | 16 | 12 | 16 | 7 361 | 5 320 |
-| `godzilla.map` | Godzilla | 16 | 16 | 16 | 0 | 2 229 |
+| `big-lizard.map` | (a film monster's name; dropped) | 16 | 16 | 16 | 0 | 2 229 |
 
-`MAP=maps/prior-art/godzilla.map make debug` plays sixteen bots on one. The
+`MAP=maps/prior-art/big-lizard.map make debug` plays sixteen bots on one. The
 bots' doctrine (firing position 25 tiles short of an objective, a squad
 sent 20 tiles) was written for a 128-tile island; on a prior-art map the
 distances are double and the islands are often several, so expect

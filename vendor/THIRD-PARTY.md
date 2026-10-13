@@ -29,7 +29,7 @@ them from the lock file.
 
 ## Maps (in `maps/prior-art/`)
 
-Five Macintosh-era prior-art community maps from the author's own collection,
+Five 1990s prior-art community maps from the author's own collection,
 converted to treadcore's text format by `scripts/priorart2map.py` on 12
 October 2026. Their authors are not named in the files and their
 licence is not established: prior-art maps were traded freely in the 1990s
@@ -43,7 +43,7 @@ and a map with a known author and licence gets a proper entry here.
 | `maps/prior-art/fidos-airstrip.map` | Fido's Airstrip | author's collection | not established |
 | `maps/prior-art/fortressisles2.map` | FortressIsles2 | author's collection | not established |
 | `maps/prior-art/fortressislesx.map` | FortressIslesX | author's collection | not established |
-| `maps/prior-art/godzilla.map` | Godzilla | author's collection | not established |
+| `maps/prior-art/big-lizard.map` | (a film monster's name, dropped: a trademark) | author's collection | not established |
 
 The converter is treadcore's own code (MIT). The prior-art map file format
 it reads was learned from the files themselves and the format's public
@@ -52,7 +52,7 @@ description; no prior-art code was consulted.
 ## Ideas, not code
 
 
-- The prior art (Stuart Cheshire, 1987/1989): the shared mutable world, the
+- The prior art (1987/1989): the shared mutable world, the
   Brain interface, peers organising their own network. No code or
   assets from any prior-art implementation are used. The map logic in
   the prior art's open-source port (GPL) and in a Python port of it

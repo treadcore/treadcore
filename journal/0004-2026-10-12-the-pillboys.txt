@@ -228,7 +228,7 @@ VIII. NEXT STEPS
 
 ACKNOWLEDGMENTS
 
-    Paul, for the control model; John Morrison's prior-art manual, as
+    Paul, for the control model; the prior art's manual, as
     restated in SPEC-PRIOR-ART-1.14.md, for the builder's rules.
 
 REFERENCES

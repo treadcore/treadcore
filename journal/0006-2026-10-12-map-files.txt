@@ -2,7 +2,7 @@ Newsgroups: treadcore.dev
 From: Paul Richeson <paulr@sdf.org>
 Date: Sun, 12 Oct 2026 20:30:00 -0700
 Subject: [JOURNAL 0006] Map files, the editor that is any editor, and
-         five maps from the Macintosh: roadmap step 5
+         five maps from the prior art: roadmap step 5
 Message-ID: <0006.20261012@treadcore.org>
 In-Reply-To: <0005.20261012@treadcore.org>
 Organization: treadcore.org
@@ -33,7 +33,7 @@ ABSTRACT
     generated map to the bit. A scenario names its map as the
     scenario's seed, another seed, or the text of a file carried
     whole, so replays and Welcomes are self-contained. Mid-session
-    Paul produced five Macintosh-era prior-art maps (the binary
+    Paul produced five prior-art maps (the binary
     format); a converter was written, the maps turned out to be 256 x
     256, and the world was made to take its size from the map after a
     detour through making 256 the default and back. Welcome, now up to
@@ -133,7 +133,7 @@ IV. CHRONOLOGY
         Welcome's map used as is. MAPS.md written.
      2. Paul: look in ~/Downloads/SharedVM for .map files. Five there:
         Constanine, Fido's Airstrip, FortressIsles2, FortressIslesX,
-        Godzilla. The binary format, version 1: pills (5 bytes), bases (6),
+        big-lizard. The binary format, version 1: pills (5 bytes), bases (6),
         starts (3), then run-length rows: a run is datalen, y, startx,
         endx, nibbles; a nibble under 8 means that many plus one
         literal terrains follow, 8 or more means the next nibble
@@ -178,18 +178,18 @@ IV. CHRONOLOGY
         returned to 18:2 and 137 664 vs 94 885 exactly.
      9. The five maps converted into `maps/prior-art/`; each loads
         (`--map`), 10 to 16 starts, 10 to 16 depots, 5 to 16
-        pillboxes. Godzilla, sixteen bots, 90 s: 21 pillbox shots and
+        pillboxes. big-lizard, sixteen bots, 90 s: 21 pillbox shots and
         a pillbox kill, the first in bot play; and 863 refused orders,
         791 of them "site unreachable": squads ordered across water.
         FortressIslesX, 60 s: 1 345 refusals, "unreachable" and
         "water", tanks ordered across water four times a second.
     10. The RuleBot reads its Rejected events: a pillbox the squad
         cannot reach and a tile the tank cannot drive to stay refused.
-        Godzilla, 90 s: 396 refusals (from 863), the rest fresh scoot
+        big-lizard, 90 s: 396 refusals (from 863), the rest fresh scoot
         points the bot computes each time; FortressIslesX, 60 s: 284
         (from 1 345). The proofs unchanged.
     11. `make map` writes `maps/island.map`; `make convert FROM=file`;
-        `make replay` on the Godzilla match: all checkpoints; lobby-
+        `make replay` on the big-lizard match: all checkpoints; lobby-
         test: PASS, one hash. Documents, vendor notes, this entry.
 
 V. RESULTS
@@ -209,7 +209,7 @@ V. RESULTS
       godzilla            256x256  16      16      16         0
       island (generated)  128x128  16      17      20         0
 
-    C. Godzilla, sixteen RuleBots, 90 game seconds
+    C. big-lizard, sixteen RuleBots, 90 game seconds
 
       measure                      before memory   after
       ---------------------------  -------------   -------
@@ -243,7 +243,7 @@ VI. DISCUSSION
     Third, the ancestor's maps make the pillbox fire. On the
     generated island the router steers round every gun; on the prior art's
     islands the road is the only way, and the first pillbox kill in
-    bot play happened on Godzilla without any change to the rules.
+    bot play happened on big-lizard without any change to the rules.
     Backlog item 14 is still a design question for the generated map,
     but it is answered for the hand-made ones, which is what maps
     were for.
@@ -274,7 +274,7 @@ ACKNOWLEDGMENTS
 
     Paul, for the maps and for changing his mind about 256 in time;
     the unnamed authors of Constanine, Fido's Airstrip, FortressIsles
-    and Godzilla.
+    and big-lizard.
 
 REFERENCES
 
@@ -297,7 +297,7 @@ APPENDIX B. ARTIFACTS
     Maps            maps/island.map; maps/prior-art/{constanine,fidos-
                     airstrip,fortressisles2,fortressislesx,godzilla}.map
     Converter       scripts/priorart2map.py
-    Traces          build/logs/debug-20261012-20*.log (Godzilla,
+    Traces          build/logs/debug-20261012-20*.log (big-lizard,
                     FortressIslesX, default) with replays beside them
     Journal         journal/0006-2026-10-12-map-files.txt (this)
 

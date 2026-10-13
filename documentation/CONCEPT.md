@@ -26,8 +26,8 @@ The brief asked for:
 6. Rust, with Bevy; a build system of bash scripts called from
    Makefiles, with `make configure`, `make build`, and `make debug`
    capturing verbose logs for AI-assisted development and debugging.
-7. A reference document on the prior art for the Macintosh: its interface,
-   AppleTalk networking (a ring of peers forwarding to their
+7. A reference document on the 1980s prior art: its interface, its
+   LAN networking (a ring of peers forwarding to their
    neighbour, with new players placed to minimise ring latency), its
    map editor, its tutorial, and its Brains (external programs that
    drove a tank through the same interface a player used).
@@ -41,7 +41,7 @@ The prior art's enduring idea is not tank combat. It is that a world can be
 simultaneously playable, editable, networked and programmable: a
 shared, mutable terrain; many independent machines in one game; and a
 controller interface open to programs as well as people. Its network
-was a ring because 1989 hardware and AppleTalk made a ring the cheap
+was a ring because 1989 hardware and its LAN protocol made a ring the cheap
 thing to build, and the ring's weakness (one slow peer slows everyone,
 one dropped peer breaks the forwarding path) was the price.
 
@@ -58,14 +58,14 @@ The reporting gathered in RESEARCH.md says four things plainly:
   at up to ten kilometres. Manuals now describe "roaming tanks" that
   fire a few rounds from a prepared position and move. The tank
   became a mobile gun with a sensor problem.
-- **The vehicle is getting its own air arm.** Boxer with five
-  interceptor drones and a dedicated drone operator; the KNDS Leopard
+- **The vehicle is getting its own air arm.** A European wheeled
+  carrier with five interceptor drones and a dedicated drone operator; a main battle tank
   concept with recon drones ahead and tube-launched interceptors;
-  ASELSAN's GÖKALP and Diehl's Garmr hunting small drones from a
-  vehicle; Merops in service since 2024. Counter-drone is becoming
+  two vehicle-mounted counter-drone systems hunting small drones from
+  a vehicle; a third in service since 2024. Counter-drone is becoming
   organic to the vehicle, the way close-in weapons are organic to a
   ship.
-- **The crew sees through the drones.** IronVision and its
+- **The crew sees through the drones.** A see-through-armour helmet display and its
   descendants put the vehicle's cameras, the drones' video and the
   tactical picture on the crew's eyes under closed hatches. The
   crew's picture is telemetry.

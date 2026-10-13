@@ -265,9 +265,9 @@ IV. CHRONOLOGY
 
     18. After the push, Paul sent a clean-room functional
         specification of the prior art, version 1.14 (256 requirements with
-        IDs, sources and basis codes, by @Micro) with the instruction
-        to write it into a document, keep none of the Macintosh
-        AppleTalk networking, and have the backlog reference it.
+        IDs, sources and basis codes, by the spec's author) with the
+        instruction to write it into a document, keep none of the
+        1980s LAN ring networking, and have the backlog reference it.
         Written as documentation/SPEC-PRIOR-ART-1.14.md with a preface
         mapping each of its sections to adopted, adapted or not
         adopted; its networking section is reference only. ROADMAP
@@ -444,7 +444,7 @@ ACKNOWLEDGMENTS
 
     Paul, for the direction, the number sixteen, and the Pillboys. The
     author of the prior-art tutorial audit, whose corrections became the
-    Pillboy requirement. Stuart Cheshire, again.
+    Pillboy requirement. The prior art's author, again.
 
 REFERENCES
 

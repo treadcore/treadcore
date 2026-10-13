@@ -39,7 +39,7 @@ touches the prior-art-derived layer (3, 5, 6, 6b, 6c, 6d) cites its
 requirement IDs, and a proposal that changes one of those mechanics
 says which IDs it keeps, adapts or drops. Its preface says which parts
 treadcore adopts; its networking (section 12) is reference only, and
-nothing of the Macintosh-era prior art's AppleTalk ring is in it or in treadcore.
+nothing of the prior art's LAN ring is in it or in treadcore.
 
 ## Backlog: what the first traces found
 
@@ -326,7 +326,7 @@ host. The world is built at the size the file declares (the generator
 makes 128, the prior art's maps are 256): swarm edges, the brains' clamps and
 the client's camera take it from the map, and `Welcome` is sent in
 `Chunk`s when the map does not fit a datagram (backlog item 6, done).
-`scripts/priorart2map.py` and `make convert` turn a Macintosh-era prior-art map
+`scripts/priorart2map.py` and `make convert` turn a prior-art map
 (its binary format, v1) into a treadcore map; five converted community maps
 ship in `maps/prior-art/` (provenance in `vendor/THIRD-PARTY.md`). Proof:
 `generate(seed).to_text()` reads back equal for two seeds and writes
