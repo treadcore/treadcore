@@ -9,6 +9,7 @@
 
 use crate::hud::HudState;
 use crate::session::View;
+use crate::voxel;
 use crate::{player_color, to_screen, TILE};
 use bevy::prelude::*;
 use std::collections::HashMap;
@@ -42,7 +43,13 @@ pub struct Sprites {
     pub map_built: bool,
     pub cells: Vec<u8>,
     pub tiles: Vec<Entity>,
+    /// Every moving or standing thing: a parent whose children are its
+    /// cubes (voxel.rs) and its label; and the key its cubes were
+    /// built for.
     pub ents: HashMap<EntityId, Entity>,
+    pub keys: HashMap<EntityId, u64>,
+    /// Wall tiles, as blocks of cubes, by cell index.
+    pub walls: HashMap<usize, Entity>,
 }
 
 /// Which tiles the player can see, recomputed when an observation lands.
@@ -63,16 +70,32 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
-pub fn terrain_color(t: Terrain) -> Color {
+/// Bolo's ground: dark green grass, bright green forest in a checker
+/// (its leaf pattern, at one sprite a tile), grey road with a lighter
+/// checker for its dashes, cyan water, tan planks and blocks.
+pub fn terrain_color(t: Terrain, x: usize, y: usize) -> Color {
+    let odd = (x + y) % 2 == 1;
     match t {
-        Terrain::Grass => Color::srgb(0.28, 0.42, 0.22),
-        Terrain::Forest => Color::srgb(0.12, 0.27, 0.13),
-        Terrain::Road => Color::srgb(0.46, 0.42, 0.34),
-        Terrain::Water => Color::srgb(0.13, 0.25, 0.42),
-        Terrain::Bridge => Color::srgb(0.55, 0.47, 0.33),
-        Terrain::Rubble => Color::srgb(0.30, 0.26, 0.22),
-        Terrain::Depot => Color::srgb(0.55, 0.55, 0.50),
-        Terrain::Wall => Color::srgb(0.62, 0.58, 0.50),
+        Terrain::Grass => Color::srgb(0.14, 0.34, 0.13),
+        Terrain::Forest => {
+            if odd {
+                Color::srgb(0.16, 0.60, 0.20)
+            } else {
+                Color::srgb(0.10, 0.46, 0.15)
+            }
+        }
+        Terrain::Road => {
+            if odd {
+                Color::srgb(0.50, 0.50, 0.50)
+            } else {
+                Color::srgb(0.42, 0.42, 0.42)
+            }
+        }
+        Terrain::Water => Color::srgb(0.0, 0.58, 0.72),
+        Terrain::Bridge => Color::srgb(0.62, 0.50, 0.34),
+        Terrain::Rubble => Color::srgb(0.30, 0.25, 0.20),
+        Terrain::Depot => Color::srgb(0.50, 0.46, 0.38),
+        Terrain::Wall => Color::srgb(0.55, 0.42, 0.26),
     }
 }
 
@@ -86,7 +109,7 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
                 let pos = to_screen(V2::new(x as f32 + 0.5, y as f32 + 0.5));
                 let id = commands
                     .spawn((
-                        Sprite { color: terrain_color(t), custom_size: Some(Vec2::splat(TILE)), ..default() },
+                        Sprite { color: terrain_color(t, x, y), custom_size: Some(Vec2::splat(TILE)), ..default() },
                         Transform::from_translation(pos.extend(0.0)),
                         Tile(y * map.w + x),
                     ))
@@ -99,15 +122,37 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
         sprites.map_built = true;
         return;
     }
-    // Craters, and fog changes: recolour only what changed.
+    // Craters, and fog changes: recolour only what changed. Walls are
+    // blocks of cubes standing on their tile, raised when the tile
+    // becomes a wall and taken down when it is knocked to rubble.
     let fog_changed = fog.is_changed();
+    let w = map.w;
+    let mut changed: Vec<(usize, u8)> = Vec::new();
     for (i, (&new, &old)) in map.cells.iter().zip(sprites.cells.iter()).enumerate() {
         let vis = fog.visible.get(i).copied().unwrap_or(true);
         if new != old || fog_changed {
             if let Ok(mut s) = tiles.get_mut(sprites.tiles[i]) {
-                let c = terrain_color(Terrain::from_u8(new));
+                let c = terrain_color(Terrain::from_u8(new), i % w, i / w);
                 s.color = if vis { c } else { c.darker(0.12) };
             }
+        }
+        if new != old {
+            changed.push((i, new));
+        }
+    }
+    for (i, new) in changed {
+        let is_wall = Terrain::from_u8(new) == Terrain::Wall;
+        match (is_wall, sprites.walls.get(&i).copied()) {
+            (true, None) => {
+                let pos = to_screen(V2::new((i % w) as f32 + 0.5, (i / w) as f32 + 0.5));
+                let e = commands.spawn((Transform::from_translation(pos.extend(0.9)), Visibility::Visible)).with_children(|p| voxel::wall().spawn(p, 0.0)).id();
+                sprites.walls.insert(i, e);
+            }
+            (false, Some(e)) => {
+                commands.entity(e).despawn();
+                sprites.walls.remove(&i);
+            }
+            _ => {}
         }
     }
     if map.cells != sprites.cells {
@@ -152,7 +197,25 @@ fn update_fog(view: Res<View>, mut fog: ResMut<Fog>) {
     fog.visible = vis;
 }
 
-fn sync_entities(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprites>, mut q: Query<(&mut Transform, &mut Sprite, &mut Visibility), With<Ent>>, mut labels: Query<(&mut Text2d, &mut TextColor), With<Label>>, children: Query<&Children>) {
+/// A model's identity for the cache: kind, colour, and a variant (alive,
+/// health). When it changes, the cubes are built again.
+fn model_key(kind: u8, color: Color, variant: u32) -> u64 {
+    let c = color.to_srgba();
+    let mut h: u64 = kind as u64 ^ ((variant as u64) << 8);
+    for v in [c.red, c.green, c.blue] {
+        h = h.wrapping_mul(0x100000001b3) ^ v.to_bits() as u64;
+    }
+    h
+}
+
+fn sync_entities(
+    mut commands: Commands,
+    view: Res<View>,
+    mut sprites: ResMut<Sprites>,
+    mut q: Query<(&mut Transform, &mut Visibility), With<Ent>>,
+    mut labels: Query<(&mut Text2d, &mut TextColor), With<Label>>,
+    children: Query<&Children>,
+) {
     let Some(obs) = view.obs.as_ref() else { return };
     let mut seen: Vec<EntityId> = Vec::new();
     let me = obs.player;
@@ -160,16 +223,29 @@ fn sync_entities(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sp
     // snapshot stream still moves at 60 fps.
     let ahead = view.received.map(|r| r.elapsed().as_secs_f32().min(0.2)).unwrap_or(0.0);
 
-    let mut place = |commands: &mut Commands, id: EntityId, pos: Vec2, rot: f32, size: Vec2, color: Color, z: f32, label: Option<(String, Color)>| {
+    // Place a model: a parent that moves, children that are its cubes
+    // (rebuilt when the model's key changes) and its label.
+    let mut place = |commands: &mut Commands, id: EntityId, pos: Vec2, rot: f32, key: u64, build: &dyn Fn() -> voxel::Model, z: f32, label: Option<(String, Color)>| {
         seen.push(id);
         let tf = Transform::from_translation(pos.extend(z)).with_rotation(Quat::from_rotation_z(rot));
         match sprites.ents.get(&id).copied() {
             Some(e) => {
-                if let Ok((mut t, mut s, mut v)) = q.get_mut(e) {
+                if let Ok((mut t, mut v)) = q.get_mut(e) {
                     *t = tf;
-                    s.color = color;
-                    s.custom_size = Some(size);
                     *v = Visibility::Visible;
+                }
+                if sprites.keys.get(&id).copied() != Some(key) {
+                    // The cubes again, the label kept.
+                    if let Ok(ch) = children.get(e) {
+                        for c_e in ch.iter() {
+                            if labels.get(c_e).is_err() {
+                                commands.entity(c_e).despawn();
+                            }
+                        }
+                    }
+                    let m = build();
+                    commands.entity(e).with_children(|p| m.spawn(p, 0.0));
+                    sprites.keys.insert(id, key);
                 }
                 if let Some((text, c)) = label {
                     if let Ok(ch) = children.get(e) {
@@ -185,14 +261,17 @@ fn sync_entities(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sp
                 }
             }
             None => {
-                let mut ec = commands.spawn((Sprite { color, custom_size: Some(size), ..default() }, tf, Ent(id)));
-                if let Some((text, c)) = label {
-                    ec.with_children(|p| {
+                let m = build();
+                let mut ec = commands.spawn((tf, Visibility::Visible, Ent(id)));
+                ec.with_children(|p| {
+                    m.spawn(p, 0.0);
+                    if let Some((text, c)) = label {
                         p.spawn((Text2d::new(text), TextFont { font_size: 11.0, ..default() }, TextColor(c), Transform::from_translation(Vec3::new(0.0, TILE * 1.4, 1.0)), Label));
-                    });
-                }
+                    }
+                });
                 let e = ec.id();
                 sprites.ents.insert(id, e);
+                sprites.keys.insert(id, key);
             }
         }
     };
@@ -207,67 +286,71 @@ fn sync_entities(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sp
             _ => (t, ahead),
         };
         let pos = t.pos + V2::from_heading(t.heading).scale(t.speed * ahead);
-        let c = if t.alive { player_color(t.owner) } else { Color::srgb(0.2, 0.2, 0.2) };
+        let c = player_color(t.owner);
         let name = obs.players.get(t.owner as usize).map(|p| p.name.clone()).unwrap_or_default();
         let label = format!("{}{} {:.0}", if t.owner == me { "* " } else { "" }, name, t.armor);
-        place(&mut commands, t.id, to_screen(pos), -t.heading, Vec2::new(TILE * 1.6, TILE * 1.0), c, 2.0, Some((label, c)));
+        let alive = t.alive;
+        place(&mut commands, t.id, to_screen(pos), -t.heading, model_key(1, c, alive as u32), &|| voxel::tank(c, alive), 2.0, Some((label, if alive { c } else { Color::srgb(0.5, 0.5, 0.5) })));
     }
     for d in &obs.drones {
         let pos = d.pos + V2::from_heading(d.heading).scale(drone_speed(d.kind) * ahead * 0.5);
         let base = player_color(d.owner);
-        let (size, c) = match d.kind {
-            DroneKind::Recon => (Vec2::splat(TILE * 0.7), base),
-            DroneKind::Interceptor => (Vec2::splat(TILE * 0.5), base.lighter(0.15)),
-            DroneKind::Strike => (Vec2::new(TILE * 0.8, TILE * 0.4), if d.owner == SWARM_OWNER { Color::srgb(1.0, 0.25, 0.2) } else { base.darker(0.1) }),
-        };
+        let c = if d.kind == DroneKind::Strike && d.owner == SWARM_OWNER { Color::srgb(1.0, 0.25, 0.2) } else { base };
         let label = if d.owner == me {
             let k = match d.kind {
                 DroneKind::Recon => "R",
                 DroneKind::Interceptor => "I",
                 DroneKind::Strike => "S",
             };
-            let lc = link_color(d.link);
-            Some((format!("{} {:.0}% {:.0}s", k, d.link * 100.0, d.battery), lc))
+            Some((format!("{} {:.0}% {:.0}s", k, d.link * 100.0, d.battery), link_color(d.link)))
         } else {
             None
         };
-        place(&mut commands, d.id, to_screen(pos), -d.heading, size, c, 4.0, label);
+        let kind = d.kind;
+        place(&mut commands, d.id, to_screen(pos), -d.heading, model_key(2 + kind as u8, c, 0), &|| match kind {
+            DroneKind::Recon => voxel::recon(c),
+            DroneKind::Interceptor => voxel::interceptor(c),
+            DroneKind::Strike => voxel::strike(c),
+        }, 4.0, label);
     }
     for s in &obs.shells {
         let p = s.pos_at(obs.tick);
         let c = if s.kind == ShellKind::Indirect { Color::srgb(1.0, 0.9, 0.6) } else { Color::srgb(1.0, 1.0, 1.0) };
-        place(&mut commands, s.id, to_screen(p), 0.0, Vec2::splat(TILE * 0.35), c, 3.0, None);
+        place(&mut commands, s.id, to_screen(p), 0.0, model_key(6, c, 0), &|| voxel::shell(c), 3.0, None);
     }
     for d in &obs.depots {
-        let c = d.owner.map(player_color).unwrap_or(Color::srgb(0.7, 0.7, 0.7));
-        place(&mut commands, d.id, to_screen(d.pos), 0.0, Vec2::splat(TILE * 1.2), c, 1.0, Some(("depot".into(), c)));
+        let owner = d.owner.map(player_color);
+        let c = owner.unwrap_or(Color::srgb(0.7, 0.7, 0.7));
+        place(&mut commands, d.id, to_screen(d.pos), 0.0, model_key(7, c, d.owner.is_some() as u32), &|| voxel::depot(owner), 1.0, Some(("depot".into(), c)));
     }
-    // Pillboxes: a square, the owner's colour (grey neutral, dark dead),
-    // labelled with health.
+    // Pillboxes: Bolo's pyramid, tinted by the owner, the gun on top
+    // while it has more than half its health; labelled with health.
     for p in &obs.pillboxes {
-        let base = p.owner.map(player_color).unwrap_or(Color::srgb(0.75, 0.75, 0.7));
-        let c = if p.alive() { base } else { Color::srgb(0.25, 0.22, 0.2) };
-        let label = if p.alive() { format!("pb {:.0}", p.health) } else { "pb dead".to_string() };
-        place(&mut commands, p.id, to_screen(p.pos), 0.785, Vec2::splat(TILE * 1.0), c, 1.5, Some((label, c)));
+        let owner = p.owner.map(player_color);
+        let c = owner.unwrap_or(Color::srgb(0.75, 0.75, 0.7));
+        let alive = p.alive();
+        let health = p.health / PILLBOX_HEALTH;
+        let label = if alive { format!("pb {:.0}", p.health) } else { "pb dead".to_string() };
+        let bucket = if !alive { 0 } else if health > 0.5 { 2 } else { 1 };
+        place(&mut commands, p.id, to_screen(p.pos), 0.0, model_key(8, c, bucket), &|| voxel::pillbox(owner, health, alive), 1.5, Some((label, if alive { c } else { Color::srgb(0.45, 0.42, 0.4) })));
     }
     // Mines I know about: mine in my colour, found hostile ones red.
     for m in &obs.mines {
-        let c = if m.owner == me { player_color(me).with_alpha(0.9) } else { Color::srgb(1.0, 0.3, 0.25) };
-        place(&mut commands, m.id, to_screen(m.pos), 0.785, Vec2::splat(TILE * 0.4), c, 1.2, None);
+        let c = if m.owner == me { player_color(me) } else { voxel::MINE };
+        place(&mut commands, m.id, to_screen(m.pos), 0.0, model_key(9, c, 0), &|| voxel::mine(c), 1.2, None);
     }
-    // Squads out in the field: a small figure in the owner's colour,
-
-    // keyed by the tank id with a high bit so it never collides.
+    // Squads out in the field: two men in the owner's colour, keyed by
+    // the tank id with a high bit so it never collides.
     for t in obs.tanks.iter().filter(|t| t.alive && t.pillboys.deployed()) {
         let c = player_color(t.owner);
         let label = if t.owner == me { Some((format!("PB {}", t.pillboys.strength), c)) } else { None };
-        place(&mut commands, t.id | 0x8000_0000, to_screen(t.pillboys.pos), 0.0, Vec2::splat(TILE * 0.45), c.lighter(0.1), 2.5, label);
+        place(&mut commands, t.id | 0x8000_0000, to_screen(t.pillboys.pos), 0.0, model_key(10, c, 0), &|| voxel::squad(c), 2.5, label);
     }
     // Anything not in this observation is hidden, not despawned: it will
     // most likely be back in the next one.
     let gone: Vec<(EntityId, Entity)> = sprites.ents.iter().filter(|(id, _)| !seen.contains(id)).map(|(a, b)| (*a, *b)).collect();
     for (_, e) in gone {
-        if let Ok((_, _, mut v)) = q.get_mut(e) {
+        if let Ok((_, mut v)) = q.get_mut(e) {
             *v = Visibility::Hidden;
         }
     }

@@ -1,0 +1,176 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 11:50:00 -0700
+Subject: [JOURNAL 0016] Bolo's colours, and assets out of cubes
+Message-ID: <0016.20261013@treadcore.org>
+In-Reply-To: <0015.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: palette, voxel, cubes, oblique, sprites, walls
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "can we color it like bolo. can we
+           create 3d assets out of cubes. can we color them like the
+           pictures."
+X-Commits: (next)
+
+              BOLO'S COLOURS, AND ASSETS OUT OF CUBES
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    Three questions, three yeses with one condition. The ground is now
+    Bolo's palette: cyan water, bright checkered forest, dark grass,
+    grey road with dashes, tan walls. Every thing on the map is a
+    model of cubes on a grid of fifths of a tile, drawn in an oblique
+    projection with sprites, a top face and a shaded side face each,
+    so a tank is a hull with tracks, a turret and a barrel, and a
+    pillbox a tan pyramid with an orange gun. The condition: the
+    window stays two-dimensional. No PBR crates, no tilting camera;
+    the cubes stand up by their drawing, as Bolo's pillboxes did. Two
+    frames in the gallery.
+
+INDEX TERMS
+
+    palette, voxel, oblique projection, Model, Cube, wall blocks,
+    model key.
+
+
+I. INTRODUCTION
+
+    After the bezel (0015) the map was the last thing not in Bolo's
+    look: flat tiles in muted colours, every thing a rectangle in its
+    seat's colour. The ask was for Bolo's colours and for assets built
+    from cubes, coloured like the pictures.
+
+II. BACKGROUND
+
+    Carried from 0015: the text panels' one ink; the air box; the
+    playability items. The renderer: one sprite a tile, one sprite an
+    entity, placed by id. The workspace's Bevy has sprites, text, UI
+    and gizmos and no bevy_pbr, by the decision in BUILD.md that the
+    engine build fit an 8 GB machine.
+
+III. METHOD
+
+    The palette first, a function of terrain and tile parity. Then a
+    voxel module: a model is a list of cubes; a cube draws as two
+    sprites in an oblique projection. Then the renderer: every entity
+    a parent with cube children and a label, rebuilt when its model
+    key changes; walls as blocks raised when a cell becomes Wall. A
+    shoot on a converted community map at three zooms.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      cubes as two sprites in  bevy_pbr and a 3D      an hour of
+      an oblique projection    camera                 engine build on
+                                                      this machine,
+                                                      and a different
+                                                      game to look at
+      a fifth of a tile a      a tenth                a tank is eight
+      cube                                            cubes long at
+                                                      13 px; a tenth
+                                                      would not read
+      rebuild cubes on a key   rebuild every frame;   four hundred
+      change only              never                  sprites a frame
+                                                      is waste; owner
+                                                      and health do
+                                                      change
+      a checker for forest     a texture              one sprite a
+      and road                                        tile, no images
+      walls as models in the   a wall as a tile       a wall stands
+      map builder              colour only            up; the squad
+                                                      built it
+
+IV. CHRONOLOGY
+
+     1. voxel.rs: `Cube`, `Model`, `spawn` (a side face where no cube
+        stands in front at that level, a top face lightened by
+        height, depth by height and row), and the models: tank,
+        pillbox, depot, recon, interceptor, strike, shell, mine,
+        squad, wall.
+     2. render.rs: `terrain_color(t, x, y)` in Bolo's palette;
+        `sync_entities` around models with `model_key` (kind, colour,
+        variant); `build_map` raising and dropping wall blocks as
+        cells change. One borrow to untangle (the changed cells
+        collected, then walked). Built.
+     3. The shoot on big-lizard.map, eight seats: the start, the air
+        up, two zooms in, one out, a drive. At four wheel clicks the
+        tank is a hull of cubes with tracks and a turret; at the map
+        scale the pillboxes are tan with an orange top and the depots
+        tan plates. Water cyan, forest a bright checker.
+     4. Two frames published (15, 16), the gallery, INTERFACE.md
+        section 8, CHANGELOG, INDEX.md; this entry.
+
+V. RESULTS
+
+      measure                             value
+      ----------------------------------  --------------------
+      voxel.rs                            190 lines, new
+      render.rs                           407 to 500 lines
+      cubes in a tank                     52 (40 hull, 9 turret,
+                                          4 barrel, less overlap)
+      sprites a tank                      about 90 (two a cube,
+                                          fewer sides)
+      build, release                      19 s
+      frames published                    2 (15, 16)
+      tests                               40 pass (unchanged)
+
+VI. DISCUSSION
+
+    The oblique cube is the cheapest third dimension there is, and
+    the one the prior art used without saying so: a Bolo pillbox is a
+    drawing of a pyramid on a flat map, and nobody asked where the
+    camera was. Two sprites a cube, no mesh, no light, and the rule
+    about rectangles is not bent. A player who zooms in sees a tank;
+    a player at the map scale sees a coloured shape with a dark edge,
+    which is what the old rectangle was with a little more weight.
+
+    What the cubes do not do: cast on each other, or turn their side
+    faces to the light as the hull turns. The side face is local to
+    the model, so a tank heading north shows its "front" face toward
+    the camera and one heading south shows it away. It reads as the
+    hull's front plate either way, and it is not worth a light model.
+
+VII. OPEN PROBLEMS
+
+    1. The side faces follow the model's rotation, not the camera's
+       light; see above.
+    2. Forest and road checker at one sprite a tile is a pattern, not
+       a texture; Bolo's leaf and dash patterns were drawn.
+    3. Carried: the text panels' one ink; PLAYABILITY.md items 1, 3,
+       4, 5, 6; the window under Wayland proper; two windows; step 7's
+       two-router proof; steps 8, 9.
+
+VIII. NEXT STEPS
+
+    1. PLAYABILITY.md items 1, 3, 4, 5, 6.
+    2. A playtest with a hand on the mouse.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the three questions.
+
+REFERENCES
+
+    [1] Journal 0015, <0015.20261013@treadcore.org>.
+    [2] documentation/INTERFACE.md section 8; documentation/BUILD.md
+        on the engine's crates.
+
+APPENDIX A. COMMITS
+
+    (next)   client, docs, site, journal: Bolo's colours; assets out
+             of cubes; journal 0016
+
+APPENDIX B. ARTIFACTS
+
+    Code            source/treadcore-client/src/voxel.rs, render.rs
+    Frames          reports/images/playtest-15, 16
+    Site            index.html, "In play"
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

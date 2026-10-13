@@ -22,6 +22,7 @@ mod hud;
 mod input;
 mod render;
 mod session;
+mod voxel;
 
 use bevy::prelude::*;
 use bevy::window::PresentMode;

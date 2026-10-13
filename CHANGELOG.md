@@ -4,6 +4,24 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13, late: Bolo's colours, and assets out of cubes
+
+Journal: [0016](journal/0016-2026-10-13-cubes.txt).
+
+- Changed: the ground is Bolo's palette (`render.rs`): dark green
+  grass, bright checkered forest, grey road with its dashes, cyan
+  water, tan bridges and walls, brown rubble.
+- New: `voxel.rs`. Every thing on the map is a model of cubes on a
+  grid of fifths of a tile, drawn in an oblique projection with
+  sprites: a top face lit by its height, a shaded side face below.
+  The tank (hull, tracks, turret, barrel), the pillbox (a tan pyramid
+  with an orange gun, the gun gone under half health, a dark slab
+  when dead), the depot (a tan plate with the owner's mark), the
+  drones, shells, mines, the squad, and walls as tan blocks raised
+  and dropped as the terrain changes. Models are rebuilt only when
+  their key changes. No images; two rectangles a cube.
+- New: two frames in the gallery (playtest-15, 16).
+
 ## 2026-10-13, night: the bezel: the frame in WinBolo's look
 
 Journal: [0015](journal/0015-2026-10-13-the-bezel.txt).

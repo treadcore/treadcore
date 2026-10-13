@@ -245,3 +245,37 @@ is one line in a 22 px face across the bottom. No images: every
 element is a rectangle, rounded or not. The pings are the one thing
 not taken, because a seat is told only its own round trip; the lobby
 screen shows the medians while they are measured.
+
+## 8. The map and the things on it: Bolo's colours, assets out of cubes
+
+The last of the look, the same night (journal 0016): the ground in
+Bolo's palette and the things on it built from cubes.
+
+**The palette** (`render.rs`, `terrain_color`): dark green grass,
+forest in a bright green checker at one sprite a tile (Bolo's leaf
+pattern, as far as a flat tile goes), grey road with a lighter checker
+for its dashes, cyan water, tan planks for bridges, tan blocks for
+walls, brown rubble. The five converted community maps look like the
+screenshots they were converted from.
+
+**The cubes** (`voxel.rs`): a `Model` is a list of cubes on a grid of
+fifths of a tile, and the window has no third dimension: a cube is
+drawn in an oblique projection as its top face, lifted and lightened
+by its height, and a shaded side face hanging below it where no cube
+stands in front. Two rectangles a cube; the rule holds. The models
+are Bolo's things in Bolo's colours: the tank a hull eight by five
+with dark tracks down the sides, a turret in the seat's colour on
+top and a steel barrel forward; the pillbox a tan pyramid, three
+levels, the gun on top in orange while it has more than half its
+health and a flat dark slab when dead; the depot a tan plate with the
+owner's mark raised in the middle; the recon a cross, the interceptor
+a block, the strike a dart, the swarm's in red; mines, shells, the
+squad as two men; a wall a tan block the size of its tile, raised when
+the tile becomes one and taken down when a shell knocks it to rubble.
+A model's cubes are rebuilt only when its key changes (owner, alive,
+health bucket); the parent moves and turns.
+
+What this is not: a 3D renderer. The engine's PBR crates are not in
+the build, by choice (BUILD.md), and a camera that tilts would be a
+different game. The cubes stand up from the map the way Bolo's
+pillboxes stood up from theirs: by their drawing.
