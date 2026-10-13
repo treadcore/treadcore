@@ -89,7 +89,11 @@ right click    fire at there (direct if close and clear)
 2              launch recon toward cursor
 3              launch strike at nearest hostile to cursor
 R              recall all drones
+4              Pillboys: capture (or repair) the pillbox under cursor
+5              Pillboys: build a pillbox at cursor
+6              Pillboys: return
 [ / ]          bubble radius - / +
+
 space          stop
 WASD / arrows  pan   wheel: zoom   F: follow tank
 Tab            toggle this   Esc: quit";
@@ -113,6 +117,19 @@ fn telemetry(view: &View) -> String {
     s.push_str(&format!("shells {:>2}/{}   gun {}\n", t.shells, TANK_SHELLS, if t.reload == 0 { "READY" } else { &"reloading" }));
     s.push_str(&format!("bay    recon {}  intercept {}  strike {}\n", t.bay.recon, t.bay.interceptor, t.bay.strike));
     s.push_str(&format!("bubble {:>4.1} tiles ({:.0} m)\n", t.bubble, t.bubble * 25.0));
+    let sq = &t.pillboys;
+    let doing = match (&sq.task, sq.aboard) {
+        (_, true) if sq.strength == 0 => "none: resupply at a depot".to_string(),
+        (_, true) => "aboard".to_string(),
+        (Some(PillboyTask::Capture { .. }), false) => format!("CAPTURING {}%", sq.progress as u32 * 100 / PILLBOX_CAPTURE_TICKS as u32),
+        (Some(PillboyTask::Repair { .. }), false) => format!("REPAIRING {}%", sq.progress as u32 * 100 / PILLBOX_REPAIR_TICKS as u32),
+        (Some(PillboyTask::Build { .. }), false) => format!("BUILDING {}%", sq.progress as u32 * 100 / PILLBOX_BUILD_TICKS as u32),
+        (Some(PillboyTask::Return), false) => "returning".to_string(),
+        (None, false) => "out".to_string(),
+    };
+    s.push_str(&format!("pillboys {}/{}  material {}  {}\n", sq.strength, PILLBOY_MAX, sq.material, doing));
+    let mine_pb = obs.pillboxes.iter().filter(|p| p.owner == Some(obs.player)).count();
+    s.push_str(&format!("pillboxes held {}  of {}\n", mine_pb, obs.pillboxes.len()));
     let under_fire = obs.tick.saturating_sub(t.last_hit_tick) < (3 * TICK_HZ) as Tick && t.last_hit_tick > 0;
     if under_fire {
         s.push_str("!! UNDER FIRE !!\n");

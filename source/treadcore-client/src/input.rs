@@ -138,6 +138,23 @@ fn orders(
     if keys.just_pressed(KeyCode::KeyR) {
         orders.0.push(Command::Recall);
     }
+    if keys.just_pressed(KeyCode::Digit4) {
+        if let Some(p) = at {
+            if let Some(pb) = obs.pillboxes.iter().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()).filter(|pb| pb.pos.dist(p) <= 3.0) {
+                let task = if pb.owner == Some(obs.player) { PillboyTask::Repair { target: pb.id } } else { PillboyTask::Capture { pillbox: pb.id } };
+                orders.0.push(Command::Deploy { task });
+            }
+        }
+    }
+    if keys.just_pressed(KeyCode::Digit5) {
+        if let Some(p) = at {
+            orders.0.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Pillbox, at: p } });
+        }
+    }
+    if keys.just_pressed(KeyCode::Digit6) {
+        orders.0.push(Command::Deploy { task: PillboyTask::Return });
+    }
+
     if keys.just_pressed(KeyCode::BracketLeft) {
         orders.0.push(Command::SetBubble { radius: me.bubble - 1.0 });
     }

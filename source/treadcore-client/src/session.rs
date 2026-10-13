@@ -272,7 +272,8 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
 
 fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
     for e in events {
-        let line = describe(e, me);
+        let line = describe(e, me, view);
+
         if let Some(l) = line {
             let tick = view.obs.as_ref().map(|o| o.tick).unwrap_or(0);
             view.log.push_back((tick, l));
@@ -283,7 +284,7 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
     }
 }
 
-fn describe(e: &Event, me: PlayerId) -> Option<String> {
+fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
     let who = |p: &PlayerId| if *p == me { "you".to_string() } else if *p == SWARM_OWNER { "swarm".to_string() } else { format!("p{}", p) };
     Some(match e {
         Event::Rejected { why, .. } => format!("order refused: {}", why),
@@ -305,6 +306,19 @@ fn describe(e: &Event, me: PlayerId) -> Option<String> {
         Event::LinkLost { .. } => "link lost: drone returning".into(),
         Event::Chat { player, text } => format!("{}: {}", who(player), text),
         Event::MatchOver { winner } => format!("match over: {}", winner.map(|w| who(&w)).unwrap_or_else(|| "draw".into())),
+        Event::PillboysDeployed { task, .. } => format!("Pillboys out: {}", match task { PillboyTask::Capture { .. } => "capture", PillboyTask::Repair { .. } => "repair", PillboyTask::Build { .. } => "build", PillboyTask::Return => "return" }),
+        Event::PillboysReturned { .. } => "Pillboys aboard".into(),
+        Event::PillboysAbandoned { why, .. } => format!("Pillboys give up: {}", why),
+        Event::PillboysHit { owner, lost, left, .. } => format!("{} Pillboys hit: -{} ({} left)", who(owner), lost, left),
+        Event::PillboysLost { owner, .. } => format!("{} PILLBOYS LOST", who(owner)),
+        Event::PillboxCaptured { by, from, .. } => format!("{} captured a pillbox{}", who(by), from.map(|f| format!(" from {}", who(&f))).unwrap_or_default()),
+        Event::PillboxRepaired { by, .. } => format!("{} repaired a pillbox", who(by)),
+        Event::PillboxBuilt { by, .. } => format!("{} built a pillbox", who(by)),
+        Event::PillboxDamaged { .. } => return None,
+        Event::PillboxDestroyed { owner, by, .. } => format!("pillbox ({}) dead by {}", owner.map(|o| who(&o)).unwrap_or_else(|| "neutral".into()), by.map(|b| who(&b)).unwrap_or_else(|| "?".into())),
+        Event::PillboxFired { tank, damage, .. } => {
+            if Some(*tank) == view.obs.as_ref().and_then(|o| o.me.as_ref()).map(|t| t.id) { format!("pillbox hit you -{:.0}", damage) } else { return None }
+        }
     })
 }
 

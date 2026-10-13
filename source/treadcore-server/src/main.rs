@@ -248,7 +248,7 @@ fn narrate(world: &World, events: &[Event]) {
             Event::DroneLaunched { owner, kind, drone } => log::info!("[{:>6} {:>6.1}s] p{} launches {:?} #{}", t, s, owner, kind, drone),
             Event::DroneLost { owner, kind, why, drone } => log::info!("[{:>6} {:>6.1}s] p{} loses {:?} #{} ({:?})", t, s, owner, kind, drone, why),
             Event::DroneRecovered { owner, kind, .. } => log::debug!("[{:>6} {:>6.1}s] p{} recovers {:?}", t, s, owner, kind),
-            Event::Intercepted { owner, target, .. } => log::info!("[{:>6} {:>6.1}s] p{} INTERCEPT kills drone #{}", t, s, owner, target),
+            Event::Intercepted { owner, target, interceptor } => log::info!("[{:>6} {:>6.1}s] {} INTERCEPT kills drone #{} (by #{})", t, s, if *owner == NEUTRAL { "neutral pillbox".to_string() } else { format!("p{}", owner) }, target, interceptor),
             Event::InterceptMissed { target, .. } => log::info!("[{:>6} {:>6.1}s] intercept missed drone #{}", t, s, target),
             Event::StrikeHit { tank, damage, .. } => log::info!("[{:>6} {:>6.1}s] STRIKE hits tank #{} for {}", t, s, tank, damage),
             Event::TankDamaged { tank, by, damage, armor_left } => log::info!("[{:>6} {:>6.1}s] tank #{} -{:.0} armor ({:.0} left) by {:?}", t, s, tank, damage, armor_left, by),
@@ -259,6 +259,17 @@ fn narrate(world: &World, events: &[Event]) {
             Event::LinkLost { owner, drone } => log::info!("[{:>6} {:>6.1}s] p{} link lost to #{}", t, s, owner, drone),
             Event::Chat { player, text } => log::info!("[{:>6} {:>6.1}s] p{}: {}", t, s, player, text),
             Event::MatchOver { winner } => log::warn!("[{:>6} {:>6.1}s] MATCH OVER winner {:?}", t, s, winner),
+            Event::PillboysDeployed { owner, task, .. } => log::info!("[{:>6} {:>6.1}s] p{} PILLBOYS out: {:?}", t, s, owner, task),
+            Event::PillboysReturned { owner, .. } => log::debug!("[{:>6} {:>6.1}s] p{} pillboys aboard", t, s, owner),
+            Event::PillboysAbandoned { owner, why, .. } => log::info!("[{:>6} {:>6.1}s] p{} pillboys give up: {}", t, s, owner, why),
+            Event::PillboysHit { owner, lost, left, .. } => log::info!("[{:>6} {:>6.1}s] p{} pillboys hit: -{} ({} left)", t, s, owner, lost, left),
+            Event::PillboysLost { owner, .. } => log::warn!("[{:>6} {:>6.1}s] p{} PILLBOYS LOST", t, s, owner),
+            Event::PillboxCaptured { pillbox, by, from } => log::warn!("[{:>6} {:>6.1}s] p{} CAPTURES pillbox #{} from {}", t, s, by, pillbox, from.map(|f| format!("p{}", f)).unwrap_or_else(|| "neutral".into())),
+            Event::PillboxRepaired { pillbox, by } => log::info!("[{:>6} {:>6.1}s] p{} repairs pillbox #{}", t, s, by, pillbox),
+            Event::PillboxBuilt { pillbox, by, at } => log::warn!("[{:>6} {:>6.1}s] p{} BUILDS pillbox #{} at ({:.0},{:.0})", t, s, by, pillbox, at.x, at.y),
+            Event::PillboxDamaged { pillbox, by, damage, health_left } => log::info!("[{:>6} {:>6.1}s] pillbox #{} -{:.0} ({:.0} left) by {:?}", t, s, pillbox, damage, health_left, by),
+            Event::PillboxDestroyed { pillbox, owner, by } => log::warn!("[{:>6} {:>6.1}s] pillbox #{} ({}) DEAD by {:?}", t, s, pillbox, owner.map(|o| format!("p{}", o)).unwrap_or_else(|| "neutral".into()), by),
+            Event::PillboxFired { pillbox, owner, tank, damage } => log::info!("[{:>6} {:>6.1}s] {} pillbox #{} hits tank #{} for {:.0}", t, s, if *owner == NEUTRAL { "neutral".to_string() } else { format!("p{}", owner) }, pillbox, tank, damage),
         }
     }
     if t % TICK_HZ as Tick == 0 {
@@ -288,6 +299,10 @@ fn summary(world: &World, started: Instant) {
     }
     let craters = world.map.cells.iter().filter(|c| **c == Terrain::Rubble as u8).count();
     log::info!("  craters: {}  depots: {:?}", craters, world.depots.iter().map(|d| d.owner).collect::<Vec<_>>());
+    let owned = world.pillboxes.iter().filter(|p| p.owner.is_some()).count();
+    let dead = world.pillboxes.iter().filter(|p| !p.alive()).count();
+    log::info!("  pillboxes: {} ({} owned, {} dead): {:?}", world.pillboxes.len(), owned, dead, world.pillboxes.iter().map(|p| p.owner.map(|o| o.to_string()).unwrap_or_else(|| "-".into())).collect::<Vec<_>>().join(" "));
+
 }
 
 fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {

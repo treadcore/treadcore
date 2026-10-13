@@ -62,6 +62,12 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
 ///   8. Advance. Nothing seen for `PATIENCE` seconds at the firing
 ///      position: drive onto the objective and capture it, under the
 ///      recon, and the next unowned depot becomes the objective.
+///   9. Pillboys (when `pillboys` is on). From a standing tank with no
+///      enemy in view: send the squad to the nearest neutral or dead
+///      pillbox within `PILLBOY_REACH` whose gun cannot reach the tank,
+///      or to repair an owned one below half health. While the squad is
+///      out the tank holds its position, so the squad has a home to
+///      come back to; that wait is the cost the proof weighs.
 pub struct RuleBot {
     name: String,
     rng: Rng,
@@ -76,7 +82,13 @@ pub struct RuleBot {
     /// This bot's patience in seconds, drawn once from its seed so four
     /// bots do not all advance on the same tick and meet in the middle.
     patience: f32,
+    /// Use the squad at all. Off for the control group in the proof.
+    pub pillboys: bool,
 }
+
+/// How far the bot will send its squad: a 20-tile walk is 13 seconds
+/// each way at `PILLBOY_SPEED`, plus the work.
+pub const PILLBOY_REACH: f32 = 20.0;
 
 /// How far short of the objective the bot stops to fire from: inside
 /// indirect range of anything at the objective, outside direct range
@@ -90,7 +102,12 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, settled_at: None, patience }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, settled_at: None, patience, pillboys: true }
+    }
+
+    /// The same doctrine without the squad: the control group.
+    pub fn without_pillboys(seed: u64, name: &str) -> RuleBot {
+        RuleBot { pillboys: false, ..RuleBot::new(seed, name) }
     }
 
     fn nearest_enemy<'a>(&self, obs: &'a Observation, me: &Tank) -> Option<&'a Tank> {
@@ -174,6 +191,30 @@ impl Brain for RuleBot {
             cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 3.0 } });
         }
 
+        // 9. The squad. Deployed: hold here and let the gun and the
+        // bubble carry on; the movement sections below are skipped.
+        let squad_out = me.pillboys.deployed();
+        if self.pillboys && !squad_out && me.pillboys.strength > 0 && settled_s >= 1.0 && enemy.is_none() {
+            let safe = |p: &Pillbox| !p.alive() || p.pos.dist(me.pos) > PILLBOX_RANGE + 1.0;
+            let capture = obs
+                .pillboxes
+                .iter()
+                .filter(|p| p.owner != Some(obs.player) && (p.owner.is_none() || !p.alive()) && p.pos.dist(me.pos) <= PILLBOY_REACH && safe(p))
+                .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+            if let Some(p) = capture {
+                cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: p.id } });
+            } else if me.pillboys.material >= PILLBOX_REPAIR_COST {
+                let repair = obs
+                    .pillboxes
+                    .iter()
+                    .filter(|p| p.owner == Some(obs.player) && p.health < PILLBOX_HEALTH * 0.5 && p.pos.dist(me.pos) <= PILLBOY_REACH)
+                    .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+                if let Some(p) = repair {
+                    cmds.push(Command::Deploy { task: PillboyTask::Repair { target: p.id } });
+                }
+            }
+        }
+
         // 4. The gun, and 6. strikes.
         if let Some(e) = enemy {
             let range = me.pos.dist(e.pos);
@@ -194,6 +235,10 @@ impl Brain for RuleBot {
             if their_cover < 2 && my_strikes == 0 && me.bay.strike > 0 && range <= STRIKE_BATTERY * STRIKE_SPEED * 0.8 {
                 cmds.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: e.id } });
             }
+        }
+
+        if squad_out {
+            return cmds;
         }
 
         // 7. Resupply.
@@ -348,8 +393,47 @@ mod tests {
     /// the sixteen-start map spend the match collecting the twelve free
     /// depots and rarely meet; that is play, not a failure, but it is
     /// not a test of the gun.)
+    /// Roadmap step 3's proof: over twenty seeds, bots that capture
+    /// pillboxes beat the same doctrine without the squad. Eight seats,
+    /// alternating; five minutes each. The margin is printed so the
+    /// trace of a run can show it, and asserted on the aggregate.
+    #[test]
+    fn pillboys_pay() {
+        let mut wins = (0u32, 0u32);
+        let mut score = (0u32, 0u32);
+        let mut alive = (0u32, 0u32);
+        let mut captures = 0u32;
+        for seed in 0..20u64 {
+            let scenario = Scenario { seed: 0x5EED_0000 + seed * 7919, swarm_interval: 45 * TICK_HZ, time_limit: 5 * 60 * TICK_HZ as Tick, ..Scenario::bots(8) };
+            let mut w = World::new(scenario);
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..8u8)
+                .map(|i| {
+                    let b: Box<dyn Brain> = if i % 2 == 0 { Box::new(RuleBot::new(1000 + seed * 16 + i as u64, "squad")) } else { Box::new(RuleBot::without_pillboys(1000 + seed * 16 + i as u64, "nosquad")) };
+                    (i, b)
+                })
+                .collect();
+            while !w.over {
+                let orders = run_bots(&w, &mut bots);
+                w.step(&orders);
+                captures += w.events.iter().filter(|e| matches!(e, Event::PillboxCaptured { .. })).count() as u32;
+            }
+            for p in &w.players {
+                let with = p.id % 2 == 0;
+                if with { score.0 += p.score; alive.0 += p.alive as u32 } else { score.1 += p.score; alive.1 += p.alive as u32 }
+            }
+            if let Some(win) = w.winner {
+                if win % 2 == 0 { wins.0 += 1 } else { wins.1 += 1 }
+            }
+        }
+        eprintln!("pillboys_pay over 20 seeds: wins {}:{}  score {}:{}  alive {}:{}  captures {}", wins.0, wins.1, score.0, score.1, alive.0, alive.1, captures);
+        assert!(captures >= 20, "the squads barely captured anything: {}", captures);
+        assert!(score.0 > score.1, "capturers did not outscore: {} vs {}", score.0, score.1);
+        assert!(alive.0 >= alive.1, "capturers did not outlive: {} vs {}", alive.0, alive.1);
+    }
+
     #[test]
     fn bots_fight_to_a_result() {
+
         let scenario = Scenario { swarm_interval: 30 * TICK_HZ, time_limit: 6 * 60 * TICK_HZ as Tick, ..Scenario::default() };
         let mut w = World::new(scenario);
         let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..MAX_PLAYERS).map(|i| (i as PlayerId, Box::new(RuleBot::new(100 + i as u64, "bot")) as Box<dyn Brain>)).collect();

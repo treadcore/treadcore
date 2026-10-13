@@ -86,7 +86,59 @@ pub const INTERCEPT_BASE: f32 = 0.5;
 pub const INTERCEPT_LINKED: f32 = 0.9;
 pub const STRIKE_DAMAGE: f32 = 35.0;
 
+// ---- pillboys and pillboxes --------------------------------------------
+/// The squad: the tank's tech infantry. Four is a squad; zero is a tank
+/// that cannot capture, repair or build until a depot replaces them.
+pub const PILLBOY_MAX: u8 = 4;
+/// Tiles per second on foot, by the world's route. A tank does 4; the
+/// squad is the slow part of every order, which is what makes an order
+/// a decision.
+pub const PILLBOY_SPEED: f32 = 1.5;
+/// Material the tank carries for the squad: pillbox repairs and new
+/// emplacements. Restocked at depots; harvested from forest later (6c).
+pub const PILLBOY_MATERIAL_MAX: u8 = 4;
+pub const PILLBOY_MATERIAL_START: u8 = 2;
+/// A shell's splash over a deployed squad costs it this many Pillboys.
+pub const PILLBOY_SPLASH_LOSS: u8 = 2;
+/// Within this of the tank the squad is back aboard.
+pub const PILLBOY_BOARD_RANGE: f32 = 1.0;
+/// Within this of the site the squad is at work.
+pub const PILLBOY_WORK_RANGE: f32 = 0.7;
+/// Ticks of uncontested work: capture (Bolo's "stays on it"), a repair,
+/// a new emplacement.
+pub const PILLBOX_CAPTURE_TICKS: u16 = 10 * TICK_HZ as u16;
+pub const PILLBOX_REPAIR_TICKS: u16 = 6 * TICK_HZ as u16;
+pub const PILLBOX_BUILD_TICKS: u16 = 15 * TICK_HZ as u16;
+pub const PILLBOX_REPAIR_COST: u8 = 1;
+pub const PILLBOX_BUILD_COST: u8 = 2;
+/// A pillbox: health, and a gun. Sixty health is one indirect hit at the
+/// centre of the splash and a bit, or two direct hits, or four of its
+/// own kind of shot.
+pub const PILLBOX_HEALTH: f32 = 60.0;
+/// Against tanks: hitscan at anything hostile with a clear line inside
+/// this, for this much, every reload. Eight tiles is inside the tank's
+/// direct range (10) and far inside indirect (12 to 60): a pillbox is
+/// out-ranged by a gun that can see it and deadly to one that drives up.
+pub const PILLBOX_RANGE: f32 = 8.0;
+pub const PILLBOX_DAMAGE: f32 = 15.0;
+pub const PILLBOX_RELOAD_TICKS: u16 = 2 * TICK_HZ as u16;
+/// Against drones: the one addition to Bolo's pillbox. Short, and with
+/// an interceptor's kill curve: a link to the owner tank's radar if it is
+/// within `DRONE_LINK`, else the pillbox's own sensor at `INTERCEPT_BASE`.
+pub const PILLBOX_AIR_RANGE: f32 = 4.0;
+/// A captured pillbox is handed over at least this well repaired.
+pub const PILLBOX_CAPTURE_HEALTH: f32 = 30.0;
+/// No two pillboxes closer than this; none on a depot.
+pub const PILLBOX_SPACING: f32 = 3.0;
+/// Extra route cost per tile inside a live hostile pillbox's range: a
+/// detour of five grass tiles beats one tile under the gun.
+pub const PILLBOX_AVOID_COST: f32 = 5.0;
+
+/// The owner of a neutral pillbox's shots: nobody, and never a seat.
+pub const NEUTRAL: PlayerId = 254;
+
 // ---- depots ------------------------------------------------------------
+
 pub const DEPOT_RADIUS: f32 = 2.0;
 pub const CAPTURE_TICKS: u16 = 10 * TICK_HZ as u16;
 pub const RESUPPLY_EVERY: u64 = TICK_HZ as u64 / 2;

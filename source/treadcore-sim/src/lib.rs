@@ -262,6 +262,101 @@ impl Bay {
     }
 }
 
+// ------------------------------------------------------- pillboys, pillboxes
+
+/// What the tank can build through its squad. Walls, roads and mines
+/// come with roadmap step 6c.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BuildKind {
+    Pillbox,
+}
+
+/// An order to the squad. Bolo's builder: the click is the order, the
+/// squad leaves the tank, walks the world's route, does the work if the
+/// material is there, and walks back. The player drives nothing but the
+/// tank.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum PillboyTask {
+    /// Stand on a pillbox that is neutral or dead until it is ours.
+    Capture { pillbox: EntityId },
+    /// Bring an owned pillbox back to full health, for material.
+    Repair { target: EntityId },
+    /// Raise an emplacement at a point, for material.
+    Build { what: BuildKind, at: V2 },
+    /// Come home.
+    Return,
+}
+
+impl PillboyTask {
+    /// Where the squad has to be to do this. None for Return (the tank).
+    fn site(&self, world: &World) -> Option<V2> {
+        match self {
+            PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => world.pillbox(*pillbox).map(|p| p.pos),
+            PillboyTask::Build { at, .. } => Some(*at),
+            PillboyTask::Return => None,
+        }
+    }
+}
+
+/// The tank's tech infantry: state on the tank, not a unit of its own.
+/// Aboard, it rides; deployed, it walks, works and is a ground target.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Pillboys {
+    /// 0..PILLBOY_MAX. Zero is no squad until a depot replaces it.
+    pub strength: u8,
+    pub aboard: bool,
+    /// Where the squad is when deployed; the tank's position otherwise.
+    pub pos: V2,
+    pub task: Option<PillboyTask>,
+    /// Ticks of work done at the site.
+    pub progress: u16,
+    /// Repairs and emplacements cost this. Restocked at depots.
+    pub material: u8,
+    /// Waypoints to the site, or home.
+    pub route: Vec<V2>,
+}
+
+impl Pillboys {
+    pub fn fresh(pos: V2) -> Pillboys {
+        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material: PILLBOY_MATERIAL_START, route: Vec::new() }
+    }
+    pub fn deployed(&self) -> bool {
+        !self.aboard
+    }
+}
+
+/// Bolo's pillbox, with one addition: it shoots drones too, at short
+/// range, so a captured pillbox extends the bubble over ground the tank
+/// is not on. Owned by a seat or by nobody; neutral ones shoot everyone.
+/// Captured by a squad standing on it (neutral or dead), repaired and
+/// built by a squad with material. Never removed from the world.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Pillbox {
+    pub id: EntityId,
+    pub pos: V2,
+    pub owner: Option<PlayerId>,
+    /// 0..PILLBOX_HEALTH; at zero it is dead: silent, capturable.
+    pub health: f32,
+    pub reload: u16,
+    /// Capture progress and whose squad is making it.
+    pub capture: u16,
+    pub capturer: Option<PlayerId>,
+}
+
+impl Pillbox {
+    pub fn alive(&self) -> bool {
+        self.health > 0.0
+    }
+    /// Whose shots these are, for damage credit and intercept events.
+    pub fn shooter(&self) -> PlayerId {
+        self.owner.unwrap_or(NEUTRAL)
+    }
+    /// Hostile to `p`: anyone but the owner. Neutral hates everyone.
+    pub fn hostile_to(&self, p: PlayerId) -> bool {
+        self.owner != Some(p)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Tank {
     pub id: EntityId,
@@ -287,6 +382,8 @@ pub struct Tank {
     /// Ticks since last damage, for the HUD's "under fire" state.
     pub last_hit_tick: Tick,
     pub alive: bool,
+    /// The squad, aboard or out on an order.
+    pub pillboys: Pillboys,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -323,6 +420,9 @@ pub enum Command {
     Launch { kind: DroneKind, task: DroneTask },
     Recall,
     SetBubble { radius: f32 },
+    /// An order to the Pillboys. One at a time; a new one while they are
+    /// out is refused, except Return.
+    Deploy { task: PillboyTask },
     Chat { text: String },
 }
 
@@ -354,6 +454,20 @@ pub enum Event {
     Resupplied { tank: EntityId, depot: EntityId },
     SwarmInbound { count: u32, from: V2 },
     LinkLost { drone: EntityId, owner: PlayerId },
+    PillboysDeployed { tank: EntityId, owner: PlayerId, task: PillboyTask },
+    PillboysReturned { tank: EntityId, owner: PlayerId },
+    /// The order ended without its work: the site changed under them.
+    PillboysAbandoned { tank: EntityId, owner: PlayerId, why: String },
+    PillboysHit { tank: EntityId, owner: PlayerId, lost: u8, left: u8 },
+    PillboysLost { tank: EntityId, owner: PlayerId },
+    PillboxCaptured { pillbox: EntityId, by: PlayerId, from: Option<PlayerId> },
+    PillboxRepaired { pillbox: EntityId, by: PlayerId },
+    PillboxBuilt { pillbox: EntityId, by: PlayerId, at: V2 },
+    PillboxDamaged { pillbox: EntityId, by: Option<PlayerId>, damage: f32, health_left: f32 },
+    /// Shot to zero: silent and capturable, not removed.
+    PillboxDestroyed { pillbox: EntityId, owner: Option<PlayerId>, by: Option<PlayerId> },
+    /// Hitscan at a tank. `owner` is NEUTRAL for a neutral pillbox.
+    PillboxFired { pillbox: EntityId, owner: PlayerId, tank: EntityId, damage: f32 },
     Chat { player: PlayerId, text: String },
     MatchOver { winner: Option<PlayerId> },
 }
@@ -420,6 +534,7 @@ pub struct World {
     pub drones: Vec<Drone>,
     pub shells: Vec<Shell>,
     pub depots: Vec<Depot>,
+    pub pillboxes: Vec<Pillbox>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
@@ -440,6 +555,7 @@ impl World {
             drones: Vec::new(),
             shells: Vec::new(),
             depots: Vec::new(),
+            pillboxes: Vec::new(),
             rng: Rng::new(scenario.seed ^ 0xA5A5_5A5A),
             next_id: 1,
             over: false,
@@ -455,6 +571,10 @@ impl World {
                 None
             };
             w.depots.push(Depot { id, pos: *pos, owner, capture: 0, capturer: None });
+        }
+        for pos in w.map.pillboxes.clone() {
+            let id = w.alloc();
+            w.pillboxes.push(Pillbox { id, pos, owner: None, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None });
         }
         for (i, (name, is_bot)) in scenario.players.iter().take(MAX_PLAYERS).enumerate() {
             let id = w.alloc();
@@ -475,6 +595,7 @@ impl World {
                 bubble: BUBBLE_DEFAULT,
                 last_hit_tick: 0,
                 alive: true,
+                pillboys: Pillboys::fresh(pos),
             });
             w.players.push(Player {
                 id: i as PlayerId,
@@ -505,6 +626,19 @@ impl World {
     }
     pub fn drone(&self, id: EntityId) -> Option<&Drone> {
         self.drones.iter().find(|d| d.id == id)
+    }
+    pub fn pillbox(&self, id: EntityId) -> Option<&Pillbox> {
+        self.pillboxes.iter().find(|p| p.id == id)
+    }
+
+    /// A tank's route: the map's, avoiding the range of every live
+    /// pillbox hostile to `p` at `PILLBOX_AVOID_COST` extra per tile.
+    pub fn route_for(&self, p: PlayerId, from: V2, to: V2) -> Vec<V2> {
+        let guns: Vec<V2> = self.pillboxes.iter().filter(|b| b.alive() && b.hostile_to(p)).map(|b| b.pos).collect();
+        self.map.route_with(from, to, |tile| if guns.iter().any(|g| g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 })
+    }
+    fn pillbox_mut(&mut self, id: EntityId) -> Option<&mut Pillbox> {
+        self.pillboxes.iter_mut().find(|p| p.id == id)
     }
     pub fn seconds(&self) -> f32 {
         self.tick as f32 * DT
@@ -556,7 +690,9 @@ impl World {
             self.apply(o);
         }
         self.step_tanks();
+        self.step_pillboys();
         self.step_drones();
+        self.step_pillboxes();
         self.step_shells();
         self.step_depots();
         self.step_swarm();
@@ -596,7 +732,7 @@ impl World {
                 // first traced match one bot sat on that bank for the whole
                 // game. Neither a Brain nor a client has the map in its
                 // observation, so the pathfinding has to live here.
-                let mut wp = self.map.route(pos, *to);
+                let mut wp = self.route_for(o.player, pos, *to);
                 if wp.is_empty() {
                     return self.reject(o, "unreachable");
                 }
@@ -738,12 +874,377 @@ impl World {
                     }
                 }
             }
+            Command::Deploy { task } => {
+                let squad = &self.tank(tid).unwrap().pillboys;
+                if squad.strength == 0 {
+                    return self.reject(o, "no squad");
+                }
+                if let PillboyTask::Return = task {
+                    if squad.aboard {
+                        return self.reject(o, "squad is aboard");
+                    }
+                    let t = self.tank_mut(tid).unwrap();
+                    t.pillboys.task = Some(PillboyTask::Return);
+                    t.pillboys.route.clear();
+                    t.pillboys.progress = 0;
+                    return;
+                }
+                if squad.deployed() {
+                    return self.reject(o, "squad already out");
+                }
+                let material = squad.material;
+                match task {
+                    PillboyTask::Capture { pillbox } => match self.pillbox(*pillbox) {
+                        None => return self.reject(o, "no such pillbox"),
+                        Some(p) if p.owner == Some(o.player) => return self.reject(o, "pillbox already ours"),
+                        Some(p) if p.owner.is_some() && p.alive() => return self.reject(o, "pillbox is live and theirs: shoot it dead first"),
+                        Some(_) => {}
+                    },
+                    PillboyTask::Repair { target } => match self.pillbox(*target) {
+                        None => return self.reject(o, "no such pillbox"),
+                        Some(p) if p.owner != Some(o.player) => return self.reject(o, "not our pillbox"),
+                        Some(p) if p.health >= PILLBOX_HEALTH => return self.reject(o, "pillbox needs no repair"),
+                        Some(_) if material < PILLBOX_REPAIR_COST => return self.reject(o, "no material"),
+                        Some(_) => {}
+                    },
+                    PillboyTask::Build { what: BuildKind::Pillbox, at } => {
+                        if !self.map.in_bounds(*at) || !self.map.at(*at).passable() {
+                            return self.reject(o, "cannot build there");
+                        }
+                        if self.map.at(*at) == Terrain::Depot || self.depots.iter().any(|d| d.pos.dist(*at) <= DEPOT_RADIUS) {
+                            return self.reject(o, "not on a depot");
+                        }
+                        if self.pillboxes.iter().any(|p| p.pos.dist(*at) < PILLBOX_SPACING) {
+                            return self.reject(o, "too close to another pillbox");
+                        }
+                        if material < PILLBOX_BUILD_COST {
+                            return self.reject(o, "no material");
+                        }
+                    }
+                    PillboyTask::Return => unreachable!(),
+                }
+                let site = task.site(self).unwrap();
+                let route = self.map.route(pos, site);
+                if route.is_empty() {
+                    return self.reject(o, "site unreachable");
+                }
+                let t = self.tank_mut(tid).unwrap();
+                t.pillboys.aboard = false;
+                t.pillboys.pos = pos;
+                t.pillboys.task = Some(task.clone());
+                t.pillboys.progress = 0;
+                t.pillboys.route = route;
+                self.events.push(Event::PillboysDeployed { tank: tid, owner: o.player, task: task.clone() });
+            }
             Command::Chat { .. } => {}
+        }
+    }
+
+    /// The squad: walk, work, walk home. Read the tank and the site,
+    /// decide, then apply, as the drones do.
+    fn step_pillboys(&mut self) {
+        #[derive(Debug)]
+        enum Done {
+            Captured(EntityId, Option<PlayerId>),
+            Repaired(EntityId),
+            Built(V2),
+            Abandon(&'static str),
+            Home,
+        }
+        let mut done: Vec<(EntityId, PlayerId, Done)> = Vec::new();
+        let mut captures: Vec<(EntityId, PlayerId)> = Vec::new();
+        let map = &self.map;
+        let pillboxes = &self.pillboxes;
+        for t in self.tanks.iter_mut() {
+            let s = &mut t.pillboys;
+            if !t.alive || s.aboard {
+                s.pos = t.pos;
+                continue;
+            }
+            let Some(task) = s.task.clone() else {
+                s.task = Some(PillboyTask::Return);
+                continue;
+            };
+            // Where to walk.
+            let site: Option<V2> = match &task {
+                PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos),
+                PillboyTask::Build { at, .. } => Some(*at),
+                PillboyTask::Return => None,
+            };
+            let target = match site {
+                Some(p) => p,
+                None => t.pos,
+            };
+            if let PillboyTask::Return = task {
+                // Home moves. Re-plan when the route no longer ends near it.
+                let stale = s.route.last().map(|w| w.dist(t.pos) > 2.0).unwrap_or(true);
+                if stale && s.pos.dist(t.pos) > PILLBOY_BOARD_RANGE {
+                    s.route = map.route(s.pos, t.pos);
+                }
+            }
+            if site.is_none() && !matches!(task, PillboyTask::Return) {
+                done.push((t.id, t.owner, Done::Abandon("site is gone")));
+                continue;
+            }
+            // Walk.
+            let at_site = s.pos.dist(target) <= if matches!(task, PillboyTask::Return) { PILLBOY_BOARD_RANGE } else { PILLBOY_WORK_RANGE };
+            if !at_site {
+                let next = s.route.first().copied().unwrap_or(target);
+                let to = next - s.pos;
+                let step = PILLBOY_SPEED * DT;
+                if to.len() <= step {
+                    s.pos = next;
+                    if !s.route.is_empty() {
+                        s.route.remove(0);
+                    }
+                } else {
+                    s.pos = s.pos + to.norm().scale(step);
+                }
+                if matches!(task, PillboyTask::Return) && s.pos.dist(t.pos) <= PILLBOY_BOARD_RANGE {
+                    done.push((t.id, t.owner, Done::Home));
+                }
+                continue;
+            }
+            // Work.
+            match &task {
+                PillboyTask::Return => done.push((t.id, t.owner, Done::Home)),
+                PillboyTask::Capture { pillbox } => {
+                    let p = pillboxes.iter().find(|p| p.id == *pillbox).unwrap();
+                    if p.owner == Some(t.owner) {
+                        done.push((t.id, t.owner, Done::Abandon("already ours")));
+                    } else if p.owner.is_some() && p.alive() {
+                        done.push((t.id, t.owner, Done::Abandon("pillbox came back to life")));
+                    } else {
+                        captures.push((p.id, t.owner));
+                        s.progress += 1;
+                        if s.progress >= PILLBOX_CAPTURE_TICKS {
+                            done.push((t.id, t.owner, Done::Captured(p.id, p.owner)));
+                        }
+                    }
+                }
+                PillboyTask::Repair { target } => {
+                    let p = pillboxes.iter().find(|p| p.id == *target).unwrap();
+                    if p.owner != Some(t.owner) {
+                        done.push((t.id, t.owner, Done::Abandon("pillbox is no longer ours")));
+                    } else if s.material < PILLBOX_REPAIR_COST {
+                        done.push((t.id, t.owner, Done::Abandon("no material")));
+                    } else {
+                        s.progress += 1;
+                        if s.progress >= PILLBOX_REPAIR_TICKS {
+                            done.push((t.id, t.owner, Done::Repaired(p.id)));
+                        }
+                    }
+                }
+                PillboyTask::Build { what: BuildKind::Pillbox, at } => {
+                    if pillboxes.iter().any(|p| p.pos.dist(*at) < PILLBOX_SPACING) {
+                        done.push((t.id, t.owner, Done::Abandon("something is already there")));
+                    } else if s.material < PILLBOX_BUILD_COST {
+                        done.push((t.id, t.owner, Done::Abandon("no material")));
+                    } else {
+                        s.progress += 1;
+                        if s.progress >= PILLBOX_BUILD_TICKS {
+                            done.push((t.id, t.owner, Done::Built(*at)));
+                        }
+                    }
+                }
+            }
+        }
+        // Capture progress on the pillboxes: contested means nothing moves.
+        for p in self.pillboxes.iter_mut() {
+            let mut who: Vec<PlayerId> = captures.iter().filter(|(id, _)| *id == p.id).map(|(_, o)| *o).collect();
+            who.sort_unstable();
+            who.dedup();
+            match who.as_slice() {
+                [one] => {
+                    if p.capturer != Some(*one) {
+                        p.capturer = Some(*one);
+                        p.capture = 0;
+                    }
+                    p.capture = (p.capture + 1).min(PILLBOX_CAPTURE_TICKS);
+                }
+                [] => {
+                    if p.capture > 0 {
+                        p.capture -= 1;
+                    }
+                    if p.capture == 0 {
+                        p.capturer = None;
+                    }
+                }
+                _ => {} // contested
+            }
+        }
+        for (tid, owner, what) in done {
+            match what {
+                Done::Captured(pid, from) => {
+                    // Contested at the last tick? The pillbox's own clock
+                    // says whether one squad stood alone.
+                    let uncontested = self.pillbox(pid).map(|p| p.capturer == Some(owner)).unwrap_or(false);
+                    if uncontested {
+                        if let Some(p) = self.pillbox_mut(pid) {
+                            p.owner = Some(owner);
+                            p.health = p.health.max(PILLBOX_CAPTURE_HEALTH);
+                            p.capture = 0;
+                            p.capturer = None;
+                            p.reload = PILLBOX_RELOAD_TICKS;
+                        }
+                        if let Some(pl) = self.players.iter_mut().find(|p| p.id == owner) {
+                            pl.score += SCORE_CAPTURE;
+                        }
+                        self.events.push(Event::PillboxCaptured { pillbox: pid, by: owner, from });
+                    } else if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.progress = 0;
+                        continue;
+                    }
+                }
+                Done::Repaired(pid) => {
+                    if let Some(p) = self.pillbox_mut(pid) {
+                        p.health = PILLBOX_HEALTH;
+                    }
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.material -= PILLBOX_REPAIR_COST;
+                    }
+                    self.events.push(Event::PillboxRepaired { pillbox: pid, by: owner });
+                }
+                Done::Built(at) => {
+                    let id = self.alloc();
+                    self.pillboxes.push(Pillbox { id, pos: at, owner: Some(owner), health: PILLBOX_HEALTH, reload: PILLBOX_RELOAD_TICKS, capture: 0, capturer: None });
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.material -= PILLBOX_BUILD_COST;
+                    }
+                    self.events.push(Event::PillboxBuilt { pillbox: id, by: owner, at });
+                }
+                Done::Abandon(why) => {
+                    self.events.push(Event::PillboysAbandoned { tank: tid, owner, why: why.into() });
+                }
+                Done::Home => {
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.aboard = true;
+                        t.pillboys.task = None;
+                        t.pillboys.progress = 0;
+                        t.pillboys.route.clear();
+                        t.pillboys.pos = t.pos;
+                    }
+                    self.events.push(Event::PillboysReturned { tank: tid, owner });
+                    continue;
+                }
+            }
+            // Work done or given up: walk home.
+            if let Some((from, home)) = self.tank(tid).map(|t| (t.pillboys.pos, t.pos)) {
+                let route = self.map.route(from, home);
+                let t = self.tank_mut(tid).unwrap();
+                t.pillboys.task = Some(PillboyTask::Return);
+                t.pillboys.progress = 0;
+                t.pillboys.route = route;
+            }
+
+        }
+    }
+
+    /// The pillboxes' guns. Tanks first (hitscan, a clear line, in
+    /// range), else the nearest hostile drone inside the air range with
+    /// an interceptor's odds. One shot per reload, whatever the target.
+    fn step_pillboxes(&mut self) {
+        let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
+        let drones: Vec<(EntityId, PlayerId, V2)> = self.drones.iter().map(|d| (d.id, d.owner, d.pos)).collect();
+        let mut shots: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, tank, damage
+        let mut air: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, drone, link
+        for p in self.pillboxes.iter_mut() {
+            if p.reload > 0 {
+                p.reload -= 1;
+            }
+            if !p.alive() || p.reload > 0 {
+                continue;
+            }
+            let shooter = p.shooter();
+            let tank = tanks
+                .iter()
+                .filter(|(_, o, pos)| p.hostile_to(*o) && pos.dist(p.pos) <= PILLBOX_RANGE && self.map.line_clear(p.pos, *pos))
+                .min_by(|a, b| a.2.dist(p.pos).partial_cmp(&b.2.dist(p.pos)).unwrap().then(a.0.cmp(&b.0)));
+            if let Some((tid, _, _)) = tank {
+                shots.push((p.id, shooter, *tid, PILLBOX_DAMAGE));
+                p.reload = PILLBOX_RELOAD_TICKS;
+                continue;
+            }
+            let drone = drones
+                .iter()
+                .filter(|(_, o, pos)| p.hostile_to(*o) && pos.dist(p.pos) <= PILLBOX_AIR_RANGE)
+                .min_by(|a, b| a.2.dist(p.pos).partial_cmp(&b.2.dist(p.pos)).unwrap().then(a.0.cmp(&b.0)));
+            if let Some((did, _, _)) = drone {
+                // The owner tank's radar, if it is within link range.
+                let link = p
+                    .owner
+                    .and_then(|o| tanks.iter().find(|(_, to, _)| *to == o))
+                    .map(|(_, _, tp)| (1.0 - tp.dist(p.pos) / DRONE_LINK).clamp(0.0, 1.0))
+                    .unwrap_or(0.0);
+                air.push((p.id, shooter, *did, link));
+                p.reload = PILLBOX_RELOAD_TICKS;
+            }
+        }
+        for (pid, shooter, tid, dmg) in shots {
+            self.events.push(Event::PillboxFired { pillbox: pid, owner: shooter, tank: tid, damage: dmg });
+            let by = Some(shooter).filter(|s| *s != NEUTRAL);
+            self.damage(tid, dmg, by);
+        }
+        for (pid, shooter, did, link) in air {
+            let p_kill = INTERCEPT_BASE + (INTERCEPT_LINKED - INTERCEPT_BASE) * link;
+            let roll = self.rng.f32();
+            if roll < p_kill {
+                if let Some(ix) = self.drones.iter().position(|d| d.id == did) {
+                    let d = self.drones.remove(ix);
+                    self.events.push(Event::Intercepted { interceptor: pid, target: did, owner: shooter });
+                    self.events.push(Event::DroneLost { drone: did, owner: d.owner, kind: d.kind, why: LossReason::Shot });
+                    if let Some(pl) = self.players.iter_mut().find(|p| p.id == shooter) {
+                        pl.score += SCORE_INTERCEPT;
+                    }
+                }
+            } else {
+                self.events.push(Event::InterceptMissed { interceptor: pid, target: did });
+            }
+        }
+    }
+
+    /// Damage to a pillbox from a shell. Dead at zero; never removed.
+    fn damage_pillbox(&mut self, pid: EntityId, amount: f32, by: Option<PlayerId>) {
+        let Some(p) = self.pillbox_mut(pid) else { return };
+        if !p.alive() {
+            return;
+        }
+        p.health = (p.health - amount).max(0.0);
+        let (left, owner) = (p.health, p.owner);
+        self.events.push(Event::PillboxDamaged { pillbox: pid, by, damage: amount, health_left: left });
+        if left <= 0.0 {
+            if let Some(p) = self.pillbox_mut(pid) {
+                p.capture = 0;
+                p.capturer = None;
+            }
+            self.events.push(Event::PillboxDestroyed { pillbox: pid, owner, by });
+        }
+    }
+
+    /// A deployed squad under a splash loses Pillboys; at zero it is gone.
+    fn hurt_squads(&mut self, at: V2) {
+        let hit: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive && t.pillboys.deployed() && t.pillboys.pos.dist(at) <= SPLASH_RADIUS).map(|t| t.id).collect();
+        for tid in hit {
+            let t = self.tank_mut(tid).unwrap();
+            let lost = PILLBOY_SPLASH_LOSS.min(t.pillboys.strength);
+            t.pillboys.strength -= lost;
+            let (owner, left) = (t.owner, t.pillboys.strength);
+            self.events.push(Event::PillboysHit { tank: tid, owner, lost, left });
+            if left == 0 {
+                let t = self.tank_mut(tid).unwrap();
+                t.pillboys.aboard = true;
+                t.pillboys.task = None;
+                t.pillboys.progress = 0;
+                t.pillboys.route.clear();
+                t.pillboys.pos = t.pos;
+                self.events.push(Event::PillboysLost { tank: tid, owner });
+            }
         }
     }
 
     fn step_tanks(&mut self) {
         let map = &self.map;
+        let guns: Vec<(Option<PlayerId>, V2)> = self.pillboxes.iter().filter(|b| b.alive()).map(|b| (b.owner, b.pos)).collect();
         for t in self.tanks.iter_mut() {
             if !t.alive {
                 continue;
@@ -798,7 +1299,7 @@ impl World {
                 // water's edge for a whole match.
                 t.speed = 0.0;
                 let dest = t.route.last().copied().unwrap_or(goal);
-                let mut wp = map.route(t.pos, dest);
+                let mut wp = map.route_with(t.pos, dest, |tile| if guns.iter().any(|(o, g)| *o != Some(t.owner) && g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 });
                 if wp.is_empty() {
                     t.goal = None;
                     t.route.clear();
@@ -1043,6 +1544,16 @@ impl World {
                         self.damage(id, dmg, Some(s.owner));
                         hits.push(id);
                     }
+                    // Pillboxes in the splash take the same curve; squads
+                    // out in it lose men. The bubble does nothing to a
+                    // shell, and neither does a pillbox.
+                    let boxes: Vec<(EntityId, f32)> = self.pillboxes.iter().filter(|p| p.alive()).map(|p| (p.id, p.pos.dist(s.impact))).filter(|(_, d)| *d <= SPLASH_RADIUS).collect();
+                    for (id, d) in boxes {
+                        let dmg = INDIRECT_DAMAGE * (1.0 - d / SPLASH_RADIUS).max(0.25);
+                        self.damage_pillbox(id, dmg, Some(s.owner));
+                        hits.push(id);
+                    }
+                    self.hurt_squads(s.impact);
                     // Low-flying drones in the splash go down too. The
                     // bubble does nothing to a shell; the shell does plenty
                     // to the bubble.
@@ -1067,6 +1578,13 @@ impl World {
                     if let Some(id) = hit {
                         self.damage(id, DIRECT_DAMAGE, Some(s.owner));
                         hits.push(id);
+                    } else {
+                        // No tank there: a pillbox, if one is.
+                        let pb = self.pillboxes.iter().filter(|p| p.alive() && p.hostile_to(s.owner) && p.pos.dist(s.impact) <= DIRECT_HIT_RADIUS + 0.5).map(|p| p.id).next();
+                        if let Some(id) = pb {
+                            self.damage_pillbox(id, DIRECT_DAMAGE, Some(s.owner));
+                            hits.push(id);
+                        }
                     }
                 }
             }
@@ -1092,6 +1610,11 @@ impl World {
             t.goal = None;
             t.route.clear();
             t.speed = 0.0;
+            // The squad goes with the tank, aboard or out.
+            t.pillboys.strength = 0;
+            t.pillboys.aboard = true;
+            t.pillboys.task = None;
+            t.pillboys.route.clear();
 
             if let Some(p) = self.players.iter_mut().find(|p| p.id == owner) {
                 p.alive = false;
@@ -1158,6 +1681,15 @@ impl World {
                     t.bay.recon += 1;
                 } else if t.bay.strike < BAY_FULL.strike {
                     t.bay.strike += 1;
+                }
+                // The squad and its material, when aboard.
+                if t.pillboys.aboard {
+                    if t.pillboys.strength < PILLBOY_MAX {
+                        t.pillboys.strength += 1;
+                    }
+                    if t.pillboys.material < PILLBOY_MATERIAL_MAX {
+                        t.pillboys.material += 1;
+                    }
                 }
             }
             if before != (t.shells, t.bay, t.armor as i32, t.fuel as i32) && tick % (RESUPPLY_EVERY * 4) == 0 {
@@ -1279,6 +1811,7 @@ impl World {
             drones,
             shells,
             depots: self.depots.clone(),
+            pillboxes: self.pillboxes.clone(),
             players: self.players.iter().map(|x| PlayerView { id: x.id, name: x.name.clone(), alive: x.alive, score: x.score, is_bot: x.is_bot }).collect(),
             events: self.events.iter().filter(|e| event_visible(e, p)).cloned().collect(),
             over: self.over,
@@ -1383,6 +1916,7 @@ fn event_visible(e: &Event, p: PlayerId) -> bool {
         Event::Rejected { player, .. } => *player == p,
         Event::ShellLaunched { owner, .. } => *owner == p,
         Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::LinkLost { owner, .. } => *owner == p,
+        Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => *owner == p,
         _ => true,
     }
 }
@@ -1397,7 +1931,10 @@ pub struct Observation {
     pub drones: Vec<Drone>,
     pub shells: Vec<Shell>,
     pub depots: Vec<Depot>,
+    /// Every pillbox, like every depot: territory is public.
+    pub pillboxes: Vec<Pillbox>,
     pub players: Vec<PlayerView>,
+
     pub events: Vec<Event>,
     pub over: bool,
     pub winner: Option<PlayerId>,
@@ -1503,6 +2040,10 @@ mod tests {
     #[test]
     fn move_is_routed_across_the_river() {
         let mut w = world();
+        // Routing alone: the neutral pillboxes on the spokes would kill
+        // a tank that drove into them, which `pillbox_kills_a_tank`
+        // tests on its own.
+        w.pillboxes.clear();
         let center = w.map.center();
         w.step(&[Order { player: 1, cmd: Command::Move { to: center } }]);
         assert!(w.events.iter().all(|e| !matches!(e, Event::Rejected { .. })));
@@ -1578,8 +2119,96 @@ mod tests {
         }
     }
 
+    /// A live neutral pillbox shoots a tank that drives into its range,
+    /// and a tank's route goes round it when there is room.
+    #[test]
+    fn pillbox_kills_a_tank_and_routes_bend_round_it() {
+        let mut w = world();
+        let pb = w.pillboxes[0].clone(); // north's spoke pillbox
+        let tank = w.tank_of(0).unwrap().pos;
+        assert!(pb.owner.is_none() && pb.alive());
+        // Park the tank inside the ring and wait.
+        w.tank_mut(w.players[0].tank).unwrap().pos = pb.pos + V2::new(3.0, 0.0);
+        let mut fired = 0;
+        for _ in 0..(20 * TICK_HZ) {
+            w.step(&[]);
+            fired += w.events.iter().filter(|e| matches!(e, Event::PillboxFired { .. })).count();
+            if !w.tank_of(0).unwrap().alive {
+                break;
+            }
+        }
+        assert!(fired >= 7, "pillbox fired {} times", fired);
+        assert!(!w.tank_of(0).unwrap().alive, "tank survived a pillbox at 3 tiles for 20 s");
+        // A fresh world: the route from the start to the centre keeps
+        // out of the spoke pillbox's ring, which the straight spoke road
+        // runs through.
+        let w = world();
+        let route = w.route_for(0, tank, w.map.center());
+        assert!(!route.is_empty());
+        let mut p = tank;
+        let mut closest = f32::MAX;
+        for wp in &route {
+            let n = (p.dist(*wp) * 4.0).ceil() as usize;
+            for i in 0..=n {
+                let q = p.lerp(*wp, i as f32 / n.max(1) as f32);
+                closest = closest.min(q.dist(pb.pos));
+            }
+            p = *wp;
+        }
+        assert!(closest > PILLBOX_RANGE, "route passes {:.1} tiles from a live hostile pillbox", closest);
+    }
+
+    /// The squad walks to a neutral pillbox, stands on it for the
+    /// capture time, takes it, and walks home; the pillbox then shoots
+    /// for its new owner.
+    #[test]
+    fn pillboys_capture_a_pillbox() {
+        let mut w = world();
+        let pb = w.pillboxes[0].clone();
+        let me = w.tank_of(0).unwrap().id;
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Capture { pillbox: pb.id } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::PillboysDeployed { .. })), "{:?}", w.events);
+        assert!(w.tank(me).unwrap().pillboys.deployed());
+        // A second order while they are out is refused.
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Capture { pillbox: pb.id } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { .. })));
+        let mut captured_at = None;
+        for _ in 0..(90 * TICK_HZ) {
+            w.step(&[]);
+            if w.events.iter().any(|e| matches!(e, Event::PillboxCaptured { by: 0, .. })) {
+                captured_at = Some(w.tick);
+            }
+            if captured_at.is_some() && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        let t = captured_at.expect("never captured");
+        // 19 tiles at 1.5 tiles/s is 13 s of walking, then 10 s standing.
+        assert!(t > 20 * TICK_HZ as Tick && t < 40 * TICK_HZ as Tick, "captured at tick {}", t);
+        assert_eq!(w.pillbox(pb.id).unwrap().owner, Some(0));
+        assert!(w.tank(me).unwrap().pillboys.aboard, "squad did not come home");
+        assert_eq!(w.tank(me).unwrap().pillboys.strength, PILLBOY_MAX);
+        assert_eq!(w.players[0].score, SCORE_CAPTURE);
+        // Ours now: a hostile tank parked in its ring gets shot; we do not.
+        let enemy = w.players[1].tank;
+        w.tank_mut(enemy).unwrap().pos = pb.pos + V2::new(2.0, 0.0);
+        w.tank_mut(me).unwrap().pos = pb.pos + V2::new(-2.0, 0.0);
+        let mut at_enemy = 0;
+        let mut at_me = 0;
+        for _ in 0..(6 * TICK_HZ) {
+            w.step(&[]);
+            for e in &w.events {
+                if let Event::PillboxFired { tank, .. } = e {
+                    if *tank == enemy { at_enemy += 1 } else if *tank == me { at_me += 1 }
+                }
+            }
+        }
+        assert!(at_enemy >= 2 && at_me == 0, "fired at enemy {} times, at owner {}", at_enemy, at_me);
+    }
+
     #[test]
     fn sixteen_seats() {
+
 
         let players = (0..MAX_PLAYERS).map(|i| (format!("p{}", i), true)).collect();
         let mut w = World::new(Scenario { players, swarm_interval: 0, ..Scenario::default() });

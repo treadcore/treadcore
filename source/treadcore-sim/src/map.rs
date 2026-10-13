@@ -62,6 +62,9 @@ pub struct Map {
     pub cells: Vec<u8>,
     pub starts: Vec<V2>,
     pub depots: Vec<V2>,
+    /// Neutral pillboxes at the start: one on each spoke between a
+    /// start's depot and the centre, and four around the centre.
+    pub pillboxes: Vec<V2>,
 }
 
 impl Map {
@@ -128,8 +131,17 @@ impl Map {
         let center = V2::new(w as f32 * 0.5, h as f32 * 0.5);
         let mut depots: Vec<V2> = starts.iter().map(|s| s.lerp(center, 0.18)).collect();
         depots.push(center);
+        // Pillboxes: a third of the way in on every spoke (ten tiles
+        // past the start's depot, eight short of where a bot stands to
+        // fire), and a square of four round the centre depot. All
+        // neutral: Bolo's, shooting at everyone until someone's squad
+        // takes them.
+        let mut pillboxes: Vec<V2> = starts.iter().map(|s| s.lerp(center, 0.36)).collect();
+        for (dx, dy) in [(9.0, 0.0), (-9.0, 0.0), (0.0, 9.0), (0.0, -9.0)] {
+            pillboxes.push(center + V2::new(dx, dy));
+        }
 
-        let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone() };
+        let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone() };
 
         // Roads: the four sides to the centre, and a ring road round the
         // edge through every start, so each start reaches a spoke. Roads
@@ -143,10 +155,15 @@ impl Map {
             let b = starts[ring[(i + 1) % ring.len()]];
             map.road(a, b, &mut rng);
         }
-        // Clear the ground around starts and depots, then stamp depots.
+        // Clear the ground around starts, depots and pillboxes, then
+        // stamp depots.
         for s in starts.iter().chain(depots.iter()) {
             map.clear_disc(*s, 3.0);
         }
+        for p in &pillboxes {
+            map.clear_disc(*p, 1.5);
+        }
+
         for d in &depots {
             map.stamp(*d, 1, Terrain::Depot);
         }
@@ -268,6 +285,15 @@ impl Map {
     /// straight lines; this is what a client or bot calls before issuing
     /// a chain of `Move`s. Returns an empty vec if unreachable.
     pub fn route(&self, a: V2, b: V2) -> Vec<V2> {
+        self.route_with(a, b, |_| 0.0)
+    }
+
+    /// `route`, with an extra cost per tile from `danger` (0 is none, 1
+    /// doubles the tile's cost). The world passes the range rings of
+    /// live hostile pillboxes, so a tank drives round a gun it knows
+    /// about instead of down the road through it. Not a hard wall: a
+    /// tile inside a ring is still passable when there is no other way.
+    pub fn route_with(&self, a: V2, b: V2, danger: impl Fn(V2) -> f32) -> Vec<V2> {
         use std::cmp::Ordering;
         use std::collections::BinaryHeap;
         #[derive(PartialEq)]
@@ -322,7 +348,8 @@ impl Map {
                 if dx != 0 && dy != 0 && (!self.at_tile(cx as usize, ny as usize).passable() || !self.at_tile(nx as usize, cy as usize).passable()) {
                     continue;
                 }
-                let step = if dx != 0 && dy != 0 { 1.4142 } else { 1.0 } * t.move_cost();
+                let step = if dx != 0 && dy != 0 { 1.4142 } else { 1.0 } * t.move_cost() * (1.0 + danger(V2::new(nx as f32 + 0.5, ny as f32 + 0.5)));
+
                 let ng = g[cur] + step;
                 if ng < g[ni] {
                     g[ni] = ng;

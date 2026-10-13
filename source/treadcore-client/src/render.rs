@@ -230,6 +230,21 @@ fn sync_entities(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sp
         let c = d.owner.map(player_color).unwrap_or(Color::srgb(0.7, 0.7, 0.7));
         place(&mut commands, d.id, to_screen(d.pos), 0.0, Vec2::splat(TILE * 1.2), c, 1.0, Some(("depot".into(), c)));
     }
+    // Pillboxes: a square, the owner's colour (grey neutral, dark dead),
+    // labelled with health.
+    for p in &obs.pillboxes {
+        let base = p.owner.map(player_color).unwrap_or(Color::srgb(0.75, 0.75, 0.7));
+        let c = if p.alive() { base } else { Color::srgb(0.25, 0.22, 0.2) };
+        let label = if p.alive() { format!("pb {:.0}", p.health) } else { "pb dead".to_string() };
+        place(&mut commands, p.id, to_screen(p.pos), 0.785, Vec2::splat(TILE * 1.0), c, 1.5, Some((label, c)));
+    }
+    // Squads out in the field: a small figure in the owner's colour,
+    // keyed by the tank id with a high bit so it never collides.
+    for t in obs.tanks.iter().filter(|t| t.alive && t.pillboys.deployed()) {
+        let c = player_color(t.owner);
+        let label = if t.owner == me { Some((format!("PB {}", t.pillboys.strength), c)) } else { None };
+        place(&mut commands, t.id | 0x8000_0000, to_screen(t.pillboys.pos), 0.0, Vec2::splat(TILE * 0.45), c.lighter(0.1), 2.5, label);
+    }
     // Anything not in this observation is hidden, not despawned: it will
     // most likely be back in the next one.
     let gone: Vec<(EntityId, Entity)> = sprites.ents.iter().filter(|(id, _)| !seen.contains(id)).map(|(a, b)| (*a, *b)).collect();
@@ -338,7 +353,27 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>) {
             gizmos.circle_2d(to_screen(t.pos), t.bubble * TILE, player_color(t.owner).with_alpha(0.3));
         }
     }
+    // Pillbox range rings: hostile ones red, so the player knows what a
+    // drive-by costs; mine faint in my colour. Capture progress inside.
+    for p in obs.pillboxes.iter().filter(|p| p.alive()) {
+        let c = if p.owner == Some(me) { mine.with_alpha(0.15) } else { Color::srgba(1.0, 0.3, 0.25, 0.22) };
+        gizmos.circle_2d(to_screen(p.pos), PILLBOX_RANGE * TILE, c);
+    }
+    for p in obs.pillboxes.iter().filter(|p| p.capture > 0) {
+        if let Some(c) = p.capturer {
+            let f = p.capture as f32 / PILLBOX_CAPTURE_TICKS as f32;
+            gizmos.circle_2d(to_screen(p.pos), TILE * 2.0 * f, player_color(c).with_alpha(0.6));
+        }
+    }
+    // My squad's walk: a line from the tank to the squad and on to its site.
+    if my.alive && my.pillboys.deployed() {
+        gizmos.line_2d(to_screen(my.pos), to_screen(my.pillboys.pos), mine.with_alpha(0.5));
+        if let Some(w) = my.pillboys.route.last() {
+            gizmos.line_2d(to_screen(my.pillboys.pos), to_screen(*w), mine.with_alpha(0.25));
+        }
+    }
     // Depot capture rings.
+
     for d in &obs.depots {
         gizmos.circle_2d(to_screen(d.pos), DEPOT_RADIUS * TILE, Color::srgba(0.8, 0.8, 0.8, 0.15));
         if d.capture > 0 {
