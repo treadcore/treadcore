@@ -42,33 +42,55 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
 
 /// A doctrine, not an intelligence:
 ///
-///   1. Keep the bubble up. Interceptors on station: at least three while
-///      anything hostile is airborne nearby, two otherwise.
-///   2. Keep eyes out. One recon drone orbiting ahead, toward the nearest
-///      enemy if one is known, else toward the centre.
-///   3. Shoot what the recon sees. A spotted tank in range gets a shell
-///      every reload.
-///   4. Shoot and scoot. After firing, move a few tiles -- counter-battery
-///      is coming.
-///   5. Resupply. Low on anything, drive to the nearest friendly depot
-///      and sit until full. No friendly depot: capture the nearest.
-///   6. Strike when the bay allows. A strike drone at the nearest enemy
-///      tank once its own bubble is thin (fewer than two interceptors
-///      visible around it).
-///   7. Stay out of direct range of anything that can see you.
+///   1. Keep the bubble up. Interceptors on station: four while anything
+///      hostile is airborne nearby, two otherwise.
+///   2. Take a firing position. The objective is the nearest depot that is
+///      not mine (the centre, to begin with). Drive to `STANDOFF` tiles
+///      short of it, by road: the world routes a Move around the river.
+///   3. Eyes over the objective. Once stationary, one recon drone orbits
+///      the objective (or the nearest known enemy), inside the link.
+///      The first bot fired its recon toward the centre at launch and
+///      then drove past it; a recon launched from a standing tank at its
+///      firing position stays useful.
+///   4. Shoot what the recon sees. A spotted tank between minimum and
+///      maximum range gets a shell every reload, led by its motion.
+///   5. Shoot and scoot. After firing, move a few tiles: counter-battery
+///      is coming. Stay out of direct range of anything that can see you.
+///   6. Strike a thin bubble: a strike drone at the nearest enemy once
+///      fewer than two interceptors are visible around it.
+///   7. Resupply when low; capture the nearest depot if none is mine.
+///   8. Advance. Nothing seen for `PATIENCE` seconds at the firing
+///      position: drive onto the objective and capture it, under the
+///      recon, and the next unowned depot becomes the objective.
 pub struct RuleBot {
     name: String,
     rng: Rng,
-    route: Vec<V2>,
     last_fire_tick: Tick,
     scoot_until: Tick,
     resupplying: bool,
     last_think: Tick,
+    /// Tick an enemy tank was last in view; drives the patience clock.
+    last_contact: Tick,
+    /// Tick the tank last came to rest at a firing position.
+    settled_at: Option<Tick>,
+    /// This bot's patience in seconds, drawn once from its seed so four
+    /// bots do not all advance on the same tick and meet in the middle.
+    patience: f32,
 }
+
+/// How far short of the objective the bot stops to fire from: inside
+/// indirect range of anything at the objective, outside direct range
+/// and outside the swarm's interest in it, and within the recon link.
+pub const STANDOFF: f32 = 25.0;
+/// Seconds at a firing position with nothing seen before advancing; each
+/// bot draws its own between half and two and a half times this.
+pub const PATIENCE: f32 = 20.0;
 
 impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
-        RuleBot { name: name.into(), rng: Rng::new(seed), route: Vec::new(), last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0 }
+        let mut rng = Rng::new(seed);
+        let patience = PATIENCE * rng.range(0.5, 2.5);
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, settled_at: None, patience }
     }
 
     fn nearest_enemy<'a>(&self, obs: &'a Observation, me: &Tank) -> Option<&'a Tank> {
@@ -77,6 +99,10 @@ impl RuleBot {
 
     fn nearest_depot<'a>(&self, obs: &'a Observation, me: &Tank, friendly: bool) -> Option<&'a Depot> {
         obs.depots.iter().filter(|d| if friendly { d.owner == Some(obs.player) } else { d.owner != Some(obs.player) }).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+    }
+
+    fn clamp_to_map(p: V2) -> V2 {
+        V2::new(p.x.clamp(2.0, MAP_W as f32 - 3.0), p.y.clamp(2.0, MAP_H as f32 - 3.0))
     }
 }
 
@@ -99,10 +125,24 @@ impl Brain for RuleBot {
         self.last_think = obs.tick;
 
         let my_interceptors = obs.my_drones().filter(|d| d.kind == DroneKind::Interceptor).count();
-        let my_recon = obs.my_drones().filter(|d| d.kind == DroneKind::Recon).count();
+        let my_recon: Vec<&Drone> = obs.my_drones().filter(|d| d.kind == DroneKind::Recon).collect();
         let my_strikes = obs.my_drones().filter(|d| d.kind == DroneKind::Strike).count();
         let hostile_air = obs.hostile_drones().filter(|d| d.pos.dist(me.pos) <= me.bubble + DETECT_MARGIN + 6.0).count();
         let enemy = self.nearest_enemy(obs, me);
+        if enemy.is_some() {
+            self.last_contact = obs.tick;
+        }
+        let stationary = me.goal.is_none();
+        if stationary {
+            if self.settled_at.is_none() {
+                self.settled_at = Some(obs.tick);
+            }
+        } else {
+            self.settled_at = None;
+        }
+        // The objective: the nearest depot that is not mine. With none
+        // left, the centre of the map.
+        let objective = self.nearest_depot(obs, me, false).map(|d| d.pos).unwrap_or_else(|| V2::new(MAP_W as f32 * 0.5, MAP_H as f32 * 0.5));
 
         // 1. The bubble.
         let want_station = if hostile_air > 0 { 4 } else { 2 };
@@ -115,16 +155,26 @@ impl Brain for RuleBot {
             cmds.push(Command::SetBubble { radius: want_bubble });
         }
 
-        // 2. Eyes.
-        if my_recon == 0 && me.bay.recon > 0 {
-            let toward = enemy.map(|e| e.pos).unwrap_or_else(|| V2::new(64.0, 64.0));
-            let dir = (toward - me.pos).norm();
-            let dist = me.pos.dist(toward).min(RECON_LINK * 0.7);
+        // 3. Eyes. Launched from a standing tank, over what matters: the
+        // enemy if one is known, else the objective. A second recon goes
+        // up when the first cannot see a known enemy.
+        let look_at = enemy.map(|e| e.pos).unwrap_or(objective);
+        let recon_sees_it = my_recon.iter().any(|d| d.pos.dist(look_at) <= RECON_VISION);
+        // "Stationary" means settled for a second, not merely not yet
+        // ordered to move: on the first think the tank has no goal and a
+        // recon launched then orbits the start, where the tank will not
+        // be.
+        let settled_s = self.settled_at.map(|t| obs.tick.saturating_sub(t) as f32 * DT).unwrap_or(0.0);
+        let want_recon = my_recon.is_empty() || (enemy.is_some() && !recon_sees_it && my_recon.len() < 2);
+        if want_recon && me.bay.recon > 0 && (settled_s >= 1.0 || enemy.is_some()) {
+
+            let dir = (look_at - me.pos).norm();
+            let dist = me.pos.dist(look_at).min(RECON_LINK * 0.7);
             let center = me.pos + dir.scale(dist);
-            cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 4.0 } });
+            cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 3.0 } });
         }
 
-        // 3. The gun.
+        // 4. The gun, and 6. strikes.
         if let Some(e) = enemy {
             let range = me.pos.dist(e.pos);
             if me.reload == 0 && me.shells > 0 {
@@ -140,62 +190,62 @@ impl Brain for RuleBot {
                     self.scoot_until = obs.tick + (6 * TICK_HZ) as Tick;
                 }
             }
-            // 6. Strikes, at a thin bubble.
             let their_cover = obs.drones.iter().filter(|d| d.owner == e.owner && d.kind == DroneKind::Interceptor && d.pos.dist(e.pos) <= BUBBLE_MAX + 2.0).count();
             if their_cover < 2 && my_strikes == 0 && me.bay.strike > 0 && range <= STRIKE_BATTERY * STRIKE_SPEED * 0.8 {
                 cmds.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: e.id } });
             }
         }
 
-        // 5. Resupply.
+        // 7. Resupply.
         let low = me.shells < 6 || me.armor < 45.0 || me.bay.interceptor == 0 || me.fuel < 120.0;
         let full = me.shells >= TANK_SHELLS - 2 && me.armor >= TANK_ARMOR - 5.0 && me.bay.interceptor >= BAY_FULL.interceptor - 1;
         if self.resupplying && full {
             self.resupplying = false;
-            self.route.clear();
         }
         if low && !self.resupplying {
             self.resupplying = true;
-            self.route.clear();
         }
         if self.resupplying {
             let depot = self.nearest_depot(obs, me, true).or_else(|| self.nearest_depot(obs, me, false));
             if let Some(d) = depot {
-                if me.pos.dist(d.pos) > DEPOT_RADIUS * 0.6 && me.goal.is_none() {
+                if me.pos.dist(d.pos) > DEPOT_RADIUS * 0.6 && stationary {
                     cmds.push(Command::Move { to: d.pos });
                 }
             }
             return cmds;
         }
 
-        // 4. Scoot, and 7. keep distance.
-        let too_close = enemy.map(|e| e.pos.dist(me.pos) < DIRECT_RANGE + 3.0).unwrap_or(false);
-        if (obs.tick < self.scoot_until || too_close) && me.goal.is_none() {
-            let away = enemy.map(|e| (me.pos - e.pos).norm()).unwrap_or(V2::ZERO);
-            let jitter = self.rng.disc().scale(5.0);
-            let to = me.pos + away.scale(6.0) + jitter;
-            let to = V2::new(to.x.clamp(2.0, MAP_W as f32 - 3.0), to.y.clamp(2.0, MAP_H as f32 - 3.0));
-            cmds.push(Command::Move { to });
+        // 5. Scoot, and keep distance: out of direct range, inside indirect.
+        if let Some(e) = enemy {
+            let range = e.pos.dist(me.pos);
+            let too_close = range < INDIRECT_MIN_RANGE + 2.0;
+            let too_far = range > INDIRECT_MAX_RANGE * 0.9;
+            if (obs.tick < self.scoot_until || too_close || too_far) && stationary {
+                let away = (me.pos - e.pos).norm();
+                let to = if too_far {
+                    e.pos + away.scale(INDIRECT_MAX_RANGE * 0.6)
+                } else if too_close {
+                    e.pos + away.scale(INDIRECT_MIN_RANGE + 8.0)
+                } else {
+                    me.pos + away.scale(3.0) + self.rng.disc().scale(4.0)
+                };
+                cmds.push(Command::Move { to: Self::clamp_to_map(to) });
+            }
             return cmds;
         }
 
-        // Otherwise: edge toward the centre, or toward the nearest
-        // unowned depot, to a point inside indirect range of the enemy
-        // but outside direct.
-        if me.goal.is_none() && obs.tick % (3 * TICK_HZ) as Tick == 0 {
-            let target = match enemy {
-                Some(e) => {
-                    let d = e.pos.dist(me.pos);
-                    if d > INDIRECT_MAX_RANGE * 0.8 {
-                        me.pos.lerp(e.pos, 0.3)
-                    } else {
-                        me.pos + self.rng.disc().scale(4.0)
-                    }
-                }
-                None => self.nearest_depot(obs, me, false).map(|d| d.pos).unwrap_or(V2::new(64.0, 64.0)),
-            };
-            let to = V2::new(target.x.clamp(2.0, MAP_W as f32 - 3.0), target.y.clamp(2.0, MAP_H as f32 - 3.0));
-            cmds.push(Command::Move { to });
+        // 2. The firing position, and 8. the advance.
+        let to_obj = me.pos.dist(objective);
+        if to_obj > STANDOFF + 3.0 && stationary {
+            let p = objective + (me.pos - objective).norm().scale(STANDOFF);
+            cmds.push(Command::Move { to: Self::clamp_to_map(p) });
+        } else if to_obj > DEPOT_RADIUS * 0.6 && stationary {
+            let settled = self.settled_at.map(|t| obs.tick.saturating_sub(t)).unwrap_or(0) as f32 * DT;
+            let quiet = obs.tick.saturating_sub(self.last_contact) as f32 * DT;
+            if settled >= self.patience && quiet >= self.patience && !my_recon.is_empty() {
+
+                cmds.push(Command::Move { to: objective });
+            }
         }
         cmds
     }
@@ -294,11 +344,16 @@ pub fn schema_examples() -> String {
 mod tests {
     use super::*;
 
+    /// Sixteen bots, six minutes: the rules get exercised. (Four bots on
+    /// the sixteen-start map spend the match collecting the twelve free
+    /// depots and rarely meet; that is play, not a failure, but it is
+    /// not a test of the gun.)
     #[test]
     fn bots_fight_to_a_result() {
         let scenario = Scenario { swarm_interval: 30 * TICK_HZ, time_limit: 6 * 60 * TICK_HZ as Tick, ..Scenario::default() };
         let mut w = World::new(scenario);
-        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..4).map(|i| (i as PlayerId, Box::new(RuleBot::new(100 + i as u64, "bot")) as Box<dyn Brain>)).collect();
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..MAX_PLAYERS).map(|i| (i as PlayerId, Box::new(RuleBot::new(100 + i as u64, "bot")) as Box<dyn Brain>)).collect();
+
         let mut shots = 0;
         let mut launches = 0;
         while !w.over {
