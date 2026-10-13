@@ -5,6 +5,7 @@
 #   treadcore-<version>-linux-arm64.deb
 #   treadcore-<version>-linux-x86_64.rpm    Fedora 40+
 #   treadcore-<version>-linux-aarch64.rpm
+#   treadcore-<version>-windows-x86_64.msi    Program Files, Start Menu, PATH
 #   treadcore-<version>-windows-x86_64.zip
 #   treadcore-<version>-macos-arm64.zip     Treadcore.app, ad-hoc signed
 #   SHA256SUMS
@@ -79,7 +80,9 @@ jobs:
     container: fedora:41
     steps:
       - name: system packages (scripts/deps.sh, Fedora line)
-        run: dnf install -y gcc git pkgconf-pkg-config wayland-devel libxkbcommon-devel alsa-lib-devel systemd-devel
+        # rpm-build: Fedora's own dependency generator, which
+        # cargo-generate-rpm's auto-req uses when it is there.
+        run: dnf install -y gcc git rpm-build pkgconf-pkg-config wayland-devel libxkbcommon-devel alsa-lib-devel systemd-devel
       - uses: actions/checkout@v4
       - name: rust (rustup, stable)
         run: |
@@ -105,8 +108,15 @@ jobs:
           New-Item -ItemType Directory $d | Out-Null
           Copy-Item target/release/treadcore.exe, target/release/treadcore-server.exe, README.md, documentation/HOW-TO-PLAY.md, LICENSE $d
           Compress-Archive -Path $d -DestinationPath "$d.zip"
+      - name: msi (WiX, packaging/windows/treadcore.wxs)
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          $v = "${{ needs.version.outputs.version }}" -replace '-.*$', ''
+          wix build packaging/windows/treadcore.wxs -arch x64 -d Version=$v -d BinDir=target/release -o "treadcore-${{ needs.version.outputs.version }}-windows-x86_64.msi"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
       - uses: actions/upload-artifact@v4
-        with: { name: windows, path: "*.zip" }
+        with: { name: windows, path: "treadcore-*-windows-x86_64.*" }
 
   macos:
     needs: version
@@ -134,45 +144,62 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ["debian:12", "debian:13", "ubuntu:22.04", "ubuntu:24.04", "linuxmintd/mint22-amd64"]
-    runs-on: ubuntu-latest
+        include:
+          - { image: "debian:12", arch: amd64, runner: ubuntu-latest }
+          - { image: "debian:13", arch: amd64, runner: ubuntu-latest }
+          - { image: "ubuntu:22.04", arch: amd64, runner: ubuntu-latest }
+          - { image: "ubuntu:24.04", arch: amd64, runner: ubuntu-latest }
+          - { image: "linuxmintd/mint22-amd64", arch: amd64, runner: ubuntu-latest }
+          - { image: "debian:12", arch: arm64, runner: ubuntu-22.04-arm }
+          - { image: "ubuntu:24.04", arch: arm64, runner: ubuntu-22.04-arm }
+    name: test-deb (${{ matrix.image }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     container: ${{ matrix.image }}
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: deb-amd64 }
-      - name: install the package (apt resolves its dependencies)
-        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y ./treadcore-*-linux-amd64.deb
-      - name: run what it installed
+        with: { name: "deb-${{ matrix.arch }}" }
+      - name: install the package, then run what it installed
+        shell: bash
         run: |
-          set -x
-          treadcore --help
-          ! ldd /usr/bin/treadcore | grep "not found"
-          test -f /usr/share/applications/org.treadcore.treadcore.desktop
-          test -f /usr/share/icons/hicolor/scalable/apps/treadcore.svg
-          treadcore-server --local --seconds 60 --swarm 0 2>&1 | tee match.log | tail -5
-          grep -q "match over" match.log
+          check() {   # run a test; if it fails, its output becomes a public annotation
+            if "$@" > out.log 2>&1; then rc=0; else rc=$?; fi; tail -5 out.log
+            if [ $rc -ne 0 ]; then echo "::error title=$1 failed (exit $rc)::$(tail -c 1500 out.log | tr '\n\r' '  ')"; exit 1; fi
+          }
+          check apt-get update
+          check env DEBIAN_FRONTEND=noninteractive apt-get install -y ./treadcore-*-linux-${{ matrix.arch }}.deb
+          check treadcore --help
+          check sh -c '! ldd /usr/bin/treadcore | grep "not found"'
+          check test -f /usr/share/applications/org.treadcore.treadcore.desktop
+          check test -f /usr/share/icons/hicolor/scalable/apps/treadcore.svg
+          check sh -c 'treadcore-server --local --seconds 60 --swarm 0 2>&1 | grep "match over"'
 
   test-rpm:
     needs: [version, rpm]
     strategy:
       fail-fast: false
       matrix:
-        image: ["fedora:41", "fedora:42"]
-    runs-on: ubuntu-latest
+        include:
+          - { image: "fedora:41", arch: x86_64, runner: ubuntu-latest }
+          - { image: "fedora:42", arch: x86_64, runner: ubuntu-latest }
+          - { image: "fedora:42", arch: aarch64, runner: ubuntu-22.04-arm }
+    name: test-rpm (${{ matrix.image }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     container: ${{ matrix.image }}
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: rpm-x86_64 }
-      - name: install the package (dnf resolves its dependencies)
-        run: dnf install -y ./treadcore-*-linux-x86_64.rpm
-      - name: run what it installed
+        with: { name: "rpm-${{ matrix.arch }}" }
+      - name: install the package, then run what it installed
+        shell: bash
         run: |
-          set -x
-          treadcore --help
-          ! ldd /usr/bin/treadcore | grep "not found"
-          test -f /usr/share/applications/org.treadcore.treadcore.desktop
-          treadcore-server --local --seconds 60 --swarm 0 2>&1 | tee match.log | tail -5
-          grep -q "match over" match.log
+          check() {   # run a test; if it fails, its output becomes a public annotation
+            if "$@" > out.log 2>&1; then rc=0; else rc=$?; fi; tail -5 out.log
+            if [ $rc -ne 0 ]; then echo "::error title=$1 failed (exit $rc)::$(tail -c 1500 out.log | tr '\n\r' '  ')"; exit 1; fi
+          }
+          check dnf install -y ./treadcore-*-linux-${{ matrix.arch }}.rpm
+          check treadcore --help
+          check sh -c '! ldd /usr/bin/treadcore | grep "not found"'
+          check test -f /usr/share/applications/org.treadcore.treadcore.desktop
+          check sh -c 'treadcore-server --local --seconds 60 --swarm 0 2>&1 | grep "match over"'
 
   test-windows:
     needs: [version, windows]
@@ -180,15 +207,32 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { name: windows }
-      - name: unzip and run
+      - name: the zip, unzipped and run
         shell: pwsh
         run: |
+          function Fail($what) { Write-Output "::error title=windows zip: $what::$((Get-Content out.log -Tail 20) -join ' ')"; exit 1 }
           Expand-Archive -Path *.zip -DestinationPath .
           $d = Get-ChildItem -Directory treadcore-*-windows-x86_64 | Select-Object -First 1
-          & "$d/treadcore.exe" --help
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          & "$d/treadcore-server.exe" --local --seconds 60 --swarm 0 2>&1 | Tee-Object match.log | Select-Object -Last 5
-          if (-not (Select-String -Path match.log -Pattern "match over" -Quiet)) { exit 1 }
+          & "$d/treadcore.exe" --help *> out.log; if ($LASTEXITCODE -ne 0) { Fail "treadcore --help" }
+          & "$d/treadcore-server.exe" --local --seconds 60 --swarm 0 *> out.log
+          if (-not (Select-String -Path out.log -Pattern "match over" -Quiet)) { Fail "bot match" }
+      - name: the msi, installed silently, run, uninstalled
+        shell: pwsh
+        run: |
+          function Fail($what) { Write-Output "::error title=windows msi: $what::$((Get-Content out.log -Tail 20 -ErrorAction SilentlyContinue) -join ' ')"; exit 1 }
+          $msi = (Get-ChildItem treadcore-*-windows-x86_64.msi | Select-Object -First 1).FullName
+          $p = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /l*v install.log" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Copy-Item install.log out.log; Fail "install (msiexec $($p.ExitCode))" }
+          $dir = "$env:ProgramFiles\Treadcore"
+          if (-not (Test-Path "$dir\treadcore.exe")) { Fail "no treadcore.exe in $dir" }
+          if (-not (Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Treadcore.lnk")) { Fail "no Start Menu shortcut" }
+          $path = [Environment]::GetEnvironmentVariable("PATH", "Machine")
+          if ($path -notlike "*Treadcore*") { Fail "Program Files\Treadcore not on the system PATH" }
+          & "$dir\treadcore-server.exe" --local --seconds 60 --swarm 0 *> out.log
+          if (-not (Select-String -Path out.log -Pattern "match over" -Quiet)) { Fail "bot match from the installed copy" }
+          $p = Start-Process msiexec.exe -ArgumentList "/x `"$msi`" /qn /l*v uninstall.log" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Copy-Item uninstall.log out.log; Fail "uninstall (msiexec $($p.ExitCode))" }
+          if (Test-Path "$dir\treadcore.exe") { Fail "uninstall left treadcore.exe behind" }
 
   test-macos:
     needs: [version, macos]
@@ -197,14 +241,17 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: macos }
       - name: unzip and run
+        shell: bash
         run: |
-          set -x
-          ditto -x -k treadcore-*-macos-arm64.zip .
+          check() {   # run a test; if it fails, its output becomes a public annotation
+            if "$@" > out.log 2>&1; then rc=0; else rc=$?; fi; tail -5 out.log
+            if [ $rc -ne 0 ]; then echo "::error title=$1 failed (exit $rc)::$(tail -c 1500 out.log | tr '\n\r' '  ')"; exit 1; fi
+          }
+          check ditto -x -k treadcore-*-macos-arm64.zip .
           d="$(ls -d treadcore-*-macos-arm64 | head -1)"
-          codesign --verify --deep "$d/Treadcore.app"
-          "$d/Treadcore.app/Contents/MacOS/treadcore" --help
-          "$d/treadcore-server" --local --seconds 60 --swarm 0 2>&1 | tee match.log | tail -5
-          grep -q "match over" match.log
+          check codesign --verify --deep "$d/Treadcore.app"
+          check "$d/Treadcore.app/Contents/MacOS/treadcore" --help
+          check sh -c "\"$d/treadcore-server\" --local --seconds 60 --swarm 0 2>&1 | grep 'match over'"
 
   # The flake, built from this tag the way a Nix user would. Not a gate
   # on the release: the flake is new, and a failure here is a finding

@@ -69,7 +69,10 @@ name = "treadcore"
 summary = "A sixteen-player overhead tank game for the drone battlefield"
 license = "MIT"
 url = "https://treadcore.org"
-auto-req = "builtin"
+# "auto": RPM's own dependency generator where rpm-build is installed (the
+# workflow's Fedora container), the builtin ELF reader otherwise. 0.1.0-rc.2's
+# builtin reading gave a package Fedora 41 and 42 both refused to install.
+auto-req = "auto"
 assets = [
     { source = "target/release/treadcore", dest = "/usr/bin/treadcore", mode = "755" },
     { source = "target/release/treadcore-server", dest = "/usr/bin/treadcore-server", mode = "755" },

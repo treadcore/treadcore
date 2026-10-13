@@ -185,7 +185,9 @@ the .rpm (Fedora 41, x86-64 and AArch64), a Windows zip and a macOS
 zip of `Treadcore.app`, and puts them with `SHA256SUMS` on a **draft**
 GitHub release, a pre-release for a candidate. The draft is published
 by hand on the same day as `make publish`, no sooner than a day after
-the tag; until then `download.html` shows no package links, because it
+the tag, and then `make builds` writes the published release into
+`builds.json`, the grid on index.html and the links on download.html
+(three API calls; commit what it changed); until then `download.html` shows no package links, because it
 reads the newest *published* release from GitHub's API.
 
 A new feature in a release is not done until the guide shows it: the

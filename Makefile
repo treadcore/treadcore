@@ -53,6 +53,9 @@
 #                    every one is shown by the guide or the site, the
 #                    documents name the guide, the crates package. Then
 #                    says what to do by hand: commit, tag, publish, push
+#   make builds      write builds.json and the build grid on index.html and
+#                    download.html from the published release (three API
+#                    calls at most; run on the day a release is published)
 #   make hooks       turn on the repository's git hooks (.githooks/): a
 #                    push of a release tag runs make release first, and
 #                    is refused if it fails
@@ -84,7 +87,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce quad lobby-test replay map convert test shoot release hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce quad lobby-test replay map convert test shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -199,6 +202,9 @@ shoot: configure
 
 release: configure
 	@scripts/release.sh
+
+builds:
+	@scripts/builds.sh
 
 hooks:
 	@git config core.hooksPath .githooks && echo "  hooks on: a push of a v* tag runs make release first (.githooks/pre-push)"

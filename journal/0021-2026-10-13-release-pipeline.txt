@@ -1,0 +1,61 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 23:30:00 -0700
+Subject: [JOURNAL 0021] The release pipeline tested: rc.2 found the .rpm
+         broken; rc.3, the MSI, the build grid
+Message-ID: <0021.20261013@treadcore.org>
+In-Reply-To: <0020.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: release candidate, workflow, package tests, rpm, msi,
+          annotations, rate limit, builds.json, lab report
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "test release process and packages";
+           "can we add a windows build. msi?"; "write a lab report
+           about the packages ... a cargo rust tutorial ... be aware
+           of api usage ... a checkbox grid of index.html"
+
+ABSTRACT
+
+    0.1.0-rc.2 was cut to test the pipeline end to end, and it did its
+    job by failing: the hook ran the release check before the tag left,
+    the workflow built all six packages, installed the .deb on five
+    systems and played a match on each, ran the Windows and macOS
+    builds, built the Nix flake, and refused to make a draft because
+    the .rpm would not install on Fedora 41 or 42. rc.3 makes the .rpm
+    with RPM's own generator, adds an MSI, tests the ARM packages on
+    ARM, publishes every test failure as an annotation, and replaces
+    the download page's per-visitor API call with make builds.
+
+IV. CHRONOLOGY
+
+     1. The workflow learned to test: each package installed on fresh
+        containers of its systems by their own package manager, then
+        --help, ldd, the desktop entry, a 60-second bot match. The
+        release job needs every test.
+     2. rc.2: version, changelog, frames, make release; the tag pushed;
+        the hook ran make release and passed.
+     3. The run, watched once a minute: version, the six builds, macOS
+        test, the flake, the five .deb tests passed; both .rpm tests
+        failed; release skipped. GitHub's jobs endpoint returned 502
+        for a while; the check-runs endpoint of the tag's commit gave
+        the same answer.
+     4. The .rpm failure's log needs a login; its annotation said only
+        "exit code 1". rpm -qp --requires on a locally built .rpm read
+        the builtin generator's list. rc.3 builds the .rpm with
+        rpm-build present and auto-req = "auto".
+     5. Every test's failing output now becomes a public annotation;
+        the helper's first version would have exited under bash -e
+        before capturing anything, and was fixed before it ran.
+     6. The MSI: WiX 5, per machine, Start Menu, PATH; tested by a
+        silent install, a match from the installed copy, an uninstall.
+     7. make builds: three API calls at most, by the maintainer, at
+        publish time; index.html's grid and download.html's links read
+        the data embedded in them. download.html no longer calls the
+        API per visitor.
+     8. documentation/LAB-REPORT-PACKAGES.md, the pipeline as a Cargo
+        tutorial.
+     9. rc.3 cut and pushed; its run: (below, when it finishes).
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

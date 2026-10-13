@@ -87,6 +87,13 @@ background:var(--card);border:1px solid var(--line);border-radius:.5rem;font-wei
 .platforms a:hover{border-color:var(--accent)}
 .platforms small{display:block;font-weight:400;color:var(--faint);font-size:.75rem}
 .pico{width:2rem;height:2rem;flex:none;border-radius:.3rem}
+.grid{border-collapse:collapse;width:100%;font-size:.86rem;margin:1rem 0 .6rem;display:block;overflow-x:auto}
+.grid th,.grid td{border:1px solid var(--line);padding:.4rem .55rem;text-align:left;vertical-align:middle}
+.grid th{background:var(--card);font-weight:600;white-space:nowrap}
+.grid td.c{text-align:center;font-size:1rem;width:3.2rem}
+.grid .yes{color:var(--accent)} .grid .no{color:var(--faint)} .grid .na{color:var(--faint);font-size:.8rem}
+.grid td.deps{color:var(--dim);font-size:.8rem}
+.builtmeta{font:.8rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim)}
 .nav{display:flex;flex-wrap:wrap;gap:1.1rem;margin:0 0 1rem;padding:0;list-style:none;font-size:.9rem}
 
 /* the paper */
@@ -145,7 +152,7 @@ border-top:3px double var(--ink);border-bottom:1px solid var(--ink)}
 {"@context":"https://schema.org","@type":"VideoGame",
 "name":"treadcore","description":"A sixteen-player overhead tank game for the drone battlefield: the gun fires indirect at points a recon drone is watching, interceptors hold a ring round the hull, and the players find each other on a LAN or across the Internet with no server.",
 "url":"https://treadcore.org/","applicationCategory":"Game","genre":"Strategy","operatingSystem":"Linux",
-"softwareVersion":"0.1.0-rc.2","license":"https://opensource.org/licenses/MIT",
+"softwareVersion":"0.1.0-rc.3","license":"https://opensource.org/licenses/MIT",
 "author":{"@type":"Person","name":"Paul Richeson"},
 "keywords":"tank game, drone, indirect fire, interceptor, multiplayer, peer to peer, no server, Rust, Bevy, Bolo"}
 </script>
@@ -222,7 +229,7 @@ numbers from eight traced matches.</p></div>
 <div class="wrap"><main class="site" id="treadcore">
 <h1 id="treadcore">treadcore</h1>
 <p><strong>An overhead tank game for the drone battlefield. Sixteen players, no server. Linux, macOS, Windows.</strong></p>
-<p>MIT &middot; <code>0.1.0-rc.2</code>, the second release candidate &middot; <code>cargo install treadcore-client</code></p>
+<p>MIT &middot; <code>0.1.0-rc.3</code>, the third release candidate &middot; <code>cargo install treadcore-client</code></p>
 <p><strong><a href="https://treadcore.org/">treadcore.org</a></strong> &mdash; this page, the
 <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">player's guide</a>,
 and <a href="#paper">the paper</a>: the rules, and a review of the balance and the network.</p>
@@ -258,7 +265,7 @@ anywhere. Pick yours on the <a href="download.html">download page</a>.</p>
 <li><a href="download.html#mint"><svg class="pico"><use href="#i-mint"/></svg><span>Linux Mint<small>Cinnamon, .deb</small></span></a></li>
 <li><a href="download.html#fedora"><svg class="pico"><use href="#i-fedora"/></svg><span>Fedora<small>.rpm</small></span></a></li>
 <li><a href="download.html#nix"><svg class="pico"><use href="#i-nix"/></svg><span>NixOS, Nix<small>flake</small></span></a></li>
-<li><a href="download.html#windows"><svg class="pico"><use href="#i-windows"/></svg><span>Windows<small>zip</small></span></a></li>
+<li><a href="download.html#windows"><svg class="pico"><use href="#i-windows"/></svg><span>Windows<small>.msi, zip</small></span></a></li>
 <li><a href="download.html#macos"><svg class="pico"><use href="#i-macos"/></svg><span>macOS<small>zip, make install</small></span></a></li>
 <li><a href="download.html#copal"><svg class="pico"><use href="#i-copal"/></svg><span>Copal Linux<small>make install</small></span></a></li>
 <li><a href="download.html#alpine"><svg class="pico"><use href="#i-alpine"/></svg><span>Alpine<small>make install</small></span></a></li>
@@ -267,6 +274,31 @@ anywhere. Pick yours on the <a href="download.html">download page</a>.</p>
 <li><a href="download.html#gentoo"><svg class="pico"><use href="#i-gentoo"/></svg><span>Gentoo<small>make install</small></span></a></li>
 <li><a href="download.html#cargo"><svg class="pico"><use href="#i-cargo"/></svg><span>Anywhere<small>cargo install</small></span></a></li>
 </ul>
+<hr>
+<h2 id="where-built">Where it is built, and for what</h2>
+<p>Every build of the current release, the system it is for, what it needs there, and whether it was
+built, installed and played on that system before the release, and published. A release is not
+published until every package's test passes (<a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PACKAGES.md">how</a>).</p>
+<table class="grid" id="build-grid">
+<thead><tr><th>System</th><th>Arch</th><th>Form</th><th>Built</th><th>Tested there</th><th>Published</th><th>Runtime dependencies</th></tr></thead>
+<tbody></tbody>
+</table>
+<p class="builtmeta" id="build-meta"></p>
+<script type="application/json" id="builds"><!-- BUILDS: written by make builds -->{"generated":"2026-10-13 21:28 UTC","release":null,"crate":{"version":"0.1.0-rc.1","date":"2026-10-13"},"rows":[{"system":"Debian 12, 13","arch":"x86-64","kind":".deb","deps":"libwayland-client0, libxkbcommon0, libvulkan1, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Debian 12, 13","arch":"ARM64","kind":".deb","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Ubuntu 22.04, 24.04","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Linux Mint 22","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"x86-64","kind":".rpm","deps":"libwayland-client, libxkbcommon, vulkan-loader, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"AArch64","kind":".rpm","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":".msi","deps":"none (DirectX 12 or Vulkan from the GPU driver)","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":"zip","deps":"none","built":false,"tested":false,"published":false,"url":null},{"system":"macOS 11+","arch":"Apple silicon","kind":"zip","deps":"none (Metal)","built":false,"tested":false,"published":false,"url":null},{"system":"NixOS, Nix","arch":"x86-64, AArch64","kind":"flake","deps":"in the flake","built":true,"tested":false,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Copal, Alpine","arch":"AArch64, x86-64","kind":"make install","deps":"make deps: apk","built":true,"tested":"hand","published":true,"url":"https://treadcore.org/download.html"},{"system":"Arch, Omarchy","arch":"x86-64","kind":"make install","deps":"make deps: pacman","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Gentoo","arch":"any","kind":"make install","deps":"make deps: emerge","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Any, with Rust","arch":"any","kind":"cargo install","deps":"make deps for the system","built":true,"tested":null,"published":true,"url":"https://crates.io/crates/treadcore-client"}]}</script>
+<script>
+// The grid, from data written into this page by `make builds` when a
+// release is published: no API call per visitor.
+(function () {
+  let d; try { d = JSON.parse(document.getElementById('builds').textContent.replace(/^<!--.*?-->/, '')); } catch (e) { return; }
+  const box = v => v === true ? '<span class="yes" title="yes">&#9745;</span>' : v === false ? '<span class="no" title="not yet">&#9744;</span>' : v === 'hand' ? '<span class="na">by hand</span>' : '<span class="na">&mdash;</span>';
+  const tb = document.querySelector('#build-grid tbody');
+  tb.innerHTML = d.rows.map(r => `<tr><td>${r.url ? `<a href="${r.url}">${r.system}</a>` : r.system}</td><td>${r.arch}</td><td>${r.kind}</td>` +
+    `<td class="c">${box(r.built)}</td><td class="c">${box(r.tested)}</td><td class="c">${box(r.published)}</td><td class="deps">${r.deps}</td></tr>`).join('');
+  const rel = d.release ? `release <a href="${d.release.url}">${d.release.tag}</a>, built ${d.release.date}${d.release.prerelease ? ' (a candidate)' : ''}` : 'no release with packages published yet';
+  const crate = d.crate ? `; crates.io ${d.crate.version} of ${d.crate.date}` : '';
+  document.getElementById('build-meta').innerHTML = `${rel}${crate}; this table written ${d.generated}.`;
+})();
+</script>
 <hr>
 <h2 id="get-started">Get started</h2>
 <pre><code>treadcore --solo</code></pre>

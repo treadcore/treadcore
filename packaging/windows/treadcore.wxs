@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  treadcore for Windows as an MSI, built by .github/workflows/packages.yml
+  with the WiX toolset:
+
+    wix build packaging/windows/treadcore.wxs -arch x64
+        -d Version=0.1.0 -d BinDir=target/release -o treadcore.msi
+
+  Installs for every user into Program Files\Treadcore: the window, the
+  headless server, the player's guide and the licence. A Start Menu
+  shortcut opens a solo game; the folder goes on PATH, so a LAN game
+  starts from any terminal. Uninstall from Settings, Apps.
+
+  An MSI version is three numbers: a candidate (0.1.0-rc.2) installs as
+  its release's number (0.1.0), and AllowSameVersionUpgrades lets the
+  next candidate replace it. The UpgradeCode never changes: it is how
+  Windows knows a newer treadcore replaces an older one.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Treadcore" Manufacturer="Paul Richeson" Version="$(var.Version)"
+           UpgradeCode="e85be08f-f494-5999-bac3-8b89ec9ef3cb" Scope="perMachine" Compressed="yes">
+    <SummaryInformation Description="Treadcore, a sixteen-player overhead tank game" />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer Treadcore is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Property Id="ARPURLINFOABOUT" Value="https://treadcore.org" />
+    <Property Id="ARPHELPLINK" Value="https://treadcore.org/download.html#windows" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Treadcore" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Feature Id="Main" Title="Treadcore">
+      <Component Directory="INSTALLFOLDER" Guid="*">
+        <File Id="treadcore.exe" Source="$(var.BinDir)\treadcore.exe" KeyPath="yes" />
+        <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Treadcore"
+                  Description="Sixteen tanks, one island, the airspace round each one"
+                  Target="[#treadcore.exe]" Arguments="--solo" WorkingDirectory="INSTALLFOLDER" />
+        <Environment Id="PathEntry" Name="PATH" Value="[INSTALLFOLDER]" Part="last" Action="set" System="yes" Permanent="no" />
+      </Component>
+      <Component Directory="INSTALLFOLDER" Guid="*">
+        <File Id="treadcore_server.exe" Source="$(var.BinDir)\treadcore-server.exe" KeyPath="yes" />
+      </Component>
+      <Component Directory="INSTALLFOLDER" Guid="*">
+        <File Id="HOW_TO_PLAY.md" Source="documentation\HOW-TO-PLAY.md" KeyPath="yes" />
+        <File Id="LICENSE.txt" Source="LICENSE" Name="LICENSE.txt" />
+      </Component>
+    </Feature>
+  </Package>
+</Wix>

@@ -4,7 +4,32 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
-## 0.1.0-rc.2 (2026-10-13): the second candidate
+## 0.1.0-rc.3 (2026-10-13): the third candidate
+
+Journal: [0021](journal/0021-2026-10-13-release-pipeline.txt). Lab
+report: [LAB-REPORT-PACKAGES.md](documentation/LAB-REPORT-PACKAGES.md).
+
+- New: a Windows installer, `treadcore-<version>-windows-x86_64.msi`
+  (WiX, `packaging/windows/treadcore.wxs`): Program Files, a Start Menu
+  shortcut, the folder on PATH; tested in the workflow by a silent
+  install, a bot match from the installed copy, and an uninstall.
+- Fixed: the .rpm, which Fedora 41 and 42 both refused to install in
+  0.1.0-rc.2's tests (rc.2 was tagged, never published). It is now made
+  with RPM's own dependency generator (rpm-build in the build
+  container, `auto-req = "auto"`).
+- New: every package test in the workflow prints its failing output as
+  a public annotation, so a failure can be read without a login; the
+  ARM64 .deb (Debian 12, Ubuntu 24.04) and AArch64 .rpm (Fedora 42) are
+  tested on ARM machines.
+- New: `make builds` (`scripts/builds.sh`) writes `builds.json` and the
+  build grid on index.html, and the links on download.html, from the
+  published release: three API calls at most, by the maintainer, never
+  by a visitor. download.html no longer calls GitHub's API.
+
+## 0.1.0-rc.2 (2026-10-13): the second candidate, tagged, not published
+
+Its packages' tests found the .rpm broken on Fedora; the release gate
+held, no draft was made, and 0.1.0-rc.3 carries the fix.
 
 Journal: [0019](journal/0019-2026-10-13-the-first-minute.txt).
 

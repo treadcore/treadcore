@@ -17,8 +17,8 @@ Website: [treadcore.org](https://treadcore.org). Repository:
 Crates: [treadcore-client](https://crates.io/crates/treadcore-client)
 (the window, installed as `treadcore`), [treadcore-server](https://crates.io/crates/treadcore-server),
 and the libraries they are built from, `treadcore-sim`, `treadcore-proto`,
-`treadcore-net`, `treadcore-brain`. The current release is 0.1.0-rc.2,
-the second candidate (`documentation/RELEASE.md`), the first with
+`treadcore-net`, `treadcore-brain`. The current release is 0.1.0-rc.3,
+the third candidate (`documentation/RELEASE.md`), the first with
 packages; it is offered for playtesting, and the player's guide is
 [documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md).
 
@@ -223,6 +223,7 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/SPEC-PRIOR-ART-1.14.md](documentation/SPEC-PRIOR-ART-1.14.md): the clean-room functional specification of the prior art, version 1.14 that the prior-art-derived steps cite, with a preface on what treadcore adopts.
 - [documentation/MAPS.md](documentation/MAPS.md): the map file format; any text editor is the editor.
 
+- [documentation/LAB-REPORT-PACKAGES.md](documentation/LAB-REPORT-PACKAGES.md): packages for every platform as a Cargo tutorial: the Bevy template, the multi-target build, .deb, .rpm, .msi and the flake, testing each where its users are, the git hook, the one-day limit, and API discipline.
 - [documentation/RELEASE.md](documentation/RELEASE.md): the implementation cycle, versions, release monuments, candidates and playtesting, and the release procedure `make release` runs.
 - [documentation/INDEX.md](documentation/INDEX.md): the code structure index: the tree, every file outlined, a glossary, a keyword cross-reference.
 - [documentation/GOVERNANCE.md](documentation/GOVERNANCE.md): how the organization is run: roles, joining, proposals, review, leaving, recognition.

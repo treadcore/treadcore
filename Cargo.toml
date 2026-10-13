@@ -28,7 +28,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0-rc.2"
+version = "0.1.0-rc.3"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Paul Richeson <paulr@sdf.org>"]
@@ -48,10 +48,10 @@ env_logger = "0.11"
 # Each with a version as well as a path: crates.io refuses a package
 # whose dependency has only a path, and the five publishable crates
 # depend on each other.
-treadcore-sim = { path = "source/treadcore-sim", version = "0.1.0-rc.2" }
-treadcore-proto = { path = "source/treadcore-proto", version = "0.1.0-rc.2" }
-treadcore-net = { path = "source/treadcore-net", version = "0.1.0-rc.2" }
-treadcore-brain = { path = "source/treadcore-brain", version = "0.1.0-rc.2" }
+treadcore-sim = { path = "source/treadcore-sim", version = "0.1.0-rc.3" }
+treadcore-proto = { path = "source/treadcore-proto", version = "0.1.0-rc.3" }
+treadcore-net = { path = "source/treadcore-net", version = "0.1.0-rc.3" }
+treadcore-brain = { path = "source/treadcore-brain", version = "0.1.0-rc.3" }
 
 # BEVY, DEFINED ONCE. Both the window and the warm crate take it from here,
 # so the two resolve to the same feature set and the same artifacts in

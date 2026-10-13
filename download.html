@@ -95,7 +95,7 @@ building from source is the custom, and a zip where there is neither.</p>
   <li><button data-p="mint"><svg class="icon"><use href="#i-mint"/></svg><span>Linux Mint<small>Cinnamon, .deb</small></span></button></li>
   <li><button data-p="fedora"><svg class="icon"><use href="#i-fedora"/></svg><span>Fedora<small>.rpm</small></span></button></li>
   <li><button data-p="nix"><svg class="icon"><use href="#i-nix"/></svg><span>NixOS, Nix<small>flake</small></span></button></li>
-  <li><button data-p="windows"><svg class="icon"><use href="#i-windows"/></svg><span>Windows<small>zip</small></span></button></li>
+  <li><button data-p="windows"><svg class="icon"><use href="#i-windows"/></svg><span>Windows<small>.msi, zip</small></span></button></li>
   <li><button data-p="macos"><svg class="icon"><use href="#i-macos"/></svg><span>macOS<small>Apple silicon, zip</small></span></button></li>
 </ul>
 <p class="group">From source, with make install</p>
@@ -136,7 +136,7 @@ treadcore --solo</code></pre>
 
 <section class="panel" id="fedora">
   <h2><svg class="icon"><use href="#i-fedora"/></svg>Fedora</h2>
-  <p class="how">Fedora 40 or newer. The package names the Wayland and xkbcommon libraries, the Vulkan loader and <code>mesa-vulkan-drivers</code>; dnf fetches whatever is missing.</p>
+  <p class="how">Fedora 41 or newer. The package names the Wayland and xkbcommon libraries, the Vulkan loader and <code>mesa-vulkan-drivers</code>; dnf fetches whatever is missing.</p>
   <a class="get" data-file="linux-x86_64.rpm">Download for x86-64</a><a class="get alt" data-file="linux-aarch64.rpm">AArch64</a>
   <pre><code>sudo dnf install ./treadcore-*-linux-x86_64.rpm
 treadcore --solo</code></pre>
@@ -148,15 +148,15 @@ treadcore --solo</code></pre>
   <pre><code>nix run github:treadcore/treadcore            # play, without installing
 nix profile install github:treadcore/treadcore  # install</code></pre>
   <p>On NixOS the Vulkan driver comes from <code>hardware.graphics.enable = true;</code>. With Nix on another distribution, start it through nixGL if the GPU's driver is not found.</p>
-  <p class="note">The flake is new with this release and has not yet been built by its author on a Nix machine. A report of how it went is welcome.</p>
+  <p class="note">Every release builds the flake and plays a bot match from it; the window has not yet been played on NixOS by its author, and a report of how it went is welcome.</p>
 </section>
 
 <section class="panel" id="windows">
   <h2><svg class="icon"><use href="#i-windows"/></svg>Windows</h2>
   <p class="how">Windows 10 or 11, 64-bit. Nothing to install first: the window uses DirectX 12 or Vulkan from the GPU's own driver.</p>
-  <a class="get" data-file="windows-x86_64.zip">Download the zip</a>
-  <p>Unzip it anywhere and run <code>treadcore.exe</code>. It opens solo; for a LAN game, from a terminal in that folder: <code>treadcore.exe --lan</code>. Windows will ask once whether to let it through the firewall: allow it on private networks, or other players cannot find you.</p>
-  <p class="note">The executable is not signed, so SmartScreen may warn the first time: <i>More info</i>, then <i>Run anyway</i>. The Windows build is made by the release workflow and has not yet been played on Windows by its author: a report of how it went is welcome.</p>
+  <a class="get" data-file="windows-x86_64.msi">Download the installer (.msi)</a><a class="get alt" data-file="windows-x86_64.zip">or the zip</a>
+  <p>The installer puts Treadcore in Program Files and the Start Menu, and its folder on PATH, so <code>treadcore --lan</code> works from any terminal; Settings, Apps removes it. Or unzip the zip anywhere and run <code>treadcore.exe</code>. It opens solo; for a LAN game, from a terminal in that folder: <code>treadcore.exe --lan</code>. Windows will ask once whether to let it through the firewall: allow it on private networks, or other players cannot find you.</p>
+  <p class="note">Neither is signed, so SmartScreen may warn the first time: <i>More info</i>, then <i>Run anyway</i>. Every release installs both on Windows and plays a bot match from them before it is published; the window itself has not yet been played on Windows by its author, and a report of how it went is welcome.</p>
 </section>
 
 <section class="panel" id="macos">
@@ -224,23 +224,23 @@ treadcore --solo</code></pre>
 
 <h2 style="font-size:1.3rem;margin:2.5rem 0 .8rem">Every system at a glance</h2>
 <table>
-<thead><tr><th>System</th><th>How</th><th>Runtime dependencies</th><th>Tested by the author</th></tr></thead>
+<thead><tr><th>System</th><th>How</th><th>Runtime dependencies</th><th>Tested before each release</th></tr></thead>
 <tbody>
-<tr><td><svg class="icon"><use href="#i-copal"/></svg>Copal Linux</td><td>make install</td><td>make deps (apk)</td><td>yes, every release</td></tr>
-<tr><td><svg class="icon"><use href="#i-alpine"/></svg>Alpine</td><td>make install</td><td>make deps (apk)</td><td>yes, as Copal</td></tr>
-<tr><td><svg class="icon"><use href="#i-macos"/></svg>macOS</td><td>zip, or make install</td><td>none</td><td>yes (make install)</td></tr>
-<tr><td><svg class="icon"><use href="#i-debian"/></svg>Debian 12+</td><td>.deb</td><td>in the package</td><td>package layout checked; not yet installed on Debian</td></tr>
-<tr><td><svg class="icon"><use href="#i-ubuntu"/></svg>Ubuntu 22.04+</td><td>.deb</td><td>in the package</td><td>built by the release workflow; not yet installed</td></tr>
-<tr><td><svg class="icon"><use href="#i-mint"/></svg>Linux Mint 21+</td><td>.deb</td><td>in the package</td><td>no</td></tr>
-<tr><td><svg class="icon"><use href="#i-fedora"/></svg>Fedora 40+</td><td>.rpm</td><td>in the package</td><td>built by the release workflow; not yet installed</td></tr>
-<tr><td><svg class="icon"><use href="#i-arch"/></svg>Arch</td><td>make install</td><td>make deps (pacman)</td><td>no</td></tr>
-<tr><td><svg class="icon"><use href="#i-omarchy"/></svg>Omarchy</td><td>make install</td><td>make deps (pacman)</td><td>no</td></tr>
-<tr><td><svg class="icon"><use href="#i-gentoo"/></svg>Gentoo</td><td>make install</td><td>make deps (emerge)</td><td>no</td></tr>
-<tr><td><svg class="icon"><use href="#i-nix"/></svg>NixOS, Nix</td><td>nix run</td><td>in the flake</td><td>no</td></tr>
-<tr><td><svg class="icon"><use href="#i-windows"/></svg>Windows 10, 11</td><td>zip</td><td>none</td><td>built by the release workflow; not yet played</td></tr>
+<tr><td><svg class="icon"><use href="#i-copal"/></svg>Copal Linux</td><td>make install</td><td>make deps (apk)</td><td>by hand: installed, played</td></tr>
+<tr><td><svg class="icon"><use href="#i-alpine"/></svg>Alpine</td><td>make install</td><td>make deps (apk)</td><td>by hand, as Copal</td></tr>
+<tr><td><svg class="icon"><use href="#i-macos"/></svg>macOS</td><td>zip, or make install</td><td>none</td><td>the zip: signature checked, a bot match played; make install by hand</td></tr>
+<tr><td><svg class="icon"><use href="#i-debian"/></svg>Debian 12+</td><td>.deb</td><td>in the package</td><td>installed on Debian 12 and 13, a bot match played</td></tr>
+<tr><td><svg class="icon"><use href="#i-ubuntu"/></svg>Ubuntu 22.04+</td><td>.deb</td><td>in the package</td><td>installed on 22.04 and 24.04, a bot match played</td></tr>
+<tr><td><svg class="icon"><use href="#i-mint"/></svg>Linux Mint 21+</td><td>.deb</td><td>in the package</td><td>installed on Mint 22, a bot match played</td></tr>
+<tr><td><svg class="icon"><use href="#i-fedora"/></svg>Fedora 41+</td><td>.rpm</td><td>in the package</td><td>installed on Fedora 41 and 42, a bot match played</td></tr>
+<tr><td><svg class="icon"><use href="#i-arch"/></svg>Arch</td><td>make install</td><td>make deps (pacman)</td><td>not yet: builds from source</td></tr>
+<tr><td><svg class="icon"><use href="#i-omarchy"/></svg>Omarchy</td><td>make install</td><td>make deps (pacman)</td><td>not yet: builds from source</td></tr>
+<tr><td><svg class="icon"><use href="#i-gentoo"/></svg>Gentoo</td><td>make install</td><td>make deps (emerge)</td><td>not yet: builds from source</td></tr>
+<tr><td><svg class="icon"><use href="#i-nix"/></svg>NixOS, Nix</td><td>nix run</td><td>in the flake</td><td>built, a bot match played</td></tr>
+<tr><td><svg class="icon"><use href="#i-windows"/></svg>Windows 10, 11</td><td>.msi, or zip</td><td>none</td><td>the .msi installed, a bot match played, uninstalled; the zip run</td></tr>
 </tbody>
 </table>
-<p>Something not right on your system? <a href="https://github.com/treadcore/treadcore/issues/new?template=playtest.md">Tell us</a>, with what you ran and what it said.</p>
+<p>The packages are built and tested by the release workflow on GitHub's machines: a release is not made unless every package installs on every system in this table and plays a bot match there. Arch, Omarchy and Gentoo build from source on the user's machine, and have not yet been tried there by the author. Something not right on your system? <a href="https://github.com/treadcore/treadcore/issues/new?template=playtest.md">Tell us</a>, with what you ran and what it said.</p>
 </main></div>
 
 <footer><div class="wrap">
@@ -250,6 +250,7 @@ treadcore --solo</code></pre>
 <p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson.</p>
 </div></footer>
 
+<script type="application/json" id="builds"><!-- BUILDS: written by make builds -->{"generated":"2026-10-13 21:28 UTC","release":null,"crate":{"version":"0.1.0-rc.1","date":"2026-10-13"},"rows":[{"system":"Debian 12, 13","arch":"x86-64","kind":".deb","deps":"libwayland-client0, libxkbcommon0, libvulkan1, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Debian 12, 13","arch":"ARM64","kind":".deb","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Ubuntu 22.04, 24.04","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Linux Mint 22","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"x86-64","kind":".rpm","deps":"libwayland-client, libxkbcommon, vulkan-loader, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"AArch64","kind":".rpm","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":".msi","deps":"none (DirectX 12 or Vulkan from the GPU driver)","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":"zip","deps":"none","built":false,"tested":false,"published":false,"url":null},{"system":"macOS 11+","arch":"Apple silicon","kind":"zip","deps":"none (Metal)","built":false,"tested":false,"published":false,"url":null},{"system":"NixOS, Nix","arch":"x86-64, AArch64","kind":"flake","deps":"in the flake","built":true,"tested":false,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Copal, Alpine","arch":"AArch64, x86-64","kind":"make install","deps":"make deps: apk","built":true,"tested":"hand","published":true,"url":"https://treadcore.org/download.html"},{"system":"Arch, Omarchy","arch":"x86-64","kind":"make install","deps":"make deps: pacman","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Gentoo","arch":"any","kind":"make install","deps":"make deps: emerge","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Any, with Rust","arch":"any","kind":"cargo install","deps":"make deps for the system","built":true,"tested":null,"published":true,"url":"https://crates.io/crates/treadcore-client"}]}</script>
 <script>
 // The selector: a button shows its system's panel; the choice is in the
 // URL's #fragment, so a link can name a system (index.html does).
@@ -273,28 +274,23 @@ function guess() {
 show(location.hash.slice(1) || guess());
 addEventListener('hashchange', () => show(location.hash.slice(1)));
 
-// The links: the newest published release on GitHub, and its files by the
-// names the release workflow gives them. Before a release with packages is
-// published, the buttons say so instead of pointing nowhere.
+// The links: the newest published release, as `make builds` wrote it into
+// this page when the release was published. No API call per visitor:
+// GitHub allows sixty an hour per address, and they are not ours to spend.
 const release = document.getElementById('release');
-fetch('https://api.github.com/repos/treadcore/treadcore/releases?per_page=10')
-  .then(r => r.ok ? r.json() : Promise.reject(r.status))
-  .then(list => {
-    const rel = list.find(r => !r.draft && r.assets.some(a => /\.(deb|rpm|zip)$/.test(a.name)));
-    if (!rel) throw 'none';
-    const v = rel.tag_name.replace(/^v/, '');
-    release.innerHTML = `Release <a href="${rel.html_url}">${rel.tag_name}</a>${rel.prerelease ? ', a release candidate' : ''}, ${new Date(rel.published_at).toDateString()}. <a href="${rel.html_url}">Checksums and every file</a>.`;
-    document.querySelectorAll('.get[data-file]').forEach(a => {
-      const name = `treadcore-${v}-${a.dataset.file}`;
-      const asset = rel.assets.find(x => x.name === name);
-      if (asset) { a.href = asset.browser_download_url; a.title = name; }
-      else { a.setAttribute('aria-disabled', 'true'); a.textContent += ' (not in this release)'; }
-    });
-  })
-  .catch(() => {
-    release.innerHTML = 'No release with packages is published yet. The source routes (<code>make install</code>, Nix, cargo) work today; packages come with the next release. <a href="https://github.com/treadcore/treadcore/releases">Releases</a>.';
-    document.querySelectorAll('.get[data-file]').forEach(a => { a.setAttribute('aria-disabled', 'true'); a.textContent += ' (coming with the next release)'; });
+let data = null;
+try { data = JSON.parse(document.getElementById('builds').textContent.replace(/^<!--.*?-->/, '')); } catch (e) {}
+if (data && data.release) {
+  const r = data.release;
+  release.innerHTML = `Release <a href="${r.url}">${r.tag}</a>${r.prerelease ? ', a release candidate' : ''}, built ${r.date}. <a href="${r.url}">Checksums and every file</a>.`;
+  document.querySelectorAll('.get[data-file]').forEach(a => {
+    const name = `treadcore-${r.version}-${a.dataset.file}`;
+    a.href = `https://github.com/treadcore/treadcore/releases/download/${r.tag}/${name}`; a.title = name;
   });
+} else {
+  release.innerHTML = 'No release with packages is published yet. The source routes (<code>make install</code>, Nix, cargo) work today; packages come with the next release. <a href="https://github.com/treadcore/treadcore/releases">Releases</a>.';
+  document.querySelectorAll('.get[data-file]').forEach(a => { a.setAttribute('aria-disabled', 'true'); a.textContent += ' (coming with the next release)'; });
+}
 </script>
 </body>
 </html>
