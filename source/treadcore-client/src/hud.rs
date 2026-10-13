@@ -730,6 +730,7 @@ THE FIRST MINUTE
   2  launch a recon toward the cursor: what it sees, your gun can hit
   left click drives; the world routes round water and hostile guns
   right click fires: hold to see the gun's reach, release to fire
-  a tank that stands still is found by fifteen guns; move after you fire
+  the bots hold fire for a minute at a tank that has not moved or fired;
+  after that, a tank that stands still is found: move after you fire
   F follows your tank; ' jumps to your pillboxes; Tab shows the events
 ";

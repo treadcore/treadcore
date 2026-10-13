@@ -6,6 +6,21 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+Journal: [0019](journal/0019-2026-10-13-the-first-minute.txt).
+
+- Changed (brain): the first minute (PLAYABILITY.md item 1). For 60
+  seconds the rule bot and the Defender hold fire, and hold strikes,
+  at a hostile tank that has never moved (its fuel is still full) and
+  never fired. A newcomer sitting at the start is not shelled; bots,
+  which drive off their starts at once, are not spared. New test
+  `a_newcomer_gets_a_first_minute`: before, the sitting tank was first
+  hit at 29.5 s; after, never inside the minute. The squad proof is
+  unchanged over its twenty seeds.
+- Changed: the lobby's first-minute help says so.
+- New: `make shoot` shoots the network on one machine (an introducer,
+  a headless host, a bot seat, the window as a client with 30 ms of
+  lag): the screen before the match, a networked frame, and the top
+  strip's network line. The player's guide shows them in section 10.
 - New: builds and runs on macOS (Apple silicon): `make configure`
   knows Darwin (Cocoa, Metal, CoreAudio, sysctl for memory) and
   `make lobby-test` reads BSD `wc`.

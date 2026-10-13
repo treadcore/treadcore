@@ -38,8 +38,14 @@ case "$MODE" in
         if [ -n "$(git -C "$ROOT" status --porcelain)" ] && [ "${ALLOW_DIRTY:-0}" != 1 ]; then
             die "the tree has uncommitted changes; commit them (RELEASE.md section 1) or ALLOW_DIRTY=1"
         fi
-        if ! git -C "$ROOT" rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
-            warn "no tag v$VERSION; RELEASE.md section 2 wants a build from a tag. Continuing."
+        # A day between the tag and the publish (RELEASE.md section 6):
+        # the tagged tree is lived with for a day, and anything found in
+        # it is a new candidate, not a version on crates.io.
+        git -C "$ROOT" rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || die "no tag v$VERSION: tag the release, then publish a day later"
+        tagged="$(git -C "$ROOT" for-each-ref --format='%(taggerdate:unix)%(committerdate:unix)' "refs/tags/v$VERSION" | cut -c1-10)"
+        age=$(( $(date +%s) - tagged ))
+        if [ "$age" -lt 86400 ]; then
+            die "v$VERSION was tagged $((age / 3600)) h ago; publish no sooner than $(date -d "@$((tagged + 86400))" '+%a %d %b %H:%M' 2>/dev/null || echo 'a day after the tag')"
         fi
         say "publishing treadcore $VERSION: ${CRATES[*]}"
         for c in "${CRATES[@]}"; do

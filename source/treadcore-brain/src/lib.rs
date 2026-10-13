@@ -75,6 +75,48 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
 ///      hostile pillboxes guarding the objective, then drives onto it
 ///      to capture it, firing direct on the way, and stops scooting.
 ///      Low on anything, it goes home instead and the storm is off.
+/// The first minute (PLAYABILITY.md item 1). For this long after the
+/// start a bot will not fire at, or send a strike at, a hostile tank
+/// that has never moved and never fired: a newcomer sitting at the
+/// start reading the help. Every tank starts with full fuel and burns
+/// it for every tile it drives, so a tank seen below full has moved;
+/// one seen reloading has fired. Either, once seen, is remembered, and
+/// that tank has joined the game. Bots drive off their starts at once,
+/// so the rule spares nobody but a player who has not begun.
+///
+/// A first version spared any tank that had not moved since this bot
+/// first saw it. Over sixty seeds of the squad proof it shifted bot
+/// survival from 110:110 to 103:123, because a bot standing at a
+/// firing position or a depot was spared too. This one spares only a
+/// tank that has never moved.
+pub const GRACE_SECONDS: u32 = 60;
+
+/// What a bot remembers to keep the first minute: the hostile tanks it
+/// has seen move or fire.
+#[derive(Default)]
+struct Grace {
+    joined: Vec<EntityId>,
+}
+
+impl Grace {
+    fn update(&mut self, obs: &Observation) {
+        if obs.tick >= GRACE_SECONDS as Tick * TICK_HZ as Tick {
+            return;
+        }
+        for t in obs.hostile_tanks() {
+            if (t.fuel < TANK_FUEL || t.reload > 0) && !self.joined.contains(&t.id) {
+                self.joined.push(t.id);
+            }
+        }
+    }
+
+    /// A fair target: the first minute is over, or the tank has been
+    /// seen to move or fire.
+    fn fair(&self, obs: &Observation, t: &Tank) -> bool {
+        obs.tick >= GRACE_SECONDS as Tick * TICK_HZ as Tick || self.joined.contains(&t.id) || t.fuel < TANK_FUEL || t.reload > 0
+    }
+}
+
 pub struct RuleBot {
     name: String,
     rng: Rng,
@@ -106,6 +148,8 @@ pub struct RuleBot {
     /// second for the whole match.
     unreachable_pillboxes: Vec<EntityId>,
     unreachable_tiles: Vec<(i32, i32)>,
+    /// The first minute: who may be shot yet.
+    grace: Grace,
 }
 
 /// How far the bot will send its squad: a 20-tile walk is 13 seconds
@@ -124,7 +168,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new() }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default() }
     }
 
     /// The same doctrine without the squad: the control group.
@@ -133,7 +177,7 @@ impl RuleBot {
     }
 
     fn nearest_enemy<'a>(&self, obs: &'a Observation, me: &Tank) -> Option<&'a Tank> {
-        obs.hostile_tanks().min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+        obs.hostile_tanks().filter(|t| self.grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
     }
 
     fn nearest_depot<'a>(&self, obs: &'a Observation, me: &Tank, friendly: bool) -> Option<&'a Depot> {
@@ -184,6 +228,7 @@ impl Brain for RuleBot {
         let my_recon: Vec<&Drone> = obs.my_drones().filter(|d| d.kind == DroneKind::Recon).collect();
         let my_strikes = obs.my_drones().filter(|d| d.kind == DroneKind::Strike).count();
         let hostile_air = obs.hostile_drones().filter(|d| d.pos.dist(me.pos) <= me.bubble + DETECT_MARGIN + 6.0).count();
+        self.grace.update(obs);
         let enemy = self.nearest_enemy(obs, me);
         if enemy.is_some() {
             self.last_contact = obs.tick;
@@ -496,6 +541,8 @@ pub struct Defender {
     /// Where the trouble is: the depot of whoever shot us last, or the
     /// last hostile tank seen. The recon watches there.
     watch: Option<V2>,
+    /// The first minute: who may be shot yet.
+    grace: Grace,
     /// Sidestepping under fire until this tick; the post rule waits.
     dodge_until: Tick,
     rng: Option<Rng>,
@@ -529,6 +576,7 @@ impl Defender {
             fell: Vec::new(),
             unreachable: Vec::new(),
             hurt_by: Vec::new(),
+            grace: Grace::default(),
             last_proposal: 0,
             watch: None,
             dodge_until: 0,
@@ -696,7 +744,9 @@ impl Brain for Defender {
         // last hostile tank seen), short of it by the recon's own vision
         // so it stays out of a bubble. Moved by Retask when the trouble
         // moves.
-        let enemy = obs.hostile_tanks().min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+        self.grace.update(obs);
+        let grace = &self.grace;
+        let enemy = obs.hostile_tanks().filter(|t| grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
         if let Some(e) = enemy {
             self.watch = Some(e.pos);
         }
@@ -1044,6 +1094,45 @@ mod tests {
         assert!(built.0 >= 60, "the fortifier barely built anything: {}", built.0);
         assert!(survived.0 > survived.1, "fortified did not outlive bare: {} vs {}", survived.0, survived.1);
         assert!(defender_alive.0 >= defender_alive.1);
+    }
+
+    /// PLAYABILITY.md item 1, the first minute: a newcomer who sits at
+    /// the start reading the help is not shelled by the bots for the
+    /// first minute. Seat 0 gives no orders at all; fifteen rule bots
+    /// play round it on three seeds. Nothing of a player's may touch
+    /// seat 0's tank before GRACE_SECONDS, and the bots must still have
+    /// fought each other, so the proof is not of bots that do nothing.
+    #[test]
+    fn a_newcomer_gets_a_first_minute() {
+        let grace = GRACE_SECONDS as Tick * TICK_HZ as Tick;
+        let mut first_hits = Vec::new();
+        for seed in [0x7EAD_C0DEu64, 0x1234, 0xBEEF] {
+            let scenario = Scenario { seed, swarm_interval: 0, time_limit: grace + 30 * TICK_HZ as Tick, ..Scenario::bots(16) };
+            let mut w = World::new(scenario);
+            let mine = w.players[0].tank;
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (1..16u8).map(|p| (p as PlayerId, Box::new(RuleBot::new(seed ^ p as u64, &seat_name(p as usize))) as Box<dyn Brain>)).collect();
+            let mut first_hit: Option<Tick> = None;
+            let mut fired = 0u32;
+            while !w.over {
+                let orders = run_bots(&w, &mut bots);
+                w.step(&orders);
+                for e in &w.events {
+                    match e {
+                        Event::TankDamaged { tank, by: Some(p), .. } if *tank == mine && *p != SWARM_OWNER && *p != NEUTRAL => {
+                            first_hit.get_or_insert(w.tick);
+                        }
+                        Event::ShellLaunched { .. } => fired += 1,
+                        _ => {}
+                    }
+                }
+            }
+            eprintln!("seed {:#x}: seat 0 first hit by a player at {:?} (grace ends {}), shells fired {}", seed, first_hit, grace, fired);
+            assert!(fired > 10, "the bots barely fought: {} shells", fired);
+            if let Some(t) = first_hit {
+                assert!(t >= grace, "seed {:#x}: the sitting newcomer was hit at tick {}, inside the first minute", seed, t);
+            }
+            first_hits.push(first_hit);
+        }
     }
 
     /// Roadmap step 6d's proof, as it came out: sixteen bots, four

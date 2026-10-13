@@ -11,3 +11,6 @@ guide-top.png
 guide-aim.png
 guide-events.png
 guide-close.png
+guide-lobby.png
+guide-networked.png
+guide-net-top.png

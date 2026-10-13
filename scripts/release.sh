@@ -78,7 +78,8 @@ if [ "$fail" = 0 ]; then
     say "release check passed for $VERSION. By hand, in order (RELEASE.md section 6):"
     echo "   git commit -s ...                       the release commit"
     echo "   git tag -s v$VERSION -m '...'           the candidate's tag"
-    echo "   make publish                           the five crates to crates.io"
+    echo "   ... a day ...                          live with the tagged build; a fix is a new candidate"
+    echo "   make publish                           the five crates to crates.io, no sooner than a day after the tag"
     echo "   git push && git push --tags"
 else
     die "release check failed for $VERSION"

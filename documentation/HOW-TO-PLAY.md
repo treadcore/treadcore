@@ -23,6 +23,12 @@ The window opens on a lobby screen, then the match. You are one tank
 on an island of 128 by 128 tiles with up to fifteen others. Last tank
 standing wins; at the time limit, the highest score.
 
+**The first minute is yours.** For the first sixty seconds the bots
+hold fire at a tank that has not moved and has not fired, so you can
+sit at the start and read this. The moment you drive or shoot, you
+have begun, and so have they. After the minute, a tank that stands
+still is found: move after you fire.
+
 ## 2. The screen
 
 ![The whole frame: the orders column on the left, the map in the middle, the roster and lamps on the right, the stock along the bottom, the newswire under it](../reports/images/guide-screen.png)
@@ -200,3 +206,28 @@ nobody runs a server. Across the Internet one machine runs `make
 introduce` and the others point at it with `INTRODUCER=host:port`.
 A player whose game drops starts it again and gets the same seat
 back. `README.md` has the details; `PROTOCOL.md` has the reasons.
+
+![Before the match: the window has joined the elected host and waits for the world, with the first-minute help on screen](../reports/images/guide-lobby.png)
+
+The lobby takes a few seconds: each window finds the others, measures
+every link, and they all run the same election on the same numbers,
+so they agree without a vote. Then the window joins the host and
+waits for the world, with the first-minute help on screen. This frame
+is that moment; the peers had already been found and measured.
+
+![Playing as a client of a headless host, sixteen seats, the network line on the top strip](../reports/images/guide-networked.png)
+
+Playing as a client looks the same as playing solo, except the top
+strip's second line:
+
+![The top strip as a client: the host's id, the round trip, packets, and the prediction counters](../reports/images/guide-net-top.png)
+
+`NET client` and the host's id; `rtt`, the round trip to the host;
+`unacked`, `tx`, `rx` and `drop`, the packets; and `predict`, how many
+ticks ahead of the host your own tank is drawn. Your tank is
+predicted, so it answers your mouse at once, and every snapshot from
+the host is checked against the prediction: `checked` counts them and
+`mismatch` counts the ones that disagreed, which is zero unless
+something is wrong. These frames were taken on one machine with an
+introducer, a headless host and a bot seat, 30 ms of simulated lag
+on each link.

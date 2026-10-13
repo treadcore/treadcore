@@ -6,6 +6,9 @@
 # and reports/images/MANIFEST-<version>.txt listing them, which
 # scripts/release.sh checks against the documents.
 #
+# The second half shoots the network: an introducer, a headless host
+# and a bot seat on this machine with the window as a client.
+#
 # Needs the shoot machine: an X display (Xwayland under Hyprland here,
 # DISPLAY=:0), xdotool, grim, hyprctl, python3 with Pillow. The window
 # is run under X11 because xdotool drives X11 windows (journal 0013).
@@ -56,6 +59,49 @@ xdotool mousemove 580 380; for i in 1 2 3 4 5 6; do xdotool click 4; sleep 0.1; 
 frame close                                    # the models, close
 kill "$PID" 2>/dev/null || die "the window died during the shoot: see $LOGDIR/shoot-$STAMP.log"; trap - EXIT
 
+# The network, on this one machine, the way journal 0013 proved it: an
+# introducer, a headless host whose identity is the smallest id (it wins
+# any tie), the window, and a headless bot seat, no LAN broadcast. The
+# window and the seat carry 30 ms of simulated lag each way, so the
+# lagless host measures best and is elected. The lobby waits for three
+# peers: the window comes up second, so its lobby screen is on while the
+# seat has not yet arrived, and that is the frame.
+SERVER="$ROOT/target/release/treadcore-server"
+[ -x "$SERVER" ] || die "no release server: make build first"
+NP=47310; NET="$S/net"; mkdir -p "$NET"
+printf '0000000000000001' > "$NET/host.id"
+"$SERVER" --introduce --port "$NP" > "$LOGDIR/shoot-introducer-$STAMP.log" 2>&1 &
+P_INTRO=$!
+"$SERVER" --net --want 3 --introducer "127.0.0.1:$NP" --no-beacon --identity "$NET/host.id" --players 16 --port 0 > "$LOGDIR/shoot-host-$STAMP.log" 2>&1 &
+P_HOST=$!
+trap 'kill $P_INTRO $P_HOST ${P_SEAT:-} ${PID:-} 2>/dev/null || true' EXIT
+sleep 1
+WAYLAND_DISPLAY= LD_PRELOAD="${PRELOAD:-}" TREADCORE_LAG_MS=30 RUST_LOG=info "$BIN" --lan --name you --want 3 --introducer "127.0.0.1:$NP" --no-beacon --identity "$NET/window.id" > "$LOGDIR/shoot-window-net-$STAMP.log" 2>&1 &
+PID=$!
+# The lobby decides within eight seconds of the process starting, and on
+# a software rasteriser the window's first frame comes about as late:
+# so the lobby is caught as the window appears, at whatever size the
+# compositor gave it, in a burst, before it is floated and sized.
+geom=""
+for i in $(seq 1 100); do
+    geom="$(hyprctl clients -j | python3 -c "import json,sys; c=[c for c in json.load(sys.stdin) if c['pid']==$PID]; print('%d,%d %dx%d' % (c[0]['at'][0], c[0]['at'][1], c[0]['size'][0], c[0]['size'][1]) if c else '')")"
+    [ -n "$geom" ] && break
+    sleep 0.2
+done
+[ -n "$geom" ] || die "the networked window never appeared: see $LOGDIR/shoot-window-net-$STAMP.log"
+for i in $(seq 1 16); do grim -g "$geom" "$S/lobby-$i.png"; sleep 0.5; done
+kill -0 "$PID" 2>/dev/null || die "the networked window died: see $LOGDIR/shoot-window-net-$STAMP.log"
+hyprctl dispatch togglefloating "pid:$PID" >/dev/null
+hyprctl dispatch resizewindowpixel "exact $W $H,pid:$PID" >/dev/null
+hyprctl dispatch movewindowpixel "exact $X $Y,pid:$PID" >/dev/null
+hyprctl dispatch focuswindow "pid:$PID" >/dev/null
+sleep 4
+TREADCORE_LAG_MS=30 "$SERVER" --net --want 3 --port 0 --introducer "127.0.0.1:$NP" --no-beacon > "$LOGDIR/shoot-seat-$STAMP.log" 2>&1 &
+P_SEAT=$!
+sleep 12
+frame networked                                # playing as a client: the NET line, rtt and prediction
+kill "$PID" "$P_SEAT" "$P_HOST" "$P_INTRO" 2>/dev/null || true; trap - EXIT
+
 python3 - "$S" "$OUT" "$VERSION" <<'PY'
 import sys, os
 from PIL import Image
@@ -79,6 +125,23 @@ made.append(crop("screen", (0, 0, 1200, 60), "top"))
 made.append(crop("aim", (300, 120, 900, 560), "aim"))
 made.append(crop("events", (170, 300, 700, 604), "events"))
 made.append(crop("close", (300, 150, 900, 550), "close"))
+# The lobby: the last frame of the burst on which the lobby screen
+# stands (TREADCORE at the top of a box over an empty map, no tiles yet:
+# the map's grass is the tell that the match has begun).
+def grassy(path):
+    im = Image.open(path).convert("RGB"); w, h = im.size
+    px = list(im.resize((w // 8, h // 8)).get_flattened_data())
+    return sum(1 for r, g, b in px if g > 90 and g > r + 30 and g > b + 30) / len(px)
+lobby = None
+for i in range(1, 17):
+    f = f"{S}/lobby-{i}.png"
+    if os.path.exists(f) and os.path.getsize(f) > 0 and grassy(f) < 0.05:
+        lobby = f
+if lobby is None:
+    sys.exit("no frame of the burst shows the lobby: the match began before the window drew")
+Image.open(lobby).save(f"{OUT}/guide-lobby.png"); made.append("guide-lobby.png")
+made.append(crop("networked", (0, 0, 1200, 740), "networked"))
+made.append(crop("networked", (0, 0, 1200, 60), "net-top", 1))
 with open(f"{OUT}/MANIFEST-{VERSION}.txt", "w") as f:
     f.write(f"# frames taken by scripts/shoot.sh for {VERSION}; release.sh checks each is shown\n")
     for m in made:

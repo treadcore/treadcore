@@ -163,6 +163,17 @@ stdin/stdout so a bot can be written in anything. With the scenario's
 is; it is a handicap for a human against bots and is never on in a
 proof.
 
+Both bots keep the first minute (`GRACE_SECONDS`, 60): they will not
+fire at, or send a strike at, a hostile tank that has never moved and
+never fired. Fuel is the tell, because every tank starts full and only
+driving burns it; a tank seen below full, or seen reloading, has
+begun. This is the bots' manners, not a rule of the world: a human may
+shoot a sitting newcomer, and the world will let them. A first version
+spared any tank that had not moved since the bot first saw it, and
+over sixty seeds it shifted bot survival by twenty tanks in two
+hundred and forty, because it spared bots standing at a depot too
+(journal 0019).
+
 ## Pillboys and pillboxes: the decision
 
 Decided 12 October 2026, before any code (ROADMAP step 3 asks for
