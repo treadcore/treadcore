@@ -11,6 +11,10 @@
 #   make warm        build the engine alone (Bevy, ~370 crates) with a job
 #                    count sized to RAM and at low priority; do this once,
 #                    then every other target finds it built. Resumable.
+#                    Prints every crate as [n/total]; VERBOSE=1 shows the
+#                    dependency tree first, VERBOSE=2 the rustc commands.
+#   make tree        the engine's dependency tree, each crate's deps under it
+#   make why CRATE=x which crates pull x into the build (inverse tree)
 #   make build       release build of every crate (after warm: just the game)
 #   make headless    release build of everything except the window
 #   make debug       bot-only match, RUST_LOG=trace, backtraces on, everything
@@ -30,7 +34,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm build headless debug run lan host seat lobby-test test mem schema clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat lobby-test test mem schema clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -41,10 +45,12 @@ SEED     ?= 0x7EADC0DE
 NAME     ?= $(shell hostname -s 2>/dev/null || echo player)
 # Parallel rustc jobs. Empty means configure.sh sizes it from RAM.
 JOBS     ?=
+# make warm chatter: 0 numbered crates, 1 tree + timings, 2 rustc commands.
+VERBOSE  ?= 0
 GAME     ?= treadcore
 WANT     ?= 4
 PEER     ?=
-export BUILDDIR LOGDIR SECONDS SEED NAME GAME WANT PEER JOBS
+export BUILDDIR LOGDIR SECONDS SEED NAME GAME WANT PEER JOBS VERBOSE
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
@@ -54,6 +60,14 @@ configure:
 
 warm: configure
 	@scripts/warm.sh
+
+tree:
+	@cargo tree -p treadcore-warm -e normal,build --prefix indent
+	@echo; echo "$$(cargo tree -p treadcore-warm -e normal,build --prefix none | sort -u | wc -l) distinct crates"
+
+why:
+	@test -n "$(CRATE)" || { echo 'usage: make why CRATE=naga'; exit 2; }
+	@cargo tree -p treadcore-warm -e normal,build -i $(CRATE) --prefix indent
 
 build: configure
 	@scripts/build.sh release all
