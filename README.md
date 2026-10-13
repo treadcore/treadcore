@@ -69,6 +69,7 @@ make lan         # the window, LAN lobby; WANT=2 to start with two
 make host        # headless host on the LAN, bots in empty seats
 make seat        # headless bot that joins a LAN lobby
 make lobby-test  # four headless peers on this machine elect a host
+LAG=200 make lobby-test   # the same with 200 ms of lag on every receive: prediction's proof
 ```
 
 Controls are on screen (Tab hides them). Left click drives (the world

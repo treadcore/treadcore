@@ -1,6 +1,6 @@
 # treadcore protocol
 
-Version 9. One UDP socket per process, default port 47296. Every datagram
+Version 10. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 
@@ -68,10 +68,12 @@ receive their view.
 - `Command { seq, cmd }`: an order. Per-client monotonic `seq`; resent
   every 120 ms until `CommandAck { seq }`. The host applies each seq
   once, in order, buffering any that arrive early.
-- `Snapshot { tick, part, parts, bytes }`: the player's observation,
-  every other tick (10 Hz), bincode, split into datagrams under 1200
-  bytes. Unreliable: a lost one is replaced by the next. The client
-  reassembles by tick and keeps only the newest.
+- `Snapshot { tick, part, parts, acked, bytes }`: the player's
+  observation, every other tick (10 Hz), bincode, split into datagrams
+  under 1200 bytes. Unreliable: a lost one is replaced by the next. The
+  client reassembles by tick and keeps only the newest. `acked` is the
+  last of that client's command seqs the host had applied by `tick`:
+  a predicting client re-applies everything after it (below).
 - `Events { seq, tick, events }`: what happened that the player may know
   about. Resent every 120 ms until `EventsAck { seq }`; a kill is never
   lost. Delivered once, in order.
@@ -81,15 +83,44 @@ receive their view.
   a latency estimate (its tick minus the echoed one: a snapshot out and
   a heartbeat back) and sends back as `rtt_ticks`; that is the HUD's
   rtt. The host's heartbeat also carries the world hash as of the last
-  multiple of 1 000 ticks (`HASH_EVERY`); a client that runs its own
-  world compares, one that does not logs it, and four peers' logs with
-  one hash at one tick is the lobby test's proof. A client sends 0 for
-  the hash until it predicts, and 0 for `rtt_ticks` always.
+  multiple of 1 000 ticks (`HASH_EVERY`); every client logs it, and
+  four peers' logs with one hash at one tick is the lobby test's
+  proof. A client sends 0 for the hash (it runs its own tank, not the
+  world: below) and 0 for `rtt_ticks` always.
 
 - `Leave`.
 
 Orders from every seat for a tick are sorted by player before the step,
 so arrival order never changes the result.
+
+## Prediction
+
+The host is authoritative; a client is told the world at 10 Hz, half a
+round trip late, and its own orders take a whole round trip to show.
+So a client runs its own tank itself (`treadcore-net/src/predict.rs`,
+roadmap step 4): a partial copy of the world built from `Welcome` (the
+scenario, the map as the host has it) and kept up from every snapshot
+(every pillbox, the mines it knows, the teams) and every terrain event
+(craters, walls, roads, felled forest). The orders that move the hull,
+`Move`, `Stop` and the two fire orders (firing turns the tank), are
+applied to the copy the moment they are sent; the copy's tank is driven
+one tick at the tick rate by the same function the host runs
+(`World::predict`, which calls the host's `drive_tank`). Every
+snapshot replaces the copy's tank with the host's, re-applies the
+orders with seq after the snapshot's `acked`, and drives the ticks the
+client was ahead again. Nothing predicted leaves the client; the host
+never hears of it.
+
+The check: whenever none of the client's orders is in flight across a
+snapshot's span, the tank the host reports at tick T must equal the
+tank predicted at T bit for bit (position, heading, speed, waypoint,
+route length). A difference is logged as a mismatch with the distance,
+counted, and shown on the HUD. `make lobby-test LAG=200` holds every
+received datagram 200 ms (`TREADCORE_LAG_MS`, the transport's stand-in
+for `tc netem`, which needs root) and requires zero mismatches across
+the three client seats. A client's copy is of its own tank only, which
+is why its heartbeat still carries no world hash: it cannot run what
+it is not shown.
 
 ## Relay
 

@@ -4,6 +4,36 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13, evening: client-side prediction (roadmap step 4)
+
+Journal: [0011](journal/0011-2026-10-13-prediction.txt).
+
+- New: a client runs its own tank ahead of the snapshots
+  (`treadcore-net/src/predict.rs`). A partial `World` from the
+  `Welcome`, kept up from every snapshot and terrain event; hull
+  orders (`Move`, `Stop`, the two fire orders) applied the moment they
+  are sent; one tick at the tick rate by `World::predict`, which calls
+  the same `drive_tank` the host does; every snapshot replaces the
+  tank, re-applies the orders after the snapshot's `acked`, and drives
+  the ticks ahead again. Bit-for-bit check against the host whenever
+  nothing is in flight; mismatches logged and counted.
+- Changed: wire version 10. `Snapshot` carries `acked`, the last of
+  the client's command seqs the host had applied by that tick.
+- New: `TREADCORE_LAG_MS` holds every received datagram that long in
+  the transport: the stand-in for `tc netem` where there is no root.
+  `make lobby-test LAG=200`, which now also requires zero prediction
+  mismatches in the three client seats.
+- Changed: the window draws the predicted tank in place of the
+  snapshot's own tank; the NET panel shows `predict +N ticks`, orders
+  in flight, checks, mismatches, and CORRECTED for two seconds after
+  a correction. The headless `--net` seat predicts too, and logs one
+  `prediction:` line at the end.
+- Proof: `prediction_hides_the_lag_and_matches_the_host` (100 ms each
+  way: the predicted tank moves 250 ms before the snapshot shows it,
+  53 checks, 0 mismatches); `LAG=200 make lobby-test` (1 602 checks,
+  0 mismatches); the 6d replay still matches 60 of 60 after the
+  `step_tanks` refactor. 37 tests.
+
 ## 2026-10-13, later: the Defender and the storming attacker (roadmap step 6d)
 
 Journal: [0010](journal/0010-2026-10-13-the-defender.txt).

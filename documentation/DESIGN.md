@@ -300,9 +300,10 @@ defection, and allowed.
   its depots.
 - Map editing. The map is generated from a seed; a file format and an
   editor would let a map be authored and shared.
-- Client-side prediction of the player's own tank. Snapshots are
-  interpolated forward by wall time, which hides a 100 ms link; it will
-  not hide a 400 ms one.
+- Prediction of anything but the player's own tank. The own tank is
+  run ahead on the client (PROTOCOL.md, Prediction); everything else
+  is the snapshot interpolated forward by wall time, which hides a
+  100 ms link and not a 400 ms one.
 - NAT traversal. Peers across the Internet need a reachable address;
   the relay route works once they have one.
 - Sound.

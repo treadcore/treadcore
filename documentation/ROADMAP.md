@@ -272,6 +272,31 @@ that does not, over twenty seeds, by a margin the trace can show.
 
 ## 4. Client-side prediction of the player's own tank
 
+**Done 13 October 2026 (journal 0011).** As written, with one
+narrowing and one widening. The client's `World` is partial: built
+from `Welcome`, it holds the map (kept up from terrain events), every
+pillbox, the mines the player knows, the teams, and the player's own
+tank; nothing else, because a client is shown nothing else, so it
+never calls `World::step`. The sim exposes `World::predict`, which
+applies one player's hull orders and drives the tank by the same
+`drive_tank` the host's `step_tanks` calls (`treadcore-net/src/
+predict.rs`, wire version 10: `Snapshot` carries `acked`, the last
+seq applied). The widening: the hull orders are `Move`, `Stop` and
+both fire orders, because firing turns the tank; the first lagged
+lobby test found that one as fourteen mismatches at zero tiles off.
+The check is bit-for-bit (`Tank::tick_state`) whenever nothing of the
+client's is in flight. Proof, as it came out: there is no `tc` and no
+root in this VM, so the transport grew a lag queue (`TREADCORE_LAG_MS`;
+`make lobby-test LAG=200`) that holds every received datagram.
+`prediction_hides_the_lag_and_matches_the_host`: 100 ms each way,
+the predicted tank moves 250 ms before the snapshot shows it, 53
+checks, 0 mismatches. `LAG=200 make lobby-test`: three client seats,
+598 snapshots each, 1 602 checks, 0 mismatches; the test now requires
+that. The window draws the predicted tank in place of the snapshot's
+and the NET panel shows ticks ahead, orders in flight, checks and
+mismatches; it builds, and is unproven in this VM as before. A client
+still sends no world hash: it cannot run what it is not shown.
+
 **Change.** `treadcore-client` runs its own `World` from `Welcome`
 (seed + map + scenario), applies its own orders immediately, and
 reconciles on each snapshot: replace own-tank state with the host's,
@@ -544,8 +569,8 @@ thin LTO for binaries; `cargo dist` or a plain tarball per platform.
                                                                                               └─ 9 sound/art/dist
 
 Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
-worked through and 6d done on 13 October (journals 0009, 0010). Next:
-4, prediction; 7 and 8 need a second machine; 9 last.
+worked through, 6d and 4 done on 13 October (journals 0009 to 0011).
+Next: 7 and 8, which need a second machine; 9 last.
 
 ```
 

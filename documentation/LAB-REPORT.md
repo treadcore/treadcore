@@ -8,18 +8,18 @@ Site: [treadcore.org](https://treadcore.org).
 ## 1. Status, first
 
 As of 13 October 2026 (the earlier tables are in the history; journal
-0002 has the chronology, 0009 the backlog):
+0002 has the chronology, 0009 the backlog, 0011 prediction):
 
 | crate | lines | compiled | tests |
 | --- | --- | --- | --- |
-| treadcore-sim | ~4600 | yes | 23 pass (determinism, a team shares recon and spares its own, alliances form and break and teams end the match, proposals change sides under the three-way rule, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, retask moves a recon and recalls one drone, a forest block conceals a tank, game types set the start, sixteen seats, a world from a map file, map determinism, every start reaches the centre, a map survives the file round trip, bad map files are refused with a line) |
+| treadcore-sim | ~4700 | yes | 24 pass (determinism, prediction drives the tank as the host does, a team shares recon and spares its own, alliances form and break and teams end the match, proposals change sides under the three-way rule, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, retask moves a recon and recalls one drone, a forest block conceals a tank, game types set the start, sixteen seats, a world from a map file, map determinism, every start reaches the centre, a map survives the file round trip, bad map files are refused with a line) |
 | treadcore-proto | ~330 | yes | 3 pass (round trip, snapshot split and reassembly, big packets chunk and reassemble) |
-| treadcore-net | ~1230 | yes | 5 pass (4 election, 1 loopback session) |
+| treadcore-net | ~1570 | yes | 6 pass (4 election, 1 loopback session, 1 prediction under 200 ms of lag: the predicted tank moves 250 ms before the snapshot shows it, zero mismatches) |
 | treadcore-brain | ~1150 | yes | 4 pass (sixteen bots fight to a result; `pillboys_pay`: over twenty seeds, bots that capture pillboxes outscore and outlive the same doctrine without the squad; `fortification_pays`: a fortified depot outlives a bare one against a scripted attack; `defenders_hold`: twelve Defenders against four attackers, ten seeds, every match to the time limit, the defenders outliving the attackers and keeping their depots) |
 
 
-| treadcore-server | ~360 | yes; `make debug` and `make lobby-test` run | none |
-| treadcore-client | ~800 | yes, against Bevy 0.17.3; three dead-code warnings | none |
+| treadcore-server | ~760 | yes; `make debug` and `make lobby-test` run (`LAG=200` for the lagged one) | none |
+| treadcore-client | ~1320 | yes, against Bevy 0.17.3; three dead-code warnings | none |
 | treadcore-warm | ~45 | yes; the window panics in this VM for want of a Vulkan driver (BUILD.md) | none |
 
 The round of small fixes the morning predicted was three, and none of
@@ -323,6 +323,30 @@ mutate seats and routes while holding it, then puts it back. It is a
 common Rust idiom for "I need two mutable things from one struct", and
 it costs nothing.
 
+### 5.4 Prediction is a partial world and one function
+
+```rust
+pub struct Predictor { pub world: World, pub me: PlayerId, in_flight: Vec<(u32, Command)>, history: VecDeque<..>, .. }
+impl Predictor {
+    pub fn order(&mut self, seq: u32, cmd: &Command)           // applied now, remembered
+    pub fn tick(&mut self)                                      // one tick, at the tick rate
+    pub fn reconcile(&mut self, obs: &Observation, acked: u32)  // check, adopt, re-apply, re-drive
+}
+```
+
+The copy is a real `World` built from the `Welcome`, with every list
+but the map, the pillboxes, the known mines and the players left
+empty or overwritten from each snapshot. It never calls `World::step`:
+the sim exposes `World::predict`, which applies one player's hull
+orders and calls the same `drive_tank` the host's `step_tanks` calls,
+so the two cannot disagree by construction. The check that they do not
+is `Tank::tick_state`, a tuple of float bits compared whenever nothing
+of the client's is in flight; `prediction_hides_the_lag_and_matches_the_host`
+runs host and client on loopback with `Socket::set_lag(100 ms)` each
+way and asserts zero mismatches and a 250 ms lead. The transport's lag
+queue (`TREADCORE_LAG_MS`) is what stands in for `tc netem` on a
+machine without root.
+
 ## 6. treadcore-brain: the controller interface
 
 ```rust
@@ -381,7 +405,7 @@ Bevy, four plugins, each a file:
 
 | file | owns | pattern |
 | --- | --- | --- |
-| session.rs | `Session` enum (Lobby / Hosting / Client / Ended), `View` resource | `FixedUpdate` at 20 Hz steps the host; `Update` polls the net |
+| session.rs | `Session` enum (Lobby / Hosting / Client / Ended), `View` resource | `FixedUpdate` at 20 Hz steps the host, or the client's predicted tank; `Update` polls the net |
 | render.rs | tile sprites, entity sprites keyed by id, the gizmo overlay | sprites synced from the observation; everything else is lines |
 | hud.rs | four text panels | one `String` per panel rebuilt each frame |
 | input.rs | keys and mouse to `Orders`, the camera | click to drive via the sim's own A* |
@@ -390,7 +414,11 @@ The engine never touches the world directly. `View` holds the last
 `Observation` and the map; render and HUD read `View`; input writes
 `Orders`; session moves orders to the host or the client and
 observations back. Bevy's resources and systems give the plumbing;
-the game stays in the sim.
+the game stays in the sim. A client's own tank is the exception that
+proves it: `View.predicted` is the tank from treadcore-net's
+`Predictor`, run one tick ahead in `FixedUpdate`, and render draws it
+in place of the snapshot's; the HUD's NET panel shows how far ahead,
+what is in flight, and the mismatch count (section 5.4).
 
 The overlay is the game's look and it is all `Gizmos`: the bubble as a
 ring, the detection margin as a fainter ring, each drone's link as a

@@ -1,0 +1,211 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 08:30:00 -0700
+Subject: [JOURNAL 0011] Client-side prediction: roadmap step 4
+Message-ID: <0011.20261013@treadcore.org>
+In-Reply-To: <0010.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: prediction, reconcile, lag, acked, drive_tank, lobby-test,
+          proof
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "continue with step 4"
+X-Commits: 438be5f
+
+           CLIENT-SIDE PREDICTION: ROADMAP STEP 4
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    Step 4 gives a client its own tank to run: a partial copy of the
+    world built from the Welcome, hull orders applied the moment they
+    are sent, one tick at the tick rate by the function the host runs,
+    and every snapshot adopted, re-applied over, and re-driven. The
+    check is bit for bit whenever nothing is in flight. There is no
+    tc and no root in this VM, so the transport grew a lag queue that
+    stands in for netem. With 100 ms each way the predicted tank moves
+    250 ms before the snapshot shows it and matches the host in 53 of
+    53 checks; the lagged lobby test's three seats match in 1 602 of
+    1 602. The first lagged run found fourteen mismatches at zero
+    tiles off: firing turns the hull, and the copy did not fire. 37
+    tests.
+
+INDEX TERMS
+
+    prediction, reconciliation, acked seq, drive_tank, lag queue,
+    tick_state, lobby-test.
+
+
+I. INTRODUCTION
+
+    The roadmap's remaining step that one machine can prove. A client
+    had been drawing the last snapshot interpolated by wall time, which
+    hides a 100 ms link and not a 400 ms one, and its own orders took
+    a round trip to show. The question was whether the client can run
+    its own tank without ever disagreeing with the host, and what it
+    takes to know when it does.
+
+II. BACKGROUND
+
+    Carried from 0010: the window unproven; step 4 next. Step 2's hash
+    was written with this step in mind ("a client that also runs the
+    world compares"), but a client is shown what it may see and not
+    the world, so a whole-world hash on the client was never going to
+    be possible. The roadmap's proof clause asked for `tc netem delay
+    200ms`; the VM has neither tc nor root.
+
+III. METHOD
+
+    The sim first: `step_tanks`'s body became a free function,
+    `drive_tank`, and the 6d replay was run before anything else
+    touched it (60 of 60). Then `World::predict`: one player's hull
+    orders applied and that tank driven, nothing else stepped. Then
+    the Predictor in treadcore-net, where it can be tested without an
+    engine; then the host's `acked` on every snapshot (wire version
+    10); then the window.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      a partial world that     a whole World stepped  the client is
+      never calls step         with World::step       not shown the
+                                                      world; step on
+                                                      a world of one
+                                                      tank ends the
+                                                      match
+      the sim exposes predict  the client re-         two copies of
+      and drive_tank           implements the drive   the drive would
+                                                      drift; one
+                                                      cannot
+      acked seq in the         re-apply what has no   an acked order
+      snapshot                 CommandAck yet         can still be in
+                                                      a snapshot sent
+                                                      before it was
+                                                      applied
+      check only when          check every snapshot   an order in
+      nothing is in flight                            flight makes a
+                                                      difference that
+                                                      is the lag's,
+                                                      not an error
+      bit-for-bit (tick_state  a distance tolerance   a tolerance
+      of float bits)                                  hides a wrong
+                                                      heading at a
+                                                      standstill, as
+                                                      round 3 showed
+      a lag queue in the       tc netem, as the       no tc, no root;
+      transport                roadmap asked          the queue runs
+                                                      anywhere
+      predict the fire orders  Move and Stop only     firing turns
+      too                                             the hull
+
+IV. CHRONOLOGY
+
+     1. `drive_tank` out of `step_tanks`; replay of the 6d recording:
+        60 of 60. `World::predict`; `Tank::tick_state`; the sim test
+        `prediction_drives_the_tank_as_the_host_does`: a copy with one
+        tank, the same Move at the same tick, equal bits all the way
+        across the river.
+     2. `Snapshot { acked }`, version 10. The Predictor: order, tick,
+        reconcile; history of 64 ticks; at most 40 ticks ahead. The
+        Client builds one from the Welcome, feeds it every order,
+        snapshot and event; `predict_tick` for the owner of the loop.
+     3. `Socket::set_lag` and `TREADCORE_LAG_MS`. The net test with
+        100 ms each way: first run failed its own assertion, which
+        asked the predicted tick to lead the snapshot's at the moment
+        a snapshot lands, when the two are by construction equal. The
+        lead that matters is wall time: the predicted tank moved
+        251 ms before the host's snapshot showed it moving. Assertion
+        rewritten; 53 checks, 0 mismatches.
+     4. The headless seat predicts at the tick rate and logs a line;
+        lobby-test takes LAG and reads the lines. First lagged run:
+        PASS on every old clause, 14 mismatches in the new one, all
+        but one at 0.000 tiles off, every one at a tick the seat
+        fired. Firing sets the hull heading to the target, and the
+        copy only took Move and Stop. `Command::predicted` now names
+        the four hull orders; the copy drops the shell it spawns.
+     5. Second lagged run: 598 snapshots a seat, 540, 552 and 510
+        checks, 0 mismatches. The plain run: 0 of 0 mismatches too,
+        PASS. The window: predicted tank drawn in place of the
+        snapshot's, interpolated from its own last tick; NET panel
+        line; release build in 23 s with the three old warnings.
+     6. 37 tests; documents; this entry.
+
+V. RESULTS
+
+      proof                            lag       checks  mismatch  lead
+      -------------------------------  --------  ------  --------  -----
+      net test, host and client        100 ms    53      0         250 ms
+      lobby-test LAG=200, three seats  200 ms    1 602   0         -
+      lobby-test, three seats          0         1 600   0         -
+      first lagged run (before 4)      200 ms    1 724   14        -
+
+    The 6d replay: 60 of 60 after the refactor. Tests: 37 pass
+    (sim 24, proto 3, net 6, brain 4).
+
+VI. DISCUSSION
+
+    The step's only finding was the hull turning to fire, and it was
+    found by the check, not by watching: a standing tank, zero tiles
+    off, state unequal. A distance tolerance would have passed it and
+    the next Move would have driven off a wrong heading for a tick or
+    two, a correction too small to see and too frequent to be nothing.
+    The bit-for-bit comparison is the whole value of making predict
+    call drive_tank: the two cannot differ by rounding, so any
+    difference is a rule the copy does not run, and the log names the
+    tick.
+
+    What the copy does not run, by design: mines it does not know, the
+    swarm, damage. Each would show as a mismatch with a distance, and
+    none did in the lobby runs, because a RuleBot tank seldom drives
+    onto an unknown mine in a minute.
+
+    The roadmap's "driving feels immediate" is 250 ms of lead on a
+    200 ms round trip, which is the round trip plus the time to the
+    next snapshot: the tank moves when the key goes down. Whether that
+    feels right is the playtest's to say.
+
+VII. OPEN PROBLEMS
+
+    1. The window: still unproven in this VM.
+    2. The predicted tank is corrected, never smoothed: a mismatch
+       snaps. On a straight road there is none to snap over.
+    3. Only the own tank. Allies' tanks, drones and shells are the
+       snapshot interpolated by wall time, as before.
+    4. Rejoin (steps 7, 8) and the pillbox view are where they were.
+
+VIII. NEXT STEPS
+
+    1. Steps 7 and 8 when a second machine is on the table.
+    2. Step 9 last.
+
+ACKNOWLEDGMENTS
+
+    Paul, for "continue with step 4".
+
+REFERENCES
+
+    [1] Journal 0010, <0010.20261013@treadcore.org>.
+    [2] Journal 0003, <0003.20261012@treadcore.org>: the hash this
+        step was to compare against, and why a client cannot.
+    [3] documentation/ROADMAP.md step 4; documentation/PROTOCOL.md,
+        Prediction.
+
+APPENDIX A. COMMITS
+
+    438be5f  sim, proto, net, server, client: client-side prediction
+             (roadmap step 4); wire version 10
+    (next)   docs, journal: step 4 done; journal 0011
+
+APPENDIX B. ARTIFACTS
+
+    Journal         journal/0011-2026-10-13-prediction.txt (this)
+    Lobby logs      build/logs/lobby-20261013-080818-peer*.log (the
+                    14 mismatches), lobby-20261013-081209-peer*.log
+                    (0, LAG=200), the plain run after it
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
