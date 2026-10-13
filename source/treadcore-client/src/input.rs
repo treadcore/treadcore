@@ -106,13 +106,11 @@ fn orders(
 
     if mouse.just_pressed(MouseButton::Left) {
         if let Some(p) = at {
-            // Route around water with the same pathfinder the bot uses;
-            // the first corner becomes the goal, and the rest follow as
-            // the tank arrives (the sim drives straight lines only).
-            let wp = map.map(|m| m.route(me.pos, p)).unwrap_or_default();
-            let to = wp.first().copied().unwrap_or(p);
-            orders.0.push(Command::Move { to });
+            // The world routes a Move around water itself and the tank
+            // follows the waypoints; the client only names the destination.
+            orders.0.push(Command::Move { to: p });
         }
+
     }
     if mouse.just_pressed(MouseButton::Right) {
         if let Some(p) = at {

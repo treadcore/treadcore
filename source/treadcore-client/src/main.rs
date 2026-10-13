@@ -37,6 +37,8 @@ pub struct Args {
     pub peers: Vec<String>,
     pub seed: u64,
     pub swarm: u32,
+    /// Seats in a solo or hosted match, 1 to 16; bots fill what people do not.
+    pub players: usize,
 }
 
 fn parse_args() -> Args {
@@ -48,6 +50,7 @@ fn parse_args() -> Args {
         peers: vec![],
         seed: 0x7EAD_C0DE,
         swarm: 45 * TICK_HZ,
+        players: treadcore_sim::MAX_PLAYERS,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -64,8 +67,11 @@ fn parse_args() -> Args {
                 a.seed = v.strip_prefix("0x").and_then(|h| u64::from_str_radix(h, 16).ok()).or_else(|| v.parse().ok()).unwrap_or(a.seed);
             }
             "--swarm" => a.swarm = val().parse::<u32>().unwrap_or(45) * TICK_HZ,
+            "--players" => a.players = val().parse::<usize>().unwrap_or(treadcore_sim::MAX_PLAYERS).clamp(1, treadcore_sim::MAX_PLAYERS),
+
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--seed S] [--swarm SECONDS]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--seed S] [--swarm SECONDS] [--players 1..16]");
+
                 std::process::exit(0);
             }
             _ => {}
@@ -108,13 +114,21 @@ pub fn to_tile(p: Vec2) -> treadcore_sim::V2 {
     treadcore_sim::V2::new(p.x / TILE, treadcore_sim::MAP_H as f32 - p.y / TILE)
 }
 
-/// Seat colours. Four players and the swarm.
+/// Seat colours. Sixteen players spaced round the hue circle, the first
+/// four as they always were, and the swarm in red.
 pub fn player_color(p: treadcore_sim::PlayerId) -> Color {
     match p {
         0 => Color::srgb(0.35, 0.75, 1.0),
         1 => Color::srgb(1.0, 0.80, 0.30),
         2 => Color::srgb(0.55, 1.0, 0.55),
         3 => Color::srgb(0.95, 0.55, 1.0),
+        p if (p as usize) < treadcore_sim::MAX_PLAYERS => {
+            // Seats 4..16: golden-angle steps round the hue circle, so
+            // neighbours in seat order are far apart in colour.
+            let hue = ((p as f32 - 4.0) * 137.5 + 20.0) % 360.0;
+            Color::hsl(hue, 0.7, 0.62)
+        }
         _ => Color::srgb(1.0, 0.25, 0.20),
     }
 }
+

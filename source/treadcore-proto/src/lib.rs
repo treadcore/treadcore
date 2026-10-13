@@ -27,7 +27,8 @@ use treadcore_sim::{Command, Event, Observation, PlayerId, Scenario, Tick};
 pub const MAGIC: [u8; 4] = *b"TRDC";
 /// Bump on any change to `Packet` or to anything it carries from
 /// treadcore-sim. Peers on different versions ignore each other entirely.
-pub const VERSION: u16 = 1;
+pub const VERSION: u16 = 2;
+
 /// Default UDP port. 0xB8C0 -- nothing registered there.
 pub const PORT: u16 = 47296;
 /// A datagram this size fits one Ethernet frame with room to spare; the

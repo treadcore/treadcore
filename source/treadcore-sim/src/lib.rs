@@ -36,8 +36,10 @@ pub use rules::*;
 /// snapshot every other tick to a tenth of a second.
 pub const TICK_HZ: u32 = 20;
 pub const DT: f32 = 1.0 / TICK_HZ as f32;
-/// Four seats. Empty ones are filled by bots.
-pub const MAX_PLAYERS: usize = 4;
+/// Sixteen seats, Bolo's number. Empty ones are filled by bots. The
+/// default scenario seats four; `--players N` on the server seats more.
+pub const MAX_PLAYERS: usize = 16;
+
 
 pub type EntityId = u32;
 pub type PlayerId = u8;
@@ -271,9 +273,12 @@ pub struct Tank {
     pub shells: u16,
     pub fuel: f32,
     pub bay: Bay,
-    /// Where it is driving. Straight line with terrain-cost speed; the bot
-    /// and the client both path around water before issuing this.
+    /// The waypoint it is driving to now, in a straight line at
+    /// terrain-cost speed. `Move` routes with the map's A* and fills
+    /// `route` with the waypoints after this one; the tank follows them.
     pub goal: Option<V2>,
+    /// The rest of the way, nearest first. Empty when `goal` is the end.
+    pub route: Vec<V2>,
     /// Ticks until the gun can fire again.
     pub reload: u16,
     /// Radius of the interceptor station. The player's one dial: wide
@@ -376,16 +381,26 @@ pub struct Scenario {
     pub time_limit: Tick,
 }
 
+/// The sixteen starts have compass names, in the order `Map::starts`
+/// lists them; a seat is named for its start.
+pub fn seat_name(i: usize) -> String {
+    const NAMES: [&str; 16] = ["north", "east", "south", "west", "northeast", "southeast", "southwest", "northwest", "nne", "nnw", "ene", "ese", "sse", "ssw", "wsw", "wnw"];
+    NAMES.get(i).map(|s| s.to_string()).unwrap_or_else(|| format!("seat{}", i))
+}
+
+impl Scenario {
+    /// `n` bot seats, named for their starts.
+    pub fn bots(n: usize) -> Scenario {
+        Scenario { players: (0..n.clamp(1, MAX_PLAYERS)).map(|i| (seat_name(i), true)).collect(), ..Scenario::default() }
+    }
+}
+
 impl Default for Scenario {
     fn default() -> Scenario {
         Scenario {
             seed: 0x7EAD_C0DE,
-            players: vec![
-                ("north".into(), true),
-                ("east".into(), true),
-                ("south".into(), true),
-                ("west".into(), true),
-            ],
+            players: (0..MAX_PLAYERS).map(|i| (seat_name(i), true)).collect(),
+
             swarm_interval: 45 * TICK_HZ,
             swarm_size: 4,
             time_limit: 15 * 60 * TICK_HZ as Tick,
@@ -455,6 +470,7 @@ impl World {
                 fuel: TANK_FUEL,
                 bay: BAY_FULL,
                 goal: None,
+                route: Vec::new(),
                 reload: 0,
                 bubble: BUBBLE_DEFAULT,
                 last_hit_tick: 0,
@@ -575,11 +591,23 @@ impl World {
                 if self.map.at(*to) == Terrain::Water {
                     return self.reject(o, "water");
                 }
-                self.tank_mut(tid).unwrap().goal = Some(*to);
+                // The world routes. A straight line from a start to the
+                // centre crosses the river beside the bridge, and in the
+                // first traced match one bot sat on that bank for the whole
+                // game. Neither a Brain nor a client has the map in its
+                // observation, so the pathfinding has to live here.
+                let mut wp = self.map.route(pos, *to);
+                if wp.is_empty() {
+                    return self.reject(o, "unreachable");
+                }
+                let t = self.tank_mut(tid).unwrap();
+                t.goal = Some(wp.remove(0));
+                t.route = wp;
             }
             Command::Stop => {
                 let t = self.tank_mut(tid).unwrap();
                 t.goal = None;
+                t.route.clear();
                 t.speed = 0.0;
             }
             Command::FireIndirect { at } => {
@@ -729,23 +757,34 @@ impl World {
             };
             if t.fuel <= 0.0 {
                 t.goal = None;
+                t.route.clear();
                 t.speed = 0.0;
                 continue;
             }
             let to = goal - t.pos;
             let dist = to.len();
             if dist < 0.15 {
-                t.goal = None;
-                t.speed = 0.0;
                 t.pos = goal;
+                // Next waypoint, keeping the speed: a corner on a road is
+                // not a stop.
+                if t.route.is_empty() {
+                    t.goal = None;
+                    t.speed = 0.0;
+                } else {
+                    t.goal = Some(t.route.remove(0));
+                }
                 continue;
             }
             let cost = map.move_cost(t.pos);
-            let max = TANK_SPEED / cost;
-            t.speed = (t.speed + TANK_ACCEL * DT).min(max);
             let dir = to.norm();
             let want = t.heading;
             let turn = wrap_angle(dir.heading() - want);
+            // Brake for a corner. At full speed a hull turning at
+            // TANK_TURN swings two tiles wide, which on a one-tile bridge
+            // is the river; a tank facing the wrong way pivots at a crawl
+            // and accelerates once it is pointed down the road.
+            let max = if turn.abs() > TURN_BRAKE_ANGLE { TANK_SPEED * TURN_CRAWL / cost } else { TANK_SPEED / cost };
+            t.speed = (t.speed + TANK_ACCEL * DT).min(max);
             let step = TANK_TURN * DT;
             t.heading = want + turn.clamp(-step, step);
             let fwd = V2::from_heading(t.heading);
@@ -754,12 +793,24 @@ impl World {
                 next = goal;
             }
             if map.at(next) == Terrain::Water || !map.in_bounds(next) {
+                // Blocked: stop, and plan again from here to where the
+                // route was going. Giving up left a tank parked at the
+                // water's edge for a whole match.
                 t.speed = 0.0;
-                t.goal = None;
+                let dest = t.route.last().copied().unwrap_or(goal);
+                let mut wp = map.route(t.pos, dest);
+                if wp.is_empty() {
+                    t.goal = None;
+                    t.route.clear();
+                } else {
+                    t.goal = Some(wp.remove(0));
+                    t.route = wp;
+                }
                 continue;
             }
             t.pos = next;
             t.fuel = (t.fuel - FUEL_PER_TILE * t.speed * DT).max(0.0);
+
         }
     }
 
@@ -1039,7 +1090,9 @@ impl World {
             t.alive = false;
             t.armor = 0.0;
             t.goal = None;
+            t.route.clear();
             t.speed = 0.0;
+
             if let Some(p) = self.players.iter_mut().find(|p| p.id == owner) {
                 p.alive = false;
             }
@@ -1325,8 +1378,43 @@ mod tests {
         assert!(w.events.iter().any(|e| matches!(e, Event::ShellImpact { .. })));
     }
 
+    /// The east start and the centre are on opposite banks of the river
+    /// on the default seed; a straight drive stopped at the water. A
+    /// Move is routed over the bridge and arrives.
+    #[test]
+    fn move_is_routed_across_the_river() {
+        let mut w = world();
+        let center = w.map.center();
+        w.step(&[Order { player: 1, cmd: Command::Move { to: center } }]);
+        assert!(w.events.iter().all(|e| !matches!(e, Event::Rejected { .. })));
+        for _ in 0..(60 * TICK_HZ) {
+            w.step(&[]);
+            if w.tank_of(1).unwrap().goal.is_none() {
+                break;
+            }
+        }
+        let t = w.tank_of(1).unwrap();
+        assert!(t.pos.dist(center) < 1.0, "tank stopped at {:?}, {} waypoints left", t.pos, t.route.len());
+    }
+
+    #[test]
+    fn sixteen_seats() {
+        let players = (0..MAX_PLAYERS).map(|i| (format!("p{}", i), true)).collect();
+        let mut w = World::new(Scenario { players, swarm_interval: 0, ..Scenario::default() });
+        assert_eq!(w.tanks.len(), 16);
+        assert_eq!(w.depots.iter().filter(|d| d.owner.is_some()).count(), 16);
+        for _ in 0..100 {
+            w.step(&[]);
+        }
+        assert!(w.tanks.iter().all(|t| t.alive));
+        let o = w.observe(15);
+        assert_eq!(o.players.len(), 16);
+    }
+
     #[test]
     fn swarm_meets_bubble() {
+
+
         let mut w = World::new(Scenario { swarm_interval: 10, swarm_size: 3, ..Scenario::default() });
         for _ in 0..4 {
             w.step(&[Order { player: 0, cmd: Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return } }]);

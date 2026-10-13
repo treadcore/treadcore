@@ -266,11 +266,18 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>) {
         gizmos.circle_2d(to_screen(my.pos), TANK_VISION * TILE, Color::srgba(1.0, 1.0, 1.0, 0.08));
         gizmos.circle_2d(to_screen(my.pos), INDIRECT_MIN_RANGE * TILE, Color::srgba(1.0, 0.8, 0.4, 0.12));
         gizmos.circle_2d(to_screen(my.pos), INDIRECT_MAX_RANGE * TILE, Color::srgba(1.0, 0.8, 0.4, 0.12));
-        // Where it is driving.
+        // Where it is driving: the leg in progress, then the rest of the
+        // route the world planned, fainter.
         if let Some(g) = my.goal {
             gizmos.line_2d(to_screen(my.pos), to_screen(g), mine.with_alpha(0.4));
-            gizmos.circle_2d(to_screen(g), TILE * 0.4, mine.with_alpha(0.6));
+            let mut prev = g;
+            for w in &my.route {
+                gizmos.line_2d(to_screen(prev), to_screen(*w), mine.with_alpha(0.2));
+                prev = *w;
+            }
+            gizmos.circle_2d(to_screen(prev), TILE * 0.4, mine.with_alpha(0.6));
         }
+
         // Barrel.
         let muzzle = my.pos + V2::from_heading(my.heading).scale(1.4);
         gizmos.line_2d(to_screen(my.pos), to_screen(muzzle), mine);

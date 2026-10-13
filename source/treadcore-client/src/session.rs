@@ -106,17 +106,19 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
     let mut names: Vec<(String, bool)> = remote.iter().map(|(_, n)| (n.clone(), false)).collect();
     let me_player = names.len() as PlayerId;
     names.push((args.name.clone(), false));
-    while names.len() < MAX_PLAYERS {
+    let seats = args.players.clamp(names.len(), MAX_PLAYERS);
+    while names.len() < seats {
         names.push((format!("bot{}", names.len()), true));
     }
     let first_bot = me_player + 1;
-    let bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..MAX_PLAYERS as PlayerId).map(|i| (i, Box::new(RuleBot::new(args.seed.wrapping_mul(31) ^ (i as u64 + 1), "rulebot")) as Box<dyn Brain>)).collect();
+    let bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, Box::new(RuleBot::new(args.seed.wrapping_mul(31) ^ (i as u64 + 1), "rulebot")) as Box<dyn Brain>)).collect();
     let host = Host::new(me, sock, scenario(args, names), remote, routes);
     view.map = Some(host.world.map.clone());
     view.me = Some(me_player);
     view.net.mode = if host.is_networked() { "host" } else { "solo" };
     view.net.host = "me".into();
-    view.status = if host.is_networked() { format!("hosting for {} peer(s)", host.seats.len()) } else { "solo: three bots".into() };
+    view.status = if host.is_networked() { format!("hosting for {} peer(s)", host.seats.len()) } else { format!("solo: {} bots", seats - 1) };
+
     info!("{}", view.status);
     Session::Hosting { host, bots, me_player }
 }
@@ -181,6 +183,8 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                 let mut peers: Vec<(PeerId, String)> = result.peers.iter().map(|p| (p.id, p.name.clone())).collect();
                 peers.sort();
                 peers.truncate(MAX_PLAYERS - 1);
+                // (seats beyond the peers and me are filled to --players by host_local)
+
                 let sock = sock.take();
                 Some(host_local(&args, me, peers, sock, routes, &mut view))
             } else {

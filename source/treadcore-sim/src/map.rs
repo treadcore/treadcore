@@ -1,5 +1,6 @@
-//! The map: a 128 x 128 grid of terrain, generated from a seed, with four
-//! start corners, a depot near each start and one in the middle.
+//! The map: a 128 x 128 grid of terrain, generated from a seed, with
+//! sixteen starts around the edge, a depot near each start and one in
+//! the middle.
 //!
 //! Terrain does three things: it sets how fast a tank moves, it hides a
 //! tank from eyes that are not directly over it, and water stops a tank
@@ -97,14 +98,32 @@ impl Map {
                 }
             }
         }
-        // Starts: the four corners, pulled in from the edge. Depots: a few
-        // tiles toward the centre from each start, plus the centre itself.
+        // Starts: sixteen, around the edge, pulled in from it. Ordered so
+        // that a scenario of four gets the four sides, of eight the sides
+        // and the corners, of sixteen the lot: a game of any size is
+        // spread out. Depots: a few tiles toward the centre from each
+        // start, plus the centre itself.
         let inset = 10.0;
+        let (lo, mid, hi) = (inset, w as f32 * 0.5, w as f32 - inset);
+        let q1 = lo + (hi - lo) * 0.25;
+        let q3 = lo + (hi - lo) * 0.75;
         let starts = vec![
-            V2::new(w as f32 * 0.5, inset),                 // north
-            V2::new(w as f32 - inset, h as f32 * 0.5),      // east
-            V2::new(w as f32 * 0.5, h as f32 - inset),      // south
-            V2::new(inset, h as f32 * 0.5),                 // west
+            V2::new(mid, lo), // north
+            V2::new(hi, mid), // east
+            V2::new(mid, hi), // south
+            V2::new(lo, mid), // west
+            V2::new(hi, lo),  // north-east corner
+            V2::new(hi, hi),  // south-east
+            V2::new(lo, hi),  // south-west
+            V2::new(lo, lo),  // north-west
+            V2::new(q1, lo),  // the eight in between, clockwise from north
+            V2::new(q3, lo),
+            V2::new(hi, q1),
+            V2::new(hi, q3),
+            V2::new(q3, hi),
+            V2::new(q1, hi),
+            V2::new(lo, q3),
+            V2::new(lo, q1),
         ];
         let center = V2::new(w as f32 * 0.5, h as f32 * 0.5);
         let mut depots: Vec<V2> = starts.iter().map(|s| s.lerp(center, 0.18)).collect();
@@ -112,14 +131,16 @@ impl Map {
 
         let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone() };
 
-        // Roads: each start to the centre, plus a ring joining the depots.
-        // Roads bridge the river where they cross it.
-        for s in &starts {
+        // Roads: the four sides to the centre, and a ring road round the
+        // edge through every start, so each start reaches a spoke. Roads
+        // bridge the river where they cross it.
+        for s in &starts[..4] {
             map.road(*s, center, &mut rng);
         }
-        for i in 0..4 {
-            let a = depots[i];
-            let b = depots[(i + 1) % 4];
+        let ring = [0usize, 8, 4, 10, 1, 11, 5, 12, 2, 13, 6, 14, 3, 15, 7, 9];
+        for i in 0..ring.len() {
+            let a = starts[ring[i]];
+            let b = starts[ring[(i + 1) % ring.len()]];
             map.road(a, b, &mut rng);
         }
         // Clear the ground around starts and depots, then stamp depots.
@@ -391,10 +412,15 @@ mod tests {
 
     #[test]
     fn every_start_can_reach_the_centre() {
-        let m = Map::generate(7);
-        for s in &m.starts {
-            let r = m.route(*s, m.center());
-            assert!(!r.is_empty(), "no route from {:?}", s);
+        for seed in [7u64, 42, 0x7EAD_C0DE] {
+            let m = Map::generate(seed);
+            assert_eq!(m.starts.len(), crate::MAX_PLAYERS);
+            assert_eq!(m.depots.len(), crate::MAX_PLAYERS + 1);
+            for s in &m.starts {
+                let r = m.route(*s, m.center());
+                assert!(!r.is_empty(), "seed {}: no route from {:?}", seed, s);
+            }
         }
     }
+
 }

@@ -17,6 +17,12 @@ pub const TANK_SPEED: f32 = 4.0;
 pub const TANK_ACCEL: f32 = 3.0;
 /// Radians per second of hull turn.
 pub const TANK_TURN: f32 = 2.5;
+/// A heading error larger than this is a corner: the tank brakes to
+/// `TURN_CRAWL` of its speed and pivots, instead of swinging wide of the
+/// road (and, at a bridge, into the river).
+pub const TURN_BRAKE_ANGLE: f32 = 0.6;
+pub const TURN_CRAWL: f32 = 0.25;
+
 pub const FUEL_PER_TILE: f32 = 1.0;
 /// Own eyes: not far. The tank sees the drones' picture, not the ground.
 pub const TANK_VISION: f32 = 7.0;

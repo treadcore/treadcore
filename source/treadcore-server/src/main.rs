@@ -35,6 +35,7 @@ struct Args {
     swarm: u32,
     trace: Option<String>,
     schema: bool,
+    players: usize,
 }
 
 fn parse() -> Args {
@@ -52,6 +53,7 @@ fn parse() -> Args {
         swarm: 45 * TICK_HZ,
         trace: None,
         schema: false,
+        players: MAX_PLAYERS,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -72,6 +74,7 @@ fn parse() -> Args {
             "--swarm" => a.swarm = parse_num::<u32>(&val()) * TICK_HZ,
             "--trace" => a.trace = Some(val()),
             "--brain-schema" => a.schema = true,
+            "--players" => a.players = parse_num::<usize>(&val()).clamp(1, MAX_PLAYERS),
             "-h" | "--help" => {
                 println!("{}", HELP);
                 std::process::exit(0);
@@ -91,6 +94,7 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --seconds N        stop the match after N game seconds (default 15 min)
   --ticks N          the same, in ticks
   --swarm N          neutral FPV swarm every N seconds; 0 for none (45)
+  --players N        seats in a --local match or a hosted one, 1 to 16 (16)
   --name NAME        this peer's name (server)
   --game NAME        lobby name; only peers in the same lobby meet
   --peer HOST:PORT   greet this address as well as the LAN broadcast
@@ -226,6 +230,7 @@ fn summary(world: &World, started: Instant) {
 }
 
 fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
+
     let mut s = Scenario { seed: args.seed, swarm_interval: args.swarm, ..Scenario::default() };
     if args.ticks > 0 {
         s.time_limit = args.ticks;
@@ -237,8 +242,9 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
 }
 
 fn run_local(args: Args) {
-    let scenario = scenario_from(&args, vec![]);
-    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..MAX_PLAYERS as PlayerId).map(|i| (i, make_brain(args.brains.get(i as usize), i, args.seed))).collect();
+    let names: Vec<(String, bool)> = (0..args.players).map(|i| (seat_name(i), true)).collect();
+    let scenario = scenario_from(&args, names);
+    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..args.players as PlayerId).map(|i| (i, make_brain(args.brains.get(i as usize), i, args.seed))).collect();
     let mut host = Host::new(new_peer_id(), None, scenario, vec![], RouteTable::default());
     let mut trace = Trace::open(args.trace.as_ref());
     log::info!("local match: seed {:#x}, {} seats: {}", args.seed, bots.len(), bots.iter().map(|(p, b)| format!("p{}={}", p, b.name())).collect::<Vec<_>>().join(" "));
@@ -298,11 +304,12 @@ fn run_net(args: Args) {
         peers.truncate(MAX_PLAYERS);
         let mut names: Vec<(String, bool)> = peers.iter().map(|(_, n)| (n.clone(), false)).collect();
         let first_bot = names.len() as PlayerId;
-        while names.len() < MAX_PLAYERS {
+        let seats = args.players.max(names.len());
+        while names.len() < seats {
             names.push((format!("bot{}", names.len()), true));
         }
         let scenario = scenario_from(&args, names);
-        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..MAX_PLAYERS as PlayerId).map(|i| (i, make_brain(args.brains.get((i - first_bot) as usize), i, args.seed))).collect();
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain(args.brains.get((i - first_bot) as usize), i, args.seed))).collect();
         let mut host = Host::new(me, Some(sock), scenario, peers, routes);
         log::info!("hosting: {} remote seat(s), {} bot(s)", host.seats.len(), bots.len());
         let mut next = Instant::now();
@@ -317,6 +324,15 @@ fn run_net(args: Args) {
             }
             std::thread::sleep(Duration::from_millis(1));
         }
+        // A second of grace: the final snapshot and the MatchOver event
+        // are still in flight (and the event is resent until acked). A
+        // Leave on their heels was read in the same poll as the result,
+        // and the client called it a lost connection.
+        let grace = Instant::now() + Duration::from_secs(1);
+        while Instant::now() < grace {
+            host.poll();
+            std::thread::sleep(Duration::from_millis(5));
+        }
         host.shutdown();
         summary(&host.world, started);
     } else {
@@ -326,6 +342,9 @@ fn run_net(args: Args) {
         let mut last_obs: Option<Observation> = None;
         loop {
             client.poll();
+            // Read what arrived before judging the connection: the last
+            // snapshot and the host's Leave can come in one poll.
+            let obs = client.take_observation();
             match client.state {
                 ClientState::Playing => {}
                 ClientState::Joining => {
@@ -333,11 +352,17 @@ fn run_net(args: Args) {
                     continue;
                 }
                 ClientState::Refused | ClientState::Lost => {
+                    if let Some(o) = obs.as_ref().filter(|o| o.over) {
+                        log::warn!("match over; winner {:?}", o.winner);
+                        last_obs = obs;
+                        break;
+                    }
                     log::error!("session ended: {:?} {}", client.state, client.refuse_reason);
                     break;
                 }
             }
-            if let Some(obs) = client.take_observation() {
+            if let Some(obs) = obs {
+
                 let events = client.drain_events();
                 if !events.is_empty() {
                     for e in &events {
