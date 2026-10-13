@@ -103,6 +103,35 @@ make run                # the window; compiles only the game now
 If `make warm` still swaps at 3 jobs: `JOBS=2 make warm`. If the VM
 has no swap, give it 2 GB; QEMU memory is cheaper than a killed link.
 
+## The machine around the build
+
+Measured on the development VM on 12 October 2026, with the build
+stopped:
+
+| what | RAM | note |
+| --- | --- | --- |
+| rust-analyzer (editor) | 928 MB resident + 2 GB swapped | the only large consumer; kill it during a warm |
+| this agent's session | ~430 MB | |
+| Chromium | ~100 MB | close it if tight |
+| Hyprland | 48 MB | not a memory problem |
+| zram swap, 3.1 GB device, lz4 | 943 MB stored in 620 MB of RAM | compresses only 1.5x |
+| /tmp (tmpfs, in RAM) | 550 MB | leftovers from other sessions; deletable |
+
+Hyprland's cost is CPU, not RAM: on a VM with no GPU (virtio, llvmpipe)
+blur, shadows and animations are drawn by the CPU the compiler wants.
+Idle, it was using 64% of a core; with effects off, 45%. `make quiet`
+turns them off at runtime, `make loud` restores them; nothing is written
+to the config.
+
+`make sysprep` prints the two root-level changes worth making and
+applies them with `doas scripts/sysprep.sh --apply`: a 4 GB disk
+swapfile at low priority behind zram, so a full zram overflows to disk
+instead of the OOM killer; and zram compression lz4 to zstd for a
+better ratio (takes effect at the next boot; the file it edits is
+copal's and a redeploy may restore it). The lever neither script can
+pull is the VM's memory in UTM: 8 GB instead of 6 would end this class
+of problem.
+
 ## What is deliberately not done
 
 - **sccache / a shared cache.** Useful across machines; nothing to gain

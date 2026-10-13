@@ -28,13 +28,18 @@
 #   make test        cargo test, every crate
 #   make mem         one line every 2 s of free/available/swap/rustc count,
 #                    for a second terminal beside make warm (N=5 for 5 s)
+#   make quiet       desktop effects off (blur/shadow/animation) while
+#                    building: on a VM with no GPU they cost the CPU the
+#                    compiler wants. make loud restores them. No root.
+#   make sysprep     show the root-level memory changes for this VM
+#                    (disk swapfile behind zram, zstd); apply with doas
 #   make schema      print the JSON brain's observation and command examples
 #   make clean       remove build output, keep the cargo cache
 #   make distclean   remove build/ and target/ both
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat lobby-test test mem schema clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat lobby-test test mem quiet loud sysprep schema clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -98,6 +103,15 @@ test:
 
 mem:
 	@scripts/memwatch.sh $(or $(N),2)
+
+quiet:
+	@scripts/buildmode.sh on
+
+loud:
+	@scripts/buildmode.sh off
+
+sysprep:
+	@scripts/sysprep.sh
 
 schema:
 	@cargo run -q -p treadcore-server -- --brain-schema
