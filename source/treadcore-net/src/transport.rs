@@ -55,9 +55,16 @@ impl Socket {
 
     /// Everything waiting, decoded. Undecodable datagrams are counted and
     /// logged at trace, never returned.
+    ///
+    /// The buffer is the UDP maximum, not a "reasonable" size: `Welcome`
+    /// carries the 16 KiB map in one datagram, and a UDP read into a
+    /// buffer that is too small silently truncates the datagram, which
+    /// then fails to decode. With a 2 KiB buffer no client ever joined;
+    /// the loopback session test is what found it.
     pub fn recv(&mut self) -> Vec<(SocketAddr, Packet)> {
         let mut out = Vec::new();
-        let mut buf = [0u8; 2048];
+        let mut buf = vec![0u8; 65536];
+
         for _ in 0..256 {
             match self.sock.recv_from(&mut buf) {
                 Ok((n, from)) => match Packet::decode(&buf[..n]) {
