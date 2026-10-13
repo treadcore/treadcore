@@ -71,6 +71,17 @@ IV. CHRONOLOGY
         unchanged, to paper.html.
     12. The MSI step calls wix by its path and publishes its error.
         rc.4 cut to run it all again.
+    13. The rc.4 tag named rc.3's commit: make release had died
+        silently (sed | head -1 on Cargo.toml's two version lines,
+        SIGPIPE under pipefail), the chain skipped the commit, and the
+        hook checked the uncommitted tree. The workflow's version job
+        refused the tag. Fixed: one awk in all eight places; the hook
+        refuses a dirty tree. Not deleted from GitHub; rc.5 instead.
+    14. rc.5: everything passed but Windows, whose error was now
+        public: WIX0367, two unversioned files in one component.
+    15. rc.6: one file a component. 21 of 21 jobs passed; the draft
+        release is made. Publish it, and make publish, no sooner than
+        a day after the tag; then make builds.
 
 --
 Paul Richeson <paulr@sdf.org>

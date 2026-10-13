@@ -590,7 +590,22 @@ no version resource, so nothing in that component was "versioned", and
 WiX could not derive its id. One file a component fixes it. The PATH
 fix of rc.4 was right: WiX ran.
 
-**0.1.0-rc.6**: see the addendum, written when its run finished.
+**0.1.0-rc.6**: every job passed, 21 of 21, and the draft release was
+made.
+
+| job | result |
+| --- | --- |
+| builds: .deb amd64 and arm64, .rpm x86_64 and aarch64, Windows (.msi and zip), macOS | passed |
+| .deb installed and played: Debian 12 (amd64, arm64), Debian 13, Ubuntu 22.04, Ubuntu 24.04 (amd64, arm64), Linux Mint 22 | passed |
+| .rpm installed and played: Fedora 41, Fedora 42 (x86_64, aarch64) | passed |
+| Windows: the .msi installed silently, Start Menu and PATH checked, a match from Program Files, uninstalled; the zip run | passed |
+| macOS: signature verified, a match played; Nix: built, a match played | passed |
+| draft release with SHA256SUMS | **made** |
+
+Five candidates to get there, and each failure was found before
+anything was public: the `.rpm` (rc.2), the Windows PATH (rc.3), a tag
+on the wrong commit (rc.4), the MSI's components (rc.5). The draft is
+published, and `make publish` run, no sooner than a day after the tag.
 
 ## XII. What to take from this
 
