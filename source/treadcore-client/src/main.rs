@@ -41,6 +41,8 @@ pub struct Args {
     pub players: usize,
     /// The text of a map file (`--map FILE`), checked at start.
     pub map: Option<String>,
+    /// Deal the seats into this many teams; 0 is everyone alone.
+    pub teams: usize,
 }
 
 fn parse_args() -> Args {
@@ -54,6 +56,7 @@ fn parse_args() -> Args {
         swarm: 45 * TICK_HZ,
         players: treadcore_sim::MAX_PLAYERS,
         map: None,
+        teams: 0,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -71,7 +74,9 @@ fn parse_args() -> Args {
             }
             "--swarm" => a.swarm = val().parse::<u32>().unwrap_or(45) * TICK_HZ,
             "--players" => a.players = val().parse::<usize>().unwrap_or(treadcore_sim::MAX_PLAYERS).clamp(1, treadcore_sim::MAX_PLAYERS),
+            "--teams" => a.teams = val().parse().unwrap_or(0),
             "--map" => {
+
                 let path = val();
                 let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
                     eprintln!("treadcore: map {}: {}", path, e);

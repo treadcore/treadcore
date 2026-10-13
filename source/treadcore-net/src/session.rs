@@ -270,7 +270,7 @@ impl Host {
                         self.routes.send(&mut sock, self.me, seat.peer, &p);
                     }
                 }
-                let mine: Vec<Event> = self.world.events.iter().filter(|e| event_for(e, seat.player)).cloned().collect();
+                let mine: Vec<Event> = self.world.events.iter().filter(|e| self.world.event_visible(e, seat.player)).cloned().collect();
                 if !mine.is_empty() {
                     seat.events_seq += 1;
                     seat.events_out.push_back((seat.events_seq, tick, mine));
@@ -298,13 +298,7 @@ impl Host {
     }
 }
 
-fn event_for(e: &Event, p: PlayerId) -> bool {
-    match e {
-        Event::Rejected { player, .. } => *player == p,
-        Event::ShellLaunched { owner, .. } | Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::LinkLost { owner, .. } => *owner == p,
-        _ => true,
-    }
-}
+// (what a seat may know about is the world's rule: World::event_visible)
 
 // ------------------------------------------------------------------- client
 

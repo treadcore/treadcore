@@ -122,7 +122,8 @@ impl RuleBot {
     }
 
     fn nearest_depot<'a>(&self, obs: &'a Observation, me: &Tank, friendly: bool) -> Option<&'a Depot> {
-        obs.depots.iter().filter(|d| if friendly { d.owner == Some(obs.player) } else { d.owner != Some(obs.player) }).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+        let ours = |d: &&Depot| d.owner.map(|o| obs.allied(o)).unwrap_or(false);
+        obs.depots.iter().filter(|d| if friendly { ours(d) } else { !ours(d) }).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
     }
 
 
@@ -185,7 +186,7 @@ impl Brain for RuleBot {
         let objective = obs
             .depots
             .iter()
-            .filter(|d| d.owner != Some(obs.player) && !self.unreachable_tiles.contains(&d.pos.tile()))
+            .filter(|d| !d.owner.map(|o| obs.allied(o)).unwrap_or(false) && !self.unreachable_tiles.contains(&d.pos.tile()))
             .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
             .map(|d| d.pos)
             .unwrap_or_else(|| obs.centre());
@@ -228,7 +229,7 @@ impl Brain for RuleBot {
             let capture = obs
                 .pillboxes
                 .iter()
-                .filter(|p| p.owner != Some(obs.player) && (p.owner.is_none() || !p.alive()) && p.pos.dist(me.pos) <= PILLBOY_REACH && safe(p) && !self.unreachable_pillboxes.contains(&p.id))
+                .filter(|p| !p.owner.map(|o| obs.allied(o)).unwrap_or(false) && (p.owner.is_none() || !p.alive()) && p.pos.dist(me.pos) <= PILLBOY_REACH && safe(p) && !self.unreachable_pillboxes.contains(&p.id))
                 .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
             if let Some(p) = capture {
                 cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: p.id } });
@@ -260,7 +261,8 @@ impl Brain for RuleBot {
                     self.scoot_until = obs.tick + (6 * TICK_HZ) as Tick;
                 }
             }
-            let their_cover = obs.drones.iter().filter(|d| d.owner == e.owner && d.kind == DroneKind::Interceptor && d.pos.dist(e.pos) <= BUBBLE_MAX + 2.0).count();
+            let their_team = obs.team_of(e.owner);
+            let their_cover = obs.drones.iter().filter(|d| obs.team_of(d.owner) == their_team && d.kind == DroneKind::Interceptor && d.pos.dist(e.pos) <= BUBBLE_MAX + 2.0).count();
             if their_cover < 2 && my_strikes == 0 && me.bay.strike > 0 && range <= STRIKE_BATTERY * STRIKE_SPEED * 0.8 {
                 cmds.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: e.id } });
             }
@@ -412,7 +414,7 @@ impl Brain for Fortifier {
             return cmds;
         }
         self.last_think = obs.tick;
-        let home = *self.home.get_or_insert_with(|| obs.depots.iter().filter(|d| d.owner == Some(obs.player)).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).unwrap_or(me.pos));
+        let home = *self.home.get_or_insert_with(|| obs.depots.iter().filter(|d| d.owner == Some(obs.player)).chain(obs.depots.iter().filter(|d| d.owner.map(|o| obs.allied(o)).unwrap_or(false))).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).unwrap_or(me.pos));
         let centre = obs.centre();
         // Sit by the depot, just off it so the squad's rings have room.
         let post = home + (home - centre).norm().scale(1.0);
@@ -562,6 +564,8 @@ pub fn schema_examples() -> String {
         Command::SetBubble { radius: 8.0 },
         Command::Recall,
         Command::Stop,
+        Command::Chat { text: "on my way".into(), to: ChatTo::Team },
+        Command::Alliance(AllianceCmd::Request { to: 1 }),
     ];
     format!(
         "# observation (one line per tick on stdin)\n{}\n\n# commands (one JSON array per line on stdout)\n{}\n",

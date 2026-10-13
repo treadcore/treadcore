@@ -171,10 +171,17 @@ fn scoreboard(view: &View) -> String {
     }
 
     if let Some(obs) = view.obs.as_ref() {
-        s.push_str("\nSEAT  NAME      SCORE  STATE\n");
-        for p in &obs.players {
-            s.push_str(&format!("{}{}    {:<8}  {:>4}  {}\n", if p.id == obs.player { "*" } else { " " }, p.id, p.name, p.score, if p.alive { "alive" } else { "dead" }));
+        s.push_str("\nTEAM SEAT  NAME      SCORE  STATE\n");
+        let mut ps: Vec<&PlayerView> = obs.players.iter().collect();
+        ps.sort_by_key(|p| (p.team, p.id));
+        for p in ps {
+            let mark = if p.id == obs.player { "*" } else if obs.allied(p.id) { "+" } else { " " };
+            s.push_str(&format!("{}t{:<2} p{:<2}  {:<8}  {:>4}  {}\n", mark, p.team, p.id, p.name, p.score, if p.alive { "alive" } else { "dead" }));
         }
+        for r in &obs.requests {
+            s.push_str(&format!("alliance: p{} asks p{}\n", r.from, r.to));
+        }
+
         let depots: Vec<String> = obs.depots.iter().map(|d| d.owner.map(|o| format!("p{}", o)).unwrap_or_else(|| "-".into())).collect();
         s.push_str(&format!("depots {}\n", depots.join(" ")));
         if obs.over {

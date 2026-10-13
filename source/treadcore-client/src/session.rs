@@ -106,6 +106,9 @@ fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
     if !names.is_empty() {
         s.players = names;
     }
+    if args.teams > 0 {
+        s = s.with_teams(args.teams);
+    }
     s
 }
 
@@ -311,8 +314,13 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::Resupplied { .. } => "resupplying".into(),
         Event::SwarmInbound { count, .. } => format!("SWARM: {} inbound", count),
         Event::LinkLost { .. } => "link lost: drone returning".into(),
-        Event::Chat { player, text } => format!("{}: {}", who(player), text),
-        Event::MatchOver { winner } => format!("match over: {}", winner.map(|w| who(&w)).unwrap_or_else(|| "draw".into())),
+        Event::Chat { player, text, to } => format!("{}{}: {}", who(player), if *to == ChatTo::Team { " (team)" } else { "" }, text),
+        Event::MatchOver { winner, team } => format!("match over: {}{}", winner.map(|w| who(&w)).unwrap_or_else(|| "draw".into()), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
+        Event::FriendlyFireSpared { by, damage, .. } => format!("friendly fire from {} spared ({:.0})", who(by), damage),
+        Event::AllianceRequested { from, to } => format!("{} asks {} to ally", who(from), who(to)),
+        Event::AllianceDeclined { from, by } => format!("{} declined {}", who(by), who(from)),
+        Event::AllianceFormed { player, team, .. } => format!("{} joined team {}", who(player), team),
+        Event::AllianceLeft { player, team } => format!("{} left team {}", who(player), team),
         Event::PillboysDeployed { task, .. } => format!("Pillboys out: {}", match task { PillboyTask::Capture { .. } => "capture", PillboyTask::Repair { .. } => "repair", PillboyTask::Build { .. } => "build", PillboyTask::Harvest { .. } => "harvest", PillboyTask::Return => "return" }),
         Event::PillboysReturned { .. } => "Pillboys aboard".into(),
         Event::PillboysAbandoned { why, .. } => format!("Pillboys give up: {}", why),

@@ -4,7 +4,7 @@
 //!
 //! Distances are tiles (25 m). Times are seconds unless the name says ticks.
 
-use crate::{Bay, PlayerId, TICK_HZ};
+use crate::{Bay, PlayerId, Tick, TICK_HZ};
 
 // ---- the tank ----------------------------------------------------------
 pub const TANK_ARMOR: f32 = 100.0;
@@ -186,7 +186,14 @@ pub const CAPTURE_TICKS: u16 = 10 * TICK_HZ as u16;
 pub const RESUPPLY_EVERY: u64 = TICK_HZ as u64 / 2;
 pub const REPAIR_PER_TICK: f32 = 4.0;
 
+// ---- alliances ---------------------------------------------------------
+/// A request to ally stands this long before it lapses: thirty seconds,
+/// long enough to read, short enough that an old one cannot be accepted
+/// into a changed situation.
+pub const ALLIANCE_REQUEST_TICKS: Tick = 30 * TICK_HZ as Tick;
+
 // ---- scoring -----------------------------------------------------------
+
 pub const SCORE_KILL: u32 = 100;
 pub const SCORE_CAPTURE: u32 = 25;
 pub const SCORE_INTERCEPT: u32 = 5;

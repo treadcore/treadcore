@@ -41,6 +41,8 @@ struct Args {
     /// How many bot seats, from the last, are Fortifiers (defenders)
     /// instead of RuleBots (attackers).
     defenders: usize,
+    /// Deal the seats into this many teams, round robin (0: everyone alone).
+    teams: usize,
     /// A map file's text, read and checked at start (`--map`).
     map: Option<String>,
     /// Write the map as played to this file when the match ends.
@@ -68,6 +70,7 @@ fn parse() -> Args {
         record: None,
         replay: None,
         defenders: 0,
+        teams: 0,
         map: None,
         save_map: None,
         write_map: None,
@@ -93,6 +96,7 @@ fn parse() -> Args {
             "--brain-schema" => a.schema = true,
             "--players" => a.players = parse_num::<usize>(&val()).clamp(1, MAX_PLAYERS),
             "--defenders" => a.defenders = parse_num(&val()),
+            "--teams" => a.teams = parse_num(&val()),
             "--map" => {
                 let path = val();
                 let text = std::fs::read_to_string(&path).unwrap_or_else(|e| die(&format!("map {}: {}", path, e)));
@@ -130,6 +134,8 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --players N        seats in a --local match or a hosted one, 1 to 16 (16)
   --defenders N      of the bot seats, the last N dig in at their depot
                      (harvest, mines, walls) instead of attacking (0)
+  --teams N          deal the seats into N teams, round robin (seat i to
+                     team i mod N); 0 is everyone alone, allying in play
   --map FILE         play on this map file (documentation/MAPS.md)
                      instead of the one generated from --seed
   --save-map FILE    when the match ends, write the map as played
@@ -308,8 +314,13 @@ fn narrate(world: &World, events: &[Event]) {
             Event::Resupplied { tank, depot } => log::debug!("[{:>6} {:>6.1}s] tank #{} resupplying at depot #{}", t, s, tank, depot),
             Event::SwarmInbound { count, from } => log::warn!("[{:>6} {:>6.1}s] SWARM {} inbound from ({:.0},{:.0})", t, s, count, from.x, from.y),
             Event::LinkLost { owner, drone } => log::info!("[{:>6} {:>6.1}s] p{} link lost to #{}", t, s, owner, drone),
-            Event::Chat { player, text } => log::info!("[{:>6} {:>6.1}s] p{}: {}", t, s, player, text),
-            Event::MatchOver { winner } => log::warn!("[{:>6} {:>6.1}s] MATCH OVER winner {:?}", t, s, winner),
+            Event::Chat { player, text, to } => log::info!("[{:>6} {:>6.1}s] p{} ({:?}): {}", t, s, player, to, text),
+            Event::MatchOver { winner, team } => log::warn!("[{:>6} {:>6.1}s] MATCH OVER winner {:?} team {:?}", t, s, winner, team),
+            Event::FriendlyFireSpared { target, by, damage } => log::info!("[{:>6} {:>6.1}s] friendly fire spared #{} from p{} ({:.0})", t, s, target, by, damage),
+            Event::AllianceRequested { from, to } => log::info!("[{:>6} {:>6.1}s] p{} asks p{} for an alliance", t, s, from, to),
+            Event::AllianceDeclined { from, by } => log::info!("[{:>6} {:>6.1}s] p{} declines p{}", t, s, by, from),
+            Event::AllianceFormed { player, team, members } => log::warn!("[{:>6} {:>6.1}s] ALLIANCE p{} joins team {}: {:?}", t, s, player, team, members),
+            Event::AllianceLeft { player, team } => log::warn!("[{:>6} {:>6.1}s] ALLIANCE p{} leaves team {}", t, s, player, team),
             Event::PillboysDeployed { owner, task, .. } => log::info!("[{:>6} {:>6.1}s] p{} PILLBOYS out: {:?}", t, s, owner, task),
             Event::PillboysReturned { owner, .. } => log::debug!("[{:>6} {:>6.1}s] p{} pillboys aboard", t, s, owner),
             Event::PillboysAbandoned { owner, why, .. } => log::info!("[{:>6} {:>6.1}s] p{} pillboys give up: {}", t, s, owner, why),
@@ -348,10 +359,17 @@ fn narrate(world: &World, events: &[Event]) {
 fn summary(world: &World, started: Instant) {
     log::info!("---- match over after {} ticks ({:.0} game seconds, {:.1}s wall) ----", world.tick, world.seconds(), started.elapsed().as_secs_f32());
     let mut ps: Vec<&Player> = world.players.iter().collect();
-    ps.sort_by_key(|p| std::cmp::Reverse(p.score));
+    ps.sort_by_key(|p| (p.team, std::cmp::Reverse(p.score)));
     for p in ps {
         let t = world.tank_of(p.id).unwrap();
-        log::info!("  p{} {:<8} {:<5} score {:>4} armor {:>3.0} shells {:>2} bay R{}/I{}/S{}{}", p.id, p.name, if p.alive { "alive" } else { "dead" }, p.score, t.armor, t.shells, t.bay.recon, t.bay.interceptor, t.bay.strike, if world.winner == Some(p.id) { "  <- winner" } else { "" });
+        log::info!("  t{:<2} p{:<2} {:<9} {:<5} score {:>4} armor {:>3.0} shells {:>2} bay R{}/I{}/S{}{}", p.team, p.id, p.name, if p.alive { "alive" } else { "dead" }, p.score, t.armor, t.shells, t.bay.recon, t.bay.interceptor, t.bay.strike, if world.winner == Some(p.id) { "  <- winner" } else { "" });
+    }
+    let mut teams: Vec<TeamId> = world.players.iter().map(|p| p.team).collect();
+    teams.sort_unstable();
+    teams.dedup();
+    if teams.len() < world.players.len() {
+        let line: Vec<String> = teams.iter().map(|t| format!("t{} {}{}", t, world.players.iter().filter(|p| p.team == *t).map(|p| p.score).sum::<u32>(), if world.winning_team == Some(*t) { "*" } else { "" })).collect();
+        log::info!("  teams: {}", line.join("  "));
     }
     let craters = world.map.cells.iter().filter(|c| **c == Terrain::Rubble as u8).count();
     log::info!("  craters: {}  depots: {:?}", craters, world.depots.iter().map(|d| d.owner).collect::<Vec<_>>());
@@ -386,8 +404,12 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
     if !names.is_empty() {
         s.players = names;
     }
+    if args.teams > 0 {
+        s = s.with_teams(args.teams);
+    }
     s
 }
+
 
 fn run_local(args: Args) {
     let names: Vec<(String, bool)> = (0..args.players).map(|i| (seat_name(i), true)).collect();

@@ -452,6 +452,11 @@ pub struct Depot {
     pub capturer: Option<PlayerId>,
 }
 
+/// A team id. Players start each in a team of their own (the team id is
+/// the seat) unless the scenario deals them; an alliance is two or more
+/// players with one team id.
+pub type TeamId = u8;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Player {
     pub id: PlayerId,
@@ -460,6 +465,35 @@ pub struct Player {
     pub alive: bool,
     pub score: u32,
     pub is_bot: bool,
+    pub team: TeamId,
+}
+
+/// Who a chat line is for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChatTo {
+    All,
+    Team,
+}
+
+/// Bolo's alliance protocol (SPEC ALL-02 to ALL-06): ask, be accepted by
+/// any member of the alliance asked, leave at will. A player already in
+/// an alliance leaves it before asking to join another. What the leaver
+/// captured stays the leaver's: ownership here is per player, so there
+/// is nothing to divide (ALL-07).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum AllianceCmd {
+    Request { to: PlayerId },
+    Accept { from: PlayerId },
+    Decline { from: PlayerId },
+    Leave,
+}
+
+/// A standing request, until answered or `ALLIANCE_REQUEST_TICKS` pass.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AllianceRequest {
+    pub from: PlayerId,
+    pub to: PlayerId,
+    pub expires: Tick,
 }
 
 // ----------------------------------------------------------------- commands
@@ -479,7 +513,9 @@ pub enum Command {
     /// An order to the Pillboys. One at a time; a new one while they are
     /// out is refused, except Return.
     Deploy { task: PillboyTask },
-    Chat { text: String },
+    /// Ask, answer, leave.
+    Alliance(AllianceCmd),
+    Chat { text: String, to: ChatTo },
 }
 
 /// A command with its author. The host stamps the player; a client never
@@ -510,6 +546,15 @@ pub enum Event {
     Resupplied { tank: EntityId, depot: EntityId },
     SwarmInbound { count: u32, from: V2 },
     LinkLost { drone: EntityId, owner: PlayerId },
+    /// An ally's shell or mine would have hurt this tank, squad or
+    /// pillbox; friendly fire is off within a team, and the trace says
+    /// so.
+    FriendlyFireSpared { target: EntityId, by: PlayerId, damage: f32 },
+    AllianceRequested { from: PlayerId, to: PlayerId },
+    AllianceDeclined { from: PlayerId, by: PlayerId },
+    /// `player` joined `team`, whose members are now `members`.
+    AllianceFormed { player: PlayerId, team: TeamId, members: Vec<PlayerId> },
+    AllianceLeft { player: PlayerId, team: TeamId },
     PillboysDeployed { tank: EntityId, owner: PlayerId, task: PillboyTask },
     PillboysReturned { tank: EntityId, owner: PlayerId },
     /// The order ended without its work: the site changed under them.
@@ -532,8 +577,9 @@ pub enum Event {
     MineExploded { mine: EntityId, owner: PlayerId, at: V2, hits: Vec<EntityId> },
     /// A tile changed under everyone: a client updates its copy of the map.
     TerrainChanged { at: V2, to: u8 },
-    Chat { player: PlayerId, text: String },
-    MatchOver { winner: Option<PlayerId> },
+    Chat { player: PlayerId, text: String, to: ChatTo },
+    /// `winner` is the top-scoring player of the winning team, if any.
+    MatchOver { winner: Option<PlayerId>, team: Option<TeamId> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -576,6 +622,9 @@ pub struct Scenario {
     pub seed: u64,
     pub map: MapSource,
     pub players: Vec<(String, bool)>,
+    /// A team per seat, or none: everyone starts alone, as in Bolo
+    /// (ALL-01), and allies by request in play.
+    pub teams: Option<Vec<TeamId>>,
     /// Ticks between neutral FPV swarms from the map edge; 0 disables them.
     /// They make the bubble matter even with one player on the map.
     pub swarm_interval: u32,
@@ -596,6 +645,13 @@ impl Scenario {
     pub fn bots(n: usize) -> Scenario {
         Scenario { players: (0..n.clamp(1, MAX_PLAYERS)).map(|i| (seat_name(i), true)).collect(), ..Scenario::default() }
     }
+    /// Deal the seats into `n` teams, round robin: seat i to team i mod n.
+    /// Four teams of four is `teams(4)` on sixteen seats.
+    pub fn with_teams(mut self, n: usize) -> Scenario {
+        let n = n.max(1);
+        self.teams = Some((0..self.players.len()).map(|i| (i % n) as TeamId).collect());
+        self
+    }
 }
 
 impl Default for Scenario {
@@ -604,6 +660,7 @@ impl Default for Scenario {
             seed: 0x7EAD_C0DE,
             map: MapSource::FromScenarioSeed,
             players: (0..MAX_PLAYERS).map(|i| (seat_name(i), true)).collect(),
+            teams: None,
 
             swarm_interval: 45 * TICK_HZ,
             swarm_size: 4,
@@ -626,10 +683,12 @@ pub struct World {
     pub depots: Vec<Depot>,
     pub pillboxes: Vec<Pillbox>,
     pub mines: Vec<Mine>,
+    pub requests: Vec<AllianceRequest>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
     pub winner: Option<PlayerId>,
+    pub winning_team: Option<TeamId>,
     /// Events from the most recent `step`. Cleared at the start of the next.
     #[serde(skip)]
     pub events: Vec<Event>,
@@ -652,10 +711,12 @@ impl World {
             depots: Vec::new(),
             pillboxes: Vec::new(),
             mines: Vec::new(),
+            requests: Vec::new(),
             rng: Rng::new(scenario.seed ^ 0xA5A5_5A5A),
             next_id: 1,
             over: false,
             winner: None,
+            winning_team: None,
             events: Vec::new(),
             scenario: scenario.clone(),
         };
@@ -704,7 +765,9 @@ impl World {
                 alive: true,
                 score: 0,
                 is_bot: *is_bot,
+                team: scenario.teams.as_ref().and_then(|t| t.get(i)).copied().unwrap_or(i as TeamId),
             });
+
         }
         w
     }
@@ -744,8 +807,8 @@ impl World {
     /// pillbox hostile to `p` at `PILLBOX_AVOID_COST` extra per tile,
     /// and every hostile mine `p` knows about at `MINE_AVOID_COST`.
     pub fn route_for(&self, p: PlayerId, from: V2, to: V2) -> Vec<V2> {
-        let guns: Vec<V2> = self.pillboxes.iter().filter(|b| b.alive() && b.hostile_to(p)).map(|b| b.pos).collect();
-        let mines: Vec<V2> = self.mines.iter().filter(|m| m.owner != p && self.mine_known_to(p, m)).map(|m| m.pos).collect();
+        let guns: Vec<V2> = self.pillboxes.iter().filter(|b| b.alive() && !self.allied_opt(b.owner, p)).map(|b| b.pos).collect();
+        let mines: Vec<V2> = self.mines.iter().filter(|m| !self.allied(m.owner, p) && self.mine_known_to(p, m)).map(|m| m.pos).collect();
         self.map.route_with(from, to, |tile| {
             let mut c = 0.0;
             if guns.iter().any(|g| g.dist(tile) <= PILLBOX_RANGE + 0.5) {
@@ -758,10 +821,10 @@ impl World {
         })
     }
 
-    /// Does `p` know this mine is there? Its own, or one within
-    /// `MINE_REVEAL` of its tank or its deployed squad.
+    /// Does `p` know this mine is there? Its own or an ally's (MIN-05),
+    /// or one within `MINE_REVEAL` of its tank or its deployed squad.
     pub fn mine_known_to(&self, p: PlayerId, m: &Mine) -> bool {
-        if m.owner == p {
+        if self.allied(m.owner, p) {
             return true;
         }
         self.tanks.iter().filter(|t| t.owner == p && t.alive).any(|t| t.pos.dist(m.pos) <= MINE_REVEAL || (t.pillboys.deployed() && t.pillboys.pos.dist(m.pos) <= MINE_REVEAL))
@@ -793,21 +856,50 @@ impl World {
         self.tick as f32 * DT
     }
 
+    /// The team a seat is on; the swarm and the neutral shooter are on
+    /// nobody's.
+    pub fn team_of(&self, p: PlayerId) -> Option<TeamId> {
+        self.players.iter().find(|x| x.id == p).map(|x| x.team)
+    }
+
+    /// Same side: the same player, or two players on one team. Never the
+    /// swarm, never neutral.
+    pub fn allied(&self, a: PlayerId, b: PlayerId) -> bool {
+        if a == b {
+            return true;
+        }
+        match (self.team_of(a), self.team_of(b)) {
+            (Some(x), Some(y)) => x == y,
+            _ => false,
+        }
+    }
+
+    /// Allied with an owner that may be nobody (a neutral pillbox or
+    /// depot is nobody's friend).
+    pub fn allied_opt(&self, a: Option<PlayerId>, b: PlayerId) -> bool {
+        a.map(|a| self.allied(a, b)).unwrap_or(false)
+    }
+
+    /// The living members of a team.
+    pub fn team_members(&self, team: TeamId) -> Vec<PlayerId> {
+        self.players.iter().filter(|x| x.team == team).map(|x| x.id).collect()
+    }
+
     /// Can `p` see `at`? Its own tank out to `TANK_VISION` (halved into
     /// forest), its recon drones out to `RECON_VISION`, its other drones
-    /// out to `DRONE_VISION`. The shared, all-seeing world is the host's;
-    /// what a player gets is `observe()`.
+    /// out to `DRONE_VISION`; and its allies' the same, because a team
+    /// shares its picture (ALL-08 in spirit: what one sees, all see).
+    /// The shared, all-seeing world is the host's; what a player gets is
+    /// `observe()`.
     pub fn visible_to(&self, p: PlayerId, at: V2) -> bool {
         let in_forest = self.map.at(at) == Terrain::Forest;
-        if let Some(t) = self.tank_of(p) {
-            if t.alive {
-                let r = if in_forest { TANK_VISION * 0.5 } else { TANK_VISION };
-                if t.pos.dist(at) <= r {
-                    return true;
-                }
+        for t in self.tanks.iter().filter(|t| t.alive && self.allied(t.owner, p)) {
+            let r = if in_forest { TANK_VISION * 0.5 } else { TANK_VISION };
+            if t.pos.dist(at) <= r {
+                return true;
             }
         }
-        self.drones.iter().filter(|d| d.owner == p).any(|d| {
+        self.drones.iter().filter(|d| self.allied(d.owner, p)).any(|d| {
             let r = match d.kind {
                 DroneKind::Recon => RECON_VISION,
                 _ => DRONE_VISION,
@@ -817,11 +909,13 @@ impl World {
         })
     }
 
-    /// Does a recon drone of `p` have `at` in view right now?
+    /// Does a recon drone of `p`, or of an ally, have `at` in view right
+    /// now? Shared recon is the team's first dividend: one tank's eyes
+    /// are another's gun.
     pub fn spotted_by(&self, p: PlayerId, at: V2) -> bool {
         self.drones
             .iter()
-            .any(|d| d.owner == p && d.kind == DroneKind::Recon && d.link >= LINK_FLOOR && d.pos.dist(at) <= RECON_VISION)
+            .any(|d| self.allied(d.owner, p) && d.kind == DroneKind::Recon && d.link >= LINK_FLOOR && d.pos.dist(at) <= RECON_VISION)
     }
 
     // ------------------------------------------------------------ stepping
@@ -835,6 +929,8 @@ impl World {
             return;
         }
         self.tick += 1;
+        let now = self.tick;
+        self.requests.retain(|r| r.expires > now);
         for o in orders {
             self.apply(o);
         }
@@ -861,9 +957,12 @@ impl World {
             Some(t) => (t.alive, t.pos, t.reload, t.shells),
             None => return self.reject(o, "no tank"),
         };
-        if let Command::Chat { text } = &o.cmd {
-            self.events.push(Event::Chat { player: o.player, text: text.clone() });
+        if let Command::Chat { text, to } = &o.cmd {
+            self.events.push(Event::Chat { player: o.player, text: text.clone(), to: *to });
             return;
+        }
+        if let Command::Alliance(a) = &o.cmd {
+            return self.apply_alliance(o, a.clone());
         }
         if !alive {
             return self.reject(o, "tank destroyed");
@@ -982,7 +1081,16 @@ impl World {
                     // Interceptors only ever sit on station; the world
                     // assigns the intercept itself when something comes in.
                     (DroneKind::Interceptor, _) => DroneTask::Orbit { center: pos, radius: bubble },
-                    (DroneKind::Strike, DroneTask::Strike { target }) => DroneTask::Strike { target: *target },
+                    (DroneKind::Strike, DroneTask::Strike { target }) => {
+                        if let Some(t) = self.tank(*target) {
+                            if self.allied(t.owner, o.player) {
+                                // Undo the take above: the bay keeps its drone.
+                                self.tank_mut(tid).unwrap().bay.put(DroneKind::Strike);
+                                return self.reject(o, "that tank is an ally");
+                            }
+                        }
+                        DroneTask::Strike { target: *target }
+                    }
                     (DroneKind::Strike, DroneTask::Orbit { center, .. }) => DroneTask::Orbit { center: *center, radius: 2.0 },
                     (DroneKind::Recon, DroneTask::Orbit { center, radius }) => DroneTask::Orbit { center: *center, radius: radius.clamp(1.0, 6.0) },
                     (DroneKind::Recon, _) => DroneTask::Orbit { center: pos, radius: 4.0 },
@@ -1046,6 +1154,7 @@ impl World {
                     PillboyTask::Capture { pillbox } => match self.pillbox(*pillbox) {
                         None => return self.reject(o, "no such pillbox"),
                         Some(p) if p.owner == Some(o.player) => return self.reject(o, "pillbox already ours"),
+                        Some(p) if self.allied_opt(p.owner, o.player) && p.alive() => return self.reject(o, "pillbox is an ally's"),
                         Some(p) if p.owner.is_some() && p.alive() => return self.reject(o, "pillbox is live and theirs: shoot it dead first"),
                         Some(_) => {}
                     },
@@ -1117,7 +1226,69 @@ impl World {
                 t.pillboys.route = route;
                 self.events.push(Event::PillboysDeployed { tank: tid, owner: o.player, task: task.clone() });
             }
-            Command::Chat { .. } => {}
+            Command::Alliance(_) | Command::Chat { .. } => {}
+        }
+    }
+
+    /// Bolo's alliance protocol. A request stands until answered or it
+    /// lapses; any member of the alliance asked may accept; the newcomer
+    /// takes the team of the one who accepted; leaving gives the leaver a
+    /// team of their own again. Everything is an event, so a betrayal is
+    /// public the moment it happens.
+    fn apply_alliance(&mut self, o: &Order, cmd: AllianceCmd) {
+        let me = o.player;
+        let my_team = self.team_of(me).unwrap();
+        match cmd {
+            AllianceCmd::Request { to } => {
+                if to == me || self.team_of(to).is_none() {
+                    return self.reject(o, "no such player");
+                }
+                if self.allied(me, to) {
+                    return self.reject(o, "already allied");
+                }
+                if self.team_members(my_team).len() > 1 {
+                    return self.reject(o, "leave your alliance first");
+                }
+                self.requests.retain(|r| !(r.from == me && r.to == to));
+                self.requests.push(AllianceRequest { from: me, to, expires: self.tick + ALLIANCE_REQUEST_TICKS });
+                self.events.push(Event::AllianceRequested { from: me, to });
+            }
+            AllianceCmd::Accept { from } => {
+                // The request may be to me or to any member of my team.
+                let Some(ix) = self.requests.iter().position(|r| r.from == from && self.allied(r.to, me)) else {
+                    return self.reject(o, "no such request");
+                };
+                if self.team_members(self.team_of(from).unwrap()).len() > 1 {
+                    self.requests.remove(ix);
+                    return self.reject(o, "they allied elsewhere meanwhile");
+                }
+                self.requests.remove(ix);
+                self.requests.retain(|r| r.from != from);
+                if let Some(p) = self.players.iter_mut().find(|p| p.id == from) {
+                    p.team = my_team;
+                }
+                let members = self.team_members(my_team);
+                self.events.push(Event::AllianceFormed { player: from, team: my_team, members });
+            }
+            AllianceCmd::Decline { from } => {
+                let Some(ix) = self.requests.iter().position(|r| r.from == from && self.allied(r.to, me)) else {
+                    return self.reject(o, "no such request");
+                };
+                self.requests.remove(ix);
+                self.events.push(Event::AllianceDeclined { from, by: me });
+            }
+            AllianceCmd::Leave => {
+                if self.team_members(my_team).len() < 2 {
+                    return self.reject(o, "not in an alliance");
+                }
+                // A team id nobody else holds: the smallest free one.
+                let used: Vec<TeamId> = self.players.iter().filter(|p| p.id != me).map(|p| p.team).collect();
+                let fresh = (0..=MAX_PLAYERS as TeamId).find(|t| !used.contains(t)).unwrap();
+                if let Some(p) = self.players.iter_mut().find(|p| p.id == me) {
+                    p.team = fresh;
+                }
+                self.events.push(Event::AllianceLeft { player: me, team: my_team });
+            }
         }
     }
 
@@ -1141,6 +1312,9 @@ impl World {
         let mine_tiles: Vec<(i32, i32)> = self.mines.iter().map(|m| m.pos.tile()).collect();
         // A hostile mine under a walking squad: found the hard way.
         let hostile_mines: Vec<(EntityId, PlayerId, (i32, i32))> = self.mines.iter().map(|m| (m.id, m.owner, m.pos.tile())).collect();
+        let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
+        let allied_with = |a: PlayerId, b: PlayerId| a == b || (team_of(a).is_some() && team_of(a) == team_of(b));
         let mut stepped_on: Vec<EntityId> = Vec::new();
         for t in self.tanks.iter_mut() {
             let s = &mut t.pillboys;
@@ -1192,7 +1366,7 @@ impl World {
                 } else {
                     s.pos = s.pos + to.norm().scale(step);
                 }
-                if let Some((mid, _, _)) = hostile_mines.iter().find(|(_, o, tile)| *o != t.owner && *tile == s.pos.tile()) {
+                if let Some((mid, _, _)) = hostile_mines.iter().find(|(_, o, tile)| !allied_with(*o, t.owner) && *tile == s.pos.tile()) {
                     stepped_on.push(*mid);
                 }
                 if matches!(task, PillboyTask::Return) && s.pos.dist(t.pos) <= PILLBOY_BOARD_RANGE {
@@ -1390,7 +1564,8 @@ impl World {
             let Some(ix) = self.mines.iter().position(|m| m.id == id) else { continue };
             let m = self.mines.remove(ix);
             let mut hits = Vec::new();
-            let tanks: Vec<(EntityId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.pos)).collect();
+            // An ally's mine spares allies: it was theirs to walk over.
+            let tanks: Vec<(EntityId, V2)> = self.tanks.iter().filter(|t| t.alive && !(t.owner != m.owner && self.allied(m.owner, t.owner))).map(|t| (t.id, t.pos)).collect();
             for (tid, pos) in tanks {
                 if pos.tile() == m.pos.tile() {
                     self.damage(tid, MINE_DAMAGE, Some(m.owner));
@@ -1400,7 +1575,7 @@ impl World {
                     hits.push(tid);
                 }
             }
-            let squads: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive && t.pillboys.deployed() && t.pillboys.pos.dist(m.pos) <= MINE_RADIUS).map(|t| t.id).collect();
+            let squads: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive && t.pillboys.deployed() && t.pillboys.pos.dist(m.pos) <= MINE_RADIUS && !self.allied(m.owner, t.owner)).map(|t| t.id).collect();
             for tid in squads {
                 let t = self.tank_mut(tid).unwrap();
                 let owner = t.owner;
@@ -1438,7 +1613,7 @@ impl World {
         if self.tick % RESUPPLY_EVERY == 0 {
             let mut draws: Vec<(EntityId, EntityId)> = Vec::new();
             for t in self.tanks.iter().filter(|t| t.alive && t.shells < TANK_SHELLS) {
-                if let Some(p) = self.pillboxes.iter().find(|p| p.alive() && p.owner == Some(t.owner) && p.shells > 0 && p.pos.dist(t.pos) <= DEPOT_RADIUS) {
+                if let Some(p) = self.pillboxes.iter().find(|p| p.alive() && self.allied_opt(p.owner, t.owner) && p.shells > 0 && p.pos.dist(t.pos) <= DEPOT_RADIUS) {
                     draws.push((t.id, p.id));
                 }
             }
@@ -1450,6 +1625,14 @@ impl World {
         }
         let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
         let drones: Vec<(EntityId, PlayerId, V2)> = self.drones.iter().map(|d| (d.id, d.owner, d.pos)).collect();
+        // Teams, read once: a pillbox is hostile to anyone not on its
+        // owner's team; a neutral one to everyone.
+        let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
+        let allied_with = |owner: Option<PlayerId>, p: PlayerId| match owner {
+            None => false,
+            Some(o) => o == p || (team_of(o).is_some() && team_of(o) == team_of(p)),
+        };
         let mut shots: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, tank, damage
         let mut air: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, drone, link
         for p in self.pillboxes.iter_mut() {
@@ -1462,7 +1645,7 @@ impl World {
             let shooter = p.shooter();
             let tank = tanks
                 .iter()
-                .filter(|(_, o, pos)| p.hostile_to(*o) && pos.dist(p.pos) <= PILLBOX_RANGE && self.map.line_clear(p.pos, *pos))
+                .filter(|(_, o, pos)| !allied_with(p.owner, *o) && pos.dist(p.pos) <= PILLBOX_RANGE && self.map.line_clear(p.pos, *pos))
                 .min_by(|a, b| a.2.dist(p.pos).partial_cmp(&b.2.dist(p.pos)).unwrap().then(a.0.cmp(&b.0)));
             if let Some((tid, _, _)) = tank {
                 shots.push((p.id, shooter, *tid, PILLBOX_DAMAGE));
@@ -1471,7 +1654,7 @@ impl World {
             }
             let drone = drones
                 .iter()
-                .filter(|(_, o, pos)| p.hostile_to(*o) && pos.dist(p.pos) <= PILLBOX_AIR_RANGE)
+                .filter(|(_, o, pos)| !allied_with(p.owner, *o) && pos.dist(p.pos) <= PILLBOX_AIR_RANGE)
                 .min_by(|a, b| a.2.dist(p.pos).partial_cmp(&b.2.dist(p.pos)).unwrap().then(a.0.cmp(&b.0)));
             if let Some((did, _, _)) = drone {
                 // The owner tank's radar, if it is within link range.
@@ -1507,8 +1690,15 @@ impl World {
         }
     }
 
-    /// Damage to a pillbox from a shell. Dead at zero; never removed.
+    /// Damage to a pillbox from a shell. Dead at zero; never removed. An
+    /// ally's shell spares it.
     fn damage_pillbox(&mut self, pid: EntityId, amount: f32, by: Option<PlayerId>) {
+        if let (Some(b), Some(p)) = (by, self.pillbox(pid)) {
+            if self.allied_opt(p.owner, b) {
+                self.events.push(Event::FriendlyFireSpared { target: pid, by: b, damage: amount });
+                return;
+            }
+        }
         let Some(p) = self.pillbox_mut(pid) else { return };
         if !p.alive() {
             return;
@@ -1526,8 +1716,9 @@ impl World {
     }
 
     /// A deployed squad under a splash loses Pillboys; at zero it is gone.
-    fn hurt_squads(&mut self, at: V2) {
-        let hit: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive && t.pillboys.deployed() && t.pillboys.pos.dist(at) <= SPLASH_RADIUS).map(|t| t.id).collect();
+    /// An ally's splash spares it.
+    fn hurt_squads(&mut self, at: V2, by: PlayerId) {
+        let hit: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive && t.pillboys.deployed() && t.pillboys.pos.dist(at) <= SPLASH_RADIUS && !(t.owner != by && self.allied(by, t.owner))).map(|t| t.id).collect();
         for tid in hit {
             let t = self.tank_mut(tid).unwrap();
             let lost = PILLBOY_SPLASH_LOSS.min(t.pillboys.strength);
@@ -1550,6 +1741,9 @@ impl World {
         let map = &self.map;
         let guns: Vec<(Option<PlayerId>, V2)> = self.pillboxes.iter().filter(|b| b.alive()).map(|b| (b.owner, b.pos)).collect();
         let mines: Vec<(PlayerId, (i32, i32), EntityId)> = self.mines.iter().map(|m| (m.owner, m.pos.tile(), m.id)).collect();
+        let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
+        let allied_with = |a: PlayerId, b: PlayerId| a == b || (team_of(a).is_some() && team_of(a) == team_of(b));
         let mut triggered: Vec<EntityId> = Vec::new();
         for t in self.tanks.iter_mut() {
             if !t.alive {
@@ -1605,7 +1799,7 @@ impl World {
                 // water's edge for a whole match.
                 t.speed = 0.0;
                 let dest = t.route.last().copied().unwrap_or(goal);
-                let mut wp = map.route_with(t.pos, dest, |tile| if guns.iter().any(|(o, g)| *o != Some(t.owner) && g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 });
+                let mut wp = map.route_with(t.pos, dest, |tile| if guns.iter().any(|(o, g)| !o.map(|o| allied_with(o, t.owner)).unwrap_or(false) && g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 });
                 if wp.is_empty() {
                     t.goal = None;
                     t.route.clear();
@@ -1617,7 +1811,7 @@ impl World {
             }
             t.pos = next;
             t.fuel = (t.fuel - FUEL_PER_TILE * t.speed * DT).max(0.0);
-            if let Some(m) = mines.iter().find(|(o, tile, _)| *o != t.owner && *tile == next.tile()) {
+            if let Some(m) = mines.iter().find(|(o, tile, _)| !allied_with(*o, t.owner) && *tile == next.tile()) {
                 triggered.push(m.2);
             }
         }
@@ -1652,12 +1846,12 @@ impl World {
             let mut intruders: Vec<&Drone> = self
                 .drones
                 .iter()
-                .filter(|d| d.owner != t.owner && d.pos.dist(t.pos) <= detect && d.kind != DroneKind::Recon)
+                .filter(|d| !self.allied(d.owner, t.owner) && d.pos.dist(t.pos) <= detect && d.kind != DroneKind::Recon)
                 .collect();
             // Also engage recon drones that come inside the bubble itself:
-            // they are spotting for someone's gun.
+            // they are spotting for someone's gun. An ally's are welcome.
             intruders.extend(
-                self.drones.iter().filter(|d| d.owner != t.owner && d.kind == DroneKind::Recon && d.pos.dist(t.pos) <= t.bubble),
+                self.drones.iter().filter(|d| !self.allied(d.owner, t.owner) && d.kind == DroneKind::Recon && d.pos.dist(t.pos) <= t.bubble),
             );
             intruders.sort_by(|a, b| a.pos.dist(t.pos).partial_cmp(&b.pos.dist(t.pos)).unwrap().then(a.id.cmp(&b.id)));
             for intruder in intruders {
@@ -1864,7 +2058,7 @@ impl World {
                         self.damage_pillbox(id, dmg, Some(s.owner));
                         hits.push(id);
                     }
-                    self.hurt_squads(s.impact);
+                    self.hurt_squads(s.impact, s.owner);
                     // Walls in the splash come down; mines in it go off.
                     let (cx, cy) = s.impact.tile();
                     for dy in -3..=3 {
@@ -1895,7 +2089,7 @@ impl World {
                     let hit = self
                         .tanks
                         .iter()
-                        .filter(|t| t.alive && t.owner != s.owner)
+                        .filter(|t| t.alive && !self.allied(t.owner, s.owner))
                         .map(|t| (t.id, t.pos.dist(s.impact)))
                         .filter(|(_, d)| *d <= DIRECT_HIT_RADIUS)
                         .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
@@ -1905,7 +2099,8 @@ impl World {
                         hits.push(id);
                     } else {
                         // No tank there: a pillbox, if one is.
-                        let pb = self.pillboxes.iter().filter(|p| p.alive() && p.hostile_to(s.owner) && p.pos.dist(s.impact) <= DIRECT_HIT_RADIUS + 0.5).map(|p| p.id).next();
+                        let pb = self.pillboxes.iter().filter(|p| p.alive() && !self.allied_opt(p.owner, s.owner) && p.pos.dist(s.impact) <= DIRECT_HIT_RADIUS + 0.5).map(|p| p.id).next();
+
                         if let Some(id) = pb {
                             self.damage_pillbox(id, DIRECT_DAMAGE, Some(s.owner));
                             hits.push(id);
@@ -1919,6 +2114,15 @@ impl World {
 
     fn damage(&mut self, tank: EntityId, amount: f32, by: Option<PlayerId>) {
         let tick = self.tick;
+        // Friendly fire is off within a team: an ally's shell, strike or
+        // mine does nothing to this tank, and the trace says so. One's
+        // own shells still hurt: that is a mistake, not an ally.
+        if let (Some(b), Some(t)) = (by, self.tank(tank)) {
+            if b != t.owner && self.allied(b, t.owner) {
+                self.events.push(Event::FriendlyFireSpared { target: tank, by: b, damage: amount });
+                return;
+            }
+        }
         let Some(t) = self.tank_mut(tank) else { return };
         if !t.alive {
             return;
@@ -1957,6 +2161,12 @@ impl World {
 
     fn step_depots(&mut self) {
         let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
+        let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
+        let allied_with = |owner: Option<PlayerId>, p: PlayerId| match owner {
+            None => false,
+            Some(o) => o == p || (team_of(o).is_some() && team_of(o) == team_of(p)),
+        };
         let mut captured = Vec::new();
         let mut resupplied = Vec::new();
         for dep in self.depots.iter_mut() {
@@ -1971,7 +2181,9 @@ impl World {
                     }
                 }
                 [(tid, owner, _)] => {
-                    if dep.owner == Some(*owner) {
+                    // Allies share depots (BAS-06): an ally's resupplies and
+                    // is not captured.
+                    if dep.owner == Some(*owner) || allied_with(dep.owner, *owner) {
                         resupplied.push((*tid, dep.id));
                     } else {
                         if dep.capturer != Some(*owner) {
@@ -2070,18 +2282,32 @@ impl World {
         self.events.push(Event::SwarmInbound { count: n, from });
     }
 
+    /// The match ends when one team is left alive, or at the time limit.
+    /// The winning team is the last one standing, or the one with the
+    /// highest total score; the winner is its top-scoring player.
     fn step_match(&mut self) {
         let alive: Vec<PlayerId> = self.players.iter().filter(|p| p.alive).map(|p| p.id).collect();
+        let mut teams_alive: Vec<TeamId> = self.players.iter().filter(|p| p.alive).map(|p| p.team).collect();
+        teams_alive.sort_unstable();
+        teams_alive.dedup();
         let limit = self.scenario.time_limit;
         let timed_out = limit > 0 && self.tick >= limit;
-        if (alive.len() <= 1 && self.players.len() > 1) || timed_out || alive.is_empty() {
+        let teams_total = {
+            let mut t: Vec<TeamId> = self.players.iter().map(|p| p.team).collect();
+            t.sort_unstable();
+            t.dedup();
+            t.len()
+        };
+        if (teams_alive.len() <= 1 && teams_total > 1) || timed_out || alive.is_empty() {
             self.over = true;
-            self.winner = if alive.len() == 1 {
-                Some(alive[0])
+            let team_score = |t: TeamId| self.players.iter().filter(|p| p.team == t && p.alive).map(|p| p.score).sum::<u32>();
+            self.winning_team = if teams_alive.len() == 1 {
+                Some(teams_alive[0])
             } else {
-                self.players.iter().filter(|p| p.alive).max_by_key(|p| (p.score, std::cmp::Reverse(p.id))).map(|p| p.id)
+                teams_alive.iter().copied().max_by_key(|t| (team_score(*t), std::cmp::Reverse(*t)))
             };
-            self.events.push(Event::MatchOver { winner: self.winner });
+            self.winner = self.winning_team.and_then(|t| self.players.iter().filter(|p| p.alive && p.team == t).max_by_key(|p| (p.score, std::cmp::Reverse(p.id))).map(|p| p.id));
+            self.events.push(Event::MatchOver { winner: self.winner, team: self.winning_team });
         }
     }
 
@@ -2143,10 +2369,29 @@ impl World {
             pillboxes: self.pillboxes.clone(),
             mines: self.mines.iter().filter(|m| self.mine_known_to(p, m)).cloned().collect(),
             forest,
-            players: self.players.iter().map(|x| PlayerView { id: x.id, name: x.name.clone(), alive: x.alive, score: x.score, is_bot: x.is_bot }).collect(),
-            events: self.events.iter().filter(|e| event_visible(e, p)).cloned().collect(),
+            players: self.players.iter().map(|x| PlayerView { id: x.id, name: x.name.clone(), alive: x.alive, score: x.score, is_bot: x.is_bot, team: x.team }).collect(),
+            requests: self.requests.iter().filter(|r| r.from == p || self.allied(r.to, p)).cloned().collect(),
+            events: self.events.iter().filter(|e| self.event_visible(e, p)).cloned().collect(),
             over: self.over,
             winner: self.winner,
+            winning_team: self.winning_team,
+        }
+    }
+
+    /// Which events a player may know about: public ones; its own and
+    /// its allies' launches, deployments and refusals of a kind; team
+    /// chat to the team; alliance traffic to those in it.
+    pub fn event_visible(&self, e: &Event, p: PlayerId) -> bool {
+        match e {
+            Event::Rejected { player, .. } => *player == p,
+            Event::ShellLaunched { owner, .. } => self.allied(*owner, p),
+            Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::LinkLost { owner, .. } => self.allied(*owner, p),
+            Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => self.allied(*owner, p),
+            Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } => self.allied(*owner, p),
+            Event::Chat { player, to: ChatTo::Team, .. } => self.allied(*player, p),
+            Event::AllianceRequested { from, to } => *from == p || self.allied(*to, p),
+            Event::AllianceDeclined { from, by } => *from == p || self.allied(*by, p),
+            _ => true,
         }
     }
 }
@@ -2241,18 +2486,6 @@ impl Replay {
     }
 }
 
-fn event_visible(e: &Event, p: PlayerId) -> bool {
-
-    match e {
-        Event::Rejected { player, .. } => *player == p,
-        Event::ShellLaunched { owner, .. } => *owner == p,
-        Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::LinkLost { owner, .. } => *owner == p,
-        Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => *owner == p,
-        Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } => *owner == p,
-        _ => true,
-    }
-}
-
 /// A player's view. The client renders this; the Brain reasons from it.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Observation {
@@ -2276,10 +2509,12 @@ pub struct Observation {
     pub forest: Vec<V2>,
 
     pub players: Vec<PlayerView>,
-
+    /// Alliance requests this player made or may answer.
+    pub requests: Vec<AllianceRequest>,
     pub events: Vec<Event>,
     pub over: bool,
     pub winner: Option<PlayerId>,
+    pub winning_team: Option<TeamId>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -2289,24 +2524,41 @@ pub struct PlayerView {
     pub alive: bool,
     pub score: u32,
     pub is_bot: bool,
+    pub team: TeamId,
 }
 
 impl Observation {
     pub fn seconds(&self) -> f32 {
         self.tick as f32 * DT
     }
+    /// My team; a view with no players (should not happen) is team 255.
+    pub fn my_team(&self) -> TeamId {
+        self.players.iter().find(|x| x.id == self.player).map(|x| x.team).unwrap_or(255)
+    }
+    pub fn team_of(&self, p: PlayerId) -> Option<TeamId> {
+        self.players.iter().find(|x| x.id == p).map(|x| x.team)
+    }
+    /// Same side: me, or on my team. The swarm never is.
+    pub fn allied(&self, p: PlayerId) -> bool {
+        p == self.player || self.team_of(p).map(|t| t == self.my_team()).unwrap_or(false)
+    }
     pub fn my_drones(&self) -> impl Iterator<Item = &Drone> {
         let p = self.player;
         self.drones.iter().filter(move |d| d.owner == p)
     }
-    pub fn hostile_tanks(&self) -> impl Iterator<Item = &Tank> {
-        let p = self.player;
-        self.tanks.iter().filter(move |t| t.owner != p && t.alive)
+    /// Living tanks not on my side.
+    pub fn hostile_tanks(&self) -> impl Iterator<Item = &Tank> + '_ {
+        self.tanks.iter().filter(move |t| !self.allied(t.owner) && t.alive)
     }
-    pub fn hostile_drones(&self) -> impl Iterator<Item = &Drone> {
-        let p = self.player;
-        self.drones.iter().filter(move |d| d.owner != p)
+    /// Drones not on my side, the swarm's included.
+    pub fn hostile_drones(&self) -> impl Iterator<Item = &Drone> + '_ {
+        self.drones.iter().filter(move |d| !self.allied(d.owner))
     }
+    /// Allied tanks, mine included.
+    pub fn allied_tanks(&self) -> impl Iterator<Item = &Tank> + '_ {
+        self.tanks.iter().filter(move |t| self.allied(t.owner) && t.alive)
+    }
+
     /// The middle of the map.
     pub fn centre(&self) -> V2 {
         V2::new(self.map_w as f32 * 0.5, self.map_h as f32 * 0.5)
@@ -2730,8 +2982,152 @@ mod tests {
         assert_eq!(Map::from_text(&saved.to_text()).unwrap(), saved);
     }
 
+    /// Roadmap step 6's proof. Two bots on a team: a shell fired by one at
+    /// a target only the other's recon drone sees is spotted; a shell
+    /// landing on a teammate does no damage and says so.
+    #[test]
+    fn a_team_shares_recon_and_spares_its_own() {
+        let scenario = Scenario { swarm_interval: 0, ..Scenario::bots(4) }.with_teams(2); // seats 0,2 vs 1,3
+        let mut w = World::new(scenario);
+        w.pillboxes.clear();
+        assert!(w.allied(0, 2) && !w.allied(0, 1));
+        // Put everyone where the test wants them: 0 and 2 twenty tiles
+        // apart on open ground; enemy 1 thirty tiles from 0, forty from 2.
+        let c = w.map.center();
+        let t0 = w.players[0].tank;
+        let t1 = w.players[1].tank;
+        let t2 = w.players[2].tank;
+        w.tank_mut(t0).unwrap().pos = c + V2::new(-20.0, 0.0);
+        w.tank_mut(t2).unwrap().pos = c + V2::new(0.0, 0.0);
+        let enemy_at = c + V2::new(8.0, 0.0);
+        w.tank_mut(t1).unwrap().pos = enemy_at;
+        w.tank_mut(w.players[3].tank).unwrap().pos = c + V2::new(0.0, 50.0);
+        // Blind: 0 cannot see the enemy (30 tiles, no recon up).
+        assert!(!w.visible_to(0, enemy_at));
+        // 2's recon near the enemy: five tiles off, so the first shell's
+        // splash (which kills drones within two tiles) does not take it
+        // down, and still within its twelve tiles of both the enemy and
+        // the ally's tank at the centre.
+        w.step(&[Order { player: 2, cmd: Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: enemy_at + V2::new(0.0, 5.0), radius: 1.0 } } }]);
+        for _ in 0..(6 * TICK_HZ) {
+            w.step(&[]);
+        }
+        assert!(w.spotted_by(2, enemy_at), "2's own recon is not over the enemy");
+        assert!(w.spotted_by(0, enemy_at), "the ally's recon does not spot for 0");
+        assert!(w.visible_to(0, enemy_at), "0 cannot see what its ally sees");
+        assert!(!w.spotted_by(1, enemy_at));
+        // 0 fires at the enemy: spotted, through the ally's eyes.
+        w.step(&[Order { player: 0, cmd: Command::FireIndirect { at: enemy_at } }]);
+        let spotted = w.events.iter().find_map(|e| if let Event::ShellLaunched { owner: 0, spotted, .. } = e { Some(*spotted) } else { None });
+        assert_eq!(spotted, Some(true), "{:?}", w.events);
+        for _ in 0..(3 * TICK_HZ) {
+            w.step(&[]);
+        }
+        assert!(w.drones.iter().any(|d| d.owner == 2 && d.kind == DroneKind::Recon), "the first shell's splash took the recon");
+        // The observation 0 gets includes the enemy tank, seen by the ally.
+        assert!(w.observe(0).hostile_tanks().any(|t| t.id == t1));
+        assert!(w.observe(0).allied_tanks().any(|t| t.id == t2));
+        // Friendly fire: 0 shells its own ally at 20 tiles. No damage, and
+        // the trace says so.
+        let ally_at = w.tank(t2).unwrap().pos;
+        let armor = w.tank(t2).unwrap().armor;
+        for _ in 0..RELOAD_TICKS {
+            w.step(&[]);
+        }
+        w.step(&[Order { player: 0, cmd: Command::FireIndirect { at: ally_at } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::ShellLaunched { owner: 0, .. })), "{:?}", w.events);
+        let mut spared = false;
+        for _ in 0..(5 * TICK_HZ) {
+            w.step(&[]);
+            spared |= w.events.iter().any(|e| matches!(e, Event::FriendlyFireSpared { by: 0, .. }));
+            if w.shells.is_empty() {
+                break;
+            }
+        }
+        // The blind scatter may miss by up to four tiles; spotted (the ally
+        // is in view) it lands within 0.6, inside the splash.
+        assert!(spared, "no FriendlyFireSpared event");
+        assert_eq!(w.tank(t2).unwrap().armor, armor, "an ally's shell hurt a teammate");
+        // A strike at an ally is refused and the bay keeps the drone.
+        let bay = w.tank(t0).unwrap().bay.strike;
+        w.step(&[Order { player: 0, cmd: Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: t2 } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { .. })));
+        assert_eq!(w.tank(t0).unwrap().bay.strike, bay);
+        // Interceptors do not engage an ally's drones: 2's recon flies into
+        // 0's bubble and lives.
+        w.step(&[Order { player: 0, cmd: Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return } }]);
+        let own_pos = w.tank(t0).unwrap().pos;
+        w.step(&[Order { player: 2, cmd: Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: own_pos, radius: 1.0 } } }]);
+        for _ in 0..(10 * TICK_HZ) {
+            w.step(&[]);
+        }
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Intercepted { owner: 0, .. })));
+        assert!(w.drones.iter().filter(|d| d.owner == 2 && d.kind == DroneKind::Recon).count() >= 1, "the ally's recon was shot down by its own side");
+    }
+
+    /// Bolo's alliance protocol, and the match ending by team.
+    #[test]
+    fn alliances_form_and_break_and_teams_end_the_match() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(4) });
+        w.pillboxes.clear();
+        assert!(!w.allied(0, 1));
+        // 2 is in no alliance; 0 asks 1; 3 cannot accept (not asked).
+        w.step(&[Order { player: 0, cmd: Command::Alliance(AllianceCmd::Request { to: 1 }) }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::AllianceRequested { from: 0, to: 1 })));
+        assert_eq!(w.observe(1).requests.len(), 1);
+        assert_eq!(w.observe(2).requests.len(), 0, "a request is private to the two");
+        w.step(&[Order { player: 3, cmd: Command::Alliance(AllianceCmd::Accept { from: 0 }) }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { player: 3, .. })));
+        w.step(&[Order { player: 1, cmd: Command::Alliance(AllianceCmd::Accept { from: 0 }) }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::AllianceFormed { player: 0, .. })), "{:?}", w.events);
+        assert!(w.allied(0, 1));
+        // Any member admits: 2 asks 0, 1 accepts (ALL-04).
+        w.step(&[Order { player: 2, cmd: Command::Alliance(AllianceCmd::Request { to: 0 }) }]);
+        w.step(&[Order { player: 1, cmd: Command::Alliance(AllianceCmd::Accept { from: 2 }) }]);
+        assert!(w.allied(2, 0) && w.allied(2, 1));
+        assert_eq!(w.team_members(w.team_of(0).unwrap()).len(), 3);
+        // In an alliance, you leave before you ask elsewhere.
+        w.step(&[Order { player: 2, cmd: Command::Alliance(AllianceCmd::Request { to: 3 }) }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { player: 2, .. })));
+        w.step(&[Order { player: 2, cmd: Command::Alliance(AllianceCmd::Leave) }]);
+        assert!(!w.allied(2, 0) && w.allied(0, 1));
+        // The leaver's team id is nobody else's.
+        let t2 = w.team_of(2).unwrap();
+        assert!(w.players.iter().filter(|p| p.team == t2).count() == 1);
+        // A request lapses.
+        w.step(&[Order { player: 2, cmd: Command::Alliance(AllianceCmd::Request { to: 3 }) }]);
+        for _ in 0..ALLIANCE_REQUEST_TICKS + 1 {
+            w.step(&[]);
+        }
+        w.step(&[Order { player: 3, cmd: Command::Alliance(AllianceCmd::Accept { from: 2 }) }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { player: 3, .. })), "a lapsed request was accepted");
+        // Team chat goes to the team only.
+        w.step(&[Order { player: 0, cmd: Command::Chat { text: "flank".into(), to: ChatTo::Team } }]);
+        assert!(w.observe(1).events.iter().any(|e| matches!(e, Event::Chat { .. })));
+        assert!(!w.observe(2).events.iter().any(|e| matches!(e, Event::Chat { .. })));
+        // The match ends when one team is left: kill 2 and 3, the two alone;
+        // 0 and 1 (one team) are the winners, the top scorer the winner.
+        let (t2id, t3id) = (w.players[2].tank, w.players[3].tank);
+        w.players[0].score = 50;
+        w.players[1].score = 80;
+        w.tank_mut(t2id).unwrap().armor = 1.0;
+        w.tank_mut(t3id).unwrap().armor = 1.0;
+        let k2 = w.tank(t2id).unwrap().pos;
+        let k3 = w.tank(t3id).unwrap().pos;
+        w.damage(t2id, 5.0, None);
+        assert!(!w.over, "three teams still stand");
+        w.damage(t3id, 5.0, None);
+        let _ = (k2, k3);
+        w.step(&[]);
+        assert!(w.over);
+        assert_eq!(w.winning_team, w.team_of(0));
+        assert_eq!(w.winner, Some(1));
+        assert!(w.events.iter().any(|e| matches!(e, Event::MatchOver { team: Some(_), .. })));
+    }
+
     #[test]
     fn sixteen_seats() {
+
 
 
 

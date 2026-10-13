@@ -67,10 +67,12 @@ PEER     ?=
 PLAYERS  ?= 16
 # Of the bot seats, how many dig in (Fortifier) rather than attack (RuleBot).
 DEFENDERS ?= 0
+# Deal the seats into N teams (0: everyone alone, allying in play).
+TEAMS    ?= 0
 # A map file to play on instead of the generated one (documentation/MAPS.md).
 MAP      ?=
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS MAP JOBS VERBOSE
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS MAP JOBS VERBOSE
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
