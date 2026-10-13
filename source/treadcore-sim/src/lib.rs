@@ -475,11 +475,26 @@ pub enum ChatTo {
     Team,
 }
 
-/// Bolo's alliance protocol (SPEC ALL-02 to ALL-06): ask, be accepted by
-/// any member of the alliance asked, leave at will. A player already in
-/// an alliance leaves it before asking to join another. What the leaver
-/// captured stays the leaver's: ownership here is per player, so there
-/// is nothing to divide (ALL-07).
+/// What a proposal asks. Every change of sides in play is one of these,
+/// answered by the one asked (or any member of their team), resolved by
+/// the world under the three-way rule, and announced to everyone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Terms {
+    /// I join your team (Bolo's alliance request; also a defection).
+    Join,
+    /// You join my team.
+    Recruit,
+    /// We exchange teams: I take yours, you take mine.
+    Swap,
+    /// My whole team joins yours.
+    Merge,
+}
+
+/// Bolo's alliance protocol (SPEC ALL-02 to ALL-06) as sugar over
+/// proposals: `Request` is a `Join` proposal, `Accept` and `Decline`
+/// answer the pending one from that player, `Leave` is a side of one's
+/// own again. What the leaver captured stays the leaver's: ownership is
+/// per player, so there is nothing to divide (ALL-07).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum AllianceCmd {
     Request { to: PlayerId },
@@ -488,11 +503,13 @@ pub enum AllianceCmd {
     Leave,
 }
 
-/// A standing request, until answered or `ALLIANCE_REQUEST_TICKS` pass.
+/// A standing proposal, until answered or `PROPOSAL_TICKS` pass.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AllianceRequest {
+pub struct Proposal {
+    pub id: EntityId,
     pub from: PlayerId,
     pub to: PlayerId,
+    pub terms: Terms,
     pub expires: Tick,
 }
 
@@ -513,8 +530,13 @@ pub enum Command {
     /// An order to the Pillboys. One at a time; a new one while they are
     /// out is refused, except Return.
     Deploy { task: PillboyTask },
-    /// Ask, answer, leave.
+    /// Ask, answer, leave: Bolo's words for the proposals below.
     Alliance(AllianceCmd),
+    /// A change of sides, put to another player. Refused at once if the
+    /// outcome would break the three-way rule.
+    Propose { to: PlayerId, terms: Terms },
+    /// Answer a proposal made to me or my team.
+    Answer { proposal: EntityId, accept: bool },
     Chat { text: String, to: ChatTo },
 }
 
@@ -550,8 +572,12 @@ pub enum Event {
     /// pillbox; friendly fire is off within a team, and the trace says
     /// so.
     FriendlyFireSpared { target: EntityId, by: PlayerId, damage: f32 },
-    AllianceRequested { from: PlayerId, to: PlayerId },
-    AllianceDeclined { from: PlayerId, by: PlayerId },
+    /// A proposal stands: to the proposer and the team asked.
+    Proposed { proposal: EntityId, from: PlayerId, to: PlayerId, terms: Terms },
+    /// A proposal ended, to everyone: accepted and carried out, declined
+    /// by `by`, refused by the three-way rule (`why`), or lapsed. A
+    /// betrayal is public the moment it happens.
+    ProposalResolved { proposal: EntityId, from: PlayerId, to: PlayerId, terms: Terms, accepted: bool, by: Option<PlayerId>, why: Option<String> },
     /// `player` joined `team`, whose members are now `members`.
     AllianceFormed { player: PlayerId, team: TeamId, members: Vec<PlayerId> },
     AllianceLeft { player: PlayerId, team: TeamId },
@@ -683,7 +709,7 @@ pub struct World {
     pub depots: Vec<Depot>,
     pub pillboxes: Vec<Pillbox>,
     pub mines: Vec<Mine>,
-    pub requests: Vec<AllianceRequest>,
+    pub proposals: Vec<Proposal>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
@@ -711,7 +737,7 @@ impl World {
             depots: Vec::new(),
             pillboxes: Vec::new(),
             mines: Vec::new(),
-            requests: Vec::new(),
+            proposals: Vec::new(),
             rng: Rng::new(scenario.seed ^ 0xA5A5_5A5A),
             next_id: 1,
             over: false,
@@ -930,10 +956,15 @@ impl World {
         }
         self.tick += 1;
         let now = self.tick;
-        self.requests.retain(|r| r.expires > now);
+        let lapsed: Vec<Proposal> = self.proposals.iter().filter(|p| p.expires <= now).cloned().collect();
+        self.proposals.retain(|p| p.expires > now);
+        for p in lapsed {
+            self.events.push(Event::ProposalResolved { proposal: p.id, from: p.from, to: p.to, terms: p.terms, accepted: false, by: None, why: Some("lapsed".into()) });
+        }
         for o in orders {
             self.apply(o);
         }
+
         self.step_tanks();
         self.step_pillboys();
         self.step_drones();
@@ -961,8 +992,11 @@ impl World {
             self.events.push(Event::Chat { player: o.player, text: text.clone(), to: *to });
             return;
         }
-        if let Command::Alliance(a) = &o.cmd {
-            return self.apply_alliance(o, a.clone());
+        match &o.cmd {
+            Command::Alliance(a) => return self.apply_alliance(o, a.clone()),
+            Command::Propose { to, terms } => return self.propose(o, *to, *terms),
+            Command::Answer { proposal, accept } => return self.answer(o, *proposal, *accept),
+            _ => {}
         }
         if !alive {
             return self.reject(o, "tank destroyed");
@@ -1226,58 +1260,34 @@ impl World {
                 t.pillboys.route = route;
                 self.events.push(Event::PillboysDeployed { tank: tid, owner: o.player, task: task.clone() });
             }
-            Command::Alliance(_) | Command::Chat { .. } => {}
+            Command::Alliance(_) | Command::Propose { .. } | Command::Answer { .. } | Command::Chat { .. } => {}
         }
     }
 
-    /// Bolo's alliance protocol. A request stands until answered or it
-    /// lapses; any member of the alliance asked may accept; the newcomer
-    /// takes the team of the one who accepted; leaving gives the leaver a
-    /// team of their own again. Everything is an event, so a betrayal is
-    /// public the moment it happens.
+    /// Bolo's alliance protocol in the proposal's words: a request is a
+    /// Join proposal; accepting and declining answer the pending one
+    /// from that player; leaving is a side of one's own again.
     fn apply_alliance(&mut self, o: &Order, cmd: AllianceCmd) {
         let me = o.player;
-        let my_team = self.team_of(me).unwrap();
         match cmd {
             AllianceCmd::Request { to } => {
-                if to == me || self.team_of(to).is_none() {
-                    return self.reject(o, "no such player");
-                }
-                if self.allied(me, to) {
-                    return self.reject(o, "already allied");
-                }
-                if self.team_members(my_team).len() > 1 {
+                // Bolo's rule for its own request (ALL-02): leave before
+                // you ask elsewhere. A Join proposed in so many words is
+                // a defection, and allowed.
+                if self.team_members(self.team_of(me).unwrap()).len() > 1 {
                     return self.reject(o, "leave your alliance first");
                 }
-                self.requests.retain(|r| !(r.from == me && r.to == to));
-                self.requests.push(AllianceRequest { from: me, to, expires: self.tick + ALLIANCE_REQUEST_TICKS });
-                self.events.push(Event::AllianceRequested { from: me, to });
+                self.propose(o, to, Terms::Join)
             }
-            AllianceCmd::Accept { from } => {
-                // The request may be to me or to any member of my team.
-                let Some(ix) = self.requests.iter().position(|r| r.from == from && self.allied(r.to, me)) else {
+            AllianceCmd::Accept { from } | AllianceCmd::Decline { from } => {
+                let accept = matches!(cmd, AllianceCmd::Accept { .. });
+                let Some(p) = self.proposals.iter().find(|p| p.from == from && p.terms == Terms::Join && self.allied(p.to, me)).cloned() else {
                     return self.reject(o, "no such request");
                 };
-                if self.team_members(self.team_of(from).unwrap()).len() > 1 {
-                    self.requests.remove(ix);
-                    return self.reject(o, "they allied elsewhere meanwhile");
-                }
-                self.requests.remove(ix);
-                self.requests.retain(|r| r.from != from);
-                if let Some(p) = self.players.iter_mut().find(|p| p.id == from) {
-                    p.team = my_team;
-                }
-                let members = self.team_members(my_team);
-                self.events.push(Event::AllianceFormed { player: from, team: my_team, members });
-            }
-            AllianceCmd::Decline { from } => {
-                let Some(ix) = self.requests.iter().position(|r| r.from == from && self.allied(r.to, me)) else {
-                    return self.reject(o, "no such request");
-                };
-                self.requests.remove(ix);
-                self.events.push(Event::AllianceDeclined { from, by: me });
+                self.answer(o, p.id, accept)
             }
             AllianceCmd::Leave => {
+                let my_team = self.team_of(me).unwrap();
                 if self.team_members(my_team).len() < 2 {
                     return self.reject(o, "not in an alliance");
                 }
@@ -1289,6 +1299,112 @@ impl World {
                 }
                 self.events.push(Event::AllianceLeft { player: me, team: my_team });
             }
+        }
+    }
+
+    /// The teams after a proposal is carried out: (player, team) for
+    /// every player.
+    fn outcome(&self, from: PlayerId, to: PlayerId, terms: Terms) -> Vec<(PlayerId, TeamId)> {
+        let (tf, tt) = (self.team_of(from).unwrap(), self.team_of(to).unwrap());
+        self.players
+            .iter()
+            .map(|p| {
+                let team = match terms {
+                    Terms::Join if p.id == from => tt,
+                    Terms::Recruit if p.id == to => tf,
+                    Terms::Swap if p.id == from => tt,
+                    Terms::Swap if p.id == to => tf,
+                    Terms::Merge if p.team == tf => tt,
+                    _ => p.team,
+                };
+                (p.id, team)
+            })
+            .collect()
+    }
+
+    /// The three-way rule, on an outcome: at least `MIN_SIDES` sides with
+    /// a living tank, and no side with more than half the living tanks.
+    /// Err carries the reason the world gives.
+    fn three_way_check(&self, teams: &[(PlayerId, TeamId)]) -> Result<(), &'static str> {
+        let living: Vec<(PlayerId, TeamId)> = teams.iter().filter(|(p, _)| self.players.iter().any(|x| x.id == *p && x.alive)).copied().collect();
+        let mut sides: Vec<TeamId> = living.iter().map(|(_, t)| *t).collect();
+        sides.sort_unstable();
+        sides.dedup();
+        if sides.len() < MIN_SIDES {
+            return Err("fewer than three sides would remain");
+        }
+        let biggest = sides.iter().map(|t| living.iter().filter(|(_, x)| x == t).count()).max().unwrap_or(0);
+        if biggest * 2 > living.len() {
+            return Err("one side would hold more than half the tanks");
+        }
+        Ok(())
+    }
+
+    /// Put a change of sides to another player. Refused at once if it is
+    /// malformed or if its outcome would break the three-way rule; else
+    /// it stands for `PROPOSAL_TICKS`, replacing any earlier one of the
+    /// same terms to the same player.
+    fn propose(&mut self, o: &Order, to: PlayerId, terms: Terms) {
+        let from = o.player;
+        if to == from || self.team_of(to).is_none() {
+            return self.reject(o, "no such player");
+        }
+        if self.allied(from, to) {
+            return self.reject(o, "already on the same side");
+        }
+        let outcome = self.outcome(from, to, terms);
+        if let Err(why) = self.three_way_check(&outcome) {
+            return self.reject(o, why);
+        }
+        self.proposals.retain(|p| !(p.from == from && p.to == to && p.terms == terms));
+        let id = self.alloc();
+        self.proposals.push(Proposal { id, from, to, terms, expires: self.tick + PROPOSAL_TICKS });
+        self.events.push(Event::Proposed { proposal: id, from, to, terms });
+    }
+
+    /// Answer a proposal made to me or to my team. Accepting runs the
+    /// three-way check again on the world as it is now, and carries the
+    /// change out; either way the proposal is resolved for everyone.
+    fn answer(&mut self, o: &Order, proposal: EntityId, accept: bool) {
+        let me = o.player;
+        let Some(ix) = self.proposals.iter().position(|p| p.id == proposal && self.allied(p.to, me)) else {
+            return self.reject(o, "no such proposal");
+        };
+        let p = self.proposals.remove(ix);
+        if !accept {
+            self.events.push(Event::ProposalResolved { proposal: p.id, from: p.from, to: p.to, terms: p.terms, accepted: false, by: Some(me), why: None });
+            return;
+        }
+        if self.team_of(p.from).is_none() || self.allied(p.from, p.to) {
+            self.events.push(Event::ProposalResolved { proposal: p.id, from: p.from, to: p.to, terms: p.terms, accepted: false, by: Some(me), why: Some("overtaken by events".into()) });
+            return;
+        }
+        let outcome = self.outcome(p.from, p.to, p.terms);
+        if let Err(why) = self.three_way_check(&outcome) {
+            self.events.push(Event::ProposalResolved { proposal: p.id, from: p.from, to: p.to, terms: p.terms, accepted: false, by: Some(me), why: Some(why.into()) });
+            return;
+        }
+        // Carry it out: every player whose team changes is announced.
+        let mut changed: Vec<(PlayerId, TeamId)> = Vec::new();
+        for (pid, team) in outcome {
+            if let Some(pl) = self.players.iter_mut().find(|x| x.id == pid) {
+                if pl.team != team {
+                    pl.team = team;
+                    changed.push((pid, team));
+                }
+            }
+        }
+        // Standing proposals from or to anyone who moved are stale.
+        let moved: Vec<PlayerId> = changed.iter().map(|(p, _)| *p).collect();
+        let stale: Vec<Proposal> = self.proposals.iter().filter(|q| moved.contains(&q.from) || moved.contains(&q.to)).cloned().collect();
+        self.proposals.retain(|q| !(moved.contains(&q.from) || moved.contains(&q.to)));
+        for q in stale {
+            self.events.push(Event::ProposalResolved { proposal: q.id, from: q.from, to: q.to, terms: q.terms, accepted: false, by: None, why: Some("sides changed".into()) });
+        }
+        self.events.push(Event::ProposalResolved { proposal: p.id, from: p.from, to: p.to, terms: p.terms, accepted: true, by: Some(me), why: None });
+        for (pid, team) in changed {
+            let members = self.team_members(team);
+            self.events.push(Event::AllianceFormed { player: pid, team, members });
         }
     }
 
@@ -2370,7 +2486,7 @@ impl World {
             mines: self.mines.iter().filter(|m| self.mine_known_to(p, m)).cloned().collect(),
             forest,
             players: self.players.iter().map(|x| PlayerView { id: x.id, name: x.name.clone(), alive: x.alive, score: x.score, is_bot: x.is_bot, team: x.team }).collect(),
-            requests: self.requests.iter().filter(|r| r.from == p || self.allied(r.to, p)).cloned().collect(),
+            proposals: self.proposals.iter().filter(|r| r.from == p || self.allied(r.to, p)).cloned().collect(),
             events: self.events.iter().filter(|e| self.event_visible(e, p)).cloned().collect(),
             over: self.over,
             winner: self.winner,
@@ -2389,8 +2505,7 @@ impl World {
             Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => self.allied(*owner, p),
             Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } => self.allied(*owner, p),
             Event::Chat { player, to: ChatTo::Team, .. } => self.allied(*player, p),
-            Event::AllianceRequested { from, to } => *from == p || self.allied(*to, p),
-            Event::AllianceDeclined { from, by } => *from == p || self.allied(*by, p),
+            Event::Proposed { from, to, .. } => *from == p || self.allied(*to, p),
             _ => true,
         }
     }
@@ -2509,8 +2624,8 @@ pub struct Observation {
     pub forest: Vec<V2>,
 
     pub players: Vec<PlayerView>,
-    /// Alliance requests this player made or may answer.
-    pub requests: Vec<AllianceRequest>,
+    /// Proposals this player made or may answer.
+    pub proposals: Vec<Proposal>,
     pub events: Vec<Event>,
     pub over: bool,
     pub winner: Option<PlayerId>,
@@ -3065,64 +3180,149 @@ mod tests {
         assert!(w.drones.iter().filter(|d| d.owner == 2 && d.kind == DroneKind::Recon).count() >= 1, "the ally's recon was shot down by its own side");
     }
 
-    /// Bolo's alliance protocol, and the match ending by team.
+    /// Bolo's alliance protocol, the three-way rule on it, and the match
+    /// ending by team. Six players: with four, a second ally would leave
+    /// two sides, which the rule forbids.
     #[test]
     fn alliances_form_and_break_and_teams_end_the_match() {
-        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(4) });
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(6) });
         w.pillboxes.clear();
         assert!(!w.allied(0, 1));
-        // 2 is in no alliance; 0 asks 1; 3 cannot accept (not asked).
+        // 0 asks 1; 3 cannot accept (not asked); 2 does not see it.
         w.step(&[Order { player: 0, cmd: Command::Alliance(AllianceCmd::Request { to: 1 }) }]);
-        assert!(w.events.iter().any(|e| matches!(e, Event::AllianceRequested { from: 0, to: 1 })));
-        assert_eq!(w.observe(1).requests.len(), 1);
-        assert_eq!(w.observe(2).requests.len(), 0, "a request is private to the two");
+        assert!(w.events.iter().any(|e| matches!(e, Event::Proposed { from: 0, to: 1, terms: Terms::Join, .. })), "{:?}", w.events);
+        assert_eq!(w.observe(1).proposals.len(), 1);
+        assert_eq!(w.observe(2).proposals.len(), 0, "a proposal is private to the two sides");
         w.step(&[Order { player: 3, cmd: Command::Alliance(AllianceCmd::Accept { from: 0 }) }]);
         assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { player: 3, .. })));
         w.step(&[Order { player: 1, cmd: Command::Alliance(AllianceCmd::Accept { from: 0 }) }]);
-        assert!(w.events.iter().any(|e| matches!(e, Event::AllianceFormed { player: 0, .. })), "{:?}", w.events);
+        assert!(w.events.iter().any(|e| matches!(e, Event::ProposalResolved { accepted: true, .. })), "{:?}", w.events);
+        assert!(w.events.iter().any(|e| matches!(e, Event::AllianceFormed { player: 0, .. })));
         assert!(w.allied(0, 1));
-        // Any member admits: 2 asks 0, 1 accepts (ALL-04).
+        // Any member admits: 2 asks 0, 1 accepts (ALL-04). Three of six is
+        // half, not more than half: allowed.
         w.step(&[Order { player: 2, cmd: Command::Alliance(AllianceCmd::Request { to: 0 }) }]);
         w.step(&[Order { player: 1, cmd: Command::Alliance(AllianceCmd::Accept { from: 2 }) }]);
-        assert!(w.allied(2, 0) && w.allied(2, 1));
+        assert!(w.allied(2, 0) && w.allied(2, 1), "{:?}", w.events);
         assert_eq!(w.team_members(w.team_of(0).unwrap()).len(), 3);
+        // A fourth would be more than half: refused at once, with the reason.
+        w.step(&[Order { player: 3, cmd: Command::Alliance(AllianceCmd::Request { to: 0 }) }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { player: 3, why, .. } if why.contains("half"))), "{:?}", w.events);
         // In an alliance, you leave before you ask elsewhere.
         w.step(&[Order { player: 2, cmd: Command::Alliance(AllianceCmd::Request { to: 3 }) }]);
         assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { player: 2, .. })));
         w.step(&[Order { player: 2, cmd: Command::Alliance(AllianceCmd::Leave) }]);
         assert!(!w.allied(2, 0) && w.allied(0, 1));
-        // The leaver's team id is nobody else's.
         let t2 = w.team_of(2).unwrap();
-        assert!(w.players.iter().filter(|p| p.team == t2).count() == 1);
-        // A request lapses.
+        assert_eq!(w.players.iter().filter(|p| p.team == t2).count(), 1, "the leaver's team id is nobody else's");
+        // A request lapses, and everyone hears that it did.
         w.step(&[Order { player: 2, cmd: Command::Alliance(AllianceCmd::Request { to: 3 }) }]);
-        for _ in 0..ALLIANCE_REQUEST_TICKS + 1 {
+        let mut lapsed = false;
+        for _ in 0..PROPOSAL_TICKS + 1 {
             w.step(&[]);
+            lapsed |= w.events.iter().any(|e| matches!(e, Event::ProposalResolved { accepted: false, why: Some(w), .. } if w == "lapsed"));
         }
+        assert!(lapsed);
         w.step(&[Order { player: 3, cmd: Command::Alliance(AllianceCmd::Accept { from: 2 }) }]);
         assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { player: 3, .. })), "a lapsed request was accepted");
         // Team chat goes to the team only.
         w.step(&[Order { player: 0, cmd: Command::Chat { text: "flank".into(), to: ChatTo::Team } }]);
         assert!(w.observe(1).events.iter().any(|e| matches!(e, Event::Chat { .. })));
         assert!(!w.observe(2).events.iter().any(|e| matches!(e, Event::Chat { .. })));
-        // The match ends when one team is left: kill 2 and 3, the two alone;
-        // 0 and 1 (one team) are the winners, the top scorer the winner.
-        let (t2id, t3id) = (w.players[2].tank, w.players[3].tank);
+        // The match ends when one team is left: kill the four alone; 0 and
+        // 1 (one team) win, the top scorer the winner.
         w.players[0].score = 50;
         w.players[1].score = 80;
-        w.tank_mut(t2id).unwrap().armor = 1.0;
-        w.tank_mut(t3id).unwrap().armor = 1.0;
-        let k2 = w.tank(t2id).unwrap().pos;
-        let k3 = w.tank(t3id).unwrap().pos;
-        w.damage(t2id, 5.0, None);
-        assert!(!w.over, "three teams still stand");
-        w.damage(t3id, 5.0, None);
-        let _ = (k2, k3);
+        for i in 2..6 {
+            let tid = w.players[i].tank;
+            w.tank_mut(tid).unwrap().armor = 1.0;
+            w.damage(tid, 5.0, None);
+            if i < 5 {
+                w.step(&[]);
+                assert!(!w.over, "sides still stand");
+            }
+        }
         w.step(&[]);
         assert!(w.over);
         assert_eq!(w.winning_team, w.team_of(0));
         assert_eq!(w.winner, Some(1));
         assert!(w.events.iter().any(|e| matches!(e, Event::MatchOver { team: Some(_), .. })));
+    }
+
+    /// Roadmap step 6b's proof, as a recorded match. Two teams of eight: a
+    /// merge is refused, and so is any join or swap, because two sides
+    /// would remain. Three teams: a defection is proposed, answered,
+    /// carried out and announced, the trace shows the team change, and
+    /// the newcomer's recon spots for its new side; a recruit that would
+    /// give one side more than half is refused with the reason.
+    #[test]
+    fn proposals_change_sides_under_the_three_way_rule() {
+        // Two sides of eight.
+        let two = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(16) }.with_teams(2);
+        let mut w = World::new(two);
+        w.pillboxes.clear();
+        for (from, to, terms) in [(0u8, 1u8, Terms::Merge), (0, 1, Terms::Join), (0, 1, Terms::Swap), (1, 0, Terms::Recruit)] {
+            w.step(&[Order { player: from, cmd: Command::Propose { to, terms } }]);
+            assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why.contains("fewer than three"))), "{:?} not refused: {:?}", terms, w.events);
+        }
+        assert!(w.proposals.is_empty());
+        // Three sides of six, five, five. Record it.
+        let three = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(16) }.with_teams(3);
+        let mut w = World::new(three.clone());
+        w.pillboxes.clear();
+        let mut rec = Replay::new(three);
+        let mut step = |w: &mut World, orders: Vec<Order>| {
+            w.step(&orders);
+            rec.record(w, &orders);
+        };
+        // Seat 3 (team 0, six strong) proposes to join team 1 (seat 1,
+        // five strong): five sides... three sides stay three, team 1
+        // becomes six of sixteen. Allowed.
+        assert_eq!(w.team_of(3), Some(0));
+        step(&mut w, vec![Order { player: 3, cmd: Command::Propose { to: 1, terms: Terms::Join } }]);
+        let pid = w.events.iter().find_map(|e| if let Event::Proposed { proposal, .. } = e { Some(*proposal) } else { None }).expect("not proposed");
+        // Seat 4 (team 1 too) answers for the team: any member may.
+        assert_eq!(w.team_of(4), Some(1));
+        step(&mut w, vec![Order { player: 4, cmd: Command::Answer { proposal: pid, accept: true } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::ProposalResolved { accepted: true, by: Some(4), .. })), "{:?}", w.events);
+        assert!(w.events.iter().any(|e| matches!(e, Event::AllianceFormed { player: 3, team: 1, .. })));
+        assert_eq!(w.team_of(3), Some(1));
+        assert!(w.allied(3, 1) && !w.allied(3, 0));
+        // The defector's recon now spots for the new side.
+        let c = w.map.center();
+        let t3 = w.players[3].tank;
+        let t1 = w.players[1].tank;
+        w.tank_mut(t3).unwrap().pos = c;
+        w.tank_mut(t1).unwrap().pos = c + V2::new(-25.0, 0.0);
+        let look = c + V2::new(8.0, 0.0);
+        step(&mut w, vec![Order { player: 3, cmd: Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: look, radius: 1.0 } } }]);
+        for _ in 0..(4 * TICK_HZ) {
+            step(&mut w, vec![]);
+        }
+        assert!(w.spotted_by(1, look), "the newcomer's recon does not spot for seat 1");
+        assert!(!w.spotted_by(0, look), "the old side still sees through it");
+        // Team 1 is six of sixteen; recruiting three more would be nine,
+        // more than half: refused with the reason. Recruiting one is fine.
+        step(&mut w, vec![Order { player: 1, cmd: Command::Propose { to: 0, terms: Terms::Recruit } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Proposed { .. })));
+        let seven = w.events.iter().find_map(|e| if let Event::Proposed { proposal, .. } = e { Some(*proposal) } else { None }).unwrap();
+        step(&mut w, vec![Order { player: 0, cmd: Command::Answer { proposal: seven, accept: true } }]);
+        assert_eq!(w.team_members(1).len(), 7);
+        step(&mut w, vec![Order { player: 1, cmd: Command::Propose { to: 6, terms: Terms::Recruit } }]);
+        let eight = w.events.iter().find_map(|e| if let Event::Proposed { proposal, .. } = e { Some(*proposal) } else { None }).unwrap();
+        step(&mut w, vec![Order { player: 6, cmd: Command::Answer { proposal: eight, accept: true } }]);
+        assert_eq!(w.team_members(1).len(), 8, "eight of sixteen is half, allowed");
+        step(&mut w, vec![Order { player: 1, cmd: Command::Propose { to: 9, terms: Terms::Recruit } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why.contains("half"))), "{:?}", w.events);
+        // A swap keeps every side its size: allowed even now.
+        step(&mut w, vec![Order { player: 1, cmd: Command::Propose { to: 9, terms: Terms::Swap } }]);
+        let swap = w.events.iter().find_map(|e| if let Event::Proposed { proposal, .. } = e { Some(*proposal) } else { None }).expect("swap not proposed");
+        let (team1, team9) = (w.team_of(1).unwrap(), w.team_of(9).unwrap());
+        step(&mut w, vec![Order { player: 9, cmd: Command::Answer { proposal: swap, accept: true } }]);
+        assert_eq!((w.team_of(1), w.team_of(9)), (Some(team9), Some(team1)));
+        // The scripted match replays to the same hashes.
+        rec.record(&w, &[]);
+        assert!(rec.verify().is_ok(), "the proposal match does not replay");
     }
 
     #[test]

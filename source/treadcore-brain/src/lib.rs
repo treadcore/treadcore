@@ -566,6 +566,7 @@ pub fn schema_examples() -> String {
         Command::Stop,
         Command::Chat { text: "on my way".into(), to: ChatTo::Team },
         Command::Alliance(AllianceCmd::Request { to: 1 }),
+        Command::Propose { to: 2, terms: Terms::Swap },
     ];
     format!(
         "# observation (one line per tick on stdin)\n{}\n\n# commands (one JSON array per line on stdout)\n{}\n",

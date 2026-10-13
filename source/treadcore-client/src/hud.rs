@@ -178,8 +178,8 @@ fn scoreboard(view: &View) -> String {
             let mark = if p.id == obs.player { "*" } else if obs.allied(p.id) { "+" } else { " " };
             s.push_str(&format!("{}t{:<2} p{:<2}  {:<8}  {:>4}  {}\n", mark, p.team, p.id, p.name, p.score, if p.alive { "alive" } else { "dead" }));
         }
-        for r in &obs.requests {
-            s.push_str(&format!("alliance: p{} asks p{}\n", r.from, r.to));
+        for r in &obs.proposals {
+            s.push_str(&format!("proposal #{}: p{} {:?} p{}\n", r.id, r.from, r.terms, r.to));
         }
 
         let depots: Vec<String> = obs.depots.iter().map(|d| d.owner.map(|o| format!("p{}", o)).unwrap_or_else(|| "-".into())).collect();

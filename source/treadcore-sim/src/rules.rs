@@ -187,10 +187,16 @@ pub const RESUPPLY_EVERY: u64 = TICK_HZ as u64 / 2;
 pub const REPAIR_PER_TICK: f32 = 4.0;
 
 // ---- alliances ---------------------------------------------------------
-/// A request to ally stands this long before it lapses: thirty seconds,
-/// long enough to read, short enough that an old one cannot be accepted
-/// into a changed situation.
-pub const ALLIANCE_REQUEST_TICKS: Tick = 30 * TICK_HZ as Tick;
+/// A proposal (to ally, to defect, to swap, to merge) stands this long
+/// before it lapses: thirty seconds, long enough to read, short enough
+/// that an old one cannot be accepted into a changed situation.
+pub const PROPOSAL_TICKS: Tick = 30 * TICK_HZ as Tick;
+/// The three-way rule: no change of sides may leave fewer than this
+/// many sides with a living tank, or give one side more than half the
+/// living tanks. Three is the smallest number in which an alliance is a
+/// choice rather than the end of the game.
+pub const MIN_SIDES: usize = 3;
+
 
 // ---- scoring -----------------------------------------------------------
 
