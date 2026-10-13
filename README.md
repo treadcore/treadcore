@@ -101,6 +101,8 @@ scripts/                  what the Makefile calls.
 vendor/                   external code and blobs vendored by the author, with their licences.
 documentation/            concept, design, protocol, research notes, the lab report.
 index.html, CNAME         the site at treadcore.org (GitHub Pages, served from the root).
+reports/                  dated web reports, served by the site.
+journal/                  the creation journal: one plain-text entry per session (see CHANGELOG.md).
 ```
 
 ## Documents

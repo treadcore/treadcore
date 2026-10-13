@@ -1,0 +1,601 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 12 Oct 2026 21:00:00 +0000
+Subject: [JOURNAL 0001] Opening day: the brief, the world, the wire,
+         the window, and the machine that could not build it
+Message-ID: <0001.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: bolo, indirect-fire, drone-bubble, host-election, bevy,
+          rust-workspace, build-memory
+X-Session: Alpine 3.24.1 aarch64 guest under UTM/QEMU on a Mac host,
+           Hyprland/Wayland; Claude Code (Claude Fable 5.1) as the
+           pair; Paul directing, reviewing, running git push by hand
+X-Commits: e5eaad3 17c71d3 3a26432 49cd8f9
+
+           OPENING DAY: THE BRIEF, THE WORLD, THE WIRE, THE WINDOW,
+                 AND THE MACHINE THAT COULD NOT BUILD IT
+
+                      Paul Richeson, treadcore.org
+                            12 October 2026
+
+
+ABSTRACT
+
+    treadcore began as an afternoon's idea after news coverage of the
+    war in Ukraine: tanks on both sides had stopped closing with the
+    enemy and started firing indirect under their own drone cover,
+    and the tank had become a mobile command post. This entry records
+    the first session, in which the brief was written, the battlefield
+    technology was researched with sources, and a Rust workspace of
+    six crates was written: a deterministic simulation (compiled, six
+    tests passing), a wire protocol, a LAN lobby with a pure-function
+    host election and relay route, a Brain interface with a rule bot
+    and a JSON bot, a headless server that writes readable traces, and
+    a Bevy 0.17 client with a telemetry overlay. A Makefile-over-bash-
+    over-cargo build system, seven documents, a website for GitHub
+    Pages, and a vendor policy were written. The engine build ran a
+    6 GB virtual machine out of memory on bevy_ui; the build was
+    redesigned around memory (a `make warm` target, jobs sized from
+    RAM, a trimmed feature set, profiles without dependency debug
+    info). Three signed commits were pushed to github.com/treadcore/
+    treadcore. The crates above the simulation have not yet been
+    through the compiler; that is the first open problem.
+
+INDEX TERMS
+
+    real-time strategy, indirect fire, counter-UAS, telemetry link,
+    deterministic simulation, host election, Dijkstra, UDP, Bevy,
+    Cargo workspace, build memory, creation journal.
+
+
+I. INTRODUCTION
+
+    The question of the day was whether the idea survived contact with
+    a text editor: a four-player overhead tank game in which the tank
+    is a control centre that deploys technology around itself (drones
+    in the air; later, Pillboys on the ground), fires high-calibre
+    rounds at coordinates like artillery, and lives or dies by the
+    airspace it holds. Secondary questions: could four clients
+    negotiate their own server by forming a connectivity route, as the
+    brief asked; could the whole thing be Rust with Bevy; and could it
+    be built in the small virtual machine it is developed in.
+
+    The answers by evening: yes, yes, and not the way it was first
+    tried.
+
+II. BACKGROUND
+
+    A. The brief
+
+    Paul's brief, received at the start of the session, in substance:
+
+      1. A new kind of game, not yet made: a four-player multiplayer
+         map.
+      2. A server/client protocol; the clients negotiate who is the
+         server by forming a connectivity route.
+      3. The premise from modern logistics and the modern battlefield:
+         each tank's new job is calibrated high-calibre indirect fire,
+         and each tank runs a drone crew that defends it from drones,
+         as navies put anti-air on most ships. The tank's own drones
+         are the new game.
+      4. Research: battlefield technology upgrades, drones, battle
+         simulation visualisation, HUD overlay telemetry; telemetry
+         gives the tank an aircraft-carrier effect over the airspace
+         around it; a direct artillery hit still kills it.
+      5. Overhead RTS presentation built from that HUD description.
+      6. Rust with Bevy (or at least Rust); a build system of bash
+         scripts called from Makefiles; make configure, make build,
+         make debug with logs captured for AI-assisted development.
+      7. A pasted reference document on Bolo for the Macintosh [9]:
+         interface, AppleTalk ring networking, map editor, tutorial,
+         Brains, and a "WorldLab" proposal for a modern successor.
+
+    Later in the session the brief grew: the project is an "opening
+    project" of Paul's afternoon vision after the news; the game is a
+    new take on the RTS territory style with pillbox capturing, base
+    building and repairing, the tank as the control centre; drones in
+    addition to the Pillboys, the tech infantry of the tank's
+    personnel.
+
+    B. The environment
+
+      item                 value
+      -------------------  --------------------------------------
+      host                 Mac, UTM/QEMU
+      guest                Alpine Linux 3.24.1, aarch64, musl
+      kernel               6.18.52-0-lts
+      session              Hyprland on Wayland (wayland-1)
+      cpus                 4
+      memory               5912 MB; 2957 MB swap
+      rustc / cargo        1.98.1 (2026-09-01) / 1.98.1
+      display libraries    wayland-client 1.25.0, xkbcommon 1.13.1,
+                           alsa 1.2.15.3, libudev 251
+      linkers              clang only; no mold, no lld
+      cargo registry       wgpu 27, winit 0.30, tokio, quinn, serde
+                           already cached (from radbeeper and
+                           others); no bevy
+      sibling conventions  copal, radbeeper, birdshot: Makefile in
+                           front, scripts do the work, build/ for
+                           output, MIT, Paul Richeson <paulr@sdf.org>
+
+    C. Prior art consulted
+
+    Bolo [9]; Tiled and PyBolo as mentioned in the pasted document;
+    the trade and institutional reporting in Section III.B.
+
+III. METHOD
+
+    A. Order of operations
+
+    The order was chosen so that the slowest thing (compiling Bevy)
+    started first and the most certain thing (the simulation) was
+    proven before anything was built on it:
+
+      1. Check the toolchain and the machine.
+      2. Research in parallel with scaffolding.
+      3. Scaffold the workspace; start `cargo fetch` in the background.
+      4. Write and test the simulation.
+      5. Start the Bevy dependency build in the background.
+      6. Write proto, net, brain, server, build scripts, client, docs
+         while it ran.
+
+    Step 5 was the mistake of the day; see Section VI.
+
+    B. Research
+
+    Four web searches, extended mode, plus two follow-ups:
+    vehicle-mounted counter-drone systems 2025-2026; swarm HUD and
+    common operating picture; tanks in the indirect-fire role in
+    Ukraine; Bevy's current version; IronVision and crew displays;
+    vehicles operating their own interceptor drones. The results and
+    their URLs are in documentation/RESEARCH.md and in the References
+    below. One check was done on Bevy's version against crates.io
+    (`cargo search`): 0.20.0 current; 0.17 pinned anyway (Section
+    III.C).
+
+    C. Decisions, with the alternatives rejected
+
+      decision                     rejected                why
+      ---------------------------  ----------------------  -------------
+      Bevy pinned to 0.17          0.20 (current)          0.17 is the
+                                                           API known
+                                                           well enough
+                                                           to write
+                                                           without a
+                                                           compile-fix
+                                                           loop on a
+                                                           slow VM;
+                                                           bump later
+                                                           with the
+                                                           migration
+                                                           guide open
+      std::net UDP, no threads     tokio, quinn (cached)   one clock,
+                                                           the sim's;
+                                                           poll() from
+                                                           whoever owns
+                                                           the loop
+      bincode 1.x + serde          postcard, custom        known API,
+                                                           tiny
+      Vec<struct> entities with    ECS inside the sim      4 tanks, 40
+      linear lookup                                        drones: a
+                                                           linear scan
+                                                           beats a map
+                                                           and reads
+                                                           as what it
+                                                           does
+      host-authoritative, host     lockstep peer-to-peer   simpler
+      elected from a matrix                                recovery;
+                                                           relay where
+                                                           needed is
+                                                           Bolo's ring
+                                                           generalised
+      Rejections are events        Result<(), Error>       the reason
+                                                           reaches the
+                                                           HUD and the
+                                                           bot by the
+                                                           same channel
+                                                           as everything
+                                                           else
+      map as Vec<u8>               Vec<Terrain>            16 KiB on
+                                                           the wire in
+                                                           Welcome
+      hand-parsed CLI flags        clap                    forty lines,
+                                                           reads top to
+                                                           bottom, no
+                                                           dependency
+      everything drawn is a        sprites/assets          no third-
+      rectangle or a line                                  party art;
+                                                           the overlay
+                                                           is the look
+
+IV. CHRONOLOGY
+
+    Times are not recorded except where a command output carried one;
+    the order is exact.
+
+     1. Toolchain and machine checked (Section II.B). Sibling repos
+        inspected for conventions. Registry cache inspected: wgpu and
+        winit present from radbeeper's GUI crate; no bevy.
+
+     2. Web research issued in parallel with the scaffold (Section
+        III.B). `cargo search bevy` reported 0.20.0.
+
+     3. Workspace created at ~/code/treadcore: six crate manifests,
+        workspace dependencies, profiles. `cargo fetch` started in the
+        background; it completed (fetch exit 0) during step 4.
+
+     4. treadcore-sim written: lib.rs (world, entities, commands,
+        events, step, observe), rules.rs (every constant with a
+        sentence), map.rs (value noise, river, roads, A*). `cargo test`:
+        5 of 6 passed. The failure, every_start_can_reach_the_centre:
+        no route from the south start (64,118) to the centre.
+
+     5. Diagnosis: the road walk steps two-thirds of a tile, so a
+        bridge over a 3-tile river could be laid as a diagonal chain of
+        single tiles, which A* (correctly) refuses to cross corner-to-
+        corner. Fix: lay a plus of tiles at each water crossing. 6 of 6
+        passed. The test stays.
+
+     6. Bevy dependency build started in the background with `nice -n
+        10 cargo build -p treadcore-client` against a `fn main() {}`.
+        (See step 13.)
+
+     7. treadcore-proto written: Packet enum, magic + version framing,
+        snapshot splitting and reassembly. treadcore-net written:
+        transport.rs (non-blocking UDP, broadcast), election.rs (pure
+        Dijkstra election, four tests), lobby.rs (Discover / Probe /
+        Share / Decide state machine), session.rs (Host with
+        Option<Socket>, Client, RouteTable with relay; one loopback
+        test). A `cargo test` of proto and net was started and never
+        produced output: it was blocked on cargo's target-directory
+        lock behind the Bevy build. Not understood until step 13.
+
+     8. treadcore-brain written: Brain trait, run_bots, RuleBot
+        doctrine, JsonBrain over stdin/stdout, schema_examples; one
+        test (four bots fight to a result).
+
+     9. treadcore-server written: hand-parsed flags; run_local (bot
+        match, trace), run_net (lobby, then host or bot seat);
+        narrate() writes every event as a sentence with tick and
+        seconds; summary().
+
+    10. Makefile and scripts written: configure.sh (writes
+        build/config.env; every other script refuses to run without
+        it), build.sh, debug.sh (RUST_LOG=trace, backtraces, log and
+        JSON trace under build/logs), run.sh (solo/lan/host/seat),
+        lobby-test.sh (four peers on loopback, exactly one host).
+        `make configure` run: all libraries present, session wayland.
+
+    11. treadcore-client written: main.rs (args, App), session.rs
+        (Session enum, View, Orders; FixedUpdate at 20 Hz steps a
+        local host; Update polls), render.rs (16 384 tile sprites,
+        entity sprites by id, fog, gizmo overlay), hud.rs (four text
+        panels), input.rs (camera, click-to-drive via the sim's A*,
+        click-to-fire, keys 1/2/3/R/[/]/space).
+
+    12. Documents written: README.md, docs/DESIGN.md, docs/PROTOCOL.md,
+        docs/RESEARCH.md (with sources), LICENSE (MIT), docs/CNAME,
+        docs/index.html.
+
+    13. At 16:34 local the machine reported load average 4.59, 9.86,
+        16.59 (1, 5, 15 minutes). The Bevy build was at ~240 of ~500
+        crates. The test build from step 7 was still waiting on the
+        lock. The test task was then killed. A second test run was
+        started in a separate target directory to dodge the lock; a
+        monitor was armed on the Bevy build log.
+
+    14. Paul asked for a lab report on the code, the compile commands,
+        a break, and the builds cancelled. All cargo and rustc
+        processes were killed (a first attempt with `pkill -f cargo`
+        killed the invoking shell, since its command line contained
+        the word; the second used `pgrep -x`). documentation/LAB-
+        REPORT.md written. Repository links changed from vonglurt/
+        treadcore to treadcore/treadcore per Paul's note. The checker
+        flagged that bevy::prelude and treadcore_sim both export
+        Command and Event; fixed with explicit imports.
+
+    15. Paul asked: sign commits as paulr@sdf.org and push; a GitHub
+        Pages index; source/, documentation/ and vendor/ directories;
+        a document reviewing the original brief and the design as an
+        improvement on the base concept; the site styled as a
+        professional gilded tank command in green, white and gold
+        with high-contrast outlined text. Done: crates/ -> source/,
+        docs/ -> documentation/, vendor/ with README.txt and THIRD-
+        PARTY.md, index.html and CNAME at the root, index restyled,
+        documentation/CONCEPT.md written. `git init -b main`; user
+        and email set; commit signing configured with the SSH key
+        (gpg.format ssh, id_ed25519.pub, allowed_signers). First
+        commit made; signature verified good.
+
+    16. `git remote add` and `git push` were refused by Claude Code's
+        permission classifier ("Remote Repoint"). Paul said "git
+        push". The remote add then succeeded; the push was rejected
+        (fetch first): GitHub had created the repository with one
+        commit containing a LICENSE reading "Copyright (c) 2026
+        treadcore". Fetched, rebased onto it keeping the local LICENSE
+        ("Paul Richeson"), re-signed, pushed: e5eaad3..17c71d3.
+
+    17. Paul asked for a make target that builds a simple project with
+        the same prerequisites, a description of the build design,
+        and noted that the bevy_ui build ran out of RAM or became very
+        slow. Mid-work: "is it ram?" Answer: yes. Diagnosis and
+        redesign in Section VI. Trimmed feature set verified to
+        resolve offline with a throwaway manifest (368 crates vs 433).
+        treadcore-warm crate, [workspace.dependencies.bevy], profiles,
+        configure.sh jobs-from-memory, scripts/warm.sh, `make warm`,
+        documentation/BUILD.md. The checker flagged Brain needing
+        Sync for a Bevy resource; fixed (trait bound; Mutex around
+        JsonBrain's receiver). Commit 3a26432, pushed.
+
+    18. Paul asked for a web report on the day, framed as the opening
+        project of his afternoon vision after the news, and named the
+        Pillboys. reports/2026-10-12-opening-day.html written in the
+        site's style, linked from index.html; CONCEPT.md gained
+        Section 7 (Pillboys and pillboxes); commit 49cd8f9, pushed;
+        the report also published as a private page at
+        https://claude.ai/artifact/QLYEnhuw1hsQFLZ4xxBiBD. The checker
+        now reports only dead-code warnings for the client: it type-
+        checks against Bevy 0.17.
+
+    19. Paul asked for this journal: the conversation archived and
+        rewritten as a dated creation journal, part of the change-log
+        notes, with a template, in the IEEE/MIT academic structure
+        carried in the newsgroup/IRC/gopher plain-text form. This
+        entry, journal/README.txt, journal/TEMPLATE.txt, CHANGELOG.md.
+
+V. RESULTS
+
+    A. Files
+
+      crate / area                  files  approx. lines  compiled
+      ----------------------------  -----  -------------  -----------
+      source/treadcore-sim            3        1 050      yes, tests 6/6
+      source/treadcore-proto          1          210      no (cancelled)
+      source/treadcore-net            5          820      no
+      source/treadcore-brain          1          300      no
+      source/treadcore-server         1          330      no
+      source/treadcore-client         5          790      type-checks
+      source/treadcore-warm           1           40      no
+      scripts/                        7          300      shell, lint
+                                                          not yet run
+      documentation/                  7       ~1 100      n/a
+      vendor/                         2          ~90      n/a
+      index.html, reports/            2         ~300      n/a
+
+    B. Tests
+
+      test                                              result
+      ------------------------------------------------  --------
+      sim::deterministic                                pass
+      sim::interceptor_takes_station_and_launch_valid.  pass
+      sim::indirect_shell_flies_and_lands               pass
+      sim::swarm_meets_bubble                           pass
+      map::generation_is_deterministic_and_starts_dry   pass
+      map::every_start_can_reach_the_centre             fail -> pass
+      proto (2), net (5), brain (1)                     written, not run
+
+    C. The rules that carry the brief (from rules.rs)
+
+      quantity                          value
+      --------------------------------  ---------------------------
+      map                               128 x 128 tiles, 25 m/tile
+      tick rate                         20 Hz
+      indirect range                    12 to 60 tiles
+      shell speed (indirect / direct)   10 / 40 tiles/s
+      CEP spotted / blind               0.6 / 4.0 tiles
+      splash radius / damage            2.5 tiles / 70 (to 17 at edge)
+      bay                               2 recon, 6 interceptor, 3 strike
+      link range recon / other          40 / 18 tiles; floor 0.12
+      intercept P(kill) linked / dead   0.9 / 0.5
+      bubble default / min / max        5 / 2 / 12 tiles
+      swarm                             4 FPV every 45 s from an edge
+      depot capture / resupply          10 s / every 0.5 s
+
+    D. Build measurements
+
+      quantity                               value
+      -------------------------------------  ---------------------
+      Bevy crates, default features          433
+      Bevy crates, trimmed 2D set            368
+      rustc peak on bevy_ui / render / wgpu  ~1 to 1.5 GB each
+      cargo default jobs                     4 (= cpus)
+      jobs after redesign                    3 (from RAM)
+      target/ at ~240 of ~500 crates         3.7 GB
+      cached rlibs at cancellation           293 (invalidated by the
+                                             redesign; downloads kept)
+      load average at 16:34 (1/5/15 min)     4.59 / 9.86 / 16.59
+
+    E. Commits (signed, SSH, verified)
+
+      e5eaad3  Initial commit (GitHub, LICENSE only)
+      17c71d3  treadcore: four-player tank/drone arena, elected host,
+               Bevy client
+      3a26432  build: size the engine build for a 6 GB machine; make
+               warm
+      49cd8f9  reports: opening day; concept: Pillboys and pillboxes
+
+VI. DISCUSSION
+
+    A. The memory lesson
+
+    The engine build failed for a reason that is arithmetic, not
+    mystery. Cargo runs one rustc per CPU; Bevy's large crates each
+    want a gigabyte and a half at opt-level 3 with debug info; four at
+    once is more than the machine has; the kernel swaps; a swapping
+    compiler is slower than one compiler. The dev profile as first
+    written (dependencies at opt-level 3, Bevy's own recommendation
+    for desktop machines) made each rustc larger, and dependency debug
+    info made target/ 3.7 GB before the halfway point.
+
+    The redesign is four independent reductions: fewer jobs (sized
+    from RAM: min(cpus, (RAM - 1 GB) / 1.5 GB)), smaller crates (no
+    debug info for dependencies, opt-level 1 in dev), fewer crates
+    (default-features = false, the 2D set), and no LTO in release.
+    And one piece of structure: a crate that depends on exactly what
+    the window depends on, through a single [workspace.dependencies]
+    table, so the engine is built once by `make warm` and found, not
+    rebuilt, by everything after. Cargo's artifact cache is keyed on
+    (crate, version, features, profile, target); the shared table is
+    what makes the two resolutions identical.
+
+    B. The lock lesson
+
+    Two cargo invocations in one workspace do not run in parallel;
+    the second waits on the target-directory lock and prints a line
+    saying so, which was not seen because its output was redirected.
+    The "test that never finished" in step 7 was this. Rule: one cargo
+    at a time; never background one and start another.
+
+    C. What went right
+
+    Writing the simulation first and proving it with tests meant every
+    later crate was written against a known thing. The one bug the
+    tests found (the diagonal bridge) was a map-generation bug that
+    would otherwise have appeared as "the bot drove into a river" a
+    week later. The determinism test is the keystone: it is what makes
+    host authority honest and traces replayable.
+
+    The election as a pure function was the right call. It has four
+    tests that run in microseconds, and the lobby's correctness
+    reduces to "every peer called it with the same matrix", which is a
+    much smaller thing to get right than "every peer ran the same
+    distributed algorithm".
+
+    D. On the pair
+
+    The session was Paul directing and an AI pair writing. The pair
+    wrote most of the code and all of the first drafts of the
+    documents; Paul set the premise, the structure (source/,
+    documentation/, vendor/; the journal), the identity (paulr@sdf.org,
+    signed), the look (green, white, gold, outlined text), and the
+    names (treadcore, Pillboys). The permission system refused two
+    git actions (adding a remote, pushing) until Paul said "git push"
+    in so many words; that is the system working as intended, and the
+    journal records it so a reader does not wonder why the first push
+    is a separate step.
+
+VII. OPEN PROBLEMS
+
+    1. The crates above the simulation (proto, net, brain, server,
+       client, warm) have not been compiled. The client type-checks
+       in the editor's checker; the rest were written after the last
+       successful `cargo test` and before the builds were cancelled.
+       Expect a round of small fixes.
+    2. `make warm` has not been run to completion on this machine.
+       Whether 3 jobs fits in 6 GB with the new profiles is a
+       prediction, not a measurement.
+    3. Bevy 0.17 API assumptions in the client: Time::<Fixed>::
+       from_hz, AccumulatedMouseScroll, Projection::Orthographic,
+       viewport_to_world_2d returning Result, Gizmos::circle_2d
+       taking impl Into<Isometry2d>, Text/Text2d/TextFont/TextColor
+       components, LogPlugin filter field. All believed correct; none
+       yet compiled.
+    4. Whether wgpu finds a usable adapter in this VM (Mesa llvmpipe,
+       no virgl; radbeeper's GUI needed a software fallback). The
+       warm binary is the test.
+    5. Pillboys: control model undecided (a unit moved, or an order
+       given). Pillboxes, building, repair, territory: not designed
+       beyond CONCEPT.md Section 7.
+    6. Client-side prediction, NAT traversal, teams, map files, sound:
+       deferred (DESIGN.md).
+    7. scripts/ have not been shell-linted (`bash -n`, shellcheck if
+       present).
+    8. GitHub Pages is not yet enabled in the repository settings; the
+       CNAME and index are in place.
+
+VIII. NEXT STEPS
+
+    1. `make configure`; confirm jobs 3 and the swap line.
+    2. `make warm`; record wall time, peak memory (watch `free -m`),
+       and whether it swapped, for Journal 0002 Section V.D.
+    3. `make test`; fix what the compiler finds in proto, net, brain,
+       server. Then `cargo build -p treadcore-client`; fix the client.
+    4. `target/release/treadcore-warm`: does a window open.
+    5. `make debug`; read the trace for balance: time to first kill,
+       swarm leak rate, whether recon changes outcomes.
+    6. `make lobby-test`; then two machines on the LAN.
+    7. Enable Pages; check treadcore.org.
+    8. Decide the Pillboy control model; write it into DESIGN.md
+       before writing code.
+
+ACKNOWLEDGMENTS
+
+    Stuart Cheshire, for Bolo and for showing in 1989 that a world can
+    be playable, editable, networked and programmable at once. The
+    reporters and institutes cited below, for the facts the rules are
+    modelled on. The Bevy and Rust projects.
+
+REFERENCES
+
+    [1] Adapt Institute, "Future of the Russian tank forces," 9 Mar.
+        2026. [Online]. Available: https://www.adaptinstitute.org/
+        future-of-the-russian-tank-forces/09/03/2026/ [Accessed:
+        12-Oct-2026].
+    [2] UNITED24 Media, "China developing indirect fire capabilities
+        for tanks, following war in Ukraine trends." [Online].
+        Available: https://united24media.com/latest-news/china-
+        developing-indirect-fire-capabilities-for-tanks-following-war-
+        in-ukraine-trends-12491 [Accessed: 12-Oct-2026].
+    [3] Small Wars Journal, "Beyond the hype: why drones cannot
+        replace artillery," 5 May 2025. [Online]. Available: https://
+        smallwarsjournal.com/2025/05/05/beyond-the-hype-why-drones-
+        cannot-replace-artillery/ [Accessed: 12-Oct-2026].
+    [4] Militarnyi, "Interceptor drones integrated into Boxer armored
+        vehicle." [Online]. Available: https://militarnyi.com/en/news/
+        interceptor-drones-boxer-armored-vehicle/ [Accessed:
+        12-Oct-2026].
+    [5] Interesting Engineering, "Franco-German tank concept pairs
+        robotic wingmen with unmanned turret." [Online]. Available:
+        https://interestingengineering.com/innovation/armored-tank-
+        pairs-unmanned-turret-with-drone [Accessed: 12-Oct-2026].
+    [6] Hensoldt, "The future of the tank in the age of drones."
+        [Online]. Available: https://www.hensoldt.net/insights/future-
+        of-tanks-in-the-drone-era [Accessed: 12-Oct-2026].
+    [7] Elbit Systems, "IronVision." [Online]. Available: https://
+        www.elbitsystems.com/air-space/aircraft-systems/helmet-mounted-
+        display/ironvision [Accessed: 12-Oct-2026].
+    [8] Breaking Defense, "Bringing real autonomy to battlefield drone
+        swarms," Oct. 2026. [Online]. Available: https://
+        breakingdefense.com/2026/10/bringing-real-autonomy-to-
+        battlefield-drone-swarms/ [Accessed: 12-Oct-2026].
+    [9] S. Cheshire, "Macintosh Bolo instructions," as reproduced at
+        dialup.party and summarised in the reference document pasted
+        into the brief; and "Bolo (1989)," MobyGames. [Accessed:
+        12-Oct-2026 via the brief].
+   [10] Bevy Engine, "Bevy 0.17 released," 30 Sep. 2025. [Online].
+        Available: https://bevy.org/news/ [Accessed: 12-Oct-2026].
+   [11] Full source list: documentation/RESEARCH.md in this repository.
+
+APPENDIX A. COMMITS
+
+    e5eaad3  Initial commit
+    17c71d3  treadcore: four-player tank/drone arena, elected host,
+             Bevy client
+    3a26432  build: size the engine build for a 6 GB machine; make
+             warm
+    49cd8f9  reports: opening day; concept: Pillboys and pillboxes
+
+APPENDIX B. ARTIFACTS
+
+    Repository      https://github.com/treadcore/treadcore
+    Site            https://treadcore.org (Pages pending), index.html
+    Report          reports/2026-10-12-opening-day.html;
+                    https://claude.ai/artifact/QLYEnhuw1hsQFLZ4xxBiBD
+    Documents       documentation/{CONCEPT,DESIGN,PROTOCOL,RESEARCH,
+                    LAB-REPORT,BUILD}.md
+    Vendor policy   vendor/README.md, vendor/THIRD-PARTY.md
+    Build logs      build/fetch.log, build/bevy-warm.log (local only,
+                    gitignored)
+    Journal         journal/0001-2026-10-12-opening-day.txt (this)
+
+APPENDIX C. NOTE ON THE SOURCE OF THIS ENTRY
+
+    This entry was reconstructed the same day from the working session
+    between Paul Richeson and Claude Code. Per journal rule 10 the
+    conversation itself is not the record; this rewrite is. The
+    session transcript remains in the Claude Code project history on
+    the development machine and is not committed.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

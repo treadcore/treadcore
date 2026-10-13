@@ -1,0 +1,95 @@
+Newsgroups: treadcore.dev
+From: Author Name <author@example.org>
+Date: Day, DD Mon YYYY HH:MM:SS +0000
+Subject: [JOURNAL NNNN] Short title of the session
+Message-ID: <NNNN.YYYYMMDD@treadcore.org>
+In-Reply-To: <MMMM.YYYYMMDD@treadcore.org>        (omit for the first entry)
+Organization: treadcore.org
+Keywords: three, to, six, index, terms
+X-Session: where and with whom (machine, collaborators, tools)
+X-Commits: hash hash hash                          (short hashes, this session)
+
+                       TITLE OF THE SESSION IN CAPS
+
+                     Author Name, treadcore.org
+                           DD Month YYYY
+
+
+ABSTRACT
+
+    Four to eight sentences. What the session set out to do, what was
+    done, the main result as a number where there is one, and the one
+    thing learned.
+
+INDEX TERMS
+
+    term, term, term, term.
+
+
+I. INTRODUCTION
+
+    Why this session happened. What question it was answering. One or
+    two paragraphs.
+
+II. BACKGROUND
+
+    The state at the start: the open problems carried forward from the
+    previous entry [n], the constraints, the environment (machine, OS,
+    toolchain versions in a table).
+
+III. METHOD
+
+    How the work was approached. Order of operations and the reason
+    for it. Tools used. Alternatives considered and rejected, with
+    why.
+
+IV. CHRONOLOGY
+
+    Numbered steps in the order they happened. Each step: what was
+    done, what was observed, what was decided. Timestamps where they
+    are known; sequence where they are not. False starts included and
+    marked.
+
+    1. ...
+    2. ...
+
+V. RESULTS
+
+    What exists at the end that did not at the start. Tables: files
+    and their line counts; tests and their outcomes; measurements.
+
+VI. DISCUSSION
+
+    What the results mean. What worked and why. What did not and why.
+    The lesson, stated so the next person can apply it without
+    re-deriving it.
+
+VII. OPEN PROBLEMS
+
+    Numbered. Carried into the next entry's Background.
+
+VIII. NEXT STEPS
+
+    Numbered, in order, concrete enough to start without thinking.
+
+ACKNOWLEDGMENTS
+
+    Who and what helped.
+
+REFERENCES
+
+    [1] A. Author, "Title," Publisher, Date. [Online]. Available:
+        URL. [Accessed: DD-Mon-YYYY].
+
+APPENDIX A. COMMITS
+
+    hash  subject line
+    hash  subject line
+
+APPENDIX B. ARTIFACTS
+
+    Files, pages, logs produced, with paths or URLs.
+
+--
+Author Name <author@example.org>
+treadcore.org
