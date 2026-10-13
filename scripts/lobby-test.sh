@@ -85,24 +85,24 @@ for i in 1 2 3 4; do
     LOG="$LOGDIR/lobby-$STAMP-peer$i.log"
     grep -h 'lobby: decided' "$LOG" | sed "s/^/  peer$i: /" | sed 's/.*lobby: decided. //'
 done
-HOSTS="$(grep -l 'hosting:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
+HOSTS="$(grep -l 'hosting:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l | tr -d " ")"
 # A host alone is not a pass: the first run of this script "passed" while
 # every client sat in Joining because Welcome never fit the receive
 # buffer. Each of the three non-hosts must have been welcomed and seen
 # the match end.
-JOINED="$(grep -l 'welcomed as player' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
-ENDED="$(grep -l 'match over; winner' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
+JOINED="$(grep -l 'welcomed as player' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l | tr -d " ")"
+ENDED="$(grep -l 'match over; winner' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l | tr -d " ")"
 # The hash: the host logs its world hash at tick 1000 and carries it in
 # heartbeats; every client logs what it received. Four logs, one hash.
 HASHES="$(grep -h 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | sed 's/.*tick 1000: //' | sort | uniq -c | awk '{print $1":"$2}' | tr '\n' ' ')"
-HASH_LOGS="$(grep -l 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
-HASH_DISTINCT="$(grep -h 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | sed 's/.*tick 1000: //' | sort -u | wc -l)"
+HASH_LOGS="$(grep -l 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l | tr -d " ")"
+HASH_DISTINCT="$(grep -h 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | sed 's/.*tick 1000: //' | sort -u | wc -l | tr -d " ")"
 # Prediction (roadmap step 4): every client seat runs its own tank ahead
 # of the snapshots and checks it against them whenever none of its
 # orders is in flight. Each logs one line at the end; the mismatches
 # must be zero in all three.
 grep -h 'prediction:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | sed 's/.*prediction:/  prediction:/' || true
-PREDICTED="$(grep -l 'prediction:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
+PREDICTED="$(grep -l 'prediction:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l | tr -d " ")"
 MISMATCHES="$(grep -h 'prediction:' "$LOGDIR"/lobby-"$STAMP"-peer*.log | sed 's/.* \([0-9]*\) mismatches.*/\1/' | awk '{s+=$1} END {print s+0}')"
 echo "  hosts $HOSTS, welcomed $JOINED, saw the end $ENDED, hash at tick 1000 in $HASH_LOGS logs: $HASHES; prediction lines $PREDICTED, mismatches $MISMATCHES"
 # The introducer (roadmap step 7): with no beacon and no seed address,
@@ -111,7 +111,7 @@ echo "  hosts $HOSTS, welcomed $JOINED, saw the end $ENDED, hash at tick 1000 in
 INTRO_OK=1
 if [ "${INTRODUCER:-0}" = 1 ]; then
     INTRODUCED="$(cat "$LOGDIR"/lobby-"$STAMP"-peer*.log "$LOGDIR"/lobby-"$STAMP"-killed*.log 2>/dev/null | grep -c 'introduced to' || true)"
-    REGISTERED_HOST="$(grep -l 'registered as hosting' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
+    REGISTERED_HOST="$(grep -l 'registered as hosting' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l | tr -d " ")"
     echo "  introducer: $INTRODUCED introductions logged across the peers, host registered as hosting in $REGISTERED_HOST log"
     [ "$INTRODUCED" -ge 12 ] && [ "$REGISTERED_HOST" = 1 ] || INTRO_OK=0
 fi
@@ -124,7 +124,7 @@ if [ "${REJOIN:-0}" = 1 ]; then
     SEAT_BEFORE="$(grep -h 'welcomed as player' "$KILLED" | sed 's/.*welcomed as player \([0-9]*\) at tick \([0-9]*\).*/\1/' | head -1)"
     SEAT_AFTER="$(grep -h 'welcomed as player' "$AGAIN" | sed 's/.*welcomed as player \([0-9]*\) at tick \([0-9]*\).*/\1/' | head -1)"
     TICK_AFTER="$(grep -h 'welcomed as player' "$AGAIN" | sed 's/.*welcomed as player \([0-9]*\) at tick \([0-9]*\).*/\2/' | head -1)"
-    GIVEN_BACK="$(grep -h 'is back' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l)"
+    GIVEN_BACK="$(grep -h 'is back' "$LOGDIR"/lobby-"$STAMP"-peer*.log | wc -l | tr -d " ")"
     NO_ELECTION="$(grep -c 'is hosting and answers; joining it' "$AGAIN" || true)"
     echo "  rejoin: peer$VICTIM had seat ${SEAT_BEFORE:-none}, back in seat ${SEAT_AFTER:-none} at tick ${TICK_AFTER:-none}; host gave a seat back $GIVEN_BACK time(s); joined without an election: $NO_ELECTION"
     [ -n "$SEAT_AFTER" ] && [ "$SEAT_AFTER" = "$SEAT_BEFORE" ] && [ "${TICK_AFTER:-0}" -gt 200 ] && [ "$GIVEN_BACK" = 1 ] && [ "$NO_ELECTION" = 1 ] || REJOIN_OK=0
