@@ -27,6 +27,12 @@ playtesters until there are three.
   `-net`, `-brain`, `-client`, the window installed as `treadcore`);
   `cargo install treadcore-client`. README and the site say so and
   point at treadcore.org.
+- New: treadcore.org made over: an overview in the style of the
+  author's other project pages, with the guide's frames, and below
+  it a paper in the IEEE form: the rules with their numbers, a
+  balance review from eight traced matches on the candidate, the
+  network's test record, the game against the prior art, what is
+  real and what is not, fourteen references.
 - Everything under 2026-10-13 below is in this candidate.
 
 ## 2026-10-13, later still: sub-cubes, damage that chips, cubes that roll off

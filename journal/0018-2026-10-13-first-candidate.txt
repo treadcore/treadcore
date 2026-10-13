@@ -134,15 +134,38 @@ IV. CHRONOLOGY
         the release; the make list. index.html: How to play with
         four of the frames, the release line, crates.io. CHANGELOG:
         the candidate's section. This entry.
-     5. make release: (the run and its result, below).
-     6. The release commit, the tag v0.1.0-rc.1 signed with the ssh
-        key, make publish: (the result, below).
+     5. make release: every check passed on the second run (the
+        first found that busybox find has no -printf; stat instead).
+        The failure path tried by emptying a frame: refused, naming
+        the frame and the document that shows it.
+     6. The release commit c46e13d, the tag v0.1.0-rc.1 signed with
+        the ssh key, make publish: the five crates up in order, the
+        client last, in eleven minutes; crates.io shows the homepage
+        as treadcore.org. The tag pushed. main did not: a commit of
+        the morning's work had landed on origin from the share in
+        the meantime, and the merge is Paul's to run.
+     7. The site made over in radbeeper's presentation: a hero with
+        the frame, six facts, the overview with the guide's frames,
+        commands, the gallery, and below it the paper, laid out as
+        crabminer's: title block, abstract, index terms, eleven
+        sections in two columns, five tables, two figures, fourteen
+        references. The balance review for Table IV ran eight
+        traces on the candidate: three seeds, twelve defenders, four
+        teams, strict, four players, and a 900-second limit that
+        ended by last tank standing at 499 s. Two runs in the same
+        second overwrote each other's log (the stamp is a second);
+        the four-player run was done again alone.
 
 V. RESULTS
 
       measure                                value
       -------------------------------------  --------------------
       frames shot, cropped                   12
+      traces for the paper                   8 matches, 1 to 2 s each
+      kills by shell, three plain seeds       28 of 33
+      strikes through, all matches           5 to 13 %
+      the paper                              11 sections, 5 tables,
+                                             14 references
       guide                                  HOW-TO-PLAY.md, 200 lines
       release checks                         5 steps, 20-odd lines
       scripts/shoot.sh, release.sh           90, 80 lines
@@ -209,7 +232,7 @@ APPENDIX B. ARTIFACTS
     Guide           documentation/HOW-TO-PLAY.md
     Frames          reports/images/guide-*.png,
                     reports/images/MANIFEST-0.1.0-rc.1.txt
-    Site            index.html, "How to play"
+    Site            index.html: the overview and the paper
     Crates          https://crates.io/crates/treadcore-{sim,proto,
                     net,brain,client}
 
