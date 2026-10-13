@@ -12,8 +12,8 @@ history; journal 0002 has the chronology):
 
 | crate | lines | compiled | tests |
 | --- | --- | --- | --- |
-| treadcore-sim | ~2500 | yes | 14 pass (determinism, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, sixteen seats, map determinism, every start reaches the centre) |
-| treadcore-proto | ~240 | yes | 2 pass (round trip, snapshot split and reassembly) |
+| treadcore-sim | ~3000 | yes | 17 pass (determinism, hash follows state, a replay reproduces the world and a tampered one is caught, launch validation, shell flight, swarm vs bubble, a Move routed across the river, a pillbox kills a tank and routes bend round it, Pillboys capture a pillbox, the squad harvests, walls and mines, mines chain and shells clear them, sixteen seats, a world from a map file, map determinism, every start reaches the centre, a map survives the file round trip, bad map files are refused with a line) |
+| treadcore-proto | ~300 | yes | 3 pass (round trip, snapshot split and reassembly, big packets chunk and reassemble) |
 | treadcore-net | ~830 | yes | 5 pass (4 election, 1 loopback session) |
 | treadcore-brain | ~600 | yes | 3 pass (sixteen bots fight to a result; `pillboys_pay`: over twenty seeds, bots that capture pillboxes outscore and outlive the same doctrine without the squad; `fortification_pays`: a fortified depot outlives a bare one against a scripted attack) |
 
@@ -184,7 +184,12 @@ typed twice.
 
 ### 3.6 The map
 
-`map.rs`: a `Vec<u8>` of terrain, row-major, with `Terrain::from_u8`.
+`map.rs`: a `Vec<u8>` of terrain, row-major, with `Terrain::from_u8`,
+sized by the map (`w`, `h`): the generator makes 128 x 128, a map file
+declares its own `size`, and the converted Bolo maps are 256 x 256. The
+map is also a text file (`to_text`, `from_text`, documentation/MAPS.md):
+one glyph per tile and then the places, which any text editor edits.
+
 Since the evening of day one the world calls `route` itself when it
 applies a `Move`, keeps the waypoints on the tank, brakes the tank to a
 crawl for corners, and plans again from where it stands if water is in

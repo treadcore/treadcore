@@ -19,8 +19,13 @@ and `Cargo.lock` pins them. Their licences are listed in
 place. If the build ever needs to be fully offline, `cargo vendor
 vendor/crates` puts them in this directory under the same rules.
 
-Original Bolo artwork, sounds, maps and code are not vendored and will
-not be: treadcore draws rectangles and lines, generates its maps from a
-seed, and takes from Bolo only ideas. See documentation/RESEARCH.md.
+Original Bolo artwork, sounds and code are not vendored and will not
+be: treadcore draws rectangles and lines and takes from Bolo only
+ideas. Bolo *maps* are the one exception, made on 12 October 2026 at
+the author's direction: five community maps, converted to treadcore's
+own text format, live in `maps/bolo/` with their provenance in
+`THIRD-PARTY.md`, licence not established, removable on request. See
+documentation/RESEARCH.md and documentation/MAPS.md.
+
 
 Currently vendored: nothing.

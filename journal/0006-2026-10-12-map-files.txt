@@ -1,0 +1,298 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 12 Oct 2026 20:30:00 -0700
+Subject: [JOURNAL 0006] Map files, the editor that is any editor, and
+         five maps from the Macintosh: roadmap step 5
+Message-ID: <0006.20261012@treadcore.org>
+In-Reply-To: <0005.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: map-file, text-format, round-trip, BMAPBOLO, converter,
+          dynamic-size, chunked-welcome
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "start roadmap step 5", then "look at
+           ~/Downloads/SharedVM to find the .map files ... perhaps we
+           can use these as some default starting maps", then "adjust
+           to the map size 256", then "i'm wrong about the map size
+           requirement ... if it was dynamic sized, then file format
+           of map size should be destined size"
+X-Commits: 0d06c82
+
+        MAP FILES, THE EDITOR THAT IS ANY EDITOR, AND FIVE MAPS
+                FROM THE MACINTOSH: ROADMAP STEP 5
+
+                      Paul Richeson, treadcore.org
+                            12 October 2026
+
+
+ABSTRACT
+
+    Step 5 makes the map a text file: a format line, `size`, `seed`,
+    one glyph per tile, then `start`, `depot` and `pillbox` lines, so
+    any text editor is the editor. The loader refuses what it cannot
+    use and names the line; the writer and reader round-trip a
+    generated map to the bit. A scenario names its map as the
+    scenario's seed, another seed, or the text of a file carried
+    whole, so replays and Welcomes are self-contained. Mid-session
+    Paul produced five Macintosh Bolo maps (the BMAPBOLO binary
+    format); a converter was written, the maps turned out to be 256 x
+    256, and the world was made to take its size from the map after a
+    detour through making 256 the default and back. Welcome, now up to
+    130 KiB, goes in chunks. Sixteen bots play a converted Bolo map,
+    and on it the pillboxes fire: Bolo's roads give the router no way
+    round. Rejections on island maps (squads and tanks sent across
+    water) fell from @@REJ1@@ to @@REJ2@@ once the bot remembered what
+    the world refused. 28 tests pass.
+
+INDEX TERMS
+
+    map file, glyph, round trip, loader, MapSource, Bolo, BMAPBOLO,
+    run-length, converter, dynamic size, Chunk.
+
+
+I. INTRODUCTION
+
+    Pillboxes need placing by hand to be balanced; a seed cannot do
+    that. The roadmap put map files here, after the Pillboys and
+    before teams, for that reason. The session was meant to be the
+    format and its proof. It became, as well, the first contact with
+    the game's ancestor's own maps.
+
+II. BACKGROUND
+
+    Carried from 0005: forest regrowth, pillbox shells unused by bots,
+    pillboxes silent in bot play, the cross-machine replay, the window,
+    two machines. The spec's MAP-03 to MAP-06, MAP-09, MAP-10 say what
+    a map defines, what a loader repairs, and that a running map can
+    be saved.
+
+III. METHOD
+
+    Decisions, with the alternatives rejected:
+
+      decision                    rejected              why
+      --------------------------  --------------------  ----------------
+      one glyph per tile, places  JSON, or the binary   an editor is any
+      as lines                    cells                 editor; a diff
+                                                        is readable
+      floats printed shortest     one decimal           the round trip
+      (`{}`)                                            must be exact
+      the scenario carries the    a path               a replay or a
+      map file's text                                   Welcome on
+                                                        another machine
+                                                        has no file
+      MapSource::FromScenario-    Seed(u64) as the      `Scenario {
+      Seed as the default         default               seed, ..default }`
+                                                        must still vary
+                                                        the island; the
+                                                        proofs went
+                                                        wrong when it
+                                                        did not
+      the world takes its size    crop Bolo maps to     a one-tile road
+      from the map                128, or scale them    does not scale;
+                                                        the file says its
+                                                        size
+      default stays 128           256 everywhere        Paul: "I'm wrong
+                                                        about the map
+                                                        size"; the file's
+                                                        size is the
+                                                        destined size
+      Welcome in Chunks           drop the map from     a 65 KiB map does
+                                  Welcome, rebuild      not fit a
+                                  from the scenario     datagram; the
+                                                        chunk is generic
+      depot lines may say an      first-N rule only     Bolo's bases are
+      owner                                             neutral, and the
+                                                        file should be
+                                                        able to say so
+      starts moved to the         keep them at sea      no boats here
+      nearest land
+      Bolo maps in maps/bolo/     vendor/ rule: no      Paul's direction;
+      with provenance recorded    Bolo maps             provenance and
+                                                        the licence
+                                                        question written
+                                                        down, removable
+                                                        on request
+      the RuleBot remembers       let it re-order       791 refusals in
+      what the world refused as                         90 s on an island
+      unreachable                                       map
+
+IV. CHRONOLOGY
+
+     1. `map.rs`: `MapPillbox { pos, owner }`, glyphs, `to_text`,
+        `from_text` with `MapError { line, msg }`; tests for the round
+        trip and for refusals. `lib.rs`: `MapSource`, `Scenario.map`,
+        seats bounded by starts, `map_as_played`. Proto: Welcome
+        carries the `Map`; VERSION 6. Server: `--map`, `--save-map`,
+        `--write-map`; `make map`; `MAP=file`. Client: `--map`,
+        Welcome's map used as is. MAPS.md written.
+     2. Paul: look in ~/Downloads/SharedVM for .map files. Five there:
+        Constanine, Fido's Airstrip, FortressIsles2, FortressIslesX,
+        Godzilla. `BMAPBOLO` version 1: pills (5 bytes), bases (6),
+        starts (3), then run-length rows: a run is datalen, y, startx,
+        endx, nibbles; a nibble under 8 means that many plus one
+        literal terrains follow, 8 or more means the next nibble
+        repeats n - 6 times; a run with no data ends the map; tiles no
+        run covers are deep sea. One file ends its runs with 99 99 99
+        where the others use ff ff ff; any dataless run is taken as
+        the end.
+     3. A decoder in Python; the maps' land areas: 168 x 112 to 203 x
+        211 of the 256 grid. None fits 128.
+     4. Thirteen places assumed 128: swarm edges, the brains' clamps
+        and centres, the client's y flip and camera, a test, a log
+        line. All made to take the size from the map or the
+        observation (`Observation.map_w`, `map_h`, `centre()`,
+        `clamp()`); the client hangs the map below the x axis so no
+        height is needed. `DepotOwner` on map depots. `Chunk` packets
+        and `ChunkAssembler`; the host chunks Welcome; a proto test
+        sends a 16 KiB Welcome in pieces, out of order.
+     5. The converter, `scripts/bolo2map.py`: terrains mapped
+        (building to wall; shot building, crater, rubble, swamp to
+        rubble; river, sea, boat to water; mined to plain), owners
+        kept, bases as depots with owners said, starts moved to the
+        nearest passable tile by ring search.
+     6. Paul: "adjust to the map size 256 seems right." MAP_W and
+        MAP_H set to 256; the generator made size-relative (forest
+        frequency, river bounds, the centre ring). Four tests failed
+        for assuming 128 (a shot at the centre from a start is out of
+        range at 256; no forest within twenty tiles of a start; the
+        proof's squads found nothing within reach). Fixed to be size-
+        independent; a doctrine rule added so the RuleBot drives to a
+        pillbox worth capturing.
+     7. Paul: "i'm wrong about the map size requirement ... if it was
+        dynamic sized, then file format of map size should be
+        destined size." Default back to 128, with fractions that make
+        the generator bit-identical to day one at 128 (30/128,
+        98/128). The drive-to-pillbox rule removed: at 128 it sent the
+        bots wandering and the proof fell to 3 wins in 20.
+     8. The proofs still wrong: `pillboys_pay` 14:6, alive 35:40;
+        `fortification_pays` 144 000 vs 75 840. Cause: `Scenario {
+        seed, ..default }` now built the *default* map for every seed,
+        because `map` defaulted to `Seed(0x7EADC0DE)`. A third variant,
+        `MapSource::FromScenarioSeed`, is the default; the proofs
+        returned to 18:2 and 137 664 vs 94 885 exactly.
+     9. The five maps converted into `maps/bolo/`; each loads
+        (`--map`), 10 to 16 starts, 10 to 16 depots, 5 to 16
+        pillboxes. Godzilla, sixteen bots, 90 s: 21 pillbox shots and
+        a pillbox kill, the first in bot play; and 863 refused orders,
+        791 of them "site unreachable": squads ordered across water.
+        FortressIslesX, 60 s: 1 345 refusals, "unreachable" and
+        "water", tanks ordered across water four times a second.
+    10. The RuleBot reads its Rejected events: a pillbox the squad
+        cannot reach and a tile the tank cannot drive to stay refused.
+        @@STEP10@@
+    11. `make map` writes `maps/island.map`; `make convert BOLO=file`;
+        `make replay` on the Godzilla match: all checkpoints; lobby-
+        test: PASS, one hash. Documents, vendor notes, this entry.
+
+V. RESULTS
+
+    A. Tests: 28 pass (sim 17, proto 3, net 5, brain 3). New: map_
+       survives_the_file_round_trip, bad_map_files_are_refused_with_
+       a_line, world_from_a_map_file, big_packets_chunk_and_reassemble.
+
+    B. The converted maps
+
+      file                size     starts  depots  pillboxes  walls
+      ------------------  -------  ------  ------  ---------  -----
+      constanine          256x256  10      16      16         1 059
+      fidos-airstrip      256x256  16      16      5          826
+      fortressisles2      256x256  16      10      15         6 803
+      fortressislesx      256x256  16      12      16         7 361
+      godzilla            256x256  16      16      16         0
+      island (generated)  128x128  16      17      20         0
+
+    C. Godzilla, sixteen RuleBots, 90 game seconds
+
+      measure                      before memory   after
+      ---------------------------  -------------   -------
+      shells                       16              @@G_SHELLS@@
+      pillbox shots at tanks       21              @@G_PBF@@
+      tanks destroyed              11              @@G_KILLS@@
+      refused orders               863             @@G_REJ@@
+      replay file                  147 846 bytes
+      checkpoints matched          18 of 18
+
+    D. The proofs, unchanged from 0004 and 0005 once the map source
+       defaulted to the scenario's seed: pillboys_pay 18:2, 20 945 to
+       13 655, 37 to 32; fortification_pays 137 664 to 94 885, 18:5,
+       20:12.
+
+VI. DISCUSSION
+
+    Three lessons. First, the proofs caught a semantic change nobody
+    meant: giving `Scenario` a map source with a fixed default made
+    every seeded test play one island, and both twenty-seed proofs
+    moved. A default that follows the scenario's seed restored them
+    to the digit, which is also the evidence that the generator's new
+    size-relative arithmetic is bit-identical at 128.
+
+    Second, the file's size is the world's size. The detour to a 256
+    default was short and taught the right shape: constants are for
+    the generator; everything that runs takes the size from the map
+    it was given. The code that assumed 128 was thirteen lines and
+    all of it was wrong in the same way.
+
+    Third, the ancestor's maps make the pillbox fire. On the
+    generated island the router steers round every gun; on Bolo's
+    islands the road is the only way, and the first pillbox kill in
+    bot play happened on Godzilla without any change to the rules.
+    Backlog item 14 is still a design question for the generated map,
+    but it is answered for the hand-made ones, which is what maps
+    were for.
+
+VII. OPEN PROBLEMS
+
+    1. The bots' doctrine is written for 128: a 25-tile standoff and a
+       20-tile squad walk are small on 256; island maps refuse half
+       their objectives. A doctrine that reads the map's size and
+       routes round water (a route-reachability question to the
+       world, or a reachable-depots list in the Observation).
+    2. The client draws one sprite per tile: 65 536 on a Bolo map, to
+       be measured when the window opens.
+    3. The licence of the five Bolo maps is not established
+       (vendor/THIRD-PARTY.md).
+    4. Forest regrowth; the cross-machine replay; the window; two
+       machines.
+
+VIII. NEXT STEPS
+
+    1. Step 6, teams and alliances, then 6b, the proposal protocol.
+    2. A reachable-objectives answer for brains (open problem 1) as a
+       proposal with the Bolo traces as evidence.
+    3. Hand-edit one map (a defended `quarters`) now that the format
+       exists, and run the fortification proof on it.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the maps and for changing his mind about 256 in time;
+    the unnamed authors of Constanine, Fido's Airstrip, FortressIsles
+    and Godzilla.
+
+REFERENCES
+
+    [1] Journal 0005, <0005.20261012@treadcore.org>.
+    [2] documentation/MAPS.md; documentation/ROADMAP.md step 5.
+    [3] documentation/SPEC-WINBOLO-1.14.md, MAP-03 to MAP-10.
+    [4] The Bolo map file format, as read from the files and the
+        format's public description (BMAPBOLO version 1).
+
+APPENDIX A. COMMITS
+
+    0d06c82  sim, proto, net, server, client, brain: map files, any map
+             size, chunked Welcome, Bolo converter (roadmap step 5);
+             wire version 6
+    (next)   docs, vendor, journal: step 5 done; the Bolo maps'
+             provenance; journal 0006
+
+APPENDIX B. ARTIFACTS
+
+    Maps            maps/island.map; maps/bolo/{constanine,fidos-
+                    airstrip,fortressisles2,fortressislesx,godzilla}.map
+    Converter       scripts/bolo2map.py
+    Traces          build/logs/debug-20261012-20*.log (Godzilla,
+                    FortressIslesX, default) with replays beside them
+    Journal         journal/0006-2026-10-12-map-files.txt (this)
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

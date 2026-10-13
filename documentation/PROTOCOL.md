@@ -1,6 +1,6 @@
 # treadcore protocol
 
-Version 5. One UDP socket per process, default port 47296. Every datagram
+Version 6. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 
@@ -46,8 +46,20 @@ Host-authoritative. The host owns the world; clients send orders and
 receive their view.
 
 - `Join { peer, name }` from a client, repeated every 500 ms until
-  `Welcome { player, scenario, tick, map_cells }` or `Refuse`. `Welcome`
-  is one datagram of about 16.5 KiB (the map), which IP fragments on
+  `Welcome { player, scenario, tick, map }` or `Refuse`. `Welcome`
+  carries the whole `Map` as it is at that tick (cells, starts, depots,
+  pillboxes), not just the cells, because a map from a file is not
+  something a client can regenerate from a seed. Encoded, it is 17 KiB
+  for a generated map and over 130 KiB for a 256 x 256 map file (the
+  map, and the scenario's copy of the file's text), so it does not go
+  as one datagram: the host sends it as `Chunk { id, part, parts,
+  bytes }` pieces under `MAX_DATAGRAM`, a fresh `id` per Welcome, and
+  the client reassembles by id and decodes the whole. Any packet too big
+  for a datagram may travel this way. The pieces are unreliable like
+  snapshots: a lost one loses the Welcome, and the client's next `Join`
+  draws a fresh one. The old note stays true of the fragments of
+
+
   an Ethernet LAN and arrives; across the Internet, where fragments
   are often dropped, it will need splitting the way snapshots are
   (roadmap step 7). The receive buffer is 64 KiB for this reason: a

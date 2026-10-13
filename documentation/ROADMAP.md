@@ -70,8 +70,9 @@ is given.
 5. **The HUD's rtt is not an rtt.** The client shows snapshot tick
    minus last-heartbeat tick, which is mostly heartbeat age. Use the
    host's `rtt_ticks`, sent back in `Heartbeat`.
-6. **`Welcome` is one 16.5 KiB datagram.** Fine on a LAN, fragile on
-   the Internet; split it like snapshots before step 7.
+6. **`Welcome` is one 16.5 KiB datagram.** Done with step 5: any packet
+   too big for a datagram goes as `Chunk`s (PROTOCOL.md).
+
 7. **The strike is the kill.** In every trace so far the tanks die to
    strike drones (35 x 3 in the bay) after the rings are stripped, not
    to shells. If the premise is that the gun is the weapon, either
@@ -239,7 +240,28 @@ immediate and the mismatch log is empty on a straight road.
 
 ## 5. Map files and the editor
 
-**Reference.** SPEC MAP-03 to MAP-06, MAP-09, MAP-10: what a map
+**Done 12 October 2026 (journal 0006).** `Map::to_text` and
+`Map::from_text` (`documentation/MAPS.md`): a format line, `size`,
+`seed`, 128 rows of glyphs, then `start`, `depot` and `pillbox` lines;
+the loader refuses with the line and repairs an owner that is no seat.
+`Scenario.map: MapSource::Seed(u64) | Text(String)`, so a replay and a
+`Welcome` carry the map whole (wire version 6; `Welcome` sends the
+`Map`, not its cells). `World::map_as_played`; the server's `--map`,
+`--save-map`, `--write-map`; `make map`; `MAP=file` on debug, run and
+host. The world is built at the size the file declares (the generator
+makes 128, Bolo's maps are 256): swarm edges, the brains' clamps and
+the client's camera take it from the map, and `Welcome` is sent in
+`Chunk`s when the map does not fit a datagram (backlog item 6, done).
+`scripts/bolo2map.py` and `make convert` turn a Macintosh Bolo map
+(`BMAPBOLO` v1) into a treadcore map; five converted community maps
+ship in `maps/bolo/` (provenance in `vendor/THIRD-PARTY.md`). Proof:
+`generate(seed).to_text()` reads back equal for two seeds and writes
+back identical; a world built from a four-start file seats four of
+sixteen; sixteen bots play a 256 x 256 Bolo map through `make debug`.
+
+
+**Reference.**
+ SPEC MAP-03 to MAP-06, MAP-09, MAP-10: what a map
 defines, what a loader repairs, that a running map can be saved.
 
 **Change.** `treadcore-sim::map` gains `to_file` / `from_file`: a

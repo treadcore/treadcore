@@ -4,7 +4,40 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-12, night: map files (roadmap step 5), five Bolo maps
+
+Journal: [0006](journal/0006-2026-10-12-map-files.txt).
+
+- New: the map as a text file (`documentation/MAPS.md`): a format
+  line, `size`, `seed`, one glyph per tile, then `start`, `depot x y
+  [seat|neutral]` and `pillbox x y [seat|neutral]` lines. `Map::to_text`
+  and `Map::from_text` (refuses with the line; repairs an owner that is
+  no seat); `World::map_as_played`. `Scenario.map: MapSource` (the
+  scenario's seed, another seed, or a file's text carried whole).
+  Server `--map`, `--save-map`, `--write-map`; `make map`; `MAP=file`
+  on debug, run and host; the window's `--map`.
+- New: the world is built at the size the map declares. The generator
+  still makes 128 x 128 (bit-identical to day one); Bolo's maps are
+  256 x 256. `Observation` carries `map_w`, `map_h`; swarm edges, the
+  brains and the client take the size from the map.
+- New: `Packet::Chunk` for anything too big for a datagram; `Welcome`
+  (now the whole `Map`, up to 130 KiB with a map file) goes in pieces
+  (backlog item 6 done). Wire `VERSION` 6.
+- New: `scripts/bolo2map.py` and `make convert BOLO=file` turn a
+  Macintosh Bolo map (`BMAPBOLO` v1) into a treadcore map; five
+  community maps converted into `maps/bolo/` (provenance and the
+  licence question in `vendor/THIRD-PARTY.md`); `maps/island.map` is
+  the generated default written out.
+- Changed: the RuleBot remembers what the world refused as
+  unreachable (a squad's site, a tank's destination) instead of
+  re-ordering it four times a second, which island maps exposed.
+- Proof: a generated map round-trips through text to the bit;
+  sixteen bots play a converted Bolo map, on which pillboxes fire in
+  bot play for the first time. 28 tests pass; replay and lobby-test
+  pass.
+
 ## 2026-10-12, night: material, walls, mines, roads (roadmap step 6c)
+
 
 Journal: [0005](journal/0005-2026-10-12-material-walls-mines.txt).
 
