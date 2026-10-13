@@ -1,0 +1,491 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 12 Oct 2026 18:15:00 -0700
+Subject: [JOURNAL 0002] Proving the world: the compiler's verdict, three
+         bugs, a doctrine, sixteen seats, and the rules of the house
+Message-ID: <0002.20261012@treadcore.org>
+In-Reply-To: <0001.20261012@treadcore.org>
+Organization: treadcore.org
+Keywords: step-zero, udp, pathfinding, rule-bot, sixteen-players,
+          governance, release-cycle, bolo-builder
+X-Session: the same Alpine 3.24.1 aarch64 guest under UTM/QEMU, now
+           with 8192 MB; Hyprland/Wayland; Claude Code (Claude Fable
+           5.1) as the pair; Paul directing in four messages
+X-Commits: 49d6455 74fb4d2 4e3ddb8 94e0a90 ac5eb19 e02e912
+           c5cf40c
+
+          PROVING THE WORLD: THE COMPILER'S VERDICT, THREE BUGS,
+        A DOCTRINE, SIXTEEN SEATS, AND THE RULES OF THE HOUSE
+
+                      Paul Richeson, treadcore.org
+                            12 October 2026
+
+
+ABSTRACT
+
+    The second session ran ROADMAP step 0, "prove what exists", on the
+    code written in the first. The compiler accepted every crate first
+    time, including the Bevy client; the dev-profile engine finished
+    building as a side effect of `cargo test --workspace` in 4 min 28 s
+    on the VM, now 8 GB. The tests then found three bugs the compiler
+    could not: a UDP receive buffer too small for the Welcome packet
+    (no client could ever join), a straight-line Move that stopped at
+    the river (a bot parked on the bank for a whole match), and the
+    Makefile's SECONDS colliding with bash's own counter. The first
+    traced match was a twenty-second melee with no indirect fire; the
+    rule bot's doctrine was rewritten in four passes until a trace
+    showed the design: 15 shells, 13 of them spotted. Mid-session the
+    brief grew to sixteen players, mostly defenders, with alliances
+    and betrayal; sixteen seats were built the same evening and
+    sixteen bots fight a traced match in under a second. A requirement
+    that the Pillboys follow Bolo's builder was checked and written
+    into the design. The organization's rules (how to join, propose,
+    review, leave, be recognised) and the release cycle were written
+    down before a second contributor exists. The window does not open
+    in this VM: it has no Vulkan driver.
+
+INDEX TERMS
+
+    step zero, cargo test, UDP datagram truncation, A* routing,
+    rule-based doctrine, sixteen players, release candidates,
+    governance, Developer Certificate of Origin, Bolo builder.
+
+
+I. INTRODUCTION
+
+    Journal 0001 ended with eight open problems, the first of which was
+    that nothing above the simulation had been through the compiler.
+    ROADMAP step 0 says nothing else starts until that is closed. This
+    session set out to close it: build everything, run every test, run
+    the traced match and read it, run the four-peer lobby, open the
+    window; fix what those find; write down what was learned.
+
+    Paul's direction arrived in four messages during the session, each
+    enlarging it: read everything and recommend (the start); write the
+    roadmap's backlog, define the implementation and release cycle,
+    and set up the organization with its processes; take a pasted
+    audit of a Bolo tutorial as the requirement for the Pillboys and
+    report on it; and change the game to sixteen players, most of them
+    base-defence brains, with alliances, friendly fire off inside
+    them, and betrayals under a three-way balance. The session did the
+    first three in full and the mechanical part of the fourth; the
+    rest of the fourth is written into CONCEPT.md and the roadmap as
+    steps with proofs.
+
+II. BACKGROUND
+
+    A. Open problems carried from 0001
+
+      1. Crates above the sim uncompiled.          -> closed (V.B)
+      2. `make warm` unmeasured.                   -> dev profile built
+                                                      by the test run;
+                                                      release still open
+      3. Bevy 0.17 API assumptions in the client.  -> closed: compiles
+      4. wgpu adapter in this VM.                   -> answered: none
+                                                      (V.E); open to fix
+      5. Pillboy control model undecided.           -> decided (V.F)
+      6. Prediction, NAT, teams, maps, sound.       -> roadmap, with
+                                                      new steps
+      7. Scripts not shell-linted.                  -> closed: bash -n
+                                                      clean, no
+                                                      shellcheck here
+      8. GitHub Pages not enabled.                  -> still open
+
+    B. The environment
+
+      item                 value                      change from 0001
+      -------------------  -------------------------  ----------------
+      memory               7925 MB (8192 in UTM)      was 5912
+      swap                 2957 MB, 0 used all day    was filling
+      jobs (configure)     4                          was 3
+      rust-analyzer        not running                was 3 GB
+      rustc / cargo        1.98.1                     same
+      target/ at end       7.7 GB                     was 3.7 at half
+      disk free            22 GB                      -
+      Vulkan               loader only; no ICD        not yet known
+
+III. METHOD
+
+    Read everything first: the eleven documents, the journal, the web
+    report, every source file, the build logs from the first day. Then
+    the roadmap's step 0 in order, cheapest first: configure, test,
+    debug, lobby-test, the window. Fix each finding at the layer that
+    owns it, with a test that would have found it, and re-run the
+    proof. Write the record as the numbers came in.
+
+    Decisions, with the alternatives rejected:
+
+      decision                      rejected               hy
+      ----------------------------  ---------------------- ----------
+      the world routes a Move       give Brains and the     the obser-
+      (A* in `apply`, waypoints     client the map and      vation has
+      on the tank)                  let them route          no map and
+                                                            should not
+                                                            (16 KiB);
+                                                            one router,
+                                                            one truth
+      brake to a crawl for corners  4-connected A* with     diagonals
+      and re-plan when blocked      axis-aligned legs       look right;
+                                                            the brake is
+                                                            a momentum
+                                                            model Bolo
+                                                            also has
+      sixteen seats the default     keep four, allow        Paul: "abso-
+      everywhere                    sixteen                 lutely"; a
+                                                            4-bot game on
+                                                            16 starts is
+                                                            depot-
+                                                            collecting
+      rename SECONDS to             unset SECONDS in bash   special vars
+      GAME_SECONDS                                          cannot be
+                                                            un-specialed
+      bot patience drawn per bot    a fixed patience        four bots
+      from its seed                                         advanced on
+                                                            the same tick
+                                                            and met in
+                                                            the middle
+      DCO sign-off, no CLA          a contributor licence   MIT project;
+                                    agreement               the sign-off
+                                                            is enough and
+                                                            is in git
+      release confirmed by three    maintainer's word       the brief
+      playtesters, one not a                                asked for
+      maintainer                                            "user testing
+                                                            confirmed"
+      Pillboys = Bolo's builder,    a unit the player       the tank is
+      an order the tank gives       drives                  the one thing
+                                                            driven; the
+                                                            audit says
+                                                            that is Bolo
+                                                            too
+      write the vision (defenders,  start coding it         roadmap rule:
+      alliances, betrayal) as                               replay and
+      roadmap steps with proofs                             hash first
+
+IV. CHRONOLOGY
+
+     1. Read all files (8 400 lines excluding Cargo.lock). Found in the
+        reading, before running anything: the receive buffer (2 048
+        bytes against a Welcome of ~16.5 KiB), the client pushing only
+        the first A* waypoint, the rule bot unable to route at all, the
+        duplicate event filters in sim and net, the HUD's "rtt" being
+        heartbeat age.
+
+     2. `make configure`: 7925 MB, 4 jobs, swap 2957 MB free. The VM
+        had been given 8 GB since 0001.
+
+     3. `make test` (cargo test --workspace): built the remaining ~170
+        engine crates and every game crate, 4 min 28 s wall, 13 min 6 s
+        CPU, swap untouched. The client compiled against Bevy 0.17.3
+        with three dead-code warnings and no errors. The first test
+        binary to run, treadcore-brain, failed ("bots never fired: 3")
+        and cargo stopped there.
+
+     4. `cargo test --no-fail-fast` on sim, proto, net: sim 6/6, proto
+        2/2, net 4/5. `loopback_session` failed: client state Joining,
+        not Playing. The receive buffer, as read.
+
+     5. `make debug`: the trace header said `--seconds 208` for a
+        Makefile default of 180: SECONDS is bash's own counter, and the
+        exported value was the base it counted up from during the 28 s
+        build. Match: three bots drove straight to the centre depot at
+        4 tiles/s, arrived together at 16 s, and killed each other with
+        direct fire and strikes by 22 s; the fourth, east, drove 4
+        tiles west and stopped at (114, 64), the river bank beside the
+        bridge, for the whole match, and died to the second swarm at
+        99.8 s with its bay empty. 4 shells, all direct; 22 intercepts
+        in 20 s as the two overlapping bubbles annihilated each other.
+
+     6. Fixes: recv buffer 65 536; GAME_SECONDS; `apply(Move)` calls
+        `map.route`, `Tank.route: Vec<V2>`, `step_tanks` follows; the
+        client sends the destination; proto VERSION 2; a sim test that
+        drives east to the centre.
+
+     7. The new test failed: tank stopped at (115.6, 62.1) with no
+        waypoints: it reached the first corner but swung two tiles wide
+        turning onto the one-tile bridge and touched water, and the
+        step treated water as "give up". Added `TURN_BRAKE_ANGLE` /
+        `TURN_CRAWL` (pivot at a quarter speed when the heading error
+        is over 0.6 rad) and re-planning from the current position when
+        blocked. Test passes; loopback passes.
+
+     8. Rule bot rewritten (pass 1): objective = nearest depot not mine;
+        firing position 25 tiles short of it; recon over the objective
+        once stationary; indirect fire with lead; keep out of direct
+        range; advance after 20 s of nothing. Trace: four bots took
+        their positions at 10 s, saw nothing, all advanced at 30 s,
+        melee at 42 s. 5 shells, 0 indirect.
+
+     9. Pass 2: patience drawn per bot from its seed (10 to 50 s).
+        Trace: 6 shells, 2 indirect; still three dead to strikes by
+        77 s. The recon link read 91-96 % all match: the recon was over
+        the tank, not the objective, because the first think happens
+        before the first Move and "stationary" was true at the start.
+
+    10. Pass 3: a recon is launched only after a second settled. Trace:
+        15 shells, 13 spotted, 40 intercepts, 13 missed, 2 strike hits,
+        1 kill, 2 captures, match to the 180 s limit. Recon drones shot
+        over enemy bubbles, as the rules say. The brain test passes.
+
+    11. Documents written: GOVERNANCE.md, RELEASE.md, CONTRIBUTING.md,
+        CONTRIBUTORS.md, .github templates and CODEOWNERS; DESIGN.md's
+        Pillboys decision; LAB-REPORT-PILLBOYS.md; PROTOCOL.md and
+        BUILD.md notes; ROADMAP step 0 status and backlog.
+
+    12. `make lobby-test`, with a stronger assertion (three welcomed,
+        three saw the end): hosts 1, welcomed 3, ended 4. The host's
+        own summary also says "match over"; the grep was wrong, the
+        protocol right. 3 min 30 s wall: GAME_SECONDS had reached the
+        lobby script too. Split off LOBBY_SECONDS, 60 by default.
+
+    13. Paul: sixteen players. MAX_PLAYERS 16; sixteen starts (sides,
+        corners, the eight between), a depot each, a ring road and four
+        spokes; seats named for their starts; --players and PLAYERS.
+        Tests: `sixteen_seats`, `every_start_can_reach_the_centre` on
+        three seeds. Sixteen-bot trace: 62 shells, 128 intercepts, 12
+        strike hits, 10 kills, 8 captures, 4 008 log lines, under a
+        second of wall time. The four-bot brain test failed (4 shells):
+        twelve free depots to collect. Sixteen made the default; the
+        test seats sixteen.
+
+    14. lobby-test with sixteen seats: welcomed 3, saw the end 1. A
+        race: the final snapshot (bigger now, several datagrams) and
+        the host's Leave arrive in one poll; the client judged Lost
+        before reading the snapshot. Client reads first; host waits a
+        second before Leave. PASS: hosts 1, welcomed 3, saw the end 3.
+
+    15. The window: `cargo build -p treadcore-warm -p treadcore-client`
+        linked in 25 s (130 MB and 112 MB dev binaries). treadcore-warm
+        panics in bevy_render: no adapter. wgpu's Vulkan backend finds
+        no surface extensions; `/usr/share/vulkan/icd.d` does not
+        exist; `apk info` shows vulkan-loader and Mesa GL/EGL but no
+        Vulkan driver. `WGPU_BACKEND=gl` panics the same way. The fix
+        is `doas apk add mesa-vulkan-swrast`, not run (root).
+
+    16. `bash -n` on every script: clean. No shellcheck on the machine.
+
+    17. Six commits (Appendix A), this entry, CHANGELOG.
+
+V. RESULTS
+
+    A. Files changed this session
+
+      area                                 files  lines +/-  (approx)
+      -----------------------------------  -----  -------------------
+      source/treadcore-sim                   3      +190 / -30
+      source/treadcore-net                   1      +9 / -1
+      source/treadcore-proto                 1      +1 / -1
+      source/treadcore-brain                 1      +110 / -60
+      source/treadcore-server                1      +40 / -10
+      source/treadcore-client                4      +30 / -15
+      Makefile, scripts/                     4      +25 / -8
+      documentation/ (existing six)          6      +260
+      documentation/ (new: GOVERNANCE,       3      +510
+        RELEASE, LAB-REPORT-PILLBOYS)
+      CONTRIBUTING, CONTRIBUTORS, .github    8      +130
+      README, index.html, CHANGELOG          3      +45 / -10
+
+    B. Tests
+
+      crate              tests  result        new this session
+      -----------------  -----  ------------  -------------------------
+      treadcore-sim        8    8 pass        move_is_routed_across_
+                                              the_river, sixteen_seats;
+                                              every_start... now 3 seeds
+      treadcore-proto      2    2 pass
+      treadcore-net        5    5 pass        loopback_session: fail ->
+                                              pass (recv buffer)
+      treadcore-brain      1    1 pass        fail -> pass (doctrine);
+                                              now sixteen bots
+      lobby-test           -    PASS          assertion strengthened
+
+    C. The traces, in order
+
+      trace  seats  shells (indirect)  intercepts  strikes  kills  end
+      -----  -----  -----------------  ----------  -------  -----  -----
+      1      4      4 (0)              22          9        3      100 s
+      2      4      5 (0)              19          6        3       46 s
+      3      4      6 (2)              31          7        3       77 s
+      4      4      15 (15, 13 spot)   40          2        1      180 s*
+      5      16     62                 128         12       10     180 s*
+      * time limit
+
+    D. Build measurements
+
+      quantity                                     value
+      -------------------------------------------  ----------------
+      cargo test --workspace, cold engine (dev)    4 min 28 s wall,
+                                                   13 min 6 s user
+      jobs                                         4
+      swap used, whole session                     0
+      link treadcore-warm + treadcore (dev)        25 s
+      dev binaries: treadcore / treadcore-warm     130 MB / 112 MB
+      target/ at end of session                    7.7 GB
+      sixteen-bot match, 180 game s                < 1 s wall
+      lobby-test, 60 game s at 20 Hz               ~80 s wall incl.
+                                                   release link
+
+    E. The window
+
+      wgpu backend   result
+      -------------  ----------------------------------------------
+      vulkan         loader present, no ICD directory, no driver:
+                     "unable to find a GPU" panic in bevy_render
+      gl             same panic
+      fix            mesa-vulkan-swrast (lavapipe); needs root
+
+    F. Decisions written into the design
+
+      DESIGN.md "Pillboys and pillboxes: the decision"; CONCEPT.md
+      section 9 "sixteen tanks, most of them digging in"; ROADMAP steps
+      0b, 6b (proposal protocol, three-way rule), 6c (material, walls,
+      mines, roads), 6d (defender brain); a backlog of eight items.
+
+VI. DISCUSSION
+
+    A. The compiler was not the problem
+
+    0001 predicted "a round of small fixes" when the upper crates met
+    the compiler. There were none: every crate compiled first time,
+    the client included. The three bugs were all in the gap between
+    "compiles" and "works", and each was found by exactly the kind of
+    proof the roadmap asked for: a unit test over loopback, a trace
+    read by a person, a trace header read by a person. The lesson is
+    the roadmap's own: do not start the next step until the proof of
+    this one has been run, because the proofs find different things
+    from the compiler.
+
+    B. A truncated datagram is silent
+
+    `recv_from` into a small buffer does not fail; it returns the first
+    N bytes and throws the rest away, and bincode then fails on a
+    length it cannot satisfy, which the transport logs at trace and
+    counts as a dropped packet. Nothing above it ever saw a Welcome.
+    The buffer is now the UDP maximum. The general rule: a receive
+    buffer is sized to the protocol's largest message, never to a
+    "reasonable" number.
+
+    C. One router
+
+    The simulation moved in straight lines and left routing to the
+    caller, and neither caller could do it: the client pushed one
+    waypoint and forgot the rest, and a Brain has no map at all. The
+    fix was to move the routing down into the world, where the map is,
+    and it made both callers simpler. It also exposed a second bug the
+    first was hiding (the turn radius at a bridge), which is the usual
+    shape of a fix at the right layer.
+
+    D. A doctrine is tuned by reading
+
+    Four passes over the rule bot, each a one-trace diagnosis: they all
+    drive to the centre; they all advance at once; the recon is over
+    the tank; the test counts four bots on a sixteen-start map. The
+    per-second state lines in the trace (position, bay, link
+    percentages) did the diagnosing; the recon link reading 91 % was
+    the whole clue in pass 2. The trace format earned its keep today.
+
+    E. Sixteen cost an evening
+
+    Because the world was plain data and the map a function of a seed,
+    sixteen seats were a constant, sixteen points, a ring road, a
+    naming function and two tests. The cost of the day-one decision
+    to keep the sim plain is being repaid.
+
+    F. Rules before people
+
+    The governance and release documents are written for an
+    organization of one. That is deliberate: the processes are
+    cheapest to write when nobody is waiting on them and no case is
+    pending, and the second contributor should find them, not
+    negotiate them.
+
+VII. OPEN PROBLEMS
+
+    1. The window in this VM: install mesa-vulkan-swrast (root), run
+       treadcore-warm, then `make run`. Or develop the window on a
+       machine with a GPU.
+    2. The release-profile engine: `make warm` for release has never
+       completed; `make run` will build it (long) the first time.
+    3. Two machines on a LAN: not tested.
+    4. The backlog (ROADMAP.md): interceptors fighting interceptors,
+       tank speed, drone retasking, repeated rejections, the HUD's rtt,
+       the Welcome datagram, the strike as the kill, a match report.
+    5. Pillboys, material, alliances, proposals, the defender brain:
+       designed, not built; wait on steps 1 and 2.
+    6. GitHub: Pages not enabled; the organization's teams, branch
+       protection and Discussions categories that GOVERNANCE.md names
+       do not exist yet.
+    7. The web report for this session (reports/) is not written; the
+       release ceremony will want one at 0.1.
+
+VIII. NEXT STEPS
+
+    1. `doas apk add mesa-vulkan-swrast`; `target/debug/treadcore-warm`.
+    2. `PROFILE=release make warm`, measured; then `make run` with
+       sixteen bots and look at the overlay.
+    3. Set up the GitHub organization as GOVERNANCE.md section 2 says:
+       teams, branch protection on main, CODEOWNERS live, Discussions.
+    4. Enable Pages; check treadcore.org and the documents list.
+    5. Roadmap steps 1 and 2: Replay and World::hash. Tag v0.1.0-rc.1
+       when step 0 closes (RELEASE.md), the first monument.
+    6. Backlog item 1 (interceptor vs interceptor) as the first
+       proposal through the proposal process, with traces.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the direction, the number sixteen, and the Pillboys. The
+    author of the Bolo tutorial audit, whose corrections became the
+    Pillboy requirement. Stuart Cheshire, again.
+
+REFERENCES
+
+    [1] Journal 0001, <0001.20261012@treadcore.org>, this directory.
+    [2] documentation/ROADMAP.md, step 0 and the backlog.
+    [3] documentation/LAB-REPORT-PILLBOYS.md and the audit it cites:
+        the Bolo manual at dialup.party/~jolo/bolo/guides/bolomanual/
+        [Accessed via the pasted audit, 12-Oct-2026].
+    [4] Linux recvfrom(2): "If a message is too long to fit in the
+        supplied buffer, excess bytes may be discarded depending on
+        the type of socket the message is received from." [Accessed:
+        12-Oct-2026, man-pages].
+    [5] Bash Reference Manual, 5.2 Bash Variables, SECONDS. [Accessed:
+        12-Oct-2026].
+
+APPENDIX A. COMMITS
+
+    49d6455  net: 64 KiB receive buffer; lobby-test asserts clients
+             joined and saw the end
+    74fb4d2  build: GAME_SECONDS, not SECONDS; PLAYERS=n for debug, run,
+             host
+    4e3ddb8  sim: Move is routed and follows waypoints; sixteen seats;
+             wire version 2
+    94e0a90  brain: firing position, recon over the objective, patience
+             per bot
+    ac5eb19  docs: the Pillboys decision, the backlog, sixteen tanks; lab
+             report on the Bolo audit
+    e02e912  governance: how the organization is run; the release cycle;
+             GitHub templates
+    c5cf40c  build: shellcheck directives for the sourced common.sh
+    (next)   journal: 0002, proving the world; CHANGELOG
+
+APPENDIX B. ARTIFACTS
+
+    Traces          build/logs/debug-20261012-17*.log (the four-bot
+                    passes) and debug-20261012-18*.log (sixteen bots),
+                    with trace-*.jsonl beside each (local, gitignored)
+    Lobby logs      build/logs/lobby-20261012-18*-peer{1,2,3,4}.log
+    Documents       documentation/{GOVERNANCE,RELEASE,LAB-REPORT-
+                    PILLBOYS}.md (new); DESIGN, CONCEPT, ROADMAP,
+                    PROTOCOL, BUILD, LAB-REPORT (changed)
+    Organization    CONTRIBUTING.md, CONTRIBUTORS.md, .github/
+    Journal         journal/0002-2026-10-12-proving-the-world.txt (this)
+
+APPENDIX C. NOTE ON THE SOURCE OF THIS ENTRY
+
+    Reconstructed the same evening from the working session between
+    Paul Richeson and Claude Code, per journal rule 10. The transcript
+    is not the record; this is.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
