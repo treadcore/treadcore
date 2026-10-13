@@ -86,13 +86,18 @@ and everyone else plays with `INTRODUCER=that.host:47296 BEACON=0 make
 lan` (or `host`, `seat`). The peer id lives in `build/identity`, so a
 player whose game drops gets the same seat back by starting again.
 
-Controls are on screen (Tab hides them). Left click drives (the world
-routes around water, over bridges and round hostile pillboxes), right
-click fires, 1/2/3 launch interceptor / recon / strike, R recalls, 4
-sends the Pillboys to capture or repair the pillbox under the cursor,
-5 to build one there, 6 brings them home, 7/8/9 wall, mine and road
-(a bridge on water) at the cursor, 0 harvests the forest there, [ ]
-set the bubble.
+The orders are the column on the left of the screen, with what each
+costs and whether it can be given now. Left click drives (the world
+routes around water, over bridges and round hostile pillboxes); hold
+the right button to see the gun's reach and release to fire; 1/2/3
+launch interceptor / recon / strike, R recalls, 4 sends the Pillboys
+to capture or repair the pillbox under the cursor, 5 to build one
+there, 6 brings them home, 7/8/9 wall, mine and road (a bridge on
+water) at the cursor, 0 harvests the forest there, [ ] set the bubble.
+F or Return follows the tank, the apostrophe steps through your
+pillboxes, Tab shows the events. The screen is laid out as the prior
+art's was (`documentation/INTERFACE.md`); what still stands between
+the build and a game a stranger can play is `documentation/PLAYABILITY.md`.
 
 
 ## The debug trace
@@ -169,7 +174,8 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
 - [documentation/LAB-REPORT-PILLBOYS.md](documentation/LAB-REPORT-PILLBOYS.md): the Pillboy requirement checked against the prior art's builder, and what was decided.
 - [documentation/LAB-REPORT-PLAYTEST.md](documentation/LAB-REPORT-PLAYTEST.md): the first playtest build, with pictures: the window on a CPU rasteriser, a three-client match through the introducer, the multiclient explained, nine findings.
-- [documentation/INTERFACE.md](documentation/INTERFACE.md): what Bolo, a garage screen and the military HUD graphics put on the screen, and treadcore's layout drawn from them.
+- [documentation/INTERFACE.md](documentation/INTERFACE.md): what Bolo, a garage screen and the military HUD graphics put on the screen, and treadcore's layout drawn from them; built 13 October.
+- [documentation/PLAYABILITY.md](documentation/PLAYABILITY.md): the review of what stands between the build and a playable game, ranked and costed, with Bolo's interface elements checked off one by one.
 - [documentation/SPEC-PRIOR-ART-1.14.md](documentation/SPEC-PRIOR-ART-1.14.md): the clean-room functional specification of the prior art, version 1.14 that the prior-art-derived steps cite, with a preface on what treadcore adopts.
 - [documentation/MAPS.md](documentation/MAPS.md): the map file format; any text editor is the editor.
 

@@ -4,6 +4,37 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## 2026-10-13, evening: the frame (the GUI redesign), and the playability review
+
+Journal: [0014](journal/0014-2026-10-13-the-frame.txt).
+
+- Changed: the window's HUD is the prior art's frame
+  (`INTERFACE.md`, SPEC section 13): a top strip (who, when, NET), an
+  orders column on the left with every key, its count or cost and a
+  dash when it cannot be given, the map in the middle never covered,
+  the roster with one lamp per pillbox and per depot on the right,
+  and shells, bay, squad and material as lamps, armor and fuel bars,
+  the air table and a two-line newswire along the bottom. The
+  controls overlay is gone; Tab shows a forty-line events scrollback
+  over the map. Lamps are ASCII: `#` lit, `.` dark; `#` mine, `+`
+  ally, `o` neutral, `X` hostile, `.` dead.
+- New: the lobby screen (the peers found with their measured round
+  trips, how the host is chosen, the first minute in six lines) and
+  the match-over screen (the roster by score, Esc to leave).
+- New: the gun's envelope lights while the right button is held and
+  the shot goes on release; the direct-fire ring with it.
+- New: the pillbox view (SPEC UI-10 to UI-13, backlog 12): the
+  apostrophe steps through the player's and allies' pillboxes, Return
+  or F returns to the tank. The camera follows the tank into the
+  middle of the map area, not the window; clicks on a panel are not
+  orders.
+- New: `--seconds N` on the window. Events after a rejoin are stamped
+  with the last tick seen, not 0.
+- New: `documentation/PLAYABILITY.md`, the review: fourteen items
+  between this build and a playable game, ranked and costed; Bolo's
+  interface elements checked off; what the frame still wants.
+- New: four frames of the frame in the gallery (playtest-10 to 13).
+
 ## 2026-10-13, later: the first playtest build, with pictures
 
 Journal: [0013](journal/0013-2026-10-13-first-playtest.txt). Report:

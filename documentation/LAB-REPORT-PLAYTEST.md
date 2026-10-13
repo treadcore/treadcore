@@ -58,7 +58,9 @@ and the roster, eight seats, a depot strip. The map: the ring road,
 the spoke south, the home depot in team colour, the neutral pillboxes
 with their 8-tile rings in red, the eight nearest forest tiles in
 green, the fog beyond the tank's 5-tile vision. The controls overlay
-was still up here; Tab hides it.
+was still up here; Tab hid it. This frame is of the HUD as it was that
+morning; the frame it became by evening is the first picture in the
+gallery (`INTERFACE.md`, journal 0014).
 
 ![bubble and recon](../reports/images/playtest-02-bubble-and-recon.png)
 

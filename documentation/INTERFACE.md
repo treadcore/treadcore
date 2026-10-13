@@ -200,3 +200,14 @@ pillbox jump, `session.rs` for the lobby and match-over screens.
 
 Each step is a window change, and now that the window opens here,
 each can be seen.
+
+**Built the same day** (journal 0014; `hud.rs`, `input.rs`): all five,
+with these departures from the drawing above. The orders are a dash in
+the margin when they cannot be given, not a lamp, because the frame is
+one ink (colour per run is PLAYABILITY.md section 4's first item). The
+pillbox jump is the apostrophe, Bolo's own key, and Return or F is the
+tank view. The gun's annulus lights while the right button is held and
+the shot goes on release. The newswire is two lines; the scrollback
+holds forty. The frame's widths are 132, 268, 44 and 84 pixels. The
+frames are in the gallery, and what the frame still wants is in
+PLAYABILITY.md section 4.

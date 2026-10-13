@@ -51,6 +51,8 @@ pub struct Args {
     pub beacon: bool,
     /// A file holding this peer's id across restarts (`--identity`).
     pub identity: Option<String>,
+    /// The match's time limit in game seconds, when hosting (`--seconds`).
+    pub seconds: Option<u64>,
 }
 
 fn parse_args() -> Args {
@@ -68,6 +70,7 @@ fn parse_args() -> Args {
         introducer: None,
         beacon: true,
         identity: None,
+        seconds: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -89,6 +92,7 @@ fn parse_args() -> Args {
             "--introducer" => a.introducer = Some(val()),
             "--no-beacon" => a.beacon = false,
             "--identity" => a.identity = Some(val()),
+            "--seconds" => a.seconds = val().parse().ok(),
             "--map" => {
 
                 let path = val();
@@ -104,7 +108,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE]");
 
 
                 std::process::exit(0);

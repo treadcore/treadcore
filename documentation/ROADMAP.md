@@ -137,6 +137,10 @@ match report (item 8), figures per match.
     UI-10 to UI-13); the client's one the prior art feature worth having early.
     **Deferred** to the first session with a working window (step 0's
     open problem); a client change that cannot be seen is a guess.
+    **Done 13 October 2026** (journal 0014), the first day with a
+    window: the apostrophe steps through the player's and allies'
+    pillboxes, Return or F returns to the tank (UI-10, UI-12, UI-13);
+    the arrows to a neighbouring pillbox (UI-11) are not taken.
 13. **Forest concealment as the prior art had it.** Hidden to everything beyond
     3 tiles when inside a 2 x 2 block of forest (SPEC VIS-02), against
     treadcore's halved vision radius. A proposal with a trace. **Done**,

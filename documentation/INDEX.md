@@ -278,12 +278,24 @@ predicted own tank, drones, shells, depots, pillboxes, mines, squads),
 `link_color` 275, `overlay` 287 (the gizmos: bubble, links, vision,
 arcs).
 
-**hud.rs (204)**: `HudState` 19, `Panel` 30, `HELP` 85 (the controls),
-`telemetry` 104, `scoreboard` 161 (NET line, hash, prediction line,
-seats, proposals, depots), `log` 198.
+**hud.rs (330)**: the frame (INTERFACE.md): `LEFT`, `RIGHT`, `TOP`,
+`BOTTOM` in pixels; `HudState` (`show_log`, `aiming`); `in_frame`
+(is a window point on a panel); `Panel` (Top, Orders, Right, Bottom,
+Log, Screen); `setup` (the flex frame: top strip, orders column, the
+map, the right column, the bottom strip; the scrollback and the
+screen over the map); `top` (who, when, NET), `orders` (every key,
+its count or cost, a dash when it cannot be given), `right` (the
+roster, pillbox and depot lamps by owner), `bottom` (shells, bay,
+squad and material as lamps, armor and fuel bars, the air table, the
+two-line newswire), `log` (the scrollback), `screen` (the lobby
+screen with `FIRST_MINUTE`; the match-over screen).
 
-**input.rs (180)**: `Cam` 22, `cursor_tile` 33, `camera` 39, `orders`
-84 (every key and click to a Command).
+**input.rs (200)**: `Cam` (`follow`, `pillbox`: the pillbox view),
+`cursor_tile` (none on a panel), `frame_offset` (the map's middle
+relative to the window's), `camera` (Return or F for the tank view,
+the apostrophe steps the pillbox view, SPEC UI-08 to UI-13), `orders`
+(every key and click to a Command; the right button held lights the
+gun's envelope and fires on release).
 
 ### 2.9 source/treadcore-warm/src/main.rs (45 lines)
 
@@ -420,13 +432,14 @@ GAMETYPE, MAP, BRAIN.
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
 | documentation/LAB-REPORT-PILLBOYS.md | the Pillboy requirement audited against the prior art's builder |
 | documentation/LAB-REPORT-PLAYTEST.md | the first playtest build, 13 October 2026: the driver and the stack, a solo and a three-client match with frames, the multiclient end to end, nine findings |
-| documentation/INTERFACE.md | the interface study: Bolo, a garage screen, the HUD graphics; treadcore's layout drawn from them |
+| documentation/INTERFACE.md | the interface study: Bolo, a garage screen, the HUD graphics; treadcore's layout drawn from them, built the same day |
+| documentation/PLAYABILITY.md | the playability review: fourteen items ranked and costed; Bolo's interface elements checked off against the window before and after the frame |
 | documentation/SPEC-PRIOR-ART-1.14.md | the clean-room functional specification of the prior art, with the preface on what treadcore takes |
 | documentation/RELEASE.md | the cycle, versions, releases, playtesting |
 | documentation/GOVERNANCE.md | roles, joining, proposals (section 5: a change to rules.rs wants a trace), review, leaving |
 | documentation/INDEX.md | this |
-| journal/0001 to 0013 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest |
-| reports/images/ | the playtest frames, playtest-01 to 09, 256-colour PNG |
+| journal/0001 to 0014 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame |
+| reports/images/ | the playtest frames, playtest-01 to 13, 256-colour PNG |
 
 ## 5. Keyword cross-reference
 

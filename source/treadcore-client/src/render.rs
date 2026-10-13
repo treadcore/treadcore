@@ -7,6 +7,7 @@
 //! fly out of link range, the recon disc sliding over the enemy, and the
 //! arc of a shell leaving it.
 
+use crate::hud::HudState;
 use crate::session::View;
 use crate::{player_color, to_screen, TILE};
 use bevy::prelude::*;
@@ -284,20 +285,29 @@ pub fn link_color(link: f32) -> Color {
 
 /// The telemetry overlay. Everything here is a line: cheap, redrawn every
 /// frame, no entities to manage.
-fn overlay(mut gizmos: Gizmos, view: Res<View>) {
+fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>) {
     let Some(obs) = view.obs.as_ref() else { return };
     let me = obs.player;
     let Some(my) = obs.me.as_ref() else { return };
     let mine = player_color(me);
+    // The own tank is drawn where the predictor has it; the rings go
+    // with it.
+    let my_pos = view.predicted.as_ref().filter(|(t, _)| t.owner == me).map(|(t, _)| t.pos).unwrap_or(my.pos);
 
     if my.alive {
         // The bubble: where interceptors hold station, and detection.
-        gizmos.circle_2d(to_screen(my.pos), my.bubble * TILE, mine.with_alpha(0.7));
-        gizmos.circle_2d(to_screen(my.pos), (my.bubble + DETECT_MARGIN) * TILE, mine.with_alpha(0.18));
-        // Own vision and the gun's envelope.
-        gizmos.circle_2d(to_screen(my.pos), TANK_VISION * TILE, Color::srgba(1.0, 1.0, 1.0, 0.08));
-        gizmos.circle_2d(to_screen(my.pos), INDIRECT_MIN_RANGE * TILE, Color::srgba(1.0, 0.8, 0.4, 0.12));
-        gizmos.circle_2d(to_screen(my.pos), INDIRECT_MAX_RANGE * TILE, Color::srgba(1.0, 0.8, 0.4, 0.12));
+        gizmos.circle_2d(to_screen(my_pos), my.bubble * TILE, mine.with_alpha(0.7));
+        gizmos.circle_2d(to_screen(my_pos), (my.bubble + DETECT_MARGIN) * TILE, mine.with_alpha(0.18));
+        // Own vision, and the gun's envelope: faint always, lit while
+        // the right button is held (the prior art's gunsight), so a shot
+        // inside minimum range or beyond maximum is never ordered blind.
+        gizmos.circle_2d(to_screen(my_pos), TANK_VISION * TILE, Color::srgba(1.0, 1.0, 1.0, 0.08));
+        let gun = if hud.aiming { 0.8 } else { 0.12 };
+        gizmos.circle_2d(to_screen(my_pos), INDIRECT_MIN_RANGE * TILE, Color::srgba(1.0, 0.8, 0.4, gun));
+        gizmos.circle_2d(to_screen(my_pos), INDIRECT_MAX_RANGE * TILE, Color::srgba(1.0, 0.8, 0.4, gun));
+        if hud.aiming {
+            gizmos.circle_2d(to_screen(my_pos), DIRECT_RANGE * TILE, Color::srgba(1.0, 1.0, 1.0, 0.5));
+        }
         // Where it is driving: the leg in progress, then the rest of the
         // route the world planned, fainter.
         if let Some(g) = my.goal {

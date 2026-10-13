@@ -1,0 +1,213 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 10:30:00 -0700
+Subject: [JOURNAL 0014] The frame: the GUI redesign, and the playability
+         review
+Message-ID: <0014.20261013@treadcore.org>
+In-Reply-To: <0013.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: HUD, frame, Bolo, orders column, lamps, newswire, pillbox
+          view, lobby screen, playability
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Fable 5.1)
+           as the pair; Paul: "redesign the gui. do a review of making
+           this game playable. look into the interface elements of
+           bolo."
+X-Commits: (next)
+
+       THE FRAME: THE GUI REDESIGN, AND THE PLAYABILITY REVIEW
+
+                      Paul Richeson, treadcore.org
+                            13 October 2026
+
+
+ABSTRACT
+
+    The window's HUD was rebuilt in the prior art's frame, the same
+    afternoon INTERFACE.md drew it: an orders column on the left, the
+    map in the middle and never covered, the roster and one lamp per
+    pillbox and per depot on the right, the tank's stock as lamps and
+    a newswire along the bottom, the lobby and the match's end as
+    screens. The pillbox view is the apostrophe, Bolo's key. The gun's
+    reach lights while the right button is held. It built first time,
+    was photographed in a solo match, a lobby and a twenty-second
+    match, and its four frames joined the gallery. A review of what
+    stands between this build and a playable game ranks fourteen
+    items and costs them; five are a week. Bolo's interface elements
+    were checked off one by one against the window before and after.
+
+INDEX TERMS
+
+    frame, orders column, lamps, newswire, pillbox view, lobby screen,
+    match-over screen, gunsight, playability, SPEC section 13.
+
+
+I. INTRODUCTION
+
+    0013 ended with three findings about the screen (panels that
+    overlapped, an overlay that covered the map, a first minute that
+    killed the newcomer) and a layout drawn from Bolo's. The
+    instruction was to build it, to review what else keeps the game
+    from being played, and to look again at Bolo's interface elements.
+    The spec's section 13 (UI-01 to UI-23 and the colour code) is the
+    prior art's screen written down; this session is its reading.
+
+II. BACKGROUND
+
+    Carried from 0013: findings 3 to 8; the window under Wayland
+    proper; two windows at once; INTERFACE.md's five steps; the
+    predicted tank corrected, never smoothed; step 7's two-router
+    proof; steps 8 and 9. The window was four absolute-positioned
+    text panels (`hud.rs`, 204 lines) and a key list.
+
+III. METHOD
+
+    hud.rs rewritten as one flex frame: a column of top strip, middle
+    row, bottom strip; the middle row an orders column, the map, a
+    right column; the scrollback and the screens children of the map
+    node. Every panel one Text rebuilt each frame from the View, as
+    before. input.rs for the views and the gunsight; session.rs for
+    the lobby peers and the last tick; render.rs for the lit envelope
+    on the predicted tank's position. Then the shoot, with the same
+    floating-window script as 0013. Then the review, written against
+    the frames and the spec.
+
+    Decisions, with the alternatives rejected:
+
+      decision                 rejected               why
+      -----------------------  ---------------------  ----------------
+      a flex frame of fixed-   absolute panels at     two panels at
+      width columns; the map   the corners            one corner
+      is what is left                                 overlap (0013
+                                                      finding 3)
+      ASCII lamps (# . o X +)  circles and squares    the engine's
+                                                      subset font;
+                                                      one ink
+      a dash in the margin     a lit or dim lamp      one ink per
+      for an order that                               panel; colour
+      cannot be given                                 per run is the
+                                                      next step
+      the gun fires on         on press, as before    the envelope
+      release, lit while held                         must be seen
+                                                      before the shot
+                                                      is committed
+      the apostrophe for the   a function key         Bolo's key
+      pillbox view, Return
+      for the tank view
+      the camera follows into  into the window's      the frame is
+      the map area's middle    middle                 not symmetric
+      the first minute on the  a tutorial match       six lines where
+      lobby screen                                    the player waits
+                                                      anyway
+      a review document        a backlog in           the ranking is
+                               ROADMAP.md             the content; the
+                                                      roadmap is steps
+
+IV. CHRONOLOGY
+
+     1. Read SPEC section 13 whole: layout UI-01 to UI-07, the colour
+        and symbol code, views UI-08 to UI-17, the default keys, the
+        message classes. The orders column is UI-02 for this game's
+        orders; the lamp strips are UI-03; the lamps for the tank's
+        stock are UI-05; the newswire is UI-06 and the message class
+        of the same name.
+     2. hud.rs: the frame, 330 lines. input.rs: `in_frame` so a click
+        on a panel is not an order; `frame_offset`; the pillbox view;
+        the gunsight. session.rs: `lobby_peers` with the median rtt,
+        `last_tick` for events after a rejoin (0013 finding 5), the
+        log at forty. render.rs: the envelope lit from `HudState.
+        aiming`, drawn at the predicted position. main.rs:
+        `--seconds`. Built first time; the three old warnings.
+     3. The shoot: the lobby screen alone; a solo match (the frame,
+        air up, aiming, a round out, driving, the scrollback); a
+        twenty-second match for the match-over screen. Two rows
+        wrapped: the orders column at 104 px and the right column's
+        legend at 248. Widened to 132 and 268; the legend on two
+        lines; the match-over title deduplicated. Shot again: clean.
+     4. Four frames to reports/images (10 to 13) and the gallery; the
+        gallery's first figure is now the frame.
+     5. PLAYABILITY.md: the verdict, fourteen items ranked and costed,
+        Bolo's elements checked off (twenty-two rows), what the frame
+        still wants, what the review does not ask for.
+     6. INTERFACE.md's "built the same day"; README's controls
+        paragraph; CHANGELOG; INDEX.md; this entry.
+
+V. RESULTS
+
+      measure                                   value
+      ----------------------------------------  --------------------
+      hud.rs, before and after                  204 and 330 lines
+      input.rs                                  180 and 200
+      frame widths (left, right, top, bottom)   132, 268, 44, 84 px
+      build, release, after the rewrite         17 s
+      frames of the frame published             4 (49 to 70 KB)
+      Bolo elements in the spec's section 13    23 requirements;
+                                                14 met, 3 not wanted,
+                                                2 open, 4 n/a
+      playability items ranked                  14; 5 are the week
+      tests                                     40 pass (unchanged)
+
+VI. DISCUSSION
+
+    The frame took an afternoon because the observation already had
+    everything the panels show. Not one field was added to it, which
+    is the test INTERFACE.md section 5 set: a Brain sees what the
+    player sees, still. The work was in where things sit, and Bolo
+    had settled that in 1987 for a game with the same shape.
+
+    What the frame changed about play, before any playtest: the map is
+    read whole, the tank sits where the eye rests, the shells left are
+    a glance, and the gun cannot be fired inside its minimum range by
+    accident, because the ring is lit under the cursor before the
+    button comes up. What it did not change: a standing tank still
+    dies in thirty seconds, which is why item 1 of the review is a
+    sixty-second grace in the bots and not anything on the screen.
+
+    The review's shape is the point of writing it: the sim is not on
+    the list. Every item is the window's, the brain's or the
+    scenario's, and five of them are a week. That is the distance to
+    a game a stranger can be handed.
+
+VII. OPEN PROBLEMS
+
+    1. PLAYABILITY.md's items 1, 3, 4, 5, 6: the grace, a hit you can
+       feel, the cursor's tile, squad orders as a mode, chat.
+    2. Colour per run in the frame; the roster header; the bottom
+       strip below 900 px (PLAYABILITY.md section 4).
+    3. Carried: the window under Wayland proper; two windows at once;
+       the predicted tank corrected, never smoothed; step 7's two-
+       router proof; steps 8 and 9.
+
+VIII. NEXT STEPS
+
+    1. The week: PLAYABILITY.md items 1, 3, 4, 5, 6, in that order.
+    2. A playtest with a hand on the mouse, and its journal.
+    3. Step 8.
+
+ACKNOWLEDGMENTS
+
+    Paul, for the three asks in one line; the authors of Bolo and
+    WinBolo for the frame.
+
+REFERENCES
+
+    [1] Journal 0013, <0013.20261013@treadcore.org>.
+    [2] documentation/SPEC-PRIOR-ART-1.14.md, section 13: UI-01 to
+        UI-23, the colour and symbol code, the default keys, the
+        message classes.
+    [3] documentation/INTERFACE.md; documentation/PLAYABILITY.md.
+
+APPENDIX A. COMMITS
+
+    (next)   client, docs, site, journal: the frame (the GUI redesign);
+             the playability review; journal 0014
+
+APPENDIX B. ARTIFACTS
+
+    Code            source/treadcore-client/src/hud.rs, input.rs
+    Review          documentation/PLAYABILITY.md
+    Frames          reports/images/playtest-10 to 13
+    Site            index.html, "In play"
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

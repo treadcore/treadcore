@@ -44,6 +44,9 @@ pub struct View {
     pub log: VecDeque<(Tick, String)>,
     pub status: String,
     pub net: NetStats,
+    /// The last tick an observation gave, for stamping events that
+    /// arrive before the next one (a rejoin's first events, say).
+    pub last_tick: Tick,
     /// Wall-clock when the observation arrived, for interpolation.
     pub received: Option<Instant>,
     /// The player's own tank as predicted (roadmap step 4), and when it
@@ -62,6 +65,9 @@ pub struct NetStats {
     pub dropped: u64,
     pub peers: usize,
     pub phase: String,
+    /// The lobby's peers by name with the median round trip measured so
+    /// far, for the lobby screen.
+    pub lobby_peers: Vec<(String, Option<u32>)>,
     /// The host's world hash and its tick, from heartbeats (or our own
     /// when hosting).
     pub hash: (Tick, u64),
@@ -119,7 +125,9 @@ fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
         None => MapSource::FromScenarioSeed,
     };
     let mut s = Scenario { seed: args.seed, map, swarm_interval: args.swarm, ..Scenario::default() };
-
+    if let Some(secs) = args.seconds {
+        s.time_limit = secs * TICK_HZ as u64;
+    }
     if !names.is_empty() {
         s.players = names;
     }
@@ -163,6 +171,7 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
         }
         host.tick(local);
         let obs = host.world.observe(*me_player);
+        view.last_tick = obs.tick;
         push_events(&mut view, &obs.events, *me_player);
         if let Some(s) = host.socket() {
             view.net.sent = s.sent;
@@ -201,6 +210,7 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
             let Some(s) = sock.as_mut() else { return };
             view.net.phase = format!("{:?}", lobby.phase);
             view.net.peers = lobby.peers.len();
+            view.net.lobby_peers = lobby.peers.values().map(|p| (p.name.clone(), p.median_us().map(|us| us / 1000))).collect();
             view.status = match lobby.phase {
                 Phase::Discover => format!("lobby '{}': {} of {} peers found, {} ...", args.game, lobby.peers.len() + 1, args.want, lobby.peers.values().map(|p| p.name.clone()).collect::<Vec<_>>().join(" ")),
                 Phase::Probe => "lobby: measuring latency to every peer".into(),
@@ -281,6 +291,7 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                     }
 
                     if let Some(obs) = client.take_observation() {
+                        view.last_tick = obs.tick;
                         // The host's measurement, sent back in its heartbeat
                         // (backlog item 5): the old figure here was snapshot
                         // tick minus heartbeat tick, which is heartbeat age.
@@ -316,9 +327,9 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
         let line = describe(e, me, view);
 
         if let Some(l) = line {
-            let tick = view.obs.as_ref().map(|o| o.tick).unwrap_or(0);
+            let tick = view.obs.as_ref().map(|o| o.tick).unwrap_or(view.last_tick);
             view.log.push_back((tick, l));
-            while view.log.len() > 10 {
+            while view.log.len() > 40 {
                 view.log.pop_front();
             }
         }
