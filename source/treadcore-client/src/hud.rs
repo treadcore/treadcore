@@ -712,7 +712,7 @@ fn top(view: &View) -> String {
 
 fn roster(view: &View) -> String {
     let Some(obs) = view.obs.as_ref() else { return "ROSTER\nwaiting for the world...".into() };
-    let mut s = String::from("ROSTER     t  seat  score\n");
+    let mut s = String::from("GEEKERS    t  seat  score\n");
     let mut ps: Vec<&PlayerView> = obs.players.iter().collect();
     ps.sort_by_key(|p| (p.team, p.id));
     for p in ps {
@@ -730,7 +730,7 @@ fn air(view: &View) -> String {
     let Some(obs) = view.obs.as_ref() else { return String::new() };
     let Some(t) = obs.me.as_ref() else { return String::new() };
     if !t.alive {
-        return "TANK DESTROYED".into();
+        return "TANK DESTROYED. rig down".into();
     }
     let mut mine: Vec<&Drone> = obs.my_drones().collect();
     mine.sort_by_key(|d| (d.kind as u8, d.id));

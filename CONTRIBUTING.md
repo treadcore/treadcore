@@ -23,7 +23,10 @@ problem the player can fix gets a tag (PEBKAC, PICNIC, 60 CM, LOOSE
 NUT, KB-TO-CHAIR, ID-10-T) and then says what is wrong with the thing,
 "x is broken", never "you broke x"; something that mends itself is
 "we're back up", never "I fixed it". A new refusal reason needs a tag:
-`every_refusal_has_a_name` fails until it has one.
+`every_refusal_has_a_name` fails until it has one. Flavour lines are
+tank speak (`treadcore_sim::lingo`, the lexicon in HOW-TO-PLAY 6c):
+chosen by `lingo::pick` from a number the caller has, never by the
+world's Rng, and never aimed at a person.
 
 The cycle, versions and releases: `documentation/RELEASE.md`. Roles,
 joining, leaving, recognition: `documentation/GOVERNANCE.md`. Every

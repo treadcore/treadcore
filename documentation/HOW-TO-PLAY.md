@@ -240,6 +240,63 @@ the ground dimmed where your side cannot see, every depot, pillbox
 and structure in its owner's colour, the tanks you can see, your own
 in white. Click it, or hold the button and drag, to move the view.
 
+## 6c. Tank speak
+
+The newswire and the bots talk like a crew that has been at it all
+night: cyberpunk, a little l33t, with the FPV pilots' words for the
+flies and some of the old tank crews' for the rig. The people at the
+controls are **geekers**. Kills, launches, lost flies, jamming, the
+end of a match and the bots' calls are said several ways; which way
+is picked by the event's own number, never by the world's dice, so a
+match plays the same whatever is said in it. The words:
+
+| tank speak | plain |
+| --- | --- |
+| geeker | a player, at the controls |
+| rig, pigiron | a tank |
+| slugs | shells |
+| flies | drones |
+| whoop | an interceptor: small, ducted, in the bubble |
+| toothpick | a recon: ultra-light, eyes only |
+| kami | a strike drone: one way, into a rig |
+| loiter, loitering munition | a longshot: slow, far, one way, at a fixed point |
+| grunts | the squad of pillboys |
+| scrap | material |
+| pack | a fly's battery |
+| fuzz | a jammer, and what it does to a link |
+| the grid | the map and the economy on it |
+| kill-zone | the ground inside the enemy's flies' reach |
+| cost-exchange ratio | a cheap loiter against a refinery: why the economy is the target |
+| send it, rip it | commit: launch, fire, go in |
+| punch out, WOT | full throttle, all at once (wide open throttle) |
+| gap, shoot the gap | a tight way through, threaded |
+| on the way, shot over | the artillery's calls: a slug is in the air |
+| Power! | the gun is about to move: the old tank crews' warning |
+| jello, ghosting | a feed shaking apart, or two feeds over each other: a link going, or jammed |
+| LQ | link quality: the % beside a fly in the air line |
+| failsafed, RTH | the link is gone and the fly returns to home |
+| browned out | the pack sagged flat in the air |
+| pancaked | shot down, flat |
+| magic smoke | what comes out of a fly caught in a blast |
+| VTX, VRX | the fly's video transmitter, the rig's receiver: the link |
+| OSD | the on-screen display: the frame around the map |
+| rekt, pwned, fragged, uninstalled | destroyed |
+| bite the dust | destroyed, the old way |
+| going in hot | storming a depot |
+| bolo crew | a crew that fails gunnery: the rookies |
+| meatware, wetware | the geeker, as opposed to the rig |
+| rig's green | it works again |
+| tanker ears | what the M key spares |
+| dronovod | a drone operator: a geeker flying |
+| spotter | whoever watches for the geeker: a recon's job |
+| disarm, disarm! | what is shouted when a fly goes down near its own rig |
+| gl hf | good luck, have fun: a match begins |
+| gg wp | good game, well played: a match ends |
+
+Slang aimed at people (a good deal of real crew slang is) is left out
+on purpose: the voice is gg and gl hf, and the joke is never at a
+geeker's expense.
+
 ## 7. The stock
 
 ![The bottom strip: shells, the bay, the squad and material, armor and fuel, the air](../reports/images/guide-bottom.png)

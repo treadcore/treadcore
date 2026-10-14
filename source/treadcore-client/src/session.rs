@@ -235,9 +235,9 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
         view.received = Some(Instant::now());
         if host.world.over {
             view.status = match host.world.winner {
-                Some(w) if w == *me_player => "MATCH OVER: you win".into(),
-                Some(w) => format!("MATCH OVER: {} wins", host.world.players[w as usize].name),
-                None => "MATCH OVER: draw".into(),
+                Some(w) if w == *me_player => "MATCH OVER: you win. gg wp".into(),
+                Some(w) => format!("MATCH OVER: {} wins. gg wp", host.world.players[w as usize].name),
+                None => "MATCH OVER: draw. gg".into(),
             };
         }
     }
@@ -349,9 +349,9 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                         view.net.rtt_ms = Some(client.rtt_ticks.saturating_mul(1000 / TICK_HZ));
                         if obs.over {
                             view.status = match obs.winner {
-                                Some(w) if Some(w) == client.player => "MATCH OVER: you win".into(),
-                                Some(w) => format!("MATCH OVER: {} wins", obs.players.get(w as usize).map(|p| p.name.as_str()).unwrap_or("?")),
-                                None => "MATCH OVER: draw".into(),
+                                Some(w) if Some(w) == client.player => "MATCH OVER: you win. gg wp".into(),
+                                Some(w) => format!("MATCH OVER: {} wins. gg wp", obs.players.get(w as usize).map(|p| p.name.as_str()).unwrap_or("?")),
+                                None => "MATCH OVER: draw. gg".into(),
                             };
                         }
                         view.obs = Some(obs);
@@ -427,7 +427,7 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             Event::Rejected { player, why, .. } if *player == me => {
                 // The chair names it (treadcore_sim::chair): a helpdesk tag,
                 // then what is wrong with the order, never who.
-                view.refused = Some((Instant::now(), treadcore_sim::chair::tagged(why)));
+                view.refused = Some((Instant::now(), format!("{}  ({})", treadcore_sim::chair::tagged(why), treadcore_sim::lingo::quip(treadcore_sim::chair::refusal(why), view.last_tick))));
             }
             Event::StructureDamaged { structure, .. } | Event::StructureWrecked { structure, .. } => {
                 if let Some(x) = view.obs.as_ref().and_then(|o| o.structures.iter().find(|x| x.id == *structure)) {
@@ -559,12 +559,12 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
             let c = treadcore_sim::chair::refusal(why);
             format!("order refused: {} [{}, {}]", why, c.label(), c.expansion())
         }
-        Event::ShellLaunched { kind: ShellKind::Indirect, spotted, eta_ticks, .. } => format!("round out, {}, {:.1}s", if *spotted { "spotted" } else { "blind" }, *eta_ticks as f32 * DT),
+        Event::ShellLaunched { shell, kind: ShellKind::Indirect, spotted, eta_ticks, .. } => format!("{}, {}, {:.1}s", treadcore_sim::lingo::pick(&treadcore_sim::lingo::SHOT, *shell as u64), if *spotted { "spotted" } else { "blind" }, *eta_ticks as f32 * DT),
         Event::ShellLaunched { kind: ShellKind::Direct, .. } => "direct fire".into(),
         Event::ShellImpact { hits, kind, .. } if !hits.is_empty() => format!("{:?} impact: {} hit", kind, hits.len()),
         Event::ShellImpact { .. } => return None,
-        Event::DroneLaunched { kind, .. } => format!("{:?} airborne", kind),
-        Event::DroneLost { owner, kind, why, .. } => format!("{} lost {:?} ({:?})", who(owner), kind, why),
+        Event::DroneLaunched { drone, kind, .. } => treadcore_sim::lingo::pick(&treadcore_sim::lingo::LAUNCH, *drone as u64).replace("{}", treadcore_sim::lingo::fly(*kind)),
+        Event::DroneLost { drone, owner, kind, why } => format!("{} lost a {}: {}", who(owner), treadcore_sim::lingo::fly(*kind), treadcore_sim::lingo::lost(*why, *drone as u64)),
         Event::DroneRecovered { kind, .. } => format!("{:?} recovered", kind),
         Event::DroneRetasked { task, .. } => match task {
             DroneTask::Orbit { .. } => "recon orbit moved".into(),
@@ -572,7 +572,7 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
             DroneTask::Return => "drone recalled".into(),
             DroneTask::Intercept { .. } | DroneTask::Attack { .. } => return None,
         },
-        Event::Intercepted { owner, .. } => format!("{} intercept: KILL", who(owner)),
+        Event::Intercepted { owner, interceptor, .. } => treadcore_sim::lingo::pick(&treadcore_sim::lingo::INTERCEPT, *interceptor as u64).replace("{}", &who(owner)),
         Event::InterceptMissed { .. } => "intercept missed".into(),
         Event::StrikeHit { damage, .. } => format!("STRIKE hit for {:.0}", damage),
         Event::TankDamaged { tank, by, damage, armor_left } => {
@@ -585,17 +585,17 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
                 format!("{} hit -{:.0} by {}", owner, damage, by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into()))
             }
         }
-        Event::TankDestroyed { owner, by, .. } => format!("{} DESTROYED by {}", who(owner), by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into())),
+        Event::TankDestroyed { tank, owner, by } => treadcore_sim::lingo::kill(&who(owner), &by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into()), *tank as u64),
         Event::DepotCaptured { by, .. } => format!("{} captured a depot", who(by)),
         Event::Resupplied { .. } => "resupplying".into(),
         Event::SwarmInbound { count, .. } => format!("SWARM: {} inbound", count),
-        Event::LinkLost { .. } => "link lost: drone returning".into(),
+        Event::LinkLost { drone, .. } => treadcore_sim::lingo::pick(&treadcore_sim::lingo::LINK_LOST, *drone as u64).into(),
         Event::Chat { player, text, to } => {
             // By name: a message is from a person, not a seat number.
             let name = if *player == me { "you".to_string() } else { view.obs.as_ref().and_then(|o| o.players.iter().find(|p| p.id == *player)).map(|p| p.name.clone()).unwrap_or_else(|| who(player)) };
             format!("{}{}: {}", name, if *to == ChatTo::Team { " (team)" } else { "" }, text)
         }
-        Event::MatchOver { winner, team } => format!("match over: {}{}", winner.map(|w| who(&w)).unwrap_or_else(|| "draw".into()), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
+        Event::MatchOver { winner, team } => format!("{}{}", treadcore_sim::lingo::match_over(&winner.map(|w| who(&w)).unwrap_or_else(|| "nobody (a draw)".into()), view.last_tick), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
         Event::FriendlyFireSpared { by, damage, .. } => format!("friendly fire from {} spared ({:.0})", who(by), damage),
         Event::Proposed { from, to, terms, .. } => match view.obs.as_ref() {
             Some(o) => crate::proposals::told(o, *from, *to, *terms, None),
@@ -634,14 +634,14 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         // Back from dark is told the helpdesk way: "we", and no fuss.
         Event::StructurePower { structure, kind, owner, on: true } if *owner == me => {
             if view.alerts.iter().any(|a| a.about == *structure && a.text.contains("DARK")) {
-                format!("your {} has power again. {}", crate::commander::name(*kind), treadcore_sim::chair::back_up(*structure))
+                format!("your {} has power again. {} {}", crate::commander::name(*kind), treadcore_sim::chair::back_up(*structure), treadcore_sim::lingo::pick(&treadcore_sim::lingo::GREEN, *structure as u64))
             } else {
                 format!("your {} has power", crate::commander::name(*kind))
             }
         }
         Event::StructurePower { .. } => return None,
         Event::LongshotHit { owner, hits, .. } => format!("LONGSHOT ({}) {}", who(owner), if hits.is_empty() { "landed on nothing".to_string() } else { format!("hit {}", hits.len()) }),
-        Event::Jammed { kind, .. } => format!("{:?} jammed: link gone", kind),
+        Event::Jammed { kind, drone, .. } => treadcore_sim::lingo::pick(&treadcore_sim::lingo::JAMMED, *drone as u64).replace("{}", treadcore_sim::lingo::fly(*kind)),
     })
 }
 
@@ -672,6 +672,6 @@ mod tests {
         assert_eq!(describe(&on, 0, &view).unwrap(), "your refinery has power");
         view.alerts.push_back(crate::commander::Alert { at: V2::new(1.0, 1.0), text: "your refinery DARK at 1,1: no power".into(), when: Instant::now(), about: 9 });
         let back = describe(&on, 0, &view).unwrap();
-        assert!(back.starts_with("your refinery has power again. ") && treadcore_sim::chair::BACK_UP.iter().any(|l| back.ends_with(l)), "{}", back);
+        assert!(back.starts_with("your refinery has power again. ") && treadcore_sim::chair::BACK_UP.iter().any(|l| back.contains(l)) && treadcore_sim::lingo::GREEN.iter().any(|l| back.ends_with(l)), "{}", back);
     }
 }

@@ -74,7 +74,7 @@ fn parse_args() -> Args {
     let mut a = Args {
         lan: false,
         // USER on Unix, USERNAME on Windows.
-        name: std::env::var("USER").or_else(|_| std::env::var("USERNAME")).unwrap_or_else(|_| "player".into()),
+        name: std::env::var("USER").or_else(|_| std::env::var("USERNAME")).unwrap_or_else(|_| treadcore_sim::lingo::GEEKER.into()),
         game: "treadcore".into(),
         want: 4,
         peers: vec![],

@@ -234,7 +234,7 @@ impl Host {
                         // join, or a return. Its sequences start at one.
                         if seat.session != 0 {
                             seat.rejoins += 1;
-                            log::info!("seat {} '{}' is back ({:016x}, session {:016x}): its seat and sequences given back. {}", seat.player, seat.name, peer, session, treadcore_sim::chair::back_up(seat.rejoins - 1));
+                            log::info!("seat {} '{}' is back ({:016x}, session {:016x}): its seat and sequences given back. {} {}", seat.player, seat.name, peer, session, treadcore_sim::chair::back_up(seat.rejoins - 1), treadcore_sim::lingo::pick(&treadcore_sim::lingo::GREEN, seat.rejoins as u64));
                         }
                         seat.session = session;
                         seat.next_seq = 1;

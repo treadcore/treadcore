@@ -88,7 +88,7 @@ pub fn tagged(why: &str) -> String {
 /// A command line's mistake, for stderr: the tag, the mistake, and a
 /// line that says nothing is broken and where to look.
 pub fn usage(program: &str, what: &str) -> String {
-    format!("{}: {}: {}\n{}: ({}: nothing is broken; the command line wants a second look, and --help lists every flag)", program, Chair::Id10t.label(), what, program, Chair::Id10t.expansion())
+    format!("{}: {}: {}\n{}: ({}: nothing is broken; the command line wants a second look, and --help lists every flag. {}.)", program, Chair::Id10t.label(), what, program, Chair::Id10t.expansion(), crate::lingo::quip(Chair::Id10t, what.len() as u64))
 }
 
 /// What is said when something that was broken works again by itself.

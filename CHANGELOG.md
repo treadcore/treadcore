@@ -6,6 +6,17 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: tank speak (`treadcore_sim::lingo`). The players are geekers
+  (the roster's header, the window's default name); the newswire says
+  kills, launches, lost flies, links lost, jamming, intercepts, shots
+  and the end of a match several ways, in a cyberpunk, l33t voice with
+  FPV pilots' words for the drones (whoop, toothpick, send it, punch
+  out, jello, failsafed, pancaked) and some real tank crews' (Power!,
+  bite the dust, pigiron); a refusal's tag gets a quip; bots storming
+  a depot call it in tank speak. Picked by the event's own number,
+  never the world's Rng: matches and the balance proofs read the same.
+  The lexicon is in HOW-TO-PLAY 6c. Slang aimed at people is left out.
+
 - Added: the helpdesk's names for a problem the player can fix. Every
   refused order is tagged on the newswire (60 CM for aiming, PICNIC
   for the world working as made, PEBKAC for what the lamps already

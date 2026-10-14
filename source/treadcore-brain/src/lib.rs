@@ -446,7 +446,9 @@ impl Brain for RuleBot {
             let long_contact = self.contact_total >= self.patience * 2.0;
             if long_contact && me.pos.dist(objective) <= INDIRECT_MAX_RANGE {
                 self.storm = Some(objective);
-                cmds.push(Command::Chat { text: "storming the depot".into(), to: ChatTo::Team });
+                // Said in tank speak, picked by tick and seat: never by the
+                // Rng, so the match plays the same whatever is said.
+                cmds.push(Command::Chat { text: treadcore_sim::lingo::pick(&treadcore_sim::lingo::STORM, obs.tick ^ obs.player as u64).into(), to: ChatTo::Team });
             }
         }
         if let Some(tgt) = self.storm {

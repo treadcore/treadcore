@@ -155,6 +155,14 @@ ID-10-T for stderr (server and window); `back_up` is the line for
 something that works again by itself. Tests: every_refusal_has_a_name
 (reads lib.rs for every reason), nobody_is_blamed.
 
+### 2.2c source/treadcore-sim/src/lingo.rs
+
+Tank speak: `GEEKER`, `LEXICON` (HOW-TO-PLAY 6c is made from it), the
+banks (`KILLS`, `LAUNCH`, `SHOT`, `LINK_LOST`, `JAMMED`, `INTERCEPT`,
+`MATCH_OVER`, `STORM`, `GREEN`) and `quip`, `lost`, `fly`, `kill`,
+`match_over`; `pick` chooses by a number the caller has, never the
+world's Rng. Test: tank_speak_is_varied_stable_and_friendly.
+
 ### 2.3 source/treadcore-sim/src/rules.rs (222 lines)
 
 Every number of the game, grouped: the tank (10), the gun (37), the
