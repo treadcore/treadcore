@@ -1,0 +1,164 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 17:45:00 -0700
+Subject: [JOURNAL 0024] FM: the gunshot, struck armour, the machine;
+         every sound placed, the whole map heard
+Message-ID: <0024.20261013@treadcore.org>
+In-Reply-To: <0023.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: FM synthesis, Bessel functions, Carson's rule, oversampling,
+          spatial sound, fog of war, machine noises
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul, with two pages of FM notes (weapons;
+           machine noises, alerts and squeaks; layering): "gunshot
+           timbre. striking metal direct hit. lots of sound effects";
+           "every sound effect has a location ... entire map noise, in
+           the back ground, but on screen items are full sound. and
+           interpolated in between"
+X-Commits: the commit that carries this entry
+
+            FM, AND EVERY SOUND IN ITS PLACE ON THE WHOLE MAP
+
+                     Paul Richeson, treadcore.org
+                           13 October 2026
+
+
+ABSTRACT
+
+    Journal 0023's sounds were filtered noise and sines. This session
+    rebuilt them as two-operator FM after Paul's notes. Direct fire is
+    a gunshot (an inharmonic crack whose index falls in milliseconds,
+    over a punch swept from 1 kHz to 50 Hz), the indirect gun a cannon
+    blast, a direct hit a bell of armour at 1:1.4, and a strike drone a
+    missile whose index rises. Then come the machine around the player:
+    the breech's doo-cha-klank, the loader, a clock, the
+    out-of-ammunition beep, a beating alarm and the tracks' squeal. That
+    is 32 cues in three takes each. Placement changed to Paul's model:
+    full strength anywhere on screen, panned across it, fading past the
+    edge to a floor of 6 %, never silent, low-passed far off. A sound
+    whose place the fog hides plays from nowhere, as background. The
+    engine runs at 88.2 kHz under Carson's bound and is band-limited to
+    44.1 kHz.
+
+INDEX TERMS
+
+    FM synthesis, Carson's rule, oversampling, spatial audio.
+
+
+I. INTRODUCTION
+
+    Paul sent the FM equation, its Bessel sidebands and recipes for
+    weapons, then a second page for machine noises and for mixing many
+    voices, and asked that every sound have a place with the whole map
+    audible.
+
+II. BACKGROUND
+
+    Journal 0023: 18 cues, placed by distance from the view's centre,
+    silent past 120 tiles, interface cues unplaced; 22.05 kHz.
+
+III. METHOD
+
+    1. One operator, `Fm`: y = sin(2π·fc·t + I·sin(2π·fc·ratio·t)),
+       phase kept so the frequencies can sweep. Tested against the
+       Bessel function: the carrier's share is J0(I), 0.765 at I = 1
+       and about zero at I = 2.405, J0's first zero.
+    2. The recipes as written: inharmonic ratios for metal and machine
+       (1:1.41, 1:1.4, 1:2.7, 1:1.5), harmonic 1:1 for the interface,
+       the index envelope as the sound (fast fall: strike; slow rise:
+       whoosh).
+    3. Nyquist. The machine-noise page's clicks put carriers at 9 kHz
+       with modulators at 13.5 kHz; at 22.05 kHz that is all aliasing.
+       The rate went to 44.1 kHz and the index is capped by Carson's
+       rule. Capped at 44.1 kHz, the klank's index of 6 fell to
+       nothing and the cha's 4 to 1. Taken instead, the notes' own
+       remedy: the engine runs at twice the rate and a 63-tap Blackman
+       windowed sinc band-limits it at 20 kHz before every second sample
+       is kept. Sidebands between 22 and 44 kHz are filtered out, not
+       folded; the doo keeps its full index of 5.
+    4. Placement as Paul put it: the screen's rectangle from the camera,
+       the zoom and the window. Inside it, gain 1 and the pan from the
+       left edge to the right (nine pan positions, so a sound crossing
+       the screen moves with it). Outside, gain falls with the distance
+       past the edge, half way to the floor at 20 tiles; past 15 tiles
+       the far take, low-passed twice at 1.2 kHz.
+    5. The fog. The sim tells every player of an intercept or a downed
+       drone but not where, if the drone was out of sight, and the
+       sound must not tell it either: it plays centred, at the floor,
+       from the far take.
+    6. Mixing, from the notes: 6 dB of headroom on the master, each new
+       voice scaled by 1/√(1 + playing/8), and the repeat rule changed
+       so a far gun cannot mask a nearer one 30 ms later.
+
+IV. CHRONOLOGY
+
+     1. Step 9 committed and pushed (988ed6e).
+     2. FM weapons: gun, cannon, strike, ricochet, rocket, rocket hit,
+        crash, reload, static, thud, notice; three takes per cue. The
+        first gunshot was a thump (9 % of its energy above 2.5 kHz):
+        the punch over the crack. Re-weighted: 46 %.
+     3. Placement on the screen's rectangle, the floor, the far take.
+        An 8-player match played two sounds in 75 s: the fogged ones
+        waited for a place that never came and were dropped. With the
+        fog rule, 31 sounds from 15 cues in 80 s.
+     4. Machine noises. Track: squeal at 3 kHz over a modulator at
+        300 Hz, its index wandering 9 ± 5 with noise low-passed at
+        6 Hz, gated by slower noise, over a 50 to 200 Hz rumble, the
+        loop's seam crossfaded; its volume eased to the tank's speed.
+        The first mix buried the squeal (5 % above 2.5 kHz); raised to
+        15 %. The loader's ratchet was under its punch; raised.
+     5. Carson's cap at 44.1 kHz, then the oversampling (III.3).
+     6. An 80-second, 8-player match: 32 sounds, the breech after the
+        seat's own shots, the alarm at low armour, the fogged intercepts
+        and crashes far and centred; no audio error.
+
+V. RESULTS
+
+    32 cues; client tests 9 (the FM operator against J0, Nyquist,
+    the decimator passing 1 kHz and stopping 30 kHz, the far take, the
+    seamless loop, placement on and off screen to the floor). make test
+    passes; no warnings.
+
+    Band energy, per cent, <150 / 150-600 / 600-2.5k / 2.5-8k / >8k Hz:
+
+      gun (cannon blast)   71  27   1   1   0
+      cannon (gunshot)     10  16  23  24  28
+      strike (armour)       4  31  43  19   3
+      breech               19  22   5  22  32
+      track                22  41  22  13   2
+
+VI. DISCUSSION
+
+    The three weapon sounds are now three different places in the
+    spectrum, which is most of what makes them three sounds. The fog
+    rule is the one design decision Paul's model did not settle: a
+    sound everywhere on the map would have told a player where hidden
+    drones die. Heard from nowhere, it is background and no more.
+
+VII. OPEN PROBLEMS
+
+    1. Still nobody has listened. make sounds, then a match.
+    2. The tracks are the player's own only; other tanks on screen make
+       no engine noise.
+    3. The capture clock and the track loop are state, not events; a
+       replay or a seat that joins mid-capture hears them from the next
+       snapshot.
+
+VIII. NEXT STEPS
+
+    1. Paul listens; levels and the floor are constants at the top of
+       sound.rs.
+    2. Chat (PLAYABILITY item 6).
+
+ACKNOWLEDGMENTS
+
+    Paul's FM notes, which named the recipes and the remedies.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: client, docs, journal: FM
+    sound, the machine, every sound placed on the whole map
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -403,6 +403,21 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
         if let Some((cue, at, gain)) = cue_for(e, me, view) {
             view.sounds.push((cue, at, gain));
         }
+        // The machine around the player: the breech working after each
+        // of its own shots, and the alarm when a hit leaves its armour
+        // under a third.
+        let my_tank = view.obs.as_ref().and_then(|o| o.me.as_ref()).map(|t| t.id);
+        match e {
+            Event::ShellLaunched { owner, .. } if *owner == me => {
+                if let Some(t) = my_tank {
+                    view.sounds.push((Cue::Breech, Where::Entity(t), 1.0));
+                }
+            }
+            Event::TankDamaged { tank, armor_left, .. } if Some(*tank) == my_tank && *armor_left < TANK_ARMOR / 3.0 && *armor_left > 0.0 => {
+                view.sounds.push((Cue::Alarm, Where::Ui, 0.7));
+            }
+            _ => {}
+        }
         let line = describe(e, me, view);
 
         if let Some(l) = line {
@@ -429,24 +444,36 @@ fn cue_for(e: &Event, me: PlayerId, view: &View) -> Option<(Cue, Where, f32)> {
             (cue, at(*shell), if *owner == me { 1.0 } else { 0.8 })
         }
         Event::ShellImpact { at: p, kind: ShellKind::Indirect, .. } => (Cue::Boom, Where::At(*p), 1.0),
+        // A direct round: metal struck if it hit a tank, otherwise dirt,
+        // and one in three of those glances off.
+        Event::ShellImpact { at: p, kind: ShellKind::Direct, hits, .. } if !hits.is_empty() => (Cue::Strike, Where::At(*p), 1.0),
+        Event::ShellImpact { shell, at: p, kind: ShellKind::Direct, .. } if shell % 3 == 0 => (Cue::Ricochet, Where::At(*p), 0.8),
         Event::ShellImpact { at: p, kind: ShellKind::Direct, .. } => (Cue::Pop, Where::At(*p), 0.8),
         Event::MineExploded { at: p, .. } => (Cue::Mine, Where::At(*p), 1.0),
+        Event::DroneLaunched { drone, owner, kind: DroneKind::Strike } => (Cue::Rocket, at(*drone), if *owner == me { 0.8 } else { 0.6 }),
         Event::DroneLaunched { drone, owner, .. } => (Cue::Launch, at(*drone), if *owner == me { 0.5 } else { 0.35 }),
         Event::Intercepted { target, .. } => (Cue::Intercept, at(*target), 0.7),
-        // My own tank's hit is not placed: it is where I am, whatever
-        // the camera is looking at.
-        Event::TankDamaged { tank, .. } if Some(*tank) == my_tank => (Cue::Clang, Where::Ui, 1.0),
+        Event::DroneLost { drone, why: LossReason::Shot | LossReason::Splash, .. } => (Cue::Crash, at(*drone), 0.6),
+        Event::StrikeHit { tank, .. } => (Cue::RocketHit, at(*tank), 1.0),
+        Event::LinkLost { drone, owner } if *owner == me => (Cue::Static, at(*drone), 0.5),
+        Event::Resupplied { tank, .. } if Some(*tank) == my_tank => (Cue::Reload, at(*tank), 0.6),
+        Event::TankDamaged { tank, .. } if Some(*tank) == my_tank => (Cue::Clang, at(*tank), 1.0),
         Event::TankDamaged { tank, .. } => (Cue::Clang, at(*tank), 0.8),
         Event::TankDestroyed { tank, .. } => (Cue::Wreck, at(*tank), 1.0),
         Event::PillboxFired { pillbox, .. } => (Cue::PillboxFire, at(*pillbox), 0.8),
         Event::PillboxDestroyed { pillbox, .. } => (Cue::Boom, at(*pillbox), 1.0),
-        Event::PillboxCaptured { by, .. } if *by == me => (Cue::Capture, Where::Ui, 0.6),
-        Event::PillboxCaptured { from: Some(f), .. } if *f == me => (Cue::Lost, Where::Ui, 0.6),
-        Event::DepotCaptured { by, .. } if *by == me => (Cue::Capture, Where::Ui, 0.6),
-        Event::DepotCaptured { depot, .. } if obs.and_then(|o| o.depots.iter().find(|d| d.id == *depot)).and_then(|d| d.owner) == Some(me) => (Cue::Lost, Where::Ui, 0.6),
+        Event::PillboxDamaged { pillbox, .. } => (Cue::Pop, at(*pillbox), 0.6),
+        Event::PillboxCaptured { pillbox, by, .. } if *by == me => (Cue::Capture, at(*pillbox), 0.6),
+        Event::PillboxCaptured { pillbox, from: Some(f), .. } if *f == me => (Cue::Lost, at(*pillbox), 0.6),
+        Event::DepotCaptured { depot, by } if *by == me => (Cue::Capture, at(*depot), 0.6),
+        Event::DepotCaptured { depot, .. } if obs.and_then(|o| o.depots.iter().find(|d| d.id == *depot)).and_then(|d| d.owner) == Some(me) => (Cue::Lost, at(*depot), 0.6),
         Event::Built { owner, at: p, .. } | Event::Harvested { owner, at: p, .. } if *owner == me => (Cue::Build, Where::At(*p), 0.5),
-        Event::PillboxBuilt { by, at: p, .. } if *by == me => (Cue::Build, Where::At(*p), 0.6),
-        Event::SwarmInbound { .. } => (Cue::Swarm, Where::Ui, 0.5),
+        Event::PillboxBuilt { by, at: p, .. } if *by == me => (Cue::Thud, Where::At(*p), 0.8),
+        Event::PillboysLost { tank, owner } if *owner == me => (Cue::Lost, at(*tank), 0.6),
+        Event::Proposed { to, .. } if *to == me => (Cue::Notice, Where::Ui, 0.6),
+        Event::AllianceFormed { members, .. } if members.contains(&me) => (Cue::Notice, Where::Ui, 0.6),
+        Event::SwarmInbound { from, .. } => (Cue::Swarm, Where::At(*from), 0.5),
+        Event::Rejected { player, why, .. } if *player == me && why == "no shells" => (Cue::Empty, Where::Ui, 0.6),
         Event::Rejected { player, .. } if *player == me => (Cue::Refused, Where::Ui, 0.4),
         Event::MatchOver { winner, team } => {
             let my_team = obs.and_then(|o| o.players.iter().find(|p| p.id == me)).map(|p| p.team);

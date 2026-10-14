@@ -6,6 +6,28 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the sound is FM. The weapons and the metal are two-operator
+  FM: the gun's direct fire is a gunshot (an inharmonic crack, its
+  index falling in milliseconds, over a punch from 1 kHz to the bass),
+  the indirect gun a cannon blast, a direct hit on a tank a struck bell
+  of armour, a strike drone a missile's rising whoosh. Thirty-two
+  cues, three takes of each. New: strike, ricochet, rocket, rocket hit,
+  crash, link static, a pillbox set down, a notice; and the machine
+  around the player: the breech after each of its shots (doo, cha,
+  klank), the ammunition loader at a depot, a clock while it takes a
+  depot or a pillbox, BEEEEEP when it fires with no shells, a beating
+  alarm when its armour falls under a third, and its tracks squealing
+  and rumbling as it moves.
+- Changed: the sound engine runs at 88.2 kHz and is band-limited to
+  44.1 kHz, and every FM index is held under Carson's bound, so no
+  sideband folds back as noise; the mix has 6 dB of headroom and a
+  crowded mixer takes each new voice a little quieter.
+- Changed: every sound has a place and the whole map is heard. On
+  screen is full strength, panned across the screen; off screen fades
+  with the distance past the edge to a quiet floor, never silence, and
+  far sounds are low-passed. A sound the fog hides the place of plays
+  as background from nowhere. The interface tones of a capture, a loss
+  and the swarm are placed where they happened.
 - Added: sound (roadmap step 9). Eighteen cues synthesised in the
   window, no sound files: the gun, shells landing, drones, hits, a tank
   destroyed, pillboxes, mines, building, and short interface tones.

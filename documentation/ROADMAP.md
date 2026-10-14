@@ -668,6 +668,18 @@ check of every cue (blasts loudest, the interface at half), and a
 its boom, a wreck and a refusal with no audio error. **Not proven:**
 that it sounds right. That takes an ear, and this machine has none.
 
+**Then FM and the whole map (journal 0024).** The weapons and metal
+are two-operator FM after Paul's notes (a gunshot, a cannon blast, a
+direct hit as struck armour, a missile; then the machine noises: the
+breech's doo-cha-klank, the loader, a clock, the out-of-ammunition
+beep, a beating alarm, the tracks' squeal), 32 cues in three takes
+each, synthesised at 88.2 kHz under Carson's bound and band-limited
+to 44.1 kHz.
+Every sound has a place: full strength anywhere on screen and panned
+across it, fading past the screen's edge to a floor of 6 % and never
+to silence, low-passed past fifteen tiles out; a sound whose place
+the fog hides plays as background from nowhere.
+
 ## Sequencing
 
 ```

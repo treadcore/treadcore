@@ -184,10 +184,17 @@ The newswire shows the last thing that happened. **Tab** opens the
 scrollback over the map: the last forty events, each stamped with its
 tick. Tab again closes it.
 
-What you cannot see you can hear. Your gun's thump and the boom where
-it lands, a drone leaving the bay, the clang of a hit, a tank going
-up, a pillbox firing, each from where it happened: louder the nearer
-the middle of your view, left or right as it lies. A hostile shell
+What you cannot see you can hear. Your gun's blast and the boom where
+it lands, the crack of direct fire and the ring of a round striking
+armour, a drone leaving the bay, a strike drone's whoosh, a tank going
+up, a pillbox firing, each from where it happened. Anything on screen
+is at full strength, left or right as it lies; off screen it fades
+with the distance and dulls, so the whole map is a rumble in the
+background on the side it is on. Your own tank is a machine you can
+hear: the breech working after each shot, the loader at a depot, a
+clock ticking while you take something, a long beep when you fire
+with no shells left, an alarm when your armour is low, and the tracks
+as you move. A hostile shell
 whistles where it will land as soon as you know of it, which is the
 warning the screen cannot give for a gun you have not spotted. A
 capture, a loss, the swarm, a refused order and the end of the match
