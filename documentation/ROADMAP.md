@@ -625,7 +625,9 @@ server on a public address with players behind home routers (step 7's
 two-router run, with a server in it). **Not done:** one server for
 several lobbies at once (it serves one `--game`); a player who arrives
 while the server hosts is refused until the next match, as with any
-host (one lobby name is one match).
+host (one lobby name is one match). **Done (journal 0032):** the
+window's rematch, Enter on a networked match-over screen back to the
+lobby on the same port, proven by `make rematch-test`.
 
 **Change.** `treadcore-server --listen`: hosts match after match,
 accepts joins from any lobby that elected it (a peer can be told to

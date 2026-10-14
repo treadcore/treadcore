@@ -36,6 +36,7 @@
 #                    tiled two by two (CLIENTS=n, PLAYERS=n for bots too,
 #                    MATCH_SECONDS=n); logs in build/logs/quad-*
 #   make lobby-test  four headless seats on this machine negotiate a host
+#   make rematch-test  the window plays a networked match, Enter, and a second
 #                    (LAG=200 for lag; INTRODUCER=1 to meet through an
 #                    introducer only; REJOIN=1 kills a seat and brings it
 #                    back to the same seat; LISTEN=near|far adds a --listen
@@ -97,7 +98,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test replay map worldmaps convert test sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -200,6 +201,9 @@ quad: configure
 
 lobby-test: configure
 	@scripts/lobby-test.sh
+
+rematch-test: configure
+	@scripts/rematch-test.sh
 
 replay: configure
 	@scripts/replay.sh $(REPLAY)

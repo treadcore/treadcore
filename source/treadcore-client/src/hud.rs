@@ -936,7 +936,7 @@ fn screen(view: &View) -> Option<String> {
                 // The second match (PLAYABILITY item 10).
                 s.push_str(&format!("rounds won {} of {}\n\nEnter: again (same grid, bots reseeded)   Esc to leave", view.record.1, view.record.0));
             } else {
-                s.push_str("\nEsc to leave");
+                s.push_str(&format!("rounds won {} of {}\n\nEnter: back to the lobby for another\n(the others meet you there as they press Enter)   Esc to leave", view.record.1, view.record.0));
             }
             Some(s)
         }

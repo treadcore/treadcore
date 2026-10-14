@@ -382,6 +382,7 @@ with no game code in the way.
 | replay.sh | plays a replay back and checks every checkpoint (`make replay`) |
 | run.sh | the window or headless in a mode: run, lan, host, seat, introduce; `INTRODUCER`, `BEACON=0`, `IDENTITY` (default build/identity) on the networked ones; `ROOKIES`; preloads `PRELOAD` into the window |
 | lobby-test.sh | four headless peers on loopback; asserts one host, three welcomed, all ended, one hash, zero prediction mismatches (`make lobby-test`, `LAG=200`); `INTRODUCER=1` runs an introducer and no broadcast or seed, asserts the four were introduced; `REJOIN=1` kills the highest-numbered seat that is not hosting at `REJOIN_AFTER` s, restarts it with its identity file, asserts the same seat back at a later tick with no election |
+| rematch-test.sh | the window plays a networked match against a headless host, Enter takes it back to the lobby, a second host seats it for round 2 (`make rematch-test`; journal 0032) |
 | memwatch.sh | memory every N seconds (`make mem`) |
 | priorart2map.py | converts a prior-art binary map to a treadcore map (`make convert FROM=`) |
 | worldmap.py | draws `maps/world/*.map` from coarse coastlines in longitude and latitude, with the Pan-American Highway and Europe's trunk roads, starts in cities and industry where it is (`make worldmaps`; roadmap step 10g) |

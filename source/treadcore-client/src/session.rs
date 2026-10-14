@@ -145,14 +145,7 @@ fn start(mut commands: Commands, args: Res<Args>, mut view: ResMut<View>) {
     if args.lan {
         match Socket::bind(PORT) {
             Ok(sock) => {
-                let mut cfg = LobbyConfig::new(me, &args.name, &args.game);
-                cfg.seeds = args.peers.clone();
-                cfg.want = args.want;
-                cfg.beacon = args.beacon;
-                cfg.introducer = args.introducer.clone();
-                view.status = format!("lobby '{}': looking for {} peers", args.game, args.want);
-                view.net.mode = "lobby";
-                commands.insert_resource(SessionRes(Session::Lobby { lobby: Lobby::new(cfg), sock: Some(sock), me }));
+                commands.insert_resource(SessionRes(lobby_session(&args, me, sock, &mut view, None)));
                 return;
             }
             Err(e) => {
@@ -163,6 +156,27 @@ fn start(mut commands: Commands, args: Res<Args>, mut view: ResMut<View>) {
     let session = host_local(&args, me, vec![], None, RouteTable::default(), &mut view, 0);
     commands.insert_resource(SessionRes(session));
 }
+
+/// A lobby on this socket, as `--lan` starts one. `discover` stretches
+/// the first phase for a rematch, so players who press Enter a few
+/// seconds apart still meet.
+fn lobby_session(args: &Args, me: PeerId, sock: Socket, view: &mut View, discover: Option<std::time::Duration>) -> Session {
+    let mut cfg = LobbyConfig::new(me, &args.name, &args.game);
+    cfg.seeds = args.peers.clone();
+    cfg.want = args.want;
+    cfg.beacon = args.beacon;
+    cfg.introducer = args.introducer.clone();
+    if let Some(d) = discover {
+        cfg.discover = d;
+    }
+    view.status = format!("lobby '{}': looking for {} peers", args.game, args.want);
+    view.net.mode = "lobby";
+    Session::Lobby { lobby: Lobby::new(cfg), sock: Some(sock), me }
+}
+
+/// How long a rematch's lobby looks for peers before it elects: long
+/// enough for the others to read the scores and press Enter too.
+pub const REMATCH_DISCOVER: std::time::Duration = std::time::Duration::from_secs(20);
 
 fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
     let map = match &args.map {
@@ -244,10 +258,8 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
         view.obs = Some(obs);
         view.received = Some(Instant::now());
         if host.world.over {
-            if !host.is_networked() {
-                view.record.0 += 1;
-                view.record.1 += (host.world.winner == Some(*me_player)) as u32;
-            }
+            view.record.0 += 1;
+            view.record.1 += (host.world.winner == Some(*me_player)) as u32;
             view.status = match host.world.winner {
                 Some(w) if w == *me_player => "MATCH OVER: you win. gg wp".into(),
                 Some(w) => format!("MATCH OVER: {} wins. gg wp", host.world.players[w as usize].name),
@@ -257,23 +269,63 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
     }
 }
 
-/// The second match (PLAYABILITY item 10): on a solo match-over screen
-/// Enter plays again, the same island and seats with the bots reseeded.
-/// A networked match's rematch is the lobby's (roadmap step 8).
+/// The second match (PLAYABILITY item 10). On a solo match-over screen
+/// Enter plays again, the same island and seats with the bots
+/// reseeded. After a networked match, or a connection lost or refused,
+/// Enter goes back to the lobby on the same port for another: the host
+/// tells its seats it is leaving, a seat tells its host, and the lobby
+/// looks for peers for REMATCH_DISCOVER, so the others meet it there as
+/// they press Enter too.
 fn again(keys: Res<ButtonInput<KeyCode>>, args: Res<Args>, session: Option<ResMut<SessionRes>>, mut view: ResMut<View>, mut cam: ResMut<crate::input::Cam>, mut hud: ResMut<crate::hud::HudState>) {
     let Some(mut session) = session else { return };
-    let Session::Hosting { host, .. } = &session.0 else { return };
-    if !host.world.over || host.is_networked() || view.keys_taken() || !keys.just_pressed(KeyCode::Enter) {
+    if view.keys_taken() || !keys.just_pressed(KeyCode::Enter) {
         return;
     }
-    let me = host.me;
+    let over = view.obs.as_ref().map(|o| o.over).unwrap_or(false);
+    let (solo, me) = match &session.0 {
+        Session::Hosting { host, .. } if host.world.over => (!host.is_networked(), host.me),
+        Session::Client { client } if over || matches!(client.state, ClientState::Lost | ClientState::Refused) => (false, client.me),
+        _ => return,
+    };
     let (round, record) = (view.round + 1, view.record);
     *view = View { round, record, ..View::default() };
-    session.0 = host_local(&args, me, vec![], None, RouteTable::default(), &mut view, round);
-    view.status = format!("{}: round {}", view.status, round + 1);
     *cam = crate::input::Cam::default();
     *hud = crate::hud::HudState::default();
-    info!("again: round {}", round + 1);
+    if solo {
+        session.0 = host_local(&args, me, vec![], None, RouteTable::default(), &mut view, round);
+        view.status = format!("{}: round {}", view.status, round + 1);
+        info!("again: round {}", round + 1);
+        return;
+    }
+    // The old session gives its socket up; a placeholder lobby with no
+    // socket stands in for the moment between.
+    let placeholder = Session::Lobby { lobby: Lobby::new(LobbyConfig::new(me, &args.name, &args.game)), sock: None, me };
+    let sock = match std::mem::replace(&mut session.0, placeholder) {
+        Session::Hosting { mut host, .. } => {
+            host.shutdown();
+            host.into_socket()
+        }
+        Session::Client { mut client } => {
+            client.leave();
+            Some(client.into_socket())
+        }
+        Session::Lobby { sock, .. } => sock,
+    };
+    let sock = match sock {
+        Some(s) => Some(s),
+        None => Socket::bind(PORT).ok(),
+    };
+    match sock {
+        Some(s) => {
+            session.0 = lobby_session(&args, me, s, &mut view, Some(REMATCH_DISCOVER));
+            view.status = format!("{}: round {}", view.status, round + 1);
+            info!("again: back to the lobby for round {}", round + 1);
+        }
+        None => {
+            error!("again: no socket for the lobby");
+            view.status = "no socket for the lobby: restart the window".into();
+        }
+    }
 }
 
 /// A client's own tank, driven one tick ahead at the tick rate. Orders
@@ -353,7 +405,10 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
             match client.state {
                 ClientState::Joining => view.status = format!("joining {} ...", view.net.host),
                 ClientState::Refused => view.status = format!("refused: {}", client.refuse_reason),
-                ClientState::Lost => view.status = "connection lost".into(),
+                // A host leaves when its match ends: that is not news on
+                // a match-over screen, which keeps its heading.
+                ClientState::Lost if view.obs.as_ref().map(|o| o.over).unwrap_or(false) => {}
+                ClientState::Lost => view.status = "connection lost: Enter for the lobby".into(),
                 ClientState::Playing => {
                     if view.map.is_none() {
                         if let Some(m) = client.map.clone() {
@@ -380,6 +435,12 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                         // (backlog item 5): the old figure here was snapshot
                         // tick minus heartbeat tick, which is heartbeat age.
                         view.net.rtt_ms = Some(client.rtt_ticks.saturating_mul(1000 / TICK_HZ));
+                        // The tally, once a match, on the snapshot that
+                        // first says it is over.
+                        if obs.over && !view.obs.as_ref().map(|o| o.over).unwrap_or(false) {
+                            view.record.0 += 1;
+                            view.record.1 += (obs.winner.is_some() && obs.winner == client.player) as u32;
+                        }
                         if obs.over {
                             view.status = match obs.winner {
                                 Some(w) if Some(w) == client.player => "MATCH OVER: you win. gg wp".into(),

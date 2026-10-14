@@ -612,6 +612,12 @@ impl Client {
         }
     }
 
+    /// The socket back, after `leave`: a window going back to the lobby
+    /// for another match keeps its port.
+    pub fn into_socket(self) -> Socket {
+        self.sock
+    }
+
     pub fn leave(&mut self) {
         self.routes.send(&mut self.sock, self.me, self.host, &Packet::Leave { peer: self.me });
         if let Some(pr) = self.predictor.as_ref() {

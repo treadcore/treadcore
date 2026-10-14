@@ -44,8 +44,10 @@ still fight; they fight slowly. Lower the number as you win.
 **Again.** When a solo match ends, the screen gives the scores, your
 kills and deaths, and how many rounds you have won of how many played.
 **Enter** plays again: the same island and seats, the bots reseeded so
-they do not open the same way twice. Esc leaves. (Over a network the
-rematch is the lobby's: start the match again from there.)
+they do not open the same way twice. Esc leaves. Over a network,
+Enter takes you back to the lobby on the same port: whoever presses
+Enter within twenty seconds of you meets you there, a host is elected
+again, and the next match begins. A lost connection offers the same.
 
 ![The match-over screen of a solo match: the winner, the scores, kills and deaths, rounds won, and Enter to play again](../reports/images/guide-over.png)
 

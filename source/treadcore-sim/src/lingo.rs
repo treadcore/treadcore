@@ -79,7 +79,9 @@ pub fn pick(bank: &'static [&'static str], n: u64) -> &'static str {
 }
 
 /// A rig destroyed: `{v}` the victim, `{k}` who did it.
-pub const KILLS: [&str; 9] = ["{v} DESTROYED by {k}", "{v} REKT by {k}", "{v} PWNED by {k}", "{v} FRAGGED by {k}", "{v} UNINSTALLED by {k}", "{v} SCRAPPED by {k}", "{v} BIT THE DUST: {k}'s slug", "{k} put {v}'s pigiron in the dirt", "{v} pancaked by {k}"];
+/// Every line reads with any name, "you" included (the newswire calls
+/// the player that): no "{k}'s", no verb agreeing with a name.
+pub const KILLS: [&str; 9] = ["{v} DESTROYED by {k}", "{v} REKT by {k}", "{v} PWNED by {k}", "{v} FRAGGED by {k}", "{v} UNINSTALLED by {k}", "{v} SCRAPPED by {k}", "{v} BIT THE DUST: a slug from {k}", "pigiron in the dirt: {v}, by {k}", "{v} pancaked by {k}"];
 
 /// "p4 FRAGGED by p2", a different line for a different number.
 pub fn kill(victim: &str, by: &str, n: u64) -> String {
@@ -116,7 +118,7 @@ pub fn lost(why: crate::LossReason, n: u64) -> &'static str {
 pub const SHOT: [&str; 4] = ["round out", "on the way", "shot, over", "slug out. Power!"];
 
 /// The end of a match; `{}` is the winner, or "nobody" for a draw.
-pub const MATCH_OVER: [&str; 4] = ["gg wp. last rig rolling: {}", "gg. {} holds the grid", "match over: {} owns the grid. gg", "gg wp. {} is the last geeker standing"];
+pub const MATCH_OVER: [&str; 4] = ["gg wp. last rig rolling: {}", "gg. holding the grid: {}", "match over, gg. the grid goes to {}", "gg wp. last geeker standing: {}"];
 
 pub fn match_over(winner: &str, n: u64) -> String {
     pick(&MATCH_OVER, n).replace("{}", winner)
@@ -132,7 +134,7 @@ pub const LINK_LOST: [&str; 6] = ["link lost: drone returning", "VTX out of reac
 pub const JAMMED: [&str; 6] = ["{} jammed: link gone", "fuzz on the VRX: {} lost its link", "{} feed all jello: jammed", "{} in the fuzz: VTX drowned out", "{} ghosting under the fuzz: link gone", "{} LQ zero: jammed"];
 
 /// An interceptor's kill (`{}` is whose).
-pub const INTERCEPT: [&str; 4] = ["{} intercept: KILL", "{} whoop threaded the gap: KILL", "{} whoop sent it: KILL", "{} intercept, clean through the gap: KILL"];
+pub const INTERCEPT: [&str; 4] = ["intercept ({}): KILL", "a whoop threaded the gap ({}): KILL", "whoop sent it ({}): KILL", "clean through the gap ({}): KILL"];
 
 /// After the helpdesk's "we're back up": the rig, said green.
 pub const GREEN: [&str; 6] = ["Rig's green.", "Grid's back.", "Uplink's solid.", "Systems green, geekers.", "Back online.", "Locked in."];
@@ -175,6 +177,13 @@ mod tests {
             let l: std::collections::BTreeSet<&str> = (0..64).map(|n| lost(w, n)).collect();
             assert!(l.len() >= 2, "{:?}", w);
             all.extend(l);
+        }
+        // With the player's own name, "you", every line still reads.
+        for line in KILLS.iter().chain(&MATCH_OVER).chain(&INTERCEPT) {
+            for bad in ["you's", "you is", "you holds", "you owns", "you whoop", "you intercept"] {
+                let said = line.replace("{v}", "you").replace("{k}", "you").replace("{}", "you");
+                assert!(!said.contains(bad), "{:?} says {:?}", said, bad);
+            }
         }
         for (w, m) in LEXICON {
             all.push(w);

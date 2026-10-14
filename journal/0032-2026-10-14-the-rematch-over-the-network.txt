@@ -1,0 +1,122 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 14 Oct 2026 16:45:00 -0700
+Subject: [JOURNAL 0032] The rematch over the network: Enter, back to
+         the lobby, round 2
+Message-ID: <0032.20261014@treadcore.org>
+In-Reply-To: <0031.20261014@treadcore.org>
+Organization: treadcore.org
+Keywords: rematch, lobby, PLAYABILITY item 10, roadmap step 8,
+          rematch-test
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "continue. next on backlog. implement."
+           Also the day's install: make uninstall, make install, the
+           installed window byte for byte the build's.
+X-Commits: the commit that carries this entry
+
+                     THE REMATCH OVER THE NETWORK
+
+                     Paul Richeson, treadcore.org
+                           14 October 2026
+
+
+ABSTRACT
+
+    The solo rematch (0029) left the network's to the lobby. Now
+    Enter on a networked match-over screen, or after a lost
+    connection, takes the window back to the lobby on the same port,
+    which looks for peers for twenty seconds so the others meet it as
+    they press Enter too. make rematch-test plays it with the window
+    and two headless hosts: round 1, Enter, round 2, seated and
+    welcomed again. Two flaws the frames showed were fixed: the heading
+    said "connection lost" over a finished match, and three of tank
+    speak's lines read "you is", "you holds", "you's".
+
+INDEX TERMS
+
+    networking, user interface, testing.
+
+
+I. INTRODUCTION
+
+    Asked how much backlog was left, the answer was two or three
+    sessions, the network rematch the largest piece. Paul also said he
+    had played two windows on macOS a while ago, and it was nice:
+    PLAYABILITY item 13 records it.
+
+II. BACKGROUND
+
+    The server's --listen loop already runs lobby after lobby on one
+    socket (Host::into_socket). A Client had no way to give its socket
+    back. The lobby's discover phase is eight seconds.
+
+III. METHOD
+
+    `again` grew a networked arm: the old session is swapped for a
+    placeholder lobby with no socket, its socket taken back (Host:
+    shutdown and into_socket; Client: leave and the new into_socket),
+    and a lobby_session made on it with REMATCH_DISCOVER, twenty
+    seconds. The proof wants a host that wins: a headless --net host
+    with the smallest peer id, the window with 30 ms of lag, as the
+    shoot's network pass has it.
+
+IV. CHRONOLOGY
+
+    1. First proof, against a --listen server: the window was elected,
+       not the server. With one seat, that seat's worst path to itself
+       is 0 ms and the server takes no seat; the window hosted a
+       fifteen-minute match with nobody in it. False start.
+    2. Second: two headless --net hosts, one per round, the second
+       started at the Enter. Round 1 played; the Enter did nothing.
+       The window had been focused once, a minute earlier.
+    3. Third, focused just before the Enter: "again: back to the lobby
+       for round 2", host2 found, elected, the window welcomed and the
+       match played out. The frame showed "connection lost" as the
+       heading (the host leaves when its match ends) and "you is the
+       last geeker standing".
+    4. The match-over heading kept when the host leaves after the end;
+       a lost connection mid-match says "Enter for the lobby". Tank
+       speak's kill, match-over and intercept lines reworded to read
+       with any name; the lingo test renders each with "you".
+    5. The rounds-won tally counts networked rounds too, on the first
+       snapshot that says a match is over.
+    6. scripts/rematch-test.sh, make rematch-test: passed.
+
+V. RESULTS
+
+    make test: sim 36, brain 10, client 21, net 13, proto 3.
+    make rematch-test: passed.
+
+VI. DISCUSSION
+
+    The twenty seconds is a guess at how long a person reads a scores
+    screen. A group that wants to play again presses Enter within it;
+    one who wanders off is not waited for, and the rest elect without
+    them. The server (--listen) does the same without anyone pressing
+    anything.
+
+VII. OPEN PROBLEMS
+
+    1. Whether any of it is fun (from 0027).
+    2. One server for several lobbies; a late arrival waiting for a
+       seat (step 8).
+    3. Bot doctrine on 512 tiles (from 0027).
+
+VIII. NEXT STEPS
+
+    1. A playtest over the LAN: two machines, a match, Enter, another.
+    2. A late arrival takes an empty bot seat (step 8).
+    3. One server for several lobbies (step 8).
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: sim, net, client, scripts,
+    docs, journal: the rematch over the network
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

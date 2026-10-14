@@ -6,6 +6,16 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the rematch over a network. After a networked match, or a
+  lost connection, Enter takes the window back to the lobby on the
+  same port; it looks for peers for twenty seconds, so the others meet
+  it there as they press Enter too. The rounds-won tally counts
+  networked rounds. `make rematch-test` proves it with the window and
+  two headless hosts.
+- Fixed: a finished networked match kept its MATCH OVER heading
+  instead of "connection lost" when the host left; tank speak's lines
+  read right with the player's own name, "you".
+
 - Added: Key Setup (SPEC UI-18 to UI-21). K opens it over the map;
   every key the window gives can be rebound, one key an action
   (swapped when taken), Alt, Print Screen and Pause never; the
