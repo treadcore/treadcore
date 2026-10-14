@@ -1,0 +1,136 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 18:10:00 -0700
+Subject: [JOURNAL 0025] Chat: a line on the newswire, one message a
+         second, and the key Enter gave up
+Message-ID: <0025.20261013@treadcore.org>
+In-Reply-To: <0024.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: chat, PLAYABILITY item 6, SPEC UI-22, UI-23, flood limit,
+          text input, xdotool
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "any more backlog items." then "yes
+           start with chat"
+X-Commits: the commit that carries this entry
+
+                 CHAT: A LINE ON THE NEWSWIRE
+
+                     Paul Richeson, treadcore.org
+                           13 October 2026
+
+
+ABSTRACT
+
+    The roadmap's backlog is closed; PLAYABILITY.md had seven items
+    open, and chat was first: sixteen players and alliances with no
+    words. `Command::Chat` and its team routing were in the sim since
+    step 6 with no way to type. Now Enter opens a line on the newswire
+    to everyone, Shift-Enter to the team, Tab switches, Enter sends, Esc
+    puts it away. The sim enforces SPEC UI-23's one message a second,
+    and cuts a message to 120 characters with no control characters.
+    Driving the window with xdotool found one bug that tests could not:
+    keys arriving in the same frame as the Enter that opened the line
+    were thrown away.
+
+INDEX TERMS
+
+    chat, text input, flood limit.
+
+
+I. INTRODUCTION
+
+    "Nothing to say" (PLAYABILITY item 6): the window had no box for
+    the command the world already carried.
+
+II. BACKGROUND
+
+    Journal 0024 ended with sound. Open in PLAYABILITY: 6 chat,
+    7 proposals, 9 rookie bots, 10 the second match, 11 a minimap,
+    12 smoothing (leave until seen), 13 a measurement. The sim's chat
+    had no limit on length or rate: a 10 KB message would have been a
+    10 KB event to every client.
+
+III. METHOD
+
+    1. The world enforces, the window helps. The sim cuts and strips
+       and refuses a second message inside CHAT_EVERY_TICKS (one
+       second, UI-23's floor) with `Player::last_chat`, which is part
+       of the hashed world; no replay fixture is committed, so no
+       recording breaks. The window holds a line it may not send yet
+       ("say to all (a second)>") instead of letting the world refuse
+       it and lose the words.
+    2. Enter was the tank view's second key. SPEC UI-13 asks for a
+       "tank view key"; F is it. Enter went to chat, as the plan in
+       PLAYABILITY said.
+    3. The keys are the line's while it is open. input.rs reads no key
+       while typing (the mouse and the order tiles still work); the
+       chat system runs after input.rs's, so the Esc that closes the
+       line has already been ignored by the Esc that quits. The sound's
+       M is a letter while typing.
+    4. A message is held on the newswire for eight seconds over later
+       events, by the sender's name, with the notice tone at a third.
+    5. Not done: UI-22's "all nearby tanks" and "players selected".
+
+IV. CHRONOLOGY
+
+     1. Sim: `chat`, the limits, CHAT_EVERY_TICKS and CHAT_MAX_CHARS in
+        rules.rs; the alliance test extended (refused inside a second,
+        cut to 120, control characters gone, empty refused).
+     2. Window: chat.rs with a pure `edit` (three tests), the View's
+        typing, chat_sent and chat; the newswire's order (the line,
+        a refusal, a message, the last event); input.rs's keys gated;
+        F alone for the tank view; the key hint's fourth line.
+     3. Driven with xdotool under X11, as the shoot does. The first run
+        "failed" on my script, not the window: step 2 took longer than
+        a second, and an extra Enter opened an empty line that the
+        Shift-Enter then closed, so "mmm flank" went to the game as
+        three M presses and Esc quit. Retimed.
+     4. The second run: "ello from the window". xdotool sends Enter and
+        the first letters in one frame; the system opened the line and
+        cleared the frame's other keys. Rewritten to take the frame's
+        keys in order. Third run: the message whole; the second message
+        held inside the second and sent on the next Enter; a team line
+        with "mmm flank" in it (no sound toggled), put away by Esc with
+        the window still running; Tab to the team, sent.
+     5. Frames of the line being typed, of the held line, and of a
+        message on the wire; the hint's fourth line fits.
+
+V. RESULTS
+
+    make test passes (client 12, sim 24 with the chat checks); no
+    warnings. The drive: 3 messages sent as typed, 1 held, 0 lost
+    letters, 0 orders or sound toggles from typed keys, Esc closed the
+    line and did not quit.
+
+VI. DISCUSSION
+
+    The lost first letter is the session's lesson: a pure function was
+    tested and correct, and the system around it dropped input at a
+    frame boundary that only a fast typist, or a script, crosses.
+    Driving the real window found it in one run.
+
+VII. OPEN PROBLEMS
+
+    1. UI-22's nearby and selected recipients.
+    2. The key hint changed, so the release frames differ from those
+       in reports/images until the next shoot.
+    3. Bots neither read nor write chat.
+
+VIII. NEXT STEPS
+
+    1. PLAYABILITY item 7: proposals in the window (Y/N to answer, a P
+       menu to make one). Chat is half of what an alliance needs; this
+       is the other half.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: sim, client, docs, journal:
+    chat
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

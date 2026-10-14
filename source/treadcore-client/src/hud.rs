@@ -356,7 +356,7 @@ fn setup(mut commands: Commands) {
                         });
                     }
                     col.spawn(Node { height: Val::Px(6.0), ..default() });
-                    col.spawn((Text::new("L drive  R fire\nF tank  ' pillbox\nTab events  Esc quit"), TextFont { font_size: 10.0, ..default() }, TextColor(INK)));
+                    col.spawn((Text::new("L drive  R fire\nF tank  ' pillbox\nEnter talk  M sound\nTab events  Esc quit"), TextFont { font_size: 10.0, ..default() }, TextColor(INK)));
                 });
                 // The map, in a sunken frame of its own; nothing drawn in
                 // it; the scrollback and the screens sit over it.
@@ -670,12 +670,25 @@ fn air(view: &View) -> String {
 /// for a few seconds (or until the next order, input.rs) over whatever
 /// comes after it.
 fn wire(view: &View) -> String {
+    // The line being typed comes first: it is what the player is doing.
+    if let Some(t) = view.typing.as_ref() {
+        let to = if t.to() == ChatTo::Team { "team" } else { "all" };
+        let wait = if view.chat_sent.map(|s| s.elapsed() < crate::chat::interval()).unwrap_or(false) { " (a second)" } else { "" };
+        return format!("say to {}{}> {}_", to, wait, t.line);
+    }
     if let Some((when, why)) = view.refused.as_ref().filter(|(w, _)| w.elapsed().as_secs_f32() < REFUSAL_HOLD) {
         let _ = when;
         return format!("{:>6}  {}", view.last_tick, why);
     }
+    // A message is held over the events after it: it was meant to be read.
+    if let Some((_, l)) = view.chat.as_ref().filter(|(w, _)| w.elapsed().as_secs_f32() < CHAT_HOLD) {
+        return format!("{:>6}  {}", view.last_tick, l);
+    }
     view.log.back().map(|(t, l)| format!("{:>6}  {}", t, l)).unwrap_or_default()
 }
+
+/// How long a message stays on the wire.
+const CHAT_HOLD: f32 = 8.0;
 
 /// How long a refusal stays on the wire.
 const REFUSAL_HOLD: f32 = 4.0;

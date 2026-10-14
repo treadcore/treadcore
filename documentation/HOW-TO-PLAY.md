@@ -70,7 +70,7 @@ The mouse drives and fires; the keys give orders.
 A hit on you flashes the map's frame red and shakes the view for a
 moment. Watch the newswire for what hit you and what is left.
 
-- **Space** stops. **F** or **Return** puts the view back on the
+- **Space** stops. **F** puts the view back on the
   tank; **W A S D** or the arrows scroll it away. The wheel zooms.
 
 ![The models close: the tank with its turret in your colour, a depot, a pillbox](../reports/images/guide-close.png)
@@ -162,8 +162,8 @@ per pillbox and a round one per depot, each in its owner's colour
 neutral, dark dead). **Click a pillbox lamp** and the view jumps to
 that pillbox; the **apostrophe** steps through your own and your
 allies' pillboxes, and in that view the **arrow keys** jump to the
-neighbouring pillbox in that direction. **F** or **Return** comes
-back to the tank.
+neighbouring pillbox in that direction. **F** comes back to the
+tank.
 
 ## 7. The stock
 
@@ -183,6 +183,14 @@ own judgement.
 The newswire shows the last thing that happened. **Tab** opens the
 scrollback over the map: the last forty events, each stamped with its
 tick. Tab again closes it.
+
+**Enter** opens a line on the newswire to everyone, **Shift-Enter**
+one to your team, and **Tab** switches between them while you type.
+Enter sends; Esc puts the line away. While it is open your keys are
+the line's (the mouse still drives). A message from another player
+stays on the newswire for eight seconds under their name, with a soft
+tone. One message a second: send again too soon and the line waits,
+marked, for Enter once more.
 
 What you cannot see you can hear. Your gun's blast and the boom where
 it lands, the crack of direct fire and the ring of a round striking
@@ -214,7 +222,9 @@ starts with it off.
 | `9` | the squad home |
 | Esc | drop the armed mode; with none armed, quit |
 | Space | stop |
-| `F`, Return | the view back on the tank |
+| `F` | the view back on the tank |
+| Enter | talk to everyone: type, Enter sends, Esc puts it away |
+| Shift-Enter | talk to your team (Tab switches while typing) |
 | `W A S D`, arrows | scroll; in pillbox view the arrows jump between pillboxes |
 | `'` | pillbox view: the next of yours |
 | wheel | zoom |

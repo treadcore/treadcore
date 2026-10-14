@@ -69,6 +69,13 @@ pub struct View {
     pub refused: Option<(Instant, String)>,
     /// Sounds the events asked for, played and drained by sound.rs.
     pub sounds: Vec<(Cue, Where, f32)>,
+    /// The chat line being typed (chat.rs): while it is open, the keys
+    /// are its, not the orders'.
+    pub typing: Option<crate::chat::Typing>,
+    /// When this seat last sent a message: the world takes one a second.
+    pub chat_sent: Option<Instant>,
+    /// The last message heard, held on the newswire a while.
+    pub chat: Option<(Instant, String)>,
 }
 
 #[derive(Default, Clone)]
@@ -419,6 +426,10 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             _ => {}
         }
         let line = describe(e, me, view);
+        if let (Event::Chat { .. }, Some(l)) = (e, line.as_ref()) {
+            info!("chat: {}", l);
+            view.chat = Some((Instant::now(), l.clone()));
+        }
 
         if let Some(l) = line {
             let tick = view.obs.as_ref().map(|o| o.tick).unwrap_or(view.last_tick);
@@ -474,6 +485,7 @@ fn cue_for(e: &Event, me: PlayerId, view: &View) -> Option<(Cue, Where, f32)> {
         Event::AllianceFormed { members, .. } if members.contains(&me) => (Cue::Notice, Where::Ui, 0.6),
         Event::SwarmInbound { from, .. } => (Cue::Swarm, Where::At(*from), 0.5),
         Event::Rejected { player, why, .. } if *player == me && why == "no shells" => (Cue::Empty, Where::Ui, 0.6),
+        Event::Chat { player, .. } if *player != me => (Cue::Notice, Where::Ui, 0.35),
         Event::Rejected { player, .. } if *player == me => (Cue::Refused, Where::Ui, 0.4),
         Event::MatchOver { winner, team } => {
             let my_team = obs.and_then(|o| o.players.iter().find(|p| p.id == me)).map(|p| p.team);
@@ -519,7 +531,11 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::Resupplied { .. } => "resupplying".into(),
         Event::SwarmInbound { count, .. } => format!("SWARM: {} inbound", count),
         Event::LinkLost { .. } => "link lost: drone returning".into(),
-        Event::Chat { player, text, to } => format!("{}{}: {}", who(player), if *to == ChatTo::Team { " (team)" } else { "" }, text),
+        Event::Chat { player, text, to } => {
+            // By name: a message is from a person, not a seat number.
+            let name = if *player == me { "you".to_string() } else { view.obs.as_ref().and_then(|o| o.players.iter().find(|p| p.id == *player)).map(|p| p.name.clone()).unwrap_or_else(|| who(player)) };
+            format!("{}{}: {}", name, if *to == ChatTo::Team { " (team)" } else { "" }, text)
+        }
         Event::MatchOver { winner, team } => format!("match over: {}{}", winner.map(|w| who(&w)).unwrap_or_else(|| "draw".into()), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
         Event::FriendlyFireSpared { by, damage, .. } => format!("friendly fire from {} spared ({:.0})", who(by), damage),
         Event::Proposed { from, to, terms, .. } => format!("{} proposes {:?} to {}", who(from), terms, who(to)),

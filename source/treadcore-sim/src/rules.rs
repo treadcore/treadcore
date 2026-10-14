@@ -204,6 +204,14 @@ pub const PROPOSAL_TICKS: Tick = 30 * TICK_HZ as Tick;
 pub const MIN_SIDES: usize = 3;
 
 
+// ---- chat --------------------------------------------------------------
+
+/// One message a second at most (SPEC UI-23: "at least 1 second").
+pub const CHAT_EVERY_TICKS: Tick = TICK_HZ as Tick;
+/// A message is cut to this many characters: one line of the newswire,
+/// and an Events packet far inside a datagram.
+pub const CHAT_MAX_CHARS: usize = 120;
+
 // ---- scoring -----------------------------------------------------------
 
 pub const SCORE_KILL: u32 = 100;

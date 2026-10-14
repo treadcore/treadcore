@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: chat (PLAYABILITY item 6). Enter opens a line on the newswire
+  to everyone, Shift-Enter to your team, Tab switches while typing,
+  Enter sends, Esc puts it away; the keys are the line's while it is
+  open. A message stays on the wire eight seconds under the sender's
+  name, with a tone. The world takes one message a second from each
+  player (SPEC UI-23), cuts it to 120 characters and strips control
+  characters.
+- Changed: Return no longer returns the view to the tank (Enter is
+  chat's); F does, as before.
 - Changed: the sound is FM. The weapons and the metal are two-operator
   FM: the gun's direct fire is a gunshot (an inharmonic crack, its
   index falling in milliseconds, over a punch from 1 kHz to the bass),

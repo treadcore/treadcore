@@ -145,7 +145,7 @@ on the map sends them to that square; in pillbox mode a click on a
 pillbox repairs it, or captures it if it is dead or nobody's; the
 square it would take is outlined under the cursor; Esc drops the
 mode. 9 brings them home.
-F or Return follows the tank, the apostrophe steps through your
+F follows the tank, Enter talks (Shift-Enter to your team), the apostrophe steps through your
 pillboxes, Tab shows the events. The screen is laid out as the prior
 art's was (`documentation/INTERFACE.md`); what still stands between
 the build and a game a stranger can play is `documentation/PLAYABILITY.md`.

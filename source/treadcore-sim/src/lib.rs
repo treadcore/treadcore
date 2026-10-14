@@ -476,6 +476,8 @@ pub struct Player {
     pub score: u32,
     pub is_bot: bool,
     pub team: TeamId,
+    /// The tick of this player's last message (SPEC UI-23).
+    pub last_chat: Option<Tick>,
 }
 
 /// Who a chat line is for.
@@ -873,6 +875,7 @@ impl World {
                 score: 0,
                 is_bot: *is_bot,
                 team: scenario.teams.as_ref().and_then(|t| t.get(i)).copied().unwrap_or(i as TeamId),
+                last_chat: None,
             });
 
         }
@@ -1085,6 +1088,23 @@ impl World {
         self.step_match();
     }
 
+    /// A message (SPEC UI-22, UI-23): one line, no control characters,
+    /// at most CHAT_MAX_CHARS, at most one a second from each player. A
+    /// dead player may still talk.
+    fn chat(&mut self, o: &Order, text: &str, to: ChatTo) {
+        let line: String = text.chars().map(|c| if c.is_control() { ' ' } else { c }).collect::<String>().trim().chars().take(CHAT_MAX_CHARS).collect();
+        if line.is_empty() {
+            return self.reject(o, "nothing to say");
+        }
+        let tick = self.tick;
+        let Some(p) = self.players.iter_mut().find(|p| p.id == o.player) else { return };
+        if p.last_chat.map(|t| tick < t + CHAT_EVERY_TICKS).unwrap_or(false) {
+            return self.reject(o, "one message a second");
+        }
+        p.last_chat = Some(tick);
+        self.events.push(Event::Chat { player: o.player, text: line, to });
+    }
+
     fn reject(&mut self, o: &Order, why: &str) {
         self.events.push(Event::Rejected { player: o.player, cmd: o.cmd.clone(), why: why.into() });
     }
@@ -1099,8 +1119,7 @@ impl World {
             None => return self.reject(o, "no tank"),
         };
         if let Command::Chat { text, to } = &o.cmd {
-            self.events.push(Event::Chat { player: o.player, text: text.clone(), to: *to });
-            return;
+            return self.chat(o, text, *to);
         }
         match &o.cmd {
             Command::Alliance(a) => return self.apply_alliance(o, a.clone()),
@@ -3443,6 +3462,23 @@ mod tests {
         w.step(&[Order { player: 0, cmd: Command::Chat { text: "flank".into(), to: ChatTo::Team } }]);
         assert!(w.observe(1).events.iter().any(|e| matches!(e, Event::Chat { .. })));
         assert!(!w.observe(2).events.iter().any(|e| matches!(e, Event::Chat { .. })));
+        // A second message inside a second is refused (UI-23); one a
+        // second later goes. Control characters go, the length is cut.
+        w.step(&[Order { player: 0, cmd: Command::Chat { text: "again".into(), to: ChatTo::All } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { player: 0, why, .. } if why == "one message a second")));
+        for _ in 0..CHAT_EVERY_TICKS {
+            w.step(&[]);
+        }
+        let long = format!("a\nb\x07{}", "x".repeat(500));
+        w.step(&[Order { player: 0, cmd: Command::Chat { text: long, to: ChatTo::All } }]);
+        let said = w.events.iter().find_map(|e| if let Event::Chat { text, .. } = e { Some(text.clone()) } else { None }).expect("the message went");
+        assert_eq!(said.chars().count(), CHAT_MAX_CHARS);
+        assert!(said.starts_with("a b ") && !said.chars().any(|c| c.is_control()));
+        for _ in 0..CHAT_EVERY_TICKS {
+            w.step(&[]);
+        }
+        w.step(&[Order { player: 0, cmd: Command::Chat { text: " \t ".into(), to: ChatTo::All } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "nothing to say")));
         // The match ends when one team is left: kill the four alone; 0 and
         // 1 (one team) win, the top scorer the winner.
         w.players[0].score = 50;

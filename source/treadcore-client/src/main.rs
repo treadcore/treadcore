@@ -19,6 +19,7 @@
 //! treadcore-net for the protocol.
 
 mod hud;
+mod chat;
 mod input;
 mod render;
 mod session;

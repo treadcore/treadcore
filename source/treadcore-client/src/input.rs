@@ -10,8 +10,9 @@
 //! it builds one.
 //! The views are the prior art's (SPEC UI-08 to UI-13): the tank view
 //! follows the tank, the apostrophe steps through the player's and
-//! allies' pillboxes, Return or F comes back to the tank, and the
-//! scroll keys suspend following until then.
+//! allies' pillboxes, F comes back to the tank, and the scroll keys
+//! suspend following until then. Enter is chat's (chat.rs): while a line
+//! is open, no key here is read.
 
 use crate::hud::{self, HudState, Mode, OrderTile, MODE_ROW, RETURN_ROW};
 use crate::render::MainCamera;
@@ -27,7 +28,7 @@ pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Cam>().add_systems(Update, (camera, orders));
+        app.init_resource::<Cam>().add_systems(Update, (camera, orders, crate::chat::chat.after(camera).after(orders)));
     }
 }
 
@@ -74,6 +75,10 @@ fn camera(
     lamps: Query<(&Interaction, &hud::Lamp), Changed<Interaction>>,
 ) {
     let Ok((mut tf, mut proj)) = q.single_mut() else { return };
+    // While a chat line is open the keys are the line's.
+    let typing = view.typing.is_some();
+    let held = |k: KeyCode| !typing && keys.pressed(k);
+    let pressed = |k: KeyCode| !typing && keys.just_pressed(k);
     let Projection::Orthographic(o) = &mut *proj else { return };
     // Last frame's shake comes off before anything else moves the camera.
     tf.translation -= cam.shake.extend(0.0);
@@ -85,16 +90,16 @@ fn camera(
     // that direction (SPEC UI-11); otherwise they scroll.
     let in_pillbox_view = cam.pillbox.is_some();
     let mut pan = Vec2::ZERO;
-    if keys.pressed(KeyCode::KeyW) || (!in_pillbox_view && keys.pressed(KeyCode::ArrowUp)) {
+    if held(KeyCode::KeyW) || (!in_pillbox_view && held(KeyCode::ArrowUp)) {
         pan.y += 1.0;
     }
-    if keys.pressed(KeyCode::KeyS) || (!in_pillbox_view && keys.pressed(KeyCode::ArrowDown)) {
+    if held(KeyCode::KeyS) || (!in_pillbox_view && held(KeyCode::ArrowDown)) {
         pan.y -= 1.0;
     }
-    if keys.pressed(KeyCode::KeyA) || (!in_pillbox_view && keys.pressed(KeyCode::ArrowLeft)) {
+    if held(KeyCode::KeyA) || (!in_pillbox_view && held(KeyCode::ArrowLeft)) {
         pan.x -= 1.0;
     }
-    if keys.pressed(KeyCode::KeyD) || (!in_pillbox_view && keys.pressed(KeyCode::ArrowRight)) {
+    if held(KeyCode::KeyD) || (!in_pillbox_view && held(KeyCode::ArrowRight)) {
         pan.x += 1.0;
     }
     // A click on a pillbox lamp jumps the view to that pillbox (UI-10).
@@ -108,13 +113,9 @@ fn camera(
             }
         }
     }
-    // Tank view: Return or F. F on an already following camera stops
-    // it, as before.
-    if keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::NumpadEnter) {
-        cam.follow = true;
-        cam.pillbox = None;
-    }
-    if keys.just_pressed(KeyCode::KeyF) {
+    // Tank view: F (SPEC UI-13's tank view key; Enter is chat's). F on
+    // an already following camera stops it, as before.
+    if pressed(KeyCode::KeyF) {
         cam.follow = cam.pillbox.is_some() || !cam.follow;
         cam.pillbox = None;
     }
@@ -122,9 +123,9 @@ fn camera(
     // in it, an arrow jumps to the nearest of them in that direction.
     let arrow = [(KeyCode::ArrowUp, V2::new(0.0, -1.0)), (KeyCode::ArrowDown, V2::new(0.0, 1.0)), (KeyCode::ArrowLeft, V2::new(-1.0, 0.0)), (KeyCode::ArrowRight, V2::new(1.0, 0.0))]
         .into_iter()
-        .find(|(k, _)| in_pillbox_view && keys.just_pressed(*k))
+        .find(|(k, _)| in_pillbox_view && pressed(*k))
         .map(|(_, d)| d);
-    if keys.just_pressed(KeyCode::Quote) || arrow.is_some() {
+    if pressed(KeyCode::Quote) || arrow.is_some() {
         if let Some(obs) = view.obs.as_ref() {
             let mine: Vec<&Pillbox> = obs.pillboxes.iter().filter(|p| p.owner.map(|o| o == obs.player || obs.allied(o)).unwrap_or(false)).collect();
             if !mine.is_empty() {
@@ -184,14 +185,18 @@ fn orders(
     mut hud: ResMut<HudState>,
     tiles: Query<(&Interaction, &OrderTile), Changed<Interaction>>,
 ) {
+    // While a chat line is open the keys are the line's; the mouse and
+    // the order tiles still work.
+    let typing = view.typing.is_some();
+    let pressed = |k: KeyCode| !typing && keys.just_pressed(k);
     // A tile clicked is its key pressed.
     let clicked: Option<usize> = tiles.iter().find(|(i, _)| **i == Interaction::Pressed).map(|(_, t)| t.0);
-    let hit = |key: KeyCode, row: usize| keys.just_pressed(key) || clicked == Some(row);
-    if keys.just_pressed(KeyCode::Tab) {
+    let hit = |key: KeyCode, row: usize| pressed(key) || clicked == Some(row);
+    if pressed(KeyCode::Tab) {
         hud.show_log = !hud.show_log;
     }
     // Esc drops an armed mode; with none armed it quits.
-    if keys.just_pressed(KeyCode::Escape) {
+    if pressed(KeyCode::Escape) {
         if hud.mode.is_some() {
             hud.mode = None;
         } else {
@@ -258,13 +263,13 @@ fn orders(
     if hit(KeyCode::Digit9, RETURN_ROW) {
         orders.0.push(Command::Deploy { task: PillboyTask::Return });
     }
-    if keys.just_pressed(KeyCode::BracketLeft) {
+    if pressed(KeyCode::BracketLeft) {
         orders.0.push(Command::SetBubble { radius: me.bubble - 1.0 });
     }
-    if keys.just_pressed(KeyCode::BracketRight) {
+    if pressed(KeyCode::BracketRight) {
         orders.0.push(Command::SetBubble { radius: me.bubble + 1.0 });
     }
-    if keys.just_pressed(KeyCode::Space) {
+    if pressed(KeyCode::Space) {
         orders.0.push(Command::Stop);
     }
     // A new order takes the last refusal off the wire.
