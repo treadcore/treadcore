@@ -104,6 +104,8 @@ pub fn terrain_color(t: Terrain) -> Color {
         Terrain::Rubble => voxel::EARTH,
         Terrain::Depot => Color::srgb(0.50, 0.46, 0.38),
         Terrain::Wall => voxel::TAN,
+        Terrain::Pad => voxel::PAD,
+        Terrain::Concrete => voxel::CONCRETE,
     }
 }
 
@@ -171,6 +173,7 @@ fn build_map(mut commands: Commands, view: Res<View>, mut sprites: ResMut<Sprite
 fn raise_or_sink(commands: &mut Commands, sprites: &mut Sprites, w: usize, i: usize, t: Terrain) {
     let want = match t {
         Terrain::Wall => Some(Terrain::Wall as u8),
+        Terrain::Concrete => Some(Terrain::Concrete as u8),
         Terrain::Rubble => Some(Terrain::Rubble as u8),
         _ => None,
     };
@@ -184,7 +187,11 @@ fn raise_or_sink(commands: &mut Commands, sprites: &mut Sprites, w: usize, i: us
     }
     if let Some(k) = want {
         let pos = to_screen(V2::new((i % w) as f32 + 0.5, (i / w) as f32 + 0.5));
-        let model = if k == Terrain::Wall as u8 { voxel::wall() } else { voxel::crater() };
+        let model = match Terrain::from_u8(k) {
+            Terrain::Wall => voxel::wall(),
+            Terrain::Concrete => voxel::concrete(),
+            _ => voxel::crater(),
+        };
         let e = commands.spawn((Transform::from_translation(pos.extend(0.9)), Visibility::Visible)).with_children(|p| model.spawn(p, 0.0)).id();
         sprites.walls.insert(i, (k, e));
     }
@@ -334,8 +341,14 @@ fn sync_entities(
                 DroneKind::Recon => "R",
                 DroneKind::Interceptor => "I",
                 DroneKind::Strike => "S",
+                DroneKind::Longshot => "L",
             };
-            Some((format!("{} {:.0}% {:.0}s", k, d.link * 100.0, d.battery), link_color(d.link)))
+            // A longshot has no link to show: only its time left.
+            if d.kind == DroneKind::Longshot {
+                Some((format!("{} {:.0}s", k, d.battery), voxel::LIT))
+            } else {
+                Some((format!("{} {:.0}% {:.0}s", k, d.link * 100.0, d.battery), link_color(d.link)))
+            }
         } else {
             None
         };
@@ -344,6 +357,7 @@ fn sync_entities(
             DroneKind::Recon => voxel::recon(c),
             DroneKind::Interceptor => voxel::interceptor(c),
             DroneKind::Strike => voxel::strike(c),
+            DroneKind::Longshot => voxel::longshot(c),
         }, 4.0, label);
     }
     for s in &obs.shells {
@@ -367,6 +381,27 @@ fn sync_entities(
         let bucket = if !alive { 0 } else { 1 + (health * 8.0).round() as u32 };
         let h = if alive { ((health * 8.0).round() / 8.0).clamp(0.0, 1.0) } else { 0.0 };
         place(&mut commands, p.id, to_screen(p.pos), 0.0, model_key(8, c, bucket), &|| voxel::pillbox(owner, h, alive), 1.5, Some((label, if alive { c } else { Color::srgb(0.45, 0.42, 0.4) })));
+    }
+    // Structures (step 10b): each kind its own shape on its pad, the
+    // owner's mark along the front, lamps lit while it works; labelled
+    // with its name and health, and DARK when it has no power.
+    for x in &obs.structures {
+        let owner = x.owner.map(player_color);
+        let c = owner.unwrap_or(Color::srgb(0.75, 0.75, 0.7));
+        let alive = x.alive();
+        let health = x.health / STRUCTURE_HEALTH;
+        let word = crate::commander::name(x.kind);
+        let label = if !alive {
+            format!("{} wreck", word)
+        } else if x.owner.is_some() && !x.powered {
+            format!("{} {:.0} DARK", word, x.health)
+        } else {
+            format!("{} {:.0}", word, x.health)
+        };
+        let bucket = if !alive { 0 } else { 1 + (health * 8.0).round() as u32 } | ((x.powered as u32) << 5) | ((x.kind as u32) << 6);
+        let h = ((health * 8.0).round() / 8.0).clamp(0.0, 1.0);
+        let (kind, powered) = (x.kind, x.powered);
+        place(&mut commands, x.id, to_screen(x.pos), 0.0, model_key(11, c, bucket), &|| voxel::structure(kind, owner, h, alive, powered), 1.4, Some((label, if alive { c } else { Color::srgb(0.45, 0.42, 0.4) })));
     }
     // Mines I know about: mine in my colour, found hostile ones red.
     for m in &obs.mines {
@@ -466,8 +501,10 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>, window: Quer
                 let color = match mode {
                     Mode::Farm => FOREST,
                     Mode::Road => ROAD,
+                    Mode::Wall if hud.concrete => voxel::CONCRETE,
                     Mode::Wall | Mode::Pillbox => voxel::TAN,
                     Mode::Mine => voxel::MINE,
+                    Mode::Works => voxel::LIT,
                 };
                 gizmos.rect_2d(centre, Vec2::splat(TILE), color);
                 gizmos.rect_2d(centre, Vec2::splat(TILE + 3.0), color.with_alpha(0.4));
@@ -540,7 +577,21 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>, window: Quer
                         }
                     }
                 }
+                // A longshot: the line to where it was sent, and a cross
+                // on the point.
+                DroneKind::Longshot => {
+                    if let DroneTask::Attack { at } = &d.task {
+                        gizmos.line_2d(to_screen(d.pos), to_screen(*at), Color::srgba(1.0, 0.75, 0.3, 0.35));
+                        gizmos.cross_2d(to_screen(*at), TILE * 0.8, Color::srgba(1.0, 0.75, 0.3, 0.8));
+                    }
+                }
             }
+        } else if d.kind == DroneKind::Longshot {
+            // A hostile longshot: its track ahead, so a commander can
+            // read where it is going. Where it was sent is its own.
+            let c = player_color(d.owner);
+            gizmos.circle_2d(to_screen(d.pos), TILE * 0.8, Color::srgb(1.0, 0.25, 0.2));
+            gizmos.line_2d(to_screen(d.pos), to_screen(d.pos + V2::from_heading(d.heading).scale(12.0)), c.with_alpha(0.5));
         } else {
             // Hostile air: a red ring so it reads at a glance.
             let c = if d.owner == SWARM_OWNER { Color::srgb(1.0, 0.25, 0.2) } else { player_color(d.owner) };
@@ -577,6 +628,25 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>, window: Quer
         if let Some(c) = p.capturer {
             let f = p.capture as f32 / PILLBOX_CAPTURE_TICKS as f32;
             gizmos.circle_2d(to_screen(p.pos), TILE * 2.0 * f, player_color(c).with_alpha(0.6));
+        }
+    }
+    // Structures: a jammer's reach (red: it takes every link in it,
+    // mine too), a power plant's faint, and capture progress.
+    for x in obs.structures.iter().filter(|x| x.working()) {
+        match x.kind {
+            StructureKind::Jammer => {
+                gizmos.circle_2d(to_screen(x.pos), JAMMER_RANGE * TILE, Color::srgba(1.0, 0.3, 0.25, 0.35));
+            }
+            StructureKind::Power if x.owner.map(|o| o == me || obs.allied(o)).unwrap_or(false) => {
+                gizmos.circle_2d(to_screen(x.pos), POWER_RANGE * TILE, Color::srgba(1.0, 0.9, 0.35, 0.08));
+            }
+            _ => {}
+        }
+    }
+    for x in obs.structures.iter().filter(|x| x.capture > 0) {
+        if let Some(c) = x.capturer {
+            let f = x.capture as f32 / PILLBOX_CAPTURE_TICKS as f32;
+            gizmos.circle_2d(to_screen(x.pos), TILE * 2.0 * f, player_color(c).with_alpha(0.6));
         }
     }
     // My squad's walk: a line from the tank to the squad and on to its site.

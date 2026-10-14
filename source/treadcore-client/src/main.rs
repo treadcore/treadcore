@@ -20,6 +20,7 @@
 
 mod hud;
 mod chat;
+mod commander;
 mod input;
 mod proposals;
 mod render;
@@ -62,6 +63,8 @@ pub struct Args {
     pub window: Option<[i32; 4]>,
     /// Start with the sound off (`--mute`; M toggles it in play).
     pub mute: bool,
+    /// Give a map with no structures an economy (`--industry`).
+    pub industry: bool,
 }
 
 fn parse_args() -> Args {
@@ -83,6 +86,7 @@ fn parse_args() -> Args {
         seconds: None,
         window: None,
         mute: false,
+        industry: false,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -106,6 +110,7 @@ fn parse_args() -> Args {
             "--identity" => a.identity = Some(val()),
             "--seconds" => a.seconds = val().parse().ok(),
             "--mute" => a.mute = true,
+            "--industry" => a.industry = true,
             "--write-sounds" => {
                 // Every sound the window makes, as WAV files, and out:
                 // no window, no audio device (`make sounds`).
@@ -140,7 +145,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE] [--mute] [--write-sounds DIR]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE] [--industry] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);
@@ -178,7 +183,7 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.05, 0.06, 0.07)))
         .insert_resource(Time::<Fixed>::from_hz(TICK_HZ as f64))
         .insert_resource(args)
-        .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }))
+        .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }, commander::CommanderPlugin))
         .run();
 }
 

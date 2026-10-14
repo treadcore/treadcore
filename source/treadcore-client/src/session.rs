@@ -81,6 +81,8 @@ pub struct View {
     /// The chat line had this frame's keys (it was open at some point
     /// in it): the list after it must not read them as well.
     pub keys_eaten: bool,
+    /// What my side is losing, newest last (commander.rs).
+    pub alerts: VecDeque<crate::commander::Alert>,
 }
 
 impl View {
@@ -159,7 +161,7 @@ fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
         Some(text) => MapSource::Text(text.clone()),
         None => MapSource::FromScenarioSeed,
     };
-    let mut s = Scenario { seed: args.seed, map, swarm_interval: args.swarm, ..Scenario::default() };
+    let mut s = Scenario { seed: args.seed, map, swarm_interval: args.swarm, industry: args.industry, ..Scenario::default() };
     if let Some(secs) = args.seconds {
         s.time_limit = secs * TICK_HZ as u64;
     }
@@ -417,7 +419,27 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             Event::Rejected { player, why, .. } if *player == me => {
                 view.refused = Some((Instant::now(), format!("order refused: {}", why)));
             }
+            Event::StructureDamaged { structure, .. } | Event::StructureWrecked { structure, .. } => {
+                if let Some(x) = view.obs.as_ref().and_then(|o| o.structures.iter().find(|x| x.id == *structure)) {
+                    view.impacts.push((x.pos, crate::voxel::CONCRETE, if matches!(e, Event::StructureWrecked { .. }) { 16 } else { 4 }));
+                }
+            }
+            Event::LongshotHit { at, .. } => view.impacts.push((*at, earth, 10)),
             _ => {}
+        }
+        // What my side is losing: on the wire in red's place, with the
+        // alarm, and on the minimap (commander.rs).
+        if let Some(a) = crate::commander::alert_for(e, me, view) {
+            let quiet = view.alerts.back().map(|b| b.when.elapsed().as_secs_f32() < 2.0).unwrap_or(false);
+            if !quiet {
+                view.sounds.push((Cue::Alarm, Where::Ui, 0.45));
+            }
+            let tick = view.obs.as_ref().map(|o| o.tick).unwrap_or(view.last_tick);
+            view.log.push_back((tick, format!("ALERT {}  (J)", a.text)));
+            view.alerts.push_back(a);
+            while view.alerts.len() > 16 {
+                view.alerts.pop_front();
+            }
         }
         if let Some((cue, at, gain)) = cue_for(e, me, view) {
             view.sounds.push((cue, at, gain));
@@ -476,7 +498,7 @@ fn cue_for(e: &Event, me: PlayerId, view: &View) -> Option<(Cue, Where, f32)> {
         Event::ShellImpact { shell, at: p, kind: ShellKind::Direct, .. } if shell % 3 == 0 => (Cue::Ricochet, Where::At(*p), 0.8),
         Event::ShellImpact { at: p, kind: ShellKind::Direct, .. } => (Cue::Pop, Where::At(*p), 0.8),
         Event::MineExploded { at: p, .. } => (Cue::Mine, Where::At(*p), 1.0),
-        Event::DroneLaunched { drone, owner, kind: DroneKind::Strike } => (Cue::Rocket, at(*drone), if *owner == me { 0.8 } else { 0.6 }),
+        Event::DroneLaunched { drone, owner, kind: DroneKind::Strike | DroneKind::Longshot } => (Cue::Rocket, at(*drone), if *owner == me { 0.8 } else { 0.6 }),
         Event::DroneLaunched { drone, owner, .. } => (Cue::Launch, at(*drone), if *owner == me { 0.5 } else { 0.35 }),
         Event::Intercepted { target, .. } => (Cue::Intercept, at(*target), 0.7),
         Event::DroneLost { drone, why: LossReason::Shot | LossReason::Splash, .. } => (Cue::Crash, at(*drone), 0.6),
@@ -501,6 +523,13 @@ fn cue_for(e: &Event, me: PlayerId, view: &View) -> Option<(Cue, Where, f32)> {
         Event::ProposalResolved { from, accepted, .. } if *from == me => (if *accepted { Cue::Capture } else { Cue::Lost }, Where::Ui, 0.6),
         Event::AllianceFormed { members, .. } if members.contains(&me) => (Cue::Notice, Where::Ui, 0.6),
         Event::SwarmInbound { from, .. } => (Cue::Swarm, Where::At(*from), 0.5),
+        Event::LongshotHit { at: p, .. } => (Cue::Boom, Where::At(*p), 1.0),
+        Event::StructureWrecked { structure, .. } => (Cue::Wreck, at(*structure), 1.0),
+        Event::StructureDamaged { structure, .. } => (Cue::Clang, at(*structure), 0.7),
+        Event::StructureCaptured { structure, by, .. } if *by == me => (Cue::Capture, at(*structure), 0.6),
+        Event::StructureCaptured { structure, from: Some(f), .. } if *f == me => (Cue::Lost, at(*structure), 0.6),
+        Event::StructureBuilt { by, at: p, .. } if *by == me => (Cue::Thud, Where::At(*p), 0.8),
+        Event::Jammed { drone, owner, .. } if *owner == me => (Cue::Static, at(*drone), 0.5),
         Event::Rejected { player, why, .. } if *player == me && why == "no shells" => (Cue::Empty, Where::Ui, 0.6),
         Event::Chat { player, .. } if *player != me => (Cue::Notice, Where::Ui, 0.35),
         Event::Rejected { player, .. } if *player == me => (Cue::Refused, Where::Ui, 0.4),
@@ -528,7 +557,7 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
             DroneTask::Orbit { .. } => "recon orbit moved".into(),
             DroneTask::Strike { .. } => "strike retargeted".into(),
             DroneTask::Return => "drone recalled".into(),
-            DroneTask::Intercept { .. } => return None,
+            DroneTask::Intercept { .. } | DroneTask::Attack { .. } => return None,
         },
         Event::Intercepted { owner, .. } => format!("{} intercept: KILL", who(owner)),
         Event::InterceptMissed { .. } => "intercept missed".into(),
@@ -583,6 +612,16 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::MineLaid { .. } => "mine laid".into(),
         Event::MineExploded { owner, hits, .. } => format!("MINE ({}) {}", who(owner), if hits.is_empty() { "cleared".to_string() } else { format!("hit {}", hits.len()) }),
         Event::TerrainChanged { .. } => return None,
+        Event::StructureBuilt { kind, by, .. } => format!("{} built a {}", who(by), crate::commander::name(*kind)),
+        // Mine and my allies' are alerts (above); the rest is noise.
+        Event::StructureDamaged { .. } => return None,
+        Event::StructureWrecked { kind, owner, by, .. } => format!("{} ({}) WRECKED by {}", crate::commander::name(*kind), owner.map(|o| who(&o)).unwrap_or_else(|| "neutral".into()), by.map(|b| who(&b)).unwrap_or_else(|| "?".into())),
+        Event::StructureCaptured { kind, by, from, .. } => format!("{} took a {}{}", who(by), crate::commander::name(*kind), from.map(|f| format!(" from {}", who(&f))).unwrap_or_default()),
+        Event::StructureRepaired { kind, by, .. } => format!("{} mended a {}", who(by), crate::commander::name(*kind)),
+        Event::StructurePower { kind, owner, on: true, .. } if *owner == me => format!("your {} has power", crate::commander::name(*kind)),
+        Event::StructurePower { .. } => return None,
+        Event::LongshotHit { owner, hits, .. } => format!("LONGSHOT ({}) {}", who(owner), if hits.is_empty() { "landed on nothing".to_string() } else { format!("hit {}", hits.len()) }),
+        Event::Jammed { kind, .. } => format!("{:?} jammed: link gone", kind),
     })
 }
 

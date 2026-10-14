@@ -72,10 +72,13 @@ pub enum Mode {
     Wall,
     Pillbox,
     Mine,
+    /// Step 10d: build the selected structure on a pad, or capture or
+    /// mend the structure under the click. `B` picks the kind.
+    Works,
 }
 
 impl Mode {
-    pub const ALL: [Mode; 5] = [Mode::Farm, Mode::Road, Mode::Wall, Mode::Pillbox, Mode::Mine];
+    pub const ALL: [Mode; 6] = [Mode::Farm, Mode::Road, Mode::Wall, Mode::Pillbox, Mode::Mine, Mode::Works];
 
     /// The mode's row in the orders column.
     pub fn row(self) -> usize {
@@ -92,7 +95,7 @@ impl Mode {
 /// an order and has no row; the help line at the foot names it.
 pub const MODE_ROW: usize = 5;
 /// The row that brings the squad home.
-pub const RETURN_ROW: usize = 10;
+pub const RETURN_ROW: usize = 11;
 
 #[derive(Resource)]
 pub struct HudState {
@@ -102,13 +105,21 @@ pub struct HudState {
     pub aiming: bool,
     /// The armed builder mode: the next click on the map gives it.
     pub mode: Option<Mode>,
+    /// What the works mode builds (`B` steps it).
+    pub works: StructureKind,
+    /// Wall mode armed with Shift held: the wall is poured in concrete.
+    pub concrete: bool,
 }
 
 impl Default for HudState {
     fn default() -> HudState {
-        HudState { show_log: false, aiming: false, mode: None }
+        HudState { show_log: false, aiming: false, mode: None, works: StructureKind::Power, concrete: false }
     }
 }
+
+/// The works row's word: the kind it will build.
+#[derive(Component)]
+pub struct WorksWord;
 
 /// An order's tile is a button: a click is the key.
 #[derive(Component, Clone, Copy)]
@@ -152,6 +163,7 @@ pub enum Group {
     Recon,
     Interceptor,
     Strike,
+    Longshot,
     Squad,
     Material,
     /// The lamp beside an order tile.
@@ -169,8 +181,8 @@ pub enum Bar {
 
 /// The orders, in the column's order: key and word; the picture is by
 /// index. Rows 0 to 4 are the drones'; 5 to 9 the builder modes in the
-/// prior art's order; 10 brings the squad home.
-const ORDERS: [(&str, &str); 11] = [
+/// prior art's order, 10 the works (step 10d); 11 brings the squad home.
+const ORDERS: [(&str, &str); 12] = [
     ("1", "interceptor"),
     ("2", "recon"),
     ("3", "strike"),
@@ -181,6 +193,7 @@ const ORDERS: [(&str, &str); 11] = [
     ("6", "wall"),
     ("7", "pillbox"),
     ("8", "mine"),
+    ("0", "works"),
     ("9", "return"),
 ];
 
@@ -305,6 +318,17 @@ fn picture(p: &mut ChildSpawnerCommands, i: usize) {
             }
         }
         Some(Mode::Mine) => block(p, SQ * 1.1, SQ * 1.2, SQ * 0.8, SQ * 0.6, SQ * 0.3, MINE),
+        Some(Mode::Works) => {
+            // A pad, and on it a hall and a stack with its lamp.
+            for x in 0..3 {
+                for y in 1..3 {
+                    sq(p, x, y, crate::voxel::PAD);
+                }
+            }
+            block(p, SQ * 0.3, SQ * 1.1, SQ * 1.6, SQ * 1.0, SQ * 0.4, crate::voxel::STEEL);
+            block(p, SQ * 2.1, SQ * 0.2, SQ * 0.5, SQ * 1.9, SQ * 0.3, crate::voxel::CONCRETE);
+            block(p, SQ * 2.1, SQ * 0.0, SQ * 0.5, SQ * 0.4, SQ * 0.1, crate::voxel::LIT);
+        }
         None => {
             // Return: the hull on the grass, the turret in the seat's blue.
             block(p, SQ * 0.4, SQ * 1.0, SQ * 2.2, SQ * 0.9, SQ * 0.4, OLIVE);
@@ -335,7 +359,7 @@ fn setup(mut commands: Commands) {
                             col.spawn(Node { height: Val::Px(6.0), ..default() });
                         }
                         // The tile's size is its content; the 3 px bevel sits outside it.
-                        let (tile, row_h) = (SQ * 3.0, SQ * 3.0 + 8.0);
+                        let (tile, row_h) = (SQ * 3.0, SQ * 3.0 + 4.0);
                         col.spawn(Node { flex_direction: FlexDirection::Row, align_items: AlignItems::Center, height: Val::Px(row_h), flex_shrink: 0.0, ..default() }).with_children(|row| {
                             if builder {
                                 lamp(row, Group::Order, i, true);
@@ -351,13 +375,17 @@ fn setup(mut commands: Commands) {
                                 .with_children(|t| if builder { picture(t, i) } else { pictogram(t, i) });
                             row.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|w| {
                                 w.spawn((Text::new(*key), TextFont { font_size: FONT, ..default() }, TextColor(AMBER), OrderKey(i)));
-                                w.spawn((Text::new(*word), TextFont { font_size: 11.0, ..default() }, TextColor(INK)));
+                                if Mode::of_row(i) == Some(Mode::Works) {
+                                    w.spawn((Text::new(*word), TextFont { font_size: 11.0, ..default() }, TextColor(INK), WorksWord));
+                                } else {
+                                    w.spawn((Text::new(*word), TextFont { font_size: 11.0, ..default() }, TextColor(INK)));
+                                }
                             });
                         });
                     }
                     // Four lines of keys, a size down and with no gap above,
                     // so the last still shows in the shoot's 740 px window.
-                    col.spawn((Text::new("L drive  R fire\nF tank  ' pillbox\nEnter talk  P propose\nTab events  Esc quit"), TextFont { font_size: 9.0, ..default() }, TextColor(INK)));
+                    col.spawn((Text::new("L drive  R fire  X longshot\nF tank  ' pillbox  J alert\nB kind  shift-6 concrete\nEnter talk  P propose  Tab"), TextFont { font_size: 9.0, ..default() }, TextColor(INK)));
                 });
                 // The map, in a sunken frame of its own; nothing drawn in
                 // it; the scrollback and the screens sit over it.
@@ -387,7 +415,9 @@ fn setup(mut commands: Commands) {
                 });
             });
             // The bottom strip: the stock as lamps and bars, the air, the newswire.
-            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(BOTTOM), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Column, overflow: Overflow::clip(), ..default() }, BackgroundColor(BEZEL))).with_children(|strip| {
+            // The minimap (step 10d) at its right end, the strip's height.
+            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(BOTTOM), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Row, overflow: Overflow::clip(), ..default() }, BackgroundColor(BEZEL))).with_children(|outer| {
+            outer.spawn(Node { flex_grow: 1.0, min_width: Val::Px(0.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, overflow: Overflow::clip(), ..default() }).with_children(|strip| {
                 strip.spawn(Node { flex_direction: FlexDirection::Row, flex_shrink: 0.0, height: Val::Px(72.0), overflow: Overflow::clip(), ..default() }).with_children(|row| {
                     inset(row, Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
                         label(p, "SHELLS");
@@ -396,7 +426,7 @@ fn setup(mut commands: Commands) {
                     inset(row, Node { flex_direction: FlexDirection::Row, column_gap: Val::Px(6.0), ..default() }).with_children(|r| {
                         r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
                             label(c, "RECON");
-                            lamp_row(c, Group::Recon, BAY_FULL.recon as usize, true, 6);
+                            lamp_row(c, Group::Recon, BAY_FULL.recon as usize, true, 2);
                         });
                         r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
                             label(c, "INTCP");
@@ -404,7 +434,11 @@ fn setup(mut commands: Commands) {
                         });
                         r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
                             label(c, "STRIKE");
-                            lamp_row(c, Group::Strike, BAY_FULL.strike as usize, false, 6);
+                            lamp_row(c, Group::Strike, BAY_FULL.strike as usize, false, 3);
+                        });
+                        r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
+                            label(c, "LONG");
+                            lamp_row(c, Group::Longshot, BAY_FULL.longshot as usize, false, 2);
                         });
                     });
                     inset(row, Node { flex_direction: FlexDirection::Row, column_gap: Val::Px(6.0), ..default() }).with_children(|r| {
@@ -414,18 +448,23 @@ fn setup(mut commands: Commands) {
                         });
                         r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
                             label(c, "MATERIAL");
-                            lamp_row(c, Group::Material, PILLBOY_MATERIAL_MAX as usize, false, 8);
+                            lamp_row(c, Group::Material, PILLBOY_MATERIAL_MAX as usize, false, 4);
                         });
                     });
-                    inset(row, Node { flex_direction: FlexDirection::Column, width: Val::Px(150.0), ..default() }).with_children(|p| {
+                    inset(row, Node { flex_direction: FlexDirection::Column, width: Val::Px(110.0), ..default() }).with_children(|p| {
                         label(p, "ARMOR");
-                        bar(p, Bar::Armor, 130.0);
+                        bar(p, Bar::Armor, 92.0);
                         label(p, "FUEL");
-                        bar(p, Bar::Fuel, 130.0);
+                        bar(p, Bar::Fuel, 92.0);
                     });
                     inset(row, Node { flex_grow: 1.0, ..default() }).with_children(|p| text(p, Panel::Air, FONT));
                 });
                 inset(strip, Node { width: Val::Percent(100.0), flex_grow: 1.0, align_items: AlignItems::Center, overflow: Overflow::clip(), ..default() }).with_children(|p| text(p, Panel::Wire, WIRE_FONT));
+            });
+            inset(outer, Node { flex_shrink: 0.0, justify_content: JustifyContent::Center, align_items: AlignItems::Center, padding: UiRect::all(Val::Px(2.0)), ..default() }).with_children(|p| {
+                use crate::commander::{MinimapNode, MINIMAP_H};
+                p.spawn((ImageNode::default(), Node { width: Val::Px(MINIMAP_H), height: Val::Px(MINIMAP_H), ..default() }, MinimapNode, Button, Interaction::None, bevy::ui::RelativeCursorPosition::default()));
+            });
             });
         });
 }
@@ -439,7 +478,14 @@ fn update(
     mut lamps: Query<(&Lamp, &mut BackgroundColor, &mut Visibility), (Without<Panel>, Without<Bar>)>,
     mut bars: Query<(&Bar, &mut Node), Without<Lamp>>,
     mut keys: Query<(&OrderKey, &mut TextColor), Without<Panel>>,
+    mut works: Query<&mut Text, (With<WorksWord>, Without<Panel>)>,
 ) {
+    for mut t in works.iter_mut() {
+        let w = format!("works: {}", crate::commander::name(state.works));
+        if t.0 != w {
+            t.0 = w;
+        }
+    }
     let under_fire = view.obs.as_ref().and_then(|o| o.me.as_ref().map(|t| (o.tick, t))).map(|(tick, t)| t.last_hit_tick > 0 && tick.saturating_sub(t.last_hit_tick) < (3 * TICK_HZ) as Tick).unwrap_or(false);
     for (p, mut text, mut color) in texts.iter_mut() {
         if *p == Panel::Top {
@@ -518,6 +564,7 @@ fn update(
             Group::Recon => (if tank.map(|t| l.1 < t.bay.recon as usize).unwrap_or(false) { SKY } else { DIM }, true),
             Group::Interceptor => (if tank.map(|t| l.1 < t.bay.interceptor as usize).unwrap_or(false) { GREEN } else { DIM }, true),
             Group::Strike => (if tank.map(|t| l.1 < t.bay.strike as usize).unwrap_or(false) { RED } else { DIM }, true),
+            Group::Longshot => (if tank.map(|t| l.1 < t.bay.longshot as usize).unwrap_or(false) { AMBER } else { DIM }, true),
             Group::Squad => (
                 match tank {
                     Some(t) if l.1 < t.pillboys.strength as usize => {
@@ -545,7 +592,7 @@ fn update(
         }
     }
     for (k, mut color) in keys.iter_mut() {
-        let c = if can_order(tank, k.0) { AMBER } else { KEY_DIM };
+        let c = if can_order(tank, k.0, state.works) { AMBER } else { KEY_DIM };
         if color.0 != c {
             color.0 = c;
         }
@@ -563,7 +610,7 @@ fn update(
 /// Whether an order of the column can be given now: the key lights
 /// amber when it can. A builder mode needs the squad aboard and the
 /// material it costs (SPEC BLD-03, BLD-10).
-pub fn can_order(tank: Option<&Tank>, i: usize) -> bool {
+pub fn can_order(tank: Option<&Tank>, i: usize, works: StructureKind) -> bool {
     let Some(t) = tank else { return false };
     let sq = &t.pillboys;
     let aboard = sq.aboard && sq.strength > 0;
@@ -577,6 +624,9 @@ pub fn can_order(tank: Option<&Tank>, i: usize) -> bool {
         (_, Some(Mode::Wall)) => aboard && sq.material >= BuildKind::Wall.cost(),
         (_, Some(Mode::Pillbox)) => aboard,
         (_, Some(Mode::Mine)) => aboard && sq.material >= BuildKind::Mine.cost(),
+        // A capture needs no material and a build its kind's, so the
+        // key is lit whenever the squad is aboard; the word says the kind.
+        (_, Some(Mode::Works)) => aboard && (works.cost() <= PILLBOY_MATERIAL_MAX),
         (RETURN_ROW, _) => !sq.aboard && sq.strength > 0,
         _ => false,
     }
@@ -646,14 +696,20 @@ fn air(view: &View) -> String {
                 DroneKind::Recon => "R",
                 DroneKind::Interceptor => "I",
                 DroneKind::Strike => "S",
+                DroneKind::Longshot => "L",
             };
             let task = match &d.task {
                 DroneTask::Orbit { .. } => "".to_string(),
                 DroneTask::Intercept { target } => format!(" INTERCEPT #{}", target),
                 DroneTask::Strike { target } => format!(" STRIKE #{}", target),
                 DroneTask::Return => " home".into(),
+                DroneTask::Attack { at } => format!(" to {:.0},{:.0}", at.x, at.y),
             };
-            format!("{} {:.0}% {:.0}s{}", k, d.link * 100.0, d.battery, task)
+            if d.kind == DroneKind::Longshot {
+                format!("{} {:.0}s{}", k, d.battery, task)
+            } else {
+                format!("{} {:.0}% {:.0}s{}", k, d.link * 100.0, d.battery, task)
+            }
         })
         .collect();
     let hostile = obs.hostile_drones().count();

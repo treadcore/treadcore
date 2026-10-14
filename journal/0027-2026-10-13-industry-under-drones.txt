@@ -1,0 +1,180 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 20:50:00 -0700
+Subject: [JOURNAL 0027] Industry under drones: structures on pads, the
+         longshot, the jammer, the commander's picture, a world map
+Message-ID: <0027.20261013@treadcore.org>
+In-Reply-To: <0026.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: structures, longshot, jammer, minimap, alerts, world map,
+          Pan-American Highway, roadmap step 10
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "write to backlog and start implementing
+           ... plan and implement"
+X-Commits: the commit that carries this entry
+
+                         INDUSTRY UNDER DRONES
+
+                     Paul Richeson, treadcore.org
+                           13 October 2026
+
+
+ABSTRACT
+
+    A talk on the October strikes on Riyadh's airport and on Russian
+    data centres made one point a game can use: infrastructure is the
+    target now, the drones that hit it are cheap, and electronic
+    warfare protects a point, never an economy. Roadmap step 10 was
+    written from it and built the same night: pads and five structures
+    (power plant, refinery, data centre, workshop, jammer), each
+    serving its side while powered; the longshot, a slow one-way drone
+    that crosses the map; concrete; a minimap and alerts with a key to
+    jump to them; bots that take structures and send longshots; and a
+    world map with the Pan-American Highway and Europe's trunk roads.
+    The balance proofs on the generated island read the same to the
+    digit. On the Atlantic map, sixteen bots in five minutes took 36
+    structures and wrecked 20 with 43 longshots that landed, and the
+    pillboxes at the chokepoints made 5 of the 12 kills, where on the
+    island they make almost none.
+
+INDEX TERMS
+
+    structures, drones, electronic warfare, maps, user interface.
+
+
+I. INTRODUCTION
+
+    Paul's notes: drones of new kinds flying cross missions; buildable
+    regions with more kinds of building (repair, data centre, refinery,
+    power); tanks that protect the equipment and get its benefit; a
+    commander's control of defence, a minimap, alerts of losing
+    resources, territory battles; the maps finished, and a world map
+    with a Pan-American Highway and a good Europe. And: it is a tank
+    fighter, and stays one.
+
+II. BACKGROUND
+
+    Journal 0026 left PLAYABILITY item 11, the minimap, as next. The
+    world had tanks, drones, pillboxes, depots and a squad that builds
+    walls, roads and mines; nothing on the map was worth defending
+    that was not one of those.
+
+III. METHOD
+
+    1. The plan first, in the roadmap's form: step 10, eight backlog
+       items (10a to 10h), with the talk's five points as the reason
+       for each. Written before any code.
+    2. Must not change: the generated island. Every structure comes
+       from a map's pads or `--industry`, so a bot-only match on the
+       island has nothing new in it, and the brain's proofs are the
+       check. A worktree at HEAD ran them for the numbers to compare.
+    3. One rule each, a test each: power, each structure's benefit,
+       capture and repair, the longshot's flight and its interception,
+       the jammer on both sides, the data centre's scatter by mean of
+       forty shells, concrete under two splashes.
+    4. The window driven by xdotool at the shoot's 1200 x 740, as in
+       0026, on the industrial island and on the Atlantic map.
+
+IV. CHRONOLOGY
+
+     1. ROADMAP.md step 10 written.
+     2. map.rs: `Terrain::Pad` and `Terrain::Concrete`, glyphs `_`
+        and `H`; `MapStructure` and `structure` lines;
+        `Map::industrialise`.
+     3. lib.rs and rules.rs: `StructureKind`, `Structure`,
+        `World.structures`, `step_structures` (power, the stops, the
+        refinery's saving given back after the drive, the workshop's
+        mending, holding's score); `DroneKind::Longshot` and
+        `DroneTask::Attack`, untethered so it flies on when its tank
+        dies; the jammer at the head of `step_drones`; splash and
+        direct damage to structures; the data centre in
+        `FireIndirect` and in `observe`. Capture and Repair take a
+        structure's id as well as a pillbox's, so the squad's orders
+        did not grow. Seven tests; the first refinery test failed
+        because the tank started inside the refinery's own stop and
+        was refuelled as it drove.
+     4. A worktree at HEAD, the brain's proofs run in both:
+        defenders_hold, fortification_pays, pillboys_pay and the first
+        minute read the same to the digit.
+     5. Server: `--industry`, the economy line in the match report,
+        the narration. The first report credited a longshot's damage
+        to shells: the hit event came after the damage it did. It now
+        comes first, as a strike's does.
+     6. Bots: the RuleBot's squad takes structures after pillboxes, and
+        a longshot goes every thirty seconds at the nearest hostile
+        structure, a power plant first. The Defender takes and mends
+        its own.
+     7. The window: models for the five structures, concrete and the
+        longshot; the works row (`0`, `B`); `X`; Shift for concrete;
+        the LONG lamps; commander.rs with the alerts, the minimap and
+        `J`. The first drive segfaulted: the musl stack, journal 0013's,
+        and the drive script had not preloaded bigstack.so as
+        shoot.sh does. With it, the frames showed the key hint cut off
+        and the AIR panel squeezed to a sliver by the minimap. The
+        drone lamps had reserved room for six lamps each; sized to
+        their counts, the strip fits.
+     8. scripts/worldmap.py. The first roads were straight lines
+        between cities and crossed the sea in a dozen places; laid by
+        a shortest path over the land they ran in staircases; with a
+        pull toward the straight line they run as roads do. The first
+        Europe had no Sicily, Sardinia or Crete: the Mediterranean was
+        filled after them.
+
+V. RESULTS
+
+    make test passes: sim 33, brain 6, client 16, net 13, proto 3.
+    The balance proofs are unchanged. Sixteen bots for five minutes:
+
+                          industrial island   Atlantic   Europe
+      structures taken             13            36          7
+      longshots launched           27            78         65
+      longshots landed             21            43         37
+      structures wrecked            9            20          5
+      kills (pillbox)           13 (0)        12 (5)      7 (2)
+
+VI. DISCUSSION
+
+    The world map did what the island never has: put pillboxes where
+    the road has to pass. Five of twelve kills by pillbox, against one
+    in seventy-four in 0010's proof, because the Darien Gap, Gibraltar
+    and the Bosphorus are places a tank must drive through and the
+    island has no such place. Backlog item 14 asked for this; a map
+    answered it, not a rule.
+
+    No drone was jammed in any of the three matches: no bot builds a
+    jammer. The jammer is proven by test only, as the pillbox gun was
+    before 6d.
+
+VII. OPEN PROBLEMS
+
+    1. Whether any of it is fun: the numbers in rules.rs are first
+       guesses with reasons.
+    2. No bot builds a structure or a jammer: every structure in
+       those matches was on the map from the start.
+    3. The bots' doctrine (25-tile standoff, a squad sent 20 tiles)
+       was written for 128 tiles; on 512 they play their corner.
+    4. Alerts are tested in a unit test, not yet seen in the window:
+       no structure of the player's was hit while it was driven.
+    5. The release frames (guide-*.png) predate the new rows and
+       lamps.
+
+VIII. NEXT STEPS
+
+    1. A playtest on the Atlantic map with the minimap and alerts.
+    2. A bot that builds a jammer over its depot, and the trace of
+       what that does to its own bubble.
+    3. PLAYABILITY item 9, rookie bots.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: sim, proto, brain, client,
+    server, maps, scripts, docs, journal: industry under drones (roadmap
+    step 10); wire version 13
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

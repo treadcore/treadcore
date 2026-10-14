@@ -99,9 +99,10 @@ material). Click the tile or press the key; they are the same.
 | `3` | strike | launches the FPV at the nearest hostile tank to the cursor: it flies there and dives, 35 of 100 armor if it gets through the target's bubble. |
 | `R` | recall | brings every drone home to the bay. |
 | `[` `]` | bubble | shrinks or widens the ring: wide catches strikes early but thins the ring and stretches every link. |
+| `X` | longshot | (no tile) sends the long-range drone at the point under the cursor, anywhere on the map. It is slow, it flies on its own and it does not come back; section 6b. |
 
 The bay refills at a depot. The lamps along the bottom (RECON, INTCP,
-STRIKE) show what is left in it.
+STRIKE, LONG) show what is left in it.
 
 ## 5. The builder: the Pillboys
 
@@ -126,9 +127,10 @@ in the column's lower half, in the order the prior art had them.
 | --- | --- | --- |
 | `4` | farm | fells the forest there: four material a tile, in four seconds. Only on forest. |
 | `5` | road | lays a road; on water, a bridge. |
-| `6` | wall | raises a wall three levels high. Blocks tanks, shots and a pillbox's line of fire; a shell's splash knocks it to rubble. |
+| `6` | wall | raises a wall three levels high. Blocks tanks, shots and a pillbox's line of fire; a shell's splash knocks it to rubble. Armed with Shift held (or clicked with Shift), it pours **concrete** instead: two material, pale grey, and a splash only cracks it to a plain wall, so it takes two. |
 | `7` | pillbox | on open ground, builds one. On a pillbox: repairs it, whoever owns it; if it is dead or nobody's, captures it (ten seconds standing on it). |
 | `8` | mine | buries a mine. Hidden until found; set off by a tank, a shell or a neighbouring mine; ignored by drones. |
+| `0` | works | on a pad (the dark grey foundations), builds the structure the row names; `B` steps the kind. On a structure: mends ours, or takes one that is nobody's or wrecked. Section 6b. |
 | `9` | return | brings the squad home. |
 
 ![The squad lamps amber while it is out, the material lamps beside them](../reports/images/guide-squad.png)
@@ -164,6 +166,44 @@ that pillbox; the **apostrophe** steps through your own and your
 allies' pillboxes, and in that view the **arrow keys** jump to the
 neighbouring pillbox in that direction. **F** comes back to the
 tank.
+
+## 6b. Industry, and losing it
+
+Some maps have an economy: dark grey **pads** of foundations with
+**structures** on them (`INDUSTRY=1` gives the generated island one;
+the world maps have their own). A structure is taken as a pillbox is,
+by the squad standing on it while it is nobody's or wrecked, and it
+works for your side while it stands:
+
+| structure | what it does for your side | needs power |
+| --- | --- | --- |
+| power plant | powers your side's structures within 18 tiles | no |
+| refinery | your tanks burn half the fuel; within 3 tiles, fuel and shells | yes |
+| data centre | a blind shell aimed within 40 tiles scatters half as far; hostile drones within 30 tiles are on your screen | yes |
+| workshop | within 3 tiles, armour mended twice as fast as at a depot and the bay restocked, longshots first; pillboxes and structures within 8 mend slowly | yes |
+| jammer | no drone within 7 tiles keeps its link, **yours included**: recon and strikes turn for home, a longshot lands off its point | yes |
+
+Every standing structure scores its owner two points every ten
+seconds, so at the time limit the side with the economy is ahead. A
+structure has twice a pillbox's health, so a shell takes a while; a
+**longshot** (`X`) takes two thirds of it at once. The longshot is the
+cheap one-way drone that crosses the map: slow (three tiles a second),
+on its own from launch, so no recall and no new target, and it goes on
+if your tank dies. Interceptors and pillboxes shoot it down like a
+strike, so a parked tank and a ring of pillboxes defend a refinery.
+Nothing defends all of them. Wreck a power plant and everything it
+powered goes dark without being touched.
+
+The structures on the map are labelled with their name and health,
+and DARK when they have no power. Whatever of your side is hit,
+wrecked, taken or goes dark is an **alert**: a line on the newswire
+saying what and where, the alarm, and a red blink on the minimap.
+**J** jumps the view to the newest alert.
+
+The **minimap** at the right of the bottom strip is the whole map:
+the ground dimmed where your side cannot see, every depot, pillbox
+and structure in its owner's colour, the tanks you can see, your own
+in white. Click it, or hold the button and drag, to move the view.
 
 ## 7. The stock
 
@@ -242,7 +282,12 @@ person has shot it.
 | `1` `2` `3` | launch interceptor, recon (to the cursor), strike (at the nearest hostile to the cursor) |
 | `R` | recall every drone |
 | `[` `]` | bubble narrower, wider |
-| `4` `5` `6` `7` `8` | arm farm, road, wall, pillbox, mine |
+| `4` `5` `6` `7` `8` `0` | arm farm, road, wall, pillbox, mine, works |
+| Shift-`6`, or Shift-click in wall mode | concrete instead of a wall |
+| `B` | the next kind of structure for the works mode |
+| `X` | a longshot at the point under the cursor |
+| `J` | the view to the newest alert |
+| click the minimap | the view there |
 | `9` | the squad home |
 | Esc | drop the armed mode; with none armed, quit |
 | Space | stop |

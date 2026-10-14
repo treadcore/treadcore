@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 pub mod map;
 pub mod rules;
 
-pub use map::{DepotOwner, Map, MapDepot, MapError, MapPillbox, Terrain, MAP_FORMAT, MAP_H, MAP_W};
+pub use map::{DepotOwner, Map, MapDepot, MapError, MapPillbox, MapStructure, Terrain, MAP_FORMAT, MAP_H, MAP_W};
 pub use rules::*;
 
 /// Simulation rate. Twenty ticks a second is enough for a game whose
@@ -154,6 +154,10 @@ pub enum DroneKind {
     /// The FPV. Flies to a target and dives. Fast, short battery, and the
     /// thing the other side's bubble exists to stop.
     Strike,
+    /// The long-range one-way drone (roadmap step 10c): sent to a point
+    /// anywhere on the map, slow, on its own from launch: no link, no
+    /// recall, no new task. Made for things that cannot move.
+    Longshot,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -166,6 +170,8 @@ pub enum DroneTask {
     Strike { target: EntityId },
     /// Fly back to the bay. Battery low, link lost, or recalled.
     Return,
+    /// A longshot's one task: fly to `at` and dive.
+    Attack { at: V2 },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -186,6 +192,10 @@ pub struct Drone {
     pub link: f32,
     /// Orbit phase, so orbiting drones space themselves out.
     pub phase: f32,
+    /// Inside a jammer's reach (step 10b): its link is gone, and a
+    /// longshot's fix has drifted already.
+    #[serde(default)]
+    pub jammed: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -229,6 +239,8 @@ pub struct Bay {
     pub recon: u8,
     pub interceptor: u8,
     pub strike: u8,
+    #[serde(default)]
+    pub longshot: u8,
 }
 
 impl Bay {
@@ -237,6 +249,7 @@ impl Bay {
             DroneKind::Recon => self.recon,
             DroneKind::Interceptor => self.interceptor,
             DroneKind::Strike => self.strike,
+            DroneKind::Longshot => self.longshot,
         }
     }
     pub fn take(&mut self, k: DroneKind) -> bool {
@@ -244,6 +257,7 @@ impl Bay {
             DroneKind::Recon => &mut self.recon,
             DroneKind::Interceptor => &mut self.interceptor,
             DroneKind::Strike => &mut self.strike,
+            DroneKind::Longshot => &mut self.longshot,
         };
         if *slot == 0 {
             return false;
@@ -258,6 +272,7 @@ impl Bay {
                 self.interceptor = (self.interceptor + 1).min(BAY_FULL.interceptor)
             }
             DroneKind::Strike => self.strike = (self.strike + 1).min(BAY_FULL.strike),
+            DroneKind::Longshot => self.longshot = (self.longshot + 1).min(BAY_FULL.longshot),
         }
     }
 }
@@ -276,6 +291,10 @@ pub enum BuildKind {
     /// Hidden until found, set off by a tank, a squad, a splash or a
     /// neighbour. Never on water, a wall or a depot.
     Mine,
+    /// A wall a splash only cracks (step 10a).
+    Concrete,
+    /// A structure, on a pad (step 10b).
+    Structure(StructureKind),
 }
 
 impl BuildKind {
@@ -285,6 +304,8 @@ impl BuildKind {
             BuildKind::Wall => WALL_COST,
             BuildKind::Road => ROAD_COST,
             BuildKind::Mine => MINE_COST,
+            BuildKind::Concrete => CONCRETE_COST,
+            BuildKind::Structure(k) => k.cost(),
         }
     }
     pub fn ticks(self) -> u16 {
@@ -293,14 +314,93 @@ impl BuildKind {
             BuildKind::Wall => WALL_BUILD_TICKS,
             BuildKind::Road => ROAD_BUILD_TICKS,
             BuildKind::Mine => MINE_LAY_TICKS,
+            BuildKind::Concrete => CONCRETE_BUILD_TICKS,
+            BuildKind::Structure(_) => STRUCTURE_BUILD_TICKS,
         }
     }
     /// The squad works from beside a wall or a mine, never on it.
     fn standoff(self) -> f32 {
         match self {
-            BuildKind::Wall | BuildKind::Mine => BUILD_STANDOFF,
+            BuildKind::Wall | BuildKind::Concrete | BuildKind::Mine => BUILD_STANDOFF,
             _ => PILLBOY_WORK_RANGE,
         }
+    }
+}
+
+/// What a structure is (roadmap step 10b). Each serves its owner's
+/// side while it stands and, all but the power plant, while a power
+/// plant of the side is in reach.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StructureKind {
+    /// Powers the side's structures within `POWER_RANGE`.
+    Power,
+    /// Fuel: the side burns half; a fuel and shell stop beside it.
+    Refinery,
+    /// Fire control for blind shells near it, and an air picture.
+    DataCentre,
+    /// A repair yard: tanks beside it mended and restocked, pillboxes
+    /// and structures near it mended slowly.
+    Workshop,
+    /// Electronic warfare: no drone near it keeps its link, its own
+    /// side's included.
+    Jammer,
+}
+
+impl StructureKind {
+    pub const ALL: [StructureKind; 5] = [StructureKind::Power, StructureKind::Refinery, StructureKind::DataCentre, StructureKind::Workshop, StructureKind::Jammer];
+    pub fn cost(self) -> u8 {
+        match self {
+            StructureKind::Power | StructureKind::Refinery => 4,
+            StructureKind::DataCentre => 6,
+            StructureKind::Workshop => 3,
+            StructureKind::Jammer => 5,
+        }
+    }
+    /// Its word in a map file and on the newswire.
+    pub fn word(self) -> &'static str {
+        match self {
+            StructureKind::Power => "power",
+            StructureKind::Refinery => "refinery",
+            StructureKind::DataCentre => "datacentre",
+            StructureKind::Workshop => "workshop",
+            StructureKind::Jammer => "jammer",
+        }
+    }
+    pub fn from_word(w: &str) -> Option<StructureKind> {
+        StructureKind::ALL.iter().copied().find(|k| k.word() == w.to_ascii_lowercase())
+    }
+    /// The power plant runs itself; everything else wants one in reach.
+    pub fn needs_power(self) -> bool {
+        self != StructureKind::Power
+    }
+}
+
+/// A structure on a pad. Like a pillbox it is owned or neutral, shot to
+/// a wreck and never removed, captured by a squad standing on it while
+/// it is neutral or wrecked, and mended for material.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Structure {
+    pub id: EntityId,
+    pub kind: StructureKind,
+    pub pos: V2,
+    pub owner: Option<PlayerId>,
+    /// 0..STRUCTURE_HEALTH; at zero it is a wreck: no use to anyone,
+    /// capturable.
+    pub health: f32,
+    pub capture: u16,
+    pub capturer: Option<PlayerId>,
+    /// Owned, standing, and a standing power plant of the side within
+    /// `POWER_RANGE` (or itself one). Set every tick.
+    pub powered: bool,
+}
+
+impl Structure {
+    pub fn alive(&self) -> bool {
+        self.health > 0.0
+    }
+    /// Doing its job: owned, standing and powered.
+    pub fn working(&self) -> bool {
+        self.owner.is_some() && self.alive() && self.powered
     }
 }
 
@@ -321,9 +421,11 @@ pub struct Mine {
 /// tank.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum PillboyTask {
-    /// Stand on a pillbox that is neutral or dead until it is ours.
+    /// Stand on a pillbox (or a structure) that is neutral or dead
+    /// until it is ours.
     Capture { pillbox: EntityId },
-    /// Bring an owned pillbox back to full health, for material.
+    /// Bring a pillbox (or a structure) back to full health, for
+    /// material.
     Repair { target: EntityId },
     /// Raise an emplacement at a point, for material.
     Build { what: BuildKind, at: V2 },
@@ -337,7 +439,7 @@ impl PillboyTask {
     /// Where the squad has to be to do this. None for Return (the tank).
     fn site(&self, world: &World) -> Option<V2> {
         match self {
-            PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => world.pillbox(*pillbox).map(|p| p.pos),
+            PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => world.pillbox(*pillbox).map(|p| p.pos).or_else(|| world.structure(*pillbox).map(|s| s.pos)),
             PillboyTask::Build { at, .. } | PillboyTask::Harvest { at } => Some(*at),
             PillboyTask::Return => None,
         }
@@ -667,6 +769,19 @@ pub enum Event {
     /// To the layer only.
     MineLaid { mine: EntityId, owner: PlayerId, at: V2 },
     MineExploded { mine: EntityId, owner: PlayerId, at: V2, hits: Vec<EntityId> },
+    /// Structures (step 10b), public like pillboxes: territory is.
+    StructureBuilt { structure: EntityId, kind: StructureKind, by: PlayerId, at: V2 },
+    StructureDamaged { structure: EntityId, kind: StructureKind, owner: Option<PlayerId>, by: Option<PlayerId>, damage: f32, health_left: f32 },
+    /// Shot to zero: a wreck, capturable, not removed.
+    StructureWrecked { structure: EntityId, kind: StructureKind, owner: Option<PlayerId>, by: Option<PlayerId> },
+    StructureCaptured { structure: EntityId, kind: StructureKind, by: PlayerId, from: Option<PlayerId> },
+    StructureRepaired { structure: EntityId, kind: StructureKind, by: PlayerId },
+    /// Power came on or went off at an owned structure.
+    StructurePower { structure: EntityId, kind: StructureKind, owner: PlayerId, on: bool },
+    /// A longshot dived at its point; `hits` is what it hurt.
+    LongshotHit { drone: EntityId, owner: PlayerId, at: V2, hits: Vec<EntityId> },
+    /// To the drone's side: a jammer took its link (or a longshot's fix).
+    Jammed { drone: EntityId, owner: PlayerId, kind: DroneKind, jammer: EntityId },
     /// A tile changed under everyone: a client updates its copy of the map.
     TerrainChanged { at: V2, to: u8 },
     Chat { player: PlayerId, text: String, to: ChatTo },
@@ -777,6 +892,10 @@ pub struct Scenario {
     pub swarm_size: u32,
     /// Hard stop, in ticks. 0 for none.
     pub time_limit: Tick,
+    /// Give a map with no structures of its own an economy
+    /// (`Map::industrialise`, roadmap step 10f).
+    #[serde(default)]
+    pub industry: bool,
 }
 
 /// The sixteen starts have compass names, in the order `Map::starts`
@@ -813,6 +932,7 @@ impl Default for Scenario {
             swarm_interval: 45 * TICK_HZ,
             swarm_size: 4,
             time_limit: 15 * 60 * TICK_HZ as Tick,
+            industry: false,
         }
     }
 }
@@ -832,6 +952,7 @@ pub struct World {
     pub pillboxes: Vec<Pillbox>,
     pub mines: Vec<Mine>,
     pub proposals: Vec<Proposal>,
+    pub structures: Vec<Structure>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
@@ -848,7 +969,10 @@ impl World {
     /// builds the scenario (`Map::from_text`), and a scenario that
     /// arrived in a Welcome or a replay was built from one that did.
     pub fn new(scenario: Scenario) -> World {
-        let map = scenario.map.build(scenario.seed).unwrap_or_else(|e| panic!("scenario map does not read: {}", e));
+        let mut map = scenario.map.build(scenario.seed).unwrap_or_else(|e| panic!("scenario map does not read: {}", e));
+        if scenario.industry && map.structures.is_empty() {
+            map.industrialise();
+        }
         let mut w = World {
             tick: 0,
             map,
@@ -860,6 +984,7 @@ impl World {
             pillboxes: Vec::new(),
             mines: Vec::new(),
             proposals: Vec::new(),
+            structures: Vec::new(),
             rng: Rng::new(scenario.seed ^ 0xA5A5_5A5A),
             next_id: 1,
             over: false,
@@ -883,6 +1008,11 @@ impl World {
             // An owner the scenario does not seat is neutral.
             let owner = p.owner.filter(|o| (*o as usize) < scenario.players.len().min(MAX_PLAYERS).min(w.map.starts.len()));
             w.pillboxes.push(Pillbox { id, pos: p.pos, owner, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        }
+        for st in w.map.structures.clone() {
+            let id = w.alloc();
+            let owner = st.owner.filter(|o| (*o as usize) < seats);
+            w.structures.push(Structure { id, kind: st.kind, pos: st.pos, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
         }
         // No more seats than the map has starts.
         for (i, (name, is_bot)) in scenario.players.iter().take(seats).enumerate() {
@@ -933,6 +1063,7 @@ impl World {
     pub fn map_as_played(&self) -> Map {
         let mut m = self.map.clone();
         m.pillboxes = self.pillboxes.iter().map(|p| MapPillbox { pos: p.pos, owner: p.owner }).collect();
+        m.structures = self.structures.iter().map(|s| MapStructure { pos: s.pos, kind: s.kind, owner: s.owner }).collect();
         m
     }
 
@@ -950,6 +1081,21 @@ impl World {
     }
     pub fn pillbox(&self, id: EntityId) -> Option<&Pillbox> {
         self.pillboxes.iter().find(|p| p.id == id)
+    }
+    pub fn structure(&self, id: EntityId) -> Option<&Structure> {
+        self.structures.iter().find(|s| s.id == id)
+    }
+    fn structure_mut(&mut self, id: EntityId) -> Option<&mut Structure> {
+        self.structures.iter_mut().find(|s| s.id == id)
+    }
+    /// A working structure of this kind on `p`'s side within `r` of `at`.
+    pub fn serves(&self, p: PlayerId, kind: StructureKind, at: V2, r: f32) -> bool {
+        self.structures.iter().any(|s| s.kind == kind && s.working() && self.allied_opt(s.owner, p) && s.pos.dist(at) <= r)
+    }
+    /// The side's air picture (a data centre's radar): `p` sees drones
+    /// at `at`.
+    pub fn radar_sees(&self, p: PlayerId, at: V2) -> bool {
+        self.serves(p, StructureKind::DataCentre, at, DATACENTRE_RADAR)
     }
 
     /// A tank's route: the map's, avoiding the range of every live
@@ -1123,6 +1269,7 @@ impl World {
         self.step_pillboxes();
         self.step_shells();
         self.step_depots();
+        self.step_structures();
         self.step_swarm();
         self.step_match();
     }
@@ -1214,7 +1361,15 @@ impl World {
                     return self.reject(o, "beyond maximum range");
                 }
                 let spotted = self.spotted_by(o.player, *at);
-                let cep = if spotted { CEP_SPOTTED } else { CEP_BLIND };
+                // A data centre's fire control (step 10b): a blind shot
+                // near one is computed, not guessed.
+                let cep = if spotted {
+                    CEP_SPOTTED
+                } else if self.serves(o.player, StructureKind::DataCentre, *at, DATACENTRE_FIRE_RANGE) {
+                    CEP_BLIND * DATACENTRE_CEP_FACTOR
+                } else {
+                    CEP_BLIND
+                };
                 let scatter = self.rng.disc().scale(cep);
                 let flight = (range / SHELL_SPEED_INDIRECT).max(1.0);
                 let eta = (flight * TICK_HZ as f32).ceil() as u32;
@@ -1296,15 +1451,30 @@ impl World {
                     (DroneKind::Strike, DroneTask::Orbit { center, .. }) => DroneTask::Orbit { center: *center, radius: 2.0 },
                     (DroneKind::Recon, DroneTask::Orbit { center, radius }) => DroneTask::Orbit { center: *center, radius: radius.clamp(1.0, 6.0) },
                     (DroneKind::Recon, _) => DroneTask::Orbit { center: pos, radius: 4.0 },
-                    _ => return self.reject(o, "task does not suit that drone"),
+                    (DroneKind::Longshot, DroneTask::Attack { at } | DroneTask::Orbit { center: at, .. }) => {
+                        if !self.map.in_bounds(*at) {
+                            self.tank_mut(tid).unwrap().bay.put(DroneKind::Longshot);
+                            return self.reject(o, "off map");
+                        }
+                        DroneTask::Attack { at: *at }
+                    }
+                    _ => {
+                        self.tank_mut(tid).unwrap().bay.put(*kind);
+                        return self.reject(o, "task does not suit that drone");
+                    }
                 };
                 let id = self.alloc();
                 let battery = match kind {
                     DroneKind::Recon => RECON_BATTERY,
                     DroneKind::Interceptor => INTERCEPTOR_BATTERY,
                     DroneKind::Strike => STRIKE_BATTERY,
+                    DroneKind::Longshot => LONGSHOT_BATTERY,
                 };
                 let phase = self.rng.range(0.0, std::f32::consts::TAU);
+                // A longshot is on its own from launch: no tether, so
+                // no link, no way home, and it flies on if the tank
+                // that sent it dies.
+                let tether = if *kind == DroneKind::Longshot { None } else { Some(tid) };
                 self.drones.push(Drone {
                     id,
                     owner: o.player,
@@ -1312,15 +1482,16 @@ impl World {
                     pos,
                     heading: 0.0,
                     battery,
-                    tether: Some(tid),
+                    tether,
                     task,
                     link: 1.0,
                     phase,
+                    jammed: false,
                 });
                 self.events.push(Event::DroneLaunched { drone: id, owner: o.player, kind: *kind });
             }
             Command::Recall => {
-                for d in self.drones.iter_mut().filter(|d| d.owner == o.player) {
+                for d in self.drones.iter_mut().filter(|d| d.owner == o.player && d.kind != DroneKind::Longshot) {
                     d.task = DroneTask::Return;
                 }
             }
@@ -1330,6 +1501,7 @@ impl World {
                     return self.reject(o, "not my drone");
                 }
                 let new = match (d.kind, task) {
+                    (DroneKind::Longshot, _) => return self.reject(o, "a longshot flies where it was sent"),
                     (_, DroneTask::Return) => DroneTask::Return,
                     (DroneKind::Interceptor, _) => return self.reject(o, "interceptors are the world's to task"),
                     (DroneKind::Recon, DroneTask::Orbit { center, radius }) => {
@@ -1377,6 +1549,19 @@ impl World {
                 }
                 let material = squad.material;
                 match task {
+                    PillboyTask::Capture { pillbox } if self.pillbox(*pillbox).is_none() => match self.structure(*pillbox) {
+                        None => return self.reject(o, "no such pillbox"),
+                        Some(s) if s.owner == Some(o.player) => return self.reject(o, "structure already ours"),
+                        Some(s) if self.allied_opt(s.owner, o.player) && s.alive() => return self.reject(o, "structure is an ally's"),
+                        Some(s) if s.owner.is_some() && s.alive() => return self.reject(o, "structure is standing and theirs: wreck it first"),
+                        Some(_) => {}
+                    },
+                    PillboyTask::Repair { target } if self.pillbox(*target).is_none() => match self.structure(*target) {
+                        None => return self.reject(o, "no such pillbox"),
+                        Some(s) if s.health >= STRUCTURE_HEALTH => return self.reject(o, "structure needs no repair"),
+                        Some(_) if material < STRUCTURE_REPAIR_COST => return self.reject(o, "no material"),
+                        Some(_) => {}
+                    },
                     PillboyTask::Capture { pillbox } => match self.pillbox(*pillbox) {
                         None => return self.reject(o, "no such pillbox"),
                         Some(p) if p.owner == Some(o.player) => return self.reject(o, "pillbox already ours"),
@@ -1407,8 +1592,19 @@ impl World {
                         if self.pillboxes.iter().any(|p| p.pos.dist(*at) < if *what == BuildKind::Pillbox { PILLBOX_SPACING } else { 1.0 }) {
                             return self.reject(o, "a pillbox is there");
                         }
+                        if self.structures.iter().any(|s| s.pos.tile() == at.tile()) {
+                            return self.reject(o, "a structure is there");
+                        }
                         match what {
-                            BuildKind::Pillbox | BuildKind::Wall | BuildKind::Mine => {
+                            BuildKind::Structure(_) => {
+                                if here != Terrain::Pad {
+                                    return self.reject(o, "structures go on a pad");
+                                }
+                                if self.tanks.iter().any(|t| t.alive && t.pos.tile() == at.tile()) {
+                                    return self.reject(o, "a tank is there");
+                                }
+                            }
+                            BuildKind::Pillbox | BuildKind::Wall | BuildKind::Concrete | BuildKind::Mine => {
                                 if !here.passable() {
                                     return self.reject(o, "cannot build there");
                                 }
@@ -1423,7 +1619,7 @@ impl World {
                                 }
                             }
                             BuildKind::Road => {
-                                if matches!(here, Terrain::Road | Terrain::Bridge | Terrain::Wall | Terrain::Forest) {
+                                if matches!(here, Terrain::Road | Terrain::Bridge | Terrain::Wall | Terrain::Concrete | Terrain::Forest | Terrain::Pad) {
                                     return self.reject(o, "cannot lay a road there");
                                 }
                             }
@@ -1581,6 +1777,8 @@ impl World {
         enum Done {
             Captured(EntityId, Option<PlayerId>),
             Repaired(EntityId),
+            Taken(EntityId, Option<PlayerId>),
+            Mended(EntityId),
             Built(BuildKind, V2),
             Harvested(V2),
             Abandon(&'static str),
@@ -1590,6 +1788,8 @@ impl World {
         let mut captures: Vec<(EntityId, PlayerId)> = Vec::new();
         let map = &self.map;
         let pillboxes = &self.pillboxes;
+        let structures = &self.structures;
+        let mut takes: Vec<(EntityId, PlayerId)> = Vec::new();
         let tank_tiles: Vec<(i32, i32)> = self.tanks.iter().filter(|t| t.alive).map(|t| t.pos.tile()).collect();
         let mine_tiles: Vec<(i32, i32)> = self.mines.iter().map(|m| m.pos.tile()).collect();
         // A hostile mine under a walking squad: found the hard way.
@@ -1611,7 +1811,7 @@ impl World {
             // Where to walk: the site, or beside it when the squad
             // cannot stand on it (water for a bridge).
             let site: Option<V2> = match &task {
-                PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos),
+                PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos).or_else(|| structures.iter().find(|x| x.id == *pillbox).map(|x| x.pos)),
                 PillboyTask::Build { at, .. } | PillboyTask::Harvest { at } => Some(*at),
                 PillboyTask::Return => None,
             };
@@ -1659,6 +1859,33 @@ impl World {
             // Work.
             match &task {
                 PillboyTask::Return => done.push((t.id, t.owner, Done::Home)),
+                PillboyTask::Capture { pillbox } if !pillboxes.iter().any(|p| p.id == *pillbox) => {
+                    let x = structures.iter().find(|x| x.id == *pillbox).unwrap();
+                    if x.owner == Some(t.owner) {
+                        done.push((t.id, t.owner, Done::Abandon("already ours")));
+                    } else if x.owner.is_some() && x.alive() {
+                        done.push((t.id, t.owner, Done::Abandon("structure was mended")));
+                    } else {
+                        takes.push((x.id, t.owner));
+                        s.progress += 1;
+                        if s.progress >= PILLBOX_CAPTURE_TICKS {
+                            done.push((t.id, t.owner, Done::Taken(x.id, x.owner)));
+                        }
+                    }
+                }
+                PillboyTask::Repair { target } if !pillboxes.iter().any(|p| p.id == *target) => {
+                    let x = structures.iter().find(|x| x.id == *target).unwrap();
+                    if x.health >= STRUCTURE_HEALTH {
+                        done.push((t.id, t.owner, Done::Abandon("structure needs no repair")));
+                    } else if s.material < STRUCTURE_REPAIR_COST {
+                        done.push((t.id, t.owner, Done::Abandon("no material")));
+                    } else {
+                        s.progress += 1;
+                        if s.progress >= STRUCTURE_REPAIR_TICKS {
+                            done.push((t.id, t.owner, Done::Mended(x.id)));
+                        }
+                    }
+                }
                 PillboyTask::Capture { pillbox } => {
                     let p = pillboxes.iter().find(|p| p.id == *pillbox).unwrap();
                     if p.owner == Some(t.owner) {
@@ -1689,8 +1916,9 @@ impl World {
                 PillboyTask::Build { what, at } => {
                     let blocked = match what {
                         BuildKind::Pillbox => pillboxes.iter().any(|p| p.pos.dist(*at) < PILLBOX_SPACING),
-                        BuildKind::Wall => !map.at(*at).passable() || tank_tiles.iter().any(|tt| *tt == at.tile()),
-                        BuildKind::Road => matches!(map.at(*at), Terrain::Road | Terrain::Bridge | Terrain::Wall),
+                        BuildKind::Wall | BuildKind::Concrete => !map.at(*at).passable() || tank_tiles.iter().any(|tt| *tt == at.tile()),
+                        BuildKind::Structure(_) => map.at(*at) != Terrain::Pad || structures.iter().any(|x| x.pos.tile() == at.tile()),
+                        BuildKind::Road => matches!(map.at(*at), Terrain::Road | Terrain::Bridge | Terrain::Wall | Terrain::Concrete | Terrain::Pad),
                         BuildKind::Mine => !map.at(*at).passable() || mine_tiles.iter().any(|mt| *mt == at.tile()),
                     };
                     if blocked {
@@ -1714,6 +1942,28 @@ impl World {
                         }
                     }
                 }
+            }
+        }
+        // The same for structures.
+        for x in self.structures.iter_mut() {
+            let mut who: Vec<PlayerId> = takes.iter().filter(|(id, _)| *id == x.id).map(|(_, o)| *o).collect();
+            who.sort_unstable();
+            who.dedup();
+            match who.as_slice() {
+                [one] => {
+                    if x.capturer != Some(*one) {
+                        x.capturer = Some(*one);
+                        x.capture = 0;
+                    }
+                    x.capture = (x.capture + 1).min(PILLBOX_CAPTURE_TICKS);
+                }
+                [] => {
+                    x.capture = x.capture.saturating_sub(1);
+                    if x.capture == 0 {
+                        x.capturer = None;
+                    }
+                }
+                _ => {}
             }
         }
         // Capture progress on the pillboxes: contested means nothing moves.
@@ -1763,6 +2013,38 @@ impl World {
                         continue;
                     }
                 }
+                Done::Taken(sid, from) => {
+                    let uncontested = self.structure(sid).map(|x| x.capturer == Some(owner)).unwrap_or(false);
+                    if !uncontested {
+                        if let Some(t) = self.tank_mut(tid) {
+                            t.pillboys.progress = 0;
+                        }
+                        continue;
+                    }
+                    let mut kind = StructureKind::Power;
+                    if let Some(x) = self.structure_mut(sid) {
+                        x.owner = Some(owner);
+                        x.health = x.health.max(STRUCTURE_CAPTURE_HEALTH);
+                        x.capture = 0;
+                        x.capturer = None;
+                        kind = x.kind;
+                    }
+                    if let Some(pl) = self.players.iter_mut().find(|p| p.id == owner) {
+                        pl.score += SCORE_CAPTURE;
+                    }
+                    self.events.push(Event::StructureCaptured { structure: sid, kind, by: owner, from });
+                }
+                Done::Mended(sid) => {
+                    let mut kind = StructureKind::Power;
+                    if let Some(x) = self.structure_mut(sid) {
+                        x.health = STRUCTURE_HEALTH;
+                        kind = x.kind;
+                    }
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.material -= STRUCTURE_REPAIR_COST;
+                    }
+                    self.events.push(Event::StructureRepaired { structure: sid, kind, by: owner });
+                }
                 Done::Repaired(pid) => {
                     if let Some(p) = self.pillbox_mut(pid) {
                         p.health = PILLBOX_HEALTH;
@@ -1784,6 +2066,12 @@ impl World {
                             self.events.push(Event::PillboxBuilt { pillbox: id, by: owner, at });
                         }
                         BuildKind::Wall => self.set_terrain(at, Terrain::Wall),
+                        BuildKind::Concrete => self.set_terrain(at, Terrain::Concrete),
+                        BuildKind::Structure(kind) => {
+                            let id = self.alloc();
+                            self.structures.push(Structure { id, kind, pos: at, owner: Some(owner), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+                            self.events.push(Event::StructureBuilt { structure: id, kind, by: owner, at });
+                        }
                         BuildKind::Road => {
                             let t = if self.map.at(at) == Terrain::Water { Terrain::Bridge } else { Terrain::Road };
                             self.set_terrain(at, t);
@@ -2070,6 +2358,34 @@ impl World {
     }
 
     fn step_drones(&mut self) {
+        // 0. Jammers (step 10b): every linked drone inside one loses its
+        //    link this tick, whoever's it is; a longshot's fix drifts,
+        //    once. The swarm flies through.
+        let jammers: Vec<(EntityId, V2)> = self.structures.iter().filter(|x| x.kind == StructureKind::Jammer && x.working()).map(|x| (x.id, x.pos)).collect();
+        let mut jams: Vec<(EntityId, EntityId)> = Vec::new();
+        {
+            for d in self.drones.iter_mut() {
+                let by = jammers.iter().find(|(_, p)| p.dist(d.pos) <= JAMMER_RANGE).map(|(id, _)| *id);
+                let jammable = d.tether.is_some() || d.kind == DroneKind::Longshot;
+                match by {
+                    Some(j) if jammable && !d.jammed => {
+                        d.jammed = true;
+                        jams.push((d.id, j));
+                    }
+                    None if d.kind != DroneKind::Longshot => d.jammed = false,
+                    _ => {}
+                }
+            }
+        }
+        for (did, j) in jams {
+            let drift = self.rng.disc().scale(JAM_DRIFT);
+            let Some(d) = self.drones.iter_mut().find(|d| d.id == did) else { continue };
+            if let DroneTask::Attack { at } = &mut d.task {
+                *at = *at + drift;
+            }
+            let (owner, kind) = (d.owner, d.kind);
+            self.events.push(Event::Jammed { drone: did, owner, kind, jammer: j });
+        }
         // 1. Links and batteries. Decided before motion so a drone that has
         //    just lost contact turns for home this tick.
         for d in self.drones.iter_mut() {
@@ -2083,7 +2399,10 @@ impl World {
                     d.link = (1.0 - t.pos.dist(d.pos) / range).clamp(0.0, 1.0);
                 }
                 Some(_) => d.link = 0.0,
-                None => d.link = 1.0, // swarm drones are autonomous
+                None => d.link = 1.0, // swarm drones and longshots are autonomous
+            }
+            if d.jammed && d.tether.is_some() {
+                d.link = 0.0;
             }
         }
         // 2. Interceptor assignment. For each tank with interceptors on
@@ -2101,7 +2420,7 @@ impl World {
             let mut intruders: Vec<&Drone> = self
                 .drones
                 .iter()
-                .filter(|d| !self.allied(d.owner, t.owner) && d.pos.dist(t.pos) <= detect && d.kind == DroneKind::Strike)
+                .filter(|d| !self.allied(d.owner, t.owner) && d.pos.dist(t.pos) <= detect && matches!(d.kind, DroneKind::Strike | DroneKind::Longshot))
                 .collect();
             // Also engage recon drones that come inside the bubble itself:
             // they are spotting for someone's gun. An ally's are welcome.
@@ -2146,6 +2465,7 @@ impl World {
         let mut rams: Vec<(EntityId, EntityId)> = Vec::new();
         let mut strikes: Vec<(EntityId, EntityId)> = Vec::new();
         let mut link_lost: Vec<EntityId> = Vec::new();
+        let mut longshots: Vec<(EntityId, PlayerId, V2)> = Vec::new();
         for d in self.drones.iter_mut() {
             if d.battery <= 0.0 {
                 lost.push((d.id, LossReason::Battery));
@@ -2196,6 +2516,18 @@ impl World {
                         d.pos
                     }
                 },
+                DroneTask::Attack { at } => {
+                    if at.dist(d.pos) <= RAM_RANGE {
+                        longshots.push((d.id, d.owner, *at));
+                    }
+                    *at
+                }
+                // A jammed strike short of its terminal dive has no pilot
+                // and turns for home.
+                DroneTask::Strike { target } if d.jammed && find_tank(*target).map(|(p, _)| p.dist(d.pos) > JAM_TERMINAL).unwrap_or(false) => {
+                    d.task = DroneTask::Return;
+                    d.pos
+                }
                 DroneTask::Strike { target } => match find_tank(*target) {
                     Some((p, true)) => {
                         if p.dist(d.pos) <= RAM_RANGE {
@@ -2253,6 +2585,10 @@ impl World {
             lost.push((i, LossReason::Expended));
             self.events.push(Event::StrikeHit { drone: i, tank, damage: STRIKE_DAMAGE });
             self.damage(tank, STRIKE_DAMAGE, owner.filter(|o| *o != SWARM_OWNER));
+        }
+        for (id, owner, at) in longshots {
+            lost.push((id, LossReason::Expended));
+            self.longshot_lands(id, owner, at);
         }
         for id in recovered {
             if let Some(d) = self.drones.iter().find(|d| d.id == id).cloned() {
@@ -2313,14 +2649,27 @@ impl World {
                         self.damage_pillbox(id, dmg, Some(s.owner));
                         hits.push(id);
                     }
+                    // Structures are big: the splash reaches them from
+                    // further out.
+                    let works: Vec<(EntityId, f32)> = self.structures.iter().filter(|x| x.alive()).map(|x| (x.id, (x.pos.dist(s.impact) - STRUCTURE_SIZE).max(0.0))).filter(|(_, d)| *d <= SPLASH_RADIUS).collect();
+                    for (id, d) in works {
+                        let dmg = INDIRECT_DAMAGE * (1.0 - d / SPLASH_RADIUS).max(0.25);
+                        self.damage_structure(id, dmg, Some(s.owner));
+                        hits.push(id);
+                    }
                     self.hurt_squads(s.impact, s.owner);
                     // Walls in the splash come down; mines in it go off.
                     let (cx, cy) = s.impact.tile();
                     for dy in -3..=3 {
                         for dx in -3..=3 {
                             let p = V2::new((cx + dx) as f32 + 0.5, (cy + dy) as f32 + 0.5);
-                            if self.map.in_bounds(p) && self.map.at(p) == Terrain::Wall && p.dist(s.impact) <= SPLASH_RADIUS * 0.7 {
-                                self.set_terrain(p, Terrain::Rubble);
+                            if self.map.in_bounds(p) && p.dist(s.impact) <= SPLASH_RADIUS * 0.7 {
+                                // Concrete cracks to a wall; a wall falls.
+                                match self.map.at(p) {
+                                    Terrain::Wall => self.set_terrain(p, Terrain::Rubble),
+                                    Terrain::Concrete => self.set_terrain(p, Terrain::Wall),
+                                    _ => {}
+                                }
                             }
                         }
                     }
@@ -2359,11 +2708,152 @@ impl World {
                         if let Some(id) = pb {
                             self.damage_pillbox(id, DIRECT_DAMAGE, Some(s.owner));
                             hits.push(id);
+                        } else if let Some(id) = self.structures.iter().filter(|x| x.alive() && !self.allied_opt(x.owner, s.owner) && x.pos.dist(s.impact) <= DIRECT_HIT_RADIUS + STRUCTURE_SIZE).map(|x| x.id).next() {
+                            self.damage_structure(id, DIRECT_DAMAGE, Some(s.owner));
+                            hits.push(id);
                         }
                     }
                 }
             }
             self.events.push(Event::ShellImpact { shell: s.id, at: s.impact, kind: s.kind, hits });
+        }
+    }
+
+    /// Damage to a structure. A wreck at zero; never removed. An ally's
+    /// shot spares it.
+    fn damage_structure(&mut self, sid: EntityId, amount: f32, by: Option<PlayerId>) {
+        if let (Some(b), Some(x)) = (by, self.structure(sid)) {
+            if self.allied_opt(x.owner, b) {
+                self.events.push(Event::FriendlyFireSpared { target: sid, by: b, damage: amount });
+                return;
+            }
+        }
+        let Some(x) = self.structure_mut(sid) else { return };
+        if !x.alive() {
+            return;
+        }
+        x.health = (x.health - amount).max(0.0);
+        let (left, owner, kind) = (x.health, x.owner, x.kind);
+        if left <= 0.0 {
+            x.capture = 0;
+            x.capturer = None;
+            x.powered = false;
+        }
+        self.events.push(Event::StructureDamaged { structure: sid, kind, owner, by, damage: amount, health_left: left });
+        if left <= 0.0 {
+            self.events.push(Event::StructureWrecked { structure: sid, kind, owner, by });
+        }
+    }
+
+    /// A longshot dives at `at`: structures, pillboxes and tanks within
+    /// `LONGSHOT_RADIUS` take its warhead, by kind; nothing else.
+    fn longshot_lands(&mut self, drone: EntityId, owner: PlayerId, at: V2) {
+        let by = Some(owner).filter(|o| *o != SWARM_OWNER);
+        let works: Vec<EntityId> = self.structures.iter().filter(|x| x.alive() && x.pos.dist(at) <= LONGSHOT_RADIUS + STRUCTURE_SIZE).map(|x| x.id).collect();
+        let boxes: Vec<EntityId> = self.pillboxes.iter().filter(|p| p.alive() && p.pos.dist(at) <= LONGSHOT_RADIUS).map(|p| p.id).collect();
+        let tanks: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive && t.pos.dist(at) <= LONGSHOT_RADIUS).map(|t| t.id).collect();
+        // The dive first, then what it did, as a strike's hit comes
+        // before the damage.
+        let hits: Vec<EntityId> = works.iter().chain(&boxes).chain(&tanks).copied().collect();
+        self.events.push(Event::LongshotHit { drone, owner, at, hits });
+        for id in works {
+            self.damage_structure(id, LONGSHOT_STRUCTURE_DAMAGE, by);
+        }
+        for id in boxes {
+            self.damage_pillbox(id, LONGSHOT_PILLBOX_DAMAGE, by);
+        }
+        for id in tanks {
+            self.damage(id, LONGSHOT_TANK_DAMAGE, by);
+        }
+    }
+
+    /// The economy (step 10b), once a tick after the depots: power
+    /// first, then what each working structure does for its side, then
+    /// what holding them scores.
+    fn step_structures(&mut self) {
+        if self.structures.is_empty() {
+            return;
+        }
+        let tick = self.tick;
+        // Power: a standing plant powers its side's structures in reach.
+        let plants: Vec<(Option<PlayerId>, V2)> = self.structures.iter().filter(|x| x.kind == StructureKind::Power && x.alive() && x.owner.is_some()).map(|x| (x.owner, x.pos)).collect();
+        let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
+        let same_side = |a: Option<PlayerId>, b: Option<PlayerId>| match (a, b) {
+            (Some(a), Some(b)) => a == b || (team_of(a).is_some() && team_of(a) == team_of(b)),
+            _ => false,
+        };
+        let mut flips: Vec<(EntityId, StructureKind, PlayerId, bool)> = Vec::new();
+        for x in self.structures.iter_mut() {
+            let on = x.owner.is_some() && x.alive() && (!x.kind.needs_power() || plants.iter().any(|(o, p)| same_side(*o, x.owner) && p.dist(x.pos) <= POWER_RANGE));
+            if on != x.powered {
+                x.powered = on;
+                // A wreck going dark is already news; an owned one is.
+                if let Some(o) = x.owner.filter(|_| x.alive()) {
+                    flips.push((x.id, x.kind, o, on));
+                }
+            }
+        }
+        for (structure, kind, owner, on) in flips {
+            self.events.push(Event::StructurePower { structure, kind, owner, on });
+        }
+        let working: Vec<(StructureKind, Option<PlayerId>, V2)> = self.structures.iter().filter(|x| x.working()).map(|x| (x.kind, x.owner, x.pos)).collect();
+        let serves = |kind: StructureKind, p: PlayerId, at: V2, r: f32| working.iter().any(|(k, o, pos)| *k == kind && same_side(*o, Some(p)) && pos.dist(at) <= r);
+        // Refinery: the side burns less. Drive_tank burned the full
+        // amount this tick; give back the saving.
+        let refined: Vec<PlayerId> = self.players.iter().filter(|p| working.iter().any(|(k, o, _)| *k == StructureKind::Refinery && same_side(*o, Some(p.id)))).map(|p| p.id).collect();
+        for t in self.tanks.iter_mut().filter(|t| t.alive && refined.contains(&t.owner)) {
+            t.fuel = (t.fuel + FUEL_PER_TILE * t.speed * DT * (1.0 - REFINERY_FUEL_BURN)).min(TANK_FUEL);
+        }
+        // The stops: a refinery's fuel and shells, a workshop's repair
+        // and bay, at a depot's cadence.
+        if tick % RESUPPLY_EVERY == 0 {
+            for t in self.tanks.iter_mut().filter(|t| t.alive) {
+                if serves(StructureKind::Refinery, t.owner, t.pos, REFINERY_RANGE) {
+                    t.fuel = (t.fuel + 40.0).min(TANK_FUEL);
+                    t.shells = (t.shells + 1).min(TANK_SHELLS);
+                }
+                if serves(StructureKind::Workshop, t.owner, t.pos, WORKSHOP_RANGE) {
+                    t.armor = (t.armor + REPAIR_PER_TICK * 2.0).min(TANK_ARMOR);
+                    if t.bay.longshot < BAY_FULL.longshot {
+                        t.bay.longshot += 1;
+                    } else if t.bay.interceptor < BAY_FULL.interceptor {
+                        t.bay.interceptor += 1;
+                    } else if t.bay.strike < BAY_FULL.strike {
+                        t.bay.strike += 1;
+                    } else if t.bay.recon < BAY_FULL.recon {
+                        t.bay.recon += 1;
+                    }
+                    if t.pillboys.aboard && t.pillboys.strength < PILLBOY_MAX {
+                        t.pillboys.strength += 1;
+                    }
+                }
+            }
+        }
+        // A workshop mends what stands near it.
+        let mend = WORKSHOP_MEND_PER_SECOND * DT;
+        for p in self.pillboxes.iter_mut().filter(|p| p.alive() && p.health < PILLBOX_HEALTH) {
+            if let Some(o) = p.owner {
+                if serves(StructureKind::Workshop, o, p.pos, WORKSHOP_MEND_RANGE) {
+                    p.health = (p.health + mend).min(PILLBOX_HEALTH);
+                }
+            }
+        }
+        for x in self.structures.iter_mut().filter(|x| x.alive() && x.health < STRUCTURE_HEALTH) {
+            if let Some(o) = x.owner {
+                if serves(StructureKind::Workshop, o, x.pos, WORKSHOP_MEND_RANGE) {
+                    x.health = (x.health + mend).min(STRUCTURE_HEALTH);
+                }
+            }
+        }
+        // Holding pays while it is held.
+        if tick % HOLD_EVERY_TICKS == 0 {
+            let held: Vec<PlayerId> = self.structures.iter().filter(|x| x.alive()).filter_map(|x| x.owner).collect();
+            for o in held {
+                if let Some(pl) = self.players.iter_mut().find(|p| p.id == o && p.alive) {
+                    pl.score += SCORE_HOLD;
+                }
+            }
         }
     }
 
@@ -2473,6 +2963,8 @@ impl World {
                     t.bay.recon += 1;
                 } else if t.bay.strike < BAY_FULL.strike {
                     t.bay.strike += 1;
+                } else if t.bay.longshot < BAY_FULL.longshot {
+                    t.bay.longshot += 1;
                 }
                 // The squad and its material, when aboard.
                 if t.pillboys.aboard {
@@ -2532,6 +3024,7 @@ impl World {
                 task: DroneTask::Strike { target: *target },
                 link: 1.0,
                 phase,
+                jammed: false,
             });
         }
         self.events.push(Event::SwarmInbound { count: n, from });
@@ -2605,7 +3098,7 @@ impl World {
         let forest = me.as_ref().filter(|t| t.alive).map(|t| self.map.forest_near(t.pos, FOREST_SIGHT, 8)).unwrap_or_default();
         let advantage = self.scenario.advantage && self.players.iter().any(|x| x.id == p && x.is_bot);
         let tanks = self.tanks.iter().filter(|t| self.tank_visible_to(p, t) || (advantage && t.alive)).cloned().collect();
-        let drones = self.drones.iter().filter(|d| d.owner == p || self.visible_to(p, d.pos)).cloned().collect();
+        let drones = self.drones.iter().filter(|d| d.owner == p || self.visible_to(p, d.pos) || self.radar_sees(p, d.pos)).cloned().collect();
         let shells = self.shells.iter().filter(|s| s.owner == p || self.visible_to(p, s.pos_at(self.tick)) || self.visible_to(p, s.impact)).cloned().collect();
         Observation {
             tick: self.tick,
@@ -2619,6 +3112,7 @@ impl World {
             depots: self.depots.clone(),
             pillboxes: self.pillboxes.clone(),
             mines: self.mines.iter().filter(|m| self.mine_known_to(p, m)).cloned().collect(),
+            structures: self.structures.clone(),
             forest,
             players: self.players.iter().map(|x| PlayerView { id: x.id, name: x.name.clone(), alive: x.alive, score: x.score, is_bot: x.is_bot, team: x.team }).collect(),
             proposals: self.proposals.iter().filter(|r| r.from == p || self.allied(r.to, p)).cloned().collect(),
@@ -2639,6 +3133,7 @@ impl World {
             Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::DroneRetasked { owner, .. } | Event::LinkLost { owner, .. } => self.allied(*owner, p),
             Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => self.allied(*owner, p),
             Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } => self.allied(*owner, p),
+            Event::Jammed { owner, .. } => self.allied(*owner, p),
             Event::Chat { player, to: ChatTo::Team, .. } => self.allied(*player, p),
             Event::Proposed { from, to, .. } => *from == p || self.allied(*to, p),
             _ => true,
@@ -2834,6 +3329,9 @@ pub struct Observation {
     pub mines: Vec<Mine>,
     /// The nearest forest tiles to the tank, for a Brain with no map.
     pub forest: Vec<V2>,
+    /// Every structure, like every pillbox: an economy is public.
+    #[serde(default)]
+    pub structures: Vec<Structure>,
 
     pub players: Vec<PlayerView>,
     /// Proposals this player made or may answer.
@@ -2949,6 +3447,326 @@ mod tests {
 
     fn bincode_len(w: &World) -> usize {
         serde_json::to_string(w).map(|s| s.len()).unwrap_or(0)
+    }
+
+    /// A structure for a test: a pad under it, standing, owned or not.
+    fn put_structure(w: &mut World, kind: StructureKind, owner: Option<PlayerId>, at: V2) -> EntityId {
+        let at = Map::tile_centre(at);
+        w.map.set(at, Terrain::Pad);
+        let id = w.alloc();
+        w.structures.push(Structure { id, kind, pos: at, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+        id
+    }
+
+    /// A shell that lands exactly at `at` next tick, for tests of what a
+    /// splash does.
+    fn land_shell(w: &mut World, owner: PlayerId, at: V2) {
+        let id = w.alloc();
+        let tick = w.tick;
+        w.shells.push(Shell { id, owner, kind: ShellKind::Indirect, from: at, aim: at, impact: at, launch_tick: tick, impact_tick: tick + 1, spotted: true });
+        w.step(&[]);
+    }
+
+    /// Step 10a: concrete takes two splashes, a wall one; pads survive
+    /// a crater; both glyphs read and write.
+    #[test]
+    fn concrete_takes_two_splashes() {
+        let mut w = world();
+        let at = Map::tile_centre(w.map.center() + V2::new(20.0, 20.0));
+        w.map.set(at, Terrain::Concrete);
+        assert!(!w.map.at(at).passable() && w.map.at(at).blocks_fire());
+        land_shell(&mut w, 1, at);
+        assert_eq!(w.map.at(at), Terrain::Wall, "concrete should crack to a wall");
+        land_shell(&mut w, 1, at);
+        assert_eq!(w.map.at(at), Terrain::Rubble);
+        w.map.set(at, Terrain::Pad);
+        land_shell(&mut w, 1, at);
+        assert_eq!(w.map.at(at), Terrain::Pad, "a pad is foundations: a shell does not crater it");
+        let text = w.map.to_text();
+        let back = Map::from_text(&text).unwrap();
+        assert_eq!(back.at(at), Terrain::Pad);
+    }
+
+    /// Step 10b: power, and what each working structure does; a wrecked
+    /// plant takes its side's economy dark; holding scores.
+    #[test]
+    fn structures_need_power_and_serve_their_side() {
+        let mut w = world();
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let home = w.tank(me).unwrap().pos;
+        let refinery = put_structure(&mut w, StructureKind::Refinery, Some(0), home + V2::new(8.0, 0.0));
+        let workshop = put_structure(&mut w, StructureKind::Workshop, Some(0), home + V2::new(0.0, 2.0));
+        w.step(&[]);
+        assert!(!w.structure(refinery).unwrap().powered, "no plant, no power");
+        let plant = put_structure(&mut w, StructureKind::Power, Some(0), home + V2::new(-6.0, 4.0));
+        w.step(&[]);
+        assert!(w.structure(refinery).unwrap().powered && w.structure(workshop).unwrap().powered);
+        assert!(w.events.iter().any(|e| matches!(e, Event::StructurePower { on: true, .. })));
+        // The workshop mends the tank and fills the bay, longshots first.
+        {
+            let t = w.tank_mut(me).unwrap();
+            t.armor = 50.0;
+            t.bay.longshot = 0;
+        }
+        for _ in 0..TICK_HZ {
+            w.step(&[]);
+        }
+        let t = w.tank(me).unwrap();
+        assert!(t.armor >= 50.0 + REPAIR_PER_TICK * 2.0 * 2.0 - 0.01, "armor {}", t.armor);
+        assert_eq!(t.bay.longshot, BAY_FULL.longshot);
+        // The refinery halves the fuel a drive burns.
+        let drive = |w: &mut World| {
+            let t = w.tank_mut(me).unwrap();
+            t.pos = home;
+            t.fuel = 300.0;
+            w.step(&[Order { player: 0, cmd: Command::Move { to: home + V2::new(0.0, 12.0) } }]);
+            for _ in 0..(2 * TICK_HZ) {
+                w.step(&[]);
+            }
+            300.0 - w.tank(me).unwrap().fuel
+        };
+        let refined = drive(&mut w);
+        // Wreck the plant: everything it powered goes dark, and says so.
+        w.damage_structure(plant, STRUCTURE_HEALTH, Some(1));
+        assert!(w.events.iter().any(|e| matches!(e, Event::StructureWrecked { structure, .. } if *structure == plant)));
+        w.step(&[]);
+        assert!(!w.structure(refinery).unwrap().powered);
+        assert!(w.events.iter().any(|e| matches!(e, Event::StructurePower { structure, on: false, .. } if *structure == refinery)));
+        let crude = drive(&mut w);
+        assert!(refined > 1.0 && (refined - crude * REFINERY_FUEL_BURN).abs() < 0.5, "refined {} crude {}", refined, crude);
+        // Holding pays: the two standing structures score every ten s.
+        let before = w.players[0].score;
+        for _ in 0..HOLD_EVERY_TICKS {
+            w.step(&[]);
+        }
+        assert_eq!(w.players[0].score - before, SCORE_HOLD * 2);
+    }
+
+    /// Step 10b: the squad builds a structure on a pad and only on a
+    /// pad, captures a neutral one, and mends a damaged one.
+    #[test]
+    fn squad_builds_takes_and_mends_structures() {
+        let mut w = world();
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let home = w.tank(me).unwrap().pos;
+        w.tank_mut(me).unwrap().pillboys.material = PILLBOY_MATERIAL_MAX;
+        let grass = Map::tile_centre(home + V2::new(3.0, 3.0));
+        w.map.set(grass, Terrain::Grass);
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Structure(StructureKind::Power), at: grass } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why.contains("pad"))), "{:?}", w.events);
+        w.map.set(grass, Terrain::Pad);
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Structure(StructureKind::Power), at: grass } } }]);
+        let mut built = None;
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            for e in &w.events {
+                if let Event::StructureBuilt { structure, by: 0, kind: StructureKind::Power, .. } = e {
+                    built = Some(*structure);
+                }
+            }
+            if built.is_some() && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        let built = built.expect("never built");
+        assert_eq!(w.tank(me).unwrap().pillboys.material, PILLBOY_MATERIAL_MAX - StructureKind::Power.cost());
+        assert!(w.structure(built).unwrap().powered);
+        // A neutral refinery: taken by standing on it.
+        let neutral = put_structure(&mut w, StructureKind::Refinery, None, home + V2::new(-3.0, 4.0));
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Capture { pillbox: neutral } } }]);
+        let mut taken = false;
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            taken |= w.events.iter().any(|e| matches!(e, Event::StructureCaptured { structure, by: 0, .. } if *structure == neutral));
+            if taken && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert!(taken && w.structure(neutral).unwrap().owner == Some(0));
+        // Damaged: the squad mends it for material.
+        w.damage_structure(built, 50.0, Some(1));
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Repair { target: built } } }]);
+        let mut mended = false;
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            mended |= w.events.iter().any(|e| matches!(e, Event::StructureRepaired { structure, .. } if *structure == built));
+            if mended {
+                break;
+            }
+        }
+        assert!(mended && w.structure(built).unwrap().health == STRUCTURE_HEALTH);
+        // A standing hostile structure cannot be taken.
+        let theirs = put_structure(&mut w, StructureKind::Jammer, Some(1), home + V2::new(4.0, -2.0));
+        w.step(&[]);
+        let mut wait = 0;
+        while !w.tank(me).unwrap().pillboys.aboard && wait < 400 {
+            w.step(&[]);
+            wait += 1;
+        }
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Capture { pillbox: theirs } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why.contains("wreck it first"))), "{:?}", w.events);
+    }
+
+    /// Step 10c: a longshot crosses the map on its own, goes on after
+    /// its tank dies, wrecks an undefended refinery in two; one sent
+    /// into a bubble is intercepted.
+    #[test]
+    fn longshots_cross_the_map_and_bubbles_stop_them() {
+        let mut w = world();
+        w.pillboxes.clear();
+        let far = w.tank_of(2).unwrap().pos + V2::new(0.0, -4.0); // south seat's ground
+        let refinery = put_structure(&mut w, StructureKind::Refinery, Some(2), far);
+        let at = w.structure(refinery).unwrap().pos;
+        w.step(&[Order { player: 0, cmd: Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at } } }]);
+        assert_eq!(w.tank_of(0).unwrap().bay.longshot, BAY_FULL.longshot - 1);
+        let ls = w.drones.iter().find(|d| d.kind == DroneKind::Longshot).unwrap().id;
+        // No recall, no retask.
+        w.step(&[Order { player: 0, cmd: Command::Retask { drone: ls, task: DroneTask::Return } }, Order { player: 0, cmd: Command::Recall }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why.contains("where it was sent"))));
+        assert!(matches!(w.drone(ls).unwrap().task, DroneTask::Attack { .. }));
+        // Its tank dies: it flies on.
+        let mine = w.players[0].tank;
+        w.damage(mine, 500.0, Some(1));
+        let mut landed = None;
+        for _ in 0..(60 * TICK_HZ) {
+            w.step(&[]);
+            if w.events.iter().any(|e| matches!(e, Event::LongshotHit { drone, .. } if *drone == ls)) {
+                landed = Some(w.tick);
+                break;
+            }
+        }
+        let t = landed.expect("the longshot never arrived");
+        // ~100 tiles at 3 tiles/s.
+        assert!(t > 25 * TICK_HZ as Tick && t < 45 * TICK_HZ as Tick, "landed at {}", t);
+        assert_eq!(w.structure(refinery).unwrap().health, STRUCTURE_HEALTH - LONGSHOT_STRUCTURE_DAMAGE);
+        // Into a bubble: the south tank puts interceptors up and a
+        // longshot from the east at its own position is met.
+        let mut w = world();
+        w.pillboxes.clear();
+        let south = w.tank_of(2).unwrap().pos;
+        for _ in 0..4 {
+            w.step(&[Order { player: 2, cmd: Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return } }]);
+        }
+        w.step(&[Order { player: 1, cmd: Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at: south } } }]);
+        let mut met = false;
+        let mut hit = false;
+        for _ in 0..(60 * TICK_HZ) {
+            w.step(&[]);
+            met |= w.events.iter().any(|e| matches!(e, Event::Intercepted { owner: 2, .. }));
+            hit |= w.events.iter().any(|e| matches!(e, Event::LongshotHit { .. }));
+            if met || hit {
+                break;
+            }
+        }
+        assert!(met && !hit, "met {} hit {}", met, hit);
+    }
+
+    /// Step 10b: a jammer takes the link of every drone near it, its
+    /// own side's too, and pushes a longshot off its point.
+    #[test]
+    fn a_jammer_jams_everyone_and_drifts_a_longshot() {
+        let mut w = world();
+        w.pillboxes.clear();
+        let east = w.tank_of(1).unwrap().pos;
+        let jam_at = east + V2::new(-10.0, 0.0);
+        let jammer = put_structure(&mut w, StructureKind::Jammer, Some(1), jam_at);
+        put_structure(&mut w, StructureKind::Power, Some(1), east + V2::new(-4.0, 3.0));
+        w.step(&[]);
+        assert!(w.structure(jammer).unwrap().working());
+        // East's own recon over its jammer.
+        w.step(&[Order { player: 1, cmd: Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: jam_at, radius: 2.0 } } }]);
+        let mut own_jammed = false;
+        for _ in 0..(8 * TICK_HZ) {
+            w.step(&[]);
+            own_jammed |= w.events.iter().any(|e| matches!(e, Event::Jammed { owner: 1, kind: DroneKind::Recon, .. }));
+        }
+        assert!(own_jammed, "a jammer jams its own side's drones too");
+        assert!(w.drones.iter().filter(|d| d.owner == 1 && d.kind == DroneKind::Recon).all(|d| d.task == DroneTask::Return));
+        // A longshot through it lands off its point.
+        let aim = Map::tile_centre(jam_at);
+        w.step(&[Order { player: 3, cmd: Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at: aim } } }]);
+        let mut drifted = None;
+        for _ in 0..(60 * TICK_HZ) {
+            w.step(&[]);
+            for e in &w.events {
+                if let Event::LongshotHit { at, owner: 3, .. } = e {
+                    drifted = Some(at.dist(aim));
+                }
+            }
+            if drifted.is_some() {
+                break;
+            }
+        }
+        let off = drifted.expect("never landed");
+        assert!(off > 0.01 && off <= JAM_DRIFT + 0.01, "landed {} off", off);
+        // Wreck the jammer: links come back.
+        w.damage_structure(jammer, STRUCTURE_HEALTH, Some(0));
+        w.step(&[Order { player: 1, cmd: Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: jam_at, radius: 2.0 } } }]);
+        for _ in 0..(6 * TICK_HZ) {
+            w.step(&[]);
+        }
+        assert!(w.drones.iter().any(|d| d.owner == 1 && d.kind == DroneKind::Recon && !d.jammed && d.link > LINK_FLOOR));
+    }
+
+    /// Step 10b: a data centre's fire control halves a blind shot's
+    /// scatter near it, and its radar shows the side hostile drones.
+    #[test]
+    fn a_data_centre_computes_fire_and_sees_the_air() {
+        let scatter = |dc: bool| {
+            let mut w = world();
+            w.pillboxes.clear();
+            let home = w.tank_of(0).unwrap().pos;
+            if dc {
+                put_structure(&mut w, StructureKind::DataCentre, Some(0), home + V2::new(3.0, 0.0));
+                put_structure(&mut w, StructureKind::Power, Some(0), home + V2::new(-3.0, 0.0));
+                w.step(&[]);
+            }
+            let aim = home + V2::new(0.0, 30.0);
+            let mut total = 0.0;
+            for _ in 0..40 {
+                let t = w.tank_mut(w.players[0].tank).unwrap();
+                t.reload = 0;
+                t.shells = 10;
+                w.step(&[Order { player: 0, cmd: Command::FireIndirect { at: aim } }]);
+                let s = w.shells.last().unwrap();
+                assert!(!s.spotted);
+                total += s.impact.dist(aim);
+                w.shells.clear();
+            }
+            total / 40.0
+        };
+        let (blind, computed) = (scatter(false), scatter(true));
+        assert!(computed < blind * 0.7, "blind {} computed {}", blind, computed);
+        // The air picture: a hostile recon twenty tiles out is seen.
+        let mut w = world();
+        let home = w.tank_of(0).unwrap().pos;
+        let probe = home + V2::new(0.0, 20.0);
+        w.step(&[Order { player: 1, cmd: Command::Launch { kind: DroneKind::Recon, task: DroneTask::Return } }]);
+        let d = w.drones.iter_mut().find(|d| d.owner == 1).unwrap();
+        d.pos = probe;
+        let id = d.id;
+        assert!(!w.observe(0).drones.iter().any(|d| d.id == id));
+        put_structure(&mut w, StructureKind::DataCentre, Some(0), home + V2::new(3.0, 0.0));
+        put_structure(&mut w, StructureKind::Power, Some(0), home + V2::new(-3.0, 0.0));
+        w.step_structures();
+        w.drones.iter_mut().find(|d| d.id == id).unwrap().pos = probe;
+        assert!(w.observe(0).drones.iter().any(|d| d.id == id));
+    }
+
+    /// Step 10f: an industrial map reads back with its structures, and
+    /// every structure stands on a pad.
+    #[test]
+    fn an_industrial_map_round_trips() {
+        let w = World::new(Scenario { swarm_interval: 0, industry: true, ..Scenario::default() });
+        assert!(w.structures.len() >= 16, "{} structures", w.structures.len());
+        assert!(w.structures.iter().all(|s| w.map.at(s.pos) == Terrain::Pad && s.owner.is_none()));
+        let text = w.map_as_played().to_text();
+        let back = Map::from_text(&text).unwrap();
+        assert_eq!(back.structures, w.map_as_played().structures);
+        let bad = text.replacen("structure ", "structure 0.5 0.5 power neutral\n# ", 1);
+        assert!(Map::from_text(&bad).is_err() || w.map.at(V2::new(0.5, 0.5)) == Terrain::Pad);
     }
 
     #[test]
@@ -3677,7 +4495,7 @@ mod tests {
         assert!(w.concealed(c));
         // A recon of seat 0 orbits right over it (untethered, so its
         // link does not fail for the distance to its tank).
-        w.drones.push(Drone { id: 900, owner: 0, kind: DroneKind::Recon, pos: c + V2::new(4.0, 0.0), heading: 0.0, battery: 100.0, tether: None, task: DroneTask::Orbit { center: c, radius: 4.0 }, link: 1.0, phase: 0.0 });
+        w.drones.push(Drone { id: 900, owner: 0, kind: DroneKind::Recon, pos: c + V2::new(4.0, 0.0), heading: 0.0, battery: 100.0, tether: None, task: DroneTask::Orbit { center: c, radius: 4.0 }, link: 1.0, phase: 0.0, jammed: false });
         // A neutral pillbox six tiles north, with a clear line, and out
         // of its own air range of the drone.
         for dy in 0..=6 {

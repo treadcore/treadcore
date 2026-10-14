@@ -152,7 +152,13 @@ pub struct RuleBot {
     grace: Grace,
     /// Who has hurt this tank: a person who has is not let onto its side.
     hurt_by: Vec<PlayerId>,
+    /// When the last longshot went (step 10e).
+    last_longshot: Tick,
 }
+
+/// Seconds between a RuleBot's longshots: a cheap drone, but two in the
+/// bay and a long way to the next workshop.
+pub const LONGSHOT_EVERY: f32 = 30.0;
 
 /// How far the bot will send its squad: a 20-tile walk is 13 seconds
 /// each way at `PILLBOY_SPEED`, plus the work.
@@ -170,7 +176,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new() }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0 }
     }
 
     /// The same doctrine without the squad: the control group.
@@ -329,8 +335,26 @@ impl Brain for RuleBot {
                 .iter()
                 .filter(|p| !p.owner.map(|o| obs.allied(o)).unwrap_or(false) && (p.owner.is_none() || !p.alive()) && p.pos.dist(me.pos) <= PILLBOY_REACH && safe(p) && !self.unreachable_pillboxes.contains(&p.id))
                 .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+            // Structures (step 10e), after pillboxes: neutral or wrecked
+            // and in reach to take; ours below half to mend. None on
+            // the generated island, so nothing changes there.
+            let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
+            let works = obs
+                .structures
+                .iter()
+                .filter(|x| !ours(x.owner) && (x.owner.is_none() || !x.alive()) && x.pos.dist(me.pos) <= PILLBOY_REACH && !self.unreachable_pillboxes.contains(&x.id))
+                .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+            let mend = obs
+                .structures
+                .iter()
+                .filter(|x| x.owner == Some(obs.player) && x.health < STRUCTURE_HEALTH * 0.5 && x.pos.dist(me.pos) <= PILLBOY_REACH && !self.unreachable_pillboxes.contains(&x.id))
+                .min_by(|a, b| a.health.partial_cmp(&b.health).unwrap());
             if let Some(p) = capture {
                 cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: p.id } });
+            } else if let Some(x) = works {
+                cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: x.id } });
+            } else if let (Some(x), true) = (mend, me.pillboys.material >= STRUCTURE_REPAIR_COST) {
+                cmds.push(Command::Deploy { task: PillboyTask::Repair { target: x.id } });
             } else if me.pillboys.material >= PILLBOX_REPAIR_COST {
                 let repair = obs
                     .pillboxes
@@ -398,6 +422,24 @@ impl Brain for RuleBot {
             let their_cover = obs.drones.iter().filter(|d| obs.team_of(d.owner) == their_team && d.kind == DroneKind::Interceptor && d.pos.dist(e.pos) <= BUBBLE_MAX + 2.0).count();
             if their_cover < 2 && my_strikes == 0 && me.bay.strike > 0 && range <= STRIKE_BATTERY * STRIKE_SPEED * 0.8 {
                 cmds.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: e.id } });
+            }
+        }
+
+        // The longshot (step 10e): at a hostile structure every half
+        // minute, a power plant first, because the rest of a side's
+        // economy goes dark with it. None on the generated island.
+        if me.bay.longshot > 0 && obs.tick.saturating_sub(self.last_longshot) as f32 * DT >= LONGSHOT_EVERY {
+            let target = obs
+                .structures
+                .iter()
+                .filter(|x| x.alive() && x.owner.map(|o| !obs.allied(o)).unwrap_or(false))
+                .min_by(|a, b| {
+                    let rank = |x: &Structure| (x.kind != StructureKind::Power) as u8;
+                    rank(a).cmp(&rank(b)).then(a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+                });
+            if let Some(x) = target {
+                cmds.push(Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at: x.pos } });
+                self.last_longshot = obs.tick;
             }
         }
 
@@ -825,6 +867,19 @@ impl Brain for Defender {
         if let Some(p) = repair {
             if material >= PILLBOX_REPAIR_COST {
                 cmds.push(Command::Deploy { task: PillboyTask::Repair { target: p.id } });
+                return cmds;
+            }
+        }
+        // Structures (step 10e): take a neutral or wrecked one in reach
+        // of home, mend ours below half. None on the generated island.
+        let near = |x: &Structure| x.pos.dist(home) <= PILLBOY_REACH && !self.unreachable.contains(&x.id);
+        if let Some(x) = obs.structures.iter().filter(|x| near(x) && !x.owner.map(|o| obs.allied(o)).unwrap_or(false) && (x.owner.is_none() || !x.alive())).min_by(|a, b| a.pos.dist(home).partial_cmp(&b.pos.dist(home)).unwrap()) {
+            cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: x.id } });
+            return cmds;
+        }
+        if let Some(x) = obs.structures.iter().filter(|x| near(x) && x.owner == Some(obs.player) && x.health < STRUCTURE_HEALTH * 0.5).min_by(|a, b| a.health.partial_cmp(&b.health).unwrap()) {
+            if material >= STRUCTURE_REPAIR_COST {
+                cmds.push(Command::Deploy { task: PillboyTask::Repair { target: x.id } });
                 return cmds;
             }
         }

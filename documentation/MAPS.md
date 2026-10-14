@@ -31,6 +31,7 @@ match can start where this one ended.
 | `start x y` | a tank's start, in seat order: the first line is seat 0 (north), and a scenario of N players uses the first N; one to sixteen of them |
 | `depot x y` | a refuelling depot; the first N depots belong to the first N seats at the start, the rest are neutral |
 | `pillbox x y [seat\|neutral]` | a pillbox, neutral unless a seat number (0 to 15) is given; a seat the scenario does not seat makes it neutral |
+| `structure x y kind [seat\|neutral]` | a structure on a pad (roadmap step 10b): `power`, `refinery`, `datacentre`, `workshop` or `jammer`; owned as a pillbox is |
 | `# ...` | a comment; blank lines are ignored |
 
 Positions are tile coordinates, `x` east and `y` south, as floats; the
@@ -49,6 +50,8 @@ before any `start`, `depot` or `pillbox` line.
 | `%` | rubble | slow | | what a shell or a mine leaves; what a wall becomes |
 | `D` | depot | medium | | the depot's own tiles; the `depot` line is what counts |
 | `W` | wall | impassable | blocks a flat shot and a pillbox's line | the squad builds them; a splash knocks them down |
+| `H` | concrete | impassable | blocks a flat shot and a pillbox's line | two material; a splash cracks it to a wall, so it takes two |
+| `_` | pad | fast | | foundations: the only ground a structure is built on; a shell does not crater it |
 
 Mines are not in a map: they are laid in play and hidden, and a saved
 map does not carry them.
@@ -58,7 +61,8 @@ map does not carry them.
 The loader refuses, naming the line: a first line that is not the
 format line; a row of the wrong length or with a glyph it does not
 know; a place off the map; a start or a depot on water or a wall; a
-pillbox on water; no starts; more than sixteen. It repairs, as the prior art's
+pillbox on water; a structure off a pad or of a kind it does not know;
+no starts; more than sixteen. It repairs, as the prior art's
 loader did, a pillbox owner that is not a seat: it becomes neutral.
 `treadcore-server --map FILE` checks the file before anything starts
 and exits with the reason if it cannot be used.
@@ -86,6 +90,9 @@ The maps in `maps/`:
 | file | what |
 | --- | --- |
 | `maps/island.map` | the generated default (seed 0x7EADC0DE), written by `make map`, so a reader can see the format at full size |
+| `maps/industry.map` | the same island industrialised (`INDUSTRY=1 make map`): a pad zone half way along each spoke with a neutral power plant and refinery, and two by the centre with a power plant and a data centre |
+| `maps/world/atlantic.map` | the Americas, the Atlantic, Europe, Africa and Arabia, 512 x 333, drawn by `scripts/worldmap.py` (below) |
+| `maps/world/europe.map` | Europe and the Mediterranean, 320 x 256, by the same script |
 | `maps/prior-art/*.map` | five prior-art maps converted by `scripts/priorart2map.py` (below) |
 
 ## Converting prior-art maps
@@ -124,3 +131,65 @@ sent 20 tiles) was written for a 128-tile island; on a prior-art map the
 distances are double and the islands are often several, so expect
 refused moves across water and little capturing until step 6d.
 
+## Industry
+
+A map with no `structure` lines can be given an economy at the start
+of a match: `--industry` on the server or the window, `INDUSTRY=1` on
+`make debug`, `run`, `host` and `map`. It lays a three by three zone of
+pads half way along each start's spoke to the centre, with a neutral
+power plant and refinery on it and room for three more structures,
+and a zone either side of the centre with a power plant and a data
+centre (`Map::industrialise`). A map that has structures of its own
+keeps them and gets no more. The generated island has no pads unless
+asked, so every proof on it reads as it did.
+
+## The world maps
+
+`scripts/worldmap.py` (`make worldmaps`) draws a map of a piece of the
+world from coarse coastlines typed in longitude and latitude, a degree
+or so between points, each edge roughened from a fixed seed so the
+output is the same every run. Land is grass; forest thick in the
+tropics and the boreal belt, light between, none in the deserts; the
+great mountain ranges are rough ground (rubble); the Mississippi, the
+Amazon, the Danube, the Rhine, the Volga, the Nile, the St Lawrence
+and the Parana are water. Roads are laid by a shortest path over the
+land that keeps close to the straight line, so they follow the coast
+and bridge only where the way round is long:
+
+- the **Pan-American Highway** from Prudhoe Bay through Edmonton,
+  Denver, Mexico City and Central America to Yaviza, and from Turbo
+  through Bogota, Quito, Lima, Santiago and Buenos Aires to Ushuaia,
+  bridging the Strait of Magellan. Between Yaviza and Turbo is the
+  **Darien Gap**: jungle and no road, as in the world; a tank gets
+  through, slowly;
+- Europe's trunk roads from Lisbon to Moscow, London to Paris over
+  the Channel, Hamburg to Copenhagen and Stockholm over the Oresund,
+  Vienna to Istanbul over the Bosphorus to Ankara, Damascus and
+  Riyadh, and Tarifa to Tangier over Gibraltar along the African coast
+  to Cairo and Suez;
+- a few others in the Americas: the US coasts and the line to Chicago
+  and Denver, the Trans-Canada, Sao Paulo to Recife and to Manaus.
+
+The sixteen starts are cities, seat order alternating between the
+Americas and the Old World on the Atlantic map (New York, Berlin,
+Buenos Aires, Riyadh, ...), so a match of two, four or eight is split
+across the ocean; each has a depot beside it. Neutral depots stand at
+Panama, Chicago, Houston, Dakar, Kyiv and the like, neutral pillboxes
+at the chokepoints (Panama, the Darien Gap, Gibraltar, the Bosphorus,
+the Channel, Suez), and pads with neutral structures where the
+industry is: refineries at Prudhoe Bay, Fort McMurray, Houston,
+Tampico, Maracaibo, Santos, Aberdeen, Stavanger, Rotterdam, Dhahran,
+Hassi Messaoud, Ras Lanuf, Lagos and Kazan; data centres at Ashburn,
+Los Angeles, Paris, Moscow, Riyadh and Reykjavik; power plants and
+workshops beside them. Nothing drives across the Atlantic: a match
+there is two continents and the longshot. The test
+`the_world_maps_read_and_their_continents_connect` holds the maps to
+that: every start reaches the others on its side by land, and New
+York does not reach Berlin.
+
+    MAP=maps/world/atlantic.map make debug   # sixteen bots on it
+    MAP=maps/world/atlantic.map make run      # the window
+
+The bots' doctrine was written for a 128-tile island; on a 512-tile
+map they play their own corner of it, take the industry in reach and
+send longshots across the ocean.

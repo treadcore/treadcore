@@ -11,6 +11,7 @@
 #   TEAMS=4 make debug          four teams of four
 #   GAMETYPE=strict make debug  no shells or material to start with
 #   MAP=maps/x.map make debug   on a map file (documentation/MAPS.md)
+#   INDUSTRY=1 make debug       with structures on a map that has none
 
 . "$(dirname "$0")/common.sh"
 need_config
@@ -24,6 +25,7 @@ BIN="$ROOT/target/debug/treadcore-server"
 ARGS=(--local --seed "${SEED:-0x7EADC0DE}" --seconds "${GAME_SECONDS:-180}" --players "${PLAYERS:-16}" --defenders "${DEFENDERS:-0}" --teams "${TEAMS:-0}" --game-type "${GAMETYPE:-open}" --trace "$TRACE" --record "$REPLAY")
 [ -n "${BRAIN:-}" ] && ARGS+=(--brain "$BRAIN")
 [ -n "${MAP:-}" ] && ARGS+=(--map "$MAP")
+[ "${INDUSTRY:-0}" = 1 ] && ARGS+=(--industry)
 say "tracing: $BIN ${ARGS[*]}"
 say "  log   $LOG"
 say "  trace $TRACE"

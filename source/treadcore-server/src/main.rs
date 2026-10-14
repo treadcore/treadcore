@@ -61,6 +61,8 @@ struct Args {
     game_type: GameType,
     /// Bot seats see every tank (`--advantage`, SPEC BRN-12).
     advantage: bool,
+    /// Give a map with no structures an economy (`--industry`, step 10f).
+    industry: bool,
     /// A map file's text, read and checked at start (`--map`).
     map: Option<String>,
     /// Write the map as played to this file when the match ends.
@@ -99,6 +101,7 @@ fn parse() -> Args {
         teams: 0,
         game_type: GameType::Open,
         advantage: false,
+        industry: false,
         map: None,
         save_map: None,
         write_map: None,
@@ -132,6 +135,7 @@ fn parse() -> Args {
             "--defenders" => a.defenders = parse_num(&val()),
             "--teams" => a.teams = parse_num(&val()),
             "--advantage" => a.advantage = true,
+            "--industry" => a.industry = true,
             "--game-type" => {
                 let v = val();
                 a.game_type = GameType::parse(&v).unwrap_or_else(|| die(&format!("game type '{}': open, tournament or strict", v)));
@@ -183,6 +187,9 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --advantage        bot seats are told where every tank is, regardless
                      of range (the prior art's brain advantage; a handicap for a
                      human against bots)
+  --industry         give a map with no structures of its own an economy:
+                     pad zones with neutral power plants, refineries and
+                     data centres (roadmap step 10f)
   --map FILE       play on this map file (documentation/MAPS.md)
                      instead of the one generated from --seed
   --save-map FILE    when the match ends, write the map as played
@@ -247,7 +254,10 @@ fn main() {
     log::info!("treadcore-server {} ({} Hz)", env!("CARGO_PKG_VERSION"), TICK_HZ);
 
     if let Some(path) = args.write_map.as_deref() {
-        let m = Map::generate(args.seed);
+        let mut m = Map::generate(args.seed);
+        if args.industry {
+            m.industrialise();
+        }
         match std::fs::write(path, m.to_text()) {
             Ok(()) => log::info!("wrote the map for seed {:#x} to {} ({} starts, {} depots, {} pillboxes)", args.seed, path, m.starts.len(), m.depots.len(), m.pillboxes.len()),
             Err(e) => die(&format!("write-map {}: {}", path, e)),
@@ -355,7 +365,13 @@ struct Report {
     shells_spotted: u32,
     shells_direct: u32,
     shell_hits: u32,
-    launched: [u32; 3],
+    launched: [u32; 4],
+    structures_built: u32,
+    structures_captured: u32,
+    structures_wrecked: u32,
+    structure_damage: std::collections::BTreeMap<&'static str, f32>,
+    longshot_hits: u32,
+    jammed: u32,
     lost: std::collections::BTreeMap<String, u32>,
     intercepts: u32,
     intercept_misses: u32,
@@ -425,6 +441,21 @@ impl Report {
                     self.first_kill.get_or_insert(tick);
                 }
                 Event::PillboxCaptured { .. } => self.pillbox_captured += 1,
+                Event::StructureBuilt { .. } => self.structures_built += 1,
+                Event::StructureCaptured { .. } => self.structures_captured += 1,
+                Event::StructureWrecked { .. } => self.structures_wrecked += 1,
+                Event::StructureDamaged { damage, .. } => {
+                    // A longshot's warhead is the one blow of exactly its size.
+                    let by = if *damage == LONGSHOT_STRUCTURE_DAMAGE { "longshot" } else { "shell" };
+                    *self.structure_damage.entry(by).or_default() += damage;
+                }
+                Event::LongshotHit { hits, .. } => {
+                    self.longshot_hits += 1;
+                    for h in hits {
+                        self.pending.insert(*h, "longshot");
+                    }
+                }
+                Event::Jammed { .. } => self.jammed += 1,
                 Event::PillboxBuilt { .. } => self.pillbox_built += 1,
                 Event::PillboxDestroyed { .. } => self.pillbox_destroyed += 1,
                 Event::DepotCaptured { .. } => self.depots_captured += 1,
@@ -461,6 +492,19 @@ impl Report {
             pct(self.intercepts, tries),
             self.interceptors_shot
         );
+        if self.launched[3] + self.structures_built + self.structures_captured + self.structures_wrecked + self.jammed > 0 {
+            let dmg: Vec<String> = self.structure_damage.iter().map(|(k, v)| format!("{:.0} by {}", v, k)).collect();
+            log::info!(
+                "  economy: longshots {} launched, {} landed; structures built {}, captured {}, wrecked {}; damage {}; drones jammed {}",
+                self.launched[3],
+                self.longshot_hits,
+                self.structures_built,
+                self.structures_captured,
+                self.structures_wrecked,
+                if dmg.is_empty() { "none".to_string() } else { dmg.join(", ") },
+                self.jammed
+            );
+        }
         let strikes = self.launched[2] + self.swarm;
         log::info!("  strikes: {} launched ({} swarm), {} hit ({:.0}%)", strikes, self.swarm, self.strike_hits, pct(self.strike_hits, strikes));
         let kills: u32 = self.kills.values().sum();
@@ -553,13 +597,21 @@ fn narrate(world: &World, events: &[Event]) {
             Event::Harvested { owner, at, material } => log::info!("[{:>6} {:>6.1}s] p{} harvests ({:.0},{:.0}) +{} material", t, s, owner, at.x, at.y, material),
             Event::MineLaid { owner, at, .. } => log::info!("[{:>6} {:>6.1}s] p{} lays a mine at ({:.0},{:.0})", t, s, owner, at.x, at.y),
             Event::MineExploded { owner, at, hits, .. } => log::warn!("[{:>6} {:>6.1}s] MINE (p{}) at ({:.0},{:.0}) hits {:?}", t, s, owner, at.x, at.y, hits),
+            Event::StructureBuilt { structure, kind, by, at } => log::warn!("[{:>6} {:>6.1}s] p{} BUILDS {} #{} at ({:.0},{:.0})", t, s, by, kind.word(), structure, at.x, at.y),
+            Event::StructureDamaged { structure, kind, by, damage, health_left, .. } => log::info!("[{:>6} {:>6.1}s] {} #{} -{:.0} ({:.0} left) by {:?}", t, s, kind.word(), structure, damage, health_left, by),
+            Event::StructureWrecked { structure, kind, owner, by } => log::warn!("[{:>6} {:>6.1}s] {} #{} ({}) WRECKED by {:?}", t, s, kind.word(), structure, owner.map(|o| format!("p{}", o)).unwrap_or_else(|| "neutral".into()), by),
+            Event::StructureCaptured { structure, kind, by, from } => log::warn!("[{:>6} {:>6.1}s] p{} TAKES {} #{} from {}", t, s, by, kind.word(), structure, from.map(|f| format!("p{}", f)).unwrap_or_else(|| "neutral".into())),
+            Event::StructureRepaired { structure, kind, by } => log::info!("[{:>6} {:>6.1}s] p{} mends {} #{}", t, s, by, kind.word(), structure),
+            Event::StructurePower { structure, kind, owner, on } => log::info!("[{:>6} {:>6.1}s] p{} {} #{} power {}", t, s, owner, kind.word(), structure, if *on { "on" } else { "OFF" }),
+            Event::LongshotHit { owner, at, hits, .. } => log::warn!("[{:>6} {:>6.1}s] p{} LONGSHOT lands at ({:.0},{:.0}) hits {:?}", t, s, owner, at.x, at.y, hits),
+            Event::Jammed { owner, kind, drone, jammer } => log::info!("[{:>6} {:>6.1}s] p{} {:?} #{} jammed by #{}", t, s, owner, kind, drone, jammer),
             Event::TerrainChanged { at, to } => log::trace!("[{:>6} {:>6.1}s] terrain ({:.0},{:.0}) -> {:?}", t, s, at.x, at.y, Terrain::from_u8(*to)),
         }
     }
     if t % TICK_HZ as Tick == 0 {
         for p in &world.players {
             if let Some(tk) = world.tank_of(p.id) {
-                let air: Vec<String> = world.drones.iter().filter(|d| d.owner == p.id).map(|d| format!("{}{:.0}%", match d.kind { DroneKind::Recon => "R", DroneKind::Interceptor => "I", DroneKind::Strike => "S" }, d.link * 100.0)).collect();
+                let air: Vec<String> = world.drones.iter().filter(|d| d.owner == p.id).map(|d| format!("{}{:.0}%", match d.kind { DroneKind::Recon => "R", DroneKind::Interceptor => "I", DroneKind::Strike => "S", DroneKind::Longshot => "L" }, d.link * 100.0)).collect();
                 log::debug!(
                     "[{:>6} {:>6.1}s] p{} {:<6} {} at ({:>5.1},{:>5.1}) armor {:>3.0} shells {:>2} fuel {:>3.0} bay R{}/I{}/S{} bubble {:.0} air [{}] score {}",
                     t, s, p.id, p.name, if tk.alive { "ok  " } else { "DEAD" }, tk.pos.x, tk.pos.y, tk.armor, tk.shells, tk.fuel, tk.bay.recon, tk.bay.interceptor, tk.bay.strike, tk.bubble, air.join(" "), p.score
@@ -593,6 +645,10 @@ fn summary(world: &World, started: Instant, report: &Report) {
     let walls = world.map.cells.iter().filter(|c| **c == Terrain::Wall as u8).count();
     log::info!("  walls: {}  mines left: {}", walls, world.mines.len());
     let owned = world.pillboxes.iter().filter(|p| p.owner.is_some()).count();
+    if !world.structures.is_empty() {
+        let line: Vec<String> = world.structures.iter().map(|x| format!("{}:{}{}", &x.kind.word()[..1], x.owner.map(|o| o.to_string()).unwrap_or_else(|| "-".into()), if x.alive() { "" } else { "x" })).collect();
+        log::info!("  structures: {} ({} owned, {} wrecked): {}", world.structures.len(), world.structures.iter().filter(|x| x.owner.is_some()).count(), world.structures.iter().filter(|x| !x.alive()).count(), line.join(" "));
+    }
 
     let dead = world.pillboxes.iter().filter(|p| !p.alive()).count();
     log::info!("  pillboxes: {} ({} owned, {} dead): {:?}", world.pillboxes.len(), owned, dead, world.pillboxes.iter().map(|p| p.owner.map(|o| o.to_string()).unwrap_or_else(|| "-".into())).collect::<Vec<_>>().join(" "));
@@ -614,7 +670,7 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
         Some(text) => MapSource::Text(text.clone()),
         None => MapSource::FromScenarioSeed,
     };
-    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, advantage: args.advantage, swarm_interval: args.swarm, ..Scenario::default() };
+    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, advantage: args.advantage, swarm_interval: args.swarm, industry: args.industry, ..Scenario::default() };
     if args.ticks > 0 {
         s.time_limit = args.ticks;
     }

@@ -58,7 +58,7 @@ pub const DIRECT_DAMAGE: f32 = 45.0;
 pub const DIRECT_HIT_RADIUS: f32 = 0.8;
 
 // ---- the drone crew ----------------------------------------------------
-pub const BAY_FULL: Bay = Bay { recon: 2, interceptor: 6, strike: 3 };
+pub const BAY_FULL: Bay = Bay { recon: 2, interceptor: 6, strike: 3, longshot: 2 };
 /// Per player, in the air at once. Keeps the host's per-tick work bounded
 /// and makes the bay a budget rather than a stream.
 pub const MAX_AIRBORNE: usize = 10;
@@ -91,6 +91,80 @@ pub const RECOVER_RANGE: f32 = 0.8;
 pub const INTERCEPT_BASE: f32 = 0.5;
 pub const INTERCEPT_LINKED: f32 = 0.9;
 pub const STRIKE_DAMAGE: f32 = 35.0;
+
+// ---- the longshot (roadmap step 10c) -----------------------------------
+/// The one-way drone of the talk step 10 starts from: cheap, slow, long
+/// range, sent to a fixed point and on its own from launch. Three tiles
+/// a second crosses a 128-tile island in under a minute and a 512-tile
+/// world map in three, slow enough that a bubble on its path has time.
+pub const LONGSHOT_SPEED: f32 = 3.0;
+/// Seconds of flight: 450 tiles, the far corner of a 256 map and back
+/// out of it.
+pub const LONGSHOT_BATTERY: f32 = 150.0;
+/// What it does where it lands, inside `LONGSHOT_RADIUS`: a structure
+/// is large and cannot move, so it takes the warhead; a pillbox less; a
+/// tank, which was rarely where the drone was sent, least.
+pub const LONGSHOT_RADIUS: f32 = 1.5;
+pub const LONGSHOT_STRUCTURE_DAMAGE: f32 = 80.0;
+pub const LONGSHOT_PILLBOX_DAMAGE: f32 = 30.0;
+pub const LONGSHOT_TANK_DAMAGE: f32 = 25.0;
+
+// ---- ground and walls (step 10a) ---------------------------------------
+/// Concrete: a wall a splash cracks to a plain wall instead of rubble.
+/// Twice the material and a little longer to pour.
+pub const CONCRETE_COST: u8 = 2;
+pub const CONCRETE_BUILD_TICKS: u16 = 5 * TICK_HZ as u16;
+
+// ---- structures (step 10b) ---------------------------------------------
+/// Twice a pillbox: two spotted shells, or a longshot and a shell. The
+/// talk's point is that infrastructure is easy to hit; it is not meant
+/// to be easy to kill in one.
+pub const STRUCTURE_HEALTH: f32 = 120.0;
+/// A structure is a big target: a splash reaches it from this much
+/// further out than it reaches a tank, and a direct shot this much wide.
+pub const STRUCTURE_SIZE: f32 = 1.0;
+pub const STRUCTURE_BUILD_TICKS: u16 = 20 * TICK_HZ as u16;
+pub const STRUCTURE_REPAIR_TICKS: u16 = 8 * TICK_HZ as u16;
+pub const STRUCTURE_REPAIR_COST: u8 = 2;
+/// A captured structure is handed over at least this well repaired.
+pub const STRUCTURE_CAPTURE_HEALTH: f32 = 40.0;
+/// A power plant powers every structure of its side inside this.
+/// Eighteen tiles: a zone and its neighbour, never the whole map, so a
+/// side's economy has a few plants and each is a target worth a drone.
+pub const POWER_RANGE: f32 = 18.0;
+/// Refinery: a fuel and shell stop within this, and the whole side
+/// burns this fraction of the fuel it would.
+pub const REFINERY_RANGE: f32 = 3.0;
+pub const REFINERY_FUEL_BURN: f32 = 0.5;
+/// Data centre: fire control for a blind shell aimed inside
+/// `DATACENTRE_FIRE_RANGE` (its scatter is multiplied by
+/// `DATACENTRE_CEP_FACTOR`: computed, not seen, so better than blind
+/// and nothing like spotted), and an air picture: hostile drones inside
+/// `DATACENTRE_RADAR` are seen by the side.
+pub const DATACENTRE_FIRE_RANGE: f32 = 40.0;
+pub const DATACENTRE_CEP_FACTOR: f32 = 0.5;
+pub const DATACENTRE_RADAR: f32 = 30.0;
+/// Workshop: a repair stop within `WORKSHOP_RANGE` (armour at twice a
+/// depot's rate, the bay restocked longshots first), and slow mending
+/// of the side's pillboxes and structures within `WORKSHOP_MEND_RANGE`.
+pub const WORKSHOP_RANGE: f32 = 3.0;
+pub const WORKSHOP_MEND_RANGE: f32 = 8.0;
+pub const WORKSHOP_MEND_PER_SECOND: f32 = 1.0;
+/// Jammer: inside this every linked drone loses its link, its owner's
+/// as well as the enemy's (EW cannot tell them apart; the talk's
+/// airport that cannot land its own planes). A strike more than
+/// `JAM_TERMINAL` from its target turns for home; inside it the dive is
+/// on its own. A longshot, which has no link, has its satellite fix
+/// pushed up to `JAM_DRIFT` tiles off, once. The swarm from the map's
+/// edge is autonomous and flies through: the drones that already beat
+/// jamming.
+pub const JAMMER_RANGE: f32 = 7.0;
+pub const JAM_TERMINAL: f32 = 3.0;
+pub const JAM_DRIFT: f32 = 5.0;
+/// Holding ground pays while it is held: every live structure scores
+/// its owner this much every `HOLD_EVERY_TICKS`.
+pub const SCORE_HOLD: u32 = 2;
+pub const HOLD_EVERY_TICKS: u64 = 10 * TICK_HZ as u64;
 
 // ---- pillboys and pillboxes --------------------------------------------
 /// The squad: the tank's tech infantry. Four is a squad; zero is a tank
@@ -226,5 +300,6 @@ pub fn drone_speed(k: crate::DroneKind) -> f32 {
         crate::DroneKind::Recon => RECON_SPEED,
         crate::DroneKind::Interceptor => INTERCEPTOR_SPEED,
         crate::DroneKind::Strike => STRIKE_SPEED,
+        crate::DroneKind::Longshot => LONGSHOT_SPEED,
     }
 }

@@ -1,6 +1,7 @@
 # treadcore protocol
 
-Version 12. One UDP socket per process, default port 47296. Every datagram
+Version 13 (12 until roadmap step 10 gave the sim structures, the
+longshot and two terrains). One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 

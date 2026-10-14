@@ -61,7 +61,7 @@ pub fn cursor_tile(window: &Window, cam: &Camera, cam_tf: &GlobalTransform) -> O
 /// Where the map's middle is, relative to the window's, in pixels
 /// (window coordinates, y down): the frame's columns and strips are
 /// not symmetric, and the tank should sit in the middle of the map.
-fn frame_offset() -> Vec2 {
+pub fn frame_offset() -> Vec2 {
     Vec2::new((hud::LEFT - hud::RIGHT) * 0.5, (hud::TOP - hud::BOTTOM) * 0.5)
 }
 
@@ -215,7 +215,8 @@ fn orders(
     if mouse.just_pressed(MouseButton::Left) {
         if let Some(p) = at {
             if let Some(mode) = hud.mode.take() {
-                orders.0.push(Command::Deploy { task: builder_task(obs, mode, p) });
+                let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+                orders.0.push(Command::Deploy { task: builder_task(obs, mode, p, shift || hud.concrete, hud.works) });
             } else {
                 // The world routes a Move around water itself and the tank
                 // follows the waypoints; the client only names the destination.
@@ -252,12 +253,27 @@ fn orders(
     if hit(KeyCode::KeyR, 3) {
         orders.0.push(Command::Recall);
     }
+    // The longshot (step 10c): X sends one at the cursor, anywhere on
+    // the map; it will not come back.
+    if pressed(KeyCode::KeyX) {
+        if let Some(p) = at {
+            orders.0.push(Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at: p } });
+        }
+    }
+    // B steps the works mode's kind.
+    if pressed(KeyCode::KeyB) {
+        let all = StructureKind::ALL;
+        let i = all.iter().position(|k| *k == hud.works).unwrap_or(0);
+        hud.works = all[(i + 1) % all.len()];
+    }
     // The builder modes: the key or the tile arms one (or disarms it,
     // pressed again); the click on the map gives it, above.
-    let mode_keys = [KeyCode::Digit4, KeyCode::Digit5, KeyCode::Digit6, KeyCode::Digit7, KeyCode::Digit8];
+    let mode_keys = [KeyCode::Digit4, KeyCode::Digit5, KeyCode::Digit6, KeyCode::Digit7, KeyCode::Digit8, KeyCode::Digit0];
     for (n, mode) in Mode::ALL.iter().enumerate() {
         if hit(mode_keys[n], MODE_ROW + n) {
-            hud.mode = if hud.mode == Some(*mode) || !hud::can_order(Some(me), mode.row()) { None } else { Some(*mode) };
+            hud.mode = if hud.mode == Some(*mode) || !hud::can_order(Some(me), mode.row(), hud.works) { None } else { Some(*mode) };
+            // Shift-6 arms concrete; Shift on the click does too.
+            hud.concrete = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
         }
     }
     if hit(KeyCode::Digit9, RETURN_ROW) {
@@ -282,11 +298,24 @@ fn orders(
 /// forest there; lay a road, or a bridge on water; raise a wall; in
 /// pillbox mode repair the pillbox there whoever owns it, capture it
 /// if it is dead or nobody's, or build one on open ground; bury a mine.
-fn builder_task(obs: &Observation, mode: Mode, p: V2) -> PillboyTask {
+/// With Shift a wall is poured in concrete (step 10a). In works mode
+/// (step 10d) a click on a structure mends ours or takes one that is
+/// nobody's or wrecked; anywhere else it builds the selected kind,
+/// which the world refuses off a pad.
+fn builder_task(obs: &Observation, mode: Mode, p: V2, shift: bool, works: StructureKind) -> PillboyTask {
     match mode {
         Mode::Farm => PillboyTask::Harvest { at: p },
         Mode::Road => PillboyTask::Build { what: BuildKind::Road, at: p },
+        Mode::Wall if shift => PillboyTask::Build { what: BuildKind::Concrete, at: p },
         Mode::Wall => PillboyTask::Build { what: BuildKind::Wall, at: p },
+        Mode::Works => {
+            let near = obs.structures.iter().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()).filter(|x| x.pos.dist(p) <= 1.0);
+            match near {
+                Some(x) if x.owner.map(|o| obs.allied(o)).unwrap_or(false) && x.alive() => PillboyTask::Repair { target: x.id },
+                Some(x) => PillboyTask::Capture { pillbox: x.id },
+                None => PillboyTask::Build { what: BuildKind::Structure(works), at: p },
+            }
+        }
         Mode::Mine => PillboyTask::Build { what: BuildKind::Mine, at: p },
         Mode::Pillbox => {
             let near = obs.pillboxes.iter().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()).filter(|pb| pb.pos.dist(p) <= 1.5);

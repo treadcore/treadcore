@@ -680,6 +680,164 @@ across it, fading past the screen's edge to a floor of 6 % and never
 to silence, low-passed past fifteen tiles out; a sound whose place
 the fog hides plays as background from nowhere.
 
+## 10. The economy under drones
+
+Planned 13 October 2026, from Paul's notes and a talk he passed on
+(Peter Zeihan, October 2026, on the Houthi strike on Riyadh's airport
+and Ukraine's on Russian data centres). What the talk says, as a game
+designer reads it:
+
+1. **Infrastructure is the target now.** Not the army: the airport,
+   the refinery, the data centre. They are large, they cannot move,
+   and a hole in the roof stops them (a data centre without cooling is
+   a room of melting chips).
+2. **The drones that do it are cheap and dumb.** No jam-proof
+   guidance, no exotic parts: long range, one way, a fixed point. The
+   clever drones (memory navigation through jamming) are a later
+   generation and are coming anyway.
+3. **Electronic warfare protects a point, not an economy.** It
+   scrambles the link and the drone crashes, hovers or flies off; but
+   it scrambles everything, its owner's too (an airport under EW cannot
+   land planes), so it can ring a base and never a country.
+4. **So everything within range is either defended or written off.**
+   The economy is too big to protect; the defender chooses what to
+   lose.
+5. **Systems depend on systems.** Hit the power and the data centre
+   goes dark without being touched.
+
+treadcore already has the half of this that is about tanks: the
+bubble, the strike, the recon, the gun. What it has not got is
+anything worth defending that is not a tank, a depot or a pillbox. This
+step gives the map an economy, a cheap drone that crosses the map to
+hit it, the jammer that protects a point at a price, and the window a
+commander's picture of all of it. The game stays a tank fighter: the
+tank is still the one thing the player drives, the squad builds, and a
+structure is a reason to fight over ground, not a city builder.
+
+### The backlog of step 10
+
+Each is a proposal in waiting in the roadmap's form, in the order they
+depend on each other.
+
+10a. **Industrial ground and a second wall.** `Terrain::Pad` (`_`):
+     foundations, passable as a road; the only ground a structure goes
+     on, so the map decides where an economy can be. `Terrain::Concrete`
+     (`H`): a hardened wall, two material, impassable, blocks fire; a
+     splash cracks it to a plain wall instead of rubble, so it takes
+     two. *Must not change:* the generated island (no pads unless asked
+     for), so every proof so far reads the same. *Proof:* the map
+     format round-trips both glyphs; a splash takes concrete to wall to
+     rubble.
+
+10b. **Structures.** A `Structure` entity on a pad: kind, owner or
+     neutral, health (`STRUCTURE_HEALTH` 120, twice a pillbox: large,
+     hard to miss, slow to kill), capture and repair as a pillbox's (a
+     squad on a neutral or wrecked one for ten seconds; material to
+     mend). Built by the squad on a pad for material. Five kinds:
+
+     | kind | cost | what it gives its owner's side | needs power |
+     | --- | --- | --- | --- |
+     | power plant | 4 | powers every friendly structure within 18 tiles | no |
+     | refinery | 4 | allied tanks burn half the fuel; within 3 tiles, a fuel and shell stop | yes |
+     | data centre | 6 | fire control: a blind shell aimed inside 40 tiles of it scatters half as far; the air picture: hostile drones inside 30 tiles are seen | yes |
+     | workshop | 3 | within 3 tiles a tank is repaired at twice a depot's rate and its bay restocked; within 8, friendly pillboxes and structures mend slowly | yes |
+     | jammer | 5 | inside 7 tiles every linked drone, *its owner's too*, loses its link: recon and strikes turn for home, a strike's last dive excepted; a long-range drone's satellite fix drifts | yes |
+
+     A structure held scores `SCORE_HOLD` every ten seconds: holding
+     ground pays while it is held, not only when taken, which makes the
+     time-limit winner the side with the economy. *Must not change:*
+     the pillbox, the depot, the bubble's rules. *Proof:* a test per
+     row of the table; power cut, the benefit stops.
+
+10c. **The long-range drone.** `DroneKind::Longshot`: launched at a
+     point anywhere on the map, slow (3 tiles/s), a battery for 150 s,
+     autonomous from launch (no link, no recall, no retask: the
+     pre-programmed one-way drone of the talk). It dives at the point:
+     heavy damage to structures (80), light to tanks (25), because a
+     fixed point is where a structure is and a tank is not. Two in the
+     bay, restocked last at a depot, first at a workshop. Interceptors
+     on station and pillboxes engage it as a strike, so a ring of
+     pillboxes and a parked tank defend a refinery; nothing defends all
+     of them. *Must not change:* the strike, recon and interceptor.
+     *Proof:* a longshot crosses a 256-tile map and wrecks an
+     undefended refinery; one into a tank's bubble is intercepted; one
+     through a jammer lands off its point.
+
+10d. **The commander's picture.** The window: a minimap in the right
+     column (PLAYABILITY item 11): fog, depots, pillboxes, structures,
+     tanks seen, the player's own; a click moves the view there.
+     Alerts: a structure of my side hit, wrecked or taken goes on the
+     newswire in red with where, with the alarm cue, and blinks on the
+     minimap; `J` jumps the view to the newest. The ledger: my side's
+     structures as lamps with health, powered or dark. Orders: `0` arms
+     the works mode (a click on a pad builds the selected structure, on
+     a structure repairs or captures it), `B` cycles the kind,
+     Shift-click in wall mode pours concrete, `X` sends a longshot at
+     the cursor. *Proof:* the window driven by xdotool, frames read.
+
+10e. **Bots that know an economy.** The RuleBot sends its squad to a
+     neutral or wrecked structure in reach as it does to a pillbox, and
+     a longshot at the nearest hostile structure every half minute; the
+     Defender repairs its own. *Must not change:* a bot-only match on
+     the generated island: no structures there, so no new behaviour,
+     and the balance proofs read as they did. *Proof:* sixteen bots on
+     an industrial map, through the match report: structures taken,
+     longshots launched, intercepted and landed, structures wrecked.
+
+10f. **Industrial maps.** `structure x y kind [seat|neutral]` lines
+     in the map format; `Map::industrialise`, which lays a pad zone
+     between each start and the centre with a neutral power plant and
+     refinery on it and a data centre at the middle, behind
+     `--industry` and `INDUSTRY=1`; `maps/industry.map`.
+
+10g. **A world map.** `scripts/worldmap.py` draws a map from coarse
+     coastlines in longitude and latitude: `maps/world/atlantic.map`
+     (the Americas, the Atlantic, Europe, North Africa and Arabia,
+     512 x 256) with the Pan-American Highway as a road from Prudhoe
+     Bay to Ushuaia, broken at the Darién Gap as the real one is, and
+     Europe's trunk roads from Lisbon to Moscow; the Channel, the
+     Bosphorus and the Strait of Gibraltar crossed by bridges, the
+     Atlantic by nothing. Sixteen starts in sixteen cities, industry
+     where industry is (the Gulf Coast, the Ruhr, the North Sea,
+     Arabia's oilfields). `maps/world/europe.map` is the same script at
+     Europe's scale. *Proof:* the loader reads them; every start
+     reaches the others on its continent; sixteen bots play one.
+
+10h. **Not now.** Memory-guided drones that ignore jamming (the talk's
+     next generation): the longshot's drift is already the first half;
+     a second kind waits for a playtest of the first. Airports and
+     ports as structures. A strategic layer above the match.
+
+### Status
+
+Built 13 October 2026, the same evening (journal 0027): 10a to 10g
+as written, with the numbers in `rules.rs` beside their reasons. Wire
+version 13. Proof so far: seven sim tests, one a row of the table each
+and one per mechanism (`concrete_takes_two_splashes`,
+`structures_need_power_and_serve_their_side`,
+`squad_builds_takes_and_mends_structures`,
+`longshots_cross_the_map_and_bubbles_stop_them`,
+`a_jammer_jams_everyone_and_drifts_a_longshot`,
+`a_data_centre_computes_fire_and_sees_the_air`,
+`an_industrial_map_round_trips`), the world maps' connectivity test,
+an alert test in the window, and the brain's balance proofs reading
+the same to the digit as before the step (no structures on the
+generated island, so no new behaviour there). Sixteen bots, five
+minutes, through the match report: on the industrial island 13
+structures taken, 27 longshots, 21 landed, 9 structures wrecked; on
+the Atlantic map 36 taken, 78 longshots, 43 landed, 20 wrecked, and 5
+of the 12 kills by pillboxes at the chokepoints. The window was driven
+with xdotool on both. **Not proven:** that any of it is fun; the
+numbers are first guesses with reasons, and a playtest moves them.
+
+- [x] 10a industrial ground and concrete
+- [x] 10b structures
+- [x] 10c the longshot
+- [x] 10d the commander's picture
+- [x] 10e bots
+- [x] 10f industrial maps
+- [x] 10g the world map
+
 ## Sequencing
 
 ```
@@ -691,7 +849,8 @@ the fog hides plays as background from nowhere.
 Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
 worked through, 6d and 4 done on 13 October (journals 0009 to 0011);
 7 built and proven on one machine the same day (journal 0012); 8
-likewise (journal 0022); 9 the same evening (journal 0023). Next: 7's
+likewise (journal 0022); 9 the same evening (journal 0023); 10,
+the economy under drones, that night (journal 0027). Next: 7's
 and 8's proof across two routers when a second machine is on the
 table, and a listening session for the sound.
 

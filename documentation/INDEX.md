@@ -25,8 +25,10 @@ reports/              published write-ups (2026-10-12-opening-day.html)
 documentation/        the documents (section 4)
 journal/              one entry per working session, RFC 822 header, IEEE
                       sections; TEMPLATE.txt and README.txt say the form
-maps/                 island.map (the generated default, saved); prior-art/
-                      five converted community maps
+maps/                 island.map (the generated default, saved); industry.map
+                      (the same with pads and structures); prior-art/ five
+                      converted community maps; world/ atlantic.map and
+                      europe.map (scripts/worldmap.py)
 scripts/              the shell behind every make target, and the converter
 source/               the crates, dependency order below
 vendor/               README.md, THIRD-PARTY.md: what is taken from where
@@ -295,6 +297,14 @@ the gun on top; chips with health), `depot`, `recon`, `interceptor`,
 `strike`, `shell`, `mine`, `squad`, `wall` (a quarter-tile block,
 three high), `crater` (two deep).
 
+**commander.rs**: the commander's picture (roadmap step 10d):
+`Alert` and `alert_for` (what of my side was hit, wrecked, taken or
+went dark, held `ALERT_HOLD` seconds, a repeat inside four seconds
+dropped), `name` (a structure's word on the newswire), `Minimap` and
+`draw_minimap` (the whole map as an image a few times a second: fog,
+owners' colours, alerts blinking), `minimap_click`, `jump_to_alert`
+(`J`), `look_at`.
+
 **hud.rs (520)**: the frame in the prior art's look (INTERFACE.md
 sections 3 and 7): `LEFT`, `RIGHT`, `TOP`, `BOTTOM` in pixels; the
 palette constants (Bolo's red hostile, green friendly, on a bezel);
@@ -350,11 +360,12 @@ with no game code in the way.
 | lobby-test.sh | four headless peers on loopback; asserts one host, three welcomed, all ended, one hash, zero prediction mismatches (`make lobby-test`, `LAG=200`); `INTRODUCER=1` runs an introducer and no broadcast or seed, asserts the four were introduced; `REJOIN=1` kills the highest-numbered seat that is not hosting at `REJOIN_AFTER` s, restarts it with its identity file, asserts the same seat back at a later tick with no election |
 | memwatch.sh | memory every N seconds (`make mem`) |
 | priorart2map.py | converts a prior-art binary map to a treadcore map (`make convert FROM=`) |
+| worldmap.py | draws `maps/world/*.map` from coarse coastlines in longitude and latitude, with the Pan-American Highway and Europe's trunk roads, starts in cities and industry where it is (`make worldmaps`; roadmap step 10g) |
 
 The Makefile's knobs (line 50 on): BUILDDIR, LOGDIR, GAME_SECONDS,
 SEED, NAME, JOBS, VERBOSE, GAME, WANT, PEER, PLAYERS, DEFENDERS, LAG,
 INTRODUCER, BEACON, IDENTITY, REJOIN, REJOIN_AFTER, PORT, TEAMS,
-GAMETYPE, MAP, BRAIN.
+GAMETYPE, MAP, INDUSTRY, BRAIN.
 
 ## 3. Glossary
 

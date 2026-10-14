@@ -57,6 +57,7 @@ case "$MODE" in
     *) die "unknown mode $MODE" ;;
 esac
 [ -n "${MAP:-}" ] && ARGS+=(--map "$MAP")
+case "$MODE" in solo|lan|host|seat|listen) [ "${INDUSTRY:-0}" = 1 ] && ARGS+=(--industry) ;; esac
 say "$BIN ${ARGS[*]}  (log: $LOG)"
 
 # The window on a musl machine with lavapipe: build/bigstack.so from

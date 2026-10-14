@@ -6,6 +6,45 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: industry (roadmap step 10). Pads (`_`), the foundations a
+  structure is built on, and five structures: the power plant, which
+  powers its side's structures within 18 tiles; the refinery (half
+  the fuel for the side, a fuel and shell stop beside it); the data
+  centre (a blind shell near it scatters half as far, and hostile
+  drones within 30 tiles are seen); the workshop (repair at twice a
+  depot's rate, the bay restocked longshots first, pillboxes and
+  structures near it mended); the jammer (no drone within 7 tiles
+  keeps its link, its own side's included). Taken, mended and built by
+  the squad; 120 health, a wreck at zero; every standing structure
+  scores its owner two points every ten seconds.
+- Added: the longshot, a long-range one-way drone: two in the bay, sent
+  at any point on the map with `X`, three tiles a second, no recall,
+  80 damage to a structure where it lands, 25 to a tank. Interceptors
+  and pillboxes shoot it down; a jammer pushes it off its point.
+- Added: concrete (`H`), a wall a splash only cracks: Shift-6, or
+  Shift-click in wall mode, for two material.
+- Added: the commander's picture. A minimap in the bottom strip (click
+  or drag to move the view); alerts on the newswire, with the alarm,
+  when a structure, pillbox or depot of your side is hit, wrecked,
+  taken or goes dark; `J` jumps to the newest. The works mode (`0`,
+  `B` for the kind) builds, takes and mends structures. Structures are
+  drawn each its own shape, labelled with health, DARK without power.
+- Added: `--industry` (`INDUSTRY=1`) gives a map with no structures an
+  economy; `maps/industry.map`; `structure x y kind [owner]` lines in
+  map files.
+- Added: world maps, drawn by `scripts/worldmap.py` (`make
+  worldmaps`): `maps/world/atlantic.map` (the Americas to Arabia, the
+  Pan-American Highway from Prudhoe Bay to Ushuaia with the Darien Gap
+  in it, Europe's trunk roads, sixteen cities, industry where it is)
+  and `maps/world/europe.map`.
+- Added: bots that know an economy: a RuleBot takes structures in
+  reach and sends a longshot at the nearest hostile structure, a power
+  plant first, every half minute; a Defender takes and mends its own.
+  On the generated island nothing changes: the balance proofs read the
+  same to the digit.
+- Changed: wire version 13. The match report gains an economy line.
+- Fixed: a drone launched with a task that does not suit it goes back
+  in the bay.
 - Added: proposals in the window (PLAYABILITY item 7). P opens a list
   of everyone not on your side: pick a player and Join, Recruit, Swap
   or Merge, see beforehand whether the world would refuse it and why,

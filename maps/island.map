@@ -3,6 +3,7 @@ size 128 128
 seed 0x7eadc0de
 # rows: one character per tile, west to east, north first;
 # . grass  T forest  = road  ~ water  + bridge  % rubble  D depot  W wall
+# _ pad (structures are built on it)  H concrete (a wall that takes two)
 TTTTTT...................................TTTTTTTTTTTTT...................................................TTTTTTTTTTTTTTTTTTTTTTT
 TTTTTT...................................TTTTTTTTTTTTT...................................................TTTTTTTTTTTTTTTTTTTTTTT
 TTTTTTT...................................TTTTTTTTTTT....................................................TTTTTTTTTTTTTTTTTTTTTTT

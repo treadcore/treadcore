@@ -301,3 +301,121 @@ pub fn crater() -> Model {
     m.cy = -0.5;
     m
 }
+
+/// Concrete (step 10a): a wall's block in pale grey, a level taller.
+pub fn concrete() -> Model {
+    let mut m = Model::new(0.25);
+    for z in 0..4 {
+        m.slab(-2, -2, 1, 1, z, if z == 3 { CONCRETE } else { CONCRETE.darker(0.05) });
+    }
+    m.cx = -0.5;
+    m.cy = -0.5;
+    m
+}
+
+pub const CONCRETE: Color = Color::srgb(0.72, 0.72, 0.70);
+pub const PAD: Color = Color::srgb(0.36, 0.37, 0.39);
+/// A working structure's lamps.
+pub const LIT: Color = Color::srgb(1.0, 0.9, 0.35);
+
+/// The longshot (step 10c): a long body with a straight wing and a
+/// tail, the one-way drone of the talk, larger than a strike.
+pub fn longshot(color: Color) -> Model {
+    let mut m = Model::new(0.1);
+    for x in -4..=4 {
+        m.cube(x, 0, 0, color.darker(0.05));
+    }
+    for y in -4..=4 {
+        m.cube(0, y, 0, color);
+    }
+    m.cube(-4, -1, 0, color.darker(0.15));
+    m.cube(-4, 1, 0, color.darker(0.15));
+    m.cube(4, 0, 1, color.lighter(0.2));
+    m
+}
+
+/// A structure (step 10b) on its pad: a plate with the owner's mark
+/// along its front edge, and on it the thing itself, each kind its own
+/// silhouette so it reads at a glance; lamps lit while it works.
+/// Damage takes it down from the top like a pillbox; a wreck is a
+/// low dark heap.
+pub fn structure(kind: treadcore_sim::StructureKind, owner: Option<Color>, health: f32, alive: bool, powered: bool) -> Model {
+    use treadcore_sim::StructureKind as K;
+    let mut m = Model::new(0.1);
+    let mark = owner.unwrap_or(Color::srgb(0.55, 0.55, 0.52));
+    m.slab(-6, -6, 5, 5, 0, PAD.lighter(0.04));
+    for x in -6..=5 {
+        m.cube(x, -6, 0, mark);
+    }
+    m.cx = -0.5;
+    m.cy = -0.5;
+    if !alive {
+        m.slab(-4, -4, 3, 3, 1, Color::srgb(0.22, 0.2, 0.19));
+        m.slab(-2, -3, 2, 1, 2, Color::srgb(0.18, 0.16, 0.15));
+        return m;
+    }
+    let lamp = if powered { LIT } else { Color::srgb(0.25, 0.25, 0.25) };
+    match kind {
+        K::Power => {
+            // A turbine hall and two cooling towers.
+            m.slab(-5, -4, 0, 1, 1, STEEL.darker(0.1));
+            m.slab(-5, -4, 0, 1, 2, STEEL);
+            for (cx, cy) in [(3, -2), (3, 3)] {
+                for z in 1..=5 {
+                    let r = if z == 3 { 1 } else { 2 };
+                    m.slab(cx - r, cy - r, cx + r - 1, cy + r - 1, z, CONCRETE.darker(0.02 * z as f32));
+                }
+            }
+            m.cube(-3, -2, 3, lamp);
+        }
+        K::Refinery => {
+            // Round tanks and a tall flare stack.
+            for (cx, cy) in [(-3, -3), (-3, 2), (1, -3)] {
+                m.slab(cx - 1, cy - 1, cx + 1, cy + 1, 1, TAN.lighter(0.05));
+                m.slab(cx - 1, cy - 1, cx + 1, cy + 1, 2, TAN.lighter(0.1));
+            }
+            for z in 1..=7 {
+                m.cube(3, 2, z, STEEL.darker(0.15));
+            }
+            m.cube(3, 2, 8, if powered { GUN } else { lamp });
+        }
+        K::DataCentre => {
+            // A long low hall, racks of lights down its roof.
+            m.slab(-5, -4, 4, 3, 1, Color::srgb(0.3, 0.32, 0.36));
+            m.slab(-5, -4, 4, 3, 2, Color::srgb(0.36, 0.38, 0.42));
+            for x in (-4..=3).step_by(2) {
+                for y in [-3i8, 0, 2] {
+                    m.cube(x, y, 3, if powered { Color::srgb(0.35, 0.8, 1.0) } else { lamp });
+                }
+            }
+        }
+        K::Workshop => {
+            // A shed and a crane arm.
+            m.slab(-5, -4, 1, 3, 1, TAN_DARK);
+            m.slab(-5, -4, 1, 3, 2, TAN_DARK.lighter(0.05));
+            m.slab(-4, -3, 0, 2, 3, TAN_DARK.lighter(0.1));
+            for z in 1..=5 {
+                m.cube(3, -3, z, GUN);
+            }
+            for y in -3..=3 {
+                m.cube(3, y, 6, GUN);
+            }
+            m.cube(-2, -1, 4, lamp);
+        }
+        K::Jammer => {
+            // A mast with crossbars and a red tip.
+            m.slab(-2, -2, 1, 1, 1, STEEL.darker(0.2));
+            for z in 2..=9 {
+                m.cube(0, 0, z, STEEL);
+            }
+            for z in [4i8, 7] {
+                for d in -2..=2 {
+                    m.cube(d, 0, z, STEEL.darker(0.1));
+                }
+            }
+            m.cube(0, 0, 10, if powered { MINE } else { lamp });
+        }
+    }
+    m.chip((1.0 - health.clamp(0.0, 1.0)) * 0.5);
+    m
+}

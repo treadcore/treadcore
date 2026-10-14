@@ -304,6 +304,42 @@ you ask to join another. A join proposed in so many words is a
 defection, and allowed.
 
 
+## Industry under drones
+
+Roadmap step 10, from a talk on the strikes of October 2026 on an
+airport and on data centres: infrastructure is the target now, the
+drones that hit it are cheap, slow and dumb, electronic warfare
+protects a point and never an economy, and so everything within range
+is defended or written off. The game takes that whole, at the scale
+of a match:
+
+- **Structures** on pads (power plant, refinery, data centre,
+  workshop, jammer) are the economy. Each serves its owner's side, and
+  all but the power plant only while a plant of the side is within
+  eighteen tiles: systems depend on systems, and a plant is the one
+  target that darkens the rest. They are taken and mended as pillboxes
+  are, with the squad; they are not driven, and the tank stays the one
+  thing the player drives.
+- **The longshot** is the cheap one-way drone: anywhere on the map,
+  slow, on its own from launch. It is made for things that cannot
+  move: a structure takes 80 of its 120 from one, a tank, which is
+  rarely where it was sent, 25. Interceptors and pillboxes stop it as
+  they stop a strike, so a defended refinery holds and an undefended
+  one does not, and no side can defend them all.
+- **The jammer** is EW as the talk describes it: inside seven tiles no
+  drone keeps its link, the jammer's own side's included, so a tank
+  parked at its own jammer has no bubble and no eyes. It ringed a base
+  and never a country. The neutral swarm flies through it: those are
+  the drones that already beat jamming.
+- **Holding pays while held**: every standing structure scores two
+  points every ten seconds, so the time-limit winner is the side with
+  the economy, and a longshot that wrecks one is points taken away,
+  not only a hole in the map.
+
+None of it is on the generated island unless asked for (`--industry`),
+so the balance proofs read as they did; the world maps carry their
+own.
+
 ## What is not here yet
 
 - A brain that uses forest cover. The concealment rule is in; no bot

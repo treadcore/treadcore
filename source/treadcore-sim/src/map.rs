@@ -7,7 +7,7 @@
 //! dead. Drones ignore all of it. That asymmetry is most of the game's
 //! texture: the ground is the tank's problem, the air is the drones'.
 
-use crate::{PlayerId, Rng, MAX_PLAYERS, V2};
+use crate::{PlayerId, Rng, StructureKind, MAX_PLAYERS, V2};
 use serde::{Deserialize, Serialize};
 
 /// The generated map's size: 128 tiles of 25 m is a 3.2 km island. A
@@ -29,6 +29,13 @@ pub enum Terrain {
     /// Built by the squad. Impassable; blocks a direct shot and a
     /// pillbox's line; an indirect splash knocks it down to rubble.
     Wall = 7,
+    /// Foundations: industrial ground, the only ground a structure is
+    /// built on (roadmap step 10a), so the map decides where an
+    /// economy can be. Driven on as a road.
+    Pad = 8,
+    /// A hardened wall: as a wall, but a splash cracks it to a plain
+    /// wall rather than rubble, so it takes two. Two material.
+    Concrete = 9,
 }
 
 impl Terrain {
@@ -41,26 +48,32 @@ impl Terrain {
             5 => Terrain::Rubble,
             6 => Terrain::Depot,
             7 => Terrain::Wall,
+            8 => Terrain::Pad,
+            9 => Terrain::Concrete,
             _ => Terrain::Grass,
         }
     }
     /// Time to cross, relative to grass.
     pub fn move_cost(self) -> f32 {
         match self {
-            Terrain::Road => 0.6,
+            Terrain::Road | Terrain::Pad => 0.6,
             Terrain::Grass | Terrain::Depot | Terrain::Bridge => 1.0,
             Terrain::Rubble => 1.5,
             Terrain::Forest => 1.8,
-            Terrain::Water | Terrain::Wall => f32::INFINITY,
+            Terrain::Water | Terrain::Wall | Terrain::Concrete => f32::INFINITY,
         }
     }
     pub fn passable(self) -> bool {
-        !matches!(self, Terrain::Water | Terrain::Wall)
+        !matches!(self, Terrain::Water | Terrain::Wall | Terrain::Concrete)
+    }
+    /// A wall of either kind.
+    pub fn is_wall(self) -> bool {
+        matches!(self, Terrain::Wall | Terrain::Concrete)
     }
     /// Blocks a flat shot: forest hides what is in it and what is
     /// behind it; a wall is a wall.
     pub fn blocks_fire(self) -> bool {
-        matches!(self, Terrain::Forest | Terrain::Wall)
+        matches!(self, Terrain::Forest | Terrain::Wall | Terrain::Concrete)
     }
 }
 
@@ -88,6 +101,15 @@ pub struct MapPillbox {
     pub owner: Option<PlayerId>,
 }
 
+/// A structure as the map places it (roadmap step 10b): where, what,
+/// and whose at the start (None is neutral).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MapStructure {
+    pub pos: V2,
+    pub kind: StructureKind,
+    pub owner: Option<PlayerId>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
     pub w: usize,
@@ -102,6 +124,10 @@ pub struct Map {
     /// on each spoke between a start's depot and the centre, and four
     /// around the centre. A map file may give owners.
     pub pillboxes: Vec<MapPillbox>,
+    /// Structures at the start: none on a generated island unless it
+    /// is industrialised; a map file places its own.
+    #[serde(default)]
+    pub structures: Vec<MapStructure>,
 }
 
 /// Why a map file was refused, with the line it happened on.
@@ -121,7 +147,7 @@ impl std::error::Error for MapError {}
 
 /// The one character per terrain in a map file. Chosen to read as the
 /// ground does in a terminal: `.` open, `T` trees, `=` road, `~` water,
-/// `+` bridge, `%` rubble, `D` depot, `W` wall.
+/// `+` bridge, `%` rubble, `D` depot, `W` wall, `_` pad, `H` concrete.
 impl Terrain {
     pub fn glyph(self) -> char {
         match self {
@@ -133,6 +159,8 @@ impl Terrain {
             Terrain::Rubble => '%',
             Terrain::Depot => 'D',
             Terrain::Wall => 'W',
+            Terrain::Pad => '_',
+            Terrain::Concrete => 'H',
         }
     }
     pub fn from_glyph(c: char) -> Option<Terrain> {
@@ -145,6 +173,8 @@ impl Terrain {
             '%' => Terrain::Rubble,
             'D' => Terrain::Depot,
             'W' => Terrain::Wall,
+            '_' => Terrain::Pad,
+            'H' => Terrain::Concrete,
             _ => return None,
         })
     }
@@ -229,7 +259,7 @@ impl Map {
             pillboxes.push(MapPillbox { pos: center + V2::new(dx, dy), owner: None });
         }
 
-        let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone() };
+        let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new() };
 
         // Roads: the four sides to the centre, and a ring road round the
         // edge through every start, so each start reaches a spoke. Roads
@@ -256,6 +286,44 @@ impl Map {
             map.stamp(d.pos, 1, Terrain::Depot);
         }
         map
+    }
+
+    /// Give the map an economy (roadmap step 10f): a zone of pads
+    /// half way along each start's spoke to the centre, with a neutral
+    /// power plant and refinery on it and room for three more, and a
+    /// zone either side of the centre with a power plant and a data
+    /// centre. Forest and water under a pad are cleared; a pad is
+    /// ground. The generated island has none of this unless asked, so
+    /// every proof on it reads as before.
+    pub fn industrialise(&mut self) {
+        let c = self.center();
+        let starts = self.starts.clone();
+        let zone = |m: &mut Map, at: V2, w: i32, h: i32| {
+            let (cx, cy) = at.tile();
+            for y in cy..cy + h {
+                for x in cx..cx + w {
+                    if m.in_tile(x, y) {
+                        m.cells[y as usize * m.w + x as usize] = Terrain::Pad as u8;
+                    }
+                }
+            }
+        };
+        let tile = |p: V2| V2::new(p.x.floor() + 0.5, p.y.floor() + 0.5);
+        for s in &starts {
+            let at = tile(s.lerp(c, 0.5)) - V2::new(1.0, 1.0);
+            if self.depots.iter().any(|d| d.pos.dist(at) < 4.0) || self.pillboxes.iter().any(|p| p.pos.dist(at) < 3.0) {
+                continue;
+            }
+            zone(self, at, 3, 3);
+            self.structures.push(MapStructure { pos: at, kind: StructureKind::Power, owner: None });
+            self.structures.push(MapStructure { pos: at + V2::new(2.0, 2.0), kind: StructureKind::Refinery, owner: None });
+        }
+        for dy in [-5.0f32, 4.0] {
+            let at = tile(c + V2::new(-1.0, dy));
+            zone(self, at, 3, 2);
+            self.structures.push(MapStructure { pos: at, kind: StructureKind::Power, owner: None });
+            self.structures.push(MapStructure { pos: at + V2::new(2.0, 0.0), kind: StructureKind::DataCentre, owner: None });
+        }
     }
 
     fn road(&mut self, a: V2, b: V2, rng: &mut Rng) {
@@ -537,6 +605,7 @@ impl Map {
         s.push_str(&format!("seed {:#x}\n", self.seed));
         s.push_str("# rows: one character per tile, west to east, north first;\n");
         s.push_str("# . grass  T forest  = road  ~ water  + bridge  % rubble  D depot  W wall\n");
+        s.push_str("# _ pad (structures are built on it)  H concrete (a wall that takes two)\n");
         for y in 0..self.h {
             for x in 0..self.w {
                 s.push(self.at_tile(x, y).glyph());
@@ -561,6 +630,12 @@ impl Map {
                 None => s.push_str(&format!("pillbox {} {} neutral\n", p.pos.x, p.pos.y)),
             }
         }
+        for st in &self.structures {
+            match st.owner {
+                Some(o) => s.push_str(&format!("structure {} {} {} {}\n", st.pos.x, st.pos.y, st.kind.word(), o)),
+                None => s.push_str(&format!("structure {} {} {} neutral\n", st.pos.x, st.pos.y, st.kind.word())),
+            }
+        }
         s
     }
 
@@ -581,6 +656,7 @@ impl Map {
         let mut starts = Vec::new();
         let mut depots = Vec::new();
         let mut pillboxes = Vec::new();
+        let mut structures = Vec::new();
         let mut rows_read = 0usize;
         for (n, raw) in lines {
             let line = raw.trim();
@@ -612,7 +688,7 @@ impl Map {
                     let s = words.next().ok_or_else(|| err(n, "seed missing"))?;
                     seed = s.strip_prefix("0x").map(|x| u64::from_str_radix(x, 16)).unwrap_or_else(|| s.parse::<u64>()).map_err(|_| err(n, "seed is not a number"))?;
                 }
-                "start" | "depot" | "pillbox" => {
+                "start" | "depot" | "pillbox" | "structure" => {
                     if rows_read < h {
                         return Err(err(n, &format!("'{}' before all {} rows were read ({} so far)", head, h, rows_read)));
                     }
@@ -644,6 +720,21 @@ impl Map {
                             };
                             depots.push(MapDepot { pos: p, owner });
                         }
+                        "structure" => {
+                            if t != Terrain::Pad {
+                                return Err(err(n, "a structure off a pad (_)"));
+                            }
+                            let word = words.next().ok_or_else(|| err(n, "structure kind missing"))?;
+                            let kind = StructureKind::from_word(word).ok_or_else(|| err(n, &format!("no structure '{}': power, refinery, datacentre, workshop or jammer", word)))?;
+                            let owner = match words.next() {
+                                None | Some("neutral") | Some("-") => None,
+                                Some(s) => match s.parse::<usize>() {
+                                    Ok(o) if o < MAX_PLAYERS => Some(o as PlayerId),
+                                    _ => None,
+                                },
+                            };
+                            structures.push(MapStructure { pos: p, kind, owner });
+                        }
                         _ => {
                             if t == Terrain::Water {
                                 return Err(err(n, "a pillbox on water"));
@@ -661,7 +752,7 @@ impl Map {
                 }
                 _ => {
                     if w > 0 && rows_read < h {
-                        return Err(err(n, &format!("row {} is not {} glyphs of . T = ~ + % D W", rows_read + 1, w)));
+                        return Err(err(n, &format!("row {} is not {} glyphs of . T = ~ + % D W _ H", rows_read + 1, w)));
                     }
                     return Err(err(n, &format!("unknown line '{}'", head)));
                 }
@@ -679,7 +770,7 @@ impl Map {
         if starts.len() > MAX_PLAYERS {
             return Err(err(0, &format!("{} starts; the most is {}", starts.len(), MAX_PLAYERS)));
         }
-        Ok(Map { w, h, seed, cells, starts, depots, pillboxes })
+        Ok(Map { w, h, seed, cells, starts, depots, pillboxes, structures })
     }
 }
 
@@ -771,6 +862,32 @@ mod tests {
         let odd = format!("{}pillbox 64 64 99\n", good);
         let back = Map::from_text(&odd).unwrap();
         assert_eq!(back.pillboxes.last().unwrap().owner, None);
+    }
+
+    #[test]
+    fn the_world_maps_read_and_their_continents_connect() {
+        // Roadmap step 10g. Seats 0, 2, 4, 6, 8, 10, 12, 14 are in the
+        // Americas on the Atlantic map and the odd ones in the Old
+        // World: every start reaches the others on its side of the
+        // ocean by land (the Darien Gap is jungle, slow but passable;
+        // the Strait of Gibraltar and the Bosphorus are bridged), and
+        // nothing drives across the Atlantic.
+        let m = Map::from_text(include_str!("../../../maps/world/atlantic.map")).expect("atlantic.map reads");
+        assert_eq!(m.starts.len(), crate::MAX_PLAYERS);
+        assert!(m.structures.len() >= 30);
+        for side in [0usize, 1] {
+            let seats: Vec<V2> = m.starts.iter().enumerate().filter(|(i, _)| i % 2 == side).map(|(_, s)| *s).collect();
+            for s in &seats[1..] {
+                assert!(!m.route(seats[0], *s).is_empty(), "side {}: no road from {:?} to {:?}", side, seats[0], s);
+            }
+        }
+        assert!(m.route(m.starts[0], m.starts[1]).is_empty(), "New York should not reach Berlin by land");
+        let e = Map::from_text(include_str!("../../../maps/world/europe.map")).expect("europe.map reads");
+        assert_eq!(e.starts.len(), crate::MAX_PLAYERS);
+        // London and Algiers reach Moscow: the Channel and Gibraltar.
+        for s in [0usize, 15] {
+            assert!(!e.route(e.starts[s], e.starts[1]).is_empty(), "europe: no road from seat {} to Moscow", s);
+        }
     }
 
     #[test]

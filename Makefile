@@ -43,6 +43,9 @@
 #   make map         write the generated map for SEED to MAP (default
 #                    maps/generated-SEED.map): the start of a hand-made one;
 #                    MAP=maps/x.map make debug|run|host plays on it
+#                    (INDUSTRY=1: with pads and neutral structures)
+#   make worldmaps   draw maps/world/atlantic.map and europe.map from
+#                    scripts/worldmap.py's coastlines (roadmap step 10g)
 #   make convert FROM=file.map  convert a prior-art map into maps/prior-art/
 #   make replay      play back the newest build/logs/replay-*.json (or
 #                    REPLAY=file) and check every world hash it recorded;
@@ -94,7 +97,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test replay map convert test sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test replay map worldmaps convert test sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -141,8 +144,10 @@ TEAMS    ?= 0
 GAMETYPE ?= open
 # A map file to play on instead of the generated one (documentation/MAPS.md).
 MAP      ?=
+# 1: give a map with no structures an economy (roadmap step 10f).
+INDUSTRY ?= 0
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
@@ -205,9 +210,14 @@ convert:
 map: configure
 
 	@mkdir -p maps
-	@cargo run -q -p treadcore-server -- --seed $(SEED) --write-map $(or $(MAP),maps/generated-$(SEED).map)
+	@cargo run -q -p treadcore-server -- --seed $(SEED) --write-map $(or $(MAP),maps/generated-$(SEED).map) $(if $(filter 1,$(INDUSTRY)),--industry)
 
 
+
+worldmaps:
+	@mkdir -p maps/world
+	@python3 -I scripts/worldmap.py atlantic maps/world/atlantic.map
+	@python3 -I scripts/worldmap.py europe maps/world/europe.map
 
 test:
 	@scripts/build.sh test
