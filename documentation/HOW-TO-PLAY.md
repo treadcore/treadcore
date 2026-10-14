@@ -12,6 +12,7 @@ scripted match, so what you see is the build this guide ships with
 make configure
 make run                 # solo: you against fifteen bots
 PLAYERS=4 make run       # against three
+ROOKIES=15 make run      # against fifteen bots that play badly: start here
 make lan                 # a LAN game: waits for peers, elects a host
 ```
 
@@ -33,6 +34,12 @@ hold fire at a tank that has not moved and has not fired, so you can
 sit at the start and read this. The moment you drive or shoot, you
 have begun, and so have they. After the minute, a tank that stands
 still is found: move after you fire.
+
+**Rookies for a first match.** `ROOKIES=n make run` (or `treadcore
+--solo --rookies n`) makes the first n bots rookies: no drones for a
+minute and a half and one interceptor after, shells that land a few
+tiles off and never lead you, and no storming of your depot. They
+still fight; they fight slowly. Lower the number as you win.
 
 ## 2. The screen
 
@@ -155,7 +162,7 @@ squad in pillbox mode to capture it; it then shoots for you and holds
 shells for your tank. Depots resupply and repair a tank standing on
 them; stand on a neutral one for ten seconds and it is yours.
 
-![The right column: the roster, a lamp per tank, kills and deaths, a lamp per pillbox and per depot](../reports/images/guide-right.png)
+![The right column: the roster, a lamp per tank, kills and deaths, a lamp per pillbox and per depot, and the WORKS row, empty on a map with no economy](../reports/images/guide-right.png)
 
 The right column is the state of everyone: the roster with team, seat
 and score; a round lamp per tank; your kills and deaths; a square lamp
@@ -194,11 +201,20 @@ strike, so a parked tank and a ring of pillboxes defend a refinery.
 Nothing defends all of them. Wreck a power plant and everything it
 powered goes dark without being touched.
 
+![Sixteen seats on the industrial map, fifty seconds in: the power plant handed to seat 0 has been wrecked by longshots, the newswire holds the alert in red, and the WORKS row shows the plant dark and the refinery amber, without power](../reports/images/guide-alert.png)
+
 The structures on the map are labelled with their name and health,
 and DARK when they have no power. Whatever of your side is hit,
 wrecked, taken or goes dark is an **alert**: a line on the newswire
-saying what and where, the alarm, and a red blink on the minimap.
-**J** jumps the view to the newest alert.
+in red, saying what and where, held there five seconds over whatever
+comes after it, with the alarm and a red blink on the minimap. **J**
+jumps the view to the newest alert.
+
+The **WORKS** row in the right column is your side's structures, one
+lamp each, yours first: your colour (an ally's green) while it works,
+amber when it has no power, red under half its health, dark wrecked.
+Over eight seats the column folds the tank lamps away and sets the
+roster smaller, so the depots and the works still fit.
 
 The **minimap** at the right of the bottom strip is the whole map:
 the ground dimmed where your side cannot see, every depot, pillbox

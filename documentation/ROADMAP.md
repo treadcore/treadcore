@@ -803,6 +803,18 @@ depend on each other.
      Europe's scale. *Proof:* the loader reads them; every start
      reaches the others on its continent; sixteen bots play one.
 
+10i. **A bot that builds a jammer** (journal 0027's next step 2).
+     Once a structure of its side has been hit, the RuleBot builds a
+     jammer on a free pad within half a jammer's reach of a structure
+     of its own that no jammer of its side covers, powered, felling
+     forest for the material; it launches nothing inside its side's
+     jammer (the bubble counts: it flies that far out) and drives out
+     of one when nothing is in view. `Observation::pads`, the free pad
+     tiles near the tank, because a Brain has no map. *Must not
+     change:* the generated island (no pads, so `pads` is empty and
+     the rule never fires). *Proof:* `a_rulebot_jams_after_a_hit`, and
+     the Atlantic trace's jams, own against hostile.
+
 10h. **Not now.** Memory-guided drones that ignore jamming (the talk's
      next generation): the longshot's drift is already the first half;
      a second kind waits for a playtest of the first. Airports and
@@ -833,10 +845,23 @@ numbers are first guesses with reasons, and a playtest moves them.
 - [x] 10a industrial ground and concrete
 - [x] 10b structures
 - [x] 10c the longshot
-- [x] 10d the commander's picture
+- [x] 10d the commander's picture. Finished 14 October 2026 (journal
+  0028): the first window run with a structure of the player's under
+  longshots showed no alert, because the wire shows its newest line and
+  a longshot's line overwrote the alert five ticks later, and no
+  ledger, which had not been built. The alert now holds the wire five
+  seconds in red; the WORKS row is the ledger; over eight seats the
+  right column folds the tank lamps away and sets the roster smaller,
+  where at sixteen it had pushed the depots off the bottom. Seen in
+  the window (`guide-alert.png`, `make shoot`).
 - [x] 10e bots
 - [x] 10f industrial maps
 - [x] 10g the world map
+- [x] 10i a bot that builds a jammer (14 October 2026, journal 0028):
+  the first trace jammed 610 of the builder's side's drones to 21 of
+  the enemy's, because the bot launched into its own jammer; with the
+  rule against it, 29 to 71, and 14 hostile longshots pushed off their
+  point. Atlantic, sixteen bots, five minutes: 5 jammers built.
 
 ## Sequencing
 
@@ -850,7 +875,8 @@ Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
 worked through, 6d and 4 done on 13 October (journals 0009 to 0011);
 7 built and proven on one machine the same day (journal 0012); 8
 likewise (journal 0022); 9 the same evening (journal 0023); 10,
-the economy under drones, that night (journal 0027). Next: 7's
+the economy under drones, that night (journal 0027); 10i and
+PLAYABILITY item 9 the next day (journal 0028). Next: 7's
 and 8's proof across two routers when a second machine is on the
 table, and a listening session for the sound.
 

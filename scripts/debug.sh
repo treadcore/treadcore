@@ -12,6 +12,7 @@
 #   GAMETYPE=strict make debug  no shells or material to start with
 #   MAP=maps/x.map make debug   on a map file (documentation/MAPS.md)
 #   INDUSTRY=1 make debug       with structures on a map that has none
+#   ROOKIES=8 make debug        eight of the bots play badly
 
 . "$(dirname "$0")/common.sh"
 need_config
@@ -26,6 +27,7 @@ ARGS=(--local --seed "${SEED:-0x7EADC0DE}" --seconds "${GAME_SECONDS:-180}" --pl
 [ -n "${BRAIN:-}" ] && ARGS+=(--brain "$BRAIN")
 [ -n "${MAP:-}" ] && ARGS+=(--map "$MAP")
 [ "${INDUSTRY:-0}" = 1 ] && ARGS+=(--industry)
+[ "${ROOKIES:-0}" != 0 ] && ARGS+=(--rookies "$ROOKIES")
 say "tracing: $BIN ${ARGS[*]}"
 say "  log   $LOG"
 say "  trace $TRACE"

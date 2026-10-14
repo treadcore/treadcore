@@ -116,8 +116,10 @@ GAME     ?= treadcore
 WANT     ?= 4
 PEER     ?=
 PLAYERS  ?= 16
-# Of the bot seats, how many dig in (Defender) rather than attack (RuleBot).
+# Of the bot seats, how many dig in (Defender) rather than attack (RuleBot),
+# and how many of the rest play badly (a rookie, PLAYABILITY item 9).
 DEFENDERS ?= 0
+ROOKIES ?= 0
 # Simulated one-way lag, in ms, on every peer of `make lobby-test`: the
 # stand-in for tc netem. 0 is the loopback as it is.
 LAG      ?= 0
@@ -147,7 +149,7 @@ MAP      ?=
 # 1: give a map with no structures an economy (roadmap step 10f).
 INDUSTRY ?= 0
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS ROOKIES TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'

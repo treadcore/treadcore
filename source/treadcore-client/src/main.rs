@@ -65,6 +65,9 @@ pub struct Args {
     pub mute: bool,
     /// Give a map with no structures an economy (`--industry`).
     pub industry: bool,
+    /// How many of the bot seats are rookies (`--rookies N`,
+    /// PLAYABILITY item 9): the first N after the people.
+    pub rookies: usize,
 }
 
 fn parse_args() -> Args {
@@ -87,6 +90,7 @@ fn parse_args() -> Args {
         window: None,
         mute: false,
         industry: false,
+        rookies: 0,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -111,6 +115,7 @@ fn parse_args() -> Args {
             "--seconds" => a.seconds = val().parse().ok(),
             "--mute" => a.mute = true,
             "--industry" => a.industry = true,
+            "--rookies" => a.rookies = val().parse().unwrap_or(0),
             "--write-sounds" => {
                 // Every sound the window makes, as WAV files, and out:
                 // no window, no audio device (`make sounds`).
@@ -145,7 +150,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE] [--industry] [--mute] [--write-sounds DIR]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--map FILE] [--industry] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);

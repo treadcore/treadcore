@@ -12,6 +12,8 @@
 # INTRODUCER=host:port registers lan, host and seat with an introducer;
 # BEACON=0 keeps them off the LAN broadcast; IDENTITY=file keeps the
 # peer id across restarts (the default, build/identity, does).
+# ROOKIES=n makes n of the bots rookies, for a newcomer (solo, lan,
+# host, listen).
 # All of them log to build/logs/MODE-STAMP.log at RUST_LOG=debug.
 . "$(dirname "$0")/common.sh"
 need_config
@@ -58,6 +60,7 @@ case "$MODE" in
 esac
 [ -n "${MAP:-}" ] && ARGS+=(--map "$MAP")
 case "$MODE" in solo|lan|host|seat|listen) [ "${INDUSTRY:-0}" = 1 ] && ARGS+=(--industry) ;; esac
+case "$MODE" in solo|lan|host|listen) [ "${ROOKIES:-0}" != 0 ] && ARGS+=(--rookies "$ROOKIES") ;; esac
 say "$BIN ${ARGS[*]}  (log: $LOG)"
 
 # The window on a musl machine with lavapipe: build/bigstack.so from

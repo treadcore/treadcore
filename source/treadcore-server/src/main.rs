@@ -55,6 +55,9 @@ struct Args {
     /// How many bot seats, from the last, are Defenders
     /// instead of RuleBots (attackers).
     defenders: usize,
+    /// How many bot seats, just before the defenders, are rookies
+    /// (PLAYABILITY item 9).
+    rookies: usize,
     /// Deal the seats into this many teams, round robin (0: everyone alone).
     teams: usize,
     /// What a tank starts with (`--game-type open|tournament|strict`).
@@ -98,6 +101,7 @@ fn parse() -> Args {
         record: None,
         replay: None,
         defenders: 0,
+        rookies: 0,
         teams: 0,
         game_type: GameType::Open,
         advantage: false,
@@ -133,6 +137,7 @@ fn parse() -> Args {
             "--brain-schema" => a.schema = true,
             "--players" => a.players = parse_num::<usize>(&val()).clamp(1, MAX_PLAYERS),
             "--defenders" => a.defenders = parse_num(&val()),
+            "--rookies" => a.rookies = parse_num(&val()),
             "--teams" => a.teams = parse_num(&val()),
             "--advantage" => a.advantage = true,
             "--industry" => a.industry = true,
@@ -179,6 +184,8 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --players N        seats in a --local match or a hosted one, 1 to 16 (16)
   --defenders N      of the bot seats, the last N dig in at their depot
                      (harvest, mines, walls) instead of attacking (0)
+  --rookies N        of the bot seats, the N before the defenders play
+                     badly: drones late, aim loose, no storming (0)
   --teams N          deal the seats into N teams, round robin (seat i to
                      team i mod N); 0 is everyone alone, allying in play
   --game-type T      what a tank starts with: open (shells and material
@@ -328,13 +335,39 @@ fn run_replay(args: Args) {
     }
 }
 
-fn make_brain(spec: Option<&String>, seat: PlayerId, seed: u64) -> Box<dyn Brain> {
-    make_brain_kind(spec, seat, seed, false)
+/// Which built-in brain a bot seat gets when no `--brain` names one.
+#[derive(Clone, Copy, PartialEq)]
+enum BotKind {
+    Rule,
+    Rookie,
+    Defender,
 }
 
-fn make_brain_kind(spec: Option<&String>, seat: PlayerId, seed: u64, defender: bool) -> Box<dyn Brain> {
-    if defender && spec.is_none() {
-        return Box::new(Defender::new("defender", true));
+impl BotKind {
+    /// The last `defenders` of the seats dig in, the `rookies` before
+    /// them play badly, the rest attack.
+    fn of(args: &Args, seat: PlayerId, seats: usize) -> BotKind {
+        let first_defender = seats.saturating_sub(args.defenders);
+        let first_rookie = first_defender.saturating_sub(args.rookies);
+        match seat as usize {
+            s if s >= first_defender => BotKind::Defender,
+            s if s >= first_rookie => BotKind::Rookie,
+            _ => BotKind::Rule,
+        }
+    }
+}
+
+fn make_brain(spec: Option<&String>, seat: PlayerId, seed: u64) -> Box<dyn Brain> {
+    make_brain_kind(spec, seat, seed, BotKind::Rule)
+}
+
+fn make_brain_kind(spec: Option<&String>, seat: PlayerId, seed: u64, kind: BotKind) -> Box<dyn Brain> {
+    if spec.is_none() {
+        match kind {
+            BotKind::Defender => return Box::new(Defender::new("defender", true)),
+            BotKind::Rookie => return Box::new(RuleBot::rookie(seed.wrapping_mul(31) ^ (seat as u64 + 1), "rookie")),
+            BotKind::Rule => {}
+        }
     }
     match spec {
         Some(s) => {
@@ -687,8 +720,7 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
 fn run_local(args: Args) {
     let names: Vec<(String, bool)> = (0..args.players).map(|i| (seat_name(i), true)).collect();
     let scenario = scenario_from(&args, names);
-    let first_defender = args.players.saturating_sub(args.defenders) as PlayerId;
-    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..args.players as PlayerId).map(|i| (i, make_brain_kind(args.brains.get(i as usize), i, args.seed, i >= first_defender))).collect();
+    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..args.players as PlayerId).map(|i| (i, make_brain_kind(args.brains.get(i as usize), i, args.seed, BotKind::of(&args, i, args.players)))).collect();
     let mut host = Host::new(new_peer_id(), None, scenario, vec![], RouteTable::default());
     if args.record.is_some() {
         host.record();
@@ -775,8 +807,7 @@ fn host_match(args: &Args, me: PeerId, sock: Socket, result: &LobbyResult, route
         names.push((format!("bot{}", names.len()), true));
     }
     let scenario = scenario_from(args, names);
-    let first_defender = seats.saturating_sub(args.defenders) as PlayerId;
-    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain_kind(args.brains.get((i - first_bot) as usize), i, args.seed, i >= first_defender))).collect();
+    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain_kind(args.brains.get((i - first_bot) as usize), i, args.seed, BotKind::of(args, i, seats)))).collect();
 
     let mut host = Host::new(me, Some(sock), scenario, peers, routes);
     host.registration = registration;

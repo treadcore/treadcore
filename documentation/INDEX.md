@@ -234,16 +234,16 @@ identity_file_round_trips 286.
 | --- | --- | --- |
 | `Brain` | 21 | `name`, `think(&Observation) -> Vec<Command>` |
 | `run_bots` | 27 | every bot's orders for a tick |
-| `RuleBot` | 78 | the attacker: recon, counter-battery, scoot, resupply, squad, storm |
+| `RuleBot` | 78 | the attacker: recon, counter-battery, scoot, resupply, squad, storm, structures, longshots, a jammer once hit (`jammer_order`, step 10i) |
 | `PILLBOY_REACH`, `STANDOFF`, `PATIENCE` | 113 | its numbers |
-| `RuleBot::new`, `without_pillboys` | 124 | seeded |
+| `RuleBot::new`, `without_pillboys`, `rookie` | 124 | seeded; a rookie (PLAYABILITY item 9) thinks half as often, launches nothing for `ROOKIE_LATE` s, aims loose (`ROOKIE_SCATTER`), never storms |
 | `RuleBot::think` | 152 | the doctrine, in order |
 | `Defender` | 476 | at its depot: recon on the approach, dodge, moat, mouth pillbox, road, approach mines, walls, proposals |
 | `MOAT_RADIUS`, `MOUTH`, `WATCH`, `APPROACH`, `PROPOSE_EVERY` | 504 | its numbers |
 | `Defender::new`, `ring`, `mouth_sites`, `approach_sites` | 518 | the build sites |
 | `Defender::think` | 590 | the doctrine, in order |
 | `JsonBrain` | 839 | an external program: one JSON observation out per think, one JSON command list in; `spawn`, `schema_examples` 897 |
-| tests | 921 | pillboys_pay, fortification_pays, defenders_hold, bots_fight_to_a_result |
+| tests | 921 | pillboys_pay, fortification_pays, defenders_hold, bots_fight_to_a_result, rookies_are_beatable, a_rulebot_jams_after_a_hit |
 
 ### 2.7 source/treadcore-server/src/main.rs (813 lines)
 
@@ -252,7 +252,7 @@ identity_file_round_trips 286.
 to `run_replay`, `run_introducer` 648 (the service, forever),
 `run_local`, `run_net` (the identity file, the lobby's registration
 handed to the host).
-`make_brain`, `make_brain_kind` 272 (RuleBot, Defender, or an external
+`make_brain`, `make_brain_kind` 272 (`BotKind`: RuleBot, rookie, Defender, or an external
 `--brain`); `Report` 304 with `tally` 331 and `print` 394 (the match
 report: shells, drones, kills by cause, pillboxes, depots, proposals);
 `Trace` 445 (one JSON event per line); `narrate` 464 (the log's
@@ -354,16 +354,16 @@ with no game code in the way.
 | warm.sh | builds the engine alone, gently (`make warm`) |
 | buildmode.sh | makes the desktop cheap while the engine builds |
 | build.sh | `build.sh PROFILE WHAT` (`make build`, `make headless`) |
-| debug.sh | the bot-only trace: log, trace.jsonl, replay.json (`make debug`; knobs GAME_SECONDS, SEED, PLAYERS, DEFENDERS, TEAMS, GAMETYPE, MAP, BRAIN) |
+| debug.sh | the bot-only trace: log, trace.jsonl, replay.json (`make debug`; knobs GAME_SECONDS, SEED, PLAYERS, DEFENDERS, ROOKIES, TEAMS, GAMETYPE, MAP, INDUSTRY, BRAIN) |
 | replay.sh | plays a replay back and checks every checkpoint (`make replay`) |
-| run.sh | the window or headless in a mode: run, lan, host, seat, introduce; `INTRODUCER`, `BEACON=0`, `IDENTITY` (default build/identity) on the networked ones; preloads `PRELOAD` into the window |
+| run.sh | the window or headless in a mode: run, lan, host, seat, introduce; `INTRODUCER`, `BEACON=0`, `IDENTITY` (default build/identity) on the networked ones; `ROOKIES`; preloads `PRELOAD` into the window |
 | lobby-test.sh | four headless peers on loopback; asserts one host, three welcomed, all ended, one hash, zero prediction mismatches (`make lobby-test`, `LAG=200`); `INTRODUCER=1` runs an introducer and no broadcast or seed, asserts the four were introduced; `REJOIN=1` kills the highest-numbered seat that is not hosting at `REJOIN_AFTER` s, restarts it with its identity file, asserts the same seat back at a later tick with no election |
 | memwatch.sh | memory every N seconds (`make mem`) |
 | priorart2map.py | converts a prior-art binary map to a treadcore map (`make convert FROM=`) |
 | worldmap.py | draws `maps/world/*.map` from coarse coastlines in longitude and latitude, with the Pan-American Highway and Europe's trunk roads, starts in cities and industry where it is (`make worldmaps`; roadmap step 10g) |
 
 The Makefile's knobs (line 50 on): BUILDDIR, LOGDIR, GAME_SECONDS,
-SEED, NAME, JOBS, VERBOSE, GAME, WANT, PEER, PLAYERS, DEFENDERS, LAG,
+SEED, NAME, JOBS, VERBOSE, GAME, WANT, PEER, PLAYERS, DEFENDERS, ROOKIES, LAG,
 INTRODUCER, BEACON, IDENTITY, REJOIN, REJOIN_AFTER, PORT, TEAMS,
 GAMETYPE, MAP, INDUSTRY, BRAIN.
 

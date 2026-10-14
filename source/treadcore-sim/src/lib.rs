@@ -3096,6 +3096,11 @@ impl World {
     pub fn observe(&self, p: PlayerId) -> Observation {
         let me = self.tank_of(p).cloned();
         let forest = me.as_ref().filter(|t| t.alive).map(|t| self.map.forest_near(t.pos, FOREST_SIGHT, 8)).unwrap_or_default();
+        let pads = me
+            .as_ref()
+            .filter(|t| t.alive)
+            .map(|t| self.map.terrain_near(Terrain::Pad, t.pos, FOREST_SIGHT, 32).into_iter().filter(|p| !self.structures.iter().any(|x| x.pos.tile() == p.tile())).take(8).collect())
+            .unwrap_or_default();
         let advantage = self.scenario.advantage && self.players.iter().any(|x| x.id == p && x.is_bot);
         let tanks = self.tanks.iter().filter(|t| self.tank_visible_to(p, t) || (advantage && t.alive)).cloned().collect();
         let drones = self.drones.iter().filter(|d| d.owner == p || self.visible_to(p, d.pos) || self.radar_sees(p, d.pos)).cloned().collect();
@@ -3114,6 +3119,7 @@ impl World {
             mines: self.mines.iter().filter(|m| self.mine_known_to(p, m)).cloned().collect(),
             structures: self.structures.clone(),
             forest,
+            pads,
             players: self.players.iter().map(|x| PlayerView { id: x.id, name: x.name.clone(), alive: x.alive, score: x.score, is_bot: x.is_bot, team: x.team }).collect(),
             proposals: self.proposals.iter().filter(|r| r.from == p || self.allied(r.to, p)).cloned().collect(),
             events: self.events.iter().filter(|e| self.event_visible(e, p)).cloned().collect(),
@@ -3332,6 +3338,10 @@ pub struct Observation {
     /// Every structure, like every pillbox: an economy is public.
     #[serde(default)]
     pub structures: Vec<Structure>,
+    /// The nearest pad tiles to the tank with nothing built on them:
+    /// where a Brain with no map can build a structure.
+    #[serde(default)]
+    pub pads: Vec<V2>,
 
     pub players: Vec<PlayerView>,
     /// Proposals this player made or may answer.

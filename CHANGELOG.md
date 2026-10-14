@@ -42,6 +42,15 @@ fixed form (`journal/TEMPLATE.txt`).
   plant first, every half minute; a Defender takes and mends its own.
   On the generated island nothing changes: the balance proofs read the
   same to the digit.
+- Added: a RuleBot whose side has had a structure hit builds a jammer
+  on a free pad beside a structure of its own, felling forest for the
+  material; it launches nothing inside its own side's jammer and drives
+  out of one when it is free to. Observations carry `pads`, the free
+  pad tiles near the tank, for a brain with no map.
+- Added: rookies (PLAYABILITY item 9). `--rookies N` on the window and
+  the server, `ROOKIES=n` on make: the first n bots play the RuleBot's
+  doctrine badly (no drones for 90 seconds, one interceptor after, a
+  loose aim with no lead, no storming), for a newcomer's first match.
 - Changed: wire version 13. The match report gains an economy line.
 - Fixed: a drone launched with a task that does not suit it goes back
   in the bay.

@@ -184,7 +184,15 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
         names.push((format!("bot{}", names.len()), true));
     }
     let first_bot = me_player + 1;
-    let bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, Box::new(RuleBot::new(args.seed.wrapping_mul(31) ^ (i as u64 + 1), "rulebot")) as Box<dyn Brain>)).collect();
+    // The first `--rookies` bots play badly, for a newcomer
+    // (PLAYABILITY item 9).
+    let bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId)
+        .map(|i| {
+            let seed = args.seed.wrapping_mul(31) ^ (i as u64 + 1);
+            let b: Box<dyn Brain> = if ((i - first_bot) as usize) < args.rookies { Box::new(RuleBot::rookie(seed, "rookie")) } else { Box::new(RuleBot::new(seed, "rulebot")) };
+            (i, b)
+        })
+        .collect();
     let host = Host::new(me, sock, scenario(args, names), remote, routes);
     view.map = Some(host.world.map.clone());
     view.me = Some(me_player);

@@ -157,6 +157,7 @@ the build and a game a stranger can play is `documentation/PLAYABILITY.md`.
 make debug                      # 3 game minutes of sixteen bots, flat out
 GAME_SECONDS=600 SEED=0x1234 PLAYERS=4 make debug
 DEFENDERS=12 make debug         # twelve Defenders dig in at their depots, four RuleBots attack
+ROOKIES=8 make debug            # eight rookies: drones late, aim loose, never storm
 TEAMS=4 make debug              # four teams of four; allies share recon, spare each other
 GAMETYPE=strict make debug      # the prior art's game types: open, tournament, strict (what a tank starts with)
 

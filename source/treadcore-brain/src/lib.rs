@@ -141,6 +141,8 @@ pub struct RuleBot {
     patience: f32,
     /// Use the squad at all. Off for the control group in the proof.
     pub pillboys: bool,
+    /// A bot for a newcomer to beat (PLAYABILITY item 9): see `rookie`.
+    pub rookie: bool,
     /// What the world refused and why it will stay refused: pillboxes
     /// the squad cannot reach, and tiles the tank cannot drive to. On an
     /// island map (the converted prior-art maps) half the objectives are
@@ -154,11 +156,22 @@ pub struct RuleBot {
     hurt_by: Vec<PlayerId>,
     /// When the last longshot went (step 10e).
     last_longshot: Tick,
+    /// A structure of this side has been hit: the bot builds jammers
+    /// from then on (step 10i). Electronic warfare is an answer, not a
+    /// habit: it takes its owner's drones too.
+    works_hit: bool,
 }
 
 /// Seconds between a RuleBot's longshots: a cheap drone, but two in the
 /// bay and a long way to the next workshop.
 pub const LONGSHOT_EVERY: f32 = 30.0;
+
+/// A rookie's first drone goes up this many seconds into the match: the
+/// first minute and a half is gun against gun.
+pub const ROOKIE_LATE: f32 = 90.0;
+/// How far a rookie's indirect aim falls from the tank it aims at, at
+/// most, before the shell's own scatter.
+pub const ROOKIE_SCATTER: f32 = 4.0;
 
 /// How far the bot will send its squad: a 20-tile walk is 13 seconds
 /// each way at `PILLBOY_SPEED`, plus the work.
@@ -176,7 +189,17 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0 }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false }
+    }
+
+    /// The same doctrine, badly (PLAYABILITY item 9): thinks half as
+    /// often, launches nothing for `ROOKIE_LATE` seconds and then keeps
+    /// one interceptor up, aims where the tank is with `ROOKIE_SCATTER`
+    /// tiles of error and no lead, and never storms. The squad and the
+    /// standoff are kept: a rookie still plays the game, it plays it
+    /// slowly.
+    pub fn rookie(seed: u64, name: &str) -> RuleBot {
+        RuleBot { rookie: true, ..RuleBot::new(seed, name) }
     }
 
     /// The same doctrine without the squad: the control group.
@@ -186,6 +209,34 @@ impl RuleBot {
 
     fn nearest_enemy<'a>(&self, obs: &'a Observation, me: &Tank) -> Option<&'a Tank> {
         obs.hostile_tanks().filter(|t| self.grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+    }
+
+    /// Step 10i: once a structure of this side has been hit, a jammer on
+    /// a free pad beside a structure of this bot's that no jammer of the
+    /// side covers, powered; the material felled first if the squad has
+    /// not got it. None if any of that is missing, which on a map with
+    /// no pads is always.
+    fn jammer_order(&self, obs: &Observation, me: &Tank) -> Option<Command> {
+        if !self.works_hit || obs.pads.is_empty() {
+            return None;
+        }
+        let side = |x: &&Structure| x.alive() && x.owner.map(|o| obs.allied(o)).unwrap_or(false);
+        let covered = |at: V2| obs.structures.iter().filter(side).any(|x| x.kind == StructureKind::Jammer && x.pos.dist(at) <= JAMMER_RANGE);
+        let powered = |at: V2| obs.structures.iter().filter(side).any(|x| x.kind == StructureKind::Power && x.pos.dist(at) <= POWER_RANGE);
+        let site = obs
+            .structures
+            .iter()
+            .filter(|x| x.alive() && x.owner == Some(obs.player) && x.pos.dist(me.pos) <= PILLBOY_REACH && !covered(x.pos))
+            .filter_map(|x| obs.pads.iter().filter(|p| p.dist(x.pos) <= JAMMER_RANGE * 0.5 && powered(**p)).min_by(|a, b| a.dist(x.pos).partial_cmp(&b.dist(x.pos)).unwrap()))
+            .min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap())?;
+        let cost = StructureKind::Jammer.cost();
+        if me.pillboys.material >= cost {
+            return Some(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Structure(StructureKind::Jammer), at: *site } });
+        }
+        if me.pillboys.material + HARVEST_MATERIAL > PILLBOY_MATERIAL_MAX {
+            return None;
+        }
+        obs.forest.iter().find(|t| t.dist(me.pos) <= PILLBOY_REACH).map(|t| Command::Deploy { task: PillboyTask::Harvest { at: *t } })
     }
 
     fn nearest_depot<'a>(&self, obs: &'a Observation, me: &Tank, friendly: bool) -> Option<&'a Depot> {
@@ -215,6 +266,11 @@ impl Brain for RuleBot {
                     self.hurt_by.push(*b);
                 }
             }
+            if let Event::StructureDamaged { owner: Some(o), .. } = e {
+                if obs.allied(*o) {
+                    self.works_hit = true;
+                }
+            }
             if let Event::Rejected { cmd, why, .. } = e {
                 match cmd {
                     Command::Deploy { task: PillboyTask::Capture { pillbox } } | Command::Deploy { task: PillboyTask::Repair { target: pillbox } } if why.contains("unreachable") => {
@@ -233,7 +289,8 @@ impl Brain for RuleBot {
         }
         // Think four times a second; the world does not need more and the
         // host has three other bots to run.
-        if obs.tick.saturating_sub(self.last_think) < (TICK_HZ / 4) as Tick {
+        let every = if self.rookie { TICK_HZ / 2 } else { TICK_HZ / 4 };
+        if obs.tick.saturating_sub(self.last_think) < every as Tick {
             return cmds;
         }
         self.last_think = obs.tick;
@@ -254,7 +311,7 @@ impl Brain for RuleBot {
         let enemy = self.nearest_enemy(obs, me);
         if enemy.is_some() {
             self.last_contact = obs.tick;
-            self.contact_total += (TICK_HZ / 4) as f32 * DT;
+            self.contact_total += every as f32 * DT;
         }
         // Hit in the last second: by something, seen or not.
         let just_hit = me.last_hit_tick > 0 && obs.tick.saturating_sub(me.last_hit_tick) <= TICK_HZ as Tick;
@@ -280,9 +337,21 @@ impl Brain for RuleBot {
             self.contact_total = 0.0;
         }
 
+        // A jammer of this side jams this side's drones too (step 10i):
+        // inside one, nothing is launched, and the tank leaves when it
+        // can; "inside" for the tank counts its bubble, which flies that
+        // far out. The first trace without this launched 610 drones
+        // into five friendly jammers in five minutes, against 21
+        // hostile.
+        let our_jammer = |at: V2, margin: f32| obs.structures.iter().find(|x| x.kind == StructureKind::Jammer && x.working() && x.owner.map(|o| obs.allied(o)).unwrap_or(false) && x.pos.dist(at) <= JAMMER_RANGE + margin);
+        let jammed_here = our_jammer(me.pos, me.bubble + 1.0);
+        // A rookie's hangar opens late.
+        let late = self.rookie && obs.seconds() < ROOKIE_LATE;
+        let grounded = late || jammed_here.is_some();
+
         // 1. The bubble.
-        let want_station = if hostile_air > 0 { 4 } else { 2 };
-        if my_interceptors < want_station && me.bay.interceptor > 0 {
+        let want_station = if self.rookie { 1 } else if hostile_air > 0 { 4 } else { 2 };
+        if my_interceptors < want_station && me.bay.interceptor > 0 && !grounded {
             cmds.push(Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return });
         }
         // Widen it when a swarm is in, tighten it when the link is poor.
@@ -311,7 +380,7 @@ impl Brain for RuleBot {
         let dist = (me.pos.dist(look_at) - (RECON_VISION - 2.0)).clamp(2.0, RECON_LINK * 0.7);
         let center = me.pos + dir.scale(dist);
         if my_recon.is_empty() {
-            if me.bay.recon > 0 && (settled_s >= 1.0 || enemy.is_some()) {
+            if me.bay.recon > 0 && (settled_s >= 1.0 || enemy.is_some()) && !grounded && our_jammer(center, 2.0).is_none() {
                 cmds.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 2.0 } });
             }
         } else if enemy.is_some() && !recon_sees_it {
@@ -355,6 +424,8 @@ impl Brain for RuleBot {
                 cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: x.id } });
             } else if let (Some(x), true) = (mend, me.pillboys.material >= STRUCTURE_REPAIR_COST) {
                 cmds.push(Command::Deploy { task: PillboyTask::Repair { target: x.id } });
+            } else if let Some(cmd) = self.jammer_order(obs, me) {
+                cmds.push(cmd);
             } else if me.pillboys.material >= PILLBOX_REPAIR_COST {
                 let repair = obs
                     .pillboxes
@@ -371,7 +442,7 @@ impl Brain for RuleBot {
         // patience and the objective is in reach; off when the depot
         // is ours or the bot runs low (section 7 takes it home).
         let hostile_box = |p: &&Pillbox| p.alive() && !p.owner.map(|o| obs.allied(o)).unwrap_or(false);
-        if self.storm.is_none() {
+        if self.storm.is_none() && !self.rookie {
             let long_contact = self.contact_total >= self.patience * 2.0;
             if long_contact && me.pos.dist(objective) <= INDIRECT_MAX_RANGE {
                 self.storm = Some(objective);
@@ -411,7 +482,7 @@ impl Brain for RuleBot {
                     // fire at the tank itself.
                     let flight = range / SHELL_SPEED_INDIRECT;
                     let lead = V2::from_heading(e.heading).scale(e.speed * flight * 0.8);
-                    let aim = e.pos + lead;
+                    let aim = if self.rookie { e.pos + self.rng.disc().scale(ROOKIE_SCATTER) } else { e.pos + lead };
                     let aim = if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&me.pos.dist(aim)) { aim } else { e.pos };
                     cmds.push(Command::FireIndirect { at: aim });
                     self.last_fire_tick = obs.tick;
@@ -420,7 +491,7 @@ impl Brain for RuleBot {
             }
             let their_team = obs.team_of(e.owner);
             let their_cover = obs.drones.iter().filter(|d| obs.team_of(d.owner) == their_team && d.kind == DroneKind::Interceptor && d.pos.dist(e.pos) <= BUBBLE_MAX + 2.0).count();
-            if their_cover < 2 && my_strikes == 0 && me.bay.strike > 0 && range <= STRIKE_BATTERY * STRIKE_SPEED * 0.8 {
+            if their_cover < 2 && my_strikes == 0 && me.bay.strike > 0 && !late && range <= STRIKE_BATTERY * STRIKE_SPEED * 0.8 {
                 cmds.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: e.id } });
             }
         }
@@ -428,7 +499,7 @@ impl Brain for RuleBot {
         // The longshot (step 10e): at a hostile structure every half
         // minute, a power plant first, because the rest of a side's
         // economy goes dark with it. None on the generated island.
-        if me.bay.longshot > 0 && obs.tick.saturating_sub(self.last_longshot) as f32 * DT >= LONGSHOT_EVERY {
+        if me.bay.longshot > 0 && !late && obs.tick.saturating_sub(self.last_longshot) as f32 * DT >= LONGSHOT_EVERY {
             let target = obs
                 .structures
                 .iter()
@@ -481,6 +552,13 @@ impl Brain for RuleBot {
         // for a spotted shell's flight is where the next one lands.
         if just_hit && stationary && enemy.is_none() {
             let to = me.pos + self.rng.disc().scale(4.0);
+            cmds.push(Command::Move { to: obs.clamp(to) });
+            return cmds;
+        }
+
+        // Out of our own jammer, blind and bare inside it.
+        if let (Some(j), true, None) = (jammed_here, stationary, enemy) {
+            let to = j.pos + (me.pos - j.pos).norm().scale(JAMMER_RANGE + me.bubble + 4.0);
             cmds.push(Command::Move { to: obs.clamp(to) });
             return cmds;
         }
@@ -1041,6 +1119,105 @@ pub fn schema_examples() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// PLAYABILITY item 9: a rookie is beatable. Four RuleBots and four
+    /// rookies, alternating seats, ten seeds of five minutes: the
+    /// RuleBots win more than twice as often, kill more and outlive
+    /// them, and the rookies still kill something.
+    #[test]
+    fn rookies_are_beatable() {
+        let (mut wins, mut kills, mut alive) = ((0u32, 0u32), (0u32, 0u32), (0u32, 0u32));
+        for seed in 0..10u64 {
+            let scenario = Scenario { seed: 0x4006_1E00 + seed * 7919, swarm_interval: 45 * TICK_HZ, time_limit: 5 * 60 * TICK_HZ as Tick, ..Scenario::bots(8) };
+            let mut w = World::new(scenario);
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..8u8)
+                .map(|i| {
+                    let b: Box<dyn Brain> = if i % 2 == 0 { Box::new(RuleBot::new(2000 + seed * 16 + i as u64, "rulebot")) } else { Box::new(RuleBot::rookie(2000 + seed * 16 + i as u64, "rookie")) };
+                    (i, b)
+                })
+                .collect();
+            while !w.over {
+                let orders = run_bots(&w, &mut bots);
+                w.step(&orders);
+                for e in &w.events {
+                    if let Event::TankDestroyed { by: Some(b), owner, .. } = e {
+                        if b % 2 != owner % 2 {
+                            if b % 2 == 0 { kills.0 += 1 } else { kills.1 += 1 }
+                        }
+                    }
+                }
+            }
+            for p in &w.players {
+                if p.id % 2 == 0 { alive.0 += p.alive as u32 } else { alive.1 += p.alive as u32 }
+            }
+            if let Some(win) = w.winner {
+                if win % 2 == 0 { wins.0 += 1 } else { wins.1 += 1 }
+            }
+        }
+        eprintln!("rookies_are_beatable over 10 seeds: wins {}:{}  kills {}:{}  alive {}:{}", wins.0, wins.1, kills.0, kills.1, alive.0, alive.1);
+        // First run, 14 October 2026: wins 9:1, kills 12:6, alive 25:18.
+        assert!(wins.0 > wins.1 * 2, "rookies won too often: {:?}", wins);
+        assert!(kills.0 > kills.1, "rookies killed as much as RuleBots: {:?}", kills);
+        assert!(alive.0 > alive.1, "rookies outlived RuleBots: {:?}", alive);
+        assert!(kills.1 > 0, "rookies never killed anything: a rookie that cannot fight teaches nothing");
+    }
+
+    /// Step 10i: a RuleBot holding a powered zone builds no jammer until
+    /// a structure of its side is hit; then it builds one on a free pad,
+    /// launches nothing inside it, and drives out of it.
+    #[test]
+    fn a_rulebot_jams_after_a_hit() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let home = Map::tile_centre(w.tanks[0].pos);
+        let zone = home + V2::new(5.0, -1.0);
+        for dy in 0..3 {
+            for dx in 0..3 {
+                w.map.set(zone + V2::new(dx as f32, dy as f32), Terrain::Pad);
+            }
+        }
+        let mut put = |kind: StructureKind, at: V2, id: EntityId| {
+            w.structures.push(Structure { id, kind, pos: Map::tile_centre(at), owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+            id
+        };
+        let plant = put(StructureKind::Power, zone, 60_000);
+        put(StructureKind::Refinery, zone + V2::new(2.0, 2.0), 60_001);
+        w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
+        let mut bot = RuleBot::new(11, "rulebot");
+        let mut jammer: Option<(EntityId, V2)> = None;
+        let mut launched_inside = 0;
+        let mut out_at = None;
+        for i in 0..(120 * TICK_HZ) as u32 {
+            let mut obs = w.observe(0);
+            // The hit comes at the twentieth second.
+            if i == 20 * TICK_HZ {
+                obs.events.push(Event::StructureDamaged { structure: plant, kind: StructureKind::Power, owner: Some(0), by: Some(1), damage: 10.0, health_left: STRUCTURE_HEALTH - 10.0 });
+            }
+            let cmds = bot.think(&obs);
+            if let Some((_, at)) = jammer {
+                let me = w.tanks[0].pos;
+                if me.dist(at) <= JAMMER_RANGE + w.tanks[0].bubble {
+                    launched_inside += cmds.iter().filter(|c| matches!(c, Command::Launch { .. })).count();
+                } else if out_at.is_none() {
+                    out_at = Some(i);
+                }
+            }
+            let orders: Vec<Order> = cmds.into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            w.step(&orders);
+            for e in &w.events {
+                if let Event::StructureBuilt { structure, kind: StructureKind::Jammer, by: 0, at } = e {
+                    assert!(i > 20 * TICK_HZ, "a jammer before any hit, at tick {}", i);
+                    jammer = Some((*structure, *at));
+                }
+            }
+        }
+        let (id, at) = jammer.expect("no jammer built after the hit");
+        assert!(w.structure(id).unwrap().working(), "the jammer is not working");
+        assert!(at.dist(zone) <= JAMMER_RANGE, "the jammer is not over the zone: {:?}", at);
+        assert_eq!(launched_inside, 0, "drones launched inside its own jammer");
+        assert!(out_at.is_some(), "the tank never left its own jammer");
+    }
 
     /// A RuleBot answers a person's proposal: yes, unless that person has
     /// hurt it. Nine seats in three sides; seat 0 is a person.

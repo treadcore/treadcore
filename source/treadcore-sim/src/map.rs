@@ -458,12 +458,18 @@ impl Map {
     /// Up to `n` forest tile centres nearest `around`, within `radius`:
     /// what a crew can see of the trees, for a Brain that has no map.
     pub fn forest_near(&self, around: V2, radius: f32, n: usize) -> Vec<V2> {
+        self.terrain_near(Terrain::Forest, around, radius, n)
+    }
+
+    /// The `n` nearest tiles of one terrain within `radius`, as tile
+    /// centres, nearest first.
+    pub fn terrain_near(&self, terrain: Terrain, around: V2, radius: f32, n: usize) -> Vec<V2> {
         let (cx, cy) = around.tile();
         let r = radius.ceil() as i32;
         let mut out: Vec<(f32, V2)> = Vec::new();
         for y in (cy - r).max(0)..(cy + r + 1).min(self.h as i32) {
             for x in (cx - r).max(0)..(cx + r + 1).min(self.w as i32) {
-                if self.at_tile(x as usize, y as usize) == Terrain::Forest {
+                if self.at_tile(x as usize, y as usize) == terrain {
                     let c = V2::new(x as f32 + 0.5, y as f32 + 0.5);
                     let d = c.dist(around);
                     if d <= radius {

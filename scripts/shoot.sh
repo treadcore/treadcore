@@ -63,6 +63,25 @@ xdotool mousemove 580 380; for i in 1 2 3 4 5 6; do xdotool click 4; sleep 0.1; 
 frame close                                    # the models, close
 kill "$PID" 2>/dev/null || die "the window died during the shoot: see $LOGDIR/shoot-$STAMP.log"; trap - EXIT
 
+# The commander's picture (roadmap step 10d): sixteen seats on the
+# industrial map with the north zone's power plant and refinery handed
+# to seat 0. The bots' longshots wreck the plant about fifty seconds in
+# and the refinery goes dark; a burst is taken and the first frame
+# whose newswire is red is the one.
+sed -e 's/^structure 63.5 36.5 power neutral/structure 63.5 36.5 power 0/' -e 's/^structure 65.5 38.5 refinery neutral/structure 65.5 38.5 refinery 0/' "$ROOT/maps/industry.map" > "$S/alert.map"
+grep -q '^structure 63.5 36.5 power 0' "$S/alert.map" || die "maps/industry.map has moved its north zone: fix the shoot's sed"
+WAYLAND_DISPLAY= LD_PRELOAD="${PRELOAD:-}" RUST_LOG=info "$BIN" --solo --seed "${SEED:-0x7EADC0DE}" --players 16 --map "$S/alert.map" > "$LOGDIR/shoot-alert-$STAMP.log" 2>&1 &
+PID=$!
+trap 'kill $PID 2>/dev/null || true' EXIT
+sleep 14
+kill -0 "$PID" 2>/dev/null || die "the window died: see $LOGDIR/shoot-alert-$STAMP.log"
+hyprctl dispatch togglefloating "pid:$PID" >/dev/null
+hyprctl dispatch resizewindowpixel "exact $W $H,pid:$PID" >/dev/null
+hyprctl dispatch movewindowpixel "exact $X $Y,pid:$PID" >/dev/null
+sleep 10
+for i in $(seq 1 30); do frame "alert-$i"; sleep 2; done
+kill "$PID" 2>/dev/null || die "the window died during the shoot: see $LOGDIR/shoot-alert-$STAMP.log"; trap - EXIT
+
 # The network, on this one machine, the way journal 0013 proved it: an
 # introducer, a headless host whose identity is the smallest id (it wins
 # any tie), the window, and a headless bot seat, no LAN broadcast. The
@@ -145,6 +164,17 @@ made.append(crop("screen", (0, 0, 1200, 60), "top"))
 made.append(crop("aim", (300, 120, 900, 560), "aim"))
 made.append(crop("events", (170, 300, 700, 604), "events"))
 made.append(crop("close", (300, 150, 900, 550), "close"))
+# The alert: the first frame of the burst with red on the newswire.
+def red_wire(path):
+    im = Image.open(path).convert("RGB").crop((0, 684, 1055, 740))
+    return sum(1 for r, g, b in im.get_flattened_data() if r > 180 and g < 80 and b < 80)
+alert = next((f"alert-{i}" for i in range(1, 31) if os.path.exists(f"{S}/alert-{i}.png") and red_wire(f"{S}/alert-{i}.png") > 500), None)
+if alert is None:
+    sys.exit("no frame of the burst shows an alert on the newswire")
+why = is_game(f"{S}/{alert}.png")
+if why:
+    sys.exit("shoot: " + why)
+made.append(crop(alert, (0, 0, 1200, 740), "alert"))
 # The lobby: the last frame of the burst on which the lobby screen
 # stands (TREADCORE at the top of a box over an empty map, no tiles yet:
 # the map's grass is the tell that the match has begun).

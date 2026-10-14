@@ -166,12 +166,25 @@ pub enum Group {
     Longshot,
     Squad,
     Material,
+    /// The ledger (step 10d): my side's structures, mine first.
+    Structure,
     /// The lamp beside an order tile.
     Order,
 }
 
 #[derive(Component, Clone, Copy)]
 pub struct Lamp(pub Group, pub usize);
+
+/// The TANKS row, folded away over eight seats: sixteen lamps are wider
+/// than the column, and the roster's `x` says the same.
+#[derive(Component)]
+struct TankRow;
+
+/// Over this many seats the right column is compacted (`TankRow`, a
+/// smaller roster) so the depots and the ledger stay in it: at sixteen
+/// the roster pushed both off the bottom.
+const ROOMY_SEATS: usize = 8;
+const ROSTER_FONT_TIGHT: f32 = 10.0;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
 pub enum Bar {
@@ -398,7 +411,7 @@ fn setup(mut commands: Commands) {
                 // The right column: the roster, kills and deaths, the lamps.
                 mid.spawn((Node { width: Val::Px(RIGHT), height: Val::Percent(100.0), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Column, overflow: Overflow::clip(), ..default() }, BackgroundColor(BEZEL))).with_children(|col| {
                     inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, ..default() }).with_children(|p| text(p, Panel::Roster, FONT));
-                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
+                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).insert(TankRow).with_children(|p| {
                         label(p, "TANKS");
                         lamp_row(p, Group::Tank, MAX_PLAYERS, true, 16);
                     });
@@ -410,6 +423,12 @@ fn setup(mut commands: Commands) {
                     inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
                         label(p, "DEPOTS");
                         lamp_row(p, Group::Depot, 20, true, 10);
+                    });
+                    // The ledger: a lamp for each structure my side
+                    // holds; an empty box on a map with no economy.
+                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
+                        label(p, "WORKS");
+                        lamp_row(p, Group::Structure, LEDGER, false, 12);
                     });
                     col.spawn((Text::new("mine in my colour  green ally\nred hostile  dim neutral  dark dead"), TextFont { font_size: 10.0, ..default() }, TextColor(INK), Node { margin: UiRect::all(Val::Px(4.0)), ..default() }));
                 });
@@ -472,14 +491,22 @@ fn setup(mut commands: Commands) {
 fn update(
     view: Res<View>,
     state: Res<HudState>,
-    mut texts: Query<(&Panel, &mut Text, &mut TextColor), Without<OrderKey>>,
+    mut texts: Query<(&Panel, &mut Text, &mut TextColor, &mut TextFont), Without<OrderKey>>,
     mut nodes: Query<(&Panel, &mut Visibility), Without<Text>>,
     mut frame: Query<&mut BorderColor, With<MapFrame>>,
     mut lamps: Query<(&Lamp, &mut BackgroundColor, &mut Visibility), (Without<Panel>, Without<Bar>)>,
     mut bars: Query<(&Bar, &mut Node), Without<Lamp>>,
     mut keys: Query<(&OrderKey, &mut TextColor), Without<Panel>>,
     mut works: Query<&mut Text, (With<WorksWord>, Without<Panel>)>,
+    mut tank_row: Query<&mut Node, (With<TankRow>, Without<Bar>)>,
 ) {
+    let crowded = view.obs.as_ref().map(|o| o.players.len() > ROOMY_SEATS).unwrap_or(false);
+    for mut n in tank_row.iter_mut() {
+        let d = if crowded { Display::None } else { Display::Flex };
+        if n.display != d {
+            n.display = d;
+        }
+    }
     for mut t in works.iter_mut() {
         let w = format!("works: {}", crate::commander::name(state.works));
         if t.0 != w {
@@ -487,9 +514,21 @@ fn update(
         }
     }
     let under_fire = view.obs.as_ref().and_then(|o| o.me.as_ref().map(|t| (o.tick, t))).map(|(tick, t)| t.last_hit_tick > 0 && tick.saturating_sub(t.last_hit_tick) < (3 * TICK_HZ) as Tick).unwrap_or(false);
-    for (p, mut text, mut color) in texts.iter_mut() {
-        if *p == Panel::Top {
-            let c = if under_fire { RED } else { INK };
+    let alarm = wire_alert(&view).is_some();
+    for (p, mut text, mut color, mut font) in texts.iter_mut() {
+        if *p == Panel::Roster {
+            let size = if crowded { ROSTER_FONT_TIGHT } else { FONT };
+            if font.font_size != size {
+                font.font_size = size;
+            }
+        }
+        let red = match p {
+            Panel::Top => Some(under_fire),
+            Panel::Wire => Some(alarm),
+            _ => None,
+        };
+        if let Some(red) = red {
+            let c = if red { RED } else { INK };
             if color.0 != c {
                 color.0 = c;
             }
@@ -579,6 +618,10 @@ fn update(
                 true,
             ),
             Group::Material => (if tank.map(|t| l.1 < t.pillboys.material as usize).unwrap_or(false) { Color::srgb(0.3, 0.75, 0.35) } else { DIM }, true),
+            Group::Structure => match obs.and_then(|o| ledger(o).into_iter().nth(l.1)) {
+                Some(x) => (ledger_color(x, if Some(x.owner) == Some(me) { mine } else { GREEN }), true),
+                None => (DIM, false),
+            },
             // The prior art's lamp: red against the armed mode, dark
             // otherwise. Whether a mode can be given is the key's colour.
             Group::Order => (if state.mode.map(|m| m.row() == l.1).unwrap_or(false) { RED } else { DIM }, true),
@@ -742,6 +785,12 @@ fn wire(view: &View) -> String {
         let _ = when;
         return format!("{:>6}  {}", view.last_tick, why);
     }
+    // What my side is losing (step 10d) is held over the events after
+    // it, in red: the first window run had a power plant wrecked and its
+    // alert overwritten by a longshot's line five ticks later.
+    if let Some(a) = wire_alert(view) {
+        return format!("{:>6}  ALERT {}  (J)", view.last_tick, a.text);
+    }
     // A proposal to me or my side stands on the wire while it can be
     // answered: it asks for a key.
     if let Some(o) = view.obs.as_ref() {
@@ -754,6 +803,40 @@ fn wire(view: &View) -> String {
         return format!("{:>6}  {}", view.last_tick, l);
     }
     view.log.back().map(|(t, l)| format!("{:>6}  {}", t, l)).unwrap_or_default()
+}
+
+/// How long an alert stays on the wire.
+const ALERT_WIRE_HOLD: f32 = 5.0;
+
+/// The alert the wire is holding, if any.
+fn wire_alert(view: &View) -> Option<&crate::commander::Alert> {
+    view.alerts.back().filter(|a| a.when.elapsed().as_secs_f32() < ALERT_WIRE_HOLD)
+}
+
+/// How many structures the ledger has lamps for.
+const LEDGER: usize = 12;
+
+/// My side's structures, mine first, each in the order the world made
+/// them.
+pub fn ledger(o: &Observation) -> Vec<&Structure> {
+    let mut v: Vec<&Structure> = o.structures.iter().filter(|x| x.owner.map(|w| w == o.player || o.allied(w)).unwrap_or(false)).collect();
+    v.sort_by_key(|x| (x.owner != Some(o.player), x.id));
+    v.truncate(LEDGER);
+    v
+}
+
+/// A ledger lamp: the side's colour while it works, amber dark (no
+/// power), red under half, dim wrecked.
+pub fn ledger_color(x: &Structure, side: Color) -> Color {
+    if !x.alive() {
+        DIM
+    } else if x.health < STRUCTURE_HEALTH * 0.5 {
+        RED
+    } else if !x.powered && x.kind.needs_power() {
+        AMBER
+    } else {
+        side
+    }
 }
 
 /// How long a message stays on the wire.
@@ -817,3 +900,44 @@ THE FIRST MINUTE
   F follows your tank; ' jumps to your pillboxes; Tab shows the events
   a falling whistle is a shell coming down there; M turns the sound off
 ";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An alert holds the wire over the events after it, and lets go
+    /// after `ALERT_WIRE_HOLD`; the ledger lists my side's structures,
+    /// mine first, and lights each by its state.
+    #[test]
+    fn alerts_hold_the_wire_and_the_ledger_tells_state() {
+        let mut w = treadcore_sim::World::new(Scenario { swarm_interval: 0, industry: true, ..Scenario::bots(4) });
+        w.structures[0].owner = Some(1);
+        w.structures[1].owner = Some(0);
+        w.structures[2].owner = Some(2);
+        let mut view = View { obs: Some(w.observe(0)), ..View::default() };
+        let alert = |secs: u64| crate::commander::Alert { at: V2::new(1.0, 1.0), text: "your power plant WRECKED at 1,1".into(), when: std::time::Instant::now() - std::time::Duration::from_secs(secs), about: 1 };
+        view.alerts.push_back(alert(0));
+        view.log.push_back((10, "p1 lost Longshot (Expended)".into()));
+        assert!(wire(&view).contains("ALERT your power plant WRECKED"), "{}", wire(&view));
+        view.alerts.clear();
+        view.alerts.push_back(alert(ALERT_WIRE_HOLD as u64 + 1));
+        assert!(wire(&view).contains("Longshot"), "{}", wire(&view));
+
+        let o = view.obs.as_ref().unwrap();
+        let l = ledger(o);
+        assert_eq!(l.len(), 1, "seat 0 alone holds one structure");
+        assert_eq!(l[0].owner, Some(0));
+        let mut x = l[0].clone();
+        x.powered = true;
+        x.health = STRUCTURE_HEALTH;
+        assert_eq!(ledger_color(&x, GREEN), GREEN);
+        x.health = STRUCTURE_HEALTH * 0.4;
+        assert_eq!(ledger_color(&x, GREEN), RED);
+        x.health = 0.0;
+        assert_eq!(ledger_color(&x, GREEN), DIM);
+        x.health = STRUCTURE_HEALTH;
+        x.powered = false;
+        x.kind = StructureKind::Refinery;
+        assert_eq!(ledger_color(&x, GREEN), AMBER);
+    }
+}

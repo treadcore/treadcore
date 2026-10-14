@@ -330,7 +330,11 @@ of a match:
   drone keeps its link, the jammer's own side's included, so a tank
   parked at its own jammer has no bubble and no eyes. It ringed a base
   and never a country. The neutral swarm flies through it: those are
-  the drones that already beat jamming.
+  the drones that already beat jamming. A bot builds one only after
+  its side has been hit, and stays out of it: the first trace of a bot
+  that did not jammed 610 of its own side's drones and 21 of the
+  enemy's; staying out turned that to 29 and 71, fourteen of them
+  longshots pushed off their point.
 - **Holding pays while held**: every standing structure scores two
   points every ten seconds, so the time-limit winner is the side with
   the economy, and a longshot that wrecks one is points taken away,
