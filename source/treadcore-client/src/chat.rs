@@ -140,8 +140,8 @@ pub fn chat(mut typed: MessageReader<KeyboardInput>, keys: Res<ButtonInput<KeyCo
             continue;
         }
         let Some(t) = open.as_mut() else {
-            // With the proposal list open, Enter is the list's.
-            if playing && view.menu.is_none() && k.logical_key == Key::Enter {
+            // With the proposal list or Key Setup open, Enter is theirs.
+            if playing && view.menu.is_none() && view.key_setup.is_none() && k.logical_key == Key::Enter {
                 open = Some(Typing { to: Some(if team { ChatTo::Team } else { ChatTo::All }), line: String::new() });
                 eaten = true;
             }

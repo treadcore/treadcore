@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: Key Setup (SPEC UI-18 to UI-21). K opens it over the map;
+  every key the window gives can be rebound, one key an action
+  (swapped when taken), Alt, Print Screen and Pause never; the
+  bindings are kept in `~/.config/treadcore/keys` or `--keys FILE`,
+  by key position so they hold on any layout. The orders column and
+  its hints show the keys as bound.
+
 - Added: chat to the tanks nearby and to chosen players (the rest of
   SPEC UI-22). Tab steps all, team, nearby (fifteen tiles of your
   tank); a line starting `@name` (or `@p3`) goes to those players

@@ -248,8 +248,8 @@ fn minimap_click(
 }
 
 /// `J`: the view to the newest alert still standing.
-fn jump_to_alert(keys: Res<ButtonInput<KeyCode>>, view: Res<View>, mut cam: ResMut<Cam>, mut q: Query<(&mut Transform, &Projection), With<MainCamera>>) {
-    if view.keys_taken() || !keys.just_pressed(KeyCode::KeyJ) {
+fn jump_to_alert(keys: Res<ButtonInput<KeyCode>>, bind: Res<crate::keys::Keys>, view: Res<View>, mut cam: ResMut<Cam>, mut q: Query<(&mut Transform, &Projection), With<MainCamera>>) {
+    if view.keys_taken() || !keys.just_pressed(bind.key(crate::keys::Action::Alert)) {
         return;
     }
     let Some(a) = view.alerts.iter().rev().find(|a| a.when.elapsed().as_secs_f32() < ALERT_HOLD) else { return };

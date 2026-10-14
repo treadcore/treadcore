@@ -66,16 +66,17 @@ after today.
 | tank view key returns | UI-13 | F | Return or F |
 | window sizes, redraw rate | UI-14, 15 | wheel zoom | the same |
 | name labels on tanks | UI-16 | yes, with armor | the same |
-| rebindable keys | UI-18 to 21 | none | none |
-| messages to all, allies, nearby, selected | UI-22 | the command exists; no box | item 6 above |
+| rebindable keys | UI-18 to 21 | none | Key Setup on K (journal 0031): one key an action, swapped on conflict, Alt/Print Screen/Pause refused, kept in ~/.config/treadcore/keys, bound by key position for any layout |
+| messages to all, allies, nearby, selected | UI-22 | the command exists; no box | all four (journals 0025, 0030): Enter, Shift-Enter, Tab to nearby, `@name` |
 | the newswire as a message class | §3.2.3 | the log | the newswire |
 | gun range key, longer and shorter | §2.9.10 | the gun takes a point | the envelope lit while aiming; a point is better than a range for an indirect gun with a spotter |
 
 Three of Bolo's elements do not transfer and are not missed: the base
 stock bars (depots hold no stock here), the menu bar (the column is
 the menu), and the gun range keys (the gun is aimed at a point the
-recon sees, which is the design). Two are open: the chat box and the
-neighbouring-pillbox arrows.
+recon sees, which is the design). None is open now: the chat box (0025,
+0030), the neighbouring-pillbox arrows (0017) and Key Setup (0031)
+closed the last.
 
 ## 4. The frame, after a day
 

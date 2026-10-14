@@ -117,6 +117,41 @@ impl Default for HudState {
     }
 }
 
+/// The four lines of keys under the orders column, from the bindings;
+/// each fits the column's width ("propose" did not, beside "K keys").
+#[derive(Component)]
+pub struct KeyHint;
+
+/// The hint's text for these bindings.
+pub fn key_hint(k: &crate::keys::Keys) -> String {
+    use crate::keys::{label, Action as A};
+    format!(
+        "L drive  R fire  {} longshot\n{} tank  {} pillbox  {} alert\n{} kind  shift-{} concrete\nEnter talk  {} sides  {} keys",
+        label(k.key(A::Longshot)),
+        label(k.key(A::TankView)),
+        label(k.key(A::PillboxView)),
+        label(k.key(A::Alert)),
+        label(k.key(A::WorksKind)),
+        label(k.key(A::Wall)),
+        label(k.key(A::Propose)),
+        label(k.key(A::KeySetup))
+    )
+}
+
+/// An order row's key as the column shows it.
+fn order_key(k: &crate::keys::Keys, row: usize) -> String {
+    use crate::keys::{label, Action as A};
+    let a = [A::Interceptor, A::Recon, A::Strike, A::Recall];
+    match row {
+        0..=3 => label(k.key(a[row])),
+        4 => format!("{}{}", label(k.key(A::BubbleIn)), label(k.key(A::BubbleOut))),
+        _ => match Mode::of_row(row) {
+            Some(m) => label(k.key([A::Farm, A::Road, A::Wall, A::Pillbox, A::Mine, A::Works][Mode::ALL.iter().position(|x| *x == m).unwrap()])),
+            None => label(k.key(A::Return)),
+        },
+    }
+}
+
 /// The works row's word: the kind it will build.
 #[derive(Component)]
 pub struct WorksWord;
@@ -398,7 +433,7 @@ fn setup(mut commands: Commands) {
                     }
                     // Four lines of keys, a size down and with no gap above,
                     // so the last still shows in the shoot's 740 px window.
-                    col.spawn((Text::new("L drive  R fire  X longshot\nF tank  ' pillbox  J alert\nB kind  shift-6 concrete\nEnter talk  P propose  Tab"), TextFont { font_size: 9.0, ..default() }, TextColor(INK)));
+                    col.spawn((Text::new(""), TextFont { font_size: 9.0, ..default() }, TextColor(INK), KeyHint));
                 });
                 // The map, in a sunken frame of its own; nothing drawn in
                 // it; the scrollback and the screens sit over it.
@@ -496,8 +531,10 @@ fn update(
     mut frame: Query<&mut BorderColor, With<MapFrame>>,
     mut lamps: Query<(&Lamp, &mut BackgroundColor, &mut Visibility), (Without<Panel>, Without<Bar>)>,
     mut bars: Query<(&Bar, &mut Node), Without<Lamp>>,
-    mut keys: Query<(&OrderKey, &mut TextColor), Without<Panel>>,
-    mut works: Query<&mut Text, (With<WorksWord>, Without<Panel>)>,
+    mut keys: Query<(&OrderKey, &mut TextColor, &mut Text), (Without<Panel>, Without<WorksWord>, Without<KeyHint>)>,
+    mut works: Query<&mut Text, (With<WorksWord>, Without<Panel>, Without<KeyHint>)>,
+    mut hint: Query<&mut Text, (With<KeyHint>, Without<Panel>, Without<WorksWord>, Without<OrderKey>)>,
+    bind: Res<crate::keys::Keys>,
     mut tank_row: Query<&mut Node, (With<TankRow>, Without<Bar>)>,
 ) {
     let crowded = view.obs.as_ref().map(|o| o.players.len() > ROOMY_SEATS).unwrap_or(false);
@@ -542,8 +579,10 @@ fn update(
             Panel::Air => air(&view),
             Panel::Wire => wire(&view),
             // The proposal list takes the scrollback's place over the map.
-            Panel::Log => match (view.menu.as_ref(), view.obs.as_ref()) {
-                (Some(m), Some(o)) => crate::proposals::menu_text(o, m),
+            // The proposal list and Key Setup take the scrollback's place.
+            Panel::Log => match (view.menu.as_ref(), view.obs.as_ref(), view.key_setup.as_ref()) {
+                (_, _, Some(s)) => crate::keys::setup_text(&bind, s, &view.key_note),
+                (Some(m), Some(o), _) => crate::proposals::menu_text(o, m),
                 _ => log(&view),
             },
             Panel::Screen => screen(&view).unwrap_or_default(),
@@ -562,7 +601,7 @@ fn update(
     let show_screen = screen(&view).is_some();
     for (p, mut vis) in nodes.iter_mut() {
         let want = match p {
-            Panel::Log => (state.show_log || view.menu.is_some()) && !show_screen,
+            Panel::Log => (state.show_log || view.menu.is_some() || view.key_setup.is_some()) && !show_screen,
             Panel::Screen => show_screen,
             _ => true,
         };
@@ -636,10 +675,20 @@ fn update(
             *vis = v;
         }
     }
-    for (k, mut color) in keys.iter_mut() {
+    for (k, mut color, mut text) in keys.iter_mut() {
         let c = if can_order(tank, k.0, state.works) { AMBER } else { KEY_DIM };
         if color.0 != c {
             color.0 = c;
+        }
+        let s = order_key(&bind, k.0);
+        if text.0 != s {
+            text.0 = s;
+        }
+    }
+    for mut t in hint.iter_mut() {
+        let s = key_hint(&bind);
+        if t.0 != s {
+            t.0 = s;
         }
     }
     for (b, mut node) in bars.iter_mut() {

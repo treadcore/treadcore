@@ -145,21 +145,22 @@ pub enum Act {
     Leave,
 }
 
-pub fn act(keys: &ButtonInput<KeyCode>) -> Option<Act> {
+pub fn act(keys: &ButtonInput<KeyCode>, bind: &crate::keys::Keys) -> Option<Act> {
+    use crate::keys::Action as A;
     let p = |k| keys.just_pressed(k);
-    Some(if p(KeyCode::Escape) || p(KeyCode::KeyP) {
+    Some(if p(KeyCode::Escape) || p(bind.key(A::Propose)) {
         Act::Close
-    } else if p(KeyCode::ArrowUp) || p(KeyCode::KeyW) {
+    } else if p(KeyCode::ArrowUp) || p(bind.key(A::ScrollUp)) {
         Act::Up
-    } else if p(KeyCode::ArrowDown) || p(KeyCode::KeyS) {
+    } else if p(KeyCode::ArrowDown) || p(bind.key(A::ScrollDown)) {
         Act::Down
-    } else if p(KeyCode::ArrowLeft) || p(KeyCode::KeyA) {
+    } else if p(KeyCode::ArrowLeft) || p(bind.key(A::ScrollLeft)) {
         Act::Left
-    } else if p(KeyCode::ArrowRight) || p(KeyCode::KeyD) {
+    } else if p(KeyCode::ArrowRight) || p(bind.key(A::ScrollRight)) {
         Act::Right
     } else if p(KeyCode::Enter) || p(KeyCode::NumpadEnter) {
         Act::Propose
-    } else if p(KeyCode::KeyL) {
+    } else if p(bind.key(A::Leave)) {
         Act::Leave
     } else {
         return None;
@@ -209,10 +210,12 @@ pub fn apply(obs: &Observation, m: &mut Menu, a: Act) -> (Option<Command>, bool)
 
 /// After chat's system: a chat line open means these keys are its, and
 /// the Enter that sends a line is not also one that proposes.
-pub fn proposals(keys: Res<ButtonInput<KeyCode>>, mut view: ResMut<View>, mut orders: ResMut<Orders>) {
+pub fn proposals(keys: Res<ButtonInput<KeyCode>>, bind: Res<crate::keys::Keys>, mut view: ResMut<View>, mut orders: ResMut<Orders>) {
+    use crate::keys::Action as A;
     // A key typed into a chat line this frame (even one closed by the
-    // Esc that came with it) is the line's, not the list's.
-    if view.typing.is_some() || view.keys_eaten {
+    // Esc that came with it) is the line's, not the list's; and Key
+    // Setup's keys are its own.
+    if view.typing.is_some() || view.keys_eaten || view.key_setup.is_some() {
         return;
     }
     let mut menu = view.menu.take();
@@ -223,17 +226,17 @@ pub fn proposals(keys: Res<ButtonInput<KeyCode>>, mut view: ResMut<View>, mut or
     let mut give: Option<Command> = None;
     match menu.as_mut() {
         None => {
-            if keys.just_pressed(KeyCode::KeyP) {
+            if keys.just_pressed(bind.key(A::Propose)) {
                 debug!("proposal list open");
                 menu = Some(Menu { row: 0, terms: 0 });
-            } else if keys.just_pressed(KeyCode::KeyY) || keys.just_pressed(KeyCode::KeyN) {
+            } else if keys.just_pressed(bind.key(A::Accept)) || keys.just_pressed(bind.key(A::Decline)) {
                 if let Some(p) = answerable(obs) {
-                    give = Some(Command::Answer { proposal: p.id, accept: keys.just_pressed(KeyCode::KeyY) });
+                    give = Some(Command::Answer { proposal: p.id, accept: keys.just_pressed(bind.key(A::Accept)) });
                 }
             }
         }
         Some(m) => {
-            if let Some(a) = act(&keys) {
+            if let Some(a) = act(&keys, &bind) {
                 let (cmd, open) = apply(obs, m, a);
                 debug!("proposal list: {:?}, open {}", a, open);
                 give = cmd;

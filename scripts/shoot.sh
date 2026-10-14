@@ -77,11 +77,14 @@ xdotool mousemove 580 380; for i in 1 2 3 4 5 6; do xdotool click 4; sleep 0.1; 
 frame close                                    # the models, close
 kill "$PID" 2>/dev/null || die "the window died during the shoot: see $LOGDIR/shoot-$STAMP.log"; trap - EXIT
 
-# The second match (PLAYABILITY item 10): a short solo match to its
-# end, the match-over screen with "Enter: again", then Enter, and the
-# next round under way. Keys go to the window, so this pass keeps the
-# focus.
-WAYLAND_DISPLAY= LD_PRELOAD="${PRELOAD:-}" RUST_LOG=info "$BIN" --solo --seed "${SEED:-0x7EADC0DE}" --players 4 --seconds 25 --map "$MAP" > "$LOGDIR/shoot-again-$STAMP.log" 2>&1 &
+# Key Setup (SPEC UI-18 to 20), then the second match (PLAYABILITY
+# item 10): K, down to the interceptor, Enter, Q, the frame, K to close
+# and save to a scratch keys file, which must then say so; then the
+# short solo match to its end, the match-over screen with "Enter:
+# again", Enter, and the next round under way. Keys go to the window,
+# so this pass keeps the focus.
+rm -f "$S/keys"
+WAYLAND_DISPLAY= LD_PRELOAD="${PRELOAD:-}" RUST_LOG=info "$BIN" --solo --seed "${SEED:-0x7EADC0DE}" --players 4 --seconds 30 --keys "$S/keys" --map "$MAP" > "$LOGDIR/shoot-again-$STAMP.log" 2>&1 &
 PID=$!
 trap 'kill $PID 2>/dev/null || true' EXIT
 sleep 14
@@ -90,7 +93,14 @@ hyprctl dispatch togglefloating "pid:$PID" >/dev/null
 hyprctl dispatch resizewindowpixel "exact $W $H,pid:$PID" >/dev/null
 hyprctl dispatch movewindowpixel "exact $X $Y,pid:$PID" >/dev/null
 hyprctl dispatch focuswindow "pid:$PID" >/dev/null
-sleep 16
+sleep 1
+key k; sleep 0.6
+for i in 1 2 3 4 5 6 7 8; do key Down; sleep 0.25; done
+key Return; sleep 0.5; key q; sleep 0.8
+frame keys                                     # Key Setup: the interceptor now on Q
+key k; sleep 1
+grep -q '^interceptor = KeyQ$' "$S/keys" 2>/dev/null || die "Key Setup did not save interceptor = KeyQ: see $LOGDIR/shoot-again-$STAMP.log"
+sleep 13
 frame over                                     # the match-over screen: rounds won, Enter: again
 key Return; sleep 4
 frame again                                    # round 2 under way
@@ -175,7 +185,7 @@ def is_game(path, size=(1200, 740)):
     if greys < 15:
         return f"{os.path.basename(path)} has no bezel down its left edge: not the game window"
     return None
-for f in ("screen", "armed", "squad-out", "refused", "aim", "events", "close", "over", "again", "networked"):
+for f in ("screen", "armed", "squad-out", "refused", "aim", "events", "close", "keys", "over", "again", "networked"):
     why = is_game(f"{S}/{f}.png")
     if why:
         sys.exit("shoot: " + why)
@@ -200,6 +210,7 @@ made.append(crop("aim", (300, 120, 900, 560), "aim"))
 made.append(crop("events", (170, 300, 700, 604), "events"))
 made.append(crop("close", (300, 150, 900, 550), "close"))
 made.append(crop("over", (0, 0, 1200, 740), "over"))
+made.append(crop("keys", (0, 60, 915, 604), "keys"))
 # The alert: the first frame of the burst with red on the newswire.
 def red_wire(path):
     im = Image.open(path).convert("RGB").crop((0, 684, 1055, 740))

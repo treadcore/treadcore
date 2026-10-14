@@ -22,6 +22,7 @@ mod hud;
 mod chat;
 mod commander;
 mod input;
+mod keys;
 mod proposals;
 mod render;
 mod session;
@@ -65,6 +66,9 @@ pub struct Args {
     pub mute: bool,
     /// Give a map with no structures an economy (`--industry`).
     pub industry: bool,
+    /// Where the key bindings are kept (`--keys FILE`; else the config
+    /// directory's treadcore/keys).
+    pub keys: Option<String>,
     /// How many of the bot seats are rookies (`--rookies N`,
     /// PLAYABILITY item 9): the first N after the people.
     pub rookies: usize,
@@ -91,6 +95,7 @@ fn parse_args() -> Args {
         mute: false,
         industry: false,
         rookies: 0,
+        keys: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -116,6 +121,7 @@ fn parse_args() -> Args {
             "--mute" => a.mute = true,
             "--industry" => a.industry = true,
             "--rookies" => a.rookies = val().parse().unwrap_or(0),
+            "--keys" => a.keys = Some(val()),
             "--write-sounds" => {
                 // Every sound the window makes, as WAV files, and out:
                 // no window, no audio device (`make sounds`).
@@ -150,7 +156,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--map FILE] [--industry] [--mute] [--write-sounds DIR]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--keys FILE] [--map FILE] [--industry] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);
@@ -197,6 +203,7 @@ fn main() {
         )
         .insert_resource(ClearColor(Color::srgb(0.05, 0.06, 0.07)))
         .insert_resource(Time::<Fixed>::from_hz(TICK_HZ as f64))
+        .insert_resource(keys::Keys::load(args.keys.as_ref().map(std::path::PathBuf::from).or_else(keys::Keys::default_path)))
         .insert_resource(args)
         .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }, commander::CommanderPlugin))
         .run();

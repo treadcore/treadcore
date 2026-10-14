@@ -803,15 +803,17 @@ fn play(
     mut view: ResMut<View>,
     mut sources: ResMut<Assets<AudioSource>>,
     keys: Res<ButtonInput<KeyCode>>,
+    bind: Res<crate::keys::Keys>,
     camera: Query<(&Transform, &Projection), With<MainCamera>>,
     window: Query<&Window, With<PrimaryWindow>>,
     voices: Query<(), With<Voice>>,
 ) {
-    if keys.just_pressed(KeyCode::KeyM) && !view.keys_taken() {
+    if keys.just_pressed(bind.key(crate::keys::Action::Mute)) && !view.keys_taken() {
         sounds.muted = !sounds.muted;
         info!("sound {}", if sounds.muted { "muted" } else { "on" });
         let tick = view.last_tick;
-        view.log.push_back((tick, if sounds.muted { "sound off (M)".into() } else { "sound on (M)".into() }));
+        let m = crate::keys::label(bind.key(crate::keys::Action::Mute));
+        view.log.push_back((tick, if sounds.muted { format!("sound off ({})", m) } else { format!("sound on ({})", m) }));
     }
     let queued: Vec<(Cue, Where, f32)> = std::mem::take(&mut view.sounds);
     if sounds.muted {

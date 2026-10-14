@@ -1,0 +1,113 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 14 Oct 2026 13:30:00 -0700
+Subject: [JOURNAL 0031] Key Setup: every key rebound, one key an
+         action, kept between sessions
+Message-ID: <0031.20261014@treadcore.org>
+In-Reply-To: <0030.20261014@treadcore.org>
+Organization: treadcore.org
+Keywords: key bindings, UI-18, UI-19, UI-20, UI-21, DLG-15, Bolo
+          interface checklist
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "continue. next on backlog. implement."
+X-Commits: the commit that carries this entry
+
+                                KEY SETUP
+
+                     Paul Richeson, treadcore.org
+                           14 October 2026
+
+
+ABSTRACT
+
+    The last of the prior art's interface elements still marked
+    "none" in PLAYABILITY's checklist: rebindable keys. K opens Key
+    Setup over the map; thirty actions, one key each, a taken key
+    swapped, Alt, Print Screen and Pause refused; the bindings kept in
+    a text file between sessions, bound by key position so they hold
+    on any layout. Driven in the window by make shoot, which rebinds
+    the interceptor to Q and checks the file says so.
+
+INDEX TERMS
+
+    user interface, configuration.
+
+
+I. INTRODUCTION
+
+    0030's next steps all want a person or a second machine. Of what
+    is left that can be built and proven here, PLAYABILITY section 3
+    had one Bolo element at "none": UI-18 to 21. The roadmap's step 0
+    still had the window unchecked, months of frames after it ran.
+
+II. BACKGROUND
+
+    Thirty-five KeyCode literals in five files: input.rs, proposals.rs,
+    commander.rs, sound.rs, chat.rs. The spec (row 13 of its table of
+    interactions) says the outcome of UI-18 matters, not the dialog.
+
+III. METHOD
+
+    keys.rs: Action (thirty, grouped as DLG-15 groups them), Keys (an
+    array, one key an action), bind with swap, forbidden (UI-19's
+    three; Esc, Enter, the arrows and Shift, which the window keeps),
+    a text file of `action = key` lines with KeyCode names. KeyCode is
+    the key's physical place: UI-21 for free; the chat line reads the
+    logical keys and is unchanged. Key Setup is the proposal list's
+    pattern: a state in View (so keys_taken covers it), a system after
+    proposals (so the Esc that closes it does not quit), the
+    scrollback's place for its text.
+
+IV. CHRONOLOGY
+
+    1. keys.rs and its two tests (bind, swap, refuse, round trip, bad
+       lines keep the default; the screen's pick and wait).
+    2. Every literal replaced by the binding; the orders column's keys
+       and the hint lines under it drawn from the bindings.
+    3. Caught reading: an open Key Setup would have let Enter open the
+       chat line too (chat runs first). Chat now leaves Enter alone
+       while Key Setup or the proposal list is open.
+    4. make shoot: K, down eight, Enter, Q, the frame, K; the scratch
+       file says `interceptor = KeyQ`, recall still R. The frame showed
+       the hint's last line wrapping ("P propose  K keys" is wider than
+       the column): "P sides". Reshot.
+    5. Docs: HOW-TO-PLAY 10 (Key Setup, guide-keys.png, K in the
+       table); PLAYABILITY's checklist (rebindable keys done, UI-22's
+       row done, "none is open now"); the roadmap's step 0 window box
+       checked, with the journals that ran it.
+
+V. RESULTS
+
+    make test: sim 36, brain 10, client 21, net 13, proto 3. Eighteen
+    frames.
+
+VI. DISCUSSION
+
+    A key bound by place, not letter, is right for the scroll keys and
+    a little strange for mnemonic ones (P for propose on a layout
+    where that key prints something else). The hint lines show what
+    the key is called where it sits, which is what a player presses.
+
+VII. OPEN PROBLEMS
+
+    1. Whether any of it is fun (from 0027).
+    2. The rematch across a network (step 8).
+    3. Mouse buttons are not bindable; the spec's actions are keys.
+
+VIII. NEXT STEPS
+
+    1. A playtest: ROOKIES=3 make run, three rounds, @names, Key Setup.
+    2. Step 7's and 8's proof across two machines.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: client, scripts, docs,
+    journal: Key Setup
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

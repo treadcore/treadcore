@@ -28,7 +28,7 @@ pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Cam>().add_systems(Update, (camera, orders, crate::chat::chat.after(camera).after(orders), crate::proposals::proposals.after(crate::chat::chat)));
+        app.init_resource::<Cam>().add_systems(Update, (camera, orders, crate::chat::chat.after(camera).after(orders), crate::proposals::proposals.after(crate::chat::chat), crate::keys::key_setup.after(crate::proposals::proposals)));
     }
 }
 
@@ -73,7 +73,9 @@ fn camera(
     mut cam: ResMut<Cam>,
     mut q: Query<(&mut Transform, &mut Projection), With<MainCamera>>,
     lamps: Query<(&Interaction, &hud::Lamp), Changed<Interaction>>,
+    bind: Res<crate::keys::Keys>,
 ) {
+    use crate::keys::Action as A;
     let Ok((mut tf, mut proj)) = q.single_mut() else { return };
     // While a chat line or the proposal list is open the keys are theirs.
     let typing = view.keys_taken();
@@ -90,16 +92,16 @@ fn camera(
     // that direction (SPEC UI-11); otherwise they scroll.
     let in_pillbox_view = cam.pillbox.is_some();
     let mut pan = Vec2::ZERO;
-    if held(KeyCode::KeyW) || (!in_pillbox_view && held(KeyCode::ArrowUp)) {
+    if held(bind.key(A::ScrollUp)) || (!in_pillbox_view && held(KeyCode::ArrowUp)) {
         pan.y += 1.0;
     }
-    if held(KeyCode::KeyS) || (!in_pillbox_view && held(KeyCode::ArrowDown)) {
+    if held(bind.key(A::ScrollDown)) || (!in_pillbox_view && held(KeyCode::ArrowDown)) {
         pan.y -= 1.0;
     }
-    if held(KeyCode::KeyA) || (!in_pillbox_view && held(KeyCode::ArrowLeft)) {
+    if held(bind.key(A::ScrollLeft)) || (!in_pillbox_view && held(KeyCode::ArrowLeft)) {
         pan.x -= 1.0;
     }
-    if held(KeyCode::KeyD) || (!in_pillbox_view && held(KeyCode::ArrowRight)) {
+    if held(bind.key(A::ScrollRight)) || (!in_pillbox_view && held(KeyCode::ArrowRight)) {
         pan.x += 1.0;
     }
     // A click on a pillbox lamp jumps the view to that pillbox (UI-10).
@@ -115,7 +117,7 @@ fn camera(
     }
     // Tank view: F (SPEC UI-13's tank view key; Enter is chat's). F on
     // an already following camera stops it, as before.
-    if pressed(KeyCode::KeyF) {
+    if pressed(bind.key(A::TankView)) {
         cam.follow = cam.pillbox.is_some() || !cam.follow;
         cam.pillbox = None;
     }
@@ -125,7 +127,7 @@ fn camera(
         .into_iter()
         .find(|(k, _)| in_pillbox_view && pressed(*k))
         .map(|(_, d)| d);
-    if pressed(KeyCode::Quote) || arrow.is_some() {
+    if pressed(bind.key(A::PillboxView)) || arrow.is_some() {
         if let Some(obs) = view.obs.as_ref() {
             let mine: Vec<&Pillbox> = obs.pillboxes.iter().filter(|p| p.owner.map(|o| o == obs.player || obs.allied(o)).unwrap_or(false)).collect();
             if !mine.is_empty() {
@@ -184,7 +186,9 @@ fn orders(
     mut orders: ResMut<Orders>,
     mut hud: ResMut<HudState>,
     tiles: Query<(&Interaction, &OrderTile), Changed<Interaction>>,
+    bind: Res<crate::keys::Keys>,
 ) {
+    use crate::keys::Action as A;
     // While a chat line or the proposal list is open the keys are
     // theirs; the mouse and the order tiles still work.
     let typing = view.keys_taken();
@@ -192,7 +196,7 @@ fn orders(
     // A tile clicked is its key pressed.
     let clicked: Option<usize> = tiles.iter().find(|(i, _)| **i == Interaction::Pressed).map(|(_, t)| t.0);
     let hit = |key: KeyCode, row: usize| pressed(key) || clicked == Some(row);
-    if pressed(KeyCode::Tab) {
+    if pressed(bind.key(A::Events)) {
         hud.show_log = !hud.show_log;
     }
     // Esc drops an armed mode; with none armed it quits.
@@ -237,38 +241,38 @@ fn orders(
             }
         }
     }
-    if hit(KeyCode::Digit1, 0) {
+    if hit(bind.key(A::Interceptor), 0) {
         orders.0.push(Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return });
     }
-    if hit(KeyCode::Digit2, 1) {
+    if hit(bind.key(A::Recon), 1) {
         let center = at.unwrap_or(me.pos);
         orders.0.push(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 4.0 } });
     }
-    if hit(KeyCode::Digit3, 2) {
+    if hit(bind.key(A::Strike), 2) {
         let p = at.unwrap_or(me.pos);
         if let Some(t) = obs.hostile_tanks().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()) {
             orders.0.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: t.id } });
         }
     }
-    if hit(KeyCode::KeyR, 3) {
+    if hit(bind.key(A::Recall), 3) {
         orders.0.push(Command::Recall);
     }
     // The longshot (step 10c): X sends one at the cursor, anywhere on
     // the map; it will not come back.
-    if pressed(KeyCode::KeyX) {
+    if pressed(bind.key(A::Longshot)) {
         if let Some(p) = at {
             orders.0.push(Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at: p } });
         }
     }
     // B steps the works mode's kind.
-    if pressed(KeyCode::KeyB) {
+    if pressed(bind.key(A::WorksKind)) {
         let all = StructureKind::ALL;
         let i = all.iter().position(|k| *k == hud.works).unwrap_or(0);
         hud.works = all[(i + 1) % all.len()];
     }
     // The builder modes: the key or the tile arms one (or disarms it,
     // pressed again); the click on the map gives it, above.
-    let mode_keys = [KeyCode::Digit4, KeyCode::Digit5, KeyCode::Digit6, KeyCode::Digit7, KeyCode::Digit8, KeyCode::Digit0];
+    let mode_keys = [A::Farm, A::Road, A::Wall, A::Pillbox, A::Mine, A::Works].map(|a| bind.key(a));
     for (n, mode) in Mode::ALL.iter().enumerate() {
         if hit(mode_keys[n], MODE_ROW + n) {
             hud.mode = if hud.mode == Some(*mode) || !hud::can_order(Some(me), mode.row(), hud.works) { None } else { Some(*mode) };
@@ -276,16 +280,16 @@ fn orders(
             hud.concrete = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
         }
     }
-    if hit(KeyCode::Digit9, RETURN_ROW) {
+    if hit(bind.key(A::Return), RETURN_ROW) {
         orders.0.push(Command::Deploy { task: PillboyTask::Return });
     }
-    if pressed(KeyCode::BracketLeft) {
+    if pressed(bind.key(A::BubbleIn)) {
         orders.0.push(Command::SetBubble { radius: me.bubble - 1.0 });
     }
-    if pressed(KeyCode::BracketRight) {
+    if pressed(bind.key(A::BubbleOut)) {
         orders.0.push(Command::SetBubble { radius: me.bubble + 1.0 });
     }
-    if pressed(KeyCode::Space) {
+    if pressed(bind.key(A::Stop)) {
         orders.0.push(Command::Stop);
     }
     // A new order takes the last refusal off the wire.

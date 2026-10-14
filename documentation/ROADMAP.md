@@ -23,10 +23,10 @@ Status after the second session (12 October 2026, evening; journal
   backlog.
 - [x] `make lobby-test`, with a real assertion (three clients welcomed,
   all saw the match end). Two machines: not yet.
-- [ ] The window. `treadcore-warm` panics in this VM: no Vulkan driver
-  is installed (`BUILD.md`, "The window in this VM"). One package,
-  `mesa-vulkan-swrast`, needs root. Until it is in, the window is
-  unproven here.
+- [x] The window. `treadcore-warm` panicked in this VM with no Vulkan
+  driver (`BUILD.md`, "The window in this VM"); with lavapipe in, the
+  window has run since 13 October (journals 0013, 0014), and `make
+  shoot` drives it for every release's frames.
 
 Nothing below should start until step 0's open problems are closed, or
 every later step is built on a guess.

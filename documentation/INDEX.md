@@ -315,6 +315,12 @@ the gun on top; chips with health), `depot`, `recon`, `interceptor`,
 `strike`, `shell`, `mine`, `squad`, `wall` (a quarter-tile block,
 three high), `crater` (two deep).
 
+**keys.rs**: Key Setup (SPEC UI-18 to 21): `Action` (thirty, with
+defaults and groups), `Keys` (one key an action, `bind` swaps, the
+`action = key` file, `load`, `save`, `default_path`), `forbidden`,
+`label`, the K screen (`key_setup`, `setup_text`). Tests:
+keys_bind_swap_refuse_and_round_trip, key_setup_shows_the_pick_and_the_wait.
+
 **commander.rs**: the commander's picture (roadmap step 10d):
 `Alert` and `alert_for` (what of my side was hit, wrecked, taken or
 went dark, held `ALERT_HOLD` seconds, a repeat inside four seconds

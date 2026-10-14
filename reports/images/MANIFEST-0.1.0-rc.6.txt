@@ -12,6 +12,7 @@ guide-aim.png
 guide-events.png
 guide-close.png
 guide-over.png
+guide-keys.png
 guide-alert.png
 guide-lobby.png
 guide-networked.png

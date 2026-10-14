@@ -380,6 +380,19 @@ person has shot it.
 
 ## 10. Keys, all of them
 
+These are the defaults. **K** opens Key Setup over the map: up and
+down pick an action, Enter waits for its new key, Delete puts every
+key back, K or Esc closes and saves. A key another action had is
+swapped onto it, so every action keeps exactly one key. Alt, Print
+Screen and Pause are never bound, nor Esc, Enter, the arrows and
+Shift, which the menus, the chat line and concrete need. The bindings
+are kept in `~/.config/treadcore/keys` (or `--keys FILE`), one
+`action = key` a line, and a key is its place on the keyboard: on
+AZERTY the scroll keys are still the four under your left hand. The
+orders column and the hints under it show your keys, not these.
+
+![Key Setup over the map: the actions in groups, the interceptor just moved to Q](../reports/images/guide-keys.png)
+
 | key | does |
 | --- | --- |
 | left click | drive there; with a builder mode armed, send the squad there |
@@ -406,6 +419,7 @@ person has shot it.
 | wheel | zoom |
 | Tab | the events scrollback |
 | M | sound off and on |
+| K | Key Setup: rebind any of the keys above |
 
 ## 11. Over a network
 

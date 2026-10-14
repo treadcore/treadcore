@@ -87,12 +87,16 @@ pub struct View {
     /// the tally carried across them, (played, won).
     pub round: u64,
     pub record: (u32, u32),
+    /// Key Setup, when open (keys.rs), and its last word.
+    pub key_setup: Option<crate::keys::Setup>,
+    pub key_note: String,
 }
 
 impl View {
-    /// A chat line or the proposal list is open: the keys are theirs.
+    /// A chat line, the proposal list or Key Setup is open: the keys
+    /// are theirs.
     pub fn keys_taken(&self) -> bool {
-        self.typing.is_some() || self.menu.is_some()
+        self.typing.is_some() || self.menu.is_some() || self.key_setup.is_some()
     }
 }
 
