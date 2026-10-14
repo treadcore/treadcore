@@ -325,8 +325,13 @@ scrollback over the map: the last forty events, each stamped with its
 tick. Tab again closes it.
 
 **Enter** opens a line on the newswire to everyone, **Shift-Enter**
-one to your team, and **Tab** switches between them while you type.
-Enter sends; Esc puts the line away. While it is open your keys are
+one to your team, and **Tab** steps everyone, your team, and the
+tanks nearby (within fifteen tiles of yours) while you type. Start the
+line with **@name** to say it to chosen players only: `@west @p5 meet
+me at the depot` (a name, the start of one, or a seat). The prompt
+says who will hear it and how many; for "nearby" it counts the tanks
+you can see, and the world may find one more in the fog. Enter sends;
+Esc puts the line away. While it is open your keys are
 the line's (the mouse still drives). A message from another player
 stays on the newswire for eight seconds under their name, with a soft
 tone. One message a second: send again too soon and the line waits,
@@ -393,7 +398,7 @@ person has shot it.
 | Space | stop |
 | `F` | the view back on the tank |
 | Enter | talk to everyone: type, Enter sends, Esc puts it away |
-| Shift-Enter | talk to your team (Tab switches while typing) |
+| Shift-Enter | talk to your team (Tab steps all, team, nearby; `@name` chooses players) |
 | P | the proposal list: up/down who, left/right what, Enter proposes, L leaves your side |
 | Y, N | accept or turn down the proposal on the newswire |
 | `W A S D`, arrows | scroll; in pillbox view the arrows jump between pillboxes |

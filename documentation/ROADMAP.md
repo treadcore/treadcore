@@ -825,6 +825,13 @@ depend on each other.
      the generated island. *Proof:* `a_rulebot_powers_its_zone_then_
      builds_a_workshop`, and the traces' structures built by kind.
 
+10k. **The works trip** (journal 0029's next step 2). A RuleBot with
+     the scrap for what a structure of its own within `WORKS_TRIP` (45
+     tiles) wants drives to it and holds there while the squad works;
+     a structure with no free pad beside it for that kind is
+     remembered and not visited again. *Proof:* `a_rulebot_drives_to_
+     its_zone_to_build`, and the traces.
+
 10h. **Not now.** Memory-guided drones that ignore jamming (the talk's
      next generation): the longshot's drift is already the first half;
      a second kind waits for a playtest of the first. Airports and
@@ -867,6 +874,12 @@ numbers are first guesses with reasons, and a playtest moves them.
 - [x] 10e bots
 - [x] 10f industrial maps
 - [x] 10g the world map
+- [x] 10k the works trip (14 October 2026, journal 0030): Atlantic,
+  sixteen bots, five minutes, 12 structures built (6 before: 1 power,
+  4 jammers, 7 workshops). The industrial island still none: probed,
+  the bots get there and the build is ordered, but a structure takes
+  twenty seconds and on 128 tiles a bot is under fire long before
+  that, and the squad comes home. The island is too hot to build on.
 - [x] 10j bots that run an economy (14 October 2026, journal 0029):
   Atlantic, sixteen bots, five minutes: 2 power plants, 2 jammers, 2
   workshops built; Europe 1 workshop; the industrial island none (its

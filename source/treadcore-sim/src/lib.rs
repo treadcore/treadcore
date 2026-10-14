@@ -584,11 +584,22 @@ pub struct Player {
     pub last_chat: Option<Tick>,
 }
 
-/// Who a chat line is for.
+/// Who a chat line is for (SPEC UI-22): everyone, the team, the tanks
+/// within `CHAT_NEARBY` of the sender's, or the players chosen, one bit
+/// a seat. The sender always hears their own.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChatTo {
     All,
     Team,
+    Nearby,
+    Players(u16),
+}
+
+impl ChatTo {
+    /// The chosen players as a mask.
+    pub fn players(ps: impl IntoIterator<Item = PlayerId>) -> ChatTo {
+        ChatTo::Players(ps.into_iter().filter(|p| (*p as usize) < 16).fold(0u16, |m, p| m | 1 << p))
+    }
 }
 
 /// What a proposal asks. Every change of sides in play is one of these,
@@ -1283,6 +1294,11 @@ impl World {
         let line: String = text.chars().map(|c| if c.is_control() { ' ' } else { c }).collect::<String>().trim().chars().take(CHAT_MAX_CHARS).collect();
         if line.is_empty() {
             return self.reject(o, "nothing to say");
+        }
+        if let ChatTo::Players(mask) = to {
+            if mask & !(1u16 << (o.player as u32 % 16)) == 0 {
+                return self.reject(o, "nobody chosen to say it to");
+            }
         }
         let tick = self.tick;
         let Some(p) = self.players.iter_mut().find(|p| p.id == o.player) else { return };
@@ -3143,6 +3159,11 @@ impl World {
             Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } => self.allied(*owner, p),
             Event::Jammed { owner, .. } => self.allied(*owner, p),
             Event::Chat { player, to: ChatTo::Team, .. } => self.allied(*player, p),
+            Event::Chat { player, to: ChatTo::Players(mask), .. } => *player == p || (p < 16 && mask & (1 << p) != 0),
+            Event::Chat { player, to: ChatTo::Nearby, .. } => {
+                let pos = |x: PlayerId| self.tank_of(x).map(|t| t.pos);
+                *player == p || matches!((pos(*player), pos(p)), (Some(a), Some(b)) if a.dist(b) <= CHAT_NEARBY)
+            }
             Event::Proposed { from, to, .. } => *from == p || self.allied(*to, p),
             _ => true,
         }
@@ -4333,6 +4354,30 @@ mod tests {
         }
         w.step(&[Order { player: 0, cmd: Command::Chat { text: " \t ".into(), to: ChatTo::All } }]);
         assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "nothing to say")));
+        // The chosen hear it, and the sender; nobody else (UI-22). A list
+        // with only the sender on it is refused.
+        for _ in 0..CHAT_EVERY_TICKS {
+            w.step(&[]);
+        }
+        w.step(&[Order { player: 0, cmd: Command::Chat { text: "psst".into(), to: ChatTo::players([3, 5]) } }]);
+        let heard: Vec<PlayerId> = (0..6).filter(|p| w.observe(*p).events.iter().any(|e| matches!(e, Event::Chat { .. }))).collect();
+        assert_eq!(heard, vec![0, 3, 5]);
+        for _ in 0..CHAT_EVERY_TICKS {
+            w.step(&[]);
+        }
+        w.step(&[Order { player: 0, cmd: Command::Chat { text: "me".into(), to: ChatTo::players([0]) } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "nobody chosen to say it to")));
+        // Nearby: the tanks within CHAT_NEARBY of the sender's.
+        for _ in 0..CHAT_EVERY_TICKS {
+            w.step(&[]);
+        }
+        let at = w.tank_of(0).unwrap().pos;
+        let t4 = w.players[4].tank;
+        w.tank_mut(t4).unwrap().pos = at + V2::new(CHAT_NEARBY - 1.0, 0.0);
+        w.step(&[Order { player: 0, cmd: Command::Chat { text: "close".into(), to: ChatTo::Nearby } }]);
+        let heard: Vec<PlayerId> = (0..6).filter(|p| w.observe(*p).events.iter().any(|e| matches!(e, Event::Chat { .. }))).collect();
+        assert!(heard.contains(&0) && heard.contains(&4), "{:?}", heard);
+        assert!(heard.iter().all(|p| *p == 0 || w.tank_of(*p).unwrap().pos.dist(at) <= CHAT_NEARBY + 0.5), "{:?}", heard);
         // The match ends when one team is left: kill the four alone; 0 and
         // 1 (one team) win, the top scorer the winner.
         w.players[0].score = 50;

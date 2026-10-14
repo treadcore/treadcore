@@ -1,0 +1,124 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 14 Oct 2026 12:30:00 -0700
+Subject: [JOURNAL 0030] The works trip, and who hears it: bots that go
+         to their zone to build; chat to the nearby and the chosen
+Message-ID: <0030.20261014@treadcore.org>
+In-Reply-To: <0029.20261014@treadcore.org>
+Organization: treadcore.org
+Keywords: bots, structures, chat, UI-22, roadmap step 10k,
+          PLAYABILITY item 6
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "continue. next on backlog. implement."
+X-Commits: the commit that carries this entry
+
+                    THE WORKS TRIP, AND WHO HEARS IT
+
+                     Paul Richeson, treadcore.org
+                           14 October 2026
+
+
+ABSTRACT
+
+    Two items from 0029's next steps. A RuleBot with the scrap for what
+    a structure of its own wants now drives to it and holds while the
+    squad builds: on the Atlantic map twelve structures in five minutes
+    where 0029 built six. The industrial island still builds none, and
+    the session found out why by probing rather than by tuning. And
+    chat reaches all four of the prior art's recipients: everyone, the
+    team, the tanks nearby, and players chosen with @name.
+
+INDEX TERMS
+
+    bots, user interface, debugging.
+
+
+I. INTRODUCTION
+
+    0029 left "a bot that goes to its zone to build" and "PLAYABILITY
+    item 6's rest" as next. Both done; the balance proofs read the same
+    to the digit.
+
+II. BACKGROUND
+
+    obs.pads lists the free pads within twenty tiles of the tank, so a
+    bot cannot see a far zone's room; structures are public.
+
+III. METHOD
+
+    The works were split: works_need says what the bot's structures
+    want within a reach, without pads; works_order picks the pad when
+    in reach. The trip drives at the structure, and the pad is found on
+    arrival; a structure with no room for a kind is remembered, so the
+    bot does not shuttle between its zone and its firing position.
+
+IV. CHRONOLOGY
+
+    1. works_need, works_order, no_room, the trip at WORKS_TRIP (45
+       tiles). Atlantic 9 built; the island 0.
+    2. Probe 1 (temporary eprintln, removed): an enemy was in view in
+       16 of 237 samples on the island; bots stood 5 to 11 tiles from a
+       structure that wanted something, with 8 scrap. The guess that
+       the island was too crowded to be quiet was wrong.
+    3. Probe 2: the squad section ran only away from the zones. A bot
+       arriving in reach was sent on to its firing position the next
+       think, before the settled second the squad waits for. Fix: hold
+       in reach while the scrap is there. Atlantic 12 built; the
+       island 0.
+    4. Probe 3: works_order ran once on the island all match and chose
+       a good pad; the build was ordered. A structure takes twenty
+       seconds; on 128 tiles the bot is hit before that and the squad
+       comes home, by design. The island is too hot to build on: a
+       reading, not a bug.
+    5. a_rulebot_drives_to_its_zone_to_build: a dark refinery thirty
+       tiles out, beyond the squad's reach; the bot drives there and
+       powers it.
+    6. Chat: ChatTo::Nearby (CHAT_NEARBY, 15 tiles of the sender's
+       tank, decided by the world's event_visible) and
+       ChatTo::Players(mask), one bit a seat; a list with only the
+       sender refused ("nobody chosen to say it to", KB-TO-CHAIR, which
+       every_refusal_has_a_name demanded). The window: Tab steps all,
+       team, nearby; leading @words choose (a name, a unique start, or
+       p and a seat; an exact name wins over starts); a word that is
+       nobody keeps the line open with a LOOSE NUT note. The prompt
+       says who and how many; nearby counts the tanks seen, and says
+       so.
+
+V. RESULTS
+
+    make test: sim 36, brain 10, client 19, net 13, proto 3. Balance:
+    16:4, 16950:10720, 35:34, 198; rookies 9:1; defenders 105 of 120.
+
+VI. DISCUSSION
+
+    Three probes found what three guesses would not have. The second
+    was the real bug (a hold that was never there); the third was the
+    game working.
+
+VII. OPEN PROBLEMS
+
+    1. Whether any of it is fun (from 0027).
+    2. The rematch across a network (step 8).
+    3. Chat's recipients are seen only in tests and the prompt; not yet
+       in a frame.
+    4. The guide's frames predate the chat prompt's audience.
+
+VIII. NEXT STEPS
+
+    1. A playtest: ROOKIES=3 make run, three rounds, @names.
+    2. PLAYABILITY item 12, smoothing the correction, if a playtest
+       sees a snap.
+    3. Step 7's and 8's proof across two machines.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: sim, brain, client, docs,
+    journal: the works trip; chat to the nearby and the chosen
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

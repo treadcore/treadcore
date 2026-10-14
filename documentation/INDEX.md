@@ -261,7 +261,7 @@ identity_file_round_trips 286.
 | `Defender::new`, `ring`, `mouth_sites`, `approach_sites` | 518 | the build sites |
 | `Defender::think` | 590 | the doctrine, in order |
 | `JsonBrain` | 839 | an external program: one JSON observation out per think, one JSON command list in; `spawn`, `schema_examples` 897 |
-| tests | 921 | pillboys_pay, fortification_pays, defenders_hold, bots_fight_to_a_result, rookies_are_beatable, a_rulebot_jams_after_a_hit, a_rulebot_powers_its_zone_then_builds_a_workshop |
+| tests | 921 | pillboys_pay, fortification_pays, defenders_hold, bots_fight_to_a_result, rookies_are_beatable, a_rulebot_jams_after_a_hit, a_rulebot_powers_its_zone_then_builds_a_workshop, a_rulebot_drives_to_its_zone_to_build |
 
 ### 2.7 source/treadcore-server/src/main.rs (813 lines)
 

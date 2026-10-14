@@ -779,7 +779,7 @@ fn air(view: &View) -> String {
 fn wire(view: &View) -> String {
     // The line being typed comes first: it is what the player is doing.
     if let Some(t) = view.typing.as_ref() {
-        let to = if t.to() == ChatTo::Team { "team" } else { "all" };
+        let to = crate::chat::audience(t, view.obs.as_ref());
         let wait = if view.chat_sent.map(|s| s.elapsed() < crate::chat::interval()).unwrap_or(false) { " (a second)" } else { "" };
         return format!("say to {}{}> {}_", to, wait, t.line);
     }

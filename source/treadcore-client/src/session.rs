@@ -622,7 +622,13 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::Chat { player, text, to } => {
             // By name: a message is from a person, not a seat number.
             let name = if *player == me { "you".to_string() } else { view.obs.as_ref().and_then(|o| o.players.iter().find(|p| p.id == *player)).map(|p| p.name.clone()).unwrap_or_else(|| who(player)) };
-            format!("{}{}: {}", name, if *to == ChatTo::Team { " (team)" } else { "" }, text)
+            let tag = match to {
+                ChatTo::All => "",
+                ChatTo::Team => " (team)",
+                ChatTo::Nearby => " (nearby)",
+                ChatTo::Players(_) => " (to the chosen)",
+            };
+            format!("{}{}: {}", name, tag, text)
         }
         Event::MatchOver { winner, team } => format!("{}{}", treadcore_sim::lingo::match_over(&winner.map(|w| who(&w)).unwrap_or_else(|| "nobody (a draw)".into()), view.last_tick), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
         Event::FriendlyFireSpared { by, damage, .. } => format!("friendly fire from {} spared ({:.0})", who(by), damage),

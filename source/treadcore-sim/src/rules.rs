@@ -285,6 +285,9 @@ pub const CHAT_EVERY_TICKS: Tick = TICK_HZ as Tick;
 /// A message is cut to this many characters: one line of the newswire,
 /// and an Events packet far inside a datagram.
 pub const CHAT_MAX_CHARS: usize = 120;
+/// "All nearby tanks" (UI-22): within this of the sender's tank. Twice
+/// the tank's sight: a radio's reach, not its eyes.
+pub const CHAT_NEARBY: f32 = 15.0;
 
 // ---- scoring -----------------------------------------------------------
 

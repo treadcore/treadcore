@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: chat to the tanks nearby and to chosen players (the rest of
+  SPEC UI-22). Tab steps all, team, nearby (fifteen tiles of your
+  tank); a line starting `@name` (or `@p3`) goes to those players
+  only; the prompt says who will hear it and how many. `ChatTo` gains
+  `Nearby` and `Players(mask)` (wire version 13, still unreleased).
+- Added: a bot with the scrap for what its structures want drives to
+  them to build (roadmap step 10k), and holds there while its squad
+  works; a structure with no room beside it is remembered.
+
 - Added: the second match (PLAYABILITY item 10). On a solo match-over
   screen Enter plays again: the same island and seats, the bots
   reseeded each round; the screen tallies rounds won.
