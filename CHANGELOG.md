@@ -4,6 +4,22 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## Unreleased
+
+- Added: the server as a service (roadmap step 8). `treadcore-server
+  --listen DIR`, `make listen`: a dedicated host in one lobby, match
+  after match. It takes no seat, the election prefers it within 10 ms
+  of the best seat and leaves it out altogether otherwise, and it
+  writes every hosted match's trace and replay to DIR. A status page on
+  plain HTTP (`/`, `/status.json`). With an introducer it is listed as a
+  server. `LISTEN=near|far make lobby-test` proves the election both
+  ways.
+- Changed: wire version 12. `Beacon`, `Hello`, `Register` and the
+  introducer's `Introduced` carry a `server` flag; version 11 peers and
+  version 12 peers ignore each other.
+- Fixed: `make lobby-test`'s counts survive a zero: a grep that finds
+  nothing no longer ends the script under pipefail before its verdict.
+
 ## 0.1.0-rc.6 (2026-10-13): the sixth candidate
 
 - Fixed: the MSI. rc.5's run reported WiX's error in public (WIX0367: two

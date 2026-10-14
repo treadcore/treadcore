@@ -6,6 +6,9 @@
 #   seat   headless bot that joins the LAN lobby
 #   introduce  the introducer: a rendezvous service for peers across the
 #          Internet (PORT=n); hosts nothing
+#   listen the server as a service (roadmap step 8): a dedicated host in
+#          lobby GAME, match after match, files to LISTEN_DIR
+#          (build/matches), status page on http://this-machine:PORT/
 # INTRODUCER=host:port registers lan, host and seat with an introducer;
 # BEACON=0 keeps them off the LAN broadcast; IDENTITY=file keeps the
 # peer id across restarts (the default, build/identity, does).
@@ -40,6 +43,16 @@ case "$MODE" in
         cargo build --release -p treadcore-server 2>&1 | tee "$LOGDIR/build-$STAMP.log" >/dev/null || die "build failed: see $LOGDIR/build-$STAMP.log"
         BIN="$ROOT/target/release/treadcore-server"
         ARGS=(--introduce --port "${PORT:-47296}")
+        ;;
+    listen)
+        say "building headless (release) -> $LOGDIR/build-$STAMP.log"
+        cargo build --release -p treadcore-server 2>&1 | tee "$LOGDIR/build-$STAMP.log" >/dev/null || die "build failed: see $LOGDIR/build-$STAMP.log"
+        BIN="$ROOT/target/release/treadcore-server"
+        # Not NET: a server has no want, and its identity is its own.
+        ARGS=(--listen "${LISTEN_DIR:-$BUILDDIR/matches}" --name "${NAME:-server}" --game "${GAME:-treadcore}" --players "${PLAYERS:-16}" --defenders "${DEFENDERS:-0}" --teams "${TEAMS:-0}" --game-type "${GAMETYPE:-open}" --port "${PORT:-47296}" --seed "${SEED:-0x7EADC0DE}" --identity "${IDENTITY:-$BUILDDIR/server-identity}")
+        [ -n "${PEER:-}" ] && ARGS+=(--peer "$PEER")
+        [ -n "${INTRODUCER:-}" ] && ARGS+=(--introducer "$INTRODUCER")
+        [ "${BEACON:-1}" = 0 ] && ARGS+=(--no-beacon)
         ;;
     *) die "unknown mode $MODE" ;;
 esac

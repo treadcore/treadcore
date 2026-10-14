@@ -12,6 +12,8 @@
 //!            player. Four of these on one machine is a lobby test.
 //!   introduce `--introduce`: the introducer, a rendezvous service for
 //!            peers across the Internet (roadmap step 7). Hosts nothing.
+//!   listen   `--listen DIR`: a dedicated host, match after match, with a
+//!            status page (roadmap step 8; `listen.rs`).
 //!
 //! No argument parser crate; the flags are few and the loop is explicit
 //! so the trace reads top to bottom.
@@ -19,9 +21,11 @@
 use std::time::{Duration, Instant};
 use treadcore_brain::{run_bots, Brain, Defender, JsonBrain, RuleBot};
 use treadcore_net::session::RouteTable;
-use treadcore_net::{identity_from_file, new_peer_id, Client, ClientState, Host, Introducer, Lobby, LobbyConfig, Socket};
+use treadcore_net::{identity_from_file, new_peer_id, Client, ClientState, Host, Introducer, Lobby, LobbyConfig, LobbyResult, PeerId, Registration, Socket};
 use treadcore_proto::PORT;
 use treadcore_sim::*;
+
+mod listen;
 
 struct Args {
     net: bool,
@@ -63,6 +67,10 @@ struct Args {
     save_map: Option<String>,
     /// Write the generated map for `--seed` to this file and exit.
     write_map: Option<String>,
+    /// Be a dedicated host, writing each match's files here (`--listen`).
+    listen: Option<String>,
+    /// The status page's TCP port (`--http`; the UDP port's by default).
+    http: Option<u16>,
 }
 
 fn parse() -> Args {
@@ -94,6 +102,8 @@ fn parse() -> Args {
         map: None,
         save_map: None,
         write_map: None,
+        listen: None,
+        http: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -141,6 +151,8 @@ fn parse() -> Args {
             "--write-map" => a.write_map = Some(val()),
             "--record" => a.record = Some(val()),
             "--replay" => a.replay = Some(val()),
+            "--listen" => a.listen = Some(val()),
+            "--http" => a.http = Some(parse_num(&val())),
             "-h" | "--help" => {
                 println!("{}", HELP);
                 std::process::exit(0);
@@ -191,6 +203,12 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
                      the first time): what a returning seat is known by
   --introduce        be the introducer on --port: hosts nothing, keeps
                      nothing past thirty seconds; one for a group
+  --listen DIR       be a dedicated host in lobby --game, match after
+                     match: takes no seat, hosts when elected (preferred
+                     within 10 ms of the best seat), writes each match's
+                     trace and replay to DIR; with --introducer, listed
+                     there as a server
+  --http PORT        the --listen status page's TCP port (--port's)
   --brain 'CMD ...'  run an external JSON brain in one seat (repeatable)
   --trace FILE       write every event as JSON lines to FILE
   --record FILE      write the match as a replay (JSON: scenario, every
@@ -240,6 +258,8 @@ fn main() {
         run_replay(args);
     } else if args.introduce {
         run_introducer(args);
+    } else if args.listen.is_some() {
+        listen::run(args);
     } else if args.net {
         run_net(args);
     } else {
@@ -661,6 +681,84 @@ fn run_introducer(args: Args) {
     }
 }
 
+/// The lobby's decision as a route table: every peer at the address it
+/// answered from, and the next hop for those not reached directly.
+fn routes_from(result: &LobbyResult, me: PeerId) -> RouteTable {
+    let mut routes = RouteTable::default();
+    for p in &result.peers {
+        routes.direct.insert(p.id, p.addr);
+    }
+    for (p, via) in &result.decision.route {
+        if *via != me && *p != me {
+            // Peers whose next hop toward the host is not the host: if I am
+            // the host, I reach them back through that hop.
+            if result.i_host(me) {
+                routes.via.insert(*p, *via);
+            }
+        }
+    }
+    if let Some(h) = result.next_hop {
+        routes.via.insert(result.decision.host, h);
+    }
+    routes
+}
+
+/// Host one match for the seats the lobby gave: the remote peers first,
+/// then bots up to --players. `each` sees the host after every tick and
+/// returns false to give the match up (a --listen server whose seats
+/// never came). Returns the host, shut down, for the caller to save from.
+fn host_match(args: &Args, me: PeerId, sock: Socket, result: &LobbyResult, routes: RouteTable, registration: Option<Registration>, trace: &mut Trace, mut each: impl FnMut(&Host) -> bool) -> Host {
+    let started = Instant::now();
+    let mut peers: Vec<(u64, String)> = result.peers.iter().map(|p| (p.id, p.name.clone())).collect();
+    peers.sort();
+    peers.truncate(MAX_PLAYERS);
+    let mut names: Vec<(String, bool)> = peers.iter().map(|(_, n)| (n.clone(), false)).collect();
+    let first_bot = names.len() as PlayerId;
+    let seats = args.players.max(names.len());
+    while names.len() < seats {
+        names.push((format!("bot{}", names.len()), true));
+    }
+    let scenario = scenario_from(args, names);
+    let first_defender = seats.saturating_sub(args.defenders) as PlayerId;
+    let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain_kind(args.brains.get((i - first_bot) as usize), i, args.seed, i >= first_defender))).collect();
+
+    let mut host = Host::new(me, Some(sock), scenario, peers, routes);
+    host.registration = registration;
+    if args.record.is_some() || args.listen.is_some() {
+        host.record();
+    }
+    log::info!("hosting: {} remote seat(s), {} bot(s){}", host.seats.len(), bots.len(), if host.registration.is_some() { "; registered as hosting with the introducer" } else { "" });
+    let mut next = Instant::now();
+    let mut report = Report::default();
+    while !host.world.over {
+        host.poll();
+        if Instant::now() >= next {
+            next += Duration::from_secs_f32(DT);
+            let orders = run_bots(&host.world, &mut bots);
+            let events = host.tick(orders).to_vec();
+            narrate(&host.world, &events);
+            trace.write(host.world.tick, &events);
+            report.tally(host.world.tick, &events);
+            if !each(&host) {
+                break;
+            }
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    // A second of grace: the final snapshot and the MatchOver event
+    // are still in flight (and the event is resent until acked). A
+    // Leave on their heels was read in the same poll as the result,
+    // and the client called it a lost connection.
+    let grace = Instant::now() + Duration::from_secs(1);
+    while Instant::now() < grace {
+        host.poll();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    host.shutdown();
+    summary(&host.world, started, &report);
+    host
+}
+
 fn run_net(args: Args) {
     let me = match args.identity.as_deref() {
         Some(path) => identity_from_file(path).unwrap_or_else(|e| die(&format!("identity: {}", e))),
@@ -680,77 +778,16 @@ fn run_net(args: Args) {
         }
         std::thread::sleep(Duration::from_millis(5));
     };
-    let mut routes = RouteTable::default();
-    for p in &result.peers {
-        routes.direct.insert(p.id, p.addr);
-    }
-    for (p, via) in &result.decision.route {
-        if *via != me && *p != me {
-            // Peers whose next hop toward the host is not the host: if I am
-            // the host, I reach them back through that hop.
-            if result.i_host(me) {
-                routes.via.insert(*p, *via);
-            }
-        }
-    }
-    if let Some(h) = result.next_hop {
-        routes.via.insert(result.decision.host, h);
-    }
+    let routes = routes_from(&result, me);
     let mut trace = Trace::open(args.trace.as_ref());
-    let started = Instant::now();
     let registration = lobby.take_registration();
 
     if result.i_host(me) {
-        let mut peers: Vec<(u64, String)> = result.peers.iter().map(|p| (p.id, p.name.clone())).collect();
-        peers.sort();
-        peers.truncate(MAX_PLAYERS);
-        let mut names: Vec<(String, bool)> = peers.iter().map(|(_, n)| (n.clone(), false)).collect();
-        let first_bot = names.len() as PlayerId;
-        let seats = args.players.max(names.len());
-        while names.len() < seats {
-            names.push((format!("bot{}", names.len()), true));
-        }
-        let scenario = scenario_from(&args, names);
-        let first_defender = seats.saturating_sub(args.defenders) as PlayerId;
-        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId).map(|i| (i, make_brain_kind(args.brains.get((i - first_bot) as usize), i, args.seed, i >= first_defender))).collect();
-
-        let mut host = Host::new(me, Some(sock), scenario, peers, routes);
-        host.registration = registration;
-        if args.record.is_some() {
-            host.record();
-        }
-        log::info!("hosting: {} remote seat(s), {} bot(s){}", host.seats.len(), bots.len(), if host.registration.is_some() { "; registered as hosting with the introducer" } else { "" });
-        let mut next = Instant::now();
-        let mut report = Report::default();
-        while !host.world.over {
-            host.poll();
-            if Instant::now() >= next {
-                next += Duration::from_secs_f32(DT);
-                let orders = run_bots(&host.world, &mut bots);
-                let events = host.tick(orders).to_vec();
-                narrate(&host.world, &events);
-                trace.write(host.world.tick, &events);
-                report.tally(host.world.tick, &events);
-            }
-            std::thread::sleep(Duration::from_millis(1));
-        }
-        // A second of grace: the final snapshot and the MatchOver event
-        // are still in flight (and the event is resent until acked). A
-        // Leave on their heels was read in the same poll as the result,
-        // and the client called it a lost connection.
-        let grace = Instant::now() + Duration::from_secs(1);
-        while Instant::now() < grace {
-            host.poll();
-            std::thread::sleep(Duration::from_millis(5));
-        }
-        host.shutdown();
-        summary(&host.world, started, &report);
+        let host = host_match(&args, me, sock, &result, routes, registration, &mut trace, |_| true);
         if let Some(p) = args.record.as_deref() {
             save_replay(&host, p);
         }
         save_map(&host.world, args.save_map.as_deref());
-
-
     } else {
         let mut client = Client::new(me, sock, result.decision.host, routes, &args.name);
         let mut bot = make_brain(args.brains.first(), 0, args.seed ^ me);

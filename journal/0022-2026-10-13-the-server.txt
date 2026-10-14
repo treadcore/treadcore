@@ -1,0 +1,187 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 17:05:00 -0700
+Subject: [JOURNAL 0022] The server as a service: --listen, a preference
+         in the election, a status page
+Message-ID: <0022.20261013@treadcore.org>
+In-Reply-To: <0021.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: roadmap step 8, dedicated server, election, preference,
+          status page, wire version 12, lobby test
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "we are going to pause with our github
+           actions. but we can still code. and follow the backlog and
+           roadmap."
+X-Commits: the commit that carries this entry
+
+                 THE SERVER AS A SERVICE: --LISTEN
+
+                     Paul Richeson, treadcore.org
+                           13 October 2026
+
+
+ABSTRACT
+
+    The GitHub Actions are paused: no tag is pushed, so the packages
+    workflow does not run; work goes on along the roadmap. The backlog
+    was closed in journal 0009, and step 7 waits for a second machine,
+    so this session took step 8. treadcore-server --listen DIR is a
+    dedicated host in one lobby, match after match. It takes no seat,
+    and the election weighs it with a 10 ms head start and otherwise
+    leaves it out altogether. It writes each match's trace and replay
+    to DIR and has a plain-HTTP status page. The roadmap's proof clause
+    holds on one machine both ways: with the four seats 30 ms from
+    everything and the server near, it is elected (worst path 36 to
+    39 ms against a seat's 60 and more) and hosts all four; given
+    100 ms, it is left out and the four elect among themselves. The
+    one thing learned: make exports every variable it declares, so a
+    script's ${LAG:-30} never sees LAG unset; the first "near" pass
+    was the preference winning on equal links, not the links.
+
+INDEX TERMS
+
+    dedicated server, election preference, status page, lobby test.
+
+
+I. INTRODUCTION
+
+    Step 8 of the roadmap: "someone runs one for the group" without
+    making it the only option. A peer-elected host stays the default;
+    a server is one more candidate, preferred, never required.
+
+II. BACKGROUND
+
+    At the start: rc.6's draft made (journal 0021), Actions paused from
+    today, wire version 11, step 7 proven on one machine. Open from
+    0021: publish rc.6 no sooner than a day after its tag; that is a
+    person's act on GitHub and starts no workflow run.
+
+III. METHOD
+
+    The questions step 8 leaves open were settled from the code:
+
+    1. Seat or not. A headless host already has no seat of its own
+       (its seats are the remote peers, then bots); the server keeps
+       that, and is not counted toward any seat's --want.
+    2. How the election prefers it. A head start off its worst path
+       (SERVER_PREFERENCE, 10 ms), not a multiplier: on a LAN every
+       path is a millisecond and a multiplier would decide nothing.
+    3. What a losing server is. Out: each server is weighed over the
+       seats plus itself, each seat over the seats alone, so a server
+       is never a relay in someone else's tree. A server that relayed
+       would have to stay for a match it is not hosting.
+    4. When it probes. Not on its own timer (it would elect alone, or
+       on half a matrix): when the first seat's Ping arrives, which is
+       when that seat has started probing.
+    5. Rejected: one server for every lobby name at once. The
+       introducer lists by lobby name and a match is one lobby name;
+       one --game per server is the plain reading of "registers as
+       hosting under a lobby name".
+
+IV. CHRONOLOGY
+
+     1. Wire version 12: `server` on Beacon, Hello (and the fourth
+        field of each known peer), Register, Introduced.
+     2. election::elect_among, with three tests: the best-placed
+        server hosts; a far one is ignored and never relays, even
+        where it would be the shortcut; of two servers the nearer
+        hosts.
+     3. The lobby: LobbyConfig.server; seats() counts the seats; a
+        server never hosts alone, never leaves Discover on its timer,
+        never joins a match the introducer names; finish() drops every
+        server but the host from the result. Test: three seats and a
+        server on loopback all elect the server.
+     4. treadcore-server: run_net's host loop moved into host_match and
+        routes_from, used by --net and --listen alike; Host::into_socket
+        so one port serves every match. listen.rs: the loop, the files
+        (match-NNNN, numbered on from what DIR holds), a match no seat
+        joins in 15 s given up, the status page (/, /status.json, the
+        hosted files by name and nothing else).
+     5. lobby-test: LISTEN=near|far. The first near run hosted all four,
+        one hash in five logs, the replay matched, and the script still
+        died: in near no peer hosts, so `grep -l 'hosting:'` found
+        nothing, exited 1, and pipefail ended the script before its
+        verdict. Every count's grep now tolerates a zero.
+     6. Near and far passed. Reading the votes for this entry: near's
+        worst path was 5 ms. make exports LAG=0, so ${LAG:-30} had
+        never applied, and the server had won on the preference over
+        equal links: a pass, but not the proof. Near now sets 30 ms
+        when LAG is 0; rerun: worst path 36 and 39 ms, elected on its
+        links.
+     7. INTRODUCER=1 LISTEN=near failed its introducer checks: they
+        counted peer logs only (the server hosted), and the script had
+        handed every seat the server's address, so it was not through
+        the introducer alone. Under INTRODUCER the server is now found
+        through it or not at all, and the check is that all four seats
+        were introduced to the server; passed.
+     8. make listen, LISTEN_DIR; README, HOW-TO-PLAY, PROTOCOL, ROADMAP,
+        CHANGELOG.
+
+V. RESULTS
+
+    make lobby-test, this session:
+
+      plain                       PASS  one host, 3 welcomed, one hash
+      LISTEN=near                 PASS  server elected (worst path 39
+                                        ms), 4 welcomed, one hash in 5
+                                        logs, replay matched, status
+                                        page said hosting
+      LISTEN=far                  PASS  server not elected, hosted
+                                        nothing; the four as without it
+      INTRODUCER=1 LISTEN=near    PASS  as near, met through the
+                                        introducer alone
+
+    make test: every test passes (net 13, of which four are new; sim
+    24; server 5; proto 3). cargo check --workspace: no warnings.
+
+VI. DISCUSSION
+
+    The server took less than the roadmap feared because the lobby was
+    already a pure function of a matrix: a server is a flag on the
+    wire and a key in the election, and everything after the decision
+    is the host that already existed. The two script failures are one
+    lesson: a test's harness is code, and a value the harness never
+    sees (a zero count, an unset variable that make has set) is where
+    it lies. Read the numbers a pass rests on, not only the PASS.
+
+VII. OPEN PROBLEMS
+
+    1. A server on a public address with players behind home routers:
+       step 7's two-router run, with a server in it.
+    2. A player who arrives while the server hosts is refused until the
+       next match (one lobby name is one match). A queue, or a second
+       match on the same server, is a proposal.
+    3. documentation/INDEX.md does not yet list listen.rs or the new
+       functions.
+    4. rc.6 is drafted, not published; Actions are paused, so no rc.7
+       tag until they are back.
+
+VIII. NEXT STEPS
+
+    1. Review and commit this session's work (wire version 12).
+    2. When a second machine is on the table: steps 7 and 8 across two
+       routers.
+    3. Step 9: sound, art, a release profile.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+REFERENCES
+
+    [1] documentation/ROADMAP.md, step 8.
+    [2] documentation/PROTOCOL.md, "A dedicated server".
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: proto, net, server, scripts,
+    docs, journal: the server as a service (roadmap step 8)
+
+APPENDIX B. ARTIFACTS
+
+    source/treadcore-server/src/listen.rs (new)
+    build/logs/lobby-20261013-*-server.log, build/listen-20261013-*/
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

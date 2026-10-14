@@ -35,7 +35,7 @@ pub mod predict;
 pub mod session;
 pub mod transport;
 
-pub use election::{elect, Decision};
+pub use election::{elect, elect_among, Decision, SERVER_PREFERENCE};
 pub use introducer::{identity_from_file, Introducer, Registration};
 pub use lobby::{Lobby, LobbyConfig, LobbyResult, Phase};
 pub use predict::Predictor;

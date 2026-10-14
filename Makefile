@@ -27,6 +27,10 @@
 #   make introduce   the introducer: tells peers across the Internet each
 #                    other's addresses (INTRODUCER=host:port on lan, host,
 #                    seat; BEACON=0 to stay off the LAN; PORT=n)
+#   make listen      the server as a service: a dedicated host in lobby GAME,
+#                    match after match, takes no seat, hosts when elected;
+#                    traces and replays to LISTEN_DIR (build/matches), a
+#                    status page on http://this-machine:PORT/
 #   make quad        four windows on this machine, networked: a LAN lobby
 #                    over loopback, a host elected among them, the windows
 #                    tiled two by two (CLIENTS=n, PLAYERS=n for bots too,
@@ -34,7 +38,8 @@
 #   make lobby-test  four headless seats on this machine negotiate a host
 #                    (LAG=200 for lag; INTRODUCER=1 to meet through an
 #                    introducer only; REJOIN=1 kills a seat and brings it
-#                    back to the same seat)
+#                    back to the same seat; LISTEN=near|far adds a --listen
+#                    server that must win or lose the election)
 #   make map         write the generated map for SEED to MAP (default
 #                    maps/generated-SEED.map): the start of a hand-made one;
 #                    MAP=maps/x.map make debug|run|host plays on it
@@ -87,7 +92,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce quad lobby-test replay map convert test shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test replay map convert test shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -121,7 +126,12 @@ IDENTITY ?=
 # lobby-test: 1 kills peer 4 after REJOIN_AFTER seconds and restarts it.
 REJOIN   ?= 0
 REJOIN_AFTER ?= 20
-# The introducer's port (make introduce).
+# Where make listen writes each match's trace and replay.
+LISTEN_DIR ?=
+# lobby-test: near or far, a --listen server beside the four; far gives
+# it LISTEN_LAG ms (100) on every receive, near gives the four LAG (30).
+LISTEN   ?=
+# The introducer's port (make introduce), and the server's (make listen).
 PORT     ?= 47296
 # Deal the seats into N teams (0: everyone alone, allying in play).
 TEAMS    ?= 0
@@ -130,7 +140,7 @@ GAMETYPE ?= open
 # A map file to play on instead of the generated one (documentation/MAPS.md).
 MAP      ?=
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS TEAMS GAMETYPE MAP JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
@@ -172,6 +182,9 @@ seat: configure
 
 introduce: configure
 	@scripts/run.sh introduce
+
+listen: configure
+	@scripts/run.sh listen
 
 quad: configure
 	@scripts/quad.sh

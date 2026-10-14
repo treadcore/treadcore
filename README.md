@@ -116,6 +116,9 @@ make lobby-test  # four headless peers on this machine elect a host
 LAG=200 make lobby-test   # the same with 200 ms of lag on every receive: prediction's proof
 INTRODUCER=1 make lobby-test   # no broadcast: the four meet through an introducer alone
 REJOIN=1 make lobby-test       # a seat killed outright at 20 s comes back to the same seat
+make listen      # a dedicated server: hosts match after match when elected, takes no seat
+LISTEN=near make lobby-test    # the four, plus a server with better links: it must host
+LISTEN=far make lobby-test     # plus a server 100 ms away: it must be left out
 ```
 
 Across the Internet (`documentation/PROTOCOL.md`, "the introducer"):
@@ -123,6 +126,10 @@ someone with a public address runs `make introduce` (it hosts nothing),
 and everyone else plays with `INTRODUCER=that.host:47296 BEACON=0 make
 lan` (or `host`, `seat`). The peer id lives in `build/identity`, so a
 player whose game drops gets the same seat back by starting again.
+A group with a machine that is always on can run `make listen` there
+(with `INTRODUCER=` to be listed): it hosts whenever it is within 10 ms
+of the best-placed player, keeps every match's trace and replay in
+`build/matches`, and has a status page on `http://that.host:47296/`.
 
 How to play, with pictures: [documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md).
 In short: the orders are the column on the left of the screen, with

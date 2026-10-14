@@ -25,8 +25,17 @@
 //! that is already hosting, the lobby does not elect: it pings that
 //! host until it answers and decides for it, which is how a player who
 //! dropped out gets back to the match they were in.
+//!
+//! A dedicated server (`treadcore-server --listen`, roadmap step 8)
+//! runs this same machine with `server` set. It takes no seat, so it
+//! does not count toward anyone's `want`; it never hosts alone and never
+//! joins a match it is told of; and it does not start probing on a timer
+//! of its own but when the first seat's Ping says that seat has. The
+//! election weighs it with a head start (`election::elect_among`). A
+//! server that is not elected is dropped from the result, and the
+//! caller goes back to listening.
 
-use crate::election::{elect, Decision, Row};
+use crate::election::{elect_among, Decision, Row};
 use crate::introducer::{lan_address, Registration, REGISTER_LOOKING};
 use crate::transport::Socket;
 use std::collections::{BTreeMap, BTreeSet};
@@ -49,6 +58,8 @@ pub struct LobbyConfig {
     /// Stop discovering as soon as this many peers (including me) are
     /// known. 1 means play alone, decide instantly.
     pub want: usize,
+    /// A dedicated host: no seat, preferred by the election.
+    pub server: bool,
     pub discover: Duration,
     pub probe: Duration,
     pub share: Duration,
@@ -65,6 +76,7 @@ impl LobbyConfig {
             beacon: true,
             introducer: None,
             want: 4,
+            server: false,
             discover: Duration::from_secs(8),
             probe: Duration::from_millis(1500),
             share: Duration::from_millis(1500),
@@ -87,6 +99,8 @@ pub struct Peer {
     pub id: PeerId,
     pub name: String,
     pub addr: SocketAddr,
+    /// A dedicated host, by its own say.
+    pub server: bool,
     pub samples: Vec<u32>,
     pub last_seen: Instant,
 }
@@ -271,6 +285,22 @@ impl Lobby {
         v
     }
 
+    /// Every server among the members, me included if I am one.
+    fn servers(&self) -> Vec<PeerId> {
+        let mut v: Vec<PeerId> = self.peers.values().filter(|p| p.server).map(|p| p.id).collect();
+        if self.cfg.server {
+            v.push(self.cfg.me);
+        }
+        v.sort_unstable();
+        v
+    }
+
+    /// How many seats the lobby has: the peers that are not servers,
+    /// and me unless I am one.
+    pub fn seats(&self) -> usize {
+        self.peers.values().filter(|p| !p.server).count() + usize::from(!self.cfg.server)
+    }
+
     fn my_row(&self) -> Row {
         self.peers.values().map(|p| (p.id, p.median_us())).collect()
     }
@@ -280,11 +310,12 @@ impl Lobby {
             peer: self.cfg.me,
             name: self.cfg.name.clone(),
             game: self.cfg.game.clone(),
-            known: self.peers.values().map(|p| (p.id, p.name.clone(), p.addr.to_string())).collect(),
+            server: self.cfg.server,
+            known: self.peers.values().map(|p| (p.id, p.name.clone(), p.addr.to_string(), p.server)).collect(),
         }
     }
 
-    fn learn(&mut self, id: PeerId, name: &str, addr: SocketAddr) -> bool {
+    fn learn(&mut self, id: PeerId, name: &str, addr: SocketAddr, server: bool) -> bool {
         if id == self.cfg.me {
             return false;
         }
@@ -292,11 +323,12 @@ impl Lobby {
         match self.peers.get_mut(&id) {
             Some(p) => {
                 p.last_seen = now;
+                p.server |= server;
                 false
             }
             None => {
-                log::info!("peer {:016x} '{}' at {}", id, name, addr);
-                self.peers.insert(id, Peer { id, name: name.into(), addr, samples: vec![], last_seen: now });
+                log::info!("peer {:016x} '{}' at {}{}", id, name, addr, if server { ", a server" } else { "" });
+                self.peers.insert(id, Peer { id, name: name.into(), addr, server, samples: vec![], last_seen: now });
                 self.epoch += 1;
                 true
             }
@@ -317,7 +349,8 @@ impl Lobby {
             if let Some(intro) = self.cfg.introducer.clone() {
                 let local = self.local.unwrap_or_else(|| lan_address(sock.local.port()));
                 match Registration::new(&intro, self.cfg.me, &self.cfg.name, &self.cfg.game, local) {
-                    Ok(r) => {
+                    Ok(mut r) => {
+                        r.server = self.cfg.server;
                         log::info!("registering with the introducer at {} as {}", r.addr, local);
                         self.registration = Some(r);
                     }
@@ -350,7 +383,7 @@ impl Lobby {
                 if now.duration_since(self.last_beacon) >= Duration::from_secs(1) {
                     self.last_beacon = now;
                     if self.cfg.beacon {
-                        sock.broadcast(&Packet::Beacon { peer: self.cfg.me, name: self.cfg.name.clone(), game: self.cfg.game.clone() });
+                        sock.broadcast(&Packet::Beacon { peer: self.cfg.me, name: self.cfg.name.clone(), game: self.cfg.game.clone(), server: self.cfg.server });
                     }
                     let hello = self.hello();
                     for s in self.cfg.seeds.clone() {
@@ -367,9 +400,16 @@ impl Lobby {
                 // A host that was named but has not answered yet is
                 // waited for, not elected around, until the timer.
                 let waiting_for_host = self.hosting.is_some();
-                let enough = self.peers.len() + 1 >= self.cfg.want && !waiting_for_host;
+                let enough = self.seats() >= self.cfg.want && !waiting_for_host;
                 let timed_out = now.duration_since(self.phase_start) >= self.cfg.discover;
-                if enough || timed_out || (self.cfg.want <= 1 && !waiting_for_host) {
+                if self.cfg.server {
+                    // A server follows: it probes when a seat does (the
+                    // first seat's Ping, in `handle`), and otherwise
+                    // waits as long as it takes.
+                    if timed_out {
+                        self.phase_start = now;
+                    }
+                } else if enough || timed_out || (self.cfg.want <= 1 && !waiting_for_host) {
                     if self.peers.is_empty() {
                         // Alone. No matrix, no vote: I host.
                         let decision = Decision { host: self.cfg.me, route: vec![], eccentricity_us: 0 };
@@ -451,7 +491,7 @@ impl Lobby {
     fn compute(&self) -> Option<Decision> {
         let members = self.members();
         let rows: BTreeMap<PeerId, Row> = self.rows.iter().map(|(k, (_, r))| (*k, r.clone())).collect();
-        let d = elect(&members, &rows);
+        let d = elect_among(&members, &self.servers(), &rows);
         match &d {
             Some(d) => log::info!("lobby: my vote: host {:016x}, worst path {} ms, route {:?}", d.host, d.eccentricity_us / 1000, d.route.iter().map(|(p, v)| format!("{:04x}->{:04x}", p & 0xffff, v & 0xffff)).collect::<Vec<_>>()),
             None => log::warn!("lobby: no candidate reaches every peer"),
@@ -462,9 +502,11 @@ impl Lobby {
     fn finish(&mut self, decision: Decision) -> Option<LobbyResult> {
         let me = self.cfg.me;
         let next_hop = decision.route.iter().find(|(p, _)| *p == me).map(|(_, via)| *via).filter(|via| *via != decision.host);
+        // A server that does not host has no part in the match: no seat,
+        // no route.
         let r = LobbyResult {
+            peers: self.peers.values().filter(|p| !p.server || p.id == decision.host).cloned().collect(),
             decision,
-            peers: self.peers.values().cloned().collect(),
             matrix: self.rows.iter().map(|(k, (_, r))| (*k, r.clone())).collect(),
             next_hop,
         };
@@ -490,24 +532,24 @@ impl Lobby {
             _ => {}
         }
         match p {
-            Packet::Beacon { peer, name, game } => {
+            Packet::Beacon { peer, name, game, server } => {
                 if game != self.cfg.game || peer == self.cfg.me {
                     return;
                 }
-                self.learn(peer, &name, from);
+                self.learn(peer, &name, from, server);
                 self.heard_from(peer, from);
                 let hello = self.hello();
                 sock.send(from, &hello);
             }
-            Packet::Hello { peer, name, game, known } => {
+            Packet::Hello { peer, name, game, server, known } => {
                 if game != self.cfg.game || peer == self.cfg.me {
                     return;
                 }
-                let new = self.learn(peer, &name, from);
+                let new = self.learn(peer, &name, from, server);
                 self.heard_from(peer, from);
-                for (id, n, a) in known {
+                for (id, n, a, s) in known {
                     if let Ok(addr) = a.parse::<SocketAddr>() {
-                        if self.learn(id, &n, addr) {
+                        if self.learn(id, &n, addr, s) {
                             let hello = self.hello();
                             sock.send(addr, &hello);
                         } else {
@@ -532,19 +574,25 @@ impl Lobby {
                     let public = i.public.parse::<SocketAddr>().ok();
                     let local = i.local.parse::<SocketAddr>().ok();
                     let Some(first) = public.or(local) else { continue };
-                    if self.learn(i.peer, &i.name, first) {
-                        log::info!("introduced to {:016x} '{}': public {}, local {}{}", i.peer, i.name, i.public, i.local, if i.hosting { ", hosting" } else { "" });
+                    if self.learn(i.peer, &i.name, first, i.server) {
+                        log::info!("introduced to {:016x} '{}': public {}, local {}{}{}", i.peer, i.name, i.public, i.local, if i.server { ", a server" } else { "" }, if i.hosting { ", hosting" } else { "" });
                     }
                     for a in [public, local].into_iter().flatten() {
                         self.candidate(i.peer, a);
                     }
-                    if i.hosting && self.hosting.is_none() && self.phase == Phase::Discover {
+                    // A server never joins a match; it waits for the next.
+                    if i.hosting && !self.cfg.server && self.hosting.is_none() && self.phase == Phase::Discover {
                         self.hosting = Some(i.peer);
                     }
                 }
             }
-            Packet::Ping { seq, sent_us, .. } => {
+            Packet::Ping { peer, seq, sent_us } => {
                 sock.send(from, &Packet::Pong { peer: self.cfg.me, seq, sent_us });
+                let a_seat = self.peers.get(&peer).map(|p| !p.server).unwrap_or(false);
+                if self.cfg.server && self.phase == Phase::Discover && a_seat {
+                    log::info!("lobby: seat {:016x} is probing; so is this server", peer);
+                    self.enter(Phase::Probe);
+                }
             }
             Packet::Pong { peer, sent_us, .. } => {
                 let rtt = self.now_us().saturating_sub(sent_us) as u32;
@@ -569,5 +617,54 @@ impl Lobby {
             }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Three seats and a dedicated server on loopback, no beacon, every
+    /// seat given the server's address and the first seat's. The seats
+    /// want three: the server is not counted. The links are all alike,
+    /// so the server's preference decides: it hosts, every seat agrees,
+    /// and no seat lists it as a seat-mate except as the host.
+    #[test]
+    fn server_in_the_lobby_hosts_and_takes_no_seat() {
+        let mut socks: Vec<Socket> = (0..4).map(|_| Socket::bind(0).unwrap()).collect();
+        let addrs: Vec<String> = socks.iter().map(|s| s.local_with_loopback().to_string()).collect();
+        let ids = [0x10u64, 0x20, 0x30, 0x05];
+        let mut lobbies: Vec<Lobby> = (0..4)
+            .map(|i| {
+                let mut cfg = LobbyConfig::new(ids[i], &format!("p{}", i), "servertest");
+                cfg.want = 3;
+                cfg.beacon = false;
+                cfg.server = i == 3;
+                if i < 3 {
+                    cfg.seeds = vec![addrs[3].clone(), addrs[0].clone()];
+                }
+                cfg.probe = Duration::from_millis(400);
+                cfg.share = Duration::from_millis(400);
+                cfg.decide = Duration::from_millis(300);
+                Lobby::new(cfg)
+            })
+            .collect();
+        let mut results: Vec<Option<LobbyResult>> = vec![None, None, None, None];
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(8) && results.iter().any(|r| r.is_none()) {
+            for i in 0..4 {
+                if results[i].is_none() {
+                    results[i] = lobbies[i].poll(&mut socks[i]);
+                }
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        let results: Vec<LobbyResult> = results.into_iter().map(|r| r.expect("every member decided")).collect();
+        for (i, r) in results.iter().enumerate() {
+            assert_eq!(r.decision.host, 0x05, "member {} elected {:x}", i, r.decision.host);
+        }
+        assert_eq!(results[3].peers.len(), 3, "the server hosts the three seats");
+        assert_eq!(lobbies[3].seats(), 3);
+        assert_eq!(lobbies[0].seats(), 3);
     }
 }

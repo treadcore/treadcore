@@ -56,6 +56,7 @@ struct Entry {
     public: SocketAddr,
     local: String,
     hosting: bool,
+    server: bool,
     last_seen: Instant,
 }
 
@@ -90,22 +91,23 @@ impl Introducer {
         let now = Instant::now();
         let mut changed: Vec<String> = Vec::new();
         for (from, p) in sock.recv() {
-            if let Packet::Register { peer, name, game, local, hosting } = p {
+            if let Packet::Register { peer, name, game, local, hosting, server } = p {
                 self.registrations += 1;
                 let key = (game.clone(), peer);
                 let is_new = match self.entries.get_mut(&key) {
                     Some(e) => {
-                        let moved = e.public != from || e.hosting != hosting;
+                        let moved = e.public != from || e.hosting != hosting || e.server != server;
                         e.public = from;
                         e.local = local;
                         e.hosting = hosting;
+                        e.server = server;
                         e.name = name;
                         e.last_seen = now;
                         moved
                     }
                     None => {
-                        log::info!("'{}': peer {:016x} '{}' at {} (local {}){}", game, peer, name, from, local, if hosting { ", hosting" } else { "" });
-                        self.entries.insert(key, Entry { name, public: from, local, hosting, last_seen: now });
+                        log::info!("'{}': peer {:016x} '{}' at {} (local {}){}{}", game, peer, name, from, local, if server { ", a server" } else { "" }, if hosting { ", hosting" } else { "" });
+                        self.entries.insert(key, Entry { name, public: from, local, hosting, server, last_seen: now });
                         true
                     }
                 };
@@ -139,7 +141,7 @@ impl Introducer {
             .entries
             .iter()
             .filter(|((g, _), _)| g == game)
-            .map(|((_, id), e)| (*id, Introduced { peer: *id, name: e.name.clone(), public: e.public.to_string(), local: e.local.clone(), hosting: e.hosting }))
+            .map(|((_, id), e)| (*id, Introduced { peer: *id, name: e.name.clone(), public: e.public.to_string(), local: e.local.clone(), hosting: e.hosting, server: e.server }))
             .collect();
         for (id, _) in &members {
             let others: Vec<Introduced> = members.iter().filter(|(o, _)| o != id).map(|(_, i)| i.clone()).collect();
@@ -159,6 +161,8 @@ pub struct Registration {
     pub name: String,
     pub game: String,
     pub local: String,
+    /// Registered as a dedicated host (`--listen`).
+    pub server: bool,
     last: Instant,
 }
 
@@ -166,7 +170,7 @@ impl Registration {
     /// `introducer` is "host:port"; resolved once, here.
     pub fn new(introducer: &str, me: PeerId, name: &str, game: &str, local: SocketAddr) -> io::Result<Registration> {
         let addr = introducer.to_socket_addrs()?.next().ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("introducer '{}' resolves to nothing", introducer)))?;
-        Ok(Registration { addr, me, name: name.into(), game: game.into(), local: local.to_string(), last: Instant::now() - Duration::from_secs(60) })
+        Ok(Registration { addr, me, name: name.into(), game: game.into(), local: local.to_string(), server: false, last: Instant::now() - Duration::from_secs(60) })
     }
 
     /// Register now if `every` has passed since the last time.
@@ -174,7 +178,7 @@ impl Registration {
         let now = Instant::now();
         if now.duration_since(self.last) >= every {
             self.last = now;
-            sock.send(self.addr, &Packet::Register { peer: self.me, name: self.name.clone(), game: self.game.clone(), local: self.local.clone(), hosting });
+            sock.send(self.addr, &Packet::Register { peer: self.me, name: self.name.clone(), game: self.game.clone(), local: self.local.clone(), hosting, server: self.server });
         }
     }
 

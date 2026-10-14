@@ -32,7 +32,7 @@ use treadcore_sim::{Command, Event, Map, Observation, PlayerId, Scenario, Tick};
 pub const MAGIC: [u8; 4] = *b"TRDC";
 /// Bump on any change to `Packet` or to anything it carries from
 /// treadcore-sim. Peers on different versions ignore each other entirely.
-pub const VERSION: u16 = 11;
+pub const VERSION: u16 = 12;
 
 
 
@@ -52,14 +52,17 @@ pub enum Packet {
     // ---- negotiation ---------------------------------------------------
     /// Shouted to the LAN broadcast address every second by anyone looking
     /// for a game. `game` is the lobby name; peers in different lobbies
-    /// ignore each other.
-    Beacon { peer: PeerId, name: String, game: String },
+    /// ignore each other. `server` marks a dedicated host
+    /// (`treadcore-server --listen`, roadmap step 8): it takes no seat,
+    /// and the election prefers it.
+    Beacon { peer: PeerId, name: String, game: String, server: bool },
     /// Unicast reply to a Beacon, and the first thing sent to a peer given
     /// on the command line. Carries the sender's current peer list, with
     /// the address it sees each one at, so the set converges in one round.
     /// (Addresses are as the sender sees them: right on a LAN, and the
-    /// best anyone has across a NAT.)
-    Hello { peer: PeerId, name: String, game: String, known: Vec<(PeerId, String, String)> },
+    /// best anyone has across a NAT.) `server` as in Beacon, for the
+    /// sender and for each peer it knows.
+    Hello { peer: PeerId, name: String, game: String, server: bool, known: Vec<(PeerId, String, String, bool)> },
     /// Latency probe. `sent_us` is the sender's clock, echoed back
     /// untouched; the sender diffs it on return. Clocks are never compared
     /// across machines.
@@ -82,8 +85,9 @@ pub enum Packet {
     /// myself". The introducer notes the address the packet came from
     /// (the public one, as a NAT rewrote it) beside it. `hosting` says a
     /// match is running here, so a peer that drops and returns can find
-    /// its host without a lobby.
-    Register { peer: PeerId, name: String, game: String, local: String, hosting: bool },
+    /// its host without a lobby. `server`: a dedicated host, in this
+    /// lobby match after match (roadmap step 8); the listing.
+    Register { peer: PeerId, name: String, game: String, local: String, hosting: bool, server: bool },
     /// From the introducer: everyone else registered in `game`, with the
     /// two addresses each might be reached at. The lobby greets both
     /// until one answers (hole punching); a pair that never gets
@@ -158,6 +162,8 @@ pub struct Introduced {
     /// that works for two peers behind the same router.
     pub local: String,
     pub hosting: bool,
+    /// A dedicated host (`--listen`): elect it, never seat it.
+    pub server: bool,
 }
 
 #[derive(Debug)]

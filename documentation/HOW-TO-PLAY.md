@@ -210,7 +210,13 @@ measure the links between them, and elect a host among themselves;
 nobody runs a server. Across the Internet one machine runs `make
 introduce` and the others point at it with `INTRODUCER=host:port`.
 A player whose game drops starts it again and gets the same seat
-back. `README.md` has the details; `PROTOCOL.md` has the reasons.
+back. A group that has a machine always on can run `make listen`
+there: a server that sits in the lobby, takes no seat, and hosts
+whenever its links are as good as anyone's (within 10 ms of the best
+player's), match after match, keeping every match's trace and replay
+and showing what it is doing at `http://that-machine:47296/`. When a
+player is better placed, a player hosts, as without it. `README.md`
+has the details; `PROTOCOL.md` has the reasons.
 
 ![Before the match: the window has joined the elected host and waits for the world, with the first-minute help on screen](../reports/images/guide-lobby.png)
 

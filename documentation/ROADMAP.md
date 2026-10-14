@@ -595,6 +595,38 @@ now.
 
 ## 8. The headless server as a service
 
+**Done as far as one machine proves it, 13 October 2026 (journal
+0022).** `treadcore-server --listen DIR` (`make listen`;
+`treadcore-server/src/listen.rs`): a dedicated host that runs the
+lobby with `server` set (wire version 12: on `Beacon`, `Hello` and its
+known list, `Register`, `Introduced`), takes no seat, never hosts
+alone, starts probing when the first seat does, and goes back to the
+lobby after every match or lost election. The preference is
+`election::elect_among`: a server is weighed over the seats plus
+itself with `SERVER_PREFERENCE` (10 ms) off its worst path, every seat
+over the seats alone; a server that loses is in no tree, so never a
+relay. Each hosted match writes `match-NNNN.trace.jsonl` and
+`match-NNNN.replay.json` to DIR, numbered on from what DIR holds; a
+match no seat joins within 15 s is given up. The status page is plain
+HTTP on `--http` (`/`, `/status.json`, and the hosted matches' files).
+With `--introducer` it is listed under its lobby name as a server.
+Proof: `LISTEN=near make lobby-test` (the four seats with 30 ms of lag
+on every receive, the server none: it is elected, hosts all four as
+seats, one world hash at tick 1000 in five logs, no prediction
+mismatches, its replay plays back with every checkpoint matching, its
+status page says `hosting` mid-match) and `LISTEN=far make lobby-test`
+(the server with 100 ms: not elected, hosts nothing, the four elect
+among themselves and pass as without it, the status page counts the
+lost election); `INTRODUCER=1 LISTEN=near`, met through the introducer
+alone. Tests: `server_with_best_links_hosts`,
+`far_server_is_ignored_and_never_relays`, `of_two_servers_one_hosts`,
+`server_in_the_lobby_hosts_and_takes_no_seat`. **Not proven:** a
+server on a public address with players behind home routers (step 7's
+two-router run, with a server in it). **Not done:** one server for
+several lobbies at once (it serves one `--game`); a player who arrives
+while the server hosts is refused until the next match, as with any
+host (one lobby name is one match).
+
 **Change.** `treadcore-server --listen`: hosts match after match,
 accepts joins from any lobby that elected it (a peer can be told to
 prefer a listed address as host), writes traces and replays per match
@@ -624,8 +656,9 @@ thin LTO for binaries; `cargo dist` or a plain tarball per platform.
 
 Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
 worked through, 6d and 4 done on 13 October (journals 0009 to 0011);
-7 built and proven on one machine the same day (journal 0012). Next:
-7's two-router proof when a second machine is on the table; 8; 9 last.
+7 built and proven on one machine the same day (journal 0012); 8
+likewise (journal 0022). Next: 7's and 8's proof across two routers
+when a second machine is on the table; 9 last.
 
 ```
 

@@ -1,6 +1,6 @@
 # treadcore protocol
 
-Version 11. One UDP socket per process, default port 47296. Every datagram
+Version 12. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 
@@ -9,12 +9,13 @@ is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 No one sets up a server. Each process runs the same lobby state machine
 (`source/treadcore-net/src/lobby.rs`):
 
-1. **Discover.** Every second, shout `Beacon { peer, name, game }` to the
+1. **Discover.** Every second, shout `Beacon { peer, name, game, server }` to the
    LAN broadcast address and send `Hello` to any address given with
    `--peer`. Answer every Beacon or Hello with a Hello carrying every
    peer known so far and the address it was heard from, so the set
    converges in one round even where broadcast does not reach. Stop when
-   `--want` peers are known or after 8 seconds. Alone: host, decided.
+   `--want` seats are known (a server is not one; below) or after 8
+   seconds. Alone: host, decided.
 2. **Probe.** For 1.5 s, `Ping` every peer ten times a second and keep
    the round-trip of every `Pong`. Clocks are never compared across
    machines: the sender's timestamp goes out and comes back untouched.
@@ -40,6 +41,35 @@ This is the prior art's ring, generalised: a ring forwards everything through
 everyone; a tree forwards only for the peers that need it, and the host
 is the peer the tree is shortest from.
 
+## A dedicated server
+
+Roadmap step 8: `treadcore-server --listen DIR` (`make listen`) is a
+peer that runs the same lobby with `server` set in its `Beacon`, its
+`Hello` (and in every `Hello`'s list of known peers, the fourth field),
+and its `Register`. It is the "someone runs one for the group" option,
+without making it the only option:
+
+- **No seat.** It does not count toward anyone's `--want`, and no host
+  seats it: a lobby's result drops every server but the elected host.
+- **It follows.** It never hosts alone and never times out of
+  Discover; it starts probing when the first seat's `Ping` arrives,
+  which is when that seat has. It never joins a match it is told of.
+- **The election prefers it** (`election::elect_among`). Each server is
+  weighed over the seats plus itself, with `SERVER_PREFERENCE` (10 ms)
+  taken off its worst path; each seat over the seats alone. The least
+  key wins (worst path less any preference, then total, then id). So a
+  server within 10 ms of the best seat hosts, and a server that loses
+  is in no tree at all: never a relay, out of the match, back to
+  listening. A seat can leave mid-match; a server runs nothing else.
+
+When elected it hosts as any host does, fills the empty seats with
+bots, and writes `match-NNNN.trace.jsonl` and `match-NNNN.replay.json`
+to DIR. It serves a status page over plain HTTP on `--http` (TCP, the
+UDP port's number by default): `/` for a person, `/status.json` for a
+script, and the files of each match it has hosted, by name. With
+`--introducer` it is listed there under its lobby name with `server`
+set, and `hosting` set while a match runs, as any host.
+
 ## Across the Internet: the introducer
 
 Nothing above reaches past the LAN: the beacon is a broadcast, and a
@@ -51,17 +81,18 @@ thirty seconds, and tells the peers registered under one lobby name
 each other's addresses. It is not a server anyone plays on; a group
 runs one anywhere with a public address, or borrows one.
 
-- `Register { peer, name, game, local, hosting }` from a peer to the
+- `Register { peer, name, game, local, hosting, server }` from a peer to the
   introducer: every second while looking for a game, every five while
   hosting one. `local` is the address the peer sees for itself (its
   LAN address, guessed from the interface the default route uses); the
   introducer notes the address the datagram came from beside it, which
   is the peer's public address as its router rewrote it. `hosting` says
-  a match is running here.
+  a match is running here; `server`, that this is a dedicated server
+  (above), listed under this lobby name match after match.
 - `Introduce { game, peers }` from the introducer to every peer in
   `game`: every second, and at once when someone new registers. Each
-  entry is a peer id, name, public address, local address, and whether
-  it is hosting. A registration lapses after thirty seconds of silence.
+  entry is a peer id, name, public address, local address, whether
+  it is hosting, and whether it is a server. A registration lapses after thirty seconds of silence.
 
 A lobby given `--introducer HOST:PORT` registers in its Discover phase
 and, with `--no-beacon`, shouts nothing on the LAN. Every peer it is

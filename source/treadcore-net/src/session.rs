@@ -357,6 +357,12 @@ impl Host {
             self.sock = Some(sock);
         }
     }
+
+    /// The socket back, after `shutdown`: a server that hosts match
+    /// after match (roadmap step 8) keeps one port for all of them.
+    pub fn into_socket(self) -> Option<Socket> {
+        self.sock
+    }
 }
 
 // (what a seat may know about is the world's rule: World::event_visible)

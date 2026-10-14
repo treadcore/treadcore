@@ -9,11 +9,23 @@
 //! Dijkstra tree from the winner is the route: each peer's next hop
 //! toward the host is its parent in that tree, which is the host itself
 //! when the link is direct.
+//!
+//! A dedicated server (`treadcore-server --listen`, roadmap step 8) is a
+//! candidate with a head start, `SERVER_PREFERENCE` off its worst path,
+//! and only ever the host: it takes no seat, so it is never a relay and
+//! never in a tree but its own. Each server is weighed over the seats
+//! plus itself, every seat over the seats alone, and the least key
+//! wins. A server that loses is out of the match altogether.
 
 use std::collections::{BTreeMap, BTreeSet};
 use treadcore_proto::PeerId;
 
 pub type Row = Vec<(PeerId, Option<u32>)>;
+
+/// How much nearer than it measures a dedicated server counts, in
+/// microseconds: within 10 ms of the best seat, the server hosts. It
+/// runs nothing else and never leaves mid-match, which a seat may.
+pub const SERVER_PREFERENCE: u32 = 10_000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Decision {
@@ -62,7 +74,14 @@ fn dijkstra(peers: &BTreeSet<PeerId>, rows: &BTreeMap<PeerId, Row>, from: PeerId
 }
 
 pub fn elect(peers: &[PeerId], rows: &BTreeMap<PeerId, Row>) -> Option<Decision> {
+    elect_among(peers, &[], rows)
+}
+
+/// `elect`, where `servers` (a subset of `peers`) are dedicated hosts.
+pub fn elect_among(peers: &[PeerId], servers: &[PeerId], rows: &BTreeMap<PeerId, Row>) -> Option<Decision> {
     let set: BTreeSet<PeerId> = peers.iter().copied().collect();
+    let servers: BTreeSet<PeerId> = servers.iter().copied().filter(|s| set.contains(s)).collect();
+    let seats: BTreeSet<PeerId> = set.difference(&servers).copied().collect();
     if set.is_empty() {
         return None;
     }
@@ -70,24 +89,30 @@ pub fn elect(peers: &[PeerId], rows: &BTreeMap<PeerId, Row>) -> Option<Decision>
         let h = *set.iter().next().unwrap();
         return Some(Decision { host: h, route: vec![], eccentricity_us: 0 });
     }
-    let mut best: Option<(u32, u64, PeerId, BTreeMap<PeerId, (u32, PeerId)>)> = None;
-    for &cand in &set {
-        let tree = dijkstra(&set, rows, cand);
-        if tree.len() != set.len() {
-            continue;
+    // (key, eccentricity, host, tree); the key is the eccentricity less
+    // any preference, then the total, then the id.
+    let mut best: Option<((u32, u64, PeerId), u32, BTreeMap<PeerId, (u32, PeerId)>)> = None;
+    let mut weigh = |cand: PeerId, among: &BTreeSet<PeerId>, preference: u32| {
+        let tree = dijkstra(among, rows, cand);
+        if tree.len() != among.len() {
+            return;
         }
         let ecc = tree.values().map(|(d, _)| *d).max().unwrap_or(0);
         let total: u64 = tree.values().map(|(d, _)| *d as u64).sum();
-        let key = (ecc, total, cand);
-        let replace = match &best {
-            None => true,
-            Some((e, t, c, _)) => key < (*e, *t, *c),
-        };
-        if replace {
-            best = Some((ecc, total, cand, tree));
+        let key = (ecc.saturating_sub(preference), total, cand);
+        if best.as_ref().map(|(k, _, _)| key < *k).unwrap_or(true) {
+            best = Some((key, ecc, tree));
         }
+    };
+    for &s in &servers {
+        let mut among = seats.clone();
+        among.insert(s);
+        weigh(s, &among, SERVER_PREFERENCE);
     }
-    let (ecc, _, host, tree) = best?;
+    for &cand in &seats {
+        weigh(cand, &seats, 0);
+    }
+    let ((_, _, host), ecc, tree) = best?;
     let route = tree.iter().filter(|(p, _)| **p != host).map(|(p, (_, parent))| (*p, *parent)).collect();
     Some(Decision { host, route, eccentricity_us: ecc })
 }
@@ -134,6 +159,49 @@ mod tests {
         let d = elect(&[1, 2, 3, 4], &r).unwrap();
         assert_eq!(d.host, 2);
         assert_eq!(d.route.iter().find(|(p, _)| *p == 4).unwrap().1, 3);
+    }
+
+    /// A server with the best links hosts, with every seat routed to
+    /// it; a server within the preference of the best seat hosts too.
+    #[test]
+    fn server_with_best_links_hosts() {
+        // 9 is the server, 5 ms from each seat; the seats are 20 ms apart.
+        let r = rows(&[(9, 1, 5_000), (9, 2, 5_000), (9, 3, 5_000), (1, 2, 20_000), (1, 3, 20_000), (2, 3, 20_000)]);
+        let d = elect_among(&[1, 2, 3, 9], &[9], &r).unwrap();
+        assert_eq!(d.host, 9);
+        assert_eq!(d.eccentricity_us, 5_000);
+        assert_eq!(d.route.len(), 3);
+        // Seats 2 ms apart, the server 8 ms from each: it still hosts.
+        let r = rows(&[(9, 1, 8_000), (9, 2, 8_000), (9, 3, 8_000), (1, 2, 2_000), (1, 3, 2_000), (2, 3, 2_000)]);
+        assert_eq!(elect_among(&[1, 2, 3, 9], &[9], &r).unwrap().host, 9);
+    }
+
+    /// A server further than the preference loses, and then it is out:
+    /// not in the route, not a relay, even where it is the shortcut.
+    #[test]
+    fn far_server_is_ignored_and_never_relays() {
+        let r = rows(&[(9, 1, 50_000), (9, 2, 50_000), (9, 3, 50_000), (1, 2, 2_000), (1, 3, 2_000), (2, 3, 2_000)]);
+        let d = elect_among(&[1, 2, 3, 9], &[9], &r).unwrap();
+        assert_ne!(d.host, 9);
+        assert!(d.route.iter().all(|(p, via)| *p != 9 && *via != 9));
+        // 1 and 3 see each other only through 2 or the server; 2 hosts
+        // and the route goes through no server.
+        let r = rows(&[(9, 1, 1_000), (9, 3, 1_000), (1, 2, 30_000), (2, 3, 30_000)]);
+        let d = elect_among(&[1, 2, 3, 9], &[9], &r).unwrap();
+        assert_eq!(d.host, 9, "the server reaches both ends; it hosts");
+        let r = rows(&[(9, 1, 1_000), (1, 2, 30_000), (2, 3, 30_000)]);
+        let d = elect_among(&[1, 2, 3, 9], &[9], &r).unwrap();
+        assert_eq!(d.host, 2, "the server reaches 3 only through two seats; the seats elect among themselves");
+        assert!(d.route.iter().all(|(p, via)| *p != 9 && *via != 9));
+    }
+
+    /// Two servers: the nearer hosts, the other is out of the route.
+    #[test]
+    fn of_two_servers_one_hosts() {
+        let r = rows(&[(8, 1, 20_000), (8, 2, 20_000), (9, 1, 4_000), (9, 2, 4_000), (8, 9, 1_000), (1, 2, 30_000)]);
+        let d = elect_among(&[1, 2, 8, 9], &[8, 9], &r).unwrap();
+        assert_eq!(d.host, 9);
+        assert!(d.route.iter().all(|(p, via)| *p != 8 && *via != 8));
     }
 
     #[test]
