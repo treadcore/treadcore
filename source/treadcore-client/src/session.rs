@@ -425,7 +425,9 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
                 }
             }
             Event::Rejected { player, why, .. } if *player == me => {
-                view.refused = Some((Instant::now(), format!("order refused: {}", why)));
+                // The chair names it (treadcore_sim::chair): a helpdesk tag,
+                // then what is wrong with the order, never who.
+                view.refused = Some((Instant::now(), treadcore_sim::chair::tagged(why)));
             }
             Event::StructureDamaged { structure, .. } | Event::StructureWrecked { structure, .. } => {
                 if let Some(x) = view.obs.as_ref().and_then(|o| o.structures.iter().find(|x| x.id == *structure)) {
@@ -553,7 +555,10 @@ fn cue_for(e: &Event, me: PlayerId, view: &View) -> Option<(Cue, Where, f32)> {
 fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
     let who = |p: &PlayerId| if *p == me { "you".to_string() } else if *p == SWARM_OWNER { "swarm".to_string() } else { format!("p{}", p) };
     Some(match e {
-        Event::Rejected { why, .. } => format!("order refused: {}", why),
+        Event::Rejected { why, .. } => {
+            let c = treadcore_sim::chair::refusal(why);
+            format!("order refused: {} [{}, {}]", why, c.label(), c.expansion())
+        }
         Event::ShellLaunched { kind: ShellKind::Indirect, spotted, eta_ticks, .. } => format!("round out, {}, {:.1}s", if *spotted { "spotted" } else { "blind" }, *eta_ticks as f32 * DT),
         Event::ShellLaunched { kind: ShellKind::Direct, .. } => "direct fire".into(),
         Event::ShellImpact { hits, kind, .. } if !hits.is_empty() => format!("{:?} impact: {} hit", kind, hits.len()),
@@ -626,7 +631,14 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::StructureWrecked { kind, owner, by, .. } => format!("{} ({}) WRECKED by {}", crate::commander::name(*kind), owner.map(|o| who(&o)).unwrap_or_else(|| "neutral".into()), by.map(|b| who(&b)).unwrap_or_else(|| "?".into())),
         Event::StructureCaptured { kind, by, from, .. } => format!("{} took a {}{}", who(by), crate::commander::name(*kind), from.map(|f| format!(" from {}", who(&f))).unwrap_or_default()),
         Event::StructureRepaired { kind, by, .. } => format!("{} mended a {}", who(by), crate::commander::name(*kind)),
-        Event::StructurePower { kind, owner, on: true, .. } if *owner == me => format!("your {} has power", crate::commander::name(*kind)),
+        // Back from dark is told the helpdesk way: "we", and no fuss.
+        Event::StructurePower { structure, kind, owner, on: true } if *owner == me => {
+            if view.alerts.iter().any(|a| a.about == *structure && a.text.contains("DARK")) {
+                format!("your {} has power again. {}", crate::commander::name(*kind), treadcore_sim::chair::back_up(*structure))
+            } else {
+                format!("your {} has power", crate::commander::name(*kind))
+            }
+        }
         Event::StructurePower { .. } => return None,
         Event::LongshotHit { owner, hits, .. } => format!("LONGSHOT ({}) {}", who(owner), if hits.is_empty() { "landed on nothing".to_string() } else { format!("hit {}", hits.len()) }),
         Event::Jammed { kind, .. } => format!("{:?} jammed: link gone", kind),
@@ -640,5 +652,26 @@ impl Drop for SessionRes {
             Session::Hosting { host, .. } => host.shutdown(),
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A refusal is told with its chair's tag, spelled out; power back
+    /// after a DARK alert is told the helpdesk way, and the first power
+    /// of a structure just taken is not.
+    #[test]
+    fn the_newswire_tells_refusals_and_recoveries_kindly() {
+        let mut view = View::default();
+        let refused = Event::Rejected { player: 0, cmd: Command::Stop, why: "water".into() };
+        let line = describe(&refused, 0, &view).unwrap();
+        assert!(line.contains("water") && line.contains("PICNIC") && line.contains("Problem In Chair, Not In Computer"), "{}", line);
+        let on = Event::StructurePower { structure: 9, kind: StructureKind::Refinery, owner: 0, on: true };
+        assert_eq!(describe(&on, 0, &view).unwrap(), "your refinery has power");
+        view.alerts.push_back(crate::commander::Alert { at: V2::new(1.0, 1.0), text: "your refinery DARK at 1,1: no power".into(), when: Instant::now(), about: 9 });
+        let back = describe(&on, 0, &view).unwrap();
+        assert!(back.starts_with("your refinery has power again. ") && treadcore_sim::chair::BACK_UP.iter().any(|l| back.ends_with(l)), "{}", back);
     }
 }

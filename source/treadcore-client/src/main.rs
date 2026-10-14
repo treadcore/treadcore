@@ -131,7 +131,7 @@ fn parse_args() -> Args {
                 if let [x, y, w, h] = v[..] {
                     a.window = Some([x, y, w.max(320), h.max(240)]);
                 } else {
-                    eprintln!("treadcore: --window wants X,Y,W,H");
+                    eprintln!("{}", treadcore_sim::chair::usage("treadcore", "--window wants X,Y,W,H"));
                     std::process::exit(2)
                 }
             }
@@ -139,11 +139,11 @@ fn parse_args() -> Args {
 
                 let path = val();
                 let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
-                    eprintln!("treadcore: map {}: {}", path, e);
+                    eprintln!("{}", treadcore_sim::chair::usage("treadcore", &format!("map {}: {}", path, e)));
                     std::process::exit(2)
                 });
                 if let Err(e) = treadcore_sim::Map::from_text(&text) {
-                    eprintln!("treadcore: map {}: {}", path, e);
+                    eprintln!("{}", treadcore_sim::chair::usage("treadcore", &format!("map {}: {}", path, e)));
                     std::process::exit(2)
                 }
                 a.map = Some(text);
@@ -154,6 +154,16 @@ fn parse_args() -> Args {
 
 
                 std::process::exit(0);
+            }
+            // The server's lobby flags, which run.sh passes to a LAN
+            // window too: the host's business, skipped with their value.
+            "--defenders" | "--game-type" => {
+                val();
+            }
+            // Anything else that looks like a flag is a typo: said
+            // kindly, and the window goes on without it.
+            other if other.starts_with('-') => {
+                eprintln!("{} (going on without it)", treadcore_sim::chair::usage("treadcore", &format!("unknown flag {}", other)));
             }
             _ => {}
         }

@@ -25,6 +25,7 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod chair;
 pub mod map;
 pub mod rules;
 

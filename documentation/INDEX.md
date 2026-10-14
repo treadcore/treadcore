@@ -145,6 +145,16 @@ The world. Header comment: the premise, determinism, units.
 | `Noise` | 694 | value noise for the generator |
 | tests | 717 | generation_is_deterministic_and_starts_are_dry, map_survives_the_file_round_trip, bad_map_files_are_refused_with_a_line, every_start_can_reach_the_centre |
 
+### 2.2b source/treadcore-sim/src/chair.rs
+
+How a problem the player can fix is named. `Chair` (PEBKAC, PICNIC,
+60 CM, LOOSE NUT, KB-TO-CHAIR, ID-10-T) with `label` and `expansion`;
+`refusal` and `tagged` put a tag on a world's refusal reason (the
+window's newswire, the proposal list); `usage` is a command line's
+ID-10-T for stderr (server and window); `back_up` is the line for
+something that works again by itself. Tests: every_refusal_has_a_name
+(reads lib.rs for every reason), nobody_is_blamed.
+
 ### 2.3 source/treadcore-sim/src/rules.rs (222 lines)
 
 Every number of the game, grouped: the tank (10), the gun (37), the

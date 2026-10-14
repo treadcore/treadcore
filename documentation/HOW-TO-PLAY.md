@@ -151,7 +151,26 @@ An order the world will not take is refused, and the refusal stays on
 the newswire for four seconds, or until your next order, so you can
 read why:
 
-![The newswire holding a refusal: order refused, no forest there](../reports/images/guide-refused.png)
+![The newswire holding a refusal: the gun fired twice in a row, and the second shot refused as PEBKAC: reloading](../reports/images/guide-refused.png)
+
+Every refusal carries a tag in front of it, the names a helpdesk has
+for the fault that is not in the machine. They are a joke at the
+chair's expense, never at yours: the line after the tag says what is
+wrong with the order, and the scrollback (Tab) spells the tag out.
+
+| tag | spelled out | what it covers |
+| --- | --- | --- |
+| `60 CM` | the error is 60 centimetres in front of the screen | aiming: inside minimum range, beyond range, no line of sight, off the map |
+| `PICNIC` | Problem In Chair, Not In Computer | the world working as made: water, a tile already taken, a pillbox still alive, a structure off a pad |
+| `PEBKAC` | Problem Exists Between Keyboard And Chair | what the lamps already said: no shells, reloading, no material, the bay empty, the squad out |
+| `LOOSE NUT` | a loose nut behind the keyboard | the order went to the wrong thing, or one that is gone |
+| `KB-TO-CHAIR` | a keyboard-to-chair interface fault | talking and treaties: one message a second, the three-way rule |
+| `ID-10-T` | an ID-10-T error | the command line: a flag, a number or a file that wants a second look |
+
+When something that was down comes back by itself (a structure's power
+after its plant is mended or retaken, a dropped seat that returns),
+the newswire or the host's log says so the helpdesk way: "We're back
+up." "Well, it's working now. That's the main thing."
 
 ## 6. Pillboxes and depots
 

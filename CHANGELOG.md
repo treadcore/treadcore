@@ -6,6 +6,18 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the helpdesk's names for a problem the player can fix. Every
+  refused order is tagged on the newswire (60 CM for aiming, PICNIC
+  for the world working as made, PEBKAC for what the lamps already
+  said, LOOSE NUT for the wrong target, KB-TO-CHAIR for talk and
+  treaties), spelled out in the scrollback; a command-line mistake on
+  the server or the window is an ID-10-T that says nothing is broken;
+  the window warns of a flag it does not know instead of ignoring it.
+  The tag is the joke and the line after it says what is wrong with
+  the order, never who. A structure's power back after a DARK alert,
+  and a dropped seat back in the host's log, are told "We're back up."
+  and the like.
+
 - Added: industry (roadmap step 10). Pads (`_`), the foundations a
   structure is built on, and five structures: the power plant, which
   powers its side's structures within 18 tiles; the refinery (half

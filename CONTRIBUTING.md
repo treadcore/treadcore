@@ -17,6 +17,14 @@ Thank you. The short version:
    say what the default `make debug` trace shows differently.
 6. A maintainer reviews within seven days (`GOVERNANCE.md` section 7).
 
+Messages a person reads (a refusal, a command-line mistake, a
+recovery) follow the helpdesk's manners, in `treadcore_sim::chair`: a
+problem the player can fix gets a tag (PEBKAC, PICNIC, 60 CM, LOOSE
+NUT, KB-TO-CHAIR, ID-10-T) and then says what is wrong with the thing,
+"x is broken", never "you broke x"; something that mends itself is
+"we're back up", never "I fixed it". A new refusal reason needs a tag:
+`every_refusal_has_a_name` fails until it has one.
+
 The cycle, versions and releases: `documentation/RELEASE.md`. Roles,
 joining, leaving, recognition: `documentation/GOVERNANCE.md`. Every
 contributor with a merged change is listed in `CONTRIBUTORS.md`.

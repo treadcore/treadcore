@@ -114,7 +114,7 @@ fn parse() -> Args {
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
-        let mut val = || it.next().unwrap_or_else(|| die(&format!("{} needs a value", f)));
+        let mut val = || it.next().unwrap_or_else(|| usage(&format!("{} needs a value", f)));
         match f.as_str() {
             "--net" => a.net = true,
             "--local" => a.net = false,
@@ -143,16 +143,16 @@ fn parse() -> Args {
             "--industry" => a.industry = true,
             "--game-type" => {
                 let v = val();
-                a.game_type = GameType::parse(&v).unwrap_or_else(|| die(&format!("game type '{}': open, tournament or strict", v)));
+                a.game_type = GameType::parse(&v).unwrap_or_else(|| usage(&format!("game type '{}': open, tournament or strict", v)));
             }
             "--map" => {
                 let path = val();
-                let text = std::fs::read_to_string(&path).unwrap_or_else(|e| die(&format!("map {}: {}", path, e)));
+                let text = std::fs::read_to_string(&path).unwrap_or_else(|e| usage(&format!("map {}: {}", path, e)));
                 // MAP-10: a file that is not a map is refused, and the game
                 // does not start.
                 match Map::from_text(&text) {
                     Ok(m) => log::info!("map {}: {}x{}, {} starts, {} depots, {} pillboxes", path, m.w, m.h, m.starts.len(), m.depots.len(), m.pillboxes.len()),
-                    Err(e) => die(&format!("map {}: {}", path, e)),
+                    Err(e) => usage(&format!("map {}: {}", path, e)),
                 }
                 a.map = Some(text);
             }
@@ -166,7 +166,7 @@ fn parse() -> Args {
                 println!("{}", HELP);
                 std::process::exit(0);
             }
-            other => die(&format!("unknown flag {}\n{}", other, HELP)),
+            other => usage(&format!("unknown flag {}\n{}", other, HELP)),
         }
     }
     a
@@ -239,6 +239,13 @@ fn die(msg: &str) -> ! {
     std::process::exit(2)
 }
 
+/// A mistake on the command line (a flag, a number, a file named there):
+/// an ID-10-T, said kindly (treadcore_sim::chair).
+fn usage(msg: &str) -> ! {
+    eprintln!("{}", treadcore_sim::chair::usage("treadcore-server", msg));
+    std::process::exit(2)
+}
+
 fn parse_num<T: std::str::FromStr>(s: &str) -> T {
     let s = s.trim();
     if let Some(h) = s.strip_prefix("0x") {
@@ -248,7 +255,7 @@ fn parse_num<T: std::str::FromStr>(s: &str) -> T {
             }
         }
     }
-    s.parse::<T>().unwrap_or_else(|_| die(&format!("bad number '{}'", s)))
+    s.parse::<T>().unwrap_or_else(|_| usage(&format!("bad number '{}'", s)))
 }
 
 fn main() {
@@ -298,8 +305,8 @@ fn save_replay(host: &Host, path: &str) {
 /// status says whether the rules still do what they did.
 fn run_replay(args: Args) {
     let path = args.replay.as_deref().unwrap();
-    let text = std::fs::read_to_string(path).unwrap_or_else(|e| die(&format!("replay {}: {}", path, e)));
-    let replay: Replay = serde_json::from_str(&text).unwrap_or_else(|e| die(&format!("replay {}: not a replay: {}", path, e)));
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| usage(&format!("replay {}: {}", path, e)));
+    let replay: Replay = serde_json::from_str(&text).unwrap_or_else(|e| usage(&format!("replay {}: not a replay: {}", path, e)));
     log::info!("replay: {} ({} ticks, {} orders, {} checkpoints, seed {:#x}, {} seats)", path, replay.ticks, replay.orders.len(), replay.checkpoints.len(), replay.scenario.seed, replay.scenario.players.len());
     let mut trace = Trace::open(args.trace.as_ref());
     let mut w = World::new(replay.scenario.clone());

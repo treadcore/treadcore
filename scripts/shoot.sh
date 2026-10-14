@@ -26,6 +26,11 @@ BIN="$ROOT/target/release/treadcore"
 [ -x "$BIN" ] || die "no release window: make build first"
 
 say "shoot $VERSION on $(basename "$MAP") -> $OUT/guide-*.png"
+# The window that had the focus before the shoot: the alert pass sends
+# no keys, so it hands the focus back there, and typing elsewhere during
+# it stays out of the game (a shoot once caught an Esc, a Tab and an
+# Enter that were meant for another window).
+HOME_WIN="$(hyprctl activewindow -j | python3 -c 'import json,sys; print(json.load(sys.stdin).get("address",""))' 2>/dev/null || true)"
 WAYLAND_DISPLAY= LD_PRELOAD="${PRELOAD:-}" RUST_LOG=info "$BIN" --solo --seed "${SEED:-0x7EADC0DE}" --players 8 --map "$MAP" > "$LOGDIR/shoot-$STAMP.log" 2>&1 &
 PID=$!
 trap 'kill $PID 2>/dev/null || true' EXIT
@@ -51,8 +56,17 @@ key 7; sleep 0.6; xdotool mousemove 740 300; sleep 0.4
 frame armed                                    # pillbox mode armed, the square at the cursor
 xdotool mousemove 700 420; sleep 0.3; xdotool click 1; sleep 1.5
 frame squad-out                                # the squad sent, on the grass by the depot
-key 4; sleep 0.4; xdotool mousemove 660 440; sleep 0.3; xdotool click 1; sleep 1.0
-frame refused                                  # farm on grass: the refusal held (the mode dropped with the click; Esc would quit)
+# Two shots in a row at a point well out: the first goes, the second is
+# refused (reloading, a PEBKAC) whatever the squad or the ground. The
+# frame used to farm grass, which needs the squad aboard; it was out
+# building the pillbox, the mode never armed, and from rc.6 on the
+# frame showed no refusal at all.
+xdotool mousemove 840 300; sleep 0.3
+# A second and a half apart: on a software rasteriser two releases
+# inside one slow frame count as one shot.
+xdotool mousedown 3; sleep 0.3; xdotool mouseup 3; sleep 1.5
+xdotool mousedown 3; sleep 0.3; xdotool mouseup 3; sleep 1.0
+frame refused                                  # the second shot refused: PEBKAC, reloading
 xdotool mousemove 820 500; xdotool mousedown 3; sleep 0.6
 frame aim                                      # the right button held: the gun's envelope
 xdotool mouseup 3; sleep 2
@@ -78,6 +92,7 @@ kill -0 "$PID" 2>/dev/null || die "the window died: see $LOGDIR/shoot-alert-$STA
 hyprctl dispatch togglefloating "pid:$PID" >/dev/null
 hyprctl dispatch resizewindowpixel "exact $W $H,pid:$PID" >/dev/null
 hyprctl dispatch movewindowpixel "exact $X $Y,pid:$PID" >/dev/null
+[ -n "$HOME_WIN" ] && hyprctl dispatch focuswindow "address:$HOME_WIN" >/dev/null
 sleep 10
 for i in $(seq 1 30); do frame "alert-$i"; sleep 2; done
 kill "$PID" 2>/dev/null || die "the window died during the shoot: see $LOGDIR/shoot-alert-$STAMP.log"; trap - EXIT

@@ -514,7 +514,9 @@ fn update(
         }
     }
     let under_fire = view.obs.as_ref().and_then(|o| o.me.as_ref().map(|t| (o.tick, t))).map(|(tick, t)| t.last_hit_tick > 0 && tick.saturating_sub(t.last_hit_tick) < (3 * TICK_HZ) as Tick).unwrap_or(false);
-    let alarm = wire_alert(&view).is_some();
+    // Red only while the wire shows the alert itself: a line being
+    // typed or a refusal takes the wire over it and keeps its ink.
+    let alarm = wire_alert(&view).is_some() && wire(&view).contains("  ALERT ");
     for (p, mut text, mut color, mut font) in texts.iter_mut() {
         if *p == Panel::Roster {
             let size = if crowded { ROSTER_FONT_TIGHT } else { FONT };
@@ -918,7 +920,7 @@ mod tests {
         let alert = |secs: u64| crate::commander::Alert { at: V2::new(1.0, 1.0), text: "your power plant WRECKED at 1,1".into(), when: std::time::Instant::now() - std::time::Duration::from_secs(secs), about: 1 };
         view.alerts.push_back(alert(0));
         view.log.push_back((10, "p1 lost Longshot (Expended)".into()));
-        assert!(wire(&view).contains("ALERT your power plant WRECKED"), "{}", wire(&view));
+        assert!(wire(&view).contains("  ALERT your power plant WRECKED"), "{}", wire(&view));
         view.alerts.clear();
         view.alerts.push_back(alert(ALERT_WIRE_HOLD as u64 + 1));
         assert!(wire(&view).contains("Longshot"), "{}", wire(&view));

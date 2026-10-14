@@ -127,7 +127,7 @@ pub fn menu_text(obs: &Observation, m: &Menu) -> String {
     }
     s.push_str(&format!("\n{}\n", what_it_does(obs, to, terms)));
     match obs.would_refuse(to, terms) {
-        Some(why) => s.push_str(&format!("the world would refuse it:\n  {}\n", why)),
+        Some(why) => s.push_str(&format!("the world would refuse it:\n  {}\n", treadcore_sim::chair::tagged(why))),
         None => s.push_str("Enter proposes it; it stands 30 s\n"),
     }
     s
@@ -276,7 +276,7 @@ mod tests {
         let (cmd, open) = apply(&obs, &mut m, Act::Propose);
         assert!(matches!(cmd, Some(Command::Propose { terms: Terms::Join, .. })) && !open);
         let mut m = Menu { row: 0, terms: 3 };
-        assert!(menu_text(&obs, &m).contains("would refuse it:\n  fewer than three sides"));
+        assert!(menu_text(&obs, &m).contains("would refuse it:\n  KB-TO-CHAIR: fewer than three sides"));
         assert_eq!(apply(&obs, &mut m, Act::Propose), (None, true));
         // Up from the top wraps to the bottom; left from Join is Merge.
         let mut m = Menu { row: 0, terms: 0 };

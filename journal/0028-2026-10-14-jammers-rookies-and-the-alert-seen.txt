@@ -195,6 +195,33 @@ VIII. NEXT STEPS
        they hold, a power plant where theirs was wrecked.
     3. PLAYABILITY item 10, the second match.
 
+IX. ADDENDUM: THE CHAIR
+
+    The same day, at Paul's asking: the helpdesk's names for a fault
+    the player can fix, as labels and never as blame. treadcore_sim::
+    chair tags every refusal reason the world gives (60 CM for aiming,
+    PICNIC for the world working as made, PEBKAC for what the lamps
+    already said, LOOSE NUT for the wrong target, KB-TO-CHAIR for
+    talk and treaties) and a command line's mistake on the server or
+    the window (ID-10-T, "nothing is broken"); the window now warns of
+    a flag it does not know. Power back after a DARK alert, and a
+    dropped seat back in the host's log, are told "We're back up." and
+    its like: "we", not "I". every_refusal_has_a_name reads lib.rs for
+    every reason, so a new one needs a tag.
+
+    The reshoot found three things. guide-refused.png had shown no
+    refusal since rc.6: it farmed grass, which needs the squad aboard,
+    and the squad was out building the pillbox of the frame before;
+    the frame is now two shots in a row, the second refused (PEBKAC:
+    reloading), a second and a half apart because a software
+    rasteriser can fold two releases into one frame. The wire was red
+    whenever an alert was held, even with a typed line over it: red
+    now only while it shows the alert. And keys typed in another
+    window reached the alert pass's game window (an Esc that quit it,
+    a Tab and an Enter that opened the events and a chat line): the
+    shoot now hands the focus back to the window that had it. One run
+    lost a frame to a grim segfault; the next was clean.
+
 ACKNOWLEDGMENTS
 
     Claude Code (Claude Opus 5.5) as the pair.
