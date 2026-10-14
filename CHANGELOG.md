@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: sound (roadmap step 9). Eighteen cues synthesised in the
+  window, no sound files: the gun, shells landing, drones, hits, a tank
+  destroyed, pillboxes, mines, building, and short interface tones.
+  Each is placed where its event happened and panned from the middle of
+  the view; a hostile shell whistles where it will land. `M` mutes,
+  `--mute` starts muted, `make sounds` writes them all as WAV files.
+  The window now links ALSA through Bevy's audio on Linux.
 - Added: the server as a service (roadmap step 8). `treadcore-server
   --listen DIR`, `make listen`: a dedicated host in one lobby, match
   after match. It takes no seat, the election prefers it within 10 ms

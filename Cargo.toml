@@ -69,6 +69,7 @@ features = [
     "bevy_window", "bevy_winit", "wayland", "x11", "bevy_input_focus",
     "bevy_render", "bevy_core_pipeline", "bevy_sprite", "bevy_sprite_render",
     "bevy_text", "default_font", "bevy_ui", "bevy_ui_render", "bevy_gizmos",
+    "bevy_audio", "wav",
 ]
 
 # PROFILES, SIZED FOR A SMALL MACHINE. This is developed in a 6 GB VM, and

@@ -6,6 +6,7 @@
 //! one, is stepped from `FixedUpdate` at TICK_HZ; everything else runs in
 //! `Update`, as often as frames come.
 
+use crate::sound::{Cue, Where};
 use crate::Args;
 use bevy::prelude::*;
 use std::collections::VecDeque;
@@ -66,6 +67,8 @@ pub struct View {
     /// order or a few seconds, because a refusal is the one line a new
     /// player has to read twice.
     pub refused: Option<(Instant, String)>,
+    /// Sounds the events asked for, played and drained by sound.rs.
+    pub sounds: Vec<(Cue, Where, f32)>,
 }
 
 #[derive(Default, Clone)]
@@ -397,6 +400,9 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             }
             _ => {}
         }
+        if let Some((cue, at, gain)) = cue_for(e, me, view) {
+            view.sounds.push((cue, at, gain));
+        }
         let line = describe(e, me, view);
 
         if let Some(l) = line {
@@ -407,6 +413,48 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             }
         }
     }
+}
+
+/// What an event sounds like, from where, how loud (sound.rs). The
+/// snapshot here is still the one before the event: a tank about to be
+/// destroyed is in it; a shell just launched is not, and is found in
+/// the next.
+fn cue_for(e: &Event, me: PlayerId, view: &View) -> Option<(Cue, Where, f32)> {
+    let obs = view.obs.as_ref();
+    let at = |id: EntityId| obs.and_then(|o| crate::sound::find(o, id)).map(Where::At).unwrap_or(Where::Entity(id));
+    let my_tank = obs.and_then(|o| o.me.as_ref()).map(|t| t.id);
+    Some(match e {
+        Event::ShellLaunched { shell, owner, kind, .. } => {
+            let cue = if *kind == ShellKind::Indirect { Cue::Gun } else { Cue::Cannon };
+            (cue, at(*shell), if *owner == me { 1.0 } else { 0.8 })
+        }
+        Event::ShellImpact { at: p, kind: ShellKind::Indirect, .. } => (Cue::Boom, Where::At(*p), 1.0),
+        Event::ShellImpact { at: p, kind: ShellKind::Direct, .. } => (Cue::Pop, Where::At(*p), 0.8),
+        Event::MineExploded { at: p, .. } => (Cue::Mine, Where::At(*p), 1.0),
+        Event::DroneLaunched { drone, owner, .. } => (Cue::Launch, at(*drone), if *owner == me { 0.5 } else { 0.35 }),
+        Event::Intercepted { target, .. } => (Cue::Intercept, at(*target), 0.7),
+        // My own tank's hit is not placed: it is where I am, whatever
+        // the camera is looking at.
+        Event::TankDamaged { tank, .. } if Some(*tank) == my_tank => (Cue::Clang, Where::Ui, 1.0),
+        Event::TankDamaged { tank, .. } => (Cue::Clang, at(*tank), 0.8),
+        Event::TankDestroyed { tank, .. } => (Cue::Wreck, at(*tank), 1.0),
+        Event::PillboxFired { pillbox, .. } => (Cue::PillboxFire, at(*pillbox), 0.8),
+        Event::PillboxDestroyed { pillbox, .. } => (Cue::Boom, at(*pillbox), 1.0),
+        Event::PillboxCaptured { by, .. } if *by == me => (Cue::Capture, Where::Ui, 0.6),
+        Event::PillboxCaptured { from: Some(f), .. } if *f == me => (Cue::Lost, Where::Ui, 0.6),
+        Event::DepotCaptured { by, .. } if *by == me => (Cue::Capture, Where::Ui, 0.6),
+        Event::DepotCaptured { depot, .. } if obs.and_then(|o| o.depots.iter().find(|d| d.id == *depot)).and_then(|d| d.owner) == Some(me) => (Cue::Lost, Where::Ui, 0.6),
+        Event::Built { owner, at: p, .. } | Event::Harvested { owner, at: p, .. } if *owner == me => (Cue::Build, Where::At(*p), 0.5),
+        Event::PillboxBuilt { by, at: p, .. } if *by == me => (Cue::Build, Where::At(*p), 0.6),
+        Event::SwarmInbound { .. } => (Cue::Swarm, Where::Ui, 0.5),
+        Event::Rejected { player, .. } if *player == me => (Cue::Refused, Where::Ui, 0.4),
+        Event::MatchOver { winner, team } => {
+            let my_team = obs.and_then(|o| o.players.iter().find(|p| p.id == me)).map(|p| p.team);
+            let won = *winner == Some(me) || (team.is_some() && *team == my_team);
+            (if won { Cue::Win } else { Cue::Lose }, Where::Ui, 0.6)
+        }
+        _ => return None,
+    })
 }
 
 fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {

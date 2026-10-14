@@ -646,6 +646,28 @@ Last, on purpose. The overlay is the look; sound is the one thing the
 HUD cannot convey (a shell launch you cannot see). `dist` profile with
 thin LTO for binaries; `cargo dist` or a plain tarball per platform.
 
+**Done, 13 October 2026 (journal 0023).** The art came first, as the
+playtest asked for it (journals 0014 to 0017: the frame, the bezel,
+cubes); the `dist` profile and the packages per platform came with the
+release pipeline (journals 0018 to 0021: .deb, .rpm, MSI, zips, the
+Nix flake). Sound is `treadcore-client/src/sound.rs`: eighteen cues,
+synthesised at start-up from swept sines, filtered noise and
+inharmonic partials (no sound files in the tree), each made in five
+pan positions as WAV in memory and played through Bevy's audio (the
+`bevy_audio` and `wav` features; ALSA was already a dependency). A
+sound is placed at its event, heard from the view's centre: half
+strength at 25 tiles, silent past 120, panned fully at 50 tiles off
+centre; at most 20 at once, the loudest kept, one cue at most every
+60 ms. A hostile shell whistles at its impact point the first time a
+snapshot shows it: the launch a player cannot see. `M` mutes, `--mute`
+starts muted, `make sounds` writes every cue to `build/sounds/` to
+listen to. Proof: tests (every cue sounds, does not clip, does not
+click at the end; the WAV is well formed; distance and pan), a level
+check of every cue (blasts loudest, the interface at half), and a
+60-second solo match that played the swarm, the player's hits, a gun,
+its boom, a wreck and a refusal with no audio error. **Not proven:**
+that it sounds right. That takes an ear, and this machine has none.
+
 ## Sequencing
 
 ```
@@ -657,8 +679,9 @@ thin LTO for binaries; `cargo dist` or a plain tarball per platform.
 Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
 worked through, 6d and 4 done on 13 October (journals 0009 to 0011);
 7 built and proven on one machine the same day (journal 0012); 8
-likewise (journal 0022). Next: 7's and 8's proof across two routers
-when a second machine is on the table; 9 last.
+likewise (journal 0022); 9 the same evening (journal 0023). Next: 7's
+and 8's proof across two routers when a second machine is on the
+table, and a listening session for the sound.
 
 ```
 

@@ -1,0 +1,157 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 17:20:00 -0700
+Subject: [JOURNAL 0023] Sound: eighteen cues out of arithmetic, placed
+         and panned; a whistle for the shell you cannot see
+Message-ID: <0023.20261013@treadcore.org>
+In-Reply-To: <0022.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: roadmap step 9, sound, synthesis, bevy_audio, panning,
+          incoming shell, levels
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "ok. next on the roadmap. its all good."
+X-Commits: the commit that carries this entry
+
+                  SOUND: EIGHTEEN CUES OUT OF ARITHMETIC
+
+                     Paul Richeson, treadcore.org
+                           13 October 2026
+
+
+ABSTRACT
+
+    Step 9 is the last on the roadmap: sound, art and a release
+    profile. The art and the release profile were already done, by the
+    playtest's frame work and the release pipeline, so this session was
+    sound. The window synthesises eighteen sounds at start-up (no sound
+    files) and plays them through Bevy's audio. Each is placed where
+    its event happened, heard from the middle of the view and panned
+    left or right, and a hostile shell whistles where it will land the
+    first time a snapshot shows it. That whistle is the roadmap's "a
+    shell launch you cannot see". The first level check found the
+    blasts at a third of the interface tones' strength; filtered noise
+    loses power as its cutoff falls. It was fixed before anything was
+    heard. Nobody has heard it yet: this machine has a sound card and
+    no ear.
+
+INDEX TERMS
+
+    sound, synthesis, spatial audio, levels.
+
+
+I. INTRODUCTION
+
+    "Sound is the one thing the HUD cannot convey (a shell launch you
+    cannot see)." The step's own sentence decided the one cue the window
+    derives for itself rather than reading from an event.
+
+II. BACKGROUND
+
+    Journal 0022 left steps 7 and 8 waiting for a second machine. Step
+    9's other two parts were in: art in journals 0014 to 0017, the dist
+    profile and the per-platform packages in 0018 to 0021. Bevy 0.17
+    was built without audio (BUILD.md section 1); ALSA was already in
+    make deps, the workflow and the flake. The guest has a virtio sound
+    card.
+
+III. METHOD
+
+    1. No sound files. The look is rectangles; the sound is a swept
+       sine, filtered noise and a few inharmonic partials per cue.
+       Nothing to license, nothing in the tree, and `make sounds`
+       writes them out for anyone to hear.
+    2. Bevy's audio, with only the WAV decoder: the synthesised samples
+       are wrapped as 16-bit WAV in memory and handed over as ordinary
+       AudioSources. Rejected: a custom rodio Decodable (a second
+       direct dependency on rodio's version), and Bevy's spatial audio
+       (its falloff would need tuning in pixel units with nobody to
+       listen). Instead, five pre-panned mixes per cue, made on first
+       use, and the gain set per voice.
+    3. What may be heard is what the sim lets the player know
+       (event_visible), plus the whistle: an enemy shell's launch is
+       not an event a player receives, but the shell is in the snapshot
+       as soon as its flight or its impact point is in view.
+    4. The events reach the window before the snapshot they belong to,
+       so a sound whose entity is not yet in view (a shell just fired)
+       waits up to 300 ms for the next snapshot, then is dropped.
+
+IV. CHRONOLOGY
+
+     1. sound.rs: the synthesis, WAV, placement, the play system; the
+        event-to-cue table in session.rs beside the cubes; --mute,
+        --write-sounds, M. bevy_audio and wav on; hound was the one
+        crate to download. Four tests.
+     2. make sounds: the release window built in 82 s; eighteen files.
+     3. Measured them, having no ear: a zero-crossing rate for
+        brightness, RMS by quarters for the envelope. The booms were
+        thin and over in a quarter of their length, at RMS 0.07 against
+        0.2 to 0.3 for the interface tones: a refused order would have
+        drowned a shell landing. The explosion's noise now keeps its
+        power as the cutoff falls; the blasts go through a soft clip;
+        each cue has a level (world 1, incoming and launch 0.6,
+        interface 0.45). After: blasts 0.16 to 0.17, interface about
+        0.09.
+     4. A 25-second and a 40-second solo run: no audio error and no
+        sound. The trace said why: in the first forty seconds every
+        launch belongs to a bot, and a player is told only of its own
+        and its allies'. A 60-second run, with a debug line per voice:
+        the swarm, three clangs on the player's own tank (centred), a
+        gun at gain 0.95 and its boom, a wreck, a refusal.
+     5. The docs: HOW-TO-PLAY (a paragraph, the key), the first-minute
+        help (one line), BUILD (the feature list), PLAYABILITY item 14,
+        ROADMAP step 9, README, CHANGELOG.
+
+V. RESULTS
+
+    source/treadcore-client/src/sound.rs, new; 18 cues, 0.18 to 2.2 s,
+    22 050 Hz. make test: everything passes (client 4, new). cargo
+    check --workspace: no warnings. The 60-second solo run: 8 voices,
+    no error.
+
+VI. DISCUSSION
+
+    The level check is the session's lesson. Every cue passed the tests
+    (finite, unclipped, no click, not silent), and the mix was still
+    upside down: a test that a sound exists says nothing about how it
+    sits beside the others. Measure the thing a listener would notice
+    first, which is loudness, before anyone listens.
+
+VII. OPEN PROBLEMS
+
+    1. A listening session: the levels, the falloff (half at 25 tiles),
+       the pan, and whether eighteen is too many or too few.
+    2. The first-minute help gained a line, so the release frames
+       (make shoot) would differ from the ones in reports/images; the
+       next release takes them again, as it does anyway.
+    3. The packages now carry a link to ALSA; the workflow's .deb and
+       .rpm tests will show it, and they wait on the Actions pause.
+
+VIII. NEXT STEPS
+
+    1. Paul listens: make sounds, then a match.
+    2. Steps 7 and 8 across two routers, when a second machine is on
+       the table.
+    3. PLAYABILITY item 6, chat: the last of the week's items.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+REFERENCES
+
+    [1] documentation/ROADMAP.md, step 9.
+    [2] documentation/PLAYABILITY.md, items 3 and 14.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: client, build, docs, journal:
+    sound (roadmap step 9)
+
+APPENDIX B. ARTIFACTS
+
+    source/treadcore-client/src/sound.rs (new)
+    build/sounds/*.wav (make sounds)
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -48,6 +48,8 @@
 #                    REPLAY=file) and check every world hash it recorded;
 #                    the regression test for a change to the rules
 #   make test        cargo test, every crate
+#   make sounds      write every sound the window makes to build/sounds/*.wav
+#                    (synthesised, no files in the tree): to listen to
 #   make shoot       take the release frames: the window driven by a
 #                    script, every picture the player's guide and the site
 #                    show, cropped, into reports/images/guide-*.png with
@@ -92,7 +94,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test replay map convert test shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test replay map convert test sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -209,6 +211,9 @@ map: configure
 
 test:
 	@scripts/build.sh test
+
+sounds: configure
+	@cargo run -q --release -p treadcore-client -- --write-sounds "$(BUILDDIR)/sounds"
 
 shoot: configure
 	@scripts/shoot.sh

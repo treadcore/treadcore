@@ -733,4 +733,5 @@ THE FIRST MINUTE
   the bots hold fire for a minute at a tank that has not moved or fired;
   after that, a tank that stands still is found: move after you fire
   F follows your tank; ' jumps to your pillboxes; Tab shows the events
+  a falling whistle is a shell coming down there; M turns the sound off
 ";

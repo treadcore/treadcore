@@ -184,6 +184,16 @@ The newswire shows the last thing that happened. **Tab** opens the
 scrollback over the map: the last forty events, each stamped with its
 tick. Tab again closes it.
 
+What you cannot see you can hear. Your gun's thump and the boom where
+it lands, a drone leaving the bay, the clang of a hit, a tank going
+up, a pillbox firing, each from where it happened: louder the nearer
+the middle of your view, left or right as it lies. A hostile shell
+whistles where it will land as soon as you know of it, which is the
+warning the screen cannot give for a gun you have not spotted. A
+capture, a loss, the swarm, a refused order and the end of the match
+have a short tone each. **M** turns the sound off and on; `--mute`
+starts with it off.
+
 ## 9. Keys, all of them
 
 | key | does |
@@ -202,6 +212,7 @@ tick. Tab again closes it.
 | `'` | pillbox view: the next of yours |
 | wheel | zoom |
 | Tab | the events scrollback |
+| M | sound off and on |
 
 ## 10. Over a network
 

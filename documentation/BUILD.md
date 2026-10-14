@@ -32,8 +32,11 @@ behind `make warm`.
 
 The feature list is the 2D subset: window, winit on Wayland and X11,
 render, core pipeline, sprite, text with the default font, UI, gizmos,
-state, asset, log. Not listed, and therefore not compiled: PBR, glTF,
-audio, animation, picking, scenes, and their trees.
+state, asset, log, and audio with the WAV decoder (roadmap step 9:
+every sound is synthesised in the window and handed to Bevy as WAV, so
+no other format is needed). Not listed, and therefore not compiled:
+PBR, glTF, the other audio formats, animation, picking, scenes, and
+their trees.
 
 ### 2. `make warm`: the engine first, gently
 

@@ -22,6 +22,7 @@ mod hud;
 mod input;
 mod render;
 mod session;
+mod sound;
 mod voxel;
 
 use bevy::prelude::*;
@@ -57,6 +58,8 @@ pub struct Args {
     /// Where the window opens and how big, `--window X,Y,W,H` in pixels:
     /// for tiling several clients on one screen (`make quad`).
     pub window: Option<[i32; 4]>,
+    /// Start with the sound off (`--mute`; M toggles it in play).
+    pub mute: bool,
 }
 
 fn parse_args() -> Args {
@@ -77,6 +80,7 @@ fn parse_args() -> Args {
         identity: None,
         seconds: None,
         window: None,
+        mute: false,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -99,6 +103,17 @@ fn parse_args() -> Args {
             "--no-beacon" => a.beacon = false,
             "--identity" => a.identity = Some(val()),
             "--seconds" => a.seconds = val().parse().ok(),
+            "--mute" => a.mute = true,
+            "--write-sounds" => {
+                // Every sound the window makes, as WAV files, and out:
+                // no window, no audio device (`make sounds`).
+                let dir = val();
+                if let Err(e) = sound::write_all(&dir) {
+                    eprintln!("treadcore: write-sounds {}: {}", dir, e);
+                    std::process::exit(2)
+                }
+                std::process::exit(0)
+            }
             "--window" => {
                 let v: Vec<i32> = val().split(',').filter_map(|n| n.trim().parse().ok()).collect();
                 if let [x, y, w, h] = v[..] {
@@ -123,7 +138,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--map FILE] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);
@@ -145,6 +160,7 @@ fn main() {
         window.position = WindowPosition::At(IVec2::new(x, y));
         window.resolution = WindowResolution::new(w as u32, h as u32);
     }
+    let muted = args.mute;
     App::new()
         .add_plugins(
             DefaultPlugins
@@ -160,7 +176,7 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.05, 0.06, 0.07)))
         .insert_resource(Time::<Fixed>::from_hz(TICK_HZ as f64))
         .insert_resource(args)
-        .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin))
+        .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }))
         .run();
 }
 

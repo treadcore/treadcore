@@ -37,7 +37,7 @@ the sim.
 | 11 | **The camera at the start.** The map is 128 tiles and the window shows 60; the newcomer does not know where the centre is or where the others are. | Lost before the first shot. | Window: a minimap, 128 x 128 pixels, in the right column under the depots: fog, depots, pillboxes, the tank. Half a day; the data is in the observation. |
 | 12 | **Smoothing the correction.** A prediction mismatch snaps the tank (0011's open problem). | Not seen yet: 784 checks, 0 mismatches under lag. | Window: lerp the drawn tank to the corrected one over 100 ms. Leave until it is seen. |
 | 13 | **Two windows on one machine.** Untested; lavapipe takes 90 % of four cores for one. | Only matters for the shoot. | Measure. Nothing to build. |
-| 14 | **Sound.** Step 9. | A shell you cannot see has no sound. | Last, on purpose. |
+| 14 | **Sound.** Step 9. | A shell you cannot see has no sound. | Done (journal 0023): eighteen synthesised cues, placed and panned from the view's centre; a hostile shell whistles where it will land; M mutes. Wants a human ear. |
 
 Items 1, 3, 4, 5 and 6 are the week. After them a stranger can be
 handed the window.
