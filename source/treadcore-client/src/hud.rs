@@ -355,8 +355,9 @@ fn setup(mut commands: Commands) {
                             });
                         });
                     }
-                    col.spawn(Node { height: Val::Px(6.0), ..default() });
-                    col.spawn((Text::new("L drive  R fire\nF tank  ' pillbox\nEnter talk  M sound\nTab events  Esc quit"), TextFont { font_size: 10.0, ..default() }, TextColor(INK)));
+                    // Four lines of keys, a size down and with no gap above,
+                    // so the last still shows in the shoot's 740 px window.
+                    col.spawn((Text::new("L drive  R fire\nF tank  ' pillbox\nEnter talk  P propose\nTab events  Esc quit"), TextFont { font_size: 9.0, ..default() }, TextColor(INK)));
                 });
                 // The map, in a sunken frame of its own; nothing drawn in
                 // it; the scrollback and the screens sit over it.
@@ -453,7 +454,11 @@ fn update(
             Panel::Counters => format!("KILLS {:>3}     DEATHS {:>3}", view.kills, view.deaths),
             Panel::Air => air(&view),
             Panel::Wire => wire(&view),
-            Panel::Log => log(&view),
+            // The proposal list takes the scrollback's place over the map.
+            Panel::Log => match (view.menu.as_ref(), view.obs.as_ref()) {
+                (Some(m), Some(o)) => crate::proposals::menu_text(o, m),
+                _ => log(&view),
+            },
             Panel::Screen => screen(&view).unwrap_or_default(),
         };
         if text.0 != s {
@@ -470,7 +475,7 @@ fn update(
     let show_screen = screen(&view).is_some();
     for (p, mut vis) in nodes.iter_mut() {
         let want = match p {
-            Panel::Log => state.show_log && !show_screen,
+            Panel::Log => (state.show_log || view.menu.is_some()) && !show_screen,
             Panel::Screen => show_screen,
             _ => true,
         };
@@ -620,7 +625,8 @@ fn roster(view: &View) -> String {
         s.push_str(&format!("{}{:<9} {:<2} p{:<3} {:>4} {}\n", mark, p.name.chars().take(9).collect::<String>(), p.team, p.id, p.score, if p.alive { "" } else { "x" }));
     }
     for r in &obs.proposals {
-        s.push_str(&format!("proposal #{}: p{} {:?} p{}\n", r.id, r.from, r.terms, r.to));
+        s.push_str(&crate::proposals::standing(obs, r));
+        s.push('\n');
     }
     s.trim_end().to_string()
 }
@@ -679,6 +685,13 @@ fn wire(view: &View) -> String {
     if let Some((when, why)) = view.refused.as_ref().filter(|(w, _)| w.elapsed().as_secs_f32() < REFUSAL_HOLD) {
         let _ = when;
         return format!("{:>6}  {}", view.last_tick, why);
+    }
+    // A proposal to me or my side stands on the wire while it can be
+    // answered: it asks for a key.
+    if let Some(o) = view.obs.as_ref() {
+        if let Some(p) = crate::proposals::answerable(o) {
+            return format!("{:>6}  {}", view.last_tick, crate::proposals::offer(o, p));
+        }
     }
     // A message is held over the events after it: it was meant to be read.
     if let Some((_, l)) = view.chat.as_ref().filter(|(w, _)| w.elapsed().as_secs_f32() < CHAT_HOLD) {

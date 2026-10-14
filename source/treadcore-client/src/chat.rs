@@ -81,13 +81,16 @@ pub fn chat(mut typed: MessageReader<KeyboardInput>, keys: Res<ButtonInput<KeyCo
     let playing = view.obs.as_ref().map(|o| !o.over).unwrap_or(false);
     let team = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
     let mut open = view.typing.take();
+    let mut eaten = open.is_some();
     for k in typed.read() {
         if !k.state.is_pressed() {
             continue;
         }
         let Some(t) = open.as_mut() else {
-            if playing && k.logical_key == Key::Enter {
+            // With the proposal list open, Enter is the list's.
+            if playing && view.menu.is_none() && k.logical_key == Key::Enter {
                 open = Some(Typing { to: Some(if team { ChatTo::Team } else { ChatTo::All }), line: String::new() });
+                eaten = true;
             }
             continue;
         };
@@ -110,6 +113,7 @@ pub fn chat(mut typed: MessageReader<KeyboardInput>, keys: Res<ButtonInput<KeyCo
         }
     }
     view.typing = open;
+    view.keys_eaten = eaten;
 }
 
 #[cfg(test)]

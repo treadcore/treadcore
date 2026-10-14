@@ -807,7 +807,7 @@ fn play(
     window: Query<&Window, With<PrimaryWindow>>,
     voices: Query<(), With<Voice>>,
 ) {
-    if keys.just_pressed(KeyCode::KeyM) && view.typing.is_none() {
+    if keys.just_pressed(KeyCode::KeyM) && !view.keys_taken() {
         sounds.muted = !sounds.muted;
         info!("sound {}", if sounds.muted { "muted" } else { "on" });
         let tick = view.last_tick;

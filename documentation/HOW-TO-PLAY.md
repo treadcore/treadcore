@@ -209,7 +209,31 @@ capture, a loss, the swarm, a refused order and the end of the match
 have a short tone each. **M** turns the sound off and on; `--mute`
 starts with it off.
 
-## 9. Keys, all of them
+## 9. Sides
+
+Everyone starts on a side (with `TEAMS`, a side of several; without,
+a side of one), and sides change by proposal. **P** opens the list of
+everyone not on your side. Up and down pick a player, left and right
+pick what you propose:
+
+- **Join**: you join their side.
+- **Recruit**: they join yours.
+- **Swap**: you take their side and they take yours.
+- **Merge**: your whole side joins theirs.
+
+The list says what it would do, and whether the world would refuse
+it. The world keeps three sides alive at least, and lets no side hold
+more than half the tanks, so not every proposal can stand. Enter
+proposes; it stands thirty seconds. **L** in the list leaves your
+side; Esc or P closes it.
+
+A proposal to you or your side stands on the newswire with its
+seconds left: **Y** accepts, **N** turns it down. Anyone on the side
+asked may answer. Every proposal and its end is public: a betrayal is
+news the moment it happens. A bot answers a person: yes, unless that
+person has shot it.
+
+## 10. Keys, all of them
 
 | key | does |
 | --- | --- |
@@ -225,13 +249,15 @@ starts with it off.
 | `F` | the view back on the tank |
 | Enter | talk to everyone: type, Enter sends, Esc puts it away |
 | Shift-Enter | talk to your team (Tab switches while typing) |
+| P | the proposal list: up/down who, left/right what, Enter proposes, L leaves your side |
+| Y, N | accept or turn down the proposal on the newswire |
 | `W A S D`, arrows | scroll; in pillbox view the arrows jump between pillboxes |
 | `'` | pillbox view: the next of yours |
 | wheel | zoom |
 | Tab | the events scrollback |
 | M | sound off and on |
 
-## 10. Over a network
+## 11. Over a network
 
 `make lan` on each machine: the windows find each other on the LAN,
 measure the links between them, and elect a host among themselves;

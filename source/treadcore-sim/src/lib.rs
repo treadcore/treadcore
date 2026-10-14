@@ -515,6 +515,45 @@ pub enum AllianceCmd {
     Leave,
 }
 
+/// Who would be on which side if `from` proposed `terms` to `to` and it
+/// were accepted: (player, team) for everyone, from (player, team) now.
+/// The world's own reading, and a window's, of the same proposal.
+pub fn proposal_outcome(sides: &[(PlayerId, TeamId)], from: PlayerId, to: PlayerId, terms: Terms) -> Vec<(PlayerId, TeamId)> {
+    let team = |p: PlayerId| sides.iter().find(|(x, _)| *x == p).map(|(_, t)| *t);
+    let (Some(tf), Some(tt)) = (team(from), team(to)) else { return sides.to_vec() };
+    sides
+        .iter()
+        .map(|&(p, t)| {
+            let t2 = match terms {
+                Terms::Join if p == from => tt,
+                Terms::Recruit if p == to => tf,
+                Terms::Swap if p == from => tt,
+                Terms::Swap if p == to => tf,
+                Terms::Merge if t == tf => tt,
+                _ => t,
+            };
+            (p, t2)
+        })
+        .collect()
+}
+
+/// The three-way rule over an outcome: at least MIN_SIDES sides with a
+/// living tank, and none holding more than half the living tanks.
+pub fn three_way(teams: &[(PlayerId, TeamId)], alive: impl Fn(PlayerId) -> bool) -> Result<(), &'static str> {
+    let living: Vec<(PlayerId, TeamId)> = teams.iter().filter(|(p, _)| alive(*p)).copied().collect();
+    let mut sides: Vec<TeamId> = living.iter().map(|(_, t)| *t).collect();
+    sides.sort_unstable();
+    sides.dedup();
+    if sides.len() < MIN_SIDES {
+        return Err("fewer than three sides would remain");
+    }
+    let biggest = sides.iter().map(|t| living.iter().filter(|(_, x)| x == t).count()).max().unwrap_or(0);
+    if biggest * 2 > living.len() {
+        return Err("one side would hold more than half the tanks");
+    }
+    Ok(())
+}
+
 /// A standing proposal, until answered or `PROPOSAL_TICKS` pass.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Proposal {
@@ -1460,39 +1499,11 @@ impl World {
     /// The teams after a proposal is carried out: (player, team) for
     /// every player.
     fn outcome(&self, from: PlayerId, to: PlayerId, terms: Terms) -> Vec<(PlayerId, TeamId)> {
-        let (tf, tt) = (self.team_of(from).unwrap(), self.team_of(to).unwrap());
-        self.players
-            .iter()
-            .map(|p| {
-                let team = match terms {
-                    Terms::Join if p.id == from => tt,
-                    Terms::Recruit if p.id == to => tf,
-                    Terms::Swap if p.id == from => tt,
-                    Terms::Swap if p.id == to => tf,
-                    Terms::Merge if p.team == tf => tt,
-                    _ => p.team,
-                };
-                (p.id, team)
-            })
-            .collect()
+        let sides: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        proposal_outcome(&sides, from, to, terms)
     }
-
-    /// The three-way rule, on an outcome: at least `MIN_SIDES` sides with
-    /// a living tank, and no side with more than half the living tanks.
-    /// Err carries the reason the world gives.
     fn three_way_check(&self, teams: &[(PlayerId, TeamId)]) -> Result<(), &'static str> {
-        let living: Vec<(PlayerId, TeamId)> = teams.iter().filter(|(p, _)| self.players.iter().any(|x| x.id == *p && x.alive)).copied().collect();
-        let mut sides: Vec<TeamId> = living.iter().map(|(_, t)| *t).collect();
-        sides.sort_unstable();
-        sides.dedup();
-        if sides.len() < MIN_SIDES {
-            return Err("fewer than three sides would remain");
-        }
-        let biggest = sides.iter().map(|t| living.iter().filter(|(_, x)| x == t).count()).max().unwrap_or(0);
-        if biggest * 2 > living.len() {
-            return Err("one side would hold more than half the tanks");
-        }
-        Ok(())
+        three_way(teams, |p| self.players.iter().any(|x| x.id == p && x.alive))
     }
 
     /// Put a change of sides to another player. Refused at once if it is
@@ -2858,6 +2869,19 @@ impl Observation {
     pub fn allied(&self, p: PlayerId) -> bool {
         p == self.player || self.team_of(p).map(|t| t == self.my_team()).unwrap_or(false)
     }
+    /// Why the world would refuse this player proposing `terms` to `to`
+    /// as things stand, or None if it would let it stand: the same rule
+    /// it applies, read from what the player can see (teams are public).
+    pub fn would_refuse(&self, to: PlayerId, terms: Terms) -> Option<&'static str> {
+        if to == self.player || self.team_of(to).is_none() {
+            return Some("no such player");
+        }
+        if self.allied(to) {
+            return Some("already on the same side");
+        }
+        let sides: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        three_way(&proposal_outcome(&sides, self.player, to, terms), |p| self.players.iter().any(|x| x.id == p && x.alive)).err()
+    }
     pub fn my_drones(&self) -> impl Iterator<Item = &Drone> {
         let p = self.player;
         self.drones.iter().filter(move |d| d.owner == p)
@@ -3505,6 +3529,33 @@ mod tests {
     /// carried out and announced, the trace shows the team change, and
     /// the newcomer's recon spots for its new side; a recruit that would
     /// give one side more than half is refused with the reason.
+    #[test]
+    fn a_window_reads_the_three_way_rule_as_the_world_does() {
+        // Every pair, every terms, in sides of 2, 3 and 4 and alone: what
+        // the observation says it would refuse is what the world refuses.
+        for teams in [2usize, 3, 4, 0] {
+            let mut sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(8) };
+            if teams > 0 {
+                sc = sc.with_teams(teams);
+            }
+            let mut base = World::new(sc);
+            base.pillboxes.clear();
+            base.tanks[5].alive = false;
+            base.players[5].alive = false;
+            for from in 0..8u8 {
+                let obs = base.observe(from);
+                for to in 0..8u8 {
+                    for terms in [Terms::Join, Terms::Recruit, Terms::Swap, Terms::Merge] {
+                        let mut w = base.clone();
+                        w.step(&[Order { player: from, cmd: Command::Propose { to, terms } }]);
+                        let refused = w.events.iter().find_map(|e| if let Event::Rejected { why, .. } = e { Some(why.clone()) } else { None });
+                        assert_eq!(obs.would_refuse(to, terms).map(|s| s.to_string()), refused, "{} sides: p{} {:?} p{}", teams, from, terms, to);
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn proposals_change_sides_under_the_three_way_rule() {
         // Two sides of eight.

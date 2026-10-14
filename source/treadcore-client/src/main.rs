@@ -21,6 +21,7 @@
 mod hud;
 mod chat;
 mod input;
+mod proposals;
 mod render;
 mod session;
 mod sound;

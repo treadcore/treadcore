@@ -76,6 +76,18 @@ pub struct View {
     pub chat_sent: Option<Instant>,
     /// The last message heard, held on the newswire a while.
     pub chat: Option<(Instant, String)>,
+    /// The proposal list, when open (proposals.rs).
+    pub menu: Option<crate::proposals::Menu>,
+    /// The chat line had this frame's keys (it was open at some point
+    /// in it): the list after it must not read them as well.
+    pub keys_eaten: bool,
+}
+
+impl View {
+    /// A chat line or the proposal list is open: the keys are theirs.
+    pub fn keys_taken(&self) -> bool {
+        self.typing.is_some() || self.menu.is_some()
+    }
 }
 
 #[derive(Default, Clone)]
@@ -426,6 +438,9 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             _ => {}
         }
         let line = describe(e, me, view);
+        if let Some(l) = line.as_ref() {
+            debug!("wire: {}", l);
+        }
         if let (Event::Chat { .. }, Some(l)) = (e, line.as_ref()) {
             info!("chat: {}", l);
             view.chat = Some((Instant::now(), l.clone()));
@@ -481,7 +496,9 @@ fn cue_for(e: &Event, me: PlayerId, view: &View) -> Option<(Cue, Where, f32)> {
         Event::Built { owner, at: p, .. } | Event::Harvested { owner, at: p, .. } if *owner == me => (Cue::Build, Where::At(*p), 0.5),
         Event::PillboxBuilt { by, at: p, .. } if *by == me => (Cue::Thud, Where::At(*p), 0.8),
         Event::PillboysLost { tank, owner } if *owner == me => (Cue::Lost, at(*tank), 0.6),
-        Event::Proposed { to, .. } if *to == me => (Cue::Notice, Where::Ui, 0.6),
+        // A proposal to me or my side; and the answer to mine.
+        Event::Proposed { from, to, .. } if *from != me && obs.map(|o| o.allied(*to)).unwrap_or(*to == me) => (Cue::Notice, Where::Ui, 0.6),
+        Event::ProposalResolved { from, accepted, .. } if *from == me => (if *accepted { Cue::Capture } else { Cue::Lost }, Where::Ui, 0.6),
         Event::AllianceFormed { members, .. } if members.contains(&me) => (Cue::Notice, Where::Ui, 0.6),
         Event::SwarmInbound { from, .. } => (Cue::Swarm, Where::At(*from), 0.5),
         Event::Rejected { player, why, .. } if *player == me && why == "no shells" => (Cue::Empty, Where::Ui, 0.6),
@@ -538,8 +555,14 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         }
         Event::MatchOver { winner, team } => format!("match over: {}{}", winner.map(|w| who(&w)).unwrap_or_else(|| "draw".into()), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
         Event::FriendlyFireSpared { by, damage, .. } => format!("friendly fire from {} spared ({:.0})", who(by), damage),
-        Event::Proposed { from, to, terms, .. } => format!("{} proposes {:?} to {}", who(from), terms, who(to)),
-        Event::ProposalResolved { from, to, terms, accepted, why, .. } => format!("{} {:?} {}: {}{}", who(from), terms, who(to), if *accepted { "accepted" } else { "refused" }, why.as_ref().map(|w| format!(" ({})", w)).unwrap_or_default()),
+        Event::Proposed { from, to, terms, .. } => match view.obs.as_ref() {
+            Some(o) => crate::proposals::told(o, *from, *to, *terms, None),
+            None => format!("{} proposes {:?} to {}", who(from), terms, who(to)),
+        },
+        Event::ProposalResolved { from, to, terms, accepted, by, why, .. } => match view.obs.as_ref() {
+            Some(o) => crate::proposals::told(o, *from, *to, *terms, Some((*accepted, *by, why.as_deref()))),
+            None => format!("{} {:?} {}: {}", who(from), terms, who(to), if *accepted { "accepted" } else { "refused" }),
+        },
         Event::AllianceFormed { player, team, .. } => format!("{} joined team {}", who(player), team),
         Event::AllianceLeft { player, team } => format!("{} left team {}", who(player), team),
         Event::PillboysDeployed { task, .. } => format!("Pillboys out: {}", match task { PillboyTask::Capture { .. } => "capture", PillboyTask::Repair { .. } => "repair", PillboyTask::Build { .. } => "build", PillboyTask::Harvest { .. } => "harvest", PillboyTask::Return => "return" }),

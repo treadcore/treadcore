@@ -150,6 +150,8 @@ pub struct RuleBot {
     unreachable_tiles: Vec<(i32, i32)>,
     /// The first minute: who may be shot yet.
     grace: Grace,
+    /// Who has hurt this tank: a person who has is not let onto its side.
+    hurt_by: Vec<PlayerId>,
 }
 
 /// How far the bot will send its squad: a 20-tile walk is 13 seconds
@@ -168,7 +170,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default() }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new() }
     }
 
     /// The same doctrine without the squad: the control group.
@@ -199,8 +201,14 @@ impl Brain for RuleBot {
         if !me.alive {
             return cmds;
         }
-        // Every tick: what the world refused as unreachable stays so.
+        // Every tick: who hurt us, and what the world refused as
+        // unreachable stays so.
         for e in &obs.events {
+            if let Event::TankDamaged { tank, by: Some(b), .. } = e {
+                if *tank == me.id && !self.hurt_by.contains(b) {
+                    self.hurt_by.push(*b);
+                }
+            }
             if let Event::Rejected { cmd, why, .. } = e {
                 match cmd {
                     Command::Deploy { task: PillboyTask::Capture { pillbox } } | Command::Deploy { task: PillboyTask::Repair { target: pillbox } } if why.contains("unreachable") => {
@@ -223,6 +231,14 @@ impl Brain for RuleBot {
             return cmds;
         }
         self.last_think = obs.tick;
+        // A person's proposal (PLAYABILITY item 7) is answered: yes,
+        // unless they have hurt this tank. Only people's: bot-only
+        // matches, and the traces their balance rests on, are as they
+        // were, because a RuleBot never answered a bot.
+        let human = |p: PlayerId| obs.players.iter().any(|x| x.id == p && !x.is_bot);
+        if let Some(p) = obs.proposals.iter().find(|p| p.to == obs.player && p.from != obs.player && human(p.from)) {
+            cmds.push(Command::Answer { proposal: p.id, accept: !self.hurt_by.contains(&p.from) });
+        }
 
         let my_interceptors = obs.my_drones().filter(|d| d.kind == DroneKind::Interceptor).count();
         let my_recon: Vec<&Drone> = obs.my_drones().filter(|d| d.kind == DroneKind::Recon).collect();
@@ -970,6 +986,34 @@ pub fn schema_examples() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A RuleBot answers a person's proposal: yes, unless that person has
+    /// hurt it. Nine seats in three sides; seat 0 is a person.
+    #[test]
+    fn a_rulebot_answers_a_person() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(9) }.with_teams(3);
+        for hurt in [false, true] {
+            let mut w = World::new(sc.clone());
+            w.pillboxes.clear();
+            w.players[0].is_bot = false;
+            let to = (1..9u8).find(|p| w.team_of(*p) != w.team_of(0)).unwrap();
+            w.step(&[Order { player: 0, cmd: Command::Propose { to, terms: Terms::Join } }]);
+            assert!(w.events.iter().any(|e| matches!(e, Event::Proposed { .. })), "{:?}", w.events);
+            let mut bot = RuleBot::new(7, "rulebot");
+            let tank = w.players[to as usize].tank;
+            let mut resolved = None;
+            for i in 0..40 {
+                let mut obs = w.observe(to);
+                if hurt && i == 0 {
+                    obs.events.push(Event::TankDamaged { tank, by: Some(0), damage: 1.0, armor_left: 50.0 });
+                }
+                let orders: Vec<Order> = bot.think(&obs).into_iter().map(|cmd| Order { player: to, cmd }).collect();
+                w.step(&orders);
+                resolved = resolved.or_else(|| w.events.iter().find_map(|e| if let Event::ProposalResolved { accepted, .. } = e { Some(*accepted) } else { None }));
+            }
+            assert_eq!(resolved, Some(!hurt), "hurt {}: the bot answered {:?}", hurt, resolved);
+        }
+    }
 
     /// Sixteen bots, six minutes: the rules get exercised. (Four bots on
     /// the sixteen-start map spend the match collecting the twelve free

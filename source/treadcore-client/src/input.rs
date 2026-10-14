@@ -28,7 +28,7 @@ pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Cam>().add_systems(Update, (camera, orders, crate::chat::chat.after(camera).after(orders)));
+        app.init_resource::<Cam>().add_systems(Update, (camera, orders, crate::chat::chat.after(camera).after(orders), crate::proposals::proposals.after(crate::chat::chat)));
     }
 }
 
@@ -75,8 +75,8 @@ fn camera(
     lamps: Query<(&Interaction, &hud::Lamp), Changed<Interaction>>,
 ) {
     let Ok((mut tf, mut proj)) = q.single_mut() else { return };
-    // While a chat line is open the keys are the line's.
-    let typing = view.typing.is_some();
+    // While a chat line or the proposal list is open the keys are theirs.
+    let typing = view.keys_taken();
     let held = |k: KeyCode| !typing && keys.pressed(k);
     let pressed = |k: KeyCode| !typing && keys.just_pressed(k);
     let Projection::Orthographic(o) = &mut *proj else { return };
@@ -185,9 +185,9 @@ fn orders(
     mut hud: ResMut<HudState>,
     tiles: Query<(&Interaction, &OrderTile), Changed<Interaction>>,
 ) {
-    // While a chat line is open the keys are the line's; the mouse and
-    // the order tiles still work.
-    let typing = view.typing.is_some();
+    // While a chat line or the proposal list is open the keys are
+    // theirs; the mouse and the order tiles still work.
+    let typing = view.keys_taken();
     let pressed = |k: KeyCode| !typing && keys.just_pressed(k);
     // A tile clicked is its key pressed.
     let clicked: Option<usize> = tiles.iter().find(|(i, _)| **i == Interaction::Pressed).map(|(_, t)| t.0);

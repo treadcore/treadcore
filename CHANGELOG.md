@@ -6,6 +6,20 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: proposals in the window (PLAYABILITY item 7). P opens a list
+  of everyone not on your side: pick a player and Join, Recruit, Swap
+  or Merge, see beforehand whether the world would refuse it and why,
+  Enter proposes, L leaves your side. A proposal to you or your side
+  stands on the newswire with its seconds: Y accepts, N declines. The
+  newswire tells proposals and their ends by name.
+- Added: a RuleBot answers a person's proposal, yes unless that person
+  has hurt it; bot-only matches are unchanged.
+- Changed: the three-way rule is a pair of public functions in the sim
+  (`proposal_outcome`, `three_way`), used by the world and by
+  `Observation::would_refuse`.
+- Fixed: a key typed into a chat line in the frame its Esc closed it
+  no longer reaches the proposal keys; the key hint fits a 740 px
+  window.
 - Added: chat (PLAYABILITY item 6). Enter opens a line on the newswire
   to everyone, Shift-Enter to your team, Tab switches while typing,
   Enter sends, Esc puts it away; the keys are the line's while it is

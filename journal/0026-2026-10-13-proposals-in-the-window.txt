@@ -1,0 +1,141 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 13 Oct 2026 18:40:00 -0700
+Subject: [JOURNAL 0026] Proposals in the window: P to propose, Y/N to
+         answer, the three-way rule read before it is broken
+Message-ID: <0026.20261013@treadcore.org>
+In-Reply-To: <0025.20261013@treadcore.org>
+Organization: treadcore.org
+Keywords: proposals, alliances, PLAYABILITY item 7, three-way rule,
+          RuleBot, xdotool
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "commit and push it. continue"
+X-Commits: the commit that carries this entry
+
+                     PROPOSALS IN THE WINDOW
+
+                     Paul Richeson, treadcore.org
+                           13 October 2026
+
+
+ABSTRACT
+
+    Step 6b gave the world proposals (Join, Recruit, Swap, Merge, under
+    the three-way rule) on 12 October; only bots could use them. Now P
+    opens a list over the map of everyone not on your side. You pick a
+    player and the terms, and the list says beforehand what the
+    proposal would do and whether the world would refuse it and why.
+    Enter proposes and L leaves your side. A proposal to you or your
+    side stands on the newswire with its seconds left: Y accepts, N
+    declines. The rule's reading is shared: the world's three-way check
+    became two public functions, and a test holds the window's verdict
+    equal to the world's for every pair and every terms. A RuleBot
+    answers a person, so a solo player's proposal is not met with
+    silence. Driving the window found a key leaking from a closed chat
+    line into the list, and a key hint cut off at 740 px.
+
+INDEX TERMS
+
+    alliances, proposals, user interface.
+
+
+I. INTRODUCTION
+
+    PLAYABILITY item 7: "the best idea in the design, and the window
+    shows a proposal as one roster line and gives no key to answer it."
+
+II. BACKGROUND
+
+    Journal 0025 gave chat. The window showed proposals as "proposal
+    #812: p3 Recruit p0". Defenders proposed and answered; RuleBots,
+    the default bots, did neither, so a person proposing to one would
+    have waited thirty seconds for a lapse.
+
+III. METHOD
+
+    1. One rule, read twice. `proposal_outcome` and `three_way` are
+       now free functions in the sim; the world's `outcome` and
+       `three_way_check` call them, and `Observation::would_refuse`
+       reads the same from the teams every player sees. The test
+       `a_window_reads_the_three_way_rule_as_the_world_does` steps a
+       clone of the world for all 8 x 8 x 4 proposals in sides of 2, 3
+       and 4 and alone, one tank dead, and compares refusals word for
+       word.
+    2. The list refuses before the world does: Enter on a proposal the
+       rule forbids leaves the list open with the reason under it.
+    3. RuleBots answer people only. Answering bots would have changed
+       bot-only matches with defenders, and the balance proofs rest on
+       those traces; a person's proposal is a new case, so it is the
+       only one answered: yes, unless the person has hurt the bot (a
+       `hurt_by` list from TankDamaged, as the Defender keeps).
+    4. Keys: P, Y, N and, in the list, the arrows or WASD, Enter, L,
+       Esc. The list takes the keys as a chat line does
+       (`View::keys_taken`); its system runs after chat's, so the Enter
+       that sends a line does not also propose, and chat does not open
+       on Enter while the list is open.
+
+IV. CHRONOLOGY
+
+     1. Sim refactor and the agreement test.
+     2. RuleBot `hurt_by` and the answer; `a_rulebot_answers_a_person`
+        (accepted; declined after being shot). Brain balance tests
+        unchanged.
+     3. proposals.rs: targets, answerable, the wording, the list, a
+        pure `apply` (three tests); the HUD: the list in the
+        scrollback's place, the standing offer on the newswire between
+        a refusal and a chat message, readable roster lines, the
+        notice tone for a proposal to my side and Capture/Lost tones
+        for the answer to mine.
+     4. Driven with xdotool. The first run proposed nothing: the list
+        had opened and closed before the screenshot. Logging the list's
+        keys showed it: in the script, a "p" typed into a chat line and
+        the Esc that closed it came in one frame; chat closed the line,
+        then the list saw P with no line open and opened, and the
+        script's own P closed it again. Chat now marks a frame whose
+        keys it had (`keys_eaten`), and the list skips that frame.
+     5. The second run, at the shoot's 1200 x 740: P opens the list;
+        Merge from a side of three in three is refused beforehand and
+        Enter leaves it open; Join to bot1 is proposed, the RuleBot
+        accepts, "you joined team 1"; P, L: "you left team 1".
+     6. That frame showed the chat session's four-line key hint cut off
+        at the bottom: the column clips, and 0025's frame was taller.
+        A size down and no gap above; it fits.
+     7. The newswire's "you proposes Join to p1" became "you propose
+        join to bot1" and "your join to bot1: accepted".
+
+V. RESULTS
+
+    make test passes (sim 25, brain 6, client 15); no warnings.
+
+VI. DISCUSSION
+
+    Twice now a scripted run of the real window found what the tests
+    of pure functions could not, both times at the seam between two
+    systems in one frame. Both fixes are a line; finding them took the
+    window.
+
+VII. OPEN PROBLEMS
+
+    1. Y/N has only been tested in unit tests and through a RuleBot's
+       answer, not by a person answering a bot's proposal in the
+       window: the only bots that propose are Defenders, which the
+       window cannot seat yet.
+    2. RuleBots never propose.
+    3. The key hint changed again: the release frames differ.
+
+VIII. NEXT STEPS
+
+    1. PLAYABILITY item 11, the minimap, or 9, rookie bots.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: sim, brain, client, docs,
+    journal: proposals in the window
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
