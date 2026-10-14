@@ -1,0 +1,143 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 14 Oct 2026 11:30:00 -0700
+Subject: [JOURNAL 0029] Tank speak, the second match, and bots that
+         run an economy
+Message-ID: <0029.20261014@treadcore.org>
+In-Reply-To: <0028.20261014@treadcore.org>
+Organization: treadcore.org
+Keywords: tank speak, geekers, FPV slang, rematch, workshop, power
+          plant, PLAYABILITY item 10, roadmap step 10j
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "lets add more terminology ... cyberpunk
+           tank speak"; "continue. keep it going. next on backlog."
+X-Commits: the commit that carries this entry, and the one before it
+           (tank speak)
+
+                TANK SPEAK, THE SECOND MATCH, AND AN ECONOMY
+
+                     Paul Richeson, treadcore.org
+                           14 October 2026
+
+
+ABSTRACT
+
+    Three pieces. Tank speak: the players are geekers, and the
+    newswire and the bots talk in a cyberpunk, l33t voice with FPV
+    pilots' words for the drones and some real tank crews' for the
+    rig, picked by the event's own number so no match plays out
+    differently for what is said in it. The second match: Enter on a
+    solo match-over screen plays again, seen in the window. And bots
+    that run an economy: a power plant for a dark zone, the jammer
+    once hit, a workshop, scrap felled for all of it; on the Atlantic
+    map six structures built in five minutes where 0028's bots built
+    jammers only. The balance proofs read the same to the digit.
+
+INDEX TERMS
+
+    user interface, bots, language, testing.
+
+
+I. INTRODUCTION
+
+    Paul asked for "Geekers" and cyberpunk tank speak, a StarCraft-ish
+    l33t, then passed on lists of FPV pilots' slang, the drone war's,
+    and tank crews'; then "next on backlog": 0028's next steps were a
+    playtest (a person's), bots that build the rest of an economy, and
+    PLAYABILITY item 10.
+
+II. BACKGROUND
+
+    From 0028: open problems 1 (fun), 2 (bots build jammers only), 3
+    (doctrine on 512 tiles), 4 (rookies against a person). The chair
+    (0028's addendum) had set the voice: a tag is a joke at no one's
+    expense, recovery is "we".
+
+III. METHOD
+
+    treadcore_sim::lingo holds the words and the banks; callers pick a
+    line by a number they already have (a drone's id, a shell's, the
+    tick), never by the world's Rng: a bot's chat changes nothing but
+    the text of an event. A test holds every line to the voice (no
+    "you", no words aimed at people). The economy is a brain change
+    only, behind obs.pads, so the generated island cannot see it.
+
+IV. CHRONOLOGY
+
+    1. Asked what Geekers are: the players. Lingo: GEEKER, a lexicon,
+       banks for kills, launches, lost flies by why, links lost,
+       jamming, intercepts, shots, the end of a match, a bot storming,
+       recovery; a quip after each chair tag. The roster's header is
+       GEEKERS.
+    2. Paul's FPV list: whoop (interceptor), toothpick (recon), send
+       it, punch out, WOT, gap, jello, ghosting, failsafed, RTH,
+       pancaked, browned out, magic smoke, LQ, VTX, VRX, OSD. The
+       drone war's: kami (strike), loitering munition (longshot), the
+       kill-zone, the cost-exchange ratio. Tank crews': Power!, bite
+       the dust, pigiron, bolo crew (the rookies, and a nod to the
+       prior art). Left out: the slurs and the slang aimed at people
+       (zipperhead, speed bumps, crunchie, three smoking communists,
+       karen, and one more); the test's word list carries them.
+    3. HOW-TO-PLAY 6c, the lexicon, generated from lingo::LEXICON.
+       Committed (tank speak).
+    4. The second match: `again` in session.rs rebuilds the solo
+       session on Enter at match over; host_local takes a round that
+       reseeds the bots (round 0 is the old seed, so nothing changes
+       for a first match); View carries the round and a tally. The
+       renderer redraws by comparing cells, so the map's craters go
+       with the old match by themselves.
+    5. 10j: works_order replaces jammer_order with three wants in
+       order; `fell` serves it and mending a wreck. Resupply at a
+       working workshop; first version would have sat there for shells
+       for ever (a workshop has none) and was caught reading it: a
+       workshop is the stop only while armour or the bay is short.
+    6. Traces, sixteen bots, five minutes: Atlantic 2 power, 2 jammer,
+       2 workshop built; Europe 1 workshop; the industrial island
+       none, its numbers as before.
+    7. a_rulebot_powers_its_zone_then_builds_a_workshop: a dark
+       refinery, a full squad: power first, then a workshop, no jammer,
+       the refinery working at the end.
+    8. make shoot gains a rematch pass: a 25-second solo match, the
+       match-over screen (guide-over.png), Enter, and a check that the
+       window logged round 2. The frame after showed "round 2" at tick
+       85 with the scores reset. Seventeen frames.
+
+V. RESULTS
+
+    make test: sim 36, brain 9, client 18, net 13, proto 3. Balance:
+    16:4, 16950:10720, 35:34, 198 captures, as before.
+
+VI. DISCUSSION
+
+    The industrial island built nothing: its zones lie half way to
+    the centre, where a bot is passing, not settled with scrap and no
+    enemy in sight. A bot that wanted an economy would have to go to
+    its zone on purpose; that is a doctrine change, and a trace's.
+
+VII. OPEN PROBLEMS
+
+    1. Whether any of it is fun (from 0027).
+    2. Bots build only when settled at a zone; on the industrial
+       island, never.
+    3. The bots' doctrine on 512 tiles (from 0027).
+    4. Whether a person finds a rookie beatable (from 0028).
+    5. The rematch across a network (step 8).
+
+VIII. NEXT STEPS
+
+    1. A playtest: ROOKIES=3 make run, three rounds with Enter.
+    2. A bot that goes to its zone to build when it has scrap.
+    3. PLAYABILITY item 6's rest: chat to nearby and chosen players.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: brain, client, scripts, docs,
+    journal: the second match; bots that run an economy
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

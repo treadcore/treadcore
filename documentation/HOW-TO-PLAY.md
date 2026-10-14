@@ -41,6 +41,14 @@ minute and a half and one interceptor after, shells that land a few
 tiles off and never lead you, and no storming of your depot. They
 still fight; they fight slowly. Lower the number as you win.
 
+**Again.** When a solo match ends, the screen gives the scores, your
+kills and deaths, and how many rounds you have won of how many played.
+**Enter** plays again: the same island and seats, the bots reseeded so
+they do not open the same way twice. Esc leaves. (Over a network the
+rematch is the lobby's: start the match again from there.)
+
+![The match-over screen of a solo match: the winner, the scores, kills and deaths, rounds won, and Enter to play again](../reports/images/guide-over.png)
+
 ## 2. The screen
 
 ![The whole frame: the orders column on the left, the map in the middle, the roster and lamps on the right, the stock along the bottom, the newswire under it](../reports/images/guide-screen.png)

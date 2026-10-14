@@ -815,6 +815,16 @@ depend on each other.
      the rule never fires). *Proof:* `a_rulebot_jams_after_a_hit`, and
      the Atlantic trace's jams, own against hostile.
 
+10j. **Bots that run an economy** (journal 0028's next step 2). The
+     squad's works, in order: a power plant beside a structure of the
+     bot's that stands dark with no plant of its side in reach; the
+     jammer of 10i; a workshop where none of the side covers the bot's
+     structures. Scrap felled for any of them, and for mending a wreck.
+     A working workshop of the side is a resupply stop while armour or
+     the bay is what is short (it has no shells). *Must not change:*
+     the generated island. *Proof:* `a_rulebot_powers_its_zone_then_
+     builds_a_workshop`, and the traces' structures built by kind.
+
 10h. **Not now.** Memory-guided drones that ignore jamming (the talk's
      next generation): the longshot's drift is already the first half;
      a second kind waits for a playtest of the first. Airports and
@@ -857,6 +867,11 @@ numbers are first guesses with reasons, and a playtest moves them.
 - [x] 10e bots
 - [x] 10f industrial maps
 - [x] 10g the world map
+- [x] 10j bots that run an economy (14 October 2026, journal 0029):
+  Atlantic, sixteen bots, five minutes: 2 power plants, 2 jammers, 2
+  workshops built; Europe 1 workshop; the industrial island none (its
+  numbers read as before: the bots are seldom settled at their zone
+  with scrap in reach). The balance proofs read the same to the digit.
 - [x] 10i a bot that builds a jammer (14 October 2026, journal 0028):
   the first trace jammed 610 of the builder's side's drones to 21 of
   the enemy's, because the bot launched into its own jammer; with the

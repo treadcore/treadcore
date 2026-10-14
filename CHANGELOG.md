@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the second match (PLAYABILITY item 10). On a solo match-over
+  screen Enter plays again: the same island and seats, the bots
+  reseeded each round; the screen tallies rounds won.
+- Added: bots that run an economy (roadmap step 10j): a power plant for
+  a dark structure of theirs, then the jammer once hit, then a
+  workshop; scrap felled for any of them and for mending a wreck; a
+  working workshop is a resupply stop for armour and the bay.
+
 - Added: tank speak (`treadcore_sim::lingo`). The players are geekers
   (the roster's header, the window's default name); the newswire says
   kills, launches, lost flies, links lost, jamming, intercepts, shots

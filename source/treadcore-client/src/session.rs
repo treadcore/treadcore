@@ -28,7 +28,7 @@ impl Plugin for SessionPlugin {
             .init_resource::<Orders>()
             .add_systems(Startup, start)
             .add_systems(FixedUpdate, (step_host, step_client))
-            .add_systems(Update, poll);
+            .add_systems(Update, (poll, again));
     }
 }
 
@@ -83,6 +83,10 @@ pub struct View {
     pub keys_eaten: bool,
     /// What my side is losing, newest last (commander.rs).
     pub alerts: VecDeque<crate::commander::Alert>,
+    /// Solo rounds (PLAYABILITY item 10): which this is, from 0, and
+    /// the tally carried across them, (played, won).
+    pub round: u64,
+    pub record: (u32, u32),
 }
 
 impl View {
@@ -152,7 +156,7 @@ fn start(mut commands: Commands, args: Res<Args>, mut view: ResMut<View>) {
             }
         }
     }
-    let session = host_local(&args, me, vec![], None, RouteTable::default(), &mut view);
+    let session = host_local(&args, me, vec![], None, RouteTable::default(), &mut view, 0);
     commands.insert_resource(SessionRes(session));
 }
 
@@ -175,7 +179,9 @@ fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
 }
 
 /// Become the host: remote seats first, then me, then bots to four.
-fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Option<Socket>, routes: RouteTable, view: &mut View) -> Session {
+/// `round` reseeds the bots for a solo rematch (0 is the first match, as
+/// it always was): the same island and seats, not the same opening.
+fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Option<Socket>, routes: RouteTable, view: &mut View, round: u64) -> Session {
     let mut names: Vec<(String, bool)> = remote.iter().map(|(_, n)| (n.clone(), false)).collect();
     let me_player = names.len() as PlayerId;
     names.push((args.name.clone(), false));
@@ -188,7 +194,7 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
     // (PLAYABILITY item 9).
     let bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId)
         .map(|i| {
-            let seed = args.seed.wrapping_mul(31) ^ (i as u64 + 1);
+            let seed = args.seed.wrapping_mul(31) ^ (i as u64 + 1) ^ round.wrapping_mul(0x9E37_79B9_7F4A_7C15);
             let b: Box<dyn Brain> = if ((i - first_bot) as usize) < args.rookies { Box::new(RuleBot::rookie(seed, "rookie")) } else { Box::new(RuleBot::new(seed, "rulebot")) };
             (i, b)
         })
@@ -234,6 +240,10 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
         view.obs = Some(obs);
         view.received = Some(Instant::now());
         if host.world.over {
+            if !host.is_networked() {
+                view.record.0 += 1;
+                view.record.1 += (host.world.winner == Some(*me_player)) as u32;
+            }
             view.status = match host.world.winner {
                 Some(w) if w == *me_player => "MATCH OVER: you win. gg wp".into(),
                 Some(w) => format!("MATCH OVER: {} wins. gg wp", host.world.players[w as usize].name),
@@ -241,6 +251,25 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
             };
         }
     }
+}
+
+/// The second match (PLAYABILITY item 10): on a solo match-over screen
+/// Enter plays again, the same island and seats with the bots reseeded.
+/// A networked match's rematch is the lobby's (roadmap step 8).
+fn again(keys: Res<ButtonInput<KeyCode>>, args: Res<Args>, session: Option<ResMut<SessionRes>>, mut view: ResMut<View>, mut cam: ResMut<crate::input::Cam>, mut hud: ResMut<crate::hud::HudState>) {
+    let Some(mut session) = session else { return };
+    let Session::Hosting { host, .. } = &session.0 else { return };
+    if !host.world.over || host.is_networked() || view.keys_taken() || !keys.just_pressed(KeyCode::Enter) {
+        return;
+    }
+    let me = host.me;
+    let (round, record) = (view.round + 1, view.record);
+    *view = View { round, record, ..View::default() };
+    session.0 = host_local(&args, me, vec![], None, RouteTable::default(), &mut view, round);
+    view.status = format!("{}: round {}", view.status, round + 1);
+    *cam = crate::input::Cam::default();
+    *hud = crate::hud::HudState::default();
+    info!("again: round {}", round + 1);
 }
 
 /// A client's own tank, driven one tick ahead at the tick rate. Orders
@@ -288,7 +317,7 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
 
                 let sock = sock.take();
                 let registration = lobby.take_registration();
-                let mut s = host_local(&args, me, peers, sock, routes, &mut view);
+                let mut s = host_local(&args, me, peers, sock, routes, &mut view, 0);
                 if let Session::Hosting { host, .. } = &mut s {
                     host.registration = registration;
                 }

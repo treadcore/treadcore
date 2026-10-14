@@ -882,7 +882,13 @@ fn screen(view: &View) -> Option<String> {
             for p in ps {
                 s.push_str(&format!("{} p{:<3}  {:<9}  {:<4}  {:>5}  {}\n", if p.id == obs.player { "*" } else { " " }, p.id, p.name.chars().take(9).collect::<String>(), p.team, p.score, if p.alive { "alive" } else { "dead" }));
             }
-            s.push_str(&format!("\nkills {}  deaths {}\n\nEsc to leave", view.kills, view.deaths));
+            s.push_str(&format!("\nkills {}  deaths {}\n", view.kills, view.deaths));
+            if view.net.mode == "solo" {
+                // The second match (PLAYABILITY item 10).
+                s.push_str(&format!("rounds won {} of {}\n\nEnter: again (same grid, bots reseeded)   Esc to leave", view.record.1, view.record.0));
+            } else {
+                s.push_str("\nEsc to leave");
+            }
             Some(s)
         }
         _ => None,

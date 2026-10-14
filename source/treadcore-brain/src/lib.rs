@@ -211,28 +211,43 @@ impl RuleBot {
         obs.hostile_tanks().filter(|t| self.grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
     }
 
-    /// Step 10i: once a structure of this side has been hit, a jammer on
-    /// a free pad beside a structure of this bot's that no jammer of the
-    /// side covers, powered; the material felled first if the squad has
-    /// not got it. None if any of that is missing, which on a map with
-    /// no pads is always.
-    fn jammer_order(&self, obs: &Observation, me: &Tank) -> Option<Command> {
-        if !self.works_hit || obs.pads.is_empty() {
+    /// The squad's works (steps 10i and 10j), in this order: a power
+    /// plant when a structure of this bot's stands dark with no plant of
+    /// the side in reach (everything else of the economy is dead without
+    /// one); a jammer once a structure of the side has been hit; a
+    /// workshop when none of the side covers this bot's structures. Each
+    /// on a free pad within half a jammer's reach of the structure it
+    /// serves; the scrap felled from the nearest forest first if the
+    /// squad has not got it. None if any of that is missing, which on a
+    /// map with no pads is always.
+    fn works_order(&self, obs: &Observation, me: &Tank) -> Option<Command> {
+        if obs.pads.is_empty() {
             return None;
         }
         let side = |x: &&Structure| x.alive() && x.owner.map(|o| obs.allied(o)).unwrap_or(false);
-        let covered = |at: V2| obs.structures.iter().filter(side).any(|x| x.kind == StructureKind::Jammer && x.pos.dist(at) <= JAMMER_RANGE);
-        let powered = |at: V2| obs.structures.iter().filter(side).any(|x| x.kind == StructureKind::Power && x.pos.dist(at) <= POWER_RANGE);
-        let site = obs
-            .structures
-            .iter()
-            .filter(|x| x.alive() && x.owner == Some(obs.player) && x.pos.dist(me.pos) <= PILLBOY_REACH && !covered(x.pos))
-            .filter_map(|x| obs.pads.iter().filter(|p| p.dist(x.pos) <= JAMMER_RANGE * 0.5 && powered(**p)).min_by(|a, b| a.dist(x.pos).partial_cmp(&b.dist(x.pos)).unwrap()))
-            .min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap())?;
-        let cost = StructureKind::Jammer.cost();
-        if me.pillboys.material >= cost {
-            return Some(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Structure(StructureKind::Jammer), at: *site } });
+        let near = |kind: StructureKind, at: V2, r: f32| obs.structures.iter().filter(side).any(|x| x.kind == kind && x.pos.dist(at) <= r);
+        let mine: Vec<&Structure> = obs.structures.iter().filter(|x| x.alive() && x.owner == Some(obs.player) && x.pos.dist(me.pos) <= PILLBOY_REACH).collect();
+        let pad_by = |at: V2, ok: &dyn Fn(V2) -> bool| obs.pads.iter().filter(|p| p.dist(at) <= JAMMER_RANGE * 0.5 && ok(**p)).min_by(|a, b| a.dist(at).partial_cmp(&b.dist(at)).unwrap()).copied();
+        let mut want: Option<(StructureKind, V2)> = None;
+        // Power: a dark structure of mine and no plant of the side in reach.
+        if let Some(x) = mine.iter().find(|x| x.kind.needs_power() && !x.powered && !near(StructureKind::Power, x.pos, POWER_RANGE)) {
+            want = pad_by(x.pos, &|_| true).map(|p| (StructureKind::Power, p));
         }
+        if want.is_none() && self.works_hit {
+            want = mine.iter().filter(|x| !near(StructureKind::Jammer, x.pos, JAMMER_RANGE)).filter_map(|x| pad_by(x.pos, &|p| near(StructureKind::Power, p, POWER_RANGE))).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).map(|p| (StructureKind::Jammer, p));
+        }
+        if want.is_none() {
+            want = mine.iter().filter(|x| !near(StructureKind::Workshop, x.pos, WORKSHOP_MEND_RANGE)).filter_map(|x| pad_by(x.pos, &|p| near(StructureKind::Power, p, POWER_RANGE))).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).map(|p| (StructureKind::Workshop, p));
+        }
+        let (kind, site) = want?;
+        if me.pillboys.material >= kind.cost() {
+            return Some(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Structure(kind), at: site } });
+        }
+        self.fell(obs, me)
+    }
+
+    /// Scrap: the nearest forest in reach, if the squad has room for it.
+    fn fell(&self, obs: &Observation, me: &Tank) -> Option<Command> {
         if me.pillboys.material + HARVEST_MATERIAL > PILLBOY_MATERIAL_MAX {
             return None;
         }
@@ -424,7 +439,10 @@ impl Brain for RuleBot {
                 cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: x.id } });
             } else if let (Some(x), true) = (mend, me.pillboys.material >= STRUCTURE_REPAIR_COST) {
                 cmds.push(Command::Deploy { task: PillboyTask::Repair { target: x.id } });
-            } else if let Some(cmd) = self.jammer_order(obs, me) {
+            } else if let Some(cmd) = mend.and_then(|_| self.fell(obs, me)) {
+                // A wreck of mine to mend and no scrap: fell some (10j).
+                cmds.push(cmd);
+            } else if let Some(cmd) = self.works_order(obs, me) {
                 cmds.push(cmd);
             } else if me.pillboys.material >= PILLBOX_REPAIR_COST {
                 let repair = obs
@@ -542,9 +560,27 @@ impl Brain for RuleBot {
         }
         if self.resupplying {
             let depot = self.nearest_depot(obs, me, true).or_else(|| self.nearest_depot(obs, me, false));
-            if let Some(d) = depot {
-                if me.pos.dist(d.pos) > DEPOT_RADIUS * 0.6 && stationary {
-                    cmds.push(Command::Move { to: d.pos });
+            // A working workshop of the side mends and restocks the bay
+            // twice as fast as a depot, but has no shells: it is the
+            // stop when shells are not what is short (step 10j). None on
+            // the generated island.
+            let workshop = obs
+                .structures
+                .iter()
+                .filter(|x| x.kind == StructureKind::Workshop && x.working() && x.owner.map(|o| obs.allied(o)).unwrap_or(false))
+                .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+            // Only while what a workshop gives is short: a bot that sat
+            // there for shells would sit for ever.
+            let workshop = workshop.filter(|_| me.shells >= 6 && (me.armor < TANK_ARMOR - 5.0 || me.bay.interceptor < BAY_FULL.interceptor - 1 || me.bay.recon == 0));
+            let stop = match (workshop, depot) {
+                (Some(w), Some(d)) if w.pos.dist(me.pos) < d.pos.dist(me.pos) => Some((w.pos, WORKSHOP_RANGE)),
+                (Some(w), None) => Some((w.pos, WORKSHOP_RANGE)),
+                (_, Some(d)) => Some((d.pos, DEPOT_RADIUS)),
+                _ => None,
+            };
+            if let Some((at, r)) = stop {
+                if me.pos.dist(at) > r * 0.6 && stationary {
+                    cmds.push(Command::Move { to: at });
                 }
             }
             return cmds;
@@ -1162,6 +1198,41 @@ mod tests {
         assert!(kills.0 > kills.1, "rookies killed as much as RuleBots: {:?}", kills);
         assert!(alive.0 > alive.1, "rookies outlived RuleBots: {:?}", alive);
         assert!(kills.1 > 0, "rookies never killed anything: a rookie that cannot fight teaches nothing");
+    }
+
+    /// Step 10j: a RuleBot holding a dark refinery builds a power plant
+    /// beside it first, then a workshop; no jammer, because nothing of
+    /// its side has been hit.
+    #[test]
+    fn a_rulebot_powers_its_zone_then_builds_a_workshop() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let home = Map::tile_centre(w.tanks[0].pos);
+        let zone = home + V2::new(5.0, -1.0);
+        for dy in 0..3 {
+            for dx in 0..3 {
+                w.map.set(zone + V2::new(dx as f32, dy as f32), Terrain::Pad);
+            }
+        }
+        w.structures.push(Structure { id: 60_001, kind: StructureKind::Refinery, pos: Map::tile_centre(zone + V2::new(2.0, 2.0)), owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+        w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
+        let mut bot = RuleBot::new(13, "rulebot");
+        let mut built: Vec<StructureKind> = Vec::new();
+        for _ in 0..(180 * TICK_HZ) as u32 {
+            let obs = w.observe(0);
+            let orders: Vec<Order> = bot.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            w.step(&orders);
+            for e in &w.events {
+                if let Event::StructureBuilt { kind, by: 0, .. } = e {
+                    built.push(*kind);
+                }
+            }
+        }
+        assert_eq!(built.first(), Some(&StructureKind::Power), "built {:?}", built);
+        assert!(built.contains(&StructureKind::Workshop), "built {:?}", built);
+        assert!(!built.contains(&StructureKind::Jammer), "a jammer with no hit: {:?}", built);
+        assert!(w.structures.iter().find(|x| x.id == 60_001).unwrap().working(), "the refinery is still dark");
     }
 
     /// Step 10i: a RuleBot holding a powered zone builds no jammer until
