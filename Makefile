@@ -30,7 +30,8 @@
 #   make listen      the server as a service: a dedicated host in lobby GAME,
 #                    match after match, takes no seat, hosts when elected;
 #                    traces and replays to LISTEN_DIR (build/matches), a
-#                    status page on http://this-machine:PORT/
+#                    status page on http://this-machine:PORT/; GAME="a b"
+#                    serves both lobbies at once
 #   make quad        four windows on this machine, networked: a LAN lobby
 #                    over loopback, a host elected among them, the windows
 #                    tiled two by two (CLIENTS=n, PLAYERS=n for bots too,
@@ -40,7 +41,8 @@
 #                    (LAG=200 for lag; INTRODUCER=1 to meet through an
 #                    introducer only; REJOIN=1 kills a seat and brings it
 #                    back to the same seat; LISTEN=near|far adds a --listen
-#                    server that must win or lose the election)
+#                    server that must win or lose the election; with near,
+#                    LOBBIES=2 has it host a second lobby at the same time)
 #   make map         write the generated map for SEED to MAP (default
 #                    maps/generated-SEED.map): the start of a hand-made one;
 #                    MAP=maps/x.map make debug|run|host plays on it
@@ -121,6 +123,8 @@ PLAYERS  ?= 16
 # and how many of the rest play badly (a rookie, PLAYABILITY item 9).
 DEFENDERS ?= 0
 ROOKIES ?= 0
+# Of the window's bots, the first N fly on the player's wing (step 11a).
+WINGMEN ?= 0
 # Simulated one-way lag, in ms, on every peer of `make lobby-test`: the
 # stand-in for tc netem. 0 is the loopback as it is.
 LAG      ?= 0
@@ -139,6 +143,9 @@ LISTEN_DIR ?=
 # lobby-test: near or far, a --listen server beside the four; far gives
 # it LISTEN_LAG ms (100) on every receive, near gives the four LAG (30).
 LISTEN   ?=
+# lobby-test, with LISTEN=near: 2 has the server in a second lobby at
+# the same time, with two seats of its own.
+LOBBIES  ?= 1
 # The introducer's port (make introduce), and the server's (make listen).
 PORT     ?= 47296
 # Deal the seats into N teams (0: everyone alone, allying in play).
@@ -150,7 +157,7 @@ MAP      ?=
 # 1: give a map with no structures an economy (roadmap step 10f).
 INDUSTRY ?= 0
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS ROOKIES TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS ROOKIES WINGMEN TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG LOBBIES
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'

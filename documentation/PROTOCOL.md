@@ -71,6 +71,15 @@ script, and the files of each match it has hosted, by name. With
 `--introducer` it is listed there under its lobby name with `server`
 set, and `hosting` set while a match runs, as any host.
 
+One server can sit in several lobbies at once: `--game` again, each a
+thread of the process with its own UDP port (`--port`, then the
+ports after it) and its own peer in the lobby, under one peer id (the
+introducer keys an entry by lobby and peer, so the entries do not
+collide). A lobby still hosts one match at a time; each writes to
+DIR/NAME, and the one status page lists every lobby (`games` in
+`status.json`; with one lobby its fields also stand at the top, as
+before).
+
 ## Across the Internet: the introducer
 
 Nothing above reaches past the LAN: the beacon is a broadcast, and a

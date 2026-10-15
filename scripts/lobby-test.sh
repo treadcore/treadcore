@@ -27,6 +27,11 @@
 # mid-match. far: the server has LISTEN_LAG (100 ms) on every receive
 # and the four none, so it must lose, stay out of the match, and go
 # back to listening; one of the four hosts, as without it.
+# LOBBIES=2 (with LISTEN=near): the server sits in a second lobby at the
+# same time, on the next UDP port, and two more seats (b1, b2, the same
+# lag) meet it there: it must host both matches at once, the second's
+# seats welcomed and seeing the end, each match's replay matching from
+# its own directory, and the status page listing both lobbies hosting.
 . "$(dirname "$0")/common.sh"
 need_config
 export CARGO_BUILD_JOBS
@@ -42,6 +47,12 @@ case "$LISTEN" in
     near) [ "${LAG:-0}" = 0 ] && LAG=30; SERVER_LAG=0 ;;
     far) SERVER_LAG="${LISTEN_LAG:-100}" ;;
     *) die "LISTEN is near or far, not '$LISTEN'" ;;
+esac
+LOBBIES="${LOBBIES:-1}"
+case "$LOBBIES" in
+    1) ;;
+    2) [ "$LISTEN" = near ] || die "LOBBIES=2 wants LISTEN=near" ;;
+    *) die "LOBBIES is 1 or 2, not '$LOBBIES'" ;;
 esac
 INTRO_PID=
 FIND=(--peer 127.0.0.1:47296)
@@ -60,7 +71,9 @@ SERVER_DIR="$BUILDDIR/listen-$STAMP"
 if [ -n "$LISTEN" ]; then
     SERVER_PORT=47305
     # shellcheck disable=SC2068
-    TREADCORE_LAG_MS="$SERVER_LAG" RUST_LOG=info "$BIN" --listen "$SERVER_DIR" --name server --game "lobbytest-$STAMP" --port "$SERVER_PORT" --http "$SERVER_PORT" ${FIND[@]} --seconds "${LOBBY_SECONDS:-60}" --swarm 20 > "$SERVER_LOG" 2>&1 &
+    GAMES=(--game "lobbytest-$STAMP")
+    [ "$LOBBIES" = 2 ] && GAMES+=(--game "lobbytest-$STAMP-b")
+    TREADCORE_LAG_MS="$SERVER_LAG" RUST_LOG=info "$BIN" --listen "$SERVER_DIR" --name server "${GAMES[@]}" --port "$SERVER_PORT" --http "$SERVER_PORT" ${FIND[@]} --seconds "${LOBBY_SECONDS:-60}" --swarm 20 > "$SERVER_LOG" 2>&1 &
     SERVER_PID=$!
     echo "  server pid $SERVER_PID port $SERVER_PORT (udp and http), ${SERVER_LAG} ms lag -> $SERVER_LOG"
     # With an introducer, the server is found through it or not at all.
@@ -81,6 +94,19 @@ for i in 1 2 3 4; do
     PIDS+=($!)
     echo "  peer$i pid $! port $((47296 + i - 1)) -> $LOG"
 done
+# The second lobby's two seats: the server's second port (47306) and
+# each other's are all they are told; with an introducer, nothing.
+B_PIDS=()
+if [ "$LOBBIES" = 2 ]; then
+    B_FIND=(--peer 127.0.0.1:47310)
+    if [ "${INTRODUCER:-0}" = 1 ]; then B_FIND=("${FIND[@]}"); else B_FIND+=(--peer "127.0.0.1:$((SERVER_PORT + 1))"); fi
+    for i in 1 2; do
+        LOG="$LOGDIR/lobby-$STAMP-b$i.log"
+        TREADCORE_LAG_MS="${LAG:-0}" RUST_LOG=info "$BIN" --net --name "b$i" --game "lobbytest-$STAMP-b" --want 2 --port $((47310 + i - 1)) "${B_FIND[@]}" --seconds "${LOBBY_SECONDS:-60}" --swarm 20 --identity "$BUILDDIR/lobby-$STAMP-b$i.id" > "$LOG" 2>&1 &
+        B_PIDS+=($!)
+        echo "  b$i pid $! port $((47310 + i - 1)) in the second lobby -> $LOG"
+    done
+fi
 # Real time, since the host ticks at 20 Hz: a minute by default
 # (LOBBY_SECONDS=n to change), not GAME_SECONDS, which sizes the trace.
 HOW=""
@@ -88,6 +114,7 @@ HOW=""
 [ "${INTRODUCER:-0}" = 1 ] && HOW="$HOW, through an introducer"
 [ "${REJOIN:-0}" = 1 ] && HOW="$HOW, a seat killed at ${REJOIN_AFTER:-20} s and restarted"
 [ -n "$LISTEN" ] && HOW="$HOW, a --listen server $LISTEN"
+[ "$LOBBIES" = 2 ] && HOW="$HOW in two lobbies at once"
 [ "${LATE:-0}" = 1 ] && HOW="$HOW, a fifth peer arriving at ${LATE_AFTER:-20} s"
 say "waiting for the match (${LOBBY_SECONDS:-60} game seconds, in real time$HOW)..."
 
@@ -130,11 +157,11 @@ if [ -n "$LISTEN" ]; then
     echo "  status.json: $STATUS_JSON" | cut -c1-300
 fi
 FAIL=0
-for p in "${PIDS[@]}"; do wait "$p" || FAIL=1; done
+for p in "${PIDS[@]}" "${B_PIDS[@]}"; do wait "$p" || FAIL=1; done
 if [ -n "$SERVER_PID" ]; then
     # The server goes on listening; give a hosted match time to be saved.
     for _ in $(seq 20); do
-        grep -q -E 'match 1 done|listening again' "$SERVER_LOG" && break
+        [ "$(grep -c -E 'match 1 done|listening again' "$SERVER_LOG" || true)" -ge "$LOBBIES" ] && break
         sleep 0.5
     done
     sleep 1
@@ -142,7 +169,7 @@ if [ -n "$SERVER_PID" ]; then
     wait "$SERVER_PID" 2>/dev/null || true
 fi
 [ -n "$INTRO_PID" ] && { kill "$INTRO_PID" 2>/dev/null || true; }
-rm -f "$BUILDDIR"/lobby-"$STAMP"-peer*.id
+rm -f "$BUILDDIR"/lobby-"$STAMP"-peer*.id "$BUILDDIR"/lobby-"$STAMP"-b*.id
 echo
 for i in 1 2 3 4; do
     LOG="$LOGDIR/lobby-$STAMP-peer$i.log"
@@ -227,15 +254,51 @@ if [ "$LISTEN" = near ]; then
     HASH_WANT=$((5 + LATE_SEATS))
     HOSTS="$(grep -c 'hosting:' "$SERVER_LOG" || true)"
     grep -h 'world hash at tick 1000:' "$SERVER_LOG" >/dev/null || SERVER_OK=0
-    HASH_LOGS=$((HASH_LOGS + $(grep -c 'world hash at tick 1000:' "$SERVER_LOG" || true)))
-    HASH_DISTINCT="$( (cat "$LOGDIR"/lobby-"$STAMP"-peer*.log "$SERVER_LOG" | grep -h 'world hash at tick 1000:' || true) | sed 's/.*tick 1000: //' | sort -u | wc -l | tr -d " ")"
+    # The server's log has one hash a match it hosts; with two lobbies,
+    # the four's hash must be one of its two, and the second lobby's
+    # (checked below) the other.
+    SERVER_HASHES="$( (grep -h 'world hash at tick 1000:' "$SERVER_LOG" || true) | sed 's/.*tick 1000: //')"
+    A_HASH="$( (grep -h 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-peer*.log || true) | sed 's/.*tick 1000: //' | sort -u | head -1)"
+    if [ "$LOBBIES" = 2 ]; then
+        SERVER_A="$(printf '%s\n' "$SERVER_HASHES" | grep -c -x -F "${A_HASH:-none}" || true)"
+        HASH_LOGS=$((HASH_LOGS + SERVER_A))
+    else
+        HASH_LOGS=$((HASH_LOGS + $(printf '%s\n' "$SERVER_HASHES" | grep -c . || true)))
+        HASH_DISTINCT="$( (cat "$LOGDIR"/lobby-"$STAMP"-peer*.log "$SERVER_LOG" | grep -h 'world hash at tick 1000:' || true) | sed 's/.*tick 1000: //' | sort -u | wc -l | tr -d " ")"
+    fi
+    # With two lobbies each has its own directory under the server's.
+    A_DIR="$SERVER_DIR"
+    [ "$LOBBIES" = 2 ] && A_DIR="$SERVER_DIR/lobbytest-$STAMP"
     REPLAY_OK=0
-    if [ -f "$SERVER_DIR/match-0001.replay.json" ] && [ -s "$SERVER_DIR/match-0001.trace.jsonl" ]; then
-        "$BIN" --replay "$SERVER_DIR/match-0001.replay.json" > "$LOGDIR/lobby-$STAMP-server-replay.log" 2>&1 && REPLAY_OK=1
+    if [ -f "$A_DIR/match-0001.replay.json" ] && [ -s "$A_DIR/match-0001.trace.jsonl" ]; then
+        "$BIN" --replay "$A_DIR/match-0001.replay.json" > "$LOGDIR/lobby-$STAMP-server-replay.log" 2>&1 && REPLAY_OK=1
     fi
     LIVE="$(printf '%s' "$STATUS_JSON" | grep -c '"state":"hosting"' || true)"
     echo "  server: hosted $HOSTS, replay of match-0001 matched $REPLAY_OK, status page said hosting $LIVE"
-    [ "$HOSTS" = 1 ] && [ "$REPLAY_OK" = 1 ] && [ "$LIVE" = 1 ] || SERVER_OK=0
+    [ "$HOSTS" = "$LOBBIES" ] && [ "$REPLAY_OK" = 1 ] && [ "$LIVE" = 1 ] || SERVER_OK=0
+    if [ "$LOBBIES" = 2 ]; then
+        # The second lobby: both its seats welcomed by the server (not
+        # one of them hosting), both saw the end, its replay matched,
+        # and the page listed two lobbies, both hosting, mid-match.
+        B_DIR="$SERVER_DIR/lobbytest-$STAMP-b"
+        B_HOSTS="$( (grep -l 'hosting:' "$LOGDIR"/lobby-"$STAMP"-b[12].log || true) | wc -l | tr -d " ")"
+        B_JOINED="$( (grep -l 'welcomed as player' "$LOGDIR"/lobby-"$STAMP"-b[12].log || true) | wc -l | tr -d " ")"
+        B_ENDED="$( (grep -l 'match over; winner' "$LOGDIR"/lobby-"$STAMP"-b[12].log || true) | wc -l | tr -d " ")"
+        B_REPLAY=0
+        if [ -f "$B_DIR/match-0001.replay.json" ] && [ -s "$B_DIR/match-0001.trace.jsonl" ]; then
+            "$BIN" --replay "$B_DIR/match-0001.replay.json" > "$LOGDIR/lobby-$STAMP-server-replay-b.log" 2>&1 && B_REPLAY=1
+        fi
+        B_LIVE="$(printf '%s' "$STATUS_JSON" | grep -o '"state":"hosting"' | wc -l | tr -d " ")"
+        B_LISTED="$(printf '%s' "$STATUS_JSON" | grep -o '"game":"lobbytest-[^"]*"' | sort -u | wc -l | tr -d " ")"
+        B_HASHES="$( (grep -h 'world hash at tick 1000:' "$LOGDIR"/lobby-"$STAMP"-b[12].log || true) | sed 's/.*tick 1000: //')"
+        B_HASH_LOGS="$(printf '%s\n' "$B_HASHES" | grep -c . || true)"
+        B_HASH="$(printf '%s\n' "$B_HASHES" | sort -u | grep . || true)"
+        B_ON_SERVER="$(printf '%s\n' "$SERVER_HASHES" | grep -c -x -F "${B_HASH:-none}" || true)"
+        echo "  second lobby: seats hosting $B_HOSTS, welcomed $B_JOINED, saw the end $B_ENDED, replay matched $B_REPLAY, hash at tick 1000 in $B_HASH_LOGS logs and the server's: $B_ON_SERVER; status page: $B_LISTED lobbies, $B_LIVE hosting"
+        [ "$B_HOSTS" = 0 ] && [ "$B_JOINED" = 2 ] && [ "$B_ENDED" = 2 ] && [ "$B_REPLAY" = 1 ] && [ "$B_LIVE" = 2 ] && [ "$B_LISTED" = 2 ] && [ "$B_HASH_LOGS" = 2 ] && [ "$(printf '%s\n' "$B_HASH" | wc -l | tr -d " ")" = 1 ] && [ "$B_ON_SERVER" = 1 ] || SERVER_OK=0
+        # The four's match is the one this script counts on from here.
+        [ "$HOSTS" = 2 ] && HOSTS=1
+    fi
 elif [ "$LISTEN" = far ]; then
     LOST="$(grep -c 'not elected:' "$SERVER_LOG" || true)"
     SERVED="$(grep -c 'hosting:' "$SERVER_LOG" || true)"
@@ -249,6 +312,7 @@ if [ "$HOSTS" = 1 ] && [ "$JOINED" = "$SEATS" ] && [ "$ENDED" = "$SEATS" ] && [ 
     [ "${REJOIN:-0}" = 1 ] && PASSED="$PASSED, peer$VICTIM back in its seat"
     [ "${LATE:-0}" = 1 ] && PASSED="$PASSED, peer5 arrived late and took bot seat $SEAT5"
     [ "$LISTEN" = near ] && PASSED="$PASSED; the --listen server elected, hosting all four, its replay matched"
+    [ "$LOBBIES" = 2 ] && PASSED="$PASSED; and at the same time the second lobby's two seats, its replay matched too"
     [ "$LISTEN" = far ] && PASSED="$PASSED; the far --listen server not elected"
     say "lobby-test: PASS (one host, $SEATS clients welcomed, all saw the match end, one world hash at tick 1000 in all $HASH_WANT logs, no prediction mismatches$PASSED)"
 else

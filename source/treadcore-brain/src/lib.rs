@@ -7,14 +7,19 @@
 //! `Command`s, which the world validates like anyone else's. A Brain
 //! cannot cheat because it has no more access than a keyboard.
 //!
-//! Two implementations: `RuleBot`, which fills empty seats and is good
-//! enough to kill a careless player; and `JsonBrain`, which speaks the
+//! Three implementations: `RuleBot`, which fills empty seats and is good
+//! enough to kill a careless player; `Commander` (`commander.rs`), which
+//! drives the player's own seat toward a goal the player chose; and
+//! `JsonBrain`, which speaks the
 //! observation and commands as JSON over stdin/stdout so an external
 //! program -- a Python script, an LLM harness -- can play without
 //! linking this crate.
 
 use std::io::{BufRead, Write};
 use treadcore_sim::*;
+
+pub mod commander;
+pub use commander::{Commander, Goal};
 
 // Send + Sync so a seat's Brain can live in a Bevy resource; JsonBrain keeps
 // its receiver behind a Mutex for the same reason.
@@ -202,6 +207,11 @@ pub const STANDOFF: f32 = 25.0;
 pub const PATIENCE: f32 = 20.0;
 
 impl RuleBot {
+    /// Has this player's fire hit the bot's tank this match?
+    pub fn hurt_by_player(&self, p: PlayerId) -> bool {
+        self.hurt_by.contains(&p)
+    }
+
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);

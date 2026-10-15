@@ -34,6 +34,9 @@ struct Args {
     ticks: Tick,
     name: String,
     game: String,
+    /// Every `--game` given, in order; `game` is the first. Only
+    /// `--listen` serves more than one (a lobby each, step 8).
+    games: Vec<String>,
     peers: Vec<String>,
     want: usize,
     port: u16,
@@ -86,6 +89,7 @@ fn parse() -> Args {
         ticks: 0,
         name: "server".into(),
         game: "treadcore".into(),
+        games: vec![],
         peers: vec![],
         want: 4,
         port: PORT,
@@ -123,7 +127,7 @@ fn parse() -> Args {
             "--ticks" => a.ticks = parse_num(&val()),
             "--seconds" => a.ticks = parse_num::<u64>(&val()) * TICK_HZ as u64,
             "--name" => a.name = val(),
-            "--game" => a.game = val(),
+            "--game" => a.games.push(val()),
             "--peer" => a.peers.push(val()),
             "--want" => a.want = parse_num(&val()),
             "--port" => a.port = parse_num(&val()),
@@ -167,6 +171,26 @@ fn parse() -> Args {
                 std::process::exit(0);
             }
             other => usage(&format!("unknown flag {}\n{}", other, HELP)),
+        }
+    }
+    if let Some(first) = a.games.first() {
+        a.game = first.clone();
+    } else {
+        a.games.push(a.game.clone());
+    }
+    if a.games.len() > 1 {
+        if a.listen.is_none() {
+            usage("one --game is one lobby; only a --listen server sits in several");
+        }
+        // Each lobby's files go in DIR/NAME, so the name must be a
+        // plain file name, and each served once.
+        for (i, g) in a.games.iter().enumerate() {
+            if g.is_empty() || g.starts_with('.') || !g.chars().all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c)) {
+                usage(&format!("lobby name '{}': with several, letters, digits, '-', '_' and '.', not first", g));
+            }
+            if a.games[..i].contains(g) {
+                usage(&format!("lobby '{}' given twice", g));
+            }
         }
     }
     a
@@ -221,7 +245,9 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
                      match: takes no seat, hosts when elected (preferred
                      within 10 ms of the best seat), writes each match's
                      trace and replay to DIR; with --introducer, listed
-                     there as a server
+                     there as a server. --game again serves another
+                     lobby at the same time, on the next UDP port, its
+                     files in DIR/NAME; one status page for all
   --http PORT        the --listen status page's TCP port (--port's)
   --brain 'CMD ...'  run an external JSON brain in one seat (repeatable)
   --trace FILE       write every event as JSON lines to FILE

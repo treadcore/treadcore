@@ -203,6 +203,15 @@ allies' pillboxes, and in that view the **arrow keys** jump to the
 neighbouring pillbox in that direction. **F** comes back to the
 tank.
 
+**Taking one, by the numbers.** A pillbox has 60 health and reaches
+8 tiles. Your direct gun reaches 10 and does 45. So stop between 8
+and 10 tiles from it, with a clear line, and two shots kill it while
+it cannot touch you; then press `7`, click it, and the squad stands on
+it for ten seconds. A pillbox never shoots at the squad. A neutral
+pillbox does not have to be shot at all: keep the tank outside its
+eight tiles and send the squad to take it live. Or let the tank do
+it: press **G** (section 6d).
+
 ## 6b. Industry, and losing it
 
 Some maps have an economy: dark grey **pads** of foundations with
@@ -307,6 +316,40 @@ Slang aimed at people (a good deal of real crew slang is) is left out
 on purpose: the voice is gg and gl hf, and the joke is never at a
 geeker's expense.
 
+## 6d. Goals: commanding instead of driving
+
+**G** steps the tank's goal, and the top strip says the goal and what
+the tank is doing for it:
+
+1. **hunt pillboxes**: the nearest pillbox not of your side. A live
+   enemy one is shot dead from the ring between 8 and 10 tiles (if a
+   wall or trees block the line, the tank moves round it to find
+   one), then the squad takes it; a neutral one the squad takes live.
+   Then the next.
+2. **defend depot**: the nearest depot of your side. The tank stays
+   on it, shoots what comes within twelve tiles, and has the squad
+   mend the depot's pillbox.
+3. **defend pillbox**: the same about the nearest pillbox of yours,
+   and the squad takes it back if it falls.
+4. **hold**: the same about the spot where you pressed G.
+5. **escort**, when an ally's tank is in sight: the wingman goal
+   below, following that ally.
+
+Then back to the wheel. A click to drive or Space takes the wheel back
+at once. Under every goal the tank keeps its drones up as a bot
+would, and goes home to a depot when its shells or armour run low.
+
+**Wingmen.** `--wingmen N` (`WINGMEN=n make run`) makes the first N
+bots wingmen: each follows you, asks to join your side (`Y` lets it
+in), and in this order covers you from a tank within ten tiles of
+you, hits what is ahead of you, takes the pillboxes within sixteen
+tiles of you, takes a depot near you, helps another ally's fight, and
+otherwise closes up behind you. It never goes more than twenty tiles
+from you. It answers yes to a proposal from you or your side, and to
+anyone who has not shot at it. It leaves your side only once every
+pillbox and every depot on the map has been the side's for ten
+seconds, and takes what it captured with it.
+
 ## 7. The stock
 
 ![The bottom strip: shells, the bay, the squad and material, armor and fuel, the air](../reports/images/guide-bottom.png)
@@ -397,7 +440,7 @@ orders column and the hints under it show your keys, not these.
 
 | key | does |
 | --- | --- |
-| left click | drive there; with a builder mode armed, send the squad there |
+| left click | drive there (and take the wheel back from a goal); with a builder mode armed, send the squad there |
 | right button, held and released | aim, then fire where the cursor is |
 | `1` `2` `3` | launch interceptor, recon (to the cursor), strike (at the nearest hostile to the cursor) |
 | `R` | recall every drone |
@@ -410,7 +453,8 @@ orders column and the hints under it show your keys, not these.
 | click the minimap | the view there |
 | `9` | the squad home |
 | Esc | drop the armed mode; with none armed, quit |
-| Space | stop |
+| Space | stop; also takes the wheel back from a goal |
+| `G` | the next goal: hunt pillboxes, defend depot, defend pillbox, hold, escort, the wheel |
 | `F` | the view back on the tank |
 | Enter | talk to everyone: type, Enter sends, Esc puts it away |
 | Shift-Enter | talk to your team (Tab steps all, team, nearby; `@name` chooses players) |

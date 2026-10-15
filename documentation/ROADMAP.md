@@ -622,15 +622,22 @@ alone. Tests: `server_with_best_links_hosts`,
 `far_server_is_ignored_and_never_relays`, `of_two_servers_one_hosts`,
 `server_in_the_lobby_hosts_and_takes_no_seat`. **Not proven:** a
 server on a public address with players behind home routers (step 7's
-two-router run, with a server in it). **Not done:** one server for
-several lobbies at once (it serves one `--game`); a player who arrives
-while the server hosts is refused until the next match, as with any
-host (one lobby name is one match). **Done (journal 0032):** the
+two-router run, with a server in it). A player who arrives
+while the server hosts, with no bot's seat free, is refused until the
+next match, as with any host (one lobby name is one match). **Done (journal 0032):** the
 window's rematch, Enter on a networked match-over screen back to the
 lobby on the same port, proven by `make rematch-test`. **Done
 (journal 0033):** a late arrival takes a bot's seat by order, proven by
 `LATE=1 make lobby-test` and `LISTEN=near LATE=1`, the server's replay
-matching. Left: one server for several lobbies.
+matching. **Done (journal 0034):** one server for several lobbies at
+once: `--game` again, a thread and a UDP port each (`--port`, then the
+next), each lobby's files in DIR/NAME, one status page listing them
+all; `GAME="a b" make listen`. Proven by `LISTEN=near LOBBIES=2 make
+lobby-test`: the four in one lobby and two more seats in a second,
+both hosted by the server at the same time, both replays matching
+from their own directories, the page saying both are hosting; also
+through the introducer alone. Step 8 is built; what is left of it is
+the two-router run.
 
 **Change.** `treadcore-server --listen`: hosts match after match,
 accepts joins from any lobby that elected it (a peer can be told to
@@ -895,6 +902,128 @@ numbers are first guesses with reasons, and a playtest moves them.
   the enemy's, because the bot launched into its own jammer; with the
   rule against it, 29 to 71, and 14 hostile longshots pushed off their
   point. Atlantic, sixteen bots, five minutes: 5 jammers built.
+
+## 11. Commanders: goal modes, fleets, and battle lines
+
+Planned 15 October 2026, from Paul's notes after playing: "I have not
+even been able to take out a pillbox." The numbers allow it (a
+pillbox is 60 health with an 8-tile reach; the direct gun does 45 at
+10), but nothing in the game shows how, and a commander who has to
+drive, aim, fly drones and run a squad at once does none of them well.
+This step makes the tank something a person can *command* as well as
+drive, makes allies a fleet, and moves the numbers toward real
+destructive capability, so that the map grows borders, battle lines,
+and walled bases with gated entrances under guard towers.
+
+What exists already: allies share their picture (`World::visible_to`,
+`spotted_by`: every allied tank and drone is everyone's eyes); the
+longshot crosses the map (10c); an external brain speaks JSON
+(`--brain`, `make schema`); the squad builds pillboxes, walls, roads
+and concrete. What does not: a goal for the tank, a ping, a fleet
+order, a transfer, a way for a pillbox to be fed.
+
+11a. **Goal modes: our own brain** (`treadcore-brain::Commander`).
+     A Brain that drives *the player's own seat* toward a goal, in the
+     window, through the same `step`/`observe` as any bot: no sim
+     change, so no wire change and nothing a replay cannot carry.
+     Modes: **hunt pillboxes** (pick the nearest hostile pillbox, stand
+     off between its reach and the direct gun's, 8.5 to 10 tiles, kill
+     it, send the squad to capture, on to the next); **defend pillbox**
+     (hold beside a chosen pillbox of ours, engage what enters its
+     ring, mend it, keep interceptors up); **defend depot** (the same
+     about a depot, and refuse to leave it to chase); **fortify** (11b
+     around the chosen point); **escort** (follow an ally at four
+     tiles, fight what fights it). Driving by hand takes the tank back
+     at once; `G` cycles the goal, a click chooses its object. *Must
+     not change:* the RuleBot and the Defender, so every balance proof
+     reads the same. *Proof:* `a_commander_takes_a_pillbox` (alone on
+     a map with one hostile pillbox: dead and ours inside 90 s, no
+     armour lost to it), one test per mode, and the window driven by
+     xdotool.
+
+11b. **Fortification patterns: castles.** The squad builds to a plan,
+     not a tile at a time: a pillbox ring (pillboxes 4 to 6 tiles
+     apart, inside each other's 8-tile reach, so each covers the
+     next); a curtain wall on the side facing the nearest enemy, with
+     one **gate**, a two-tile gap the router uses and a pillbox either
+     side of it (the choke point under guard towers); a road from the
+     gate home. A plan is a queue of `Deploy` orders the Commander
+     feeds one at a time, felling forest for the material. *Proof:*
+     a fortified depot after five minutes alone: N pillboxes, a wall
+     with one gap, the gap covered by two pillboxes; and a RuleBot
+     attacker routed through the gate.
+
+11c. **The coordination interface.** A second view of the window
+     (Tab to the map at full size, the frame's command form): allies'
+     tanks and goals, pings, fleet orders. Entering it puts the tank on
+     a defensive goal (defend depot when near one, defend pillbox when
+     near one, else hold and fight), and leaving it gives the wheel
+     back. *Proof:* frames, and a test that the goal switch is the
+     Commander's.
+
+11d. **Pings and fleet orders** (wire change). `Command::Ping { at,
+     kind }` (look here, attack here, defend here, gather here) to
+     allies, on their minimap and newswire with a cue. A fleet order
+     is a ping with a goal attached; an ally whose seat runs the
+     **fleet ally** goal (a Commander mode) answers it: comes to defend,
+     joins the attack, escorts the one who asked. *Proof:* two
+     Commanders, one pings attack on a pillbox, the other arrives and
+     the pillbox falls.
+
+11e. **Shared drones and transfers** (sim change). An ally who opts
+     in (`Command::Share`) lets allies task its drones within limits:
+     retask a recon, ask for an interceptor over a point. The squad
+     carries resources: `PillboyTask::Supply { to }` takes shells or
+     material to an allied tank's squad or to a pillbox (a pillbox
+     fed shells refills at once instead of one every ten seconds).
+     *Proof:* a sim test per transfer; a pillbox under siege fed by an
+     ally outlasts one that is not.
+
+11f. **Real numbers, then ranges.** Re-derive `rules.rs` from real
+     destructive capability at 25 m a tile: a tank gun's direct reach
+     and penetration, an indirect gun's range and splash, an FPV
+     strike's warhead, a loitering munition's range, a jammer's radius,
+     with the source of each beside it (as the step-10 numbers are).
+     Then the bubble and drone ranges tuned by sweep, not by guess:
+     eight seeds a setting through the match report. Real numbers will
+     make the gun outrange a pillbox by far; the pillbox's reach and
+     health move with them so that a walled gate still holds. Longer
+     matches (30 minutes and more) follow from a front that holds.
+     *Must not change:* determinism. *Proof:* the traces, and a
+     playtest. **Open:** whether the real numbers replace the game's or
+     ship beside it as a game type (`--game-type real`).
+
+11g. **Upgrades for commanders.** **Open:** in-match (score buys
+     reach, armour, a bigger bay) or carried between matches. Not
+     designed until Paul says which.
+
+Order: 11a first, because 11b, 11c and 11d's fleet ally are all modes
+of it; 11b; 11c; 11d; 11e; 11f last on the numbers, because the modes
+should be played against the numbers they will meet, and the sweep
+wants the modes in the bots too.
+
+- [x] 11a goal modes (the Commander brain), 15 October 2026 (journal
+  0034): `treadcore-brain::commander`, `G` in the window, and the
+  wingman from Paul's brainstorm (`--wingmen N`): the priority order
+  protect the leader, hit what is ahead of it, its pillbox, a depot by
+  it, another ally's fight, regroup; a three-second commitment that
+  only a threat to the leader breaks; a twenty-tile leash; alliances
+  run in the background (ask the leader in every thirty seconds,
+  answer yes to the leader's side and to anyone who has not shot at
+  it); leaving the side unlocked, never forced, by every pillbox and
+  depot held ten seconds. Proof: `a_commander_takes_a_pillbox` (26.9
+  s, two shells, no damage), `a_commander_walks_round_a_wall_to_a_
+  line`, `a_commander_takes_a_neutral_pillbox_without_a_shot`,
+  `a_commander_defends_its_depot`, `a_wingman_covers_its_leader`,
+  `a_wingman_takes_the_pillbox_by_its_leader`, `a_wingman_leaves_only_
+  at_one_hundred_percent`. Still open: the fortify mode (11b), and a
+  wingman in a headless server's seats.
+- [ ] 11b fortification patterns
+- [ ] 11c the coordination interface
+- [ ] 11d pings and fleet orders
+- [ ] 11e shared drones and transfers
+- [ ] 11f real numbers and tuned ranges; longer matches
+- [ ] 11g upgrades (open)
 
 ## Sequencing
 

@@ -6,6 +6,26 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: goals (roadmap step 11a). `G` steps the tank's goal: hunt
+  pillboxes (shoot a live enemy one dead from between 8 and 10 tiles,
+  walking round a blocked line, then the squad takes it; a neutral one
+  the squad takes live), defend depot, defend pillbox, hold, escort;
+  a click to drive or Space takes the wheel back. The top strip says
+  what the tank is doing for its goal. `--wingmen N` (`WINGMEN=n make
+  run`) makes the first N bots wingmen: they follow you, ask to join
+  your side, cover you, hit what is ahead of you, take the pillboxes
+  and depots near you, and leave the side only when it holds every
+  pillbox and depot. No change to the world or the wire.
+
+- Added: one `--listen` server for several lobbies at once (roadmap
+  step 8, its last item). Give `--game` more than once (`GAME="a b"
+  make listen`): each lobby has its own thread and UDP port (`--port`
+  and the ports after it) and its files in DIR/NAME; one status page
+  lists every lobby, and `status.json` gains `games`, with one lobby's
+  fields still at the top as before. `LISTEN=near LOBBIES=2 make
+  lobby-test` proves it: two matches hosted at once, both replays
+  matching.
+
 - Added: a late arrival takes a bot's seat (roadmap step 8). A peer
   that finds a running match through the introducer, while a bot's
   seat with a live tank is free, is answered, seated in it under its

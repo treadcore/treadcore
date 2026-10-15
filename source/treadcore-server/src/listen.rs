@@ -10,16 +10,23 @@
 //! `--introducer` it is listed there as a server under the lobby's name,
 //! which is how players across the Internet find it.
 //!
-//! The status page is plain HTTP on `--http` (TCP; the UDP port's number
-//! by default): `/` for a person, `/status.json` for a script, and the
-//! files of every match it has hosted, by name. It is read in the same
-//! loop as the socket, one request at a time, which is all a status
-//! page needs.
+//! Several `--game`s are several lobbies at once, one thread and one UDP
+//! port each (`--port`, then the ports after it), each going round the
+//! loop above on its own and writing to DIR/NAME. A lobby is one match
+//! at a time, as for any host; a second group wanting a game while the
+//! first plays asks in under another name.
+//!
+//! The status page is plain HTTP on `--http` (TCP; the first UDP port's
+//! number by default): `/` for a person, `/status.json` for a script,
+//! and the files of every match it has hosted, by name. Its own thread
+//! answers one request at a time, which is all a status page needs; the
+//! lobbies write what it shows under a lock.
 
 use super::*;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use treadcore_net::SERVER_PREFERENCE;
 
 /// A seat that has not joined this long after the match started is not
@@ -37,17 +44,16 @@ struct Hosted {
     seats: Vec<(String, u32, bool)>,
     winner: Option<String>,
     given_up: bool,
+    /// Paths under DIR: `match-NNNN...` with one lobby, `NAME/match-NNNN...`
+    /// with several.
     trace: String,
     replay: String,
 }
 
-struct Status {
-    listener: Option<TcpListener>,
-    dir: PathBuf,
-    peer: PeerId,
-    name: String,
+/// One lobby the server sits in, as the status page shows it.
+struct Served {
     game: String,
-    since: Instant,
+    port: u16,
     state: &'static str,
     lobbies: u32,
     lost: u32,
@@ -56,69 +62,110 @@ struct Status {
     live: Option<(u32, Tick, Vec<(String, u32, bool)>)>,
 }
 
-impl Status {
+type Shared = Arc<Mutex<Vec<Served>>>;
+
+/// What every lobby has in common, and the page itself.
+struct Page {
+    dir: PathBuf,
+    peer: PeerId,
+    name: String,
+    since: Instant,
+    served: Shared,
+}
+
+fn seats_json(v: &[(String, u32, bool)], third: &str) -> Vec<serde_json::Value> {
+    v.iter().map(|(n, s, b)| serde_json::json!({"name": n, "score": s, third: b})).collect()
+}
+
+impl Served {
     fn json(&self) -> serde_json::Value {
-        let seats = |v: &[(String, u32, bool)], third: &str| -> Vec<serde_json::Value> { v.iter().map(|(n, s, b)| serde_json::json!({"name": n, "score": s, third: b})).collect() };
         serde_json::json!({
-            "peer": format!("{:016x}", self.peer),
-            "name": self.name,
             "game": self.game,
-            "version": env!("CARGO_PKG_VERSION"),
-            "up_seconds": self.since.elapsed().as_secs(),
+            "port": self.port,
             "state": self.state,
             "lobbies": self.lobbies,
             "elected_elsewhere": self.lost,
-            "preference_ms": SERVER_PREFERENCE / 1000,
-            "live": self.live.as_ref().map(|(n, t, s)| serde_json::json!({"match": n, "tick": t, "seconds": *t as f32 / TICK_HZ as f32, "seats": seats(s, "joined")})),
+            "live": self.live.as_ref().map(|(n, t, s)| serde_json::json!({"match": n, "tick": t, "seconds": *t as f32 / TICK_HZ as f32, "seats": seats_json(s, "joined")})),
             "hosted": self.hosted.iter().map(|h| serde_json::json!({
                 "match": h.number, "ended_unix": h.ended_unix, "ticks": h.ticks, "winner": h.winner,
-                "given_up": h.given_up, "trace": h.trace, "replay": h.replay, "seats": seats(&h.seats, "bot"),
+                "given_up": h.given_up, "trace": h.trace, "replay": h.replay, "seats": seats_json(&h.seats, "bot"),
             })).collect::<Vec<_>>(),
         })
     }
 
-    fn html(&self) -> String {
-        let esc = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
-        let mut b = String::new();
-        b.push_str("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><meta http-equiv=refresh content=5>");
-        b.push_str(&format!("<title>treadcore server: {}</title>", esc(&self.game)));
-        b.push_str("<style>body{font:15px/1.4 ui-monospace,monospace;margin:16px;max-width:60em;background:#fff;color:#111}td,th{padding:0 1em 0 0;text-align:left}@media(prefers-color-scheme:dark){body{background:#111;color:#ddd}a{color:#8cf}}</style>");
-        b.push_str(&format!("<h1>{} in lobby '{}'</h1>", esc(&self.name), esc(&self.game)));
-        b.push_str(&format!("<p>peer {:016x}, treadcore {}, up {} s. <b>{}</b>. {} lobbies, elected in {}, a seat elected in {}.</p>", self.peer, env!("CARGO_PKG_VERSION"), self.since.elapsed().as_secs(), self.state, self.lobbies, self.hosted.len(), self.lost));
+    fn html(&self, b: &mut String, esc: impl Fn(&str) -> String) {
+        b.push_str(&format!("<h2>Lobby '{}'</h2>", esc(&self.game)));
+        b.push_str(&format!("<p>udp port {}. <b>{}</b>. {} lobbies, elected in {}, a seat elected in {}.</p>", self.port, self.state, self.lobbies, self.hosted.len(), self.lost));
         if let Some((n, t, seats)) = &self.live {
-            b.push_str(&format!("<h2>Match {} at {:.0} s</h2><table><tr><th>seat<th>score<th>joined", n, *t as f32 / TICK_HZ as f32));
+            b.push_str(&format!("<h3>Match {} at {:.0} s</h3><table><tr><th>seat<th>score<th>joined", n, *t as f32 / TICK_HZ as f32));
             for (name, score, joined) in seats {
                 b.push_str(&format!("<tr><td>{}<td>{}<td>{}", esc(name), score, if *joined { "yes" } else { "-" }));
             }
             b.push_str("</table>");
         }
-        b.push_str("<h2>Hosted</h2>");
+        b.push_str("<h3>Hosted</h3>");
         if self.hosted.is_empty() {
             b.push_str("<p>None yet.</p>");
         } else {
             b.push_str("<table><tr><th>match<th>ticks<th>winner<th>files");
             for h in self.hosted.iter().rev() {
-                let winner = h.winner.as_deref().map(esc).unwrap_or_else(|| if h.given_up { "given up".into() } else { "-".into() });
+                let winner = h.winner.as_deref().map(&esc).unwrap_or_else(|| if h.given_up { "given up".into() } else { "-".into() });
                 b.push_str(&format!("<tr><td>{}<td>{}<td>{}<td><a href='{}'>trace</a> <a href='{}'>replay</a>", h.number, h.ticks, winner, esc(&h.trace), esc(&h.replay)));
             }
             b.push_str("</table>");
+        }
+    }
+}
+
+impl Page {
+    /// One lobby's fields sit at the top as they always have; every
+    /// lobby, that one too, is in `games`.
+    fn json(&self) -> serde_json::Value {
+        let served = self.served.lock().unwrap();
+        let mut top = serde_json::json!({
+            "peer": format!("{:016x}", self.peer),
+            "name": self.name,
+            "version": env!("CARGO_PKG_VERSION"),
+            "up_seconds": self.since.elapsed().as_secs(),
+            "preference_ms": SERVER_PREFERENCE / 1000,
+            "games": served.iter().map(Served::json).collect::<Vec<_>>(),
+        });
+        if let [one] = served.as_slice() {
+            if let (Some(t), serde_json::Value::Object(o)) = (top.as_object_mut(), one.json()) {
+                t.extend(o.into_iter().filter(|(k, _)| k != "port"));
+            }
+        }
+        top
+    }
+
+    fn html(&self) -> String {
+        let esc = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+        let served = self.served.lock().unwrap();
+        let games = served.iter().map(|s| format!("'{}'", esc(&s.game))).collect::<Vec<_>>().join(", ");
+        let mut b = String::new();
+        b.push_str("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><meta http-equiv=refresh content=5>");
+        b.push_str(&format!("<title>treadcore server: {}</title>", served.iter().map(|s| esc(&s.game)).collect::<Vec<_>>().join(", ")));
+        b.push_str("<style>body{font:15px/1.4 ui-monospace,monospace;margin:16px;max-width:60em;background:#fff;color:#111}td,th{padding:0 1em 0 0;text-align:left}@media(prefers-color-scheme:dark){body{background:#111;color:#ddd}a{color:#8cf}}</style>");
+        b.push_str(&format!("<h1>{} in {} {}</h1>", esc(&self.name), if served.len() == 1 { "lobby" } else { "lobbies" }, games));
+        b.push_str(&format!("<p>peer {:016x}, treadcore {}, up {} s.</p>", self.peer, env!("CARGO_PKG_VERSION"), self.since.elapsed().as_secs()));
+        for s in served.iter() {
+            s.html(&mut b, esc);
         }
         b.push_str("<p><a href='status.json'>status.json</a></p>");
         b
     }
 
-    /// Answer whoever is waiting, one request each, and return.
-    fn poll(&mut self) {
-        let Some(l) = self.listener.as_ref() else { return };
-        while let Ok((stream, _)) = l.accept() {
-            if let Err(e) = self.answer(stream) {
-                log::debug!("status page: {}", e);
+    /// Answer requests until the process ends, one at a time.
+    fn serve(&self, listener: TcpListener) {
+        for stream in listener.incoming() {
+            match stream.and_then(|s| self.answer(s)) {
+                Ok(()) => {}
+                Err(e) => log::debug!("status page: {}", e),
             }
         }
     }
 
     fn answer(&self, mut stream: TcpStream) -> std::io::Result<()> {
-        stream.set_nonblocking(false)?;
         stream.set_read_timeout(Some(Duration::from_millis(50)))?;
         stream.set_write_timeout(Some(Duration::from_millis(200)))?;
         let mut line = String::new();
@@ -130,7 +177,7 @@ impl Status {
             p => {
                 // Only a file this server wrote and lists; no paths.
                 let name = p.trim_start_matches('/');
-                let listed = self.hosted.iter().any(|h| h.trace == name || h.replay == name);
+                let listed = self.served.lock().unwrap().iter().any(|s| s.hosted.iter().any(|h| h.trace == name || h.replay == name));
                 match listed.then(|| std::fs::read(self.dir.join(name))) {
                     Some(Ok(bytes)) => ("200 OK", if name.ends_with(".json") { "application/json" } else { "application/x-ndjson" }, bytes),
                     _ => ("404 Not Found", "text/plain", b"not here\n".to_vec()),
@@ -158,47 +205,69 @@ pub(super) fn run(args: Args) {
         Some(path) => identity_from_file(path).unwrap_or_else(|e| die(&format!("identity: {}", e))),
         None => new_peer_id(),
     };
-    let mut sock = Socket::bind(args.port).unwrap_or_else(|e| die(&format!("bind: {}", e)));
-    let http = args.http.unwrap_or(sock.local.port());
-    let listener = match TcpListener::bind(("0.0.0.0", http)).and_then(|l| l.set_nonblocking(true).map(|_| l)) {
-        Ok(l) => {
-            log::info!("status page on http://{}:{}/", treadcore_net::introducer::lan_address(http).ip(), http);
-            Some(l)
+    // Every socket first, so the status page can say where each lobby is.
+    let several = args.games.len() > 1;
+    let mut socks = Vec::new();
+    for (i, game) in args.games.iter().enumerate() {
+        let port = args.port.checked_add(i as u16).unwrap_or_else(|| usage("--port leaves no room for that many lobbies"));
+        let sock = Socket::bind(port).unwrap_or_else(|e| die(&format!("bind: {}", e)));
+        let files = if several { dir.join(game) } else { dir.clone() };
+        std::fs::create_dir_all(&files).unwrap_or_else(|e| die(&format!("listen {}: {}", files.display(), e)));
+        socks.push(sock);
+    }
+    let served: Shared = Arc::new(Mutex::new(
+        args.games.iter().zip(&socks).map(|(g, s)| Served { game: g.clone(), port: s.local.port(), state: "listening", lobbies: 0, lost: 0, hosted: vec![], live: None }).collect(),
+    ));
+    let http = args.http.unwrap_or(socks[0].local.port());
+    let page = Page { dir: dir.clone(), peer: me, name: args.name.clone(), since: Instant::now(), served: served.clone() };
+    std::thread::scope(|scope| {
+        match TcpListener::bind(("0.0.0.0", http)) {
+            Ok(l) => {
+                log::info!("status page on http://{}:{}/", treadcore_net::introducer::lan_address(http).ip(), http);
+                let page = &page;
+                std::thread::Builder::new().name("status".into()).spawn_scoped(scope, move || page.serve(l)).expect("a thread for the status page");
+            }
+            Err(e) => log::error!("status page: tcp port {}: {}; serving none", http, e),
         }
-        Err(e) => {
-            log::error!("status page: tcp port {}: {}; serving none", http, e);
-            None
+        for (i, sock) in socks.into_iter().enumerate() {
+            let (args, dir, served) = (&args, &dir, &served);
+            std::thread::Builder::new().name(args.games[i].clone()).spawn_scoped(scope, move || serve_lobby(args, me, i, sock, dir, served, several)).expect("a thread for the lobby");
         }
-    };
-    let mut status = Status { listener, dir: dir.clone(), peer: me, name: args.name.clone(), game: args.game.clone(), since: Instant::now(), state: "listening", lobbies: 0, lost: 0, hosted: vec![], live: None };
-    let mut number = first_free(&dir);
-    log::info!("server {:016x} '{}' listening in lobby '{}' on {}; matches to {}", me, args.name, args.game, sock.local, dir.display());
+    });
+}
+
+/// One lobby, match after match: the server's whole life when it serves
+/// one, a thread of it when several.
+fn serve_lobby(args: &Args, me: PeerId, i: usize, mut sock: Socket, dir: &Path, served: &Shared, several: bool) {
+    let game = &args.games[i];
+    let (files, prefix) = if several { (dir.join(game), format!("{}/", game)) } else { (dir.to_path_buf(), String::new()) };
+    let set = |f: &dyn Fn(&mut Served)| f(&mut served.lock().unwrap()[i]);
+    let mut number = first_free(&files);
+    log::info!("server {:016x} '{}' listening in lobby '{}' on {}; matches to {}", me, args.name, game, sock.local, files.display());
     loop {
-        let mut cfg = LobbyConfig::new(me, &args.name, &args.game);
+        let mut cfg = LobbyConfig::new(me, &args.name, game);
         cfg.seeds = args.peers.clone();
         cfg.beacon = args.beacon;
         cfg.introducer = args.introducer.clone();
         cfg.server = true;
         let mut lobby = Lobby::new(cfg);
-        status.state = "listening";
+        set(&|s| s.state = "listening");
         let result = loop {
             if let Some(r) = lobby.poll(&mut sock) {
                 break r;
             }
             if lobby.phase != treadcore_net::Phase::Discover {
-                status.state = "in a lobby";
+                set(&|s| s.state = "in a lobby");
             }
-            status.poll();
             std::thread::sleep(Duration::from_millis(5));
         };
-        status.lobbies += 1;
+        set(&|s| s.lobbies += 1);
         if !result.i_host(me) {
-            status.lost += 1;
-            log::info!("not elected: {:016x} hosts this one; listening again", result.decision.host);
+            set(&|s| s.lost += 1);
+            log::info!("'{}': not elected: {:016x} hosts this one; listening again", game, result.decision.host);
             let settle = Instant::now() + SETTLE;
             while Instant::now() < settle {
                 let _ = sock.recv();
-                status.poll();
                 std::thread::sleep(Duration::from_millis(5));
             }
             continue;
@@ -206,42 +275,46 @@ pub(super) fn run(args: Args) {
 
         let stem = format!("match-{:04}", number);
         let (trace_name, replay_name) = (format!("{}.trace.jsonl", stem), format!("{}.replay.json", stem));
-        let trace_path = dir.join(&trace_name).to_string_lossy().into_owned();
+        let trace_path = files.join(&trace_name).to_string_lossy().into_owned();
         let mut trace = Trace::open(Some(&trace_path));
         let routes = routes_from(&result, me);
         let registration = lobby.take_registration();
-        status.state = "hosting";
+        set(&|s| s.state = "hosting");
         let started = Instant::now();
         let mut given_up = false;
-        let host = host_match(&args, me, sock, &result, routes, registration, &mut trace, |host| {
+        let host = host_match(args, me, sock, &result, routes, registration, &mut trace, |host| {
             let w = &host.world;
             let joined = |i: usize| host.seats.get(i).map(|s| s.joined).unwrap_or(true);
-            status.live = Some((number, w.tick, w.players.iter().enumerate().map(|(i, p)| (p.name.clone(), p.score, joined(i))).collect()));
-            status.poll();
+            let live = (number, w.tick, w.players.iter().enumerate().map(|(i, p)| (p.name.clone(), p.score, joined(i))).collect());
+            served.lock().unwrap()[i].live = Some(live);
             if started.elapsed() >= NO_SHOW && !host.seats.is_empty() && host.seats.iter().all(|s| !s.joined) {
-                log::warn!("no seat joined in {} s; giving the match up", NO_SHOW.as_secs());
+                log::warn!("'{}': no seat joined in {} s; giving the match up", game, NO_SHOW.as_secs());
                 given_up = true;
                 return false;
             }
             true
         });
         drop(trace);
-        save_replay(&host, &dir.join(&replay_name).to_string_lossy());
+        save_replay(&host, &files.join(&replay_name).to_string_lossy());
         let w = &host.world;
         let ended_unix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
         let bots: Vec<bool> = w.scenario.players.iter().map(|(_, bot)| *bot).collect();
-        status.hosted.push(Hosted {
+        let hosted = Hosted {
             number,
             ended_unix,
             ticks: w.tick,
             seats: w.players.iter().enumerate().map(|(i, p)| (p.name.clone(), p.score, bots.get(i).copied().unwrap_or(true))).collect(),
             winner: w.winner.and_then(|id| w.players.iter().find(|p| p.id == id)).map(|p| p.name.clone()),
             given_up,
-            trace: trace_name,
-            replay: replay_name,
-        });
-        status.live = None;
-        log::info!("match {} done: {} and {} in {}", number, status.hosted.last().unwrap().trace, status.hosted.last().unwrap().replay, dir.display());
+            trace: format!("{}{}", prefix, trace_name),
+            replay: format!("{}{}", prefix, replay_name),
+        };
+        log::info!("'{}': match {} done: {} and {} in {}", game, number, trace_name, replay_name, files.display());
+        {
+            let mut all = served.lock().unwrap();
+            all[i].hosted.push(hosted);
+            all[i].live = None;
+        }
         number += 1;
         sock = host.into_socket().expect("the host keeps its socket");
     }

@@ -43,6 +43,7 @@ pub enum Action {
     BubbleIn,
     BubbleOut,
     Stop,
+    Goal,
     Farm,
     Road,
     Wall,
@@ -62,7 +63,7 @@ pub enum Action {
 use Action::*;
 
 impl Action {
-    pub const ALL: [Action; 30] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, KeySetup];
+    pub const ALL: [Action; 31] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, KeySetup];
 
     /// The word in the file and in Key Setup.
     pub fn word(self) -> &'static str {
@@ -83,6 +84,7 @@ impl Action {
             BubbleIn => "bubble-in",
             BubbleOut => "bubble-out",
             Stop => "stop",
+            Goal => "goal",
             Farm => "farm",
             Road => "road",
             Wall => "wall",
@@ -130,6 +132,7 @@ impl Action {
             BubbleIn => KeyCode::BracketLeft,
             BubbleOut => KeyCode::BracketRight,
             Stop => KeyCode::Space,
+            Goal => KeyCode::KeyG,
             Farm => KeyCode::Digit4,
             Road => KeyCode::Digit5,
             Wall => KeyCode::Digit6,
@@ -340,7 +343,7 @@ pub struct Setup {
 /// Key Setup as the scrollback's place over the map shows it.
 pub fn setup_text(keys: &Keys, s: &Setup, note: &str) -> String {
     let mut t = String::from("KEY SETUP   up/down pick, Enter rebind, Delete defaults, K or Esc close\n");
-    // A window of rows around the pick: thirty actions do not fit.
+    // A window of rows around the pick: thirty-one actions do not fit.
     let first = s.row.saturating_sub(9).min(Action::ALL.len().saturating_sub(19));
     for (i, a) in Action::ALL.iter().enumerate().skip(first).take(19) {
         if let Some(g) = a.group() {
@@ -446,7 +449,7 @@ mod tests {
         let k = Keys::default();
         let t = setup_text(&k, &Setup { row: 8, waiting: false }, "");
         assert!(t.contains("> interceptor") && t.contains("Drones and the gun"), "{}", t);
-        let t = setup_text(&k, &Setup { row: 29, waiting: true }, "");
+        let t = setup_text(&k, &Setup { row: Action::ALL.len() - 1, waiting: true }, "");
         assert!(t.contains("? key-setup") && t.contains("press a key"), "{}", t);
     }
 }

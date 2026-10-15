@@ -742,6 +742,11 @@ fn top(view: &View) -> String {
             view.status,
             t.map(|t| if obs.tick.saturating_sub(t.last_hit_tick) < (3 * TICK_HZ) as Tick && t.last_hit_tick > 0 { "   !! UNDER FIRE !!" } else { "" }).unwrap_or("")
         );
+        // Under a goal (step 11a), what the tank is doing for it.
+        if !view.goal.is_empty() {
+            first.push_str("   ");
+            first.push_str(&view.goal);
+        }
     }
     let mut second = format!("NET {}  host {}", n.mode, if n.host.is_empty() { "-" } else { &n.host });
     if n.mode == "lobby" {

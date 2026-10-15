@@ -90,6 +90,9 @@ pub struct View {
     /// Key Setup, when open (keys.rs), and its last word.
     pub key_setup: Option<crate::keys::Setup>,
     pub key_note: String,
+    /// The goal the tank is under and what it is doing (goal.rs), for
+    /// the top strip; empty at the wheel.
+    pub goal: String,
 }
 
 impl View {
@@ -208,12 +211,20 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
         names.push((format!("bot{}", names.len()), true));
     }
     let first_bot = me_player + 1;
-    // The first `--rookies` bots play badly, for a newcomer
+    // The first `--wingmen` bots fly on the player's wing (step 11a);
+    // the `--rookies` after them play badly, for a newcomer
     // (PLAYABILITY item 9).
     let bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId)
         .map(|i| {
             let seed = args.seed.wrapping_mul(31) ^ (i as u64 + 1) ^ round.wrapping_mul(0x9E37_79B9_7F4A_7C15);
-            let b: Box<dyn Brain> = if ((i - first_bot) as usize) < args.rookies { Box::new(RuleBot::rookie(seed, "rookie")) } else { Box::new(RuleBot::new(seed, "rulebot")) };
+            let n = (i - first_bot) as usize;
+            let b: Box<dyn Brain> = if n < args.wingmen {
+                Box::new(treadcore_brain::Commander::wingman(seed, "wingman", me_player))
+            } else if n < args.wingmen + args.rookies {
+                Box::new(RuleBot::rookie(seed, "rookie"))
+            } else {
+                Box::new(RuleBot::new(seed, "rulebot"))
+            };
             (i, b)
         })
         .collect();

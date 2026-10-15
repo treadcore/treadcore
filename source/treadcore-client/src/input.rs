@@ -187,6 +187,7 @@ fn orders(
     mut hud: ResMut<HudState>,
     tiles: Query<(&Interaction, &OrderTile), Changed<Interaction>>,
     bind: Res<crate::keys::Keys>,
+    mut pilot: ResMut<crate::goal::Pilot>,
 ) {
     use crate::keys::Action as A;
     // While a chat line or the proposal list is open the keys are
@@ -224,6 +225,8 @@ fn orders(
             } else {
                 // The world routes a Move around water itself and the tank
                 // follows the waypoints; the client only names the destination.
+                // Driving by hand takes the wheel back from a goal.
+                pilot.brain.set_goal(treadcore_brain::Goal::Manual);
                 orders.0.push(Command::Move { to: p });
             }
         }
@@ -290,7 +293,16 @@ fn orders(
         orders.0.push(Command::SetBubble { radius: me.bubble + 1.0 });
     }
     if pressed(bind.key(A::Stop)) {
+        pilot.brain.set_goal(treadcore_brain::Goal::Manual);
         orders.0.push(Command::Stop);
+    }
+    // G steps the goal (step 11a); the Commander drives from the next tick.
+    if pressed(bind.key(A::Goal)) {
+        let next = pilot.next(obs);
+        pilot.brain.set_goal(next);
+        if next == treadcore_brain::Goal::Manual {
+            orders.0.push(Command::Stop);
+        }
     }
     // A new order takes the last refusal off the wire.
     if orders.0.len() > before {

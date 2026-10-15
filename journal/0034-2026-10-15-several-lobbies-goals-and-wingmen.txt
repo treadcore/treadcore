@@ -1,0 +1,140 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 15 Oct 2026 12:00:00 -0700
+Subject: [JOURNAL 0034] Several lobbies, goals, and wingmen
+Message-ID: <0034.20261015@treadcore.org>
+In-Reply-To: <0033.20261014@treadcore.org>
+Organization: treadcore.org
+Keywords: listen server, lobbies, goals, Commander, wingman,
+          roadmap steps 8 and 11a
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "continue. next." and then, after
+           playing: "I have not even been able to take out a
+           pillbox."
+X-Commits: the commit that carries this entry
+
+                  SEVERAL LOBBIES, GOALS, AND WINGMEN
+
+                     Paul Richeson, treadcore.org
+                           15 October 2026
+
+
+ABSTRACT
+
+    Step 8's last item first: one --listen server now sits in several
+    lobbies at once, a thread and a UDP port each, and LISTEN=near
+    LOBBIES=2 make lobby-test has it host two matches at the same
+    time, both replays matching. Then the session turned on a
+    playtest remark: a pillbox could not be taken. The numbers allow
+    it; the game does not show how. Roadmap step 11 was written
+    (commanders, fleets, battle lines, real numbers), and its first
+    part built: a Commander brain that drives the player's own seat
+    toward a goal (G in the window), and a wingman bot from Paul's
+    brainstorm. The hunter takes a live enemy pillbox in 26.9 s with
+    two shells and no damage.
+
+INDEX TERMS
+
+    networking, artificial intelligence, game design, testing.
+
+
+I. INTRODUCTION
+
+    Two questions: what is left of the backlog before a release, and
+    why a person cannot take a pillbox that a bot takes every match.
+
+II. BACKGROUND
+
+    A pillbox: 60 health, 8 tiles of reach, 15 every two seconds, at
+    tanks and drones only, never at a squad. The direct gun: 10 tiles,
+    45. So the ring between 8 and 10 tiles is safe, and two shots kill.
+    The squad then holds it for ten seconds. A neutral pillbox may be
+    captured live. None of this was written where a player would read
+    it.
+
+III. METHOD
+
+    The lobbies: one thread per --game with its own socket, the status
+    page on a thread of its own behind a lock, each lobby's files in
+    DIR/NAME. One lobby keeps the flat directory and the old
+    status.json fields at the top, so every earlier proof reads the
+    same.
+
+    The goals: a Brain, not a sim change. The Commander sees what the
+    player sees and its orders are a keyboard's, so solo, hosting and
+    client all work, and the replay and the wire know nothing of it. A
+    RuleBot inside it keeps its doctrine for drones and for tanks in
+    sight; the Commander keeps only the orders that serve the goal.
+
+    The wingman follows Paul's brainstorm (a review of a design he had
+    drafted): a priority order (protect the leader; what is ahead of
+    the leader; the leader's pillbox; a depot by the leader; another
+    ally's fight; regroup), a commitment period so it does not dither,
+    a leash so it does not wander, alliances as a background layer,
+    and defection unlocked, never forced, by holding every pillbox and
+    depot. Ownership is read from the observation's full lists, which
+    are the world's: territory is public.
+
+IV. CHRONOLOGY
+
+    1. Several lobbies. FAIL on the test's own count: the server's log
+       held two hashes and two hosting lines. The script now matches
+       the four's hash against one of the server's and the second
+       lobby's against the other. PASS. Plain, near, far, introducer,
+       introducer with two lobbies, near with a late arrival: PASS.
+    2. Step 11 written into ROADMAP.md, 11a to 11g, two of them open
+       questions for Paul (real numbers beside or instead; upgrades).
+    3. The hunter: FAIL, no shot in 90 s. The tank stopped at 9.80
+       tiles and the firing band ended at 9.8: the world ends a route
+       at a tile centre. The firing point is now the tile centre in
+       the ring nearest 9.1 tiles. PASS, 26.9 s.
+    4. A wall on the near side: FAIL, the hunter fired every tick from
+       where it stood and gave up after twelve refusals in twelve
+       ticks. It now fires only from its chosen point, so a refusal
+       moves it round first; a refusal is also read from the shell
+       count, which a window's client sees as soon as a host does.
+       PASS.
+    5. The window: G, the top strip, the wingman seats. One Key Setup
+       test had row 29 written in for the last action; it is the last
+       row now.
+    6. The window driven: one wingman, G once. At 50 s the strip said
+       "GOAL hunt pillboxes: the squad is taking it, 7 s", one pillbox
+       was ours, and bot1 asked to join on the newswire.
+
+V. RESULTS
+
+    make test: sim 36, brain 17, client 21, net 14, proto 3.
+    lobby-test: six variants PASS, LOBBIES=2 among them.
+
+    New: source/treadcore-brain/src/commander.rs (the Commander, the
+    wingman, seven tests), source/treadcore-client/src/goal.rs.
+
+VI. DISCUSSION
+
+    The hard part of taking a pillbox was never the numbers. A goal
+    that does it in front of the player teaches it, and the guide now
+    says it in five lines (HOW-TO-PLAY section 6).
+
+VII. OPEN PROBLEMS
+
+    1. Fortify (11b): walls with a gate, pillboxes that cover each
+       other.
+    2. A wingman in a headless server's seats.
+    3. Whether real numbers replace the game's or ship beside them.
+
+VIII. NEXT STEPS
+
+    1. 11b, the fortify mode.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: server, brain, client,
+    scripts, docs, journal: several lobbies; goals and wingmen
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
