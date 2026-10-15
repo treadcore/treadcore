@@ -108,6 +108,27 @@ pub struct Seat {
     pub rtt_ticks: u32,
 }
 
+impl Seat {
+    fn new(player: PlayerId, peer: PeerId, name: String, now: Instant) -> Seat {
+        Seat {
+            player,
+            peer,
+            name,
+            joined: false,
+            session: 0,
+            rejoins: 0,
+            next_seq: 1,
+            pending: BTreeMap::new(),
+            events_out: VecDeque::new(),
+            events_seq: 0,
+            last_event_send: now,
+            last_seen: now,
+            last_heartbeat: now,
+            rtt_ticks: 0,
+        }
+    }
+}
+
 pub struct Host {
     pub me: PeerId,
     pub world: World,
@@ -135,28 +156,15 @@ impl Host {
     pub fn new(me: PeerId, sock: Option<Socket>, scenario: Scenario, remote: Vec<(PeerId, String)>, routes: RouteTable) -> Host {
         let world = World::new(scenario);
         let now = Instant::now();
-        let seats = remote
-            .into_iter()
-            .enumerate()
-            .map(|(i, (peer, name))| Seat {
-                player: i as PlayerId,
-                peer,
-                name,
-                joined: false,
-                session: 0,
-                rejoins: 0,
-                next_seq: 1,
-                pending: BTreeMap::new(),
-                events_out: VecDeque::new(),
-                events_seq: 0,
-                last_event_send: now,
-                last_seen: now,
-                last_heartbeat: now,
-                rtt_ticks: 0,
-            })
-            .collect();
+        let seats = remote.into_iter().enumerate().map(|(i, (peer, name))| Seat::new(i as PlayerId, peer, name, now)).collect();
         let hash0 = world.hash();
         Host { me, world, seats, routes, sock, inbox: Vec::new(), ticks_run: 0, replay: None, hash_mark: (0, hash0), welcome_id: 0, registration: None }
+    }
+
+    /// The seat a late arrival would take: the lowest-numbered bot's
+    /// whose tank is alive and that no peer holds.
+    pub fn free_seat(&self) -> Option<PlayerId> {
+        self.world.players.iter().find(|pl| pl.is_bot && pl.alive && !self.seats.iter().any(|s| s.player == pl.id)).map(|pl| pl.id)
     }
 
     /// Start recording a replay of this match from now (normally before
@@ -189,16 +197,19 @@ impl Host {
                     }
                 }
                 Packet::Introduce { peers, .. } => {
-                    // The introducer names a peer of ours that is looking
-                    // for us: a seat that dropped. Ping every address it
-                    // might be at, so our router lets its Join in.
+                    // The introducer names a peer looking for us: a seat
+                    // that dropped, or, while a bot's seat is free, a late
+                    // arrival (step 8). Ping every address it might be
+                    // at, so our router lets its Join in.
                     let from_introducer = self.registration.as_ref().map(|r| r.is_from(from)).unwrap_or(false);
                     if !from_introducer {
                         continue;
                     }
+                    let free = self.free_seat().is_some();
                     for i in peers {
                         let seated = self.seats.iter().any(|s| s.peer == i.peer && !s.joined);
-                        if !seated || i.hosting {
+                        let unknown = !self.seats.iter().any(|s| s.peer == i.peer);
+                        if !(seated || (free && unknown && !i.server)) || i.hosting {
                             continue;
                         }
                         for a in [i.public.parse::<SocketAddr>(), i.local.parse::<SocketAddr>()].into_iter().flatten() {
@@ -218,10 +229,32 @@ impl Host {
                 }
             }
         }
+        // A late arrival (roadmap step 8): a Join from a peer with no seat
+        // takes a bot's, the lowest-numbered whose tank is alive and that
+        // no peer holds. The world is told by order, so a replay and
+        // the hash carry it; whoever runs the bots retires that one on
+        // the SeatTaken event (treadcore_brain::retire_taken).
+        for (peer, p) in &incoming {
+            let Packet::Join { name, .. } = p else { continue };
+            if self.seats.iter().any(|s| s.peer == *peer) {
+                continue;
+            }
+            if let Some(player) = self.free_seat() {
+                log::info!("late arrival {:016x} '{}' takes seat {} from its bot", peer, name, player);
+                self.seats.push(Seat::new(player, *peer, name.clone(), now));
+                self.inbox.push(Order { player, cmd: Command::TakeSeat { name: name.clone() } });
+            }
+        }
         for (peer, p) in incoming {
+            let free = self.free_seat().is_some();
             let Some(seat) = self.seats.iter_mut().find(|s| s.peer == peer) else {
-                if let Packet::Join { .. } = p {
-                    self.routes.send(&mut sock, self.me, peer, &Packet::Refuse { why: "no seat for this peer".into() });
+                match p {
+                    Packet::Join { .. } => self.routes.send(&mut sock, self.me, peer, &Packet::Refuse { why: "no free seat: every live seat is a person's".into() }),
+                    // A late arrival's lobby joins a host that answers
+                    // its Ping: answered while a seat is free, so with
+                    // none it elects with the others instead (step 8).
+                    Packet::Ping { seq, sent_us, .. } if free => self.routes.send(&mut sock, self.me, peer, &Packet::Pong { peer: self.me, seq, sent_us }),
+                    _ => {}
                 }
                 continue;
             };
@@ -748,6 +781,51 @@ mod tests {
     /// number joins from a new socket: the host gives the seat back at
     /// the tick the match has reached, starts its sequences over, and
     /// the newcomer's first order (seq 1 again) is applied.
+    /// Roadmap step 8: a peer with no seat that joins mid-match takes a
+    /// bot's seat (the lowest whose tank is alive), by order, under its
+    /// own name; a second takes the next; a third finds none free and is
+    /// refused.
+    #[test]
+    fn a_late_arrival_takes_a_bots_seat() {
+        let hs = Socket::bind(0).unwrap();
+        let host_addr = hs.local_with_loopback();
+        let hid = 0x0001;
+        let scenario = Scenario { players: vec![("remote".into(), false), ("bot1".into(), true), ("bot2".into(), true)], swarm_interval: 0, ..Scenario::default() };
+        let mut host = Host::new(hid, Some(hs), scenario, vec![(0x0002, "remote".into())], RouteTable::default());
+        for _ in 0..30 {
+            host.poll();
+            host.tick(vec![]);
+        }
+        let late = |id: PeerId, name: &str| {
+            let mut r = RouteTable::default();
+            r.direct.insert(hid, host_addr);
+            Client::new(id, Socket::bind(0).unwrap(), hid, r, name)
+        };
+        let (mut a, mut b, mut c) = (late(0x0003, "late-a"), late(0x0004, "late-b"), late(0x0005, "late-c"));
+        let mut taken = Vec::new();
+        for _ in 0..400 {
+            for cl in [&mut a, &mut b, &mut c] {
+                cl.poll();
+            }
+            host.poll();
+            let events = host.tick(vec![]).to_vec();
+            taken.extend(events.iter().filter_map(|e| if let Event::SeatTaken { player, name, .. } = e { Some((*player, name.clone())) } else { None }));
+            if a.state == ClientState::Playing && b.state == ClientState::Playing && c.state == ClientState::Refused {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert_eq!((a.state, b.state, c.state), (ClientState::Playing, ClientState::Playing, ClientState::Refused));
+        let mut seats = vec![a.player.unwrap(), b.player.unwrap()];
+        seats.sort();
+        assert_eq!(seats, vec![1, 2], "the late arrivals were not given the bots' seats");
+        taken.sort();
+        assert_eq!(taken, vec![(seats[0], host.world.players[seats[0] as usize].name.clone()), (seats[1], host.world.players[seats[1] as usize].name.clone())]);
+        assert!(host.world.players[1..].iter().all(|p| !p.is_bot && p.name.starts_with("late-")), "{:?}", host.world.players.iter().map(|p| (&p.name, p.is_bot)).collect::<Vec<_>>());
+        assert!(c.refuse_reason.contains("no free seat"), "{}", c.refuse_reason);
+        assert!(host.world.tick > 30, "joined at the start, not late");
+    }
+
     #[test]
     fn seat_comes_back_after_a_restart() {
         let hs = Socket::bind(0).unwrap();

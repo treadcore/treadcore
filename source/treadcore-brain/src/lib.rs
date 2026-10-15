@@ -24,6 +24,16 @@ pub trait Brain: Send + Sync {
 }
 
 /// Run every bot seat for one tick.
+/// A person took a bot's seat (roadmap step 8): that bot stops, from the
+/// tick the world said so.
+pub fn retire_taken(bots: &mut Vec<(PlayerId, Box<dyn Brain>)>, events: &[Event]) {
+    for e in events {
+        if let Event::SeatTaken { player, .. } = e {
+            bots.retain(|(p, _)| p != player);
+        }
+    }
+}
+
 pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<Order> {
     let mut out = Vec::new();
     for (p, b) in bots.iter_mut() {

@@ -709,6 +709,11 @@ pub enum Command {
     /// Answer a proposal made to me or my team.
     Answer { proposal: EntityId, accept: bool },
     Chat { text: String, to: ChatTo },
+    /// A person takes this bot's seat mid-match (roadmap step 8): the
+    /// host gives the order for a late arrival, so a replay and the
+    /// world hash carry it like any other. Refused for a seat that is
+    /// already a person's.
+    TakeSeat { name: String },
 }
 
 impl Command {
@@ -800,6 +805,8 @@ pub enum Event {
     Chat { player: PlayerId, text: String, to: ChatTo },
     /// `winner` is the top-scoring player of the winning team, if any.
     MatchOver { winner: Option<PlayerId>, team: Option<TeamId> },
+    /// A person took a bot's seat: who, by the name they had and have.
+    SeatTaken { player: PlayerId, was: String, name: String },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1325,6 +1332,9 @@ impl World {
         if let Command::Chat { text, to } = &o.cmd {
             return self.chat(o, text, *to);
         }
+        if let Command::TakeSeat { name } = &o.cmd {
+            return self.take_seat(o, name);
+        }
         match &o.cmd {
             Command::Alliance(a) => return self.apply_alliance(o, a.clone()),
             Command::Propose { to, terms } => return self.propose(o, *to, *terms),
@@ -1668,8 +1678,23 @@ impl World {
                 t.pillboys.route = route;
                 self.events.push(Event::PillboysDeployed { tank: tid, owner: o.player, task: task.clone() });
             }
-            Command::Alliance(_) | Command::Propose { .. } | Command::Answer { .. } | Command::Chat { .. } => {}
+            Command::Alliance(_) | Command::Propose { .. } | Command::Answer { .. } | Command::Chat { .. } | Command::TakeSeat { .. } => {}
         }
+    }
+
+    /// A late arrival takes a bot's seat: the seat is a person's from
+    /// this tick, under their name (one line, at most SEAT_NAME_CHARS),
+    /// with everything the bot held.
+    fn take_seat(&mut self, o: &Order, name: &str) {
+        let name: String = name.chars().filter(|c| !c.is_control()).take(SEAT_NAME_CHARS).collect::<String>().trim().to_string();
+        let Some(p) = self.players.iter_mut().find(|p| p.id == o.player) else { return };
+        if !p.is_bot {
+            return self.reject(o, "seat is already a person's");
+        }
+        let was = std::mem::replace(&mut p.name, if name.is_empty() { format!("p{}", o.player) } else { name.clone() });
+        p.is_bot = false;
+        let name = p.name.clone();
+        self.events.push(Event::SeatTaken { player: o.player, was, name });
     }
 
     /// the prior art's alliance protocol in the proposal's words: a request is a
@@ -4354,6 +4379,14 @@ mod tests {
         }
         w.step(&[Order { player: 0, cmd: Command::Chat { text: " \t ".into(), to: ChatTo::All } }]);
         assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "nothing to say")));
+        // A late arrival takes a bot's seat by order (step 8): the seat
+        // is a person's and renamed, and everyone hears; a person's
+        // seat cannot be taken.
+        w.step(&[Order { player: 4, cmd: Command::TakeSeat { name: "late\ngeeker".into() } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::SeatTaken { player: 4, name, .. } if name == "lategeeker")), "{:?}", w.events);
+        assert!(!w.players[4].is_bot && w.players[4].name == "lategeeker");
+        w.step(&[Order { player: 4, cmd: Command::TakeSeat { name: "again".into() } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "seat is already a person's")));
         // The chosen hear it, and the sender; nobody else (UI-22). A list
         // with only the sender on it is refused.
         for _ in 0..CHAT_EVERY_TICKS {

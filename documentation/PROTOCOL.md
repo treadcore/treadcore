@@ -127,9 +127,20 @@ introducer gives for a seated peer that is not joined, which opens the
 host's router for the returning `Join`. What was the player's is still
 theirs: the seat never left the world, its tank drove on under no
 orders, its pillboxes and depots kept their owner. There is no window:
-the seat waits as long as the match. One lobby name is one match: a
-fresh group that picks the name of a running match is told its host
-and refused by it ("no seat for this peer").
+the seat waits as long as the match.
+
+**Late arrival** (roadmap step 8). A peer with no seat that finds a
+running host the same way (the introducer says who is hosting) is
+answered while a bot's seat is free: the host answers its `Ping`, and
+on its `Join` gives it the lowest-numbered bot's seat whose tank is
+alive. The world is told by order, `Command::TakeSeat { name }` in
+that tick's orders, so a replay and the world hash carry it: the seat
+is a person's from then, under their name, with everything the bot
+held, and every seat hears `Event::SeatTaken`. Whoever runs the bots
+retires that one (`treadcore_brain::retire_taken`). With no seat free
+the host does not answer the `Ping`, so a late group elects among
+itself; a `Join` that gets through anyway is refused ("no free seat:
+every live seat is a person's").
 
 ## The session
 

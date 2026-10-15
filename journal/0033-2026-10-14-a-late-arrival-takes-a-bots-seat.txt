@@ -1,0 +1,117 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 14 Oct 2026 18:00:00 -0700
+Subject: [JOURNAL 0033] A late arrival takes a bot's seat
+Message-ID: <0033.20261014@treadcore.org>
+In-Reply-To: <0032.20261014@treadcore.org>
+Organization: treadcore.org
+Keywords: late arrival, seats, TakeSeat, introducer, roadmap step 8,
+          lobby-test
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "ok. so continue. next. resume roadmap
+           backlog."
+X-Commits: the commit that carries this entry
+
+                     A LATE ARRIVAL TAKES A BOT'S SEAT
+
+                     Paul Richeson, treadcore.org
+                           14 October 2026
+
+
+ABSTRACT
+
+    Step 8 said a player who arrives while a match runs is refused
+    until the next one. Now a peer that finds a running host through
+    the introducer, while a bot's seat with a live tank is free, is
+    seated in it mid-match under its own name. The world is told by
+    order, Command::TakeSeat, so the replay and the world hash carry
+    it: LISTEN=near LATE=1 make lobby-test has the server host, a fifth
+    peer take bot seat 6 at tick 366, and the server's replay match
+    every checkpoint.
+
+INDEX TERMS
+
+    networking, determinism, testing.
+
+
+I. INTRODUCTION
+
+    Step 8's two items left: a late arrival, and one server for
+    several lobbies. The first is the one a person meets.
+
+II. BACKGROUND
+
+    The world hash is the whole world, serialised. A seat changing
+    hands outside the orders would make every replay of such a match
+    disagree with its own checkpoints. Bots run outside the sim, in the
+    server and in the window.
+
+III. METHOD
+
+    The seat changes by order: Command::TakeSeat { name }, injected by
+    the host into the tick's inbox for the bot's player; the world
+    renames the seat, marks it a person's and tells everyone
+    (Event::SeatTaken); a person's seat cannot be taken (LOOSE NUT).
+    The host gives the lowest-numbered bot seat whose tank is alive and
+    no peer holds (Host::free_seat). treadcore_brain::retire_taken
+    drops the bot on the event, in the server's host loop and the
+    window's.
+
+IV. CHRONOLOGY
+
+    1. The sim order and event, and a sim test inside the alliance
+       test's world: taken, renamed, refused the second time.
+    2. The host: a pre-pass gives an unknown peer's Join a seat and
+       queues the order; Seat::new factored out of Host::new. The net
+       test a_late_arrival_takes_a_bots_seat: two late clients get
+       seats 1 and 2, a third is refused.
+    3. LATE=1 make lobby-test: FAIL. peer5 was told by the introducer
+       that peer4 was hosting, and hosted a match of its own. A
+       lobby joins a host only when the host answers its Ping, and a
+       host answered a Ping only from a seated peer. Now it answers an
+       unseated peer while a seat is free (and, through an introducer,
+       pings toward it, as it does for a seat that dropped); with none
+       free it stays silent and a late group elects among itself.
+    4. FAIL again, on the test's own word: it wanted seat 4 or above.
+       A headless host seats the three remote peers 0 to 2 and its own
+       seat is a bot's: 3 was right. PASS.
+    5. LATE=1, REJOIN=1, the plain test: PASS. LISTEN=near LATE=1:
+       the test assumed the host was a peer and four seats introduced
+       to the server; both counted the late one wrong. PASS: the
+       server hosted, peer5 took seat 6, the replay matched.
+
+V. RESULTS
+
+    make test: sim 36, brain 10, client 21, net 14, proto 3.
+    lobby-test: plain, REJOIN=1, LATE=1, LISTEN=near LATE=1: PASS.
+
+VI. DISCUSSION
+
+    Doing it by order cost one Command variant and made the replay
+    proof free. A host-side change to the world would have been fewer
+    lines and a replay that lies.
+
+VII. OPEN PROBLEMS
+
+    1. Whether any of it is fun (from 0027).
+    2. One server for several lobbies (step 8's last).
+    3. A late arrival over the LAN beacon alone: the host runs no
+       lobby and does not shout, so only the introducer finds it.
+
+VIII. NEXT STEPS
+
+    1. A playtest over the LAN, late arrival included.
+    2. One server for several lobbies.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry: sim, net, brain, server,
+    client, scripts, docs, journal: a late arrival takes a bot's seat
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

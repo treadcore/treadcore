@@ -627,7 +627,10 @@ several lobbies at once (it serves one `--game`); a player who arrives
 while the server hosts is refused until the next match, as with any
 host (one lobby name is one match). **Done (journal 0032):** the
 window's rematch, Enter on a networked match-over screen back to the
-lobby on the same port, proven by `make rematch-test`.
+lobby on the same port, proven by `make rematch-test`. **Done
+(journal 0033):** a late arrival takes a bot's seat by order, proven by
+`LATE=1 make lobby-test` and `LISTEN=near LATE=1`, the server's replay
+matching. Left: one server for several lobbies.
 
 **Change.** `treadcore-server --listen`: hosts match after match,
 accepts joins from any lobby that elected it (a peer can be told to

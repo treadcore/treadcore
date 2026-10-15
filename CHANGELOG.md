@@ -6,6 +6,16 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: a late arrival takes a bot's seat (roadmap step 8). A peer
+  that finds a running match through the introducer, while a bot's
+  seat with a live tank is free, is answered, seated in it under its
+  own name and welcomed mid-match; the world is told by order
+  (`Command::TakeSeat`), so replays and the world hash carry it, and
+  everyone hears it on the newswire. With no seat free a late group
+  elects its own host as before. `LATE=1 make lobby-test` proves it,
+  with a `--listen` server too (`LISTEN=near LATE=1`), its replay
+  matching.
+
 - Added: the rematch over a network. After a networked match, or a
   lost connection, Enter takes the window back to the lobby on the
   same port; it looks for peers for twenty seconds, so the others meet

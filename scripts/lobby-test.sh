@@ -13,6 +13,11 @@
 # past zero, and see the match end. (The first run of this killed peer 4
 # blind, the election had made peer 4 the host, and the match died with
 # it: a host that drops is step 8's problem, not this one's.)
+# LATE=1 (implies INTRODUCER=1): after LATE_AFTER seconds (20) a fifth
+# peer with an identity nobody has seen starts and asks in; the host
+# must give it a bot's seat by order (roadmap step 8: a late arrival
+# takes an empty bot seat), welcome it at a tick well past zero, and
+# it must see the match end with the others, on the same world hash.
 # LISTEN=near or LISTEN=far: a dedicated server (`--listen`, roadmap
 # step 8) runs beside the four, and every peer is given its address.
 # near: the server has the best links (the four have LAG, 30 ms by
@@ -29,6 +34,7 @@ say "building headless (release)"
 cargo build --release -p treadcore-server 2>&1 | tee "$LOGDIR/build-$STAMP.log" >/dev/null || die "build failed: see $LOGDIR/build-$STAMP.log"
 BIN="$ROOT/target/release/treadcore-server"
 [ "${REJOIN:-0}" = 1 ] && INTRODUCER=1
+[ "${LATE:-0}" = 1 ] && INTRODUCER=1
 LISTEN="${LISTEN:-}"
 case "$LISTEN" in
     "") ;;
@@ -82,6 +88,7 @@ HOW=""
 [ "${INTRODUCER:-0}" = 1 ] && HOW="$HOW, through an introducer"
 [ "${REJOIN:-0}" = 1 ] && HOW="$HOW, a seat killed at ${REJOIN_AFTER:-20} s and restarted"
 [ -n "$LISTEN" ] && HOW="$HOW, a --listen server $LISTEN"
+[ "${LATE:-0}" = 1 ] && HOW="$HOW, a fifth peer arriving at ${LATE_AFTER:-20} s"
 say "waiting for the match (${LOBBY_SECONDS:-60} game seconds, in real time$HOW)..."
 
 VICTIM=
@@ -104,6 +111,15 @@ if [ "${REJOIN:-0}" = 1 ]; then
     TREADCORE_LAG_MS="${LAG:-0}" RUST_LOG=info "$BIN" $(peer_args "$VICTIM") > "$LOGDIR/lobby-$STAMP-peer$VICTIM.log" 2>&1 &
     PIDS[$V]=$!
     echo "  peer$VICTIM again, pid ${PIDS[$V]} -> $LOGDIR/lobby-$STAMP-peer$VICTIM.log"
+fi
+
+if [ "${LATE:-0}" = 1 ]; then
+    sleep "${LATE_AFTER:-20}"
+    LOG="$LOGDIR/lobby-$STAMP-peer5.log"
+    # shellcheck disable=SC2046
+    TREADCORE_LAG_MS="${LAG:-0}" RUST_LOG=info "$BIN" $(peer_args 5) > "$LOG" 2>&1 &
+    PIDS+=($!)
+    say "peer5 arrives late, pid $! -> $LOG"
 fi
 
 STATUS_JSON=
@@ -165,8 +181,8 @@ if [ "${INTRODUCER:-0}" = 1 ]; then
         # Hello before the introducer's word: what must hold is that
         # every seat found the server through the introducer.
         TO_SERVER="$( (grep -l 'introduced to .*, a server' "$LOGDIR"/lobby-"$STAMP"-peer*.log || true) | wc -l | tr -d " ")"
-        echo "  introducer: $TO_SERVER of the four seats introduced to the server"
-        [ "$TO_SERVER" = 4 ] && [ "$REGISTERED_HOST" = 1 ] || INTRO_OK=0
+        echo "  introducer: $TO_SERVER seats introduced to the server"
+        [ "$TO_SERVER" = $((4 + ${LATE:-0})) ] && [ "$REGISTERED_HOST" = 1 ] || INTRO_OK=0
     else
         [ "$INTRODUCED" -ge 12 ] && [ "$REGISTERED_HOST" = 1 ] || INTRO_OK=0
     fi
@@ -185,14 +201,30 @@ if [ "${REJOIN:-0}" = 1 ]; then
     echo "  rejoin: peer$VICTIM had seat ${SEAT_BEFORE:-none}, back in seat ${SEAT_AFTER:-none} at tick ${TICK_AFTER:-none}; host gave a seat back $GIVEN_BACK time(s); joined without an election: $NO_ELECTION"
     [ -n "$SEAT_AFTER" ] && [ "$SEAT_AFTER" = "$SEAT_BEFORE" ] && [ "${TICK_AFTER:-0}" -gt 200 ] && [ "$GIVEN_BACK" = 1 ] && [ "$NO_ELECTION" = 1 ] || REJOIN_OK=0
 fi
+# A late arrival: peer5 joined the host without an election, into a
+# bot's seat (3 and up: a headless host seats the three remote peers as
+# 0 to 2, and its own seat is a bot's), well past tick zero, and the
+# host said so.
+LATE_OK=1
+LATE_SEATS=0
+if [ "${LATE:-0}" = 1 ]; then
+    LATE_SEATS=1
+    L5="$LOGDIR/lobby-$STAMP-peer5.log"
+    SEAT5="$( (grep -h 'welcomed as player' "$L5" || true) | sed 's/.*welcomed as player \([0-9]*\) at tick \([0-9]*\).*/\1/' | head -1)"
+    TICK5="$( (grep -h 'welcomed as player' "$L5" || true) | sed 's/.*welcomed as player \([0-9]*\) at tick \([0-9]*\).*/\2/' | head -1)"
+    NO_ELECTION5="$(grep -c 'is hosting and answers; joining it' "$L5" || true)"
+    TAKEN="$( (grep -h 'SEAT TAKEN' "$LOGDIR"/lobby-"$STAMP"-peer[1-4].log ${SERVER_PID:+"$SERVER_LOG"} || true) | wc -l | tr -d " ")"
+    echo "  late: peer5 welcomed as player ${SEAT5:-none} at tick ${TICK5:-none}; joined without an election: $NO_ELECTION5; the host logged $TAKEN seat taken"
+    [ -n "$SEAT5" ] && [ "$SEAT5" -ge 3 ] && [ "${TICK5:-0}" -gt 200 ] && [ "$NO_ELECTION5" = 1 ] && [ "$TAKEN" = 1 ] || LATE_OK=0
+fi
 # The server (roadmap step 8). near: it hosted, and the four are all
 # seats; far: it was not elected and one of the four hosted.
-SEATS=3
-HASH_WANT=4
+SEATS=$((3 + LATE_SEATS))
+HASH_WANT=$((4 + LATE_SEATS))
 SERVER_OK=1
 if [ "$LISTEN" = near ]; then
-    SEATS=4
-    HASH_WANT=5
+    SEATS=$((4 + LATE_SEATS))
+    HASH_WANT=$((5 + LATE_SEATS))
     HOSTS="$(grep -c 'hosting:' "$SERVER_LOG" || true)"
     grep -h 'world hash at tick 1000:' "$SERVER_LOG" >/dev/null || SERVER_OK=0
     HASH_LOGS=$((HASH_LOGS + $(grep -c 'world hash at tick 1000:' "$SERVER_LOG" || true)))
@@ -211,15 +243,16 @@ elif [ "$LISTEN" = far ]; then
     echo "  server: not elected $LOST, hosted $SERVED, status page counted it $LISTENING"
     [ "$LOST" = 1 ] && [ "$SERVED" = 0 ] && [ "$LISTENING" = 1 ] || SERVER_OK=0
 fi
-if [ "$HOSTS" = 1 ] && [ "$JOINED" = "$SEATS" ] && [ "$ENDED" = "$SEATS" ] && [ "$HASH_LOGS" = "$HASH_WANT" ] && [ "$HASH_DISTINCT" = 1 ] && [ "$PREDICTED" = "$SEATS" ] && [ "$MISMATCHES" = 0 ] && [ "$FAIL" = 0 ] && [ "$INTRO_OK" = 1 ] && [ "$REJOIN_OK" = 1 ] && [ "$SERVER_OK" = 1 ]; then
+if [ "$HOSTS" = 1 ] && [ "$JOINED" = "$SEATS" ] && [ "$ENDED" = "$SEATS" ] && [ "$HASH_LOGS" = "$HASH_WANT" ] && [ "$HASH_DISTINCT" = 1 ] && [ "$PREDICTED" = "$SEATS" ] && [ "$MISMATCHES" = 0 ] && [ "$FAIL" = 0 ] && [ "$INTRO_OK" = 1 ] && [ "$REJOIN_OK" = 1 ] && [ "$SERVER_OK" = 1 ] && [ "$LATE_OK" = 1 ]; then
     PASSED=""
     [ "${INTRODUCER:-0}" = 1 ] && PASSED="$PASSED, met through the introducer alone"
     [ "${REJOIN:-0}" = 1 ] && PASSED="$PASSED, peer$VICTIM back in its seat"
+    [ "${LATE:-0}" = 1 ] && PASSED="$PASSED, peer5 arrived late and took bot seat $SEAT5"
     [ "$LISTEN" = near ] && PASSED="$PASSED; the --listen server elected, hosting all four, its replay matched"
     [ "$LISTEN" = far ] && PASSED="$PASSED; the far --listen server not elected"
     say "lobby-test: PASS (one host, $SEATS clients welcomed, all saw the match end, one world hash at tick 1000 in all $HASH_WANT logs, no prediction mismatches$PASSED)"
 else
-    die "lobby-test: FAIL (hosts $HOSTS, welcomed $JOINED, ended $ENDED, hash logs $HASH_LOGS distinct $HASH_DISTINCT, prediction lines $PREDICTED mismatches $MISMATCHES, introducer ok $INTRO_OK, rejoin ok $REJOIN_OK, server ok $SERVER_OK, exit status $FAIL); see $LOGDIR/lobby-$STAMP-*.log"
+    die "lobby-test: FAIL (hosts $HOSTS, welcomed $JOINED, ended $ENDED, hash logs $HASH_LOGS distinct $HASH_DISTINCT, prediction lines $PREDICTED mismatches $MISMATCHES, introducer ok $INTRO_OK, rejoin ok $REJOIN_OK, server ok $SERVER_OK, late ok $LATE_OK, exit status $FAIL); see $LOGDIR/lobby-$STAMP-*.log"
 fi
 
 

@@ -11,7 +11,7 @@ use crate::Args;
 use bevy::prelude::*;
 use std::collections::VecDeque;
 use std::time::Instant;
-use treadcore_brain::{run_bots, Brain, RuleBot};
+use treadcore_brain::{retire_taken, run_bots, Brain, RuleBot};
 use treadcore_net::session::RouteTable;
 use treadcore_net::{identity_from_file, new_peer_id, Client, ClientState, Host, Lobby, LobbyConfig, Phase, Predictor, Socket};
 use treadcore_proto::{PeerId, PORT};
@@ -238,7 +238,8 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
         for cmd in orders.0.drain(..) {
             local.push(Order { player: *me_player, cmd });
         }
-        host.tick(local);
+        let events = host.tick(local).to_vec();
+        retire_taken(bots, &events);
         let obs = host.world.observe(*me_player);
         view.last_tick = obs.tick;
         push_events(&mut view, &obs.events, *me_player);
@@ -695,6 +696,7 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
             };
             format!("{}{}: {}", name, tag, text)
         }
+        Event::SeatTaken { was, name, .. } => format!("{} takes {}'s seat. gl hf", name, was),
         Event::MatchOver { winner, team } => format!("{}{}", treadcore_sim::lingo::match_over(&winner.map(|w| who(&w)).unwrap_or_else(|| "nobody (a draw)".into()), view.last_tick), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
         Event::FriendlyFireSpared { by, damage, .. } => format!("friendly fire from {} spared ({:.0})", who(by), damage),
         Event::Proposed { from, to, terms, .. } => match view.obs.as_ref() {

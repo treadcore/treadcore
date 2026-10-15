@@ -288,6 +288,8 @@ pub const CHAT_MAX_CHARS: usize = 120;
 /// "All nearby tanks" (UI-22): within this of the sender's tank. Twice
 /// the tank's sight: a radio's reach, not its eyes.
 pub const CHAT_NEARBY: f32 = 15.0;
+/// A name taken with a seat is cut to this.
+pub const SEAT_NAME_CHARS: usize = 16;
 
 // ---- scoring -----------------------------------------------------------
 

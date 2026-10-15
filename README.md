@@ -116,6 +116,7 @@ make lobby-test  # four headless peers on this machine elect a host
 LAG=200 make lobby-test   # the same with 200 ms of lag on every receive: prediction's proof
 INTRODUCER=1 make lobby-test   # no broadcast: the four meet through an introducer alone
 REJOIN=1 make lobby-test       # a seat killed outright at 20 s comes back to the same seat
+LATE=1 make lobby-test         # a fifth peer arriving at 20 s takes a bot's seat
 make sounds      # every sound the window makes, as WAV files in build/sounds
 make listen      # a dedicated server: hosts match after match when elected, takes no seat
 LISTEN=near make lobby-test    # the four, plus a server with better links: it must host

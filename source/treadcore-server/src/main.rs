@@ -19,7 +19,7 @@
 //! so the trace reads top to bottom.
 
 use std::time::{Duration, Instant};
-use treadcore_brain::{run_bots, Brain, Defender, JsonBrain, RuleBot};
+use treadcore_brain::{retire_taken, run_bots, Brain, Defender, JsonBrain, RuleBot};
 use treadcore_net::session::RouteTable;
 use treadcore_net::{identity_from_file, new_peer_id, Client, ClientState, Host, Introducer, Lobby, LobbyConfig, LobbyResult, PeerId, Registration, Socket};
 use treadcore_proto::PORT;
@@ -617,6 +617,7 @@ fn narrate(world: &World, events: &[Event]) {
             Event::LinkLost { owner, drone } => log::info!("[{:>6} {:>6.1}s] p{} link lost to #{}", t, s, owner, drone),
             Event::Chat { player, text, to } => log::info!("[{:>6} {:>6.1}s] p{} ({:?}): {}", t, s, player, to, text),
             Event::MatchOver { winner, team } => log::warn!("[{:>6} {:>6.1}s] MATCH OVER winner {:?} team {:?}", t, s, winner, team),
+            Event::SeatTaken { player, was, name } => log::warn!("[{:>6} {:>6.1}s] p{} SEAT TAKEN: {} has {}'s seat", t, s, player, name, was),
             Event::FriendlyFireSpared { target, by, damage } => log::info!("[{:>6} {:>6.1}s] friendly fire spared #{} from p{} ({:.0})", t, s, target, by, damage),
             Event::Proposed { from, to, terms, .. } => log::info!("[{:>6} {:>6.1}s] p{} proposes {:?} to p{}", t, s, from, terms, to),
             Event::ProposalResolved { from, to, terms, accepted, by, why, .. } => log::warn!("[{:>6} {:>6.1}s] PROPOSAL p{} {:?} p{}: {}{}{}", t, s, from, terms, to, if *accepted { "ACCEPTED" } else { "refused" }, by.map(|b| format!(" by p{}", b)).unwrap_or_default(), why.as_ref().map(|w| format!(" ({})", w)).unwrap_or_default()),
@@ -830,6 +831,7 @@ fn host_match(args: &Args, me: PeerId, sock: Socket, result: &LobbyResult, route
             next += Duration::from_secs_f32(DT);
             let orders = run_bots(&host.world, &mut bots);
             let events = host.tick(orders).to_vec();
+            retire_taken(&mut bots, &events);
             narrate(&host.world, &events);
             trace.write(host.world.tick, &events);
             report.tally(host.world.tick, &events);
