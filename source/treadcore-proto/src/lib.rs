@@ -32,7 +32,7 @@ use treadcore_sim::{Command, Event, Map, Observation, PlayerId, Scenario, Tick};
 pub const MAGIC: [u8; 4] = *b"TRDC";
 /// Bump on any change to `Packet` or to anything it carries from
 /// treadcore-sim. Peers on different versions ignore each other entirely.
-pub const VERSION: u16 = 13;
+pub const VERSION: u16 = 14;
 
 
 

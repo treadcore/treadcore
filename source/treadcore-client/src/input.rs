@@ -198,11 +198,20 @@ fn orders(
     let clicked: Option<usize> = tiles.iter().find(|(i, _)| **i == Interaction::Pressed).map(|(_, t)| t.0);
     let hit = |key: KeyCode, row: usize| pressed(key) || clicked == Some(row);
     if pressed(bind.key(A::Events)) {
-        hud.show_log = !hud.show_log;
+        if pilot.coord {
+            pilot.folded = !pilot.folded;
+        } else {
+            hud.show_log = !hud.show_log;
+        }
     }
-    // Esc drops an armed mode; with none armed it quits.
+    // Esc drops an armed mode, or the coordination screen; with neither
+    // it quits.
     if pressed(KeyCode::Escape) {
-        if hud.mode.is_some() {
+        if pilot.coord {
+            if pilot.toggle() {
+                orders.0.push(Command::Stop);
+            }
+        } else if hud.mode.is_some() {
             hud.mode = None;
         } else {
             info!("quit");
@@ -216,6 +225,34 @@ fn orders(
     let Ok((camera, cam_tf)) = cam.single() else { return };
     let at = cursor_tile(window, camera, cam_tf);
     let map = view.map.as_ref();
+
+    // Space: the coordination screen up or down (goal.rs).
+    if pressed(bind.key(A::Coordinate)) && pilot.toggle() {
+        orders.0.push(Command::Stop);
+    }
+    if pilot.coord {
+        // The rungs on 1 to 6, G for one goal, a click to hold there; the
+        // drone and builder keys wait for the wheel.
+        let digits = [KeyCode::Digit1, KeyCode::Digit2, KeyCode::Digit3, KeyCode::Digit4, KeyCode::Digit5, KeyCode::Digit6];
+        for (i, k) in digits.iter().enumerate() {
+            if pressed(*k) {
+                pilot.brain.ladder[i] = !pilot.brain.ladder[i];
+            }
+        }
+        if pressed(bind.key(A::Goal)) {
+            let next = pilot.next(obs);
+            pilot.brain.set_goal(if next == treadcore_brain::Goal::Manual { treadcore_brain::Goal::Auto } else { next });
+        }
+        if mouse.just_pressed(MouseButton::Left) {
+            if let Some(p) = at {
+                pilot.brain.set_goal(treadcore_brain::Goal::Hold(p));
+            }
+        }
+        if orders.0.len() > before {
+            view.refused = None;
+        }
+        return;
+    }
 
     if mouse.just_pressed(MouseButton::Left) {
         if let Some(p) = at {
@@ -317,7 +354,8 @@ fn orders(
 /// With Shift a wall is poured in concrete (step 10a). In works mode
 /// (step 10d) a click on a structure mends ours or takes one that is
 /// nobody's or wrecked; anywhere else it builds the selected kind,
-/// which the world refuses off a pad.
+/// which the world refuses off a pad. Shift on a pillbox of mine lifts
+/// it (step 11h); carrying one, a pillbox built is that one set down.
 fn builder_task(obs: &Observation, mode: Mode, p: V2, shift: bool, works: StructureKind) -> PillboyTask {
     match mode {
         Mode::Farm => PillboyTask::Harvest { at: p },
@@ -336,6 +374,7 @@ fn builder_task(obs: &Observation, mode: Mode, p: V2, shift: bool, works: Struct
         Mode::Pillbox => {
             let near = obs.pillboxes.iter().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()).filter(|pb| pb.pos.dist(p) <= 1.5);
             match near {
+                Some(pb) if shift && pb.owner == Some(obs.player) => PillboyTask::Lift { pillbox: pb.id },
                 Some(pb) if pb.owner == Some(obs.player) || (pb.alive() && pb.owner.is_some()) => PillboyTask::Repair { target: pb.id },
                 Some(pb) => PillboyTask::Capture { pillbox: pb.id },
                 None => PillboyTask::Build { what: BuildKind::Pillbox, at: p },

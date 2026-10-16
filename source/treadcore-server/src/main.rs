@@ -657,6 +657,8 @@ fn narrate(world: &World, events: &[Event]) {
             Event::PillboxCaptured { pillbox, by, from } => log::warn!("[{:>6} {:>6.1}s] p{} CAPTURES pillbox #{} from {}", t, s, by, pillbox, from.map(|f| format!("p{}", f)).unwrap_or_else(|| "neutral".into())),
             Event::PillboxRepaired { pillbox, by } => log::info!("[{:>6} {:>6.1}s] p{} repairs pillbox #{}", t, s, by, pillbox),
             Event::PillboxBuilt { pillbox, by, at } => log::warn!("[{:>6} {:>6.1}s] p{} BUILDS pillbox #{} at ({:.0},{:.0})", t, s, by, pillbox, at.x, at.y),
+            Event::PillboxLifted { pillbox, by, at } => log::warn!("[{:>6} {:>6.1}s] p{} LIFTS pillbox #{} at ({:.0},{:.0})", t, s, by, pillbox, at.x, at.y),
+            Event::PillboxDropped { pillbox, owner, at } => log::warn!("[{:>6} {:>6.1}s] p{} DROPS pillbox #{} at ({:.0},{:.0})", t, s, owner, pillbox, at.x, at.y),
             Event::PillboxDamaged { pillbox, by, damage, health_left } => log::info!("[{:>6} {:>6.1}s] pillbox #{} -{:.0} ({:.0} left) by {:?}", t, s, pillbox, damage, health_left, by),
             Event::PillboxDestroyed { pillbox, owner, by } => log::warn!("[{:>6} {:>6.1}s] pillbox #{} ({}) DEAD by {:?}", t, s, pillbox, owner.map(|o| format!("p{}", o)).unwrap_or_else(|| "neutral".into()), by),
             Event::PillboxFired { pillbox, owner, tank, damage } => log::info!("[{:>6} {:>6.1}s] {} pillbox #{} hits tank #{} for {:.0}", t, s, if *owner == NEUTRAL { "neutral".to_string() } else { format!("p{}", owner) }, pillbox, tank, damage),

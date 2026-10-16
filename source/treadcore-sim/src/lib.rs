@@ -433,6 +433,9 @@ pub enum PillboyTask {
     Build { what: BuildKind, at: V2 },
     /// Fell a forest tile for material.
     Harvest { at: V2 },
+    /// Pick up a pillbox of my own side, live or dead, to set it down
+    /// elsewhere with a Build of a pillbox (step 11h).
+    Lift { pillbox: EntityId },
     /// Come home.
     Return,
 }
@@ -442,6 +445,7 @@ impl PillboyTask {
     fn site(&self, world: &World) -> Option<V2> {
         match self {
             PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => world.pillbox(*pillbox).map(|p| p.pos).or_else(|| world.structure(*pillbox).map(|s| s.pos)),
+            PillboyTask::Lift { pillbox } => world.pillbox(*pillbox).map(|p| p.pos),
             PillboyTask::Build { at, .. } | PillboyTask::Harvest { at } => Some(*at),
             PillboyTask::Return => None,
         }
@@ -472,11 +476,14 @@ pub struct Pillboys {
     pub material: u8,
     /// Waypoints to the site, or home.
     pub route: Vec<V2>,
+    /// A pillbox lifted and not yet set down: its health (step 11h).
+    /// Lost with the squad or the tank, it falls where they were, dead.
+    pub carrying: Option<f32>,
 }
 
 impl Pillboys {
     pub fn fresh(pos: V2, material: u8) -> Pillboys {
-        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material, route: Vec::new() }
+        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material, route: Vec::new(), carrying: None }
     }
     pub fn deployed(&self) -> bool {
         !self.aboard
@@ -776,6 +783,11 @@ pub enum Event {
     PillboxCaptured { pillbox: EntityId, by: PlayerId, from: Option<PlayerId> },
     PillboxRepaired { pillbox: EntityId, by: PlayerId },
     PillboxBuilt { pillbox: EntityId, by: PlayerId, at: V2 },
+    /// Picked up by its own side's squad (step 11h): gone from the map
+    /// until set down, when it is PillboxBuilt again under a new id.
+    PillboxLifted { pillbox: EntityId, by: PlayerId, at: V2 },
+    /// The squad carrying one was lost: it falls there, dead.
+    PillboxDropped { pillbox: EntityId, owner: PlayerId, at: V2 },
     PillboxDamaged { pillbox: EntityId, by: Option<PlayerId>, damage: f32, health_left: f32 },
     /// Shot to zero: silent and capturable, not removed.
     PillboxDestroyed { pillbox: EntityId, owner: Option<PlayerId>, by: Option<PlayerId> },
@@ -981,6 +993,18 @@ pub struct World {
     /// Events from the most recent `step`. Cleared at the start of the next.
     #[serde(skip)]
     pub events: Vec<Event>,
+}
+
+/// Squads on one pillbox (or structure) that are all of one side do
+/// not contest it: they take it together, for the one already taking
+/// it, else the lowest seat (step 11h's fleets: two of a team on one
+/// pillbox stood ten seconds and more with neither clock moving).
+fn allies_together(who: Vec<PlayerId>, capturer: Option<PlayerId>, allied: &impl Fn(PlayerId, PlayerId) -> bool) -> Vec<PlayerId> {
+    if who.len() > 1 && who.iter().all(|w| allied(*w, who[0])) {
+        vec![capturer.filter(|c| who.contains(c)).unwrap_or(who[0])]
+    } else {
+        who
+    }
 }
 
 impl World {
@@ -1576,6 +1600,7 @@ impl World {
                     return self.reject(o, "squad already out");
                 }
                 let material = squad.material;
+                let carrying = squad.carrying.is_some();
                 match task {
                     PillboyTask::Capture { pillbox } if self.pillbox(*pillbox).is_none() => match self.structure(*pillbox) {
                         None => return self.reject(o, "no such pillbox"),
@@ -1606,12 +1631,18 @@ impl World {
                         Some(_) if material < PILLBOX_REPAIR_COST => return self.reject(o, "no material"),
                         Some(_) => {}
                     },
+                    PillboyTask::Lift { pillbox } => match self.pillbox(*pillbox) {
+                        None => return self.reject(o, "no such pillbox"),
+                        Some(p) if p.owner != Some(o.player) => return self.reject(o, "only a pillbox of your own can be lifted"),
+                        Some(_) if carrying => return self.reject(o, "already carrying one"),
+                        Some(_) => {}
+                    },
                     PillboyTask::Build { what, at } => {
                         if !self.map.in_bounds(*at) {
                             return self.reject(o, "off map");
                         }
                         let here = self.map.at(*at);
-                        if material < what.cost() {
+                        if material < what.cost() && !(carrying && *what == BuildKind::Pillbox) {
                             return self.reject(o, "no material");
                         }
                         if here == Terrain::Depot || self.depots.iter().any(|d| d.pos.dist(*at) <= DEPOT_RADIUS) {
@@ -1816,6 +1847,7 @@ impl World {
     /// The squad: walk, work, walk home. Read the tank and the site,
     /// decide, then apply, as the drones do.
     fn step_pillboys(&mut self) {
+        self.drop_carried();
         #[derive(Debug)]
         enum Done {
             Captured(EntityId, Option<PlayerId>),
@@ -1824,6 +1856,7 @@ impl World {
             Mended(EntityId),
             Built(BuildKind, V2),
             Harvested(V2),
+            Lifted(EntityId),
             Abandon(&'static str),
             Home,
         }
@@ -1855,6 +1888,7 @@ impl World {
             // cannot stand on it (water for a bridge).
             let site: Option<V2> = match &task {
                 PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos).or_else(|| structures.iter().find(|x| x.id == *pillbox).map(|x| x.pos)),
+                PillboyTask::Lift { pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos),
                 PillboyTask::Build { at, .. } | PillboyTask::Harvest { at } => Some(*at),
                 PillboyTask::Return => None,
             };
@@ -1964,14 +1998,28 @@ impl World {
                         BuildKind::Road => matches!(map.at(*at), Terrain::Road | Terrain::Bridge | Terrain::Wall | Terrain::Concrete | Terrain::Pad),
                         BuildKind::Mine => !map.at(*at).passable() || mine_tiles.iter().any(|mt| *mt == at.tile()),
                     };
+                    let placing = *what == BuildKind::Pillbox && s.carrying.is_some();
                     if blocked {
                         done.push((t.id, t.owner, Done::Abandon("something is already there")));
-                    } else if s.material < what.cost() {
+                    } else if s.material < what.cost() && !placing {
                         done.push((t.id, t.owner, Done::Abandon("no material")));
                     } else {
                         s.progress += 1;
-                        if s.progress >= what.ticks() {
+                        if s.progress >= if placing { PILLBOX_PLACE_TICKS } else { what.ticks() } {
                             done.push((t.id, t.owner, Done::Built(*what, *at)));
+                        }
+                    }
+                }
+                PillboyTask::Lift { pillbox } => {
+                    let p = pillboxes.iter().find(|p| p.id == *pillbox).unwrap();
+                    if p.owner != Some(t.owner) {
+                        done.push((t.id, t.owner, Done::Abandon("the pillbox is not ours now")));
+                    } else if s.carrying.is_some() {
+                        done.push((t.id, t.owner, Done::Abandon("already carrying one")));
+                    } else {
+                        s.progress += 1;
+                        if s.progress >= PILLBOX_LIFT_TICKS {
+                            done.push((t.id, t.owner, Done::Lifted(p.id)));
                         }
                     }
                 }
@@ -1992,6 +2040,7 @@ impl World {
             let mut who: Vec<PlayerId> = takes.iter().filter(|(id, _)| *id == x.id).map(|(_, o)| *o).collect();
             who.sort_unstable();
             who.dedup();
+            let who = allies_together(who, x.capturer, &allied_with);
             match who.as_slice() {
                 [one] => {
                     if x.capturer != Some(*one) {
@@ -2014,6 +2063,7 @@ impl World {
             let mut who: Vec<PlayerId> = captures.iter().filter(|(id, _)| *id == p.id).map(|(_, o)| *o).collect();
             who.sort_unstable();
             who.dedup();
+            let who = allies_together(who, p.capturer, &allied_with);
             match who.as_slice() {
                 [one] => {
                     if p.capturer != Some(*one) {
@@ -2098,14 +2148,18 @@ impl World {
                     self.events.push(Event::PillboxRepaired { pillbox: pid, by: owner });
                 }
                 Done::Built(what, at) => {
+                    let mut carried = None;
                     if let Some(t) = self.tank_mut(tid) {
-                        t.pillboys.material -= what.cost();
+                        carried = if what == BuildKind::Pillbox { t.pillboys.carrying.take() } else { None };
+                        if carried.is_none() {
+                            t.pillboys.material -= what.cost();
+                        }
                     }
                     let at = Map::tile_centre(at);
                     match what {
                         BuildKind::Pillbox => {
                             let id = self.alloc();
-                            self.pillboxes.push(Pillbox { id, pos: at, owner: Some(owner), health: PILLBOX_HEALTH, reload: PILLBOX_RELOAD_TICKS, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+                            self.pillboxes.push(Pillbox { id, pos: at, owner: Some(owner), health: carried.unwrap_or(PILLBOX_HEALTH), reload: PILLBOX_RELOAD_TICKS, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
                             self.events.push(Event::PillboxBuilt { pillbox: id, by: owner, at });
                         }
                         BuildKind::Wall => self.set_terrain(at, Terrain::Wall),
@@ -2137,6 +2191,14 @@ impl World {
                     }
                     self.events.push(Event::Harvested { owner, at, material: gained });
                 }
+                Done::Lifted(pid) => {
+                    let Some(ix) = self.pillboxes.iter().position(|p| p.id == pid) else { continue };
+                    let p = self.pillboxes.remove(ix);
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.carrying = Some(p.health);
+                    }
+                    self.events.push(Event::PillboxLifted { pillbox: pid, by: owner, at: p.pos });
+                }
                 Done::Abandon(why) => {
                     self.events.push(Event::PillboysAbandoned { tank: tid, owner, why: why.into() });
                 }
@@ -2164,6 +2226,20 @@ impl World {
         }
         for mid in stepped_on {
             self.explode_mine(mid);
+        }
+    }
+
+    /// A squad lost with a pillbox on its back, or its tank, lets it
+    /// fall where it was: dead, still its side's, to be taken back or
+    /// taken (step 11h). Spacing is not asked: it was carried there.
+    fn drop_carried(&mut self) {
+        let fallen: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.pillboys.carrying.is_some() && (!t.alive || t.pillboys.strength == 0)).map(|t| (t.id, t.owner, if t.pillboys.aboard { t.pos } else { t.pillboys.pos })).collect();
+        for (tid, owner, at) in fallen {
+            self.tank_mut(tid).unwrap().pillboys.carrying = None;
+            let at = Map::tile_centre(at);
+            let id = self.alloc();
+            self.pillboxes.push(Pillbox { id, pos: at, owner: Some(owner), health: 0.0, reload: PILLBOX_RELOAD_TICKS, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+            self.events.push(Event::PillboxDropped { pillbox: id, owner, at });
         }
     }
 
@@ -2958,7 +3034,21 @@ impl World {
         let mut captured = Vec::new();
         let mut resupplied = Vec::new();
         for dep in self.depots.iter_mut() {
-            let here: Vec<&(EntityId, PlayerId, V2)> = tanks.iter().filter(|(_, _, p)| p.dist(dep.pos) <= DEPOT_RADIUS).collect();
+            let mut here: Vec<&(EntityId, PlayerId, V2)> = tanks.iter().filter(|(_, _, p)| p.dist(dep.pos) <= DEPOT_RADIUS).collect();
+            // Tanks of one side on a depot are not a contest (step 11h's
+            // fleets: a wingman on its leader's heels stopped every
+            // capture): the depot's own side resupply, and one of them,
+            // the one already taking it else the first, takes it.
+            if here.len() > 1 && here.iter().all(|(_, o, _)| allied_with(Some(here[0].1), *o)) {
+                if allied_with(dep.owner, here[0].1) {
+                    for (tid, _, _) in &here {
+                        resupplied.push((*tid, dep.id));
+                    }
+                    continue;
+                }
+                let keep = here.iter().position(|(_, o, _)| dep.capturer == Some(*o)).unwrap_or(0);
+                here = vec![here[keep]];
+            }
             match here.as_slice() {
                 [] => {
                     if dep.capture > 0 {
@@ -4060,6 +4150,132 @@ mod tests {
             }
         }
         assert!(at_enemy >= 2 && at_me == 0, "fired at enemy {} times, at owner {}", at_enemy, at_me);
+    }
+
+    /// Two allied tanks on a neutral depot take it, and two on their own
+    /// depot both resupply: neither is a contest.
+    #[test]
+    fn allied_tanks_share_a_depot() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) }.with_teams(1);
+        let mut w = World::new(sc);
+        let d = w.depots.iter().find(|d| d.owner.is_none()).unwrap().clone();
+        for i in 0..2 {
+            let t = &mut w.tanks[i];
+            t.pos = d.pos + V2::new(i as f32 * 0.6 - 0.3, 0.0);
+            t.goal = None;
+            t.route.clear();
+        }
+        let mut took = None;
+        for _ in 0..(CAPTURE_TICKS as u32 + 5 * TICK_HZ) {
+            w.step(&[]);
+            if let Some(Event::DepotCaptured { by, .. }) = w.events.iter().find(|e| matches!(e, Event::DepotCaptured { .. })) {
+                took = Some(*by);
+            }
+        }
+        assert!(took.is_some(), "two allies on a neutral depot did not take it");
+        // Now it is theirs: both resupply on it.
+        w.tanks[0].shells = 0;
+        w.tanks[1].shells = 0;
+        for _ in 0..(10 * TICK_HZ) {
+            w.step(&[]);
+        }
+        assert!(w.tanks[0].shells > 0 && w.tanks[1].shells > 0, "shells {} {}", w.tanks[0].shells, w.tanks[1].shells);
+    }
+
+    /// Two allied squads on one neutral pillbox take it together, in the
+    /// one squad's time, for the one that was there first.
+    #[test]
+    fn allied_squads_do_not_contest() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) }.with_teams(1);
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let home = w.tanks[0].pos;
+        let at = (0..32).map(|i| Map::tile_centre(home + V2::from_heading(i as f32 * 0.8).scale(3.0))).find(|p| w.map.at(*p).passable() && w.map.at(*p) != Terrain::Forest && !w.depots.iter().any(|d| d.pos.dist(*p) <= DEPOT_RADIUS)).unwrap();
+        let id = w.alloc();
+        w.pillboxes.push(Pillbox { id, pos: at, owner: None, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        let mate = w.tanks[1].id;
+        w.tank_mut(mate).unwrap().pos = home + (home - at).norm().scale(1.0);
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Capture { pillbox: id } } }]);
+        w.step(&[Order { player: 1, cmd: Command::Deploy { task: PillboyTask::Capture { pillbox: id } } }]);
+        let mut taken = None;
+        for _ in 0..(30 * TICK_HZ) {
+            w.step(&[]);
+            if let Some(Event::PillboxCaptured { by, .. }) = w.events.iter().find(|e| matches!(e, Event::PillboxCaptured { .. })) {
+                taken = Some((*by, w.tick));
+                break;
+            }
+        }
+        let (by, tick) = taken.expect("two allies on it and nobody took it");
+        assert_eq!(by, 0);
+        assert!(tick < 20 * TICK_HZ as Tick, "took {} ticks", tick);
+    }
+
+    /// Step 11h: the squad lifts a pillbox of its own, carries it at the
+    /// health it had, and sets it down elsewhere for no material; one of
+    /// theirs cannot be lifted; a carried one falls dead with the tank.
+    #[test]
+    fn squad_lifts_and_sets_down_a_pillbox() {
+        let mut w = world();
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let home = w.tank(me).unwrap().pos;
+        let free = |w: &World, at: V2| w.map.at(at).passable() && w.map.at(at) != Terrain::Forest && w.map.at(at) != Terrain::Depot && !w.depots.iter().any(|d| d.pos.dist(at) <= DEPOT_RADIUS);
+        let spot = |w: &World, from: V2| (0..32).map(|i| { let a = i as f32 * 0.6; Map::tile_centre(from + V2::new(a.cos(), a.sin()).scale(3.0 + (i / 8) as f32)) }).find(|p| free(w, *p)).expect("no free tile");
+        let at = spot(&w, home);
+        let mine = w.alloc();
+        w.pillboxes.push(Pillbox { id: mine, pos: at, owner: Some(0), health: 40.0, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        let far = spot(&w, home + V2::new(0.0, 12.0));
+        let theirs = w.alloc();
+        w.pillboxes.push(Pillbox { id: theirs, pos: far, owner: Some(1), health: 0.0, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Lift { pillbox: theirs } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "lifted theirs: {:?}", w.events);
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Lift { pillbox: mine } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        let mut lifted = false;
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            lifted |= w.events.iter().any(|e| matches!(e, Event::PillboxLifted { pillbox, .. } if *pillbox == mine));
+            if lifted && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert!(lifted, "never lifted");
+        assert!(w.pillbox(mine).is_none(), "still on the map");
+        assert_eq!(w.tank(me).unwrap().pillboys.carrying, Some(40.0));
+        // Down again on the other side, with no material at all.
+        w.tank_mut(me).unwrap().pillboys.material = 0;
+        let to = spot(&w, home - (at - home));
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Pillbox, at: to } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        let mut placed = None;
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            if let Some(Event::PillboxBuilt { pillbox, .. }) = w.events.iter().find(|e| matches!(e, Event::PillboxBuilt { .. })) {
+                placed = Some(*pillbox);
+            }
+            if placed.is_some() && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        let p = w.pillbox(placed.expect("never set down")).unwrap().clone();
+        assert_eq!((p.owner, p.health, p.pos), (Some(0), 40.0, to));
+        let t = w.tank(me).unwrap();
+        assert_eq!((t.pillboys.carrying, t.pillboys.material), (None, 0));
+        // Lifted again, and the tank is killed with it aboard.
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Lift { pillbox: p.id } } }]);
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            if w.tank(me).unwrap().pillboys.carrying.is_some() && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert!(w.tank(me).unwrap().pillboys.carrying.is_some());
+        let tank_at = w.tank(me).unwrap().pos;
+        w.damage(me, TANK_ARMOR * 2.0, Some(1));
+        w.step(&[]);
+        let fell = w.events.iter().find_map(|e| if let Event::PillboxDropped { pillbox, .. } = e { Some(*pillbox) } else { None }).expect("nothing fell");
+        let f = w.pillbox(fell).unwrap();
+        assert_eq!((f.owner, f.health, f.pos), (Some(0), 0.0, Map::tile_centre(tank_at)));
     }
 
     /// The squad fells a forest tile for material, walls a tile that

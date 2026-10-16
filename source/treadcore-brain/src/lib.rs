@@ -19,13 +19,19 @@ use std::io::{BufRead, Write};
 use treadcore_sim::*;
 
 pub mod commander;
-pub use commander::{Commander, Goal};
+pub mod fleet;
+pub mod fortify;
+pub use commander::{Commander, Goal, Rung};
 
 // Send + Sync so a seat's Brain can live in a Bevy resource; JsonBrain keeps
 // its receiver behind a Mutex for the same reason.
 pub trait Brain: Send + Sync {
     fn name(&self) -> &str;
     fn think(&mut self, obs: &Observation) -> Vec<Command>;
+    /// What it is doing, in a line, for a window that shows its fleet.
+    fn status(&self) -> String {
+        String::new()
+    }
 }
 
 /// Run every bot seat for one tick.

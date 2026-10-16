@@ -6,6 +6,48 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the ladder's **expand** rung (sixth on the coordination
+  screen): take depots not yours, their guard pillboxes first, then the
+  far pillboxes. A side on auto used to hold its first three depots all
+  match. Allied tanks on one depot no longer contest it (and both
+  resupply). A fleet bot whose leader dies takes command. Under unseen
+  fire a tank under a goal scoots, sends its recon to where the shells
+  came from, and fires back.
+
+- Added: fleets. `--fleets` (`FLEETS=1 make run`): sixteen seats as
+  three base-building teams of five and one aggressive bot alone. Your
+  team assists you: a builder fortifies your depot, a guard defends it,
+  two wingmen follow you. The coordination screen lists your fleet and
+  what each bot is doing. Allied squads on one pillbox now take it
+  together instead of contesting it.
+
+- Added: pillboxes move (roadmap step 11h; wire version 14). In
+  pillbox mode, Shift-click a pillbox of yours: the squad lifts it and
+  carries it, and the next pillbox you build is that one set down, at
+  its health, for no material. Lost with the squad or the tank, it
+  falls there, dead.
+
+- Added: defend base and auto. `G` now starts at **auto**, a ladder the
+  tank climbs by itself: defend the base when something comes for it,
+  else fortify, else (once the castle stands and the base has been
+  quiet twenty seconds) bring outlying pillboxes of yours home into two
+  turrets at the wall's ends, else hunt pillboxes near the base, else
+  guard. **Defend base** is also a goal of its own.
+
+- Changed: **Space** opens the coordination screen and hands the tank to
+  auto; Space again gives you the wheel. Stop is now **H**. On the
+  screen `1` to `5` turn the ladder's rungs on and off, `G` picks one
+  goal, a click holds the tank there, Tab folds it away. A keys file
+  saved before this keeps Stop on Space and puts the coordination
+  screen on H; Key Setup (`K`) swaps them back.
+
+- Added: fortify (roadmap step 11b), the fifth goal on `G`. The squad
+  builds a castle's gate round the nearest depot of your side: two
+  guard towers flanking the gate and a pillbox behind the depot, each
+  covering the others; a curtain wall across the threat's side with a
+  one-tile gate; a road out through it. A tank from the front is
+  routed through the gate.
+
 - Added: goals (roadmap step 11a). `G` steps the tank's goal: hunt
   pillboxes (shoot a live enemy one dead from between 8 and 10 tiles,
   walking round a blocked line, then the squad takes it; a neutral one

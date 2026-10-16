@@ -232,6 +232,12 @@ pub const PILLBOX_CAPTURE_TICKS: u16 = 10 * TICK_HZ as u16;
 pub const PILLBOX_REPAIR_TICKS: u16 = 6 * TICK_HZ as u16;
 pub const PILLBOX_BUILD_TICKS: u16 = 15 * TICK_HZ as u16;
 pub const PILLBOX_REPAIR_COST: u8 = 1;
+/// Moving a pillbox (step 11h): the squad lifts one of its side's own in
+/// this long, carries it (one at a time, at the health it had) and sets
+/// it down as a Build of a pillbox in `PILLBOX_PLACE_TICKS`, for no
+/// material. The prior art's builder carried pillboxes the same way.
+pub const PILLBOX_LIFT_TICKS: u16 = 5 * TICK_HZ as u16;
+pub const PILLBOX_PLACE_TICKS: u16 = 5 * TICK_HZ as u16;
 pub const PILLBOX_BUILD_COST: u8 = 2;
 /// A pillbox: health, and a gun. Sixty health is one indirect hit at the
 /// centre of the splash and a bit, or two direct hits, or four of its

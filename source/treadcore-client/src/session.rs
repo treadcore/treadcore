@@ -93,6 +93,15 @@ pub struct View {
     /// The goal the tank is under and what it is doing (goal.rs), for
     /// the top strip; empty at the wheel.
     pub goal: String,
+    /// The coordination screen's text while it is up (goal.rs).
+    pub coord: Option<String>,
+    /// Every event since the goal's brain last thought: the window may
+    /// draw one frame for several ticks, and a plan that misses a Built
+    /// waits a minute for it (goal.rs).
+    pub unthought: Vec<treadcore_sim::Event>,
+    /// The bots of my side and what each is doing, when this window
+    /// hosts them (`--fleets`, `--wingmen`).
+    pub fleet: Vec<String>,
 }
 
 impl View {
@@ -193,7 +202,9 @@ fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
     if !names.is_empty() {
         s.players = names;
     }
-    if args.teams > 0 {
+    if args.fleets {
+        s.teams = Some(treadcore_brain::fleet::teams());
+    } else if args.teams > 0 {
         s = s.with_teams(args.teams);
     }
     s
@@ -206,9 +217,10 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
     let mut names: Vec<(String, bool)> = remote.iter().map(|(_, n)| (n.clone(), false)).collect();
     let me_player = names.len() as PlayerId;
     names.push((args.name.clone(), false));
-    let seats = args.players.clamp(names.len(), MAX_PLAYERS);
+    let seats = if args.fleets { treadcore_brain::fleet::SEATS } else { args.players.clamp(names.len(), MAX_PLAYERS) };
     while names.len() < seats {
-        names.push((format!("bot{}", names.len()), true));
+        let n = if args.fleets { treadcore_brain::fleet::name(names.len()) } else { format!("bot{}", names.len()) };
+        names.push((n, true));
     }
     let first_bot = me_player + 1;
     // The first `--wingmen` bots fly on the player's wing (step 11a);
@@ -218,7 +230,11 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
         .map(|i| {
             let seed = args.seed.wrapping_mul(31) ^ (i as u64 + 1) ^ round.wrapping_mul(0x9E37_79B9_7F4A_7C15);
             let n = (i - first_bot) as usize;
-            let b: Box<dyn Brain> = if n < args.wingmen {
+            let b: Box<dyn Brain> = if args.fleets {
+                // A team led from a person's seat assists the person.
+                let (_, leader) = treadcore_brain::fleet::role(i as usize, true);
+                treadcore_brain::fleet::brain(i as usize, seed, leader < first_bot)
+            } else if n < args.wingmen {
                 Box::new(treadcore_brain::Commander::wingman(seed, "wingman", me_player))
             } else if n < args.wingmen + args.rookies {
                 Box::new(RuleBot::rookie(seed, "rookie"))
@@ -246,6 +262,19 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
             return;
         }
         let mut local = run_bots(&host.world, bots);
+        // The fleet: what every bot of my side says it is doing.
+        let fleet: Vec<String> = bots
+            .iter()
+            .filter(|(p, _)| *p != *me_player && host.world.allied(*p, *me_player))
+            .map(|(p, b)| {
+                let name = host.world.players.iter().find(|x| x.id == *p).map(|x| x.name.as_str()).unwrap_or("?");
+                let alive = host.world.tanks.iter().any(|t| t.owner == *p && t.alive);
+                format!("{:<12} {}", name, if alive { b.status() } else { "dead".into() })
+            })
+            .collect();
+        if view.fleet != fleet {
+            view.fleet = fleet;
+        }
         for cmd in orders.0.drain(..) {
             local.push(Order { player: *me_player, cmd });
         }
@@ -267,6 +296,7 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
         }
         view.net.peers = host.seats.iter().filter(|s| s.joined).count();
         view.net.hash = host.hash_mark;
+        view.unthought.extend(obs.events.iter().cloned());
         view.obs = Some(obs);
         view.received = Some(Instant::now());
         if host.world.over {
@@ -460,6 +490,7 @@ fn poll(mut commands: Commands, session: Option<ResMut<SessionRes>>, args: Res<A
                                 None => "MATCH OVER: draw. gg".into(),
                             };
                         }
+                        view.unthought.extend(obs.events.iter().cloned());
                         view.obs = Some(obs);
                         view.received = Some(Instant::now());
                         view.predicted = client.predicted_tank().map(|t| (t.clone(), Instant::now()));
@@ -720,7 +751,7 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         },
         Event::AllianceFormed { player, team, .. } => format!("{} joined team {}", who(player), team),
         Event::AllianceLeft { player, team } => format!("{} left team {}", who(player), team),
-        Event::PillboysDeployed { task, .. } => format!("Pillboys out: {}", match task { PillboyTask::Capture { .. } => "capture", PillboyTask::Repair { .. } => "repair", PillboyTask::Build { .. } => "build", PillboyTask::Harvest { .. } => "harvest", PillboyTask::Return => "return" }),
+        Event::PillboysDeployed { task, .. } => format!("Pillboys out: {}", match task { PillboyTask::Capture { .. } => "capture", PillboyTask::Repair { .. } => "repair", PillboyTask::Build { .. } => "build", PillboyTask::Harvest { .. } => "harvest", PillboyTask::Lift { .. } => "lift", PillboyTask::Return => "return" }),
         Event::PillboysReturned { .. } => "Pillboys aboard".into(),
         Event::PillboysAbandoned { why, .. } => format!("Pillboys give up: {}", why),
         Event::PillboysHit { owner, lost, left, .. } => format!("{} Pillboys hit: -{} ({} left)", who(owner), lost, left),
@@ -728,6 +759,8 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::PillboxCaptured { by, from, .. } => format!("{} captured a pillbox{}", who(by), from.map(|f| format!(" from {}", who(&f))).unwrap_or_default()),
         Event::PillboxRepaired { by, .. } => format!("{} repaired a pillbox", who(by)),
         Event::PillboxBuilt { by, .. } => format!("{} built a pillbox", who(by)),
+        Event::PillboxLifted { by, .. } => format!("{} lifted a pillbox", who(by)),
+        Event::PillboxDropped { owner, .. } => format!("{} dropped a pillbox", who(owner)),
         Event::PillboxDamaged { .. } => return None,
         Event::PillboxDestroyed { owner, by, .. } => format!("pillbox ({}) dead by {}", owner.map(|o| who(&o)).unwrap_or_else(|| "neutral".into()), by.map(|b| who(&b)).unwrap_or_else(|| "?".into())),
         Event::PillboxFired { tank, damage, .. } => {

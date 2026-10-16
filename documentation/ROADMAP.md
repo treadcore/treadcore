@@ -997,6 +997,54 @@ order, a transfer, a way for a pillbox to be fed.
      reach, armour, a bigger bay) or carried between matches. Not
      designed until Paul says which.
 
+11h. **Pillboxes move; turrets; the ladder** (sim change, wire
+     version 14). Paul, 15 October: "eventually we want to create a
+     turret position with walls by collecting pillboxes, but that only
+     occurs after a base is developed and not under attack. We also
+     have a defend the base, it's under imminent threat, bot." The
+     prior art's builder carried pillboxes; so does the squad now:
+     `PillboyTask::Lift` on a pillbox of the side's own, five seconds;
+     `Pillboys::carrying` holds its health; a Build of a pillbox while
+     carrying sets that one down in five seconds for no material; lost
+     with the squad or the tank, it falls there dead
+     (`PillboxLifted`, `PillboxDropped`). In the brain:
+     `Goal::DefendBase` (a hostile tank within 16 tiles of the base,
+     or a gun of the base hit or firing, is a threat; the tank fights
+     under the base's guns and the squad mends between shots), the
+     turrets (`Plan::add_turrets`: a bastion at each end of the curtain
+     wall, walled on the outside), and `Goal::Auto`, the ladder: defend
+     base, fortify, turrets, hunt, guard, each on or off.
+
+11i. **Build patterns over an area, declared by ping** (Paul, 15
+     October). Two corners of a rectangle and a pattern: clear the
+     area (fell, rubble away) and lay it out again. Patterns: a line
+     of pillboxes at spacing; a **checker** of road and farm tiles
+     with walls interleaved castle fashion, the pillboxes placed so
+     every farm tile is in two pillboxes' reach; the castle (11b) as
+     one pattern among them. A pattern is a *declaration*: pinged on
+     the map to the side (11d's `Ping`, kind `Build`, the rectangle and
+     the pattern), drawn as a ghost on every ally's map, and put in the
+     **fleet's build list**, a queue of declared works per side that
+     any ally's squad (or Commander) may take the next item of. The
+     plan code is brain only (`fortify.rs` generalised to
+     `Pattern::{Line, Checker, Castle}` over a `Rect`); the ping and
+     the shared list are wire. *Proof:* a checker over a 12 by 12
+     rectangle laid by two allied Commanders, every farm tile covered
+     twice; the list shown in the coordination screen.
+
+11j. **The flag: a town and its vision** (sim change). A new
+     emplacement, the **pedestal**, built inside a fort; a flag on
+     it. When the walled area round the pedestal meets the fort's
+     criteria (a closed wall ring but for gates, every gate flanked by
+     two pillboxes of the side, the pedestal inside), the flag flies
+     and the town sees: a vision radius about the pedestal for the
+     side and its allies. This answers a gap the ladder's proof found:
+     a tank sees seven tiles and a pillbox nothing, so a castle cannot
+     see a tank parked three tiles outside its own gate. **Open:** the
+     radius (a recon drone's 12 is the obvious first number), whether
+     the flag can be captured as a pillbox is, and whether the town
+     also restocks like a depot.
+
 Order: 11a first, because 11b, 11c and 11d's fleet ally are all modes
 of it; 11b; 11c; 11d; 11e; 11f last on the numbers, because the modes
 should be played against the numbers they will meet, and the sweep
@@ -1018,12 +1066,76 @@ wants the modes in the bots too.
   `a_wingman_takes_the_pillbox_by_its_leader`, `a_wingman_leaves_only_
   at_one_hundred_percent`. Still open: the fortify mode (11b), and a
   wingman in a headless server's seats.
-- [ ] 11b fortification patterns
-- [ ] 11c the coordination interface
+- [x] 11b fortification patterns, 15 October 2026 (journal 0035):
+  `treadcore-brain::fortify`, `Goal::Fortify`, fifth on `G`. The
+  castle: three pillboxes (two towers flanking the gate, one behind
+  the point, each in the others' reach), a 140-degree curtain wall
+  five tiles out facing the threat with a one- or two-tile gate, a
+  road out through it; learned from the world's answers, forest felled
+  for material. Proof: `the_castle_is_drawn_right` and
+  `a_commander_fortifies_its_depot` (alone on the island, five
+  minutes: 3 of 3 pillboxes, 10 of 10 wall, 4 of 5 road; the way in
+  from the front 12.0 tiles through the gate, 19.9 with it shut). The
+  first gate was three tiles wide and turned nobody (12.0 against
+  12.8). Not yet: concrete for the wall (it takes material twice), and
+  the RuleBot attacking one.
+- [~] 11c the coordination interface, first cut 15 October 2026
+  (journal 0036): Space opens the coordination screen over the map
+  and puts the tank on auto; Space again is the wheel (Stop moved to
+  H). The screen: the ladder's rungs with `[x]`, the one in use, and
+  each condition's word; you and the allies in sight. 1 to 5 turn
+  rungs off and on, G a single goal, a click holds there, Tab folds
+  it. Not yet: allies' goals (they are not in the Observation), pings
+  and fleet orders (11d).
 - [ ] 11d pings and fleet orders
 - [ ] 11e shared drones and transfers
 - [ ] 11f real numbers and tuned ranges; longer matches
 - [ ] 11g upgrades (open)
+- [x] 11h pillboxes move, turrets, defend base and the ladder, 15
+  October 2026 (journal 0036). Proof: `squad_lifts_and_sets_down_a_
+  pillbox` (lifted at 40 health, set down at 40 with no material, a
+  pillbox of theirs refused, one carried falls dead with the tank),
+  `the_castle_is_drawn_right` (the turrets spaced and each in two
+  guns' reach), `a_commander_defends_its_base` (a tank parked 12
+  tiles out is beyond DefendDepot's leash and inside the base's
+  alarm: five hits, killed, the hurt pillbox mended),
+  `a_commander_climbs_the_ladder` (alone: fortify to 338 s, then the
+  two outlying pillboxes lifted and set down in both turrets by 403
+  s, and an intruder in the gate puts it on defend base the same
+  tick). The finding on the way: an intruder three tiles outside the
+  gate was seen by nobody and shot by nobody (walls block both ways),
+  hence 11j. The same day, after Paul's "can we start a game with ...
+  3 teams of base building, 5 on each, and 1 random aggro bot":
+  `treadcore-brain::fleet` and `--fleets` (roles leader, builder,
+  guard, ranger, wing; the base shared through `Commander::
+  base_owner`), the fleet on the coordination screen through
+  `Brain::status`, and allied squads capturing together
+  (`allied_squads_do_not_contest`; before it two rangers of a team
+  stood on one pillbox for two minutes). `three_fleets_build`
+  (ignored, by hand): ten minutes, 16 seats, every team 3 to 6
+  pillboxes at its base. Also from the window: the plan lost Built
+  events when the window drew one frame for several ticks (the pilot
+  now hears every tick's, `View::unthought`, and an order out when
+  the squad is home counts as done); a turret on forest, a wall tile
+  that could not be felled with the material full, and a firing point
+  on water each stalled the ladder; the gun asked through its own wall
+  twenty times a second.
+  Then, simulating fleet matches to the end (Paul: "continue a
+  simulation"): with no time limit the survivors of three leaderless
+  teams stood guard for thirty minutes, and a side on auto held its
+  first three depots for good. The ladder gained **expand** (depots,
+  their guards first, then far pillboxes); allied tanks on a depot no
+  longer contest it (`allied_tanks_share_a_depot`; two on their own
+  depot had not even resupplied); a leaderless wingman or guard takes
+  command on Auto; a tank under unseen fire scoots, puts its recon on
+  the shells' origin (`Shell::from`) and fires back
+  (`a_commander_scoots_from_unseen_fire`: 3.0 tiles in two seconds,
+  the gun seen, two shells back). `a_fleet_match_plays_out`: decided
+  at 905 s. Seven seeds: every match decided, between 502 and 926 s;
+  seat 0's team (builder, guard, two wingmen) won five, team 1 two.
+- [ ] 11i build patterns over an area, declared by ping; the fleet's
+  build list
+- [ ] 11j the flag and the town's vision
 
 ## Sequencing
 

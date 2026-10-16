@@ -77,6 +77,10 @@ pub struct Args {
     /// the first N after the people, each following the player, asking
     /// to join the player's side and fighting beside it.
     pub wingmen: usize,
+    /// Sixteen seats as three base-building teams of five and one aggro
+    /// bot alone (`--fleets`; `treadcore-brain::fleet`): the player
+    /// leads team 0, assisted by a builder, a guard and two wingmen.
+    pub fleets: bool,
 }
 
 fn parse_args() -> Args {
@@ -101,6 +105,7 @@ fn parse_args() -> Args {
         industry: false,
         rookies: 0,
         wingmen: 0,
+        fleets: false,
         keys: None,
     };
     let mut it = std::env::args().skip(1);
@@ -128,6 +133,7 @@ fn parse_args() -> Args {
             "--industry" => a.industry = true,
             "--rookies" => a.rookies = val().parse().unwrap_or(0),
             "--wingmen" => a.wingmen = val().parse().unwrap_or(0),
+            "--fleets" => a.fleets = true,
             "--keys" => a.keys = Some(val()),
             "--write-sounds" => {
                 // Every sound the window makes, as WAV files, and out:
@@ -163,7 +169,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--keys FILE] [--map FILE] [--industry] [--mute] [--write-sounds DIR]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--fleets] [--keys FILE] [--map FILE] [--industry] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);

@@ -87,7 +87,8 @@ The mouse drives and fires; the keys give orders.
 A hit on you flashes the map's frame red and shakes the view for a
 moment. Watch the newswire for what hit you and what is left.
 
-- **Space** stops. **F** puts the view back on the
+- **H** stops. **Space** hands the tank to its own brain and opens
+  the coordination screen (section 6d). **F** puts the view back on the
   tank; **W A S D** or the arrows scroll it away. The wheel zooms.
 
 ![The models close: the tank with its turret in your colour, a depot, a pillbox](../reports/images/guide-close.png)
@@ -145,7 +146,7 @@ in the column's lower half, in the order the prior art had them.
 | `4` | farm | fells the forest there: four material a tile, in four seconds. Only on forest. |
 | `5` | road | lays a road; on water, a bridge. |
 | `6` | wall | raises a wall three levels high. Blocks tanks, shots and a pillbox's line of fire; a shell's splash knocks it to rubble. Armed with Shift held (or clicked with Shift), it pours **concrete** instead: two material, pale grey, and a splash only cracks it to a plain wall, so it takes two. |
-| `7` | pillbox | on open ground, builds one. On a pillbox: repairs it, whoever owns it; if it is dead or nobody's, captures it (ten seconds standing on it). |
+| `7` | pillbox | on open ground, builds one. On a pillbox: repairs it, whoever owns it; if it is dead or nobody's, captures it (ten seconds standing on it). Shift-click one of **yours** and the squad lifts it (five seconds) and carries it; the next pillbox you build is that one set down, in five seconds, for no material, at the health it had. One at a time. If the squad or the tank is lost with it, it falls there, dead, still yours to mend. |
 | `8` | mine | buries a mine. Hidden until found; set off by a tank, a shell or a neighbouring mine; ignored by drones. |
 | `0` | works | on a pad (the dark grey foundations), builds the structure the row names; `B` steps the kind. On a structure: mends ours, or takes one that is nobody's or wrecked. Section 6b. |
 | `9` | return | brings the squad home. |
@@ -321,23 +322,95 @@ geeker's expense.
 **G** steps the tank's goal, and the top strip says the goal and what
 the tank is doing for it:
 
-1. **hunt pillboxes**: the nearest pillbox not of your side. A live
+1. **auto**: the tank picks its own goal from a ladder, below.
+2. **hunt pillboxes**: the nearest pillbox not of your side. A live
    enemy one is shot dead from the ring between 8 and 10 tiles (if a
    wall or trees block the line, the tank moves round it to find
    one), then the squad takes it; a neutral one the squad takes live.
    Then the next.
-2. **defend depot**: the nearest depot of your side. The tank stays
+3. **defend depot**: the nearest depot of your side. The tank stays
    on it, shoots what comes within twelve tiles, and has the squad
    mend the depot's pillbox.
-3. **defend pillbox**: the same about the nearest pillbox of yours,
+4. **defend base**: the base under imminent threat. The base is the
+   depot (or the castle) and what stands within ten tiles of it; a
+   hostile tank within sixteen tiles of it, or one of its pillboxes
+   firing or fired on, is a threat. The tank fights under the base's
+   guns, a few tiles out toward the threat, and the squad mends the
+   most hurt pillbox of the base, or takes back a dead one, between
+   shots. A tank sees seven tiles and a pillbox sees nothing, so a gun
+   of the base at work is how it hears of what it cannot see: it goes
+   to that pillbox to look.
+5. **defend pillbox**: the same about the nearest pillbox of yours,
    and the squad takes it back if it falls.
-4. **hold**: the same about the spot where you pressed G.
-5. **escort**, when an ally's tank is in sight: the wingman goal
+6. **hold**: the same about the spot where you pressed G.
+7. **fortify**: a castle's gate round the nearest depot of your side,
+   facing the nearest depot that is not, or the map's middle. The
+   squad builds, felling forest for material as it goes: first three
+   pillboxes, two guard towers four tiles out either side of the gate
+   and one behind the depot, each inside the others' eight tiles;
+   then a curtain wall five tiles out across the threat's side, with
+   the gate left open on the line to the threat; then a road from the
+   depot out through the gate. A tank coming from the front is routed
+   through the gate, between the towers. About five minutes, alone.
+   The tank guards the depot meanwhile, and the top strip counts what
+   stands.
+8. **escort**, when an ally's tank is in sight: the wingman goal
    below, following that ally.
 
-Then back to the wheel. A click to drive or Space takes the wheel back
+Then back to the wheel. A click to drive or H takes the wheel back
 at once. Under every goal the tank keeps its drones up as a bot
 would, and goes home to a depot when its shells or armour run low.
+
+**Auto, the ladder.** Six rungs, tried from the top every tick; the
+first that is on and whose condition holds is what the tank does:
+
+| rung | when | what |
+| --- | --- | --- |
+| 1 defend base | a threat to the base, as above | defend base |
+| 2 fortify | the castle round the base is not yet standing | fortify |
+| 3 turrets | the castle stands, the base has been quiet twenty seconds, and a pillbox of yours stands more than ten tiles out | drive to it, lift it, carry it home, set it down in a **turret**: a bastion at each end of the curtain wall, walled in on the outside, where an attacker would go round the wall instead of through the gate. Two turrets, then the wall tiles that close them in. |
+| 4 hunt | a pillbox not of your side within thirty tiles of the base | hunt pillboxes |
+| 5 expand | a depot not of your side, or a pillbox anywhere | the depot nearest the base: its guard pillboxes shot dead, then the tank sits on it until it is yours; with none left, the pillboxes far out |
+| 6 guard | always | on guard at the base, mending |
+
+So alone on a quiet corner the tank builds the castle, takes the
+pillboxes near it, brings them home into the turrets, and drops
+whatever it is doing the moment something comes for the base.
+
+**The coordination screen.** **Space** opens it over the map and puts
+the tank on auto (or keeps the goal it has); Space again gives you the
+wheel. On it:
+
+- each rung, `[x]` on or `[ ]` off, with `>` at the one now in use and
+  beside each what its condition sees ("quiet 30 s", "pillboxes 3/3,
+  wall 6/10", "a pillbox of ours out at 16 tiles");
+- you: armour, shells, the squad and whether it carries a pillbox;
+- every ally in sight: how far, armour, shells.
+
+`1` to `6` turn the rungs on and off (turn off 4 and the tank never
+leaves home; turn off 2 and it never builds). `G` gives it one goal
+instead of the ladder. A click on the map holds the tank there. Tab
+folds the screen away to see the map under it, and back; Esc closes
+it as Space does. While it is up the drone and builder keys wait.
+When your window hosts bots of your side (`--fleets`, `--wingmen`),
+the screen lists them under FLEET with what each is doing.
+
+**Fleets.** `--fleets` (`FLEETS=1 make run`) deals sixteen seats into
+three teams of five neighbours round the map's edge, every team
+building at its leader's depot, and one aggressive bot alone (seat
+15, "aggro"). You lead team 0 from the north; your four are a builder
+on auto whose castle goes round *your* depot, a guard on defend base
+there, and two wingmen on you (`t0-builder`, `t0-guard`, `t0-wing`).
+A bot team's leader is on auto at its own depot, with a guard, two
+rangers (auto with fortify and turrets off: they defend the base and
+hunt near it) and a wingman. Squads of one side on the same pillbox
+take it together, and tanks of one side on a depot do not contest it.
+When a team's leader dies, its wingmen and guard take command: each
+goes to auto at the same base, so a fleet fights on to the end.
+
+Under fire from something nobody can see (shells from beyond a tank's
+seven tiles), the tank under any goal scoots a few tiles, puts its
+recon over the place the shells came from, and fires back there.
 
 **Wingmen.** `--wingmen N` (`WINGMEN=n make run`) makes the first N
 bots wingmen: each follows you, asks to join your side (`Y` lets it
@@ -453,8 +526,10 @@ orders column and the hints under it show your keys, not these.
 | click the minimap | the view there |
 | `9` | the squad home |
 | Esc | drop the armed mode; with none armed, quit |
-| Space | stop; also takes the wheel back from a goal |
-| `G` | the next goal: hunt pillboxes, defend depot, defend pillbox, hold, escort, the wheel |
+| `H` | stop; also takes the wheel back from a goal |
+| Space | the coordination screen and auto, or back to the wheel |
+| `G` | the next goal: auto, hunt pillboxes, defend depot, defend base, defend pillbox, hold, fortify, escort, the wheel |
+| Shift-click a pillbox of yours in pillbox mode | lift it, to set it down with the next pillbox built |
 | `F` | the view back on the tank |
 | Enter | talk to everyone: type, Enter sends, Esc puts it away |
 | Shift-Enter | talk to your team (Tab steps all, team, nearby; `@name` chooses players) |
@@ -463,7 +538,7 @@ orders column and the hints under it show your keys, not these.
 | `W A S D`, arrows | scroll; in pillbox view the arrows jump between pillboxes |
 | `'` | pillbox view: the next of yours |
 | wheel | zoom |
-| Tab | the events scrollback |
+| Tab | the events scrollback; on the coordination screen, fold it |
 | M | sound off and on |
 | K | Key Setup: rebind any of the keys above |
 

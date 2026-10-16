@@ -1,0 +1,113 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 15 Oct 2026 14:00:00 -0700
+Subject: [JOURNAL 0035] Fortify: a castle's gate
+Message-ID: <0035.20261015@treadcore.org>
+In-Reply-To: <0034.20261015@treadcore.org>
+Organization: treadcore.org
+Keywords: fortify, walls, gate, pillboxes, Commander, roadmap step 11b
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "yes commit it, then do the fortify
+           mode next."
+X-Commits: the commit that carries this entry
+
+                       FORTIFY: A CASTLE'S GATE
+
+                     Paul Richeson, treadcore.org
+                           15 October 2026
+
+
+ABSTRACT
+
+    Step 11b: a goal under which the squad builds to a plan instead of
+    a tile at a time. The castle is three pillboxes that cover each
+    other (two towers flanking a gate, one behind the point), a curtain
+    wall across the threat's side, and a road out through the gate.
+    Alone on the generated island for five minutes the squad built
+    all three pillboxes, the whole wall and four of the five road
+    tiles, and the way in from the front runs through the gate: 12.0
+    tiles open, 19.9 with the gate shut. The first gate was three
+    tiles wide and turned nobody.
+
+INDEX TERMS
+
+    artificial intelligence, game design, path finding.
+
+
+I. INTRODUCTION
+
+    Paul's notes asked for walls and roads placed to protect pillboxes,
+    and castle-like entrances: choke points under guard towers.
+
+II. BACKGROUND
+
+    The Defender (step 6d) already rings its home depot with mines and
+    walls, but around itself only, gated toward the centre, and it
+    remembers tiles rather than following a plan. A Brain has no map;
+    the world's answers (Built, PillboxBuilt, Rejected with why,
+    PillboysAbandoned with why) are how it learns the ground.
+
+III. METHOD
+
+    fortify.rs draws the castle as a list of squad orders: the towers
+    TOWER_R (4) out at 32 degrees either side of the threat, 4.2 tiles
+    apart; the rear pillbox REAR_R (3) behind, 6.7 from each; the wall
+    at WALL_R (5) over 70 degrees either side, its ends first; the road
+    from 3 to 7 tiles out. The Commander feeds one order at a time to
+    an idle squad, fells forest when the material is short (and first,
+    when a planned tile is forest: that pays for the rest), and guards
+    the point meanwhile.
+
+IV. CHRONOLOGY
+
+    1. The plan on paper, tested: every pillbox inside the others'
+       reach and outside their spacing, the towers on either side of
+       the gate, no wall behind the point.
+    2. On the island: built in five minutes, but FAIL on the route
+       test: the route was one waypoint. The router keeps waypoints
+       and draws straight legs between them, so the test measures the
+       legs now.
+    3. FAIL: with the gate shut the way in was 12.8 tiles against
+       12.0. Drawn as text: the gate was three tiles wide (13 degrees
+       either side caught the tiles beside the axis), and the test
+       shut one. GATE_HALF is 8 degrees: a one- or two-tile gate. The
+       ring need not join side to side: the router takes no diagonal
+       step past a wall.
+    4. The wider wall cost the rear pillbox its time. The guns go
+       first now: a wall nobody covers only slows an attacker. PASS:
+       3 of 3, 10 of 10, 4 of 5; 12.0 through the gate, 19.9 shut.
+
+V. RESULTS
+
+    make test: sim 36, brain 19, client 21, net 14, proto 3.
+
+VI. DISCUSSION
+
+    The gate is a single tile on the threat's bearing. That is the
+    choke point, and it is also the depot's own front door: a side that
+    builds it drives out single file, under its own towers.
+
+VII. OPEN PROBLEMS
+
+    1. Concrete for the wall, twice the material.
+    2. Whether a RuleBot attacker, which routes around hostile pillbox
+       rings, goes round the wall's end instead of through the towers.
+       The proof here is the plain router's.
+    3. The fleet ally and pings (11c, 11d).
+
+VIII. NEXT STEPS
+
+    1. 11c, the coordination interface.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry and 0036: sim, proto, brain, client, server, scripts, docs, journal: fortify;
+    pillboxes move; the ladder; Space; fleets
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

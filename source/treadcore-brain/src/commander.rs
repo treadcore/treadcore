@@ -16,7 +16,28 @@
 //! then the squad stands on it for ten seconds and it is ours. A
 //! neutral one does not have to be shot at all: the squad takes it live
 //! while the tank stays out of its ring.
+//!
+//! Auto (step 11c's hybrid): a ladder of rungs, each with a condition,
+//! tried top down every tick; the first whose condition holds is what
+//! the tank does, and the player turns rungs on and off:
+//!
+//! 1. defend base: a hostile tank within BASE_ALARM of the base, or a
+//!    pillbox of the base shot at. The tank fights it under the base's
+//!    guns, a few tiles out toward it; the squad mends between shots.
+//! 2. fortify: the castle round the base is not yet standing.
+//! 3. turrets: the castle stands and nothing has come for QUIET; bring
+//!    the side's outlying pillboxes home, one at a time, and set them
+//!    down in the bastions at the wall's ends (step 11h).
+//! 4. hunt: a pillbox not of my side within EXPAND_R of the base.
+//! 5. expand: a depot not of my side, the nearest the base first (its
+//!    guard pillboxes shot dead first, then the tank sits on it), else
+//!    a pillbox anywhere. A side that only hunted pillboxes held three
+//!    depots for fifteen minutes while dead teams held five each.
+//! 6. guard: on guard at the base, mending.
+//!
+//! Low on shells or armour, the tank goes home first whatever the rung.
 
+use crate::fortify::{Plan, Want};
 use crate::{Brain, RuleBot, PILLBOY_REACH};
 use treadcore_sim::*;
 
@@ -70,6 +91,53 @@ enum Wing {
     Regroup,
 }
 
+/// The base (Goal::DefendBase and Auto): what stands within BASE_R of
+/// its centre belongs to it; a hostile tank within BASE_ALARM of it is
+/// a threat; a pillbox of it shot at raises the alarm for ALARM_HOLD.
+pub const BASE_R: f32 = 10.0;
+pub const BASE_ALARM: f32 = 16.0;
+const ALARM_HOLD: Tick = 6 * TICK_HZ as Tick;
+/// Turrets wait for this long without a threat.
+pub const QUIET: Tick = 20 * TICK_HZ as Tick;
+/// The hunt looks this far from the base first.
+pub const EXPAND_R: f32 = 30.0;
+/// The tank stops this close to a pillbox it is fetching.
+const FETCH_NEAR: f32 = 2.5;
+/// Hit with nothing hostile in sight: scoot this far, for this long, and
+/// put a recon up over the tank (the RuleBot's shoot-and-scoot, from the
+/// other end). Both deaths in the window's first two runs were a tank
+/// standing still under shells from beyond its seven tiles of sight.
+pub const SCOOT: f32 = 3.5;
+const SCOOT_FOR: Tick = 4 * TICK_HZ as Tick;
+
+/// The rungs of Auto's ladder, top first.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Rung {
+    DefendBase,
+    Fortify,
+    Turrets,
+    Hunt,
+    Expand,
+    Guard,
+}
+
+impl Rung {
+    pub const ALL: [Rung; 6] = [Rung::DefendBase, Rung::Fortify, Rung::Turrets, Rung::Hunt, Rung::Expand, Rung::Guard];
+    pub fn label(self) -> &'static str {
+        match self {
+            Rung::DefendBase => "defend base",
+            Rung::Fortify => "fortify",
+            Rung::Turrets => "turrets",
+            Rung::Hunt => "hunt",
+            Rung::Expand => "expand",
+            Rung::Guard => "guard",
+        }
+    }
+    pub fn index(self) -> usize {
+        Rung::ALL.iter().position(|r| *r == self).unwrap()
+    }
+}
+
 /// Below these the Commander goes home to a depot before anything else.
 pub const LOW_SHELLS: u16 = 4;
 pub const LOW_ARMOR: f32 = 35.0;
@@ -93,6 +161,14 @@ pub enum Goal {
     Escort(PlayerId),
     /// Stay where the goal was given; fight what comes.
     Hold(V2),
+    /// Build a castle's gate round a point (step 11b; `fortify.rs`): a
+    /// depot of my side by default, the nearest, else where the tank is.
+    Fortify(Option<V2>),
+    /// The base is under imminent threat: meet what comes for it within
+    /// BASE_ALARM, mend and retake its pillboxes, else stand guard.
+    DefendBase,
+    /// The ladder (`Rung`): the tank picks its own goal, rung by rung.
+    Auto,
 }
 
 impl Goal {
@@ -104,6 +180,9 @@ impl Goal {
             Goal::DefendDepot(_) => "defend depot",
             Goal::Escort(_) => "escort",
             Goal::Hold(_) => "hold",
+            Goal::Fortify(_) => "fortify",
+            Goal::DefendBase => "defend base",
+            Goal::Auto => "auto",
         }
     }
 }
@@ -141,10 +220,42 @@ pub struct Commander {
     asked: Option<Tick>,
     /// Since when every pillbox and depot has been my side's.
     total_since: Option<Tick>,
+    /// The castle being built, under Goal::Fortify.
+    pub plan: Option<Plan>,
     /// The hunter has the gun this tick: its target is live and theirs.
     gun_reserved: bool,
     /// What it says it is doing, for the window's status line.
     pub doing: String,
+    /// Auto's rungs on and off, the one it is on, and each one's word
+    /// on its condition, for the coordination screen.
+    pub ladder: [bool; 6],
+    pub rung: Option<Rung>,
+    pub why: [String; 6],
+    /// The base: set the first time a base goal needs one.
+    pub base: Option<V2>,
+    /// A fleet's: the base is this player's depot, not my own (fleet.rs).
+    pub base_owner: Option<PlayerId>,
+    /// The last tick the base was threatened, and the alarm's end.
+    threatened: Option<Tick>,
+    alarm_until: Tick,
+    /// The base's pillbox that raised the alarm: where to go and look.
+    alarm_at: Option<V2>,
+    /// The outlying pillbox being fetched for a turret.
+    fetching: Option<EntityId>,
+    /// The plan could not be fed (no forest): fortify steps aside.
+    starved: bool,
+    /// Expand's depot, and the depots it could not reach.
+    depot_target: Option<EntityId>,
+    depots_given_up: Vec<EntityId>,
+    /// A direct shot refused for no line (a wall of our own, trees): the
+    /// gun waits until this tick instead of asking every tick.
+    hold_fire_until: Tick,
+    /// Scooting from unseen fire: to here, until then; and which side
+    /// the last scoot went, so the next goes the other.
+    scoot: Option<(V2, Tick)>,
+    scoot_left: bool,
+    /// Where the last shell at the tank came from.
+    gun_seen_at: Option<V2>,
 }
 
 impl Commander {
@@ -158,7 +269,7 @@ impl Commander {
     }
 
     pub fn new(seed: u64, name: &str) -> Commander {
-        Commander { name: name.into(), goal: Goal::Manual, inner: RuleBot::new(seed, name), target: None, bearing: None, given_up: Vec::new(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, gun_reserved: false, doing: String::new() }
+        Commander { name: name.into(), goal: Goal::Manual, inner: RuleBot::new(seed, name), target: None, bearing: None, given_up: Vec::new(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Vec::new(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None }
     }
 
     /// A new goal: what was half done for the old one is dropped.
@@ -168,7 +279,11 @@ impl Commander {
             self.target = None;
             self.bearing = None;
             self.last_move = None;
+            self.plan = None;
             self.doing.clear();
+            self.rung = None;
+            self.fetching = None;
+            self.starved = false;
         }
     }
 
@@ -232,6 +347,12 @@ impl Commander {
                 match cmd {
                     Command::FireDirect { .. } if why.contains("line of sight") => {
                         self.fired = None;
+                        self.blocked();
+                    }
+                    // The firing point is water or cannot be reached:
+                    // the next one round.
+                    Command::Move { .. } if self.target.is_some() && (why.contains("water") || why.contains("unreachable")) => {
+                        self.last_move = None;
                         self.blocked();
                     }
                     Command::Deploy { task: PillboyTask::Capture { pillbox } } if why.contains("unreachable") => {
@@ -480,6 +601,356 @@ impl Commander {
         }
     }
 
+    /// Build the castle: guard the point as `defend` does, and keep the
+    /// squad on the plan whenever it is aboard and nothing threatens.
+    fn fortify(&mut self, obs: &Observation, me: &Tank, at: Option<V2>, cmds: &mut Vec<Command>) {
+        if self.plan.is_none() {
+            let centre = at
+                .or_else(|| obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()))
+                .unwrap_or(me.pos);
+            // The threat: the nearest depot not of my side, else the
+            // map's middle, which is where everyone else comes from.
+            let middle = V2::new(obs.map_w as f32 / 2.0, obs.map_h as f32 / 2.0);
+            let threat = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && d.pos.dist(centre) > 4.0).map(|d| d.pos).min_by(|a, b| a.dist(centre).partial_cmp(&b.dist(centre)).unwrap()).unwrap_or(middle);
+            self.plan = Some(Plan::castle(centre, threat));
+            if matches!(self.goal, Goal::Fortify(_)) {
+                self.goal = Goal::Fortify(Some(centre));
+            }
+        }
+        let plan = self.plan.as_mut().unwrap();
+        plan.hear(obs);
+        let centre = plan.centre;
+        // The tank sits behind the work, beside the point: off the gate,
+        // off the road, inside the squad's reach of every tile.
+        let post = centre - plan.facing.scale(1.5);
+        self.defend(obs, me, post, None, cmds);
+        let busy = !self.doing.starts_with("on guard") && !self.doing.starts_with("to the post");
+        let squad = &me.pillboys;
+        if !squad.aboard || squad.task.is_some() || squad.strength == 0 {
+            if squad.strength == 0 {
+                self.doing = "no squad: waiting on the depot for one".into();
+            } else if !busy {
+                self.doing = format!("the squad is building: {}", self.plan.as_ref().unwrap().progress());
+            }
+            return;
+        }
+        if busy {
+            return;
+        }
+        let plan = self.plan.as_mut().unwrap();
+        match plan.next(obs, squad.material) {
+            Want::Order(task) => {
+                self.starved = false;
+                self.doing = match &task {
+                    PillboyTask::Harvest { .. } => "felling for material".into(),
+                    _ => format!("building: {}", plan.progress()),
+                };
+                cmds.push(Command::Deploy { task });
+            }
+            Want::Starved => {
+                self.starved = true;
+                self.doing = format!("no forest in reach; {}", plan.progress());
+            }
+            Want::Wait => self.doing = format!("waiting on the site: {}", plan.progress()),
+            Want::Finished => self.doing = format!("the castle stands: {}", plan.progress()),
+        }
+    }
+
+    /// The base's centre: the castle's, else the depot of my side nearest
+    /// the tank when first asked, else where the tank is.
+    fn base_of(&mut self, obs: &Observation, me: &Tank) -> V2 {
+        if let Some(p) = &self.plan {
+            self.base = Some(p.centre);
+        }
+        if self.base.is_none() {
+            if let Some(owner) = self.base_owner {
+                // The leader's depot: the one of theirs nearest its tank
+                // when it is in sight, else nearest mine.
+                let near = obs.tanks.iter().find(|t| t.owner == owner).map(|t| t.pos).unwrap_or(me.pos);
+                self.base = obs.depots.iter().filter(|d| d.owner == Some(owner)).min_by(|a, b| a.pos.dist(near).partial_cmp(&b.pos.dist(near)).unwrap()).map(|d| Map::tile_centre(d.pos));
+            }
+        }
+        *self.base.get_or_insert_with(|| Self::home(obs, me).map(Map::tile_centre).unwrap_or(me.pos))
+    }
+
+    /// Where the tank waits at the base: behind the gate when there is a
+    /// castle, else beside the centre.
+    fn post(&self, base: V2) -> V2 {
+        match &self.plan {
+            Some(p) => p.centre - p.facing.scale(1.5),
+            None => base,
+        }
+    }
+
+    /// The threat to the base, if any: the hostile tank nearest it within
+    /// BASE_ALARM, and the alarm a pillbox of the base shot at raises
+    /// (by a gun it may not see: indirect fire, a longshot).
+    fn base_threat(&mut self, obs: &Observation, base: V2) -> (Option<Tank>, bool) {
+        // The tank sees TANK_VISION and a pillbox sees nothing, so the
+        // base's guns are its ears: one of them hit, or firing, is a
+        // threat there even when nobody of ours can see it.
+        let ours: Vec<(EntityId, V2)> = obs.pillboxes.iter().filter(|p| p.pos.dist(base) <= BASE_R && Self::mine_or_allied(obs, p.owner)).map(|p| (p.id, p.pos)).collect();
+        for e in &obs.events {
+            let heard = match e {
+                Event::PillboxDamaged { pillbox, by: Some(b), .. } if !obs.allied(*b) => Some(*pillbox),
+                Event::PillboxFired { pillbox, .. } => Some(*pillbox),
+                _ => None,
+            };
+            if let Some(at) = heard.and_then(|id| ours.iter().find(|(o, _)| *o == id)).map(|(_, at)| *at) {
+                self.alarm_until = obs.tick + ALARM_HOLD;
+                self.alarm_at = Some(at);
+            }
+        }
+        let tank = obs.tanks.iter().filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(base) <= BASE_ALARM).min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id))).cloned();
+        let alarm = obs.tick < self.alarm_until;
+        if tank.is_some() || alarm {
+            self.threatened = Some(obs.tick);
+        }
+        (tank, alarm)
+    }
+
+    /// The base's pillbox that most wants the squad: one dead first (ours
+    /// to mend, theirs to take back), then the most hurt of ours.
+    fn neediest(obs: &Observation, base: V2) -> Option<EntityId> {
+        obs.pillboxes
+            .iter()
+            .filter(|p| p.pos.dist(base) <= BASE_R && (p.owner == Some(obs.player) || !p.alive()))
+            .filter(|p| !p.alive() || p.health < PILLBOX_HEALTH * 0.7)
+            .min_by(|a, b| a.health.partial_cmp(&b.health).unwrap().then(a.id.cmp(&b.id)))
+            .map(|p| p.id)
+    }
+
+    /// Defend the base: out to meet the threat as far as BASE_ALARM, else
+    /// on guard at the post; the squad mends or takes back the neediest
+    /// pillbox of the base whenever no hostile tank is in the leash.
+    fn defend_base(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
+        let base = self.base_of(obs, me);
+        let (tank, alarm) = self.base_threat(obs, base);
+        // Nothing in sight but a gun of the base at work: go and look.
+        let post = match (&tank, alarm, self.alarm_at) {
+            (None, true, Some(at)) => at,
+            _ => self.post(base),
+        };
+        let mend = Self::neediest(obs, base);
+        self.defend_within(obs, me, post, BASE_ALARM, mend, cmds);
+        if let Some(t) = &tank {
+            let who = obs.players.iter().find(|p| p.id == t.owner).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", t.owner));
+            self.doing = format!("BASE UNDER THREAT: {} {:.0} tiles out; {}", who, t.pos.dist(base), self.doing);
+        } else if alarm {
+            self.doing = format!("BASE UNDER THREAT out of sight: to the pillbox that heard it; {}", self.doing);
+        }
+        !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
+    }
+
+    /// An outlying pillbox of mine, nearest the base: one to bring in.
+    fn outlying(&self, obs: &Observation, base: V2) -> Option<Pillbox> {
+        let plan = self.plan.as_ref();
+        obs.pillboxes
+            .iter()
+            .filter(|p| p.owner == Some(obs.player) && p.pos.dist(base) > BASE_R && !plan.map(|pl| pl.items.iter().any(|i| i.at.dist(p.pos) < 1.0)).unwrap_or(false))
+            .min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id)))
+            .cloned()
+    }
+
+    /// Turrets: fetch an outlying pillbox of mine and set it down in the
+    /// next bastion. The tank drives to it so the squad's walk is short,
+    /// and drives it home again on the squad's back.
+    fn turrets(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) {
+        let base = self.base_of(obs, me);
+        let Some(plan) = self.plan.as_mut() else { return };
+        plan.add_turrets();
+        plan.hear(obs);
+        let Some((slot, forest)) = plan.turret_slot() else {
+            // The pillboxes are down: the walls that close them in.
+            if plan.turrets_stand() {
+                self.doing = format!("the turrets stand: {}", plan.progress());
+            } else {
+                self.fortify(obs, me, Some(base), cmds);
+            }
+            return;
+        };
+        let squad = &me.pillboys;
+        if forest {
+            // The bastion's tile is trees: fell it first, whatever else.
+            if squad.aboard && squad.task.is_none() {
+                cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: slot } });
+                self.plan.as_mut().unwrap().felling_slot(slot);
+                self.doing = "felling the turret's tile".into();
+            } else {
+                self.doing = "waiting for the squad".into();
+            }
+            return;
+        }
+        if squad.carrying.is_some() {
+            self.fetching = None;
+            if !squad.aboard || squad.task.is_some() {
+                self.doing = "the squad is setting a pillbox down".into();
+                return;
+            }
+            let post = self.post(base);
+            if me.pos.dist(post) > DEFEND_HOLD {
+                self.go(obs, me, post, cmds);
+                self.doing = format!("bringing a pillbox home, {:.0} tiles", me.pos.dist(post));
+                return;
+            }
+            cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Pillbox, at: slot } });
+            self.plan.as_mut().unwrap().ordered(slot, obs.tick);
+            self.doing = format!("setting it down in a turret: {}", self.plan.as_ref().unwrap().progress());
+            return;
+        }
+        if !squad.aboard || squad.task.is_some() {
+            self.doing = if matches!(squad.task, Some(PillboyTask::Lift { .. })) { "the squad is lifting it".into() } else { "waiting for the squad".into() };
+            return;
+        }
+        let target = self.fetching.and_then(|id| obs.pillboxes.iter().find(|p| p.id == id && p.owner == Some(obs.player)).cloned()).or_else(|| self.outlying(obs, base));
+        let Some(p) = target else {
+            self.fetching = None;
+            self.doing = "no pillbox of ours out there to bring in".into();
+            return;
+        };
+        self.fetching = Some(p.id);
+        if me.pos.dist(p.pos) > FETCH_NEAR + 1.5 {
+            let to = p.pos + (me.pos - p.pos).norm().scale(FETCH_NEAR);
+            self.go(obs, me, to, cmds);
+            self.doing = format!("fetching the pillbox at ({:.0},{:.0}), {:.0} tiles", p.pos.x, p.pos.y, me.pos.dist(p.pos));
+            return;
+        }
+        if me.goal.is_some() {
+            cmds.push(Command::Stop);
+        }
+        cmds.push(Command::Deploy { task: PillboyTask::Lift { pillbox: p.id } });
+        self.doing = "the squad is lifting it".into();
+    }
+
+    /// The ladder: each rung's condition, top down; the first that holds
+    /// (and is on) is done this tick.
+    fn auto(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
+        let base = self.base_of(obs, me);
+        if let Some(p) = self.plan.as_mut() {
+            p.hear(obs);
+        }
+        let (tank, alarm) = self.base_threat(obs, base);
+        let quiet = self.threatened.map(|t| obs.tick.saturating_sub(t)).unwrap_or(obs.tick);
+        let stands = self.plan.as_ref().map(|p| p.castle_stands()).unwrap_or(false);
+        let carrying = me.pillboys.carrying.is_some();
+        let (slot, walls) = self.plan.as_ref().map(|p| { let mut q = p.clone(); q.add_turrets(); (q.turret_slot().is_some(), !q.turrets_stand()) }).unwrap_or((false, false));
+        let outlying = self.outlying(obs, base);
+        let wanted = obs.pillboxes.iter().filter(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.contains(&p.id)).min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap()).map(|p| p.pos.dist(base));
+        let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.contains(&d.id)).map(|d| d.pos.dist(base)).min_by(|a, b| a.partial_cmp(b).unwrap());
+        let q = quiet as f32 / TICK_HZ as f32;
+        let holds = [
+            tank.is_some() || alarm,
+            self.plan.as_ref().map(|p| !p.castle_stands()).unwrap_or(true) && !self.starved,
+            stands && quiet >= QUIET && ((slot && (carrying || outlying.is_some() || self.fetching.is_some())) || (!slot && walls)),
+            wanted.map(|d| d <= EXPAND_R).unwrap_or(false),
+            depot.is_some() || wanted.is_some(),
+            true,
+        ];
+        self.why = [
+            match (&tank, alarm) {
+                (Some(t), _) => format!("THREAT: a tank {:.0} tiles from the base", t.pos.dist(base)),
+                (None, true) => "THREAT: a pillbox of the base is fighting".into(),
+                _ => format!("quiet {:.0} s; nothing within {:.0} tiles", q, BASE_ALARM),
+            },
+            match &self.plan {
+                Some(p) if self.starved => format!("stopped, no forest: {}", p.progress()),
+                Some(p) => p.progress(),
+                None => "nothing built yet".into(),
+            },
+            if !stands {
+                "after the castle stands".into()
+            } else if !slot && !walls {
+                "both turrets stand".into()
+            } else if !slot {
+                "walling the turrets in".into()
+            } else if quiet < QUIET {
+                format!("waiting for {:.0} s of quiet ({:.0} now)", QUIET as f32 / TICK_HZ as f32, q)
+            } else if carrying {
+                "carrying one home".into()
+            } else {
+                match &outlying {
+                    Some(p) => format!("a pillbox of ours out at {:.0} tiles", p.pos.dist(base)),
+                    None => "no pillbox of ours out there to bring in".into(),
+                }
+            },
+            match wanted {
+                Some(d) if d <= EXPAND_R => format!("a pillbox not ours {:.0} tiles from the base", d),
+                Some(d) => format!("none within {:.0}; the nearest is {:.0} out", EXPAND_R, d),
+                None => "every pillbox is ours or an ally's".into(),
+            },
+            match (depot, wanted) {
+                (Some(d), _) => format!("a depot not ours {:.0} tiles from the base", d),
+                (None, Some(_)) => "every depot ours; pillboxes left far out".into(),
+                _ => "the map is ours".into(),
+            },
+            "always".into(),
+        ];
+        let rung = Rung::ALL.iter().copied().find(|r| self.ladder[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
+        if self.rung != Some(rung) {
+            self.last_move = None;
+            self.rung = Some(rung);
+        }
+        match rung {
+            Rung::DefendBase | Rung::Guard => self.defend_base(obs, me, cmds),
+            Rung::Fortify => {
+                self.fortify(obs, me, Some(base), cmds);
+                !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
+            }
+            Rung::Turrets => {
+                self.turrets(obs, me, cmds);
+                true
+            }
+            Rung::Hunt => {
+                self.gun_reserved = false;
+                self.hunt(obs, me, Some((base, EXPAND_R)), cmds);
+                !self.gun_reserved
+            }
+            Rung::Expand => self.expand(obs, me, base, cmds),
+        }
+    }
+
+    /// Expand: the nearest depot not of my side to the base, its guards
+    /// first; with none to be had, any pillbox on the map.
+    fn expand(&mut self, obs: &Observation, me: &Tank, base: V2, cmds: &mut Vec<Command>) -> bool {
+        for e in &obs.events {
+            if let Event::Rejected { player, cmd: Command::Move { .. }, why } = e {
+                if *player == obs.player && (why.contains("water") || why.contains("unreachable")) {
+                    if let Some(d) = self.depot_target.take() {
+                        self.depots_given_up.push(d);
+                    }
+                }
+            }
+        }
+        let depot = obs
+            .depots
+            .iter()
+            .filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.contains(&d.id))
+            .min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id)))
+            .cloned();
+        let Some(d) = depot else {
+            self.depot_target = None;
+            self.gun_reserved = false;
+            self.hunt(obs, me, None, cmds);
+            return !self.gun_reserved;
+        };
+        self.depot_target = Some(d.id);
+        let guard = PILLBOX_RANGE + 1.5;
+        let guarded = obs.pillboxes.iter().any(|p| p.alive() && !Self::mine_or_allied(obs, p.owner) && !self.given_up.contains(&p.id) && p.pos.dist(d.pos) <= guard);
+        if guarded {
+            self.gun_reserved = false;
+            self.hunt(obs, me, Some((d.pos, guard)), cmds);
+            self.doing = format!("clearing the depot at ({:.0},{:.0}): {}", d.pos.x, d.pos.y, self.doing);
+            return !self.gun_reserved;
+        }
+        if me.pos.dist(d.pos) > DEPOT_RADIUS * 0.5 {
+            self.go(obs, me, d.pos, cmds);
+            self.doing = format!("to the depot at ({:.0},{:.0}), {:.0} tiles", d.pos.x, d.pos.y, me.pos.dist(d.pos));
+        } else {
+            self.doing = format!("taking the depot: {:.0}%", d.capture as f32 * 100.0 / CAPTURE_TICKS as f32);
+        }
+        true
+    }
+
     /// No line from here: round the target to the next firing point; a
     /// whole circle and a half without one, and it is given up.
     fn blocked(&mut self) {
@@ -495,16 +966,20 @@ impl Commander {
 
     /// Hold by a point, fight what comes, mend what is ours there.
     fn defend(&mut self, obs: &Observation, me: &Tank, at: V2, mend: Option<EntityId>, cmds: &mut Vec<Command>) {
+        self.defend_within(obs, me, at, DEFEND_LEASH, mend, cmds)
+    }
+
+    fn defend_within(&mut self, obs: &Observation, me: &Tank, at: V2, leash: f32, mend: Option<EntityId>, cmds: &mut Vec<Command>) {
         // A hostile tank inside the leash and in direct reach is shot
         // here; beyond, the inner doctrine's indirect fire answers.
         let threat = obs
             .tanks
             .iter()
-            .filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(at) <= DEFEND_LEASH)
+            .filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(at) <= leash)
             .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap().then(a.id.cmp(&b.id)));
         match threat {
             Some(t) if t.pos.dist(me.pos) <= DIRECT_RANGE - 0.2 => {
-                if me.reload == 0 && me.shells > 0 {
+                if me.reload == 0 && me.shells > 0 && obs.tick >= self.hold_fire_until {
                     cmds.push(Command::FireDirect { at: t.pos });
                 }
                 self.doing = "engaging an intruder".into();
@@ -546,6 +1021,14 @@ impl Brain for Commander {
         &self.name
     }
 
+    fn status(&self) -> String {
+        match (self.goal, self.rung) {
+            (Goal::Manual, _) => String::new(),
+            (Goal::Auto, Some(r)) => format!("auto > {}: {}", r.label(), self.doing),
+            (g, _) => format!("{}: {}", g.label(), self.doing),
+        }
+    }
+
     fn think(&mut self, obs: &Observation) -> Vec<Command> {
         let mut cmds = Vec::new();
         // The doctrine thinks every tick so its memory stays current;
@@ -554,10 +1037,80 @@ impl Brain for Commander {
         if self.goal == Goal::Manual {
             return cmds;
         }
+        for e in &obs.events {
+            if let Event::Rejected { player, cmd: Command::FireDirect { .. }, why } = e {
+                if *player == obs.player && why.contains("line") {
+                    self.hold_fire_until = obs.tick + 2 * TICK_HZ as Tick;
+                }
+            }
+        }
         let Some(me) = obs.me.clone() else { return cmds };
         if !me.alive {
             self.doing = "dead".into();
             return cmds;
+        }
+        // A bot whose leader is down takes command (fleet.rs): a wingman
+        // or a guard left on its own goes to Auto at the same base. A
+        // fleet's survivors otherwise stood guard for half an hour.
+        if self.social || self.base_owner.is_some() {
+            let leader = match self.goal {
+                Goal::Escort(p) => Some(p),
+                Goal::DefendBase => self.base_owner,
+                _ => None,
+            };
+            if let Some(l) = leader.filter(|l| *l != obs.player) {
+                if obs.players.iter().any(|p| p.id == l && !p.alive) {
+                    self.base_owner.get_or_insert(l);
+                    self.set_goal(Goal::Auto);
+                    self.doing = "the leader is down: taking command".into();
+                }
+            }
+        }
+        // A shell in flight at the tank says where it was fired from.
+        if let Some(from) = obs.shells.iter().filter(|sh| !obs.allied(sh.owner) && sh.impact.dist(me.pos) <= 4.0).max_by_key(|sh| sh.launch_tick).map(|sh| sh.from) {
+            self.gun_seen_at = Some(from);
+        }
+        // Shot at by what nobody of ours can see: off the spot, and eyes up.
+        let hit_now = me.last_hit_tick > 0 && obs.tick.saturating_sub(me.last_hit_tick) <= 1;
+        let in_sight = obs.tanks.iter().any(|t| t.alive && !obs.allied(t.owner));
+        if hit_now && !in_sight && self.scoot.map(|(_, until)| obs.tick >= until).unwrap_or(true) {
+            self.scoot_left = !self.scoot_left;
+            let side = V2::from_heading(me.heading + if self.scoot_left { 1.5708 } else { -1.5708 });
+            self.scoot = Some((me.pos + side.scale(SCOOT), obs.tick + SCOOT_FOR));
+            self.last_move = None;
+            // A shell says where it was fired from: eyes there, and the
+            // gun back at it while it is in reach.
+            let origin = self.gun_seen_at;
+            let over = origin.unwrap_or(me.pos);
+            let task = DroneTask::Orbit { center: over, radius: if origin.is_some() { 4.0 } else { RECON_VISION * 0.6 } };
+            match obs.drones.iter().find(|d| d.owner == obs.player && d.kind == DroneKind::Recon) {
+                Some(d) => cmds.push(Command::Retask { drone: d.id, task }),
+                None if me.bay.recon > 0 => cmds.push(Command::Launch { kind: DroneKind::Recon, task }),
+                None => {}
+            }
+        }
+        if let (Some(at), true) = (self.gun_seen_at, self.scoot.map(|(_, until)| obs.tick < until).unwrap_or(false)) {
+            let d = me.pos.dist(at);
+            if me.reload == 0 && me.shells > LOW_SHELLS && (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&d) {
+                cmds.push(Command::FireIndirect { at });
+            }
+        }
+        if let Some((to, until)) = self.scoot {
+            if obs.tick < until && !in_sight {
+                // A side that is water is refused: the other side, at once.
+                if obs.events.iter().any(|e| matches!(e, Event::Rejected { player, cmd: Command::Move { .. }, .. } if *player == obs.player)) {
+                    let back = me.pos + (me.pos - to);
+                    self.scoot = Some((back, until));
+                    self.last_move = None;
+                }
+                let to = self.scoot.unwrap().0;
+                self.go(obs, &me, to, &mut cmds);
+                self.doing = "under fire from out of sight: scooting, recon up".into();
+                cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                return cmds;
+            }
+            self.scoot = None;
+            self.last_move = None;
         }
         if self.needs_home(&me) {
             if let Some(home) = Self::home(obs, &me) {
@@ -618,6 +1171,12 @@ impl Brain for Commander {
                 self.defend(obs, &me, at, None, &mut cmds);
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
             }
+            Goal::Fortify(at) => {
+                self.fortify(obs, &me, at, &mut cmds);
+                !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
+            }
+            Goal::DefendBase => self.defend_base(obs, &me, &mut cmds),
+            Goal::Auto => self.auto(obs, &me, &mut cmds),
         };
         cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, gun_free)));
         if self.social {
@@ -630,6 +1189,7 @@ impl Brain for Commander {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fortify::TOWER_R;
 
     /// Two seats, no swarm, no time limit, no pillboxes but one placed
     /// `away` tiles from seat 0 toward the middle, owned by `owner`.
@@ -860,6 +1420,328 @@ mod tests {
             w.tick += 1;
         }
         assert_eq!(left, Some(TOTAL_HOLD), "left at {:?} ticks of 100%", left);
+    }
+
+    /// 11b's proof: alone on the island for five minutes, the squad
+    /// builds the castle round the home depot: the towers and the rear
+    /// pillbox, most of the wall, the gate left open, and a route from
+    /// the front into the depot comes in through the gate.
+    #[test]
+    fn a_commander_fortifies_its_depot() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let me = w.tanks[0].pos;
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).partial_cmp(&b.pos.dist(me)).unwrap()).unwrap().id;
+        w.depots.iter_mut().find(|d| d.id == depot).unwrap().owner = Some(0);
+        let mut c = Commander::new(11, "commander");
+        c.set_goal(Goal::Fortify(None));
+        let mut walls = 0;
+        for i in 0..(300 * TICK_HZ) {
+            let obs = w.observe(0);
+            let orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            if std::env::var("COMMANDER_TRACE").is_ok() && i % (10 * TICK_HZ) == 0 {
+                eprintln!("[{:>5}] material {} doing '{}'", w.tick, w.tanks[0].pillboys.material, c.doing);
+            }
+            w.step(&orders);
+            for e in &w.events {
+                if let Event::Built { owner: 0, what: BuildKind::Wall, .. } = e {
+                    walls += 1;
+                }
+                if std::env::var("COMMANDER_TRACE").is_ok() {
+                    if let Event::Rejected { player: 0, why, .. } | Event::PillboysAbandoned { owner: 0, why, .. } = e {
+                        eprintln!("        refused: {}", why);
+                    }
+                }
+            }
+        }
+        let plan = c.plan.clone().expect("no plan");
+        let towers = w.pillboxes.iter().filter(|p| p.owner == Some(0) && p.pos.dist(plan.centre) <= TOWER_R + 1.5).count();
+        let gate = plan.gate();
+        eprintln!("a_commander_fortifies_its_depot: {}; {} pillboxes of ours round the depot, {} walls", plan.progress(), towers, walls);
+        assert!(towers >= 3, "{} pillboxes round the depot", towers);
+        assert!(walls >= 8, "{} wall tiles", walls);
+        assert!(plan.gate_tiles.iter().all(|g| w.map.at(*g).passable()), "the gate is shut");
+        // From twelve tiles out in front, the way in is the gate.
+        let mut front = Map::tile_centre(plan.centre + plan.facing.scale(12.0));
+        while !w.map.at(front).passable() {
+            front = Map::tile_centre(front - plan.facing);
+        }
+        let route = w.map.route(front, plan.centre);
+        assert!(!route.is_empty(), "no way in at all");
+        // The route is waypoints with straight legs between: the gate
+        // is passed if a leg runs within a tile and a half of it.
+        let near_leg = |a: V2, b: V2| {
+            let ab = b - a;
+            let t = (((gate - a).x * ab.x + (gate - a).y * ab.y) / (ab.x * ab.x + ab.y * ab.y).max(1e-6)).clamp(0.0, 1.0);
+            (a + ab.scale(t)).dist(gate)
+        };
+        let mut legs = vec![front];
+        legs.extend(route.iter().copied());
+        let through = legs.windows(2).any(|l| near_leg(l[0], l[1]) <= 1.5);
+        assert!(through, "the way in does not pass the gate: {:?} from {:?}, gate {:?}", route, front, gate);
+        // And the wall does its work: with the gate shut, the way in from
+        // the front is longer (round the wall's end), so the gate is the
+        // short way and the router's choice.
+        let open_len: f32 = legs.windows(2).map(|l| l[0].dist(l[1])).sum();
+        for g in &plan.gate_tiles {
+            w.map.set(*g, Terrain::Wall);
+        }
+        let shut = w.map.route(front, plan.centre);
+        let mut shut_legs = vec![front];
+        shut_legs.extend(shut.iter().copied());
+        let shut_len: f32 = shut_legs.windows(2).map(|l| l[0].dist(l[1])).sum();
+        eprintln!("  the way in: {:.1} tiles through the gate, {:.1} with it shut", open_len, shut_len);
+        if std::env::var("COMMANDER_TRACE").is_ok() {
+            let c = plan.centre;
+            for dy in -8..=8 {
+                let mut line = String::new();
+                for dx in -8..=8 {
+                    let p = Map::tile_centre(c + V2::new(dx as f32, dy as f32));
+                    let ch = if shut.iter().any(|q| q.tile() == p.tile()) { '*' } else if w.pillboxes.iter().any(|b| b.pos.tile() == p.tile()) { 'P' } else { match w.map.at(p) { Terrain::Wall => '#', Terrain::Road => '=', Terrain::Depot => 'D', Terrain::Forest => 'f', Terrain::Water => '~', t if !t.passable() => 'x', _ => '.' } };
+                    line.push(ch);
+                }
+                eprintln!("  {}", line);
+            }
+            eprintln!("  facing {:?}; shut route {:?}", plan.facing, shut);
+        }
+        assert!(shut.is_empty() || shut_len > open_len + 2.0, "the wall does not turn anyone: {:.1} against {:.1}", shut_len, open_len);
+    }
+
+    /// A free tile about `r` from `from`: open ground, off depots and
+    /// pillboxes' spacing.
+    fn free_near(w: &World, from: V2, r: f32) -> V2 {
+        (0..64)
+            .map(|i| Map::tile_centre(from + V2::from_heading(i as f32 * 0.7).scale(r + (i / 16) as f32)))
+            .find(|p| w.map.in_bounds(*p) && w.map.at(*p).passable() && !matches!(w.map.at(*p), Terrain::Forest | Terrain::Depot) && !w.depots.iter().any(|d| d.pos.dist(*p) <= DEPOT_RADIUS + 1.0) && !w.pillboxes.iter().any(|b| b.pos.dist(*p) < PILLBOX_SPACING) && w.map.route(from, *p).len() > 0)
+            .expect("no free tile")
+    }
+
+    /// Defend the base: a tank parked 12 tiles out is a threat (beyond
+    /// DefendDepot's leash, inside the base's alarm); it is met under the
+    /// base's guns and shot, and the hurt pillbox is mended once it is gone.
+    #[test]
+    fn a_commander_defends_its_base() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).partial_cmp(&b.pos.dist(w.tanks[0].pos)).unwrap()).unwrap().clone();
+        w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
+        let at = free_near(&w, depot.pos, 4.0);
+        let guard = 70_020;
+        w.pillboxes.push(Pillbox { id: guard, pos: at, owner: Some(0), health: 20.0, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        let mut c = Commander::new(12, "commander");
+        c.set_goal(Goal::DefendBase);
+        let mut warned = false;
+        let mut hits = 0;
+        let mut mended = None;
+        for i in 0..(150 * TICK_HZ) {
+            if i == 10 * TICK_HZ {
+                let spot = free_near(&w, depot.pos, 12.0);
+                let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
+                t.pos = spot;
+                t.goal = None;
+                t.route.clear();
+            }
+            let obs = w.observe(0);
+            let orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            warned |= c.doing.starts_with("BASE UNDER THREAT");
+            w.step(&orders);
+            for e in &w.events {
+                match e {
+                    Event::TankDamaged { tank, by: Some(0), .. } if w.tanks.iter().any(|t| t.id == *tank && t.owner == 1) => hits += 1,
+                    Event::PillboxRepaired { pillbox, .. } if *pillbox == guard && mended.is_none() => mended = Some(w.tick),
+                    _ => {}
+                }
+            }
+        }
+        let dead = !w.tanks.iter().find(|t| t.owner == 1).unwrap().alive;
+        eprintln!("a_commander_defends_its_base: warned {}, {} hits, intruder dead {}, mended at {:?}", warned, hits, dead, mended.map(|t| t as f32 / TICK_HZ as f32));
+        assert!(warned, "never saw the threat");
+        assert!(hits >= 2, "the intruder was hit {} times", hits);
+        assert!(mended.is_some(), "the base's pillbox was never mended");
+        assert!(w.pillbox(guard).unwrap().health >= PILLBOX_HEALTH);
+    }
+
+    /// Shelled from twenty tiles, beyond sight: the tank scoots off the
+    /// spot inside a second, puts a recon up, and so sees the shooter.
+    #[test]
+    fn a_commander_scoots_from_unseen_fire() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).partial_cmp(&b.pos.dist(w.tanks[0].pos)).unwrap()).unwrap().clone();
+        w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
+        let mut c = Commander::new(14, "commander");
+        c.set_goal(Goal::DefendBase);
+        // Settle at the post first.
+        for _ in 0..(20 * TICK_HZ) {
+            let obs = w.observe(0);
+            let orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            w.step(&orders);
+        }
+        let gun = free_near(&w, w.tanks[0].pos, 20.0);
+        let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
+        t.pos = gun;
+        t.goal = None;
+        t.route.clear();
+        let mut first_hit: Option<(Tick, V2)> = None;
+        let mut moved = 0.0f32;
+        let mut recon = false;
+        let mut seen = false;
+        let mut answered = 0;
+        for _ in 0..(40 * TICK_HZ) {
+            let obs = w.observe(0);
+            seen |= obs.tanks.iter().any(|t| t.owner == 1);
+            let mut orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            recon |= orders.iter().any(|o| matches!(o.cmd, Command::Launch { kind: DroneKind::Recon, .. } | Command::Retask { .. }));
+            let them = w.tanks.iter().find(|t| t.owner == 1).unwrap();
+            if them.reload == 0 && them.alive {
+                orders.push(Order { player: 1, cmd: Command::FireIndirect { at: w.tanks[0].pos } });
+            }
+            answered += orders.iter().filter(|o| o.player == 0 && matches!(o.cmd, Command::FireIndirect { .. })).count();
+            w.step(&orders);
+            if first_hit.is_none() && w.events.iter().any(|e| matches!(e, Event::TankDamaged { tank, .. } if *tank == w.tanks[0].id)) {
+                first_hit = Some((w.tick, w.tanks[0].pos));
+            }
+            if let Some((t0, p0)) = first_hit {
+                if w.tick <= t0 + 2 * TICK_HZ as Tick {
+                    moved = moved.max(w.tanks[0].pos.dist(p0));
+                }
+            }
+        }
+        eprintln!("a_commander_scoots_from_unseen_fire: hit at {:?}, moved {:.1} in 2 s, recon {}, saw the gun {}, fired back {}", first_hit.map(|(t, _)| t), moved, recon, seen, answered);
+        assert!(first_hit.is_some(), "never hit: the test's gun missed");
+        assert!(moved >= 1.5, "stood still under fire: {:.1}", moved);
+        assert!(recon, "no recon up");
+        assert!(seen, "never saw the gun");
+        assert!(answered > 0, "never fired back");
+    }
+
+    /// Auto, alone: fortify first; once the castle stands and the base has
+    /// been quiet, the two outlying pillboxes of ours are lifted and set
+    /// down in the turrets; a tank at the base sends it to defend.
+    #[test]
+    fn a_commander_climbs_the_ladder() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let me = w.tanks[0].pos;
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).partial_cmp(&b.pos.dist(me)).unwrap()).unwrap().clone();
+        w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
+        let mut out = Vec::new();
+        for (n, r) in [16.0, 22.0].into_iter().enumerate() {
+            let at = free_near(&w, depot.pos, r);
+            let id = 70_030 + n as EntityId;
+            w.pillboxes.push(Pillbox { id, pos: at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+            out.push(id);
+        }
+        // The other seat is out of the way until it is wanted.
+        let far = free_near(&w, depot.pos, 40.0);
+        let enemy = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
+        enemy.pos = far;
+        let mut c = Commander::new(13, "commander");
+        c.set_goal(Goal::Auto);
+        let mut rungs: Vec<(f32, Rung)> = Vec::new();
+        let mut lifted = 0;
+        let mut defended_at = None;
+        let mut intruder_at = None;
+        for _ in 0..(900 * TICK_HZ) {
+            let obs = w.observe(0);
+            let orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            if let Some(r) = c.rung {
+                if rungs.last().map(|(_, l)| *l != r).unwrap_or(true) {
+                    rungs.push((w.tick as f32 / TICK_HZ as f32, r));
+                    if std::env::var("COMMANDER_TRACE").is_ok() {
+                        eprintln!("[{:>6.1}s] {:?}: {}", w.tick as f32 / TICK_HZ as f32, r, c.doing);
+                    }
+                }
+                if r == Rung::DefendBase && intruder_at.is_some() && defended_at.is_none() {
+                    defended_at = Some(w.tick);
+                }
+            }
+            if std::env::var("COMMANDER_TRACE").is_ok() && w.tick % (5 * TICK_HZ as Tick) == 0 && w.tick > 330 * TICK_HZ as Tick {
+                eprintln!("[{:>6.1}s] {:?} doing '{}' at {:?} squad {:?} why {:?}", w.tick as f32 / TICK_HZ as f32, c.rung, c.doing, w.tanks[0].pos, (w.tanks[0].pillboys.aboard, &w.tanks[0].pillboys.task, w.tanks[0].pillboys.carrying), c.why[2]);
+            }
+            for e in &w.events {
+                if std::env::var("COMMANDER_TRACE").is_ok() {
+                    if let Event::Rejected { player: 0, why, .. } | Event::PillboysAbandoned { owner: 0, why, .. } = e {
+                        eprintln!("        refused: {}", why);
+                    }
+                }
+            }
+            w.step(&orders);
+            lifted += w.events.iter().filter(|e| matches!(e, Event::PillboxLifted { by: 0, .. })).count();
+            // Both turrets up: an intruder comes to the gate.
+            if intruder_at.is_none() && c.plan.as_ref().map(|p| p.turrets() == (2, 2)).unwrap_or(false) {
+                let gate = c.plan.as_ref().unwrap().gate();
+                let spot = free_near(&w, gate, 0.0);
+                let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
+                t.pos = spot;
+                intruder_at = Some(w.tick);
+            }
+            if defended_at.is_some() {
+                break;
+            }
+        }
+        let plan = c.plan.clone().expect("no plan");
+        eprintln!("a_commander_climbs_the_ladder: {}; lifted {}; rungs {:?}", plan.progress(), lifted, rungs);
+        let order: Vec<Rung> = rungs.iter().map(|(_, r)| *r).collect();
+        assert_eq!(order.first(), Some(&Rung::Fortify), "{:?}", rungs);
+        assert!(plan.castle_stands(), "{}", plan.progress());
+        let first_turret = order.iter().position(|r| *r == Rung::Turrets).expect("never on turrets");
+        assert!(order[..first_turret].contains(&Rung::Fortify));
+        assert_eq!(lifted, 2, "lifted {}", lifted);
+        assert_eq!(plan.turrets(), (2, 2), "{}", plan.progress());
+        assert!(out.iter().all(|id| w.pillbox(*id).is_none()), "an outlying pillbox is still out");
+        let (i, d) = (intruder_at.expect("never finished the turrets"), defended_at.expect("never defended"));
+        assert!(d - i <= TICK_HZ as Tick, "defended {} ticks after the intruder came", d - i);
+    }
+
+    /// The window's solo match, headless: the map in LADDER_MAP, seat 0
+    /// on Auto against three RuleBots seeded as the window seeds them.
+    /// Run by hand (`--ignored`) to read what the ladder does in a match.
+    #[test]
+    #[ignore]
+    fn the_ladder_in_a_match() {
+        let text = std::fs::read_to_string(std::env::var("LADDER_MAP").expect("LADDER_MAP")).unwrap();
+        let seed = 0x7EAD_C0DE_u64;
+        let names = vec![("user".to_string(), false), ("bot1".into(), true), ("bot2".into(), true), ("bot3".into(), true)];
+        let sc = Scenario { seed, map: MapSource::Text(text), players: names, ..Scenario::default() };
+        let mut w = World::new(sc);
+        let mut bots: Vec<(PlayerId, RuleBot)> = (1..4).map(|i| (i as PlayerId, RuleBot::new(seed.wrapping_mul(31) ^ (i as u64 + 1), "rulebot"))).collect();
+        let mut c = Commander::new(0x60A1, "goal");
+        c.set_goal(Goal::Auto);
+        let secs: u64 = std::env::var("LADDER_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(600);
+        for _ in 0..(secs * TICK_HZ as u64) {
+            let mut orders: Vec<Order> = c.think(&w.observe(0)).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            for (p, b) in bots.iter_mut() {
+                orders.extend(b.think(&w.observe(*p)).into_iter().map(|cmd| Order { player: *p, cmd }));
+            }
+            w.step(&orders);
+            let t = w.tick as f32 / TICK_HZ as f32;
+            if w.tick % (10 * TICK_HZ as Tick) == 0 {
+                let me = &w.tanks[0];
+                eprintln!("[{:>6.1}s] {:?} '{}' armour {:.0} shells {} squad {:?}/{:?} material {}", t, c.rung, c.doing, me.armor, me.shells, me.pillboys.aboard, me.pillboys.task, me.pillboys.material);
+            }
+            for e in &w.events {
+                match e {
+                    Event::TankDamaged { tank, by, damage, armor_left } if *tank == w.tanks[0].id => {
+                        let near = w.tanks.iter().filter(|o| o.owner != 0 && o.alive).map(|o| format!("p{} {:.0}", o.owner, o.pos.dist(w.tanks[0].pos))).collect::<Vec<_>>();
+                        eprintln!("[{:>6.1}s]   hit -{:.0} by {:?}, {:.0} left; tanks at {:?}; drones near {}", t, damage, by, armor_left, near, w.drones.iter().filter(|d| d.owner != 0 && d.pos.dist(w.tanks[0].pos) < 12.0).count());
+                    }
+                    Event::Rejected { player: 0, why, .. } | Event::PillboysAbandoned { owner: 0, why, .. } => eprintln!("[{:>6.1}s]   refused: {}", t, why),
+                    Event::TankDestroyed { owner: 0, by, .. } => eprintln!("[{:>6.1}s] DESTROYED by {:?}", t, by),
+                    _ => {}
+                }
+            }
+            if !w.tanks[0].alive {
+                break;
+            }
+        }
+        if let Some(p) = &c.plan {
+            eprintln!("plan: {}; items {:?}", p.progress(), p.items.iter().map(|i| (i.what, i.at, i.state)).collect::<Vec<_>>());
+        }
     }
 
     /// A neutral pillbox is not shot at all: the squad takes it live.

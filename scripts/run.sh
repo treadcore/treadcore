@@ -16,6 +16,8 @@
 # peer id across restarts (the default, build/identity, does).
 # WINGMEN=n makes the first n bots wingmen of the player: they follow,
 # fight beside it and ask to join its side (solo, lan; step 11a).
+# FLEETS=1 deals sixteen seats into three base-building teams of five
+# and one aggro bot; the player's team assists the player (solo).
 # ROOKIES=n makes n of the bots rookies, for a newcomer (solo, lan,
 # host, listen).
 # All of them log to build/logs/MODE-STAMP.log at RUST_LOG=debug.
@@ -68,6 +70,7 @@ esac
 case "$MODE" in solo|lan|host|seat|listen) [ "${INDUSTRY:-0}" = 1 ] && ARGS+=(--industry) ;; esac
 case "$MODE" in solo|lan|host|listen) [ "${ROOKIES:-0}" != 0 ] && ARGS+=(--rookies "$ROOKIES") ;; esac
 case "$MODE" in solo|lan) [ "${WINGMEN:-0}" != 0 ] && ARGS+=(--wingmen "$WINGMEN") ;; esac
+case "$MODE" in solo) [ "${FLEETS:-0}" != 0 ] && ARGS+=(--fleets) ;; esac
 say "$BIN ${ARGS[*]}  (log: $LOG)"
 
 # The window on a musl machine with lavapipe: build/bigstack.so from

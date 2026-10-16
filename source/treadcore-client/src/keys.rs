@@ -44,6 +44,7 @@ pub enum Action {
     BubbleOut,
     Stop,
     Goal,
+    Coordinate,
     Farm,
     Road,
     Wall,
@@ -63,7 +64,7 @@ pub enum Action {
 use Action::*;
 
 impl Action {
-    pub const ALL: [Action; 31] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, KeySetup];
+    pub const ALL: [Action; 32] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, KeySetup];
 
     /// The word in the file and in Key Setup.
     pub fn word(self) -> &'static str {
@@ -85,6 +86,7 @@ impl Action {
             BubbleOut => "bubble-out",
             Stop => "stop",
             Goal => "goal",
+            Coordinate => "coordinate",
             Farm => "farm",
             Road => "road",
             Wall => "wall",
@@ -131,8 +133,9 @@ impl Action {
             Longshot => KeyCode::KeyX,
             BubbleIn => KeyCode::BracketLeft,
             BubbleOut => KeyCode::BracketRight,
-            Stop => KeyCode::Space,
+            Stop => KeyCode::KeyH,
             Goal => KeyCode::KeyG,
+            Coordinate => KeyCode::Space,
             Farm => KeyCode::Digit4,
             Road => KeyCode::Digit5,
             Wall => KeyCode::Digit6,
@@ -343,7 +346,7 @@ pub struct Setup {
 /// Key Setup as the scrollback's place over the map shows it.
 pub fn setup_text(keys: &Keys, s: &Setup, note: &str) -> String {
     let mut t = String::from("KEY SETUP   up/down pick, Enter rebind, Delete defaults, K or Esc close\n");
-    // A window of rows around the pick: thirty-one actions do not fit.
+    // A window of rows around the pick: thirty-two actions do not fit.
     let first = s.row.saturating_sub(9).min(Action::ALL.len().saturating_sub(19));
     for (i, a) in Action::ALL.iter().enumerate().skip(first).take(19) {
         if let Some(g) = a.group() {
@@ -442,6 +445,15 @@ mod tests {
         assert_eq!(label(KeyCode::Digit1), "1");
         assert_eq!(label(KeyCode::Quote), "'");
         assert_eq!(label(KeyCode::KeyR), "R");
+    }
+
+    /// A keys file from before Coordinate, with Stop on Space as it was:
+    /// Stop keeps Space and Coordinate takes H, swapped, not lost.
+    #[test]
+    fn an_old_keys_file_keeps_stop_on_space() {
+        let (k, warn) = Keys::from_text("stop = Space\ngoal = KeyG\n");
+        assert!(warn.is_empty(), "{:?}", warn);
+        assert_eq!((k.key(Action::Stop), k.key(Action::Coordinate)), (KeyCode::Space, KeyCode::KeyH));
     }
 
     #[test]

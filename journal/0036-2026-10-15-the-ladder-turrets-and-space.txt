@@ -1,0 +1,241 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 15 Oct 2026 18:00:00 -0700
+Subject: [JOURNAL 0036] The ladder: defend base, turrets, Space, fleets
+Message-ID: <0036.20261015@treadcore.org>
+In-Reply-To: <0035.20261015@treadcore.org>
+Organization: treadcore.org
+Keywords: Commander, ladder, defend base, turrets, pillbox lifting,
+          coordination screen, fleets, roadmap steps 11c 11h
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair; Paul: "eventually we want to create a turret
+           position with walls by collecting pillboxes. but that only
+           occurs after a base is developed and not under attack. we
+           also have a defend the base its under immenent threat bot
+           ... Is there an easy way to toggle back and forth. like
+           space bar." Later: "i died, a enemy bot battled me. i
+           almost made it." And: "can we start a game with two teams
+           that do this base building technique ... 3 teams of base
+           building, 5 on each. and 1 random aggro bot."
+X-Commits: the commit that carries this entry
+
+        THE LADDER: DEFEND BASE, TURRETS, SPACE, AND FLEETS
+
+                     Paul Richeson, treadcore.org
+                           15 October 2026
+
+
+ABSTRACT
+
+    The squad can now lift a pillbox of its own side, carry it, and set
+    it down elsewhere, as the prior art's builder did (a sim change,
+    wire version 14). On that the Commander gains a goal for a base
+    under imminent threat and a ladder, Auto, that picks the tank's
+    goal itself: defend base, fortify, turrets, hunt, guard, top down,
+    each rung switchable. Alone on the island the ladder built the
+    castle in 338 s, then lifted both outlying pillboxes and set them
+    down in the two turrets by 403 s, and turned to defend the base the
+    tick an intruder stood in the gate. Space opens a coordination
+    screen that shows the ladder and hands the tank to it; Space again
+    is the wheel. --fleets deals sixteen seats into three teams of five
+    that build at their leaders' depots, and an aggro bot alone.
+
+INDEX TERMS
+
+    artificial intelligence, decision making, game design.
+
+
+I. INTRODUCTION
+
+    Paul asked for three things at once: to watch the method play out
+    (a GIF, the game from the start, the upper left corner taken), a
+    bot for a base under imminent threat, and more options to drive
+    "the hierarchy of decision matrix of the new hybrid human bot",
+    with an easy way back and forth between driving and coordinating.
+    He also described turrets: a position walled in, made by
+    collecting pillboxes, once a base is developed and not under
+    attack. The world had no way to collect a pillbox.
+
+II. BACKGROUND
+
+    Journal 0035's castle builds new pillboxes for material. Bolo's
+    builder could pick up a pillbox and carry it; this sim's squad
+    could not. A tank sees TANK_VISION (7) tiles and a pillbox sees
+    nothing; walls block a line of fire both ways.
+
+III. METHOD
+
+    1. The sim. PillboyTask::Lift { pillbox } on a pillbox of one's own
+       (live or dead): PILLBOX_LIFT_TICKS (5 s) of work, then the
+       pillbox leaves the map and Pillboys::carrying holds its health.
+       A Build of a pillbox while carrying costs no material, takes
+       PILLBOX_PLACE_TICKS (5 s) and sets that health down. A squad or
+       tank lost while carrying lets it fall where it was, dead, still
+       the side's. Events PillboxLifted, PillboxDropped; refusals
+       "only a pillbox of your own can be lifted", "already carrying
+       one", both PICNIC. Wire version 14.
+    2. Defend base. The base is the castle's centre, else the depot of
+       the side nearest the tank when first asked. A hostile tank
+       within BASE_ALARM (16) of it is a threat; so is a pillbox of the
+       base hit, or firing (the guns are the base's ears, since nobody
+       sees past seven tiles). The tank fights under the base's guns a
+       few tiles toward the threat, or goes to the pillbox that heard
+       it; the squad mends the neediest pillbox between shots.
+    3. Turrets. Plan::add_turrets puts a bastion on the wall's ring 12
+       degrees past each end of the curtain wall, and one more wall
+       tile 14 degrees past that: the pillbox is set into the wall.
+       The ends are where an attacker would go round instead of
+       through the gate; each bastion is 3.9 tiles from a tower and
+       6.2 from the rear pillbox. The Commander drives to the outlying
+       pillbox (so the squad's walk is short), lifts it, drives it home
+       and sets it down.
+    4. The ladder, Goal::Auto. Every tick, top down: defend base (a
+       threat), fortify (the castle not standing, and forest to feed
+       it), turrets (the castle standing, QUIET 20 s without a threat,
+       a slot free and an outlying pillbox of ours, or the turret walls
+       to close), hunt (a pillbox not ours, within EXPAND_R 30 of the
+       base first), guard. Each rung can be off; each carries a line
+       on what its condition sees.
+    5. The window. Action::Coordinate on Space opens the coordination
+       screen and puts the tank on Auto; Space or Esc closes it and
+       gives the wheel back. Stop moves to H. On the screen 1 to 5
+       turn rungs, G picks one goal, a click holds there, Tab folds it
+       away to see the map. Shift-click in pillbox mode lifts one of
+       yours by hand.
+
+IV. CHRONOLOGY
+
+    1. The sim test first: lifted at 40 health, set down at 40 with no
+       material, a pillbox of theirs refused, the carried one falling
+       dead with the tank. PASS.
+    2. make test FAIL: every_refusal_has_a_name. The two new refusals
+       had no chair. Both PICNIC.
+    3. The ladder, FAIL: it flipped from turrets back to fortify,
+       because the turrets' wall tiles counted as castle unbuilt. The
+       plan keeps castle_len; the turrets are what comes after.
+    4. FAIL: nothing lifted. The tank parked 3.1 tiles from the
+       pillbox and the squad was sent only within 3.0, so it waited
+       for ever. Within 4.0 now.
+    5. FAIL, and a finding: an intruder three tiles outside the gate
+       was never answered. Nobody of ours could see it (7 tiles), the
+       towers could not shoot it (the wall), and the turrets were out
+       of reach. The guns firing now count as an alarm, but none were
+       firing. The test's intruder stands in the gate, where the
+       castle is meant to meet it; the gap is roadmap 11j.
+    6. PASS: fortify to 338 s, turrets from 338 s, both set by 403 s,
+       defend base the tick the intruder came.
+    7. The window, recorded for Paul's GIF on a copy of the island with
+       seat 0 in the north-west. Paul played in it as it recorded: a
+       click on the map with the coordination screen up is "hold
+       there", so the tank stood and fought where he clicked, and died
+       at about 440 s. Before that, fortify had waited seventy seconds
+       on "waiting on the site": the window draws one frame for
+       several ticks when it is slow (and grim slows it), the pilot
+       thought once a frame, and each observation carries only its own
+       tick's events, so Built was missed and the plan waited out its
+       minute. View::unthought keeps every event for the pilot; and an
+       order out two seconds and more when the squad is home again
+       counts as done.
+    8. The same match headless (the_ladder_in_a_match, by hand) found
+       three stalls and a noise: a turret's tile was forest and nothing
+       felled it; a wall tile on forest could not be felled with the
+       material full, and the plan asked again every few ticks; a
+       firing point on water was refused once a second for five
+       minutes; and the gun asked for a direct shot through its own
+       wall every tick. Each fixed: the slot is felled first, a tile
+       that cannot be felled is skipped, a refused Move turns the
+       firing point round, and a "no line" refusal holds the gun two
+       seconds. Then fortify, a neutral pillbox taken at 290 s and set
+       into a turret by 330 s, the second by 450 s.
+    9. Fleets. treadcore-brain::fleet deals the seats: three teams of
+       five neighbouring starts and seat 15 alone on a RuleBot. A bot
+       team: the leader on Auto at its own depot, a guard on defend
+       base, two rangers on Auto with fortify and turrets off, a
+       wingman. Seat 0's team assists the person: a builder on Auto
+       whose base is the person's depot, a guard, two wingmen.
+       Commander::base_owner shares the base. The first ten minutes
+       headless: two rangers of one team stood on one pillbox for two
+       minutes, neither clock moving, because the sim counted two
+       allied squads as a contest. Allies now take it together, for
+       the one already taking it (allied_squads_do_not_contest). Then
+       every team held 3 to 6 pillboxes at its base at ten minutes.
+   10. The window recorded again, untouched: no stall this time, the
+       castle by 285 s, a pillbox fetched, lifted, carried and set in a
+       turret between 320 and 350 s; then shelled from out of sight
+       while it sat on the depot, dead at 372 s. Paul's death had the
+       same shape. A tank hit with nothing hostile in sight now scoots
+       3.5 tiles, alternating sides, sends its recon to where the last
+       shell at it came from (a shell carries its origin, and one in
+       flight at the tank is in its picture), and fires back there.
+   11. Paul: "continue. good ideas and . continue a simulation." Fleet
+       matches to the end, headless (16 seats, five seconds a ten
+       minutes). With no time limit: every leader dead by 680 s and the
+       rest standing guard, or "the leader is not in sight", for thirty
+       minutes. And no side on Auto ever took a depot: hunt took
+       pillboxes only. Two fixes in the brain, one in the sim: the
+       expand rung; a wingman or guard whose leader is down goes to
+       Auto at the same base; allied tanks on a depot are not a contest
+       (two on their own depot had not even resupplied).
+   12. Seven seeds, no time limit: every match decided, 502 to 926 s;
+       seat 0's team won five, team 1 two. a_fleet_match_plays_out
+       keeps it so.
+
+V. RESULTS
+
+    make test: sim 39, brain 24 (and two by hand), client 22, net 14,
+    proto 3.
+    a_commander_defends_its_base: five hits on a tank parked twelve
+    tiles out, killed, the base's pillbox mended. The GIF of the window
+    is in the session's scratchpad; it is not committed.
+
+VI. DISCUSSION
+
+    The ladder is the decision matrix Paul asked for, kept as small as
+    it can be: an ordered list of conditions and the goal each wants,
+    with the player's hand on every rung. It is still the same brain
+    on the same Observation: the window's tank under Auto is never a
+    cheat, and its orders are a keyboard's.
+
+    A castle is blind. Walls that stop a shot stop the castle's own
+    guns as well, and nothing in it sees past a tank's seven tiles.
+    That is a reason for Paul's flag.
+
+VII. OPEN PROBLEMS
+
+    1. Paul's area patterns and pings (roadmap 11i): a rectangle
+       cleared and laid out as a line of pillboxes, or a checker of
+       road and farm with walls between and pillboxes over the farms,
+       declared on the map and queued in a fleet's build list.
+    2. Paul's flag on a pedestal, giving a walled town and its allies
+       sight once the fort meets its criteria (roadmap 11j).
+    3. Allies' goals on the coordination screen: they are not in the
+       Observation.
+    4. The RuleBot attacking a castle, still unproved.
+    5. The swarm: three strike drones took a full-armour tank in 0.2 s
+       while it was away hunting. The ladder weighs tanks, not air.
+    6. One bot team's leader went hunting with three pillboxes up and
+       no wall: the plan starved of forest. A starved plan should ask
+       its rangers for material (11e's transfers).
+    7. Matches end in eight to sixteen minutes, by elimination. Paul
+       asked for longer games; castles slow an attack but no team
+       holds one for long, and deaths are for good.
+    8. Seat 0's team wins five matches in seven: two wingmen on the
+       leader beat two rangers. Fine for a person who wants help; a
+       fair fleet start would deal every team the same roles.
+
+VIII. NEXT STEPS
+
+    1. 11d pings, which 11i's declarations ride on.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+APPENDIX A. COMMITS
+
+    the commit that carries this entry and 0035: sim, proto, brain, client, server, scripts, docs, journal: fortify;
+    pillboxes move; the ladder; Space; fleets
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

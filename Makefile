@@ -125,6 +125,8 @@ DEFENDERS ?= 0
 ROOKIES ?= 0
 # Of the window's bots, the first N fly on the player's wing (step 11a).
 WINGMEN ?= 0
+# FLEETS=1: three base-building teams of five and one aggro bot (solo).
+FLEETS ?= 0
 # Simulated one-way lag, in ms, on every peer of `make lobby-test`: the
 # stand-in for tc netem. 0 is the loopback as it is.
 LAG      ?= 0
@@ -157,7 +159,7 @@ MAP      ?=
 # 1: give a map with no structures an economy (roadmap step 10f).
 INDUSTRY ?= 0
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS ROOKIES WINGMEN TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG LOBBIES
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS ROOKIES WINGMEN FLEETS TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG LOBBIES
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'
