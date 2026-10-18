@@ -348,9 +348,9 @@ impl Hop {
         }
         if squad.material < ROAD_COST {
             // Material: a forest in reach first, else a depot of the side.
-            let forest = obs.forest.iter().filter(|f| f.dist(me.pos) <= 20.0).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).copied();
+            let forest = obs.forest.iter().filter(|f| f.dist(me.pos) <= 20.0).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos))).copied();
             let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
-            let depot = obs.depots.iter().filter(|d| ours(d.owner) && d.pos.dist(me.pos) <= RESTOCK_WALK).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()).map(|d| d.pos);
+            let depot = obs.depots.iter().filter(|d| ours(d.owner) && d.pos.dist(me.pos) <= RESTOCK_WALK).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))).map(|d| d.pos);
             self.say(HopAct::Bridging, format!("bridging to ({:.0},{:.0}): fetching material, {} tiles left", target.x, target.y, left));
             if ready {
                 match (forest, depot) {
@@ -374,7 +374,7 @@ impl Hop {
             .iter()
             .map(|(dx, dy)| V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5))
             .filter(|p| map.in_bounds(*p) && map.at(*p).passable())
-            .min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap());
+            .min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)));
         let Some(stand) = stand else {
             if let Some(b) = self.bridge.as_mut() {
                 b.fails += 1;
@@ -497,7 +497,7 @@ impl Hop {
                 .fold(0.0, f32::max)
         };
         let score = |b: V2| b.dist(target) + danger(b);
-        let best = obs.shore.iter().filter(|b| b.dist(target) <= LANDING_NEAR).min_by(|a, b| score(**a).partial_cmp(&score(**b)).unwrap()).copied()?;
+        let best = obs.shore.iter().filter(|b| b.dist(target) <= LANDING_NEAR).min_by(|a, b| score(**a).total_cmp(&score(**b))).copied()?;
         let keep = self.landing_at.map(|(b, t)| (b, t)).filter(|(b, t)| obs.shore.iter().any(|x| x.dist(*b) < 1.5) && (obs.tick.saturating_sub(*t) as f32 * DT < 2.0 || score(best) + 6.0 >= score(*b)));
         match keep {
             Some((b, _)) => Some(b),
@@ -511,7 +511,7 @@ impl Hop {
     /// What covers the water here, if anything (`COVER_R`).
     fn covered(obs: &Observation, me: &Tank) -> Option<String> {
         let hostile = |o: PlayerId| o != obs.player && !obs.allied(o);
-        if let Some(t) = obs.hostile_tanks().filter(|t| t.alive && t.shells > 0 && t.pos.dist(me.pos) <= COVER_R).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+        if let Some(t) = obs.hostile_tanks().filter(|t| t.alive && t.shells > 0 && t.pos.dist(me.pos) <= COVER_R).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
             return Some(format!("a hostile tank {:.0} tiles off", t.pos.dist(me.pos)));
         }
         if obs.shells.iter().any(|s| s.kind == ShellKind::Indirect && hostile(s.owner) && s.impact.dist(me.pos) <= 8.0) {
@@ -529,7 +529,7 @@ impl Hop {
         let depots = obs.depots.iter().filter(|d| !ours(d.owner)).map(|d| d.pos);
         let boxes = obs.pillboxes.iter().filter(|p| !ours(p.owner) && (p.owner.is_none() || !p.alive())).map(|p| p.pos);
         let works = obs.structures.iter().filter(|x| !ours(x.owner) && (x.owner.is_none() || !x.alive())).map(|x| x.pos);
-        depots.chain(boxes).chain(works).filter(|p| p.dist(me.pos) > ARRIVED && !self.given_up(*p)).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap())
+        depots.chain(boxes).chain(works).filter(|p| p.dist(me.pos) > ARRIVED && !self.given_up(*p)).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)))
     }
 
     fn taken(obs: &Observation, at: V2) -> bool {
@@ -753,7 +753,7 @@ impl Hop {
         // their time) with a launch in hand.
         let can_launch = me.pillboys.aboard && me.pillboys.strength > 0 && obs.tick >= self.no_embark_until && !obs.launch.is_empty();
         let walk = if can_launch { BOAT_NEAR } else { BOAT_WALK };
-        if let Some(b) = obs.boats.iter().filter(|b| b.pos.dist(me.pos) <= walk && !self.bad_boat.has(&b.id, obs.tick)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+        if let Some(b) = obs.boats.iter().filter(|b| b.pos.dist(me.pos) <= walk && !self.bad_boat.has(&b.id, obs.tick)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
             if self.boarding.map(|(id, _, _)| id != b.id).unwrap_or(true) {
                 self.boarding = Some((b.id, b.pos, obs.tick));
             }
@@ -779,7 +779,7 @@ impl Hop {
             order(Command::Embark, &mut cmds, &mut self.last_order);
             return Some(cmds);
         }
-        let site = obs.launch.iter().filter(|s| !self.bad_launch.has(&s.tile(), obs.tick)).min_by(|a, b| (a.dist(target) + 0.5 * a.dist(me.pos)).partial_cmp(&(b.dist(target) + 0.5 * b.dist(me.pos))).unwrap()).copied();
+        let site = obs.launch.iter().filter(|s| !self.bad_launch.has(&s.tile(), obs.tick)).min_by(|a, b| (a.dist(target) + 0.5 * a.dist(me.pos)).total_cmp(&(b.dist(target) + 0.5 * b.dist(me.pos)))).copied();
         // The bank already on the way to stays the one.
         let site = self.banking.map(|(s, _, _)| s).filter(|s| !self.bad_bank.contains(&s.tile())).or(site);
         // The tank drives to the bank and launches itself (the quad's
@@ -826,14 +826,14 @@ impl Hop {
             self.give_up("the squad cannot carry a boat's worth");
             return None;
         }
-        let forest = obs.forest.iter().min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).copied();
+        let forest = obs.forest.iter().min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos))).copied();
         let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
         let depot = obs
             .depots
             .iter()
             .filter(|d| ours(d.owner) && !self.bad_depot.has(&d.pos.tile(), obs.tick) && d.pos.dist(me.pos) <= RESTOCK_WALK)
             .map(|d| d.pos)
-            .min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap())
+            .min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)))
             .filter(|d| forest.map(|f| f.dist(me.pos) + FOREST_NEARER > d.dist(me.pos)).unwrap_or(true));
         if let Some(d) = depot {
             self.scouting = None;

@@ -620,7 +620,7 @@ impl Commander {
     /// nearest, and the drive's refusal sends the tank by sea.
     fn home(&self, obs: &Observation, me: &Tank) -> Option<V2> {
         let ours = || obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).map(|d| d.pos);
-        let near = |a: &V2, b: &V2| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap();
+        let near = |a: &V2, b: &V2| a.dist(me.pos).total_cmp(&b.dist(me.pos));
         ours().filter(|p| !self.refused.iter().any(|(t, _)| *t == p.tile())).min_by(near).or_else(|| ours().min_by(near))
     }
 
@@ -730,7 +730,7 @@ impl Commander {
             .target
             .and_then(|id| obs.pillboxes.iter().find(|p| p.id == id))
             .filter(|p| wanted(p))
-            .or_else(|| obs.pillboxes.iter().filter(|p| wanted(p)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap().then(a.id.cmp(&b.id))))
+            .or_else(|| obs.pillboxes.iter().filter(|p| wanted(p)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)).then(a.id.cmp(&b.id))))
             .cloned();
         let Some(p) = target else {
             self.target = None;
@@ -830,7 +830,7 @@ impl Commander {
     fn fly_wing(&mut self, obs: &Observation, me: &Tank, leader: &Tank, map: Option<&Map>, cmds: &mut Vec<Command>) -> bool {
         let lp = leader.pos;
         let hostile = |t: &&Tank| t.alive && !obs.allied(t.owner);
-        let near = |a: V2, b: V2| a.dist(lp).partial_cmp(&b.dist(lp)).unwrap();
+        let near = |a: V2, b: V2| a.dist(lp).total_cmp(&b.dist(lp));
         let threat = obs.tanks.iter().filter(hostile).filter(|t| t.pos.dist(lp) <= WING_THREAT).min_by(|a, b| near(a.pos, b.pos).then(a.id.cmp(&b.id)));
         let facing = V2::from_heading(leader.heading);
         let ahead = obs
@@ -1042,12 +1042,12 @@ impl Commander {
     fn fortify(&mut self, obs: &Observation, me: &Tank, at: Option<V2>, cmds: &mut Vec<Command>) {
         if self.plan.is_none() {
             let centre = at
-                .or_else(|| obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()))
+                .or_else(|| obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos))))
                 .unwrap_or(me.pos);
             // The threat: the nearest depot not of my side, else the
             // map's middle, which is where everyone else comes from.
             let middle = V2::new(obs.map_w as f32 / 2.0, obs.map_h as f32 / 2.0);
-            let threat = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && d.pos.dist(centre) > 4.0).map(|d| d.pos).min_by(|a, b| a.dist(centre).partial_cmp(&b.dist(centre)).unwrap()).unwrap_or(middle);
+            let threat = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && d.pos.dist(centre) > 4.0).map(|d| d.pos).min_by(|a, b| a.dist(centre).total_cmp(&b.dist(centre))).unwrap_or(middle);
             self.plan = Some(if self.caps().has(crate::weights::Caps::CASTLE_CAP) {
                 use crate::weights::W;
                 let w = &self.settings.w;
@@ -1110,7 +1110,7 @@ impl Commander {
                 // The leader's depot: the one of theirs nearest its tank
                 // when it is in sight, else nearest mine.
                 let near = obs.tanks.iter().find(|t| t.owner == owner).map(|t| t.pos).unwrap_or(me.pos);
-                self.base = obs.depots.iter().filter(|d| d.owner == Some(owner)).min_by(|a, b| a.pos.dist(near).partial_cmp(&b.pos.dist(near)).unwrap()).map(|d| Map::tile_centre(d.pos));
+                self.base = obs.depots.iter().filter(|d| d.owner == Some(owner)).min_by(|a, b| a.pos.dist(near).total_cmp(&b.pos.dist(near))).map(|d| Map::tile_centre(d.pos));
             }
         }
         // No depot of the side yet (a naval start: everyone at sea, every
@@ -1164,7 +1164,7 @@ impl Commander {
                 self.alarm_at = Some(at);
             }
         }
-        let tank = obs.tanks.iter().filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(base) <= BASE_ALARM).min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id))).cloned();
+        let tank = obs.tanks.iter().filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(base) <= BASE_ALARM).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)).then(a.id.cmp(&b.id))).cloned();
         let alarm = obs.tick < self.alarm_until;
         if tank.is_some() || alarm {
             self.threatened = Some(obs.tick);
@@ -1179,7 +1179,7 @@ impl Commander {
             .iter()
             .filter(|p| p.pos.dist(base) <= BASE_R && (p.owner == Some(obs.player) || !p.alive()))
             .filter(|p| !p.alive() || p.health < PILLBOX_HEALTH * 0.7)
-            .min_by(|a, b| a.health.partial_cmp(&b.health).unwrap().then(a.id.cmp(&b.id)))
+            .min_by(|a, b| a.health.total_cmp(&b.health).then(a.id.cmp(&b.id)))
             .map(|p| p.id)
     }
 
@@ -1218,7 +1218,7 @@ impl Commander {
         obs.pillboxes
             .iter()
             .filter(|p| p.owner == Some(obs.player) && p.pos.dist(base) > BASE_R && !plan.map(|pl| pl.items.iter().any(|i| i.at.dist(p.pos) < 1.0)).unwrap_or(false))
-            .min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id)))
+            .min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)).then(a.id.cmp(&b.id)))
             .cloned()
     }
 
@@ -1323,8 +1323,8 @@ impl Commander {
         let carrying = me.pillboys.carrying.is_some();
         let (slot, walls) = self.plan.as_ref().map(|p| p.turret_preview()).unwrap_or((false, false));
         let outlying = self.outlying(obs, base);
-        let wanted = obs.pillboxes.iter().filter(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.has(&p.id, obs.tick)).min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap()).map(|p| p.pos.dist(base));
-        let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.has(&d.id, obs.tick)).map(|d| d.pos.dist(base)).min_by(|a, b| a.partial_cmp(b).unwrap());
+        let wanted = obs.pillboxes.iter().filter(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.has(&p.id, obs.tick)).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base))).map(|p| p.pos.dist(base));
+        let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.has(&d.id, obs.tick)).map(|d| d.pos.dist(base)).min_by(|a, b| a.total_cmp(b));
         let q = quiet as f32 / TICK_HZ as f32;
         let holds = [
             tank.is_some() || alarm,
@@ -1610,7 +1610,7 @@ impl Commander {
             .depots
             .iter()
             .filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.has(&d.id, obs.tick))
-            .min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id)))
+            .min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)).then(a.id.cmp(&b.id)))
             .cloned();
         let Some(d) = depot else {
             self.depot_target = None;
@@ -1734,7 +1734,7 @@ impl Commander {
             // Not into a fight being lost: the guns that downed it are
             // likely still there (tactics.rs odds, below `REVIVE_ODDS`).
             .filter(|w| self.inner.tactics.as_ref().map(|t| t.odds(obs, me, w.pos).ratio() >= REVIVE_ODDS).unwrap_or(true))
-            .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap().then(a.id.cmp(&b.id)))
+            .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)).then(a.id.cmp(&b.id)))
             .cloned();
         let Some(w) = wreck else { return false };
         self.reviving = Some(w.id);
@@ -1766,7 +1766,7 @@ impl Commander {
                 (true, None) if *haulers == 1 && me.towing.is_none() && !me.boat && self.crew.hauling() != Some(*target) => {
                     let Some(at) = Self::chain_target(obs, *target) else { continue };
                     let bot = |p: PlayerId| obs.players.iter().any(|x| x.id == p && x.is_bot);
-                    let nearest = obs.allied_tanks().chain(std::iter::once(me)).filter(|t| t.alive && !t.boat && t.towing.is_none() && t.owner != *owner && bot(t.owner)).min_by(|a, b| a.pos.dist(at).partial_cmp(&b.pos.dist(at)).unwrap().then(a.owner.cmp(&b.owner))).map(|t| t.owner);
+                    let nearest = obs.allied_tanks().chain(std::iter::once(me)).filter(|t| t.alive && !t.boat && t.towing.is_none() && t.owner != *owner && bot(t.owner)).min_by(|a, b| a.pos.dist(at).total_cmp(&b.pos.dist(at)).then(a.owner.cmp(&b.owner))).map(|t| t.owner);
                     if nearest == Some(obs.player) {
                         self.helping = Some((*owner, *target));
                         let who = obs.players.iter().find(|p| p.id == *owner).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", owner));
@@ -1907,7 +1907,7 @@ impl Commander {
         if !self.pings || (self.last_ping > 0 && obs.tick < self.last_ping + PING_EVERY) {
             return None;
         }
-        let e = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(me.pos) <= PING_SIGHT).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())?;
+        let e = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(me.pos) <= PING_SIGHT).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))?;
         if self.heard.iter().any(|(at, _)| at.dist(e.pos) <= PING_HEARD) {
             return None;
         }
@@ -1941,7 +1941,7 @@ impl Commander {
             self.rally = None;
             return false;
         }
-        let enemy = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(at) <= PING_SIGHT * 0.7).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+        let enemy = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(at) <= PING_SIGHT * 0.7).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)));
         match enemy {
             Some(e) => {
                 // Follow it, and keep at it while it is seen.
@@ -2071,7 +2071,7 @@ impl Commander {
             .tanks
             .iter()
             .filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(at) <= leash)
-            .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap().then(a.id.cmp(&b.id)));
+            .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)).then(a.id.cmp(&b.id)));
         // Kiting it (tactics.rs), from the side of what is defended and
         // on the leash: in range, the gun; the tank steps in only while
         // its gun cannot answer. Without the weights, stand and trade.
@@ -2365,7 +2365,8 @@ impl Commander {
                 // crew short of it fells some first.
                 let helper = self.helpers(obs, &me).into_iter().filter(|t| t.pillboys.aboard).min_by(|a, b| {
                     let key = |t: &Tank| (t.pillboys.material < ROAD_COST, t.pos.dist(front));
-                    key(a).partial_cmp(&key(b)).unwrap()
+                    let (ka, kb) = (key(a), key(b));
+                    ka.0.cmp(&kb.0).then(ka.1.total_cmp(&kb.1))
                 });
                 if let Some(h) = helper {
                     self.bridge_asked = obs.tick;
@@ -2593,7 +2594,7 @@ impl Commander {
             Goal::DefendPillbox(id) => {
                 let p = id
                     .and_then(|id| obs.pillboxes.iter().find(|p| p.id == id))
-                    .or_else(|| obs.pillboxes.iter().filter(|p| p.owner == Some(obs.player)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()))
+                    .or_else(|| obs.pillboxes.iter().filter(|p| p.owner == Some(obs.player)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))))
                     .cloned();
                 match p {
                     Some(p) => {
@@ -2607,13 +2608,13 @@ impl Commander {
             Goal::DefendDepot(id) => {
                 let d = id
                     .and_then(|id| obs.depots.iter().find(|d| d.id == id))
-                    .or_else(|| obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()))
+                    .or_else(|| obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))))
                     .cloned();
                 match d {
                     Some(d) => {
                         self.goal = Goal::DefendDepot(Some(d.id));
                         // The depot's own pillbox, if one stands by it.
-                        let guard = obs.pillboxes.iter().filter(|p| p.owner == Some(obs.player) && p.pos.dist(d.pos) <= PILLBOX_RANGE).min_by(|a, b| a.pos.dist(d.pos).partial_cmp(&b.pos.dist(d.pos)).unwrap()).map(|p| p.id);
+                        let guard = obs.pillboxes.iter().filter(|p| p.owner == Some(obs.player) && p.pos.dist(d.pos) <= PILLBOX_RANGE).min_by(|a, b| a.pos.dist(d.pos).total_cmp(&b.pos.dist(d.pos))).map(|p| p.id);
                         self.defend(obs, &me, d.pos, guard, &mut cmds);
                     }
                     None => self.set_doing(Act::Defend, "no depot of ours to defend".into()),
@@ -2747,6 +2748,38 @@ mod tests {
         eprintln!("a_far_fetch_gathers_the_fleet: gathered {}, lifted {} at {} s; {}", gathered, lifted, w.tick / TICK_HZ as Tick, c.doing);
         assert!(gathered, "the leader never gathered for the fetch");
         assert!(lifted >= 1, "and never fetched");
+    }
+
+    /// Backlog 19 (LR 23): a NaN anywhere in what a tank sees used to
+    /// panic the brain at the first `partial_cmp().unwrap()` that met
+    /// it. Every comparison of floats is a `total_cmp` now: a hostile
+    /// tank, a pillbox and a depot at NaN, under every goal, and the
+    /// brain thinks on.
+    #[test]
+    fn a_nan_does_not_panic_the_brain() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let nan = V2::new(f32::NAN, f32::NAN);
+        let me = w.tanks.iter().find(|t| t.owner == 0).unwrap().pos;
+        let mut obs = w.observe(0);
+        let mut enemy = w.tanks.iter().find(|t| t.owner == 1).unwrap().clone();
+        enemy.pos = nan;
+        obs.tanks.retain(|t| t.owner != 1);
+        obs.tanks.push(enemy);
+        if let Some(p) = obs.pillboxes.first_mut() {
+            p.pos = nan;
+        }
+        if let Some(d) = obs.depots.first_mut() {
+            d.pos = nan;
+        }
+        for goal in [Goal::Auto, Goal::HuntPillboxes, Goal::DefendDepot(None), Goal::DefendBase, Goal::DefendPillbox(None), Goal::Hold(me), Goal::Fortify(None)] {
+            let mut c = Commander::new(37, "nan");
+            c.set_goal(goal);
+            for _ in 0..40 {
+                c.think_on(&obs, Some(&w.map));
+                obs.tick += 1;
+            }
+        }
+        w.step(&[]);
     }
 
     /// The duck (roadmap 12d, LR 19): a hostile gun in range and line,
@@ -3202,7 +3235,7 @@ mod tests {
         let mut w = World::new(sc);
         w.pillboxes.clear();
         let me = w.tanks[0].pos;
-        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).partial_cmp(&b.pos.dist(me)).unwrap()).unwrap().id;
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).total_cmp(&b.pos.dist(me))).unwrap().id;
         w.depots.iter_mut().find(|d| d.id == depot).unwrap().owner = Some(0);
         let mut c = Commander::new(11, "commander");
         // The castle of 11b, three towers, kept by `-castle_cap` (the
@@ -3298,7 +3331,7 @@ mod tests {
         let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
         let mut w = World::new(sc);
         w.pillboxes.clear();
-        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).partial_cmp(&b.pos.dist(w.tanks[0].pos)).unwrap()).unwrap().clone();
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).total_cmp(&b.pos.dist(w.tanks[0].pos))).unwrap().clone();
         w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
         let at = free_near(&w, depot.pos, 4.0);
         let guard = 70_020;
@@ -3343,7 +3376,7 @@ mod tests {
         let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
         let mut w = World::new(sc);
         w.pillboxes.clear();
-        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).partial_cmp(&b.pos.dist(w.tanks[0].pos)).unwrap()).unwrap().clone();
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).total_cmp(&b.pos.dist(w.tanks[0].pos))).unwrap().clone();
         w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
         let mut c = Commander::new(14, "commander");
         c.set_goal(Goal::DefendBase);
@@ -3547,7 +3580,7 @@ mod tests {
         let mut w = World::new(sc);
         w.pillboxes.clear();
         let me = w.tanks[0].pos;
-        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).partial_cmp(&b.pos.dist(me)).unwrap()).unwrap().clone();
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).total_cmp(&b.pos.dist(me))).unwrap().clone();
         w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
         let mut out = Vec::new();
         for (n, r) in [16.0, 22.0].into_iter().enumerate() {
@@ -3686,7 +3719,7 @@ mod tests {
         let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
         let mut w = World::new(sc);
         w.pillboxes.clear();
-        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).partial_cmp(&b.pos.dist(w.tanks[0].pos)).unwrap()).unwrap().clone();
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).total_cmp(&b.pos.dist(w.tanks[0].pos))).unwrap().clone();
         w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
         let mut c = Commander::new(9, "commander");
         c.set_goal(Goal::DefendDepot(Some(depot.id)));

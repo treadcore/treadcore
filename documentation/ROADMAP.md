@@ -403,8 +403,8 @@ the end with a date.
    holds what could be done instead.
 9. A Hunt target given up after twelve bearings is given up for good
    (LR 2). Goal 4, 12b.
-10. `partial_cmp().unwrap()` in the brain panics on a NaN (LR 2).
-    Goal 4, 12b.
+10. Done 18 October (LR 23): `partial_cmp().unwrap()` in the brain
+    panicked on a NaN; see 19. Goal 4, 12b.
 11. PROTOCOL.md says wire version 14; the source is at 16. Goal 6.
 12. `make test` not recorded since 17 October's commits (journal 0036
     has the last). Goal 4, 12a. Recorded again 18 October: brain 34
@@ -438,8 +438,11 @@ the end with a date.
     longer matches for the parts that pay late (`escort`,
     `bridge_jobs`, `cycle`); and `duck`, which acted little in 900 s.
     Goal 4, 12g; goal 5.
-19. 18 October: 70 `partial_cmp().unwrap()` calls in the brain (backlog
-    10, counted). Goal 4, 12b.
+19. Done 18 October (LR 23): all 74 calls in the brain, and 19 in the
+    window and the sim, are `total_cmp`;
+    `a_nan_does_not_panic_the_brain` fails on the old code and passes
+    on the new, and a census match is identical before and after.
+    Goal 4, 12b.
 
 
 ## Sequencing

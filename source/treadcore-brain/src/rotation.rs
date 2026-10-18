@@ -76,7 +76,7 @@ impl Rotation {
     /// map's middle.
     pub fn objective(obs: &Observation, base: V2) -> V2 {
         let ours = |o: Option<PlayerId>| o.map(|o| o == obs.player || obs.allied(o)).unwrap_or(false);
-        let near = |a: &V2, b: &V2| a.dist(base).partial_cmp(&b.dist(base)).unwrap();
+        let near = |a: &V2, b: &V2| a.dist(base).total_cmp(&b.dist(base));
         obs.depots
             .iter()
             .filter(|d| !ours(d.owner) && d.pos.dist(base) > ARRIVED)

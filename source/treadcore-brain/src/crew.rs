@@ -158,11 +158,11 @@ impl FleetCommand {
                 .iter()
                 .filter(|b| b.owner.map(|o| o != obs.player && obs.allied(o) && !crews.contains(&o)).unwrap_or(false) && !hauled.contains(&b.id))
                 .filter(|b| b.pos.dist(base) > crate::commander::BASE_R && b.pos.dist(base) <= HAUL_REACH)
-                .min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id)));
+                .min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)).then(a.id.cmp(&b.id)));
             if let (Some(b), Some(slot)) = (theirs, plan.free_slots(&taken).first().copied()) {
                 idle.sort_by(|x, y| {
                     let d = |p: &PlayerId| obs.allied_tanks().find(|t| t.owner == *p).map(|t| t.pos.dist(b.pos)).unwrap_or(f32::INFINITY);
-                    d(x).partial_cmp(&d(y)).unwrap().then(x.cmp(y))
+                    d(x).total_cmp(&d(y)).then(x.cmp(y))
                 });
                 let job = Job::Haul { target: b.id, to: slot };
                 taken.push(slot.tile());
@@ -174,7 +174,7 @@ impl FleetCommand {
         }
         for p in idle {
             // A crew with a pillbox out of the fort: a turret slot for it.
-            let outlying = obs.pillboxes.iter().filter(|b| b.owner == Some(p) && b.pos.dist(base) > crate::commander::BASE_R).min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id)));
+            let outlying = obs.pillboxes.iter().filter(|b| b.owner == Some(p) && b.pos.dist(base) > crate::commander::BASE_R).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)).then(a.id.cmp(&b.id)));
             let slot = plan.free_slots(&taken).first().copied();
             let job = match (outlying, slot) {
                 (Some(b), Some(s)) if plan.castle_stands() => Job::Fetch { pillbox: b.id, to: s },
@@ -475,7 +475,7 @@ impl Crew {
             return Some(out);
         }
         if !carrying && me.pillboys.material < what.cost() {
-            let forest = obs.forest.iter().min_by(|a, b| a.dist(at).partial_cmp(&b.dist(at)).unwrap()).copied();
+            let forest = obs.forest.iter().min_by(|a, b| a.dist(at).total_cmp(&b.dist(at))).copied();
             match forest {
                 Some(f) if me.pillboys.material + HARVEST_MATERIAL <= PILLBOY_MATERIAL_MAX => {
                     self.doing = format!("crew: felling for {} material", what.cost());

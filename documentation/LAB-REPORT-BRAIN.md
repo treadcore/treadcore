@@ -892,10 +892,11 @@ The findings of section 2, now:
 | L6 lists that never forget | `Forget` with `forget_for` (off) |
 | L7 uneven commitment | desire vectors and confirmation (`smooth`, off: measured worse) |
 | L8 a reactive economy | the base cycle (`cycle`, off) |
+| `partial_cmp().unwrap()` on a NaN | answered (LR 23): every float comparison a `total_cmp`, in the brain, the client and the sim |
 
 The numbers, 18 October evening:
 - 12,566 lines in 17 files (8,458 in 8 on 18 October morning).
-- Brain tests: 63 passed, 8 ignored; client: 31.
+- Brain tests: 64 passed, 8 ignored; client: 31; sim: 50.
 - 76 weights and 17 switches, with the duck (LR 21).
 - 23 to 33 us a seat-tick in the census.
 - On by default: kite, pings, dodge, bridges, rotate, and since 18
@@ -1035,3 +1036,47 @@ Proof:
 
 What is left of 12b is the Observation shared per team, a sim change
 that must keep the world hash.
+
+## 23. No panic on a NaN, 18 October
+
+Backlog 10 and 19, from the review's "also" (section 2):
+`partial_cmp().unwrap()` would panic on a NaN. Comparing two floats
+with `partial_cmp` gives `None` when either is NaN, and `.unwrap()` on
+that ends the process. In the brain that was 74 calls: picking the
+nearest pillbox, the closest depot, the least hurt tank, the best
+landing. One NaN in a position, from a bug anywhere or a malformed
+observation, would have stopped every bot of a host at once.
+
+**The change.** Every one is now a `total_cmp`, which orders every
+float, NaN included, and never fails:
+- 74 in the brain, in commander.rs (26), lib.rs (25), hop.rs (10),
+  fortify.rs (8), crew.rs (4) and rotation.rs (1);
+- 19 more in the window's code (input.rs 5, goal.rs 1) and the
+  simulation (lib.rs 11, map.rs 2), where a NaN panic is as bad.
+
+A one-off script rewrote each `X.partial_cmp(Y).unwrap()` as
+`X.total_cmp(Y)`, matching parentheses. One comparison was of a tuple
+(material short, distance), which has no `total_cmp`; it now compares
+the parts in turn. Two in the map's route search already fell back to
+"equal" and could not panic; they stay as they were.
+
+`total_cmp` orders the real numbers exactly as `partial_cmp` did. It
+differs only by putting -0.0 before +0.0, and the values compared here
+are distances, health and scores, never a signed zero.
+
+Proof:
+- **The bug, shown.** `a_nan_does_not_panic_the_brain` puts a hostile
+  tank, a pillbox and a depot at NaN in an observation and lets a
+  Commander think forty times under each of seven goals. Put into the
+  code of the commit before, it panics on the first goal (Auto) at a
+  `partial_cmp().unwrap()`. On the fixed code it passes.
+- **Nothing else changed.** One census match (600 s, five new switches
+  on) before and after: identical, in score, kills, deaths, thinks,
+  moves and crossings, and the same numbers as LR 22's run. Every
+  crate's tests pass: brain 64, client 31, net 14, proto 3, sim 50,
+  the sim's replay and world-hash tests among them.
+
+One wrong turn on the way. The first run of the new test sat for ten
+minutes and looked like a NaN driving something into a loop. It was
+the build: changing the sim rebuilds every crate above it. Run by
+itself under a hard timeout, the test passed in an instant.

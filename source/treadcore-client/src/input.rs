@@ -138,7 +138,7 @@ fn camera(
                         mine.iter()
                             .enumerate()
                             .filter(|(i, p)| *i != cur && { let v = p.pos - here; v.x * d.x + v.y * d.y > (v.x * d.y - v.y * d.x).abs() })
-                            .min_by(|a, b| a.1.pos.dist(here).partial_cmp(&b.1.pos.dist(here)).unwrap())
+                            .min_by(|a, b| a.1.pos.dist(here).total_cmp(&b.1.pos.dist(here)))
                             .map(|(i, _)| i)
                             .unwrap_or(cur)
                     }
@@ -271,7 +271,7 @@ fn orders(
             let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
             // The nearest of ours, near or not: too far, and the world
             // says so on the newswire.
-            let near = obs.pillboxes.iter().filter(|p| ours(p.owner)).map(|p| (p.id, p.pos)).chain(obs.depots.iter().filter(|d| ours(d.owner)).map(|d| (d.id, d.pos))).min_by(|a, b| a.1.dist(me.pos).partial_cmp(&b.1.dist(me.pos)).unwrap());
+            let near = obs.pillboxes.iter().filter(|p| ours(p.owner)).map(|p| (p.id, p.pos)).chain(obs.depots.iter().filter(|d| ours(d.owner)).map(|d| (d.id, d.pos))).min_by(|a, b| a.1.dist(me.pos).total_cmp(&b.1.dist(me.pos)));
             if let Some((id, _)) = near {
                 orders.0.push(Command::Tow { target: Some(id) });
             }
@@ -354,7 +354,7 @@ fn orders(
     }
     if hit(bind.key(A::Strike), 2) {
         let p = at.unwrap_or(me.pos);
-        if let Some(t) = obs.hostile_tanks().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()) {
+        if let Some(t) = obs.hostile_tanks().min_by(|a, b| a.pos.dist(p).total_cmp(&b.pos.dist(p))) {
             orders.0.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: t.id } });
         }
     }
@@ -435,7 +435,7 @@ fn builder_task(obs: &Observation, mode: Mode, p: V2, shift: bool, works: Struct
         Mode::Wall if shift => PillboyTask::Build { what: BuildKind::Concrete, at: p },
         Mode::Wall => PillboyTask::Build { what: BuildKind::Wall, at: p },
         Mode::Works => {
-            let near = obs.structures.iter().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()).filter(|x| x.pos.dist(p) <= 1.0);
+            let near = obs.structures.iter().min_by(|a, b| a.pos.dist(p).total_cmp(&b.pos.dist(p))).filter(|x| x.pos.dist(p) <= 1.0);
             match near {
                 Some(x) if x.owner.map(|o| obs.allied(o)).unwrap_or(false) && x.alive() => PillboyTask::Repair { target: x.id },
                 Some(x) => PillboyTask::Capture { pillbox: x.id },
@@ -444,7 +444,7 @@ fn builder_task(obs: &Observation, mode: Mode, p: V2, shift: bool, works: Struct
         }
         Mode::Mine => PillboyTask::Build { what: BuildKind::Mine, at: p },
         Mode::Pillbox => {
-            let near = obs.pillboxes.iter().min_by(|a, b| a.pos.dist(p).partial_cmp(&b.pos.dist(p)).unwrap()).filter(|pb| pb.pos.dist(p) <= 1.5);
+            let near = obs.pillboxes.iter().min_by(|a, b| a.pos.dist(p).total_cmp(&b.pos.dist(p))).filter(|pb| pb.pos.dist(p) <= 1.5);
             match near {
                 Some(pb) if shift && pb.owner == Some(obs.player) => PillboyTask::Lift { pillbox: pb.id },
                 Some(pb) if pb.owner == Some(obs.player) || (pb.alive() && pb.owner.is_some()) => PillboyTask::Repair { target: pb.id },

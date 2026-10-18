@@ -483,13 +483,13 @@ impl RuleBot {
         // dangerous part, not only the landing.
         let toward = |b: V2| threats.iter().filter(|t| t.dist(me.pos) < INDIRECT_MAX_RANGE).map(|t| ((b - me.pos).norm().x * (*t - me.pos).norm().x + (b - me.pos).norm().y * (*t - me.pos).norm().y).max(0.0) * 15.0).sum::<f32>();
         let score = |b: V2| b.dist(me.pos) + danger(b) + toward(b);
-        let best = obs.shore.iter().filter(|b| !self.unreachable_tiles.contains(&b.tile())).min_by(|a, b| score(**a).partial_cmp(&score(**b)).unwrap()).copied();
+        let best = obs.shore.iter().filter(|b| !self.unreachable_tiles.contains(&b.tile())).min_by(|a, b| score(**a).total_cmp(&score(**b))).copied();
         let going = me.route.last().copied().or(me.goal);
         let Some(best) = best else {
             if going.is_some() {
                 return None;
             }
-            let away = threats.iter().min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).map(|t| (me.pos - *t).norm().scale(20.0)).unwrap_or(V2::new(0.0, 0.0));
+            let away = threats.iter().min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos))).map(|t| (me.pos - *t).norm().scale(20.0)).unwrap_or(V2::new(0.0, 0.0));
             return Some(Command::Move { to: obs.clamp(obs.centre().lerp(me.pos, 0.5) + away) });
         };
         let since = self.landfall.map(|(_, t)| obs.tick.saturating_sub(t) as f32 * DT).unwrap_or(f32::INFINITY);
@@ -520,7 +520,7 @@ impl RuleBot {
     }
 
     fn nearest_enemy<'a>(&self, obs: &'a Observation, me: &Tank) -> Option<&'a Tank> {
-        obs.hostile_tanks().filter(|t| self.grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+        obs.hostile_tanks().filter(|t| self.grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))
     }
 
     /// The squad's works (steps 10i and 10j), in this order: a power
@@ -539,7 +539,7 @@ impl RuleBot {
         let (kind, at, id) = self.works_need(obs, me, PILLBOY_REACH)?;
         let side = |x: &&Structure| x.alive() && x.owner.map(|o| obs.allied(o)).unwrap_or(false);
         let powered = |p: V2| obs.structures.iter().filter(side).any(|x| x.kind == StructureKind::Power && x.pos.dist(p) <= POWER_RANGE);
-        let site = obs.pads.iter().filter(|p| p.dist(at) <= JAMMER_RANGE * 0.5 && (kind == StructureKind::Power || powered(**p))).min_by(|a, b| a.dist(at).partial_cmp(&b.dist(at)).unwrap()).copied();
+        let site = obs.pads.iter().filter(|p| p.dist(at) <= JAMMER_RANGE * 0.5 && (kind == StructureKind::Power || powered(**p))).min_by(|a, b| a.dist(at).total_cmp(&b.dist(at))).copied();
         let Some(site) = site else {
             // No room beside it (step 10k): remembered, so the bot does
             // not drive back to look again.
@@ -568,7 +568,7 @@ impl RuleBot {
             (StructureKind::Workshop, &|x: &Structure| !near(StructureKind::Workshop, x.pos, WORKSHOP_MEND_RANGE)),
         ];
         for (kind, wants_it) in wants {
-            let x = mine.iter().filter(|x| wants_it(x) && !self.no_room.contains(&(x.id, kind))).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+            let x = mine.iter().filter(|x| wants_it(x) && !self.no_room.contains(&(x.id, kind))).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)));
             if let Some(x) = x {
                 return Some((kind, x.pos, x.id));
             }
@@ -588,7 +588,7 @@ impl RuleBot {
     /// not refused a drive to as over the water.
     fn nearest_depot<'a>(&self, obs: &'a Observation, me: &Tank, friendly: bool) -> Option<&'a Depot> {
         let ours = |d: &&Depot| d.owner.map(|o| obs.allied(o)).unwrap_or(false);
-        obs.depots.iter().filter(|d| (if friendly { ours(d) } else { !ours(d) }) && !self.unreachable_tiles.contains(&d.pos.tile())).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+        obs.depots.iter().filter(|d| (if friendly { ours(d) } else { !ours(d) }) && !self.unreachable_tiles.contains(&d.pos.tile())).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))
     }
 
 
@@ -718,7 +718,7 @@ impl RuleBot {
             .depots
             .iter()
             .filter(|d| !d.owner.map(|o| obs.allied(o)).unwrap_or(false) && !self.unreachable_tiles.contains(&d.pos.tile()))
-            .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+            .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))
             .map(|d| d.pos)
             .unwrap_or_else(|| obs.centre());
         if self.contact_objective != Some(objective.tile()) {
@@ -823,7 +823,7 @@ impl RuleBot {
                 .pillboxes
                 .iter()
                 .filter(|p| !p.owner.map(|o| obs.allied(o)).unwrap_or(false) && (p.owner.is_none() || !p.alive()) && p.pos.dist(me.pos) <= PILLBOY_REACH && safe(p) && !self.unreachable_pillboxes.contains(&p.id))
-                .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+                .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)));
             // Structures (step 10e), after pillboxes: neutral or wrecked
             // and in reach to take; ours below half to mend. None on
             // the generated island, so nothing changes there.
@@ -832,12 +832,12 @@ impl RuleBot {
                 .structures
                 .iter()
                 .filter(|x| !ours(x.owner) && (x.owner.is_none() || !x.alive()) && x.pos.dist(me.pos) <= PILLBOY_REACH && !self.unreachable_pillboxes.contains(&x.id))
-                .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+                .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)));
             let mend = obs
                 .structures
                 .iter()
                 .filter(|x| x.owner == Some(obs.player) && x.health < STRUCTURE_HEALTH * 0.5 && x.pos.dist(me.pos) <= PILLBOY_REACH && !self.unreachable_pillboxes.contains(&x.id))
-                .min_by(|a, b| a.health.partial_cmp(&b.health).unwrap());
+                .min_by(|a, b| a.health.total_cmp(&b.health));
             if let Some(p) = capture {
                 cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: p.id } });
             } else if let Some(x) = works {
@@ -854,7 +854,7 @@ impl RuleBot {
                     .pillboxes
                     .iter()
                     .filter(|p| p.owner == Some(obs.player) && p.health < PILLBOX_HEALTH * 0.5 && p.pos.dist(me.pos) <= PILLBOY_REACH && !self.unreachable_pillboxes.contains(&p.id))
-                    .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+                    .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)));
                 if let Some(p) = repair {
                     cmds.push(Command::Deploy { task: PillboyTask::Repair { target: p.id } });
                 }
@@ -885,7 +885,7 @@ impl RuleBot {
             Some(tgt) => obs.pillboxes.iter().filter(hostile_box).filter(|p| p.pos.dist(tgt) <= PILLBOX_RANGE + 2.0).collect(),
             None => Vec::new(),
         };
-        let gun_target = guns.iter().filter(|p| (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&me.pos.dist(p.pos))).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+        let gun_target = guns.iter().filter(|p| (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&me.pos.dist(p.pos))).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)));
         if let Some(g) = gun_target {
             if me.reload == 0 && me.shells > 0 {
                 cmds.push(Command::FireIndirect { at: g.pos });
@@ -932,7 +932,7 @@ impl RuleBot {
                 .filter(|x| x.alive() && x.owner.map(|o| !obs.allied(o)).unwrap_or(false))
                 .min_by(|a, b| {
                     let rank = |x: &Structure| (x.kind != StructureKind::Power) as u8;
-                    rank(a).cmp(&rank(b)).then(a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+                    rank(a).cmp(&rank(b)).then(a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))
                 });
             if let Some(x) = target {
                 cmds.push(Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at: x.pos } });
@@ -975,7 +975,7 @@ impl RuleBot {
             // by sea, the island hop's way.
             let ours = |d: &&Depot| d.owner.map(|o| obs.allied(o)).unwrap_or(false);
             if self.hops && self.nearest_depot(obs, me, true).is_none() {
-                if let Some(d) = obs.depots.iter().filter(ours).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+                if let Some(d) = obs.depots.iter().filter(ours).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
                     if self.hop.active() || self.hop.send(d.pos) {
                         if let Some(h) = self.hop.think(obs, me, true, map) {
                             cmds.extend(h);
@@ -993,7 +993,7 @@ impl RuleBot {
                 .structures
                 .iter()
                 .filter(|x| x.kind == StructureKind::Workshop && x.working() && x.owner.map(|o| obs.allied(o)).unwrap_or(false))
-                .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+                .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)));
             // Only while what a workshop gives is short: a bot that sat
             // there for shells would sit for ever.
             let workshop = workshop.filter(|_| me.shells >= 6 && (me.armor < TANK_ARMOR - 5.0 || me.bay.interceptor < BAY_FULL.interceptor - 1 || me.bay.recon == 0));
@@ -1037,7 +1037,7 @@ impl RuleBot {
         // depot. No scooting.
         if let Some(tgt) = self.storm {
             if stationary {
-                if let Some(g) = guns.iter().min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+                if let Some(g) = guns.iter().min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
                     let d = me.pos.dist(g.pos);
                     if d > INDIRECT_MAX_RANGE * 0.9 || d < INDIRECT_MIN_RANGE + 1.0 {
                         // A firing position on the gun: inside indirect
@@ -1254,7 +1254,7 @@ impl Defender {
         if gate {
             tiles.retain(|p| (*p - c).norm().dist(dir) > 0.5);
         }
-        tiles.sort_by(|a, b| (*b - c).norm().dist(dir).partial_cmp(&(*a - c).norm().dist(dir)).unwrap());
+        tiles.sort_by(|a, b| (*b - c).norm().dist(dir).total_cmp(&(*a - c).norm().dist(dir)));
         tiles
     }
 
@@ -1313,7 +1313,7 @@ impl Brain for Defender {
                     }
                     // Counter-battery by deduction: the shell came from
                     // the owner of that depot. Look there.
-                    if let Some(d) = obs.depots.iter().filter(|d| d.owner == Some(*b)).min_by(|x, y| x.pos.dist(me.pos).partial_cmp(&y.pos.dist(me.pos)).unwrap()) {
+                    if let Some(d) = obs.depots.iter().filter(|d| d.owner == Some(*b)).min_by(|x, y| x.pos.dist(me.pos).total_cmp(&y.pos.dist(me.pos))) {
                         self.watch = Some(d.pos);
                     }
                 }
@@ -1324,7 +1324,7 @@ impl Brain for Defender {
             return cmds;
         }
         self.last_think = obs.tick;
-        let home = *self.home.get_or_insert_with(|| obs.depots.iter().filter(|d| d.owner == Some(obs.player)).chain(obs.depots.iter().filter(|d| d.owner.map(|o| obs.allied(o)).unwrap_or(false))).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).unwrap_or(me.pos));
+        let home = *self.home.get_or_insert_with(|| obs.depots.iter().filter(|d| d.owner == Some(obs.player)).chain(obs.depots.iter().filter(|d| d.owner.map(|o| obs.allied(o)).unwrap_or(false))).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos))).unwrap_or(me.pos));
         let centre = obs.centre();
         let dir = (centre - home).norm();
         // 1. Sit by the depot, just off it so the squad's rings have room.
@@ -1380,7 +1380,7 @@ impl Brain for Defender {
                 .depots
                 .iter()
                 .filter(|d| d.owner.map(|o| !obs.allied(o) && alive(o) && !self.hurt_by.contains(&o)).unwrap_or(false))
-                .min_by(|a, b| a.pos.dist(home).partial_cmp(&b.pos.dist(home)).unwrap())
+                .min_by(|a, b| a.pos.dist(home).total_cmp(&b.pos.dist(home)))
                 .and_then(|d| d.owner);
             if let Some(o) = neighbour {
                 cmds.push(Command::Propose { to: o, terms: Terms::Recruit });
@@ -1401,7 +1401,7 @@ impl Brain for Defender {
         // moves.
         self.grace.update(obs);
         let grace = &self.grace;
-        let enemy = obs.hostile_tanks().filter(|t| grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+        let enemy = obs.hostile_tanks().filter(|t| grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)));
         if let Some(e) = enemy {
             self.watch = Some(e.pos);
         }
@@ -1455,13 +1455,13 @@ impl Brain for Defender {
             .pillboxes
             .iter()
             .filter(|p| reach(p) && !p.owner.map(|o| obs.allied(o)).unwrap_or(false) && (p.owner.is_none() || !p.alive()) && (!p.alive() || p.pos.dist(me.pos) > PILLBOX_RANGE + 1.0))
-            .min_by(|a, b| a.pos.dist(home).partial_cmp(&b.pos.dist(home)).unwrap());
+            .min_by(|a, b| a.pos.dist(home).total_cmp(&b.pos.dist(home)));
         if let Some(p) = capture {
             cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: p.id } });
             return cmds;
         }
         // Repair: an owned pillbox below half, when there is material.
-        let repair = obs.pillboxes.iter().filter(|p| reach(p) && p.owner == Some(obs.player) && p.health < PILLBOX_HEALTH * 0.5).min_by(|a, b| a.health.partial_cmp(&b.health).unwrap());
+        let repair = obs.pillboxes.iter().filter(|p| reach(p) && p.owner == Some(obs.player) && p.health < PILLBOX_HEALTH * 0.5).min_by(|a, b| a.health.total_cmp(&b.health));
         if let Some(p) = repair {
             if material >= PILLBOX_REPAIR_COST {
                 cmds.push(Command::Deploy { task: PillboyTask::Repair { target: p.id } });
@@ -1471,11 +1471,11 @@ impl Brain for Defender {
         // Structures (step 10e): take a neutral or wrecked one in reach
         // of home, mend ours below half. None on the generated island.
         let near = |x: &Structure| x.pos.dist(home) <= PILLBOY_REACH && !self.unreachable.contains(&x.id);
-        if let Some(x) = obs.structures.iter().filter(|x| near(x) && !x.owner.map(|o| obs.allied(o)).unwrap_or(false) && (x.owner.is_none() || !x.alive())).min_by(|a, b| a.pos.dist(home).partial_cmp(&b.pos.dist(home)).unwrap()) {
+        if let Some(x) = obs.structures.iter().filter(|x| near(x) && !x.owner.map(|o| obs.allied(o)).unwrap_or(false) && (x.owner.is_none() || !x.alive())).min_by(|a, b| a.pos.dist(home).total_cmp(&b.pos.dist(home))) {
             cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: x.id } });
             return cmds;
         }
-        if let Some(x) = obs.structures.iter().filter(|x| near(x) && x.owner == Some(obs.player) && x.health < STRUCTURE_HEALTH * 0.5).min_by(|a, b| a.health.partial_cmp(&b.health).unwrap()) {
+        if let Some(x) = obs.structures.iter().filter(|x| near(x) && x.owner == Some(obs.player) && x.health < STRUCTURE_HEALTH * 0.5).min_by(|a, b| a.health.total_cmp(&b.health)) {
             if material >= STRUCTURE_REPAIR_COST {
                 cmds.push(Command::Deploy { task: PillboyTask::Repair { target: x.id } });
                 return cmds;

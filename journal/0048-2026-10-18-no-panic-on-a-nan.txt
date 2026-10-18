@@ -1,0 +1,64 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 05:15:00 -0700
+Subject: [JOURNAL 0048] No panic on a NaN
+Message-ID: <0048.20261018@treadcore.org>
+In-Reply-To: <0047.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: NaN, total_cmp, panic, robustness, backlog 10, backlog 19
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair. Paul: "fix the partial_cmp unwraps, commit and
+           push."
+X-Commits: fdc0b16 (journal 0047, pushed); this entry's work is in the
+           tree
+
+                         NO PANIC ON A NAN
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    Every float comparison that unwrapped `partial_cmp` would end the
+    process on a NaN: 74 in the brain, and 19 more in the window and
+    the simulation. All 93 are `total_cmp` now. A new test that puts a
+    tank, a pillbox and a depot at NaN panics on the old code and
+    passes on the new. A census match is identical before and after,
+    and every crate's tests pass.
+
+I. METHOD
+
+    A one-off script rewrote `X.partial_cmp(Y).unwrap()` as
+    `X.total_cmp(Y)`, matching parentheses; the one tuple comparison
+    was rewritten by hand. The two route-search comparisons that fall
+    back to "equal" were left. Proofs: the new test run against the
+    previous commit's code and the new; the same census match before
+    and after; `cargo test --release --workspace`.
+
+II. RESULTS
+
+    Sites: brain 74 (commander 26, lib 25, hop 10, fortify 8, crew 4,
+    rotation 1), window 6, sim 13. The new test on the old code:
+    panicked on the first goal, Auto, at commander.rs 1326. On the new:
+    passed. Census: identical, and the same as journal 0047's run.
+    Tests: brain 64 passed, 8 ignored; client 31; net 14; proto 3; sim
+    50.
+
+III. DISCUSSION
+
+    The fix is mechanical; the proof is what makes it safe. A
+    regression test has to fail where the bug is, so it was put into
+    the old code and seen to panic. The first run of it sat for ten
+    minutes and looked like a NaN loop. It was the rebuild after a
+    change to the sim. Running it alone under a hard timeout said so,
+    before any of the work was undone.
+
+IV. OPEN PROBLEMS
+
+    1. The Observation shared per team (12b's last item, a sim change).
+    2. Backlog 18: twelve seeds a switch, longer matches.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

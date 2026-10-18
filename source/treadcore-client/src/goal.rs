@@ -47,7 +47,7 @@ impl Pilot {
     /// with an ally's tank in sight.
     pub fn next(&self, obs: &Observation) -> Goal {
         let me = obs.me.as_ref().map(|t| t.pos).unwrap_or_default();
-        let ally = obs.tanks.iter().filter(|t| t.alive && t.owner != obs.player && obs.allied(t.owner)).min_by(|a, b| a.pos.dist(me).partial_cmp(&b.pos.dist(me)).unwrap()).map(|t| t.owner);
+        let ally = obs.tanks.iter().filter(|t| t.alive && t.owner != obs.player && obs.allied(t.owner)).min_by(|a, b| a.pos.dist(me).total_cmp(&b.pos.dist(me))).map(|t| t.owner);
         match self.brain.goal {
             Goal::Manual => Goal::Auto,
             Goal::Auto => Goal::HuntPillboxes,

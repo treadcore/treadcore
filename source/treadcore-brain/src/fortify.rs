@@ -181,7 +181,7 @@ impl Plan {
                 }
             }
         }
-        wall.sort_by(|a, b| off(*b).partial_cmp(&off(*a)).unwrap().then(a.x.partial_cmp(&b.x).unwrap()).then(a.y.partial_cmp(&b.y).unwrap()));
+        wall.sort_by(|a, b| off(*b).total_cmp(&off(*a)).then(a.x.total_cmp(&b.x)).then(a.y.total_cmp(&b.y)));
         for p in wall {
             push(&mut items, BuildKind::Wall, p);
         }
@@ -306,7 +306,7 @@ impl Plan {
                     }
                 }
             }
-            out.sort_by(|a, b| off(*a).partial_cmp(&off(*b)).unwrap().then(a.x.partial_cmp(&b.x).unwrap()).then(a.y.partial_cmp(&b.y).unwrap()));
+            out.sort_by(|a, b| off(*a).total_cmp(&off(*b)).then(a.x.total_cmp(&b.x)).then(a.y.total_cmp(&b.y)));
             out
         };
         for p in ring(WALL_R).into_iter().filter(|p| off(*p) > WALL_ARC) {
@@ -358,7 +358,7 @@ impl Plan {
         if let Some(p) = (-3..=3)
             .flat_map(|dy| (-3..=3).map(move |dx| Map::tile_centre(c + V2::new(dx as f32, dy as f32))))
             .filter(|p| p.dist(c) <= 3.0 && ok(*p))
-            .min_by(|a, b| a.dist(want).partial_cmp(&b.dist(want)).unwrap())
+            .min_by(|a, b| a.dist(want).total_cmp(&b.dist(want)))
         {
             self.post = p;
         }
@@ -546,7 +546,7 @@ impl Plan {
                 .forest
                 .iter()
                 .filter(|f| !self.felled.contains(&f.tile()) && !self.items.iter().any(|i| i.at.tile() == f.tile()))
-                .min_by(|a, b| a.dist(self.centre).partial_cmp(&b.dist(self.centre)).unwrap())
+                .min_by(|a, b| a.dist(self.centre).total_cmp(&b.dist(self.centre)))
                 .copied();
             return match forest {
                 Some(f) => {

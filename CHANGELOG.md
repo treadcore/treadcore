@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Fixed: a NaN in a position can no longer panic the bots, the window
+  or the simulation (backlog 10 and 19). All 93 float comparisons that
+  unwrapped `partial_cmp` (74 in the brain, 6 in the window, 13 in the
+  sim) use `total_cmp`, which orders every float. A new test panics on
+  the old code and passes on the new; a census match is identical
+  before and after, and every crate's tests pass.
 - Changed: the bots' status is written as codes beside the words
   (`status.rs`; roadmap 12b). The brain's own logic (when a guard is
   idle, when a focus call goes out), the census counts and the

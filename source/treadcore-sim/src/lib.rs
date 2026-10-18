@@ -2114,7 +2114,7 @@ impl World {
             .filter(|p| !self.boats.iter().any(|b| b.pos.tile() == p.tile()) && !self.tanks.iter().any(|u| u.alive && u.id != tid && u.pos.tile() == p.tile()))
             .max_by(|a, b| {
                 let toward = |p: &V2| { let v = (*p - t.pos).norm(); v.x * ahead.x + v.y * ahead.y };
-                toward(a).partial_cmp(&toward(b)).unwrap()
+                toward(a).total_cmp(&toward(b))
             });
         let Some(at) = site else { return self.reject(o, "no water beside") };
         let boat = self.alloc();
@@ -2844,7 +2844,7 @@ impl World {
             let tank = tanks
                 .iter()
                 .filter(|(_, o, pos, hidden)| !allied_with(p.owner, *o) && pos.dist(p.pos) <= PILLBOX_RANGE && self.map.line_clear(p.pos, *pos) && (!hidden || pos.dist(p.pos) <= CONCEAL_RANGE))
-                .min_by(|a, b| a.2.dist(p.pos).partial_cmp(&b.2.dist(p.pos)).unwrap().then(a.0.cmp(&b.0)));
+                .min_by(|a, b| a.2.dist(p.pos).total_cmp(&b.2.dist(p.pos)).then(a.0.cmp(&b.0)));
             if let Some((tid, _, _, _)) = tank {
                 shots.push((p.id, shooter, *tid, PILLBOX_DAMAGE));
                 p.reload = PILLBOX_RELOAD_TICKS;
@@ -2853,7 +2853,7 @@ impl World {
             let drone = drones
                 .iter()
                 .filter(|(_, o, pos)| !allied_with(p.owner, *o) && pos.dist(p.pos) <= PILLBOX_AIR_RANGE)
-                .min_by(|a, b| a.2.dist(p.pos).partial_cmp(&b.2.dist(p.pos)).unwrap().then(a.0.cmp(&b.0)));
+                .min_by(|a, b| a.2.dist(p.pos).total_cmp(&b.2.dist(p.pos)).then(a.0.cmp(&b.0)));
             if let Some((did, _, _)) = drone {
                 // The owner tank's radar, if it is within link range.
                 let link = p
@@ -2972,7 +2972,7 @@ impl World {
                     .map(|(dx, dy)| V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5))
                     .filter(|p| self.map.in_bounds(*p) && self.map.at(*p) == Terrain::Water)
                     .filter(|p| !self.boats.iter().any(|b| b.pos.tile() == p.tile()) && !self.tanks.iter().any(|u| u.alive && u.id != tank && u.pos.tile() == p.tile()))
-                    .min_by(|a, b| a.dist(from).partial_cmp(&b.dist(from)).unwrap());
+                    .min_by(|a, b| a.dist(from).total_cmp(&b.dist(from)));
                 if let Some(moor) = moor {
                     let id = self.alloc();
                     self.boats.push(Boat { id, pos: moor, owner });
@@ -3088,7 +3088,7 @@ impl World {
             intruders.extend(
                 self.drones.iter().filter(|d| !self.allied(d.owner, t.owner) && d.kind == DroneKind::Recon && d.pos.dist(t.pos) <= t.bubble),
             );
-            intruders.sort_by(|a, b| a.pos.dist(t.pos).partial_cmp(&b.pos.dist(t.pos)).unwrap().then(a.id.cmp(&b.id)));
+            intruders.sort_by(|a, b| a.pos.dist(t.pos).total_cmp(&b.pos.dist(t.pos)).then(a.id.cmp(&b.id)));
             for intruder in intruders {
                 let already = self.drones.iter().any(|d| d.owner == t.owner && d.task == DroneTask::Intercept { target: intruder.id })
                     || assignments.iter().any(|(_, tgt)| *tgt == intruder.id);
@@ -3105,7 +3105,7 @@ impl World {
                             && matches!(d.task, DroneTask::Orbit { .. })
                             && !assignments.iter().any(|(i, _)| *i == d.id)
                     })
-                    .min_by(|a, b| a.pos.dist(intruder.pos).partial_cmp(&b.pos.dist(intruder.pos)).unwrap().then(a.id.cmp(&b.id)));
+                    .min_by(|a, b| a.pos.dist(intruder.pos).total_cmp(&b.pos.dist(intruder.pos)).then(a.id.cmp(&b.id)));
                 if let Some(f) = free {
                     assignments.push((f.id, intruder.id));
                 }
@@ -3360,7 +3360,7 @@ impl World {
                         .filter(|t| t.alive && !self.allied(t.owner, s.owner))
                         .map(|t| (t.id, t.pos.dist(s.impact)))
                         .filter(|(_, d)| *d <= DIRECT_HIT_RADIUS)
-                        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+                        .min_by(|a, b| a.1.total_cmp(&b.1))
                         .map(|(id, _)| id);
                     if let Some(id) = hit {
                         self.damage(id, DIRECT_DAMAGE, Some(s.owner));
@@ -3694,7 +3694,7 @@ impl World {
             2 => V2::new(along, mh - 0.5),
             _ => V2::new(0.5, along),
         };
-        let (target, _) = alive.iter().min_by(|a, b| a.1.dist(from).partial_cmp(&b.1.dist(from)).unwrap()).unwrap();
+        let (target, _) = alive.iter().min_by(|a, b| a.1.dist(from).total_cmp(&b.1.dist(from))).unwrap();
         let n = self.scenario.swarm_size;
         for _ in 0..n {
             let id = self.alloc();
@@ -3981,7 +3981,7 @@ fn drive_tank(t: &mut Tank, map: &Map, guns: &[(Option<PlayerId>, V2)], mines: &
                 .iter()
                 .map(|(dx, dy)| V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5))
                 .filter(|p| map.in_bounds(*p) && map.at(*p).passable())
-                .min_by(|a, b| a.dist(t.pos).partial_cmp(&b.dist(t.pos)).unwrap());
+                .min_by(|a, b| a.dist(t.pos).total_cmp(&b.dist(t.pos)));
             match bank {
                 Some(b) if b.tile() == t.pos.tile() => vec![dest],
                 Some(b) => {
@@ -5212,7 +5212,7 @@ mod tests {
         for p in 0..8 {
             let t = w.tank_of(p).unwrap().clone();
             assert!(t.boat, "p{} did not start afloat", p);
-            let beach = *w.map.shore_from(t.pos, SHORE_SIGHT, SHORE_RAYS).iter().min_by(|a, b| a.dist(t.pos).partial_cmp(&b.dist(t.pos)).unwrap()).expect("no beach in sight");
+            let beach = *w.map.shore_from(t.pos, SHORE_SIGHT, SHORE_RAYS).iter().min_by(|a, b| a.dist(t.pos).total_cmp(&b.dist(t.pos))).expect("no beach in sight");
             w.step(&[Order { player: p, cmd: Command::Move { to: beach } }]);
             assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "p{}: {:?}", p, w.events);
             let mut landed = false;
@@ -5297,7 +5297,7 @@ mod tests {
     fn a_landed_boat_stays_moored() {
         let mut w = naval_world(1);
         let t = w.tank_of(0).unwrap().clone();
-        let beach = *w.map.shore_from(t.pos, SHORE_SIGHT, SHORE_RAYS).iter().min_by(|a, b| a.dist(t.pos).partial_cmp(&b.dist(t.pos)).unwrap()).unwrap();
+        let beach = *w.map.shore_from(t.pos, SHORE_SIGHT, SHORE_RAYS).iter().min_by(|a, b| a.dist(t.pos).total_cmp(&b.dist(t.pos))).unwrap();
         w.step(&[Order { player: 0, cmd: Command::Move { to: beach } }]);
         let mut landed = false;
         for _ in 0..30 * TICK_HZ {
