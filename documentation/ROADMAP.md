@@ -250,9 +250,12 @@ to 8.93 a seat).
   winner only, given-up lists that can expire (`memory::Forget`,
   `forget`). Not yet: the Observation shared per team (the sim change),
   the `why` and `doing` strings as codes.
-- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h),
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
-  Not yet: sliders on the coordination screen.
+  The sliders, 18 October (LR 17): the coordination screen's weights
+  page (`U`) for the player's own team, saved to
+  `~/.config/treadcore/weights`; `a_switch_comes_back_and_a_slider_keeps_the_target`,
+  `the_page_moves_a_weight_and_puts_it_back`.
 - [~] 12d intent and smoothing (`smooth`): the desire vector in `go`,
   the turret's confirmation, one resupply threshold;
   `a_challenger_needs_two_thinks`, `a_dodge_skips_confirmation`; then
@@ -285,8 +288,8 @@ to 8.93 a seat).
   `the_improvement_goes_by_its_weights`,
   `a_capped_castle_fills_then_lines_the_road` (alone: the castle up with
   two inside, the road slot and a post toward the second depot filled
-  by 371 s). Not yet: `upgrade_vs_mend` has no upgrades to weigh until
-  11g; the sliders.
+  by 371 s); the sliders (LR 17). Not yet: `upgrade_vs_mend` has no
+  upgrades to weigh until 11g.
 - [x] `castle_cap` the default, 18 October (Paul's choice; LR 12): the
   old castle one bit away (`-castle_cap`), its two proofs kept with the
   bit off. Paired against the null run, the old castle scored 0.96 a
@@ -393,8 +396,9 @@ the end with a date.
     proposal written the same evening (`PROPOSAL-UPGRADES.md`). Left:
     post it for the seven days, run its two traces, then the sim step.
     Goal 5.
-15. The sliders on the coordination screen, one per weight, for the
-    player's own team (12c, 12h). Goal 4.
+15. Done 18 October (LR 17): the sliders, the coordination screen's
+    weights page (`U`), one row per capability and weight, for the
+    player's own team, saved beside the keys file. Goal 4.
 16. Done 18 October (LR 14): the census puts every team in the trial
     seat on every seed (`CENSUS_FAIR`); a null run reads exactly even,
     and the capped castle measured again at -0.72 a seat for the old

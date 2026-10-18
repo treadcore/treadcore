@@ -658,6 +658,7 @@ fn update(
             Panel::Log => match (view.menu.as_ref(), view.obs.as_ref(), view.key_setup.as_ref()) {
                 (_, _, Some(s)) => crate::keys::setup_text(&bind, s, &view.key_note),
                 (Some(m), Some(o), _) => crate::proposals::menu_text(o, m),
+                _ if view.tune.is_some() => view.tune.clone().unwrap(),
                 _ if view.coord.is_some() => view.coord.clone().unwrap(),
                 _ => log(&view),
             },
@@ -677,7 +678,7 @@ fn update(
     let show_screen = screen(&view).is_some();
     for (p, mut vis) in nodes.iter_mut() {
         let want = match p {
-            Panel::Log => (state.show_log || view.menu.is_some() || view.key_setup.is_some() || view.coord.is_some()) && !show_screen,
+            Panel::Log => (state.show_log || view.menu.is_some() || view.key_setup.is_some() || view.tune.is_some() || view.coord.is_some()) && !show_screen,
             Panel::Screen => show_screen,
             _ => true,
         };

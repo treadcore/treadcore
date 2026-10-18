@@ -45,6 +45,7 @@ pub enum Action {
     Stop,
     Goal,
     Coordinate,
+    Tune,
     Autopilot,
     Respawn,
     Ping,
@@ -71,7 +72,7 @@ pub enum Action {
 use Action::*;
 
 impl Action {
-    pub const ALL: [Action; 39] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, Speed, KeySetup];
+    pub const ALL: [Action; 40] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Tune, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, Speed, KeySetup];
 
     /// The word in the file and in Key Setup.
     pub fn word(self) -> &'static str {
@@ -94,6 +95,7 @@ impl Action {
             Stop => "stop",
             Goal => "goal",
             Coordinate => "coordinate",
+            Tune => "tune",
             Autopilot => "autopilot",
             Respawn => "respawn",
             Ping => "ping",
@@ -150,6 +152,7 @@ impl Action {
             Stop => KeyCode::KeyH,
             Goal => KeyCode::KeyG,
             Coordinate => KeyCode::Space,
+            Tune => KeyCode::KeyU,
             Autopilot => KeyCode::KeyO,
             Respawn => KeyCode::KeyV,
             Ping => KeyCode::KeyQ,
@@ -386,7 +389,7 @@ pub fn setup_text(keys: &Keys, s: &Setup, note: &str) -> String {
 /// After the input systems, so the Esc that closes Key Setup does not
 /// also quit, and a key bound is not also an order.
 pub fn key_setup(input: Res<ButtonInput<KeyCode>>, mut keys: ResMut<Keys>, mut view: ResMut<View>) {
-    if view.typing.is_some() || view.menu.is_some() || view.keys_eaten {
+    if view.typing.is_some() || view.menu.is_some() || view.keys_eaten || view.tune.is_some() {
         return;
     }
     let Some(mut s) = view.key_setup else {

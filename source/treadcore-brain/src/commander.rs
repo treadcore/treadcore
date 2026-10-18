@@ -333,6 +333,19 @@ pub struct Commander {
     posts_at: Tick,
     /// A rung waiting for its confirmation, and since when (roadmap 12d).
     rung_challenger: Option<(Rung, Tick)>,
+    /// What a switch turned off put away (`set_settings`).
+    cap_held: CapHeld,
+}
+
+/// The role's own settings of the switches `set_settings` turns off,
+/// kept to give back when the switch is on again.
+#[derive(Clone, Copy, Debug, Default)]
+struct CapHeld {
+    dodges: bool,
+    pings: bool,
+    answers_pings: bool,
+    rotation_off: bool,
+    no_bridges: bool,
 }
 
 /// A downed ally this far off is driven to and revived, if the time
@@ -395,7 +408,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None }
+        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default() }
     }
 
     /// The weights for its fights (tactics.rs); None shoots the nearest
@@ -414,26 +427,43 @@ impl Commander {
         self.revive_failed.keep = keep;
         self.inner.hop.set_forget(keep);
         self.inner.hop.pricing = s.caps.has(Caps::PRICED_CROSSING).then(|| s.clone());
-        if self.inner.tactics.is_some() {
-            let mut t = crate::tactics::Tactician::with(crate::tactics::Tactics::from_weights(&s));
+        // In place: a slider moved mid-match (backlog 15) keeps the
+        // target and the team's calls.
+        if let Some(t) = self.inner.tactics.as_mut() {
+            t.w = crate::tactics::Tactics::from_weights(&s);
             t.base = self.base;
             t.confirm = s.caps.has(Caps::SMOOTH).then(|| (s.w[W::ConfirmTurret].round().clamp(1.0, 255.0) as u8, s.w[W::Margin]));
             t.smooth = s.caps.has(Caps::SMOOTH).then(|| (s.w[W::Beta], s.w[W::AdvanceBand]));
-            self.inner.tactics = Some(t);
         }
         self.inner.own_resupply = !s.caps.has(Caps::SMOOTH);
-        if !s.caps.has(Caps::DODGE) {
+        // A switch turned off puts away what the role gave the bot; on
+        // again, it gets it back.
+        let was = self.settings.caps;
+        let (off, on) = (|c: Caps| was.has(c) && !s.caps.has(c), |c: Caps| !was.has(c) && s.caps.has(c));
+        let h = &mut self.cap_held;
+        if off(Caps::DODGE) {
+            h.dodges = self.dodges;
             self.dodges = false;
+        } else if on(Caps::DODGE) {
+            self.dodges = h.dodges;
         }
-        if !s.caps.has(Caps::PINGS) {
-            self.pings = false;
-            self.answers_pings = false;
+        if off(Caps::PINGS) {
+            (h.pings, h.answers_pings) = (self.pings, self.answers_pings);
+            (self.pings, self.answers_pings) = (false, false);
+        } else if on(Caps::PINGS) {
+            (self.pings, self.answers_pings) = (h.pings, h.answers_pings);
         }
-        if !s.caps.has(Caps::ROTATE) {
+        if off(Caps::ROTATE) {
+            h.rotation_off = self.rotation.off;
             self.rotation.off = true;
+        } else if on(Caps::ROTATE) {
+            self.rotation.off = h.rotation_off;
         }
-        if !s.caps.has(Caps::BRIDGES) {
+        if off(Caps::BRIDGES) {
+            h.no_bridges = self.inner.hop.no_bridges;
             self.inner.hop.no_bridges = true;
+        } else if on(Caps::BRIDGES) {
+            self.inner.hop.no_bridges = h.no_bridges;
         }
         self.settings = s;
     }
@@ -1977,6 +2007,10 @@ impl Brain for Commander {
         Some(&self.settings)
     }
 
+    fn set_settings(&mut self, s: crate::weights::Settings) {
+        Commander::set_settings(self, s);
+    }
+
     fn status(&self) -> String {
         match (self.goal, self.rung) {
             (Goal::Manual, _) => String::new(),
@@ -2586,6 +2620,29 @@ mod tests {
         c.settings.caps = c.settings.caps.without(crate::weights::Caps::COLUMN);
         leader.pos = V2::new(64.5, 64.5);
         assert_eq!(c.slot_point(&leader, Some(&map)).unwrap(), wedge, "without the capability, the wedge");
+    }
+
+    /// The sliders (backlog 15): a switch off and on again mid-match
+    /// gives the role's own setting back, and a weight moved keeps the
+    /// turret's target.
+    #[test]
+    fn a_switch_comes_back_and_a_slider_keeps_the_target() {
+        use crate::weights::{Caps, Settings, W};
+        let mut c = Commander::new(1, "t");
+        (c.pings, c.answers_pings) = (true, false);
+        c.inner.tactics = Some(crate::tactics::Tactician::default());
+        c.set_settings(Settings::default());
+        c.inner.tactics.as_mut().unwrap().target = Some(7);
+        let mut s = Settings::default();
+        s.caps = s.caps.without(Caps::PINGS).without(Caps::DODGE).without(Caps::BRIDGES);
+        c.set_settings(s.clone());
+        assert_eq!((c.pings, c.answers_pings, c.dodges, c.inner.hop.no_bridges), (false, false, false, true));
+        s.caps = Caps::BASELINE;
+        s.nudge(W::Wounded, 2);
+        c.set_settings(s);
+        assert_eq!((c.pings, c.answers_pings, c.dodges, c.inner.hop.no_bridges), (true, false, true, false), "back as the role had them");
+        let t = c.inner.tactics.as_ref().unwrap();
+        assert_eq!((t.target, t.w.w_wounded), (Some(7), 1.4));
     }
 
     /// The settings with the castle of 11b and 11h: three towers and two

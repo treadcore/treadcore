@@ -531,6 +531,17 @@ right click sets the tank's own **push point** there (right click it
 again to go back to the fleet's). Tab
 folds the screen away to see the map under it, and back; Esc closes
 it as Space does. While it is up the drone and builder keys wait.
+
+**The weights page.** `U` on the coordination screen opens the
+weights page: a row for each part of the brain that can be switched
+off, and a slider for each of its weights. Up and down pick a row,
+left and right move it a step (a switch goes off and on), Delete puts
+it back to its default, Enter saves, and `U` or Esc returns to the
+ladder. A `*` marks what you have changed, and the line under the rows
+says what the picked one does. It is your team's: your tank on auto
+and, when your window hosts them, your side's bots, at once and at
+every new match. The enemy's bots keep theirs. Enter keeps it in
+`~/.config/treadcore/weights`, read again the next time you start.
 When your window hosts bots of your side (`--fleets`, `--wingmen`),
 the screen lists them under FLEET with what each is doing.
 
@@ -770,6 +781,7 @@ orders column and the hints under it show your keys, not these.
 | Esc | drop the armed mode; with none armed, quit |
 | `H` | stop; also takes the wheel back from a goal |
 | Space | the coordination screen and auto, or back to the wheel |
+| `U` | on the coordination screen, the weights page: your team's sliders |
 | `G` | the next goal: auto, hunt pillboxes, defend depot, defend base, defend pillbox, hold, fortify, escort, the wheel |
 | `O` | autopilot on and off: the tank on auto with the map clear; a click to drive also takes the wheel |
 | `V` | respawn, when the match allows it and the wait is over (section 6e) |

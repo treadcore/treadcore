@@ -14,7 +14,7 @@
 //! (defend base, fortify, turrets, hunt, expand, guard); Space again takes the
 //! wheel back. On the screen 1 to 6 turn rungs on and off, G picks a
 //! single goal instead, a click on the map holds the tank there, and
-//! Tab folds it away and back, Esc closes it. What each rung would do and why it does or does not
+//! Tab folds it away and back, U opens the weights page (tune.rs), Esc closes it. What each rung would do and why it does or does not
 //! hold is written beside it, and the allies in sight under it.
 
 use crate::session::Orders;
@@ -81,7 +81,7 @@ impl Pilot {
     /// The coordination screen.
     pub fn screen(&self, obs: &Observation, fleet: &[String]) -> String {
         let b = &self.brain;
-        let mut t = String::from("COORDINATION  Space: the wheel  1-6: rungs  G: one goal  click: hold there  right-click: push point  Tab: fold\n");
+        let mut t = String::from("COORDINATION  Space: the wheel  1-6: rungs  G: one goal  U: weights  click: hold there  right-click: push point  Tab: fold\n");
         t.push_str(&format!("goal: {}{}\n", b.goal.label(), if b.doing.is_empty() { String::new() } else { format!(": {}", b.doing) }));
         t.push_str(if b.goal == Goal::Auto { "THE LADDER  the first rung on whose condition holds is what the tank does\n" } else { "THE LADDER  (not in use: G back to auto)\n" });
         for r in Rung::ALL {

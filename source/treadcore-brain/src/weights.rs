@@ -46,6 +46,23 @@ macro_rules! weights {
             pub fn by_name(name: &str) -> Option<W> {
                 match name { $($name => Some(W::$id),)* _ => None }
             }
+            /// A slider's step (the coordination screen, backlog 15): one
+            /// for a rounded weight, else a tenth of the default taken
+            /// to 1, 2 or 5 of its power of ten; a tenth for nothing.
+            pub fn step(self) -> f32 {
+                if self.doc().contains("(rounded)") {
+                    return 1.0;
+                }
+                let d = self.default_value().abs() / 10.0;
+                if d == 0.0 {
+                    return 0.1;
+                }
+                let e = d.log10().floor() as i32;
+                let m = d / 10f32.powi(e);
+                let nice = if m < 1.5 { 1.0 } else if m < 3.5 { 2.0 } else if m < 7.5 { 5.0 } else { 10.0 };
+                // Divided, not multiplied, below one: 5 / 100 is 0.05 exactly.
+                if e < 0 { nice / 10f32.powi(-e) } else { nice * 10f32.powi(e) }
+            }
         }
     };
 }
@@ -60,7 +77,7 @@ weights! {
     Called "w_called" 0.8, "target: a teammate pinged it";
     CalledFor "called_for" 15.0, "target: seconds a ping stays a call";
     Focus "w_focus" 0.5, "target: each teammate already on it";
-    FocusCap "focus_cap" 2.0, "target: teammates on it before overkill";
+    FocusCap "focus_cap" 2.0, "target: teammates on it before overkill (rounded)";
     Overkill "w_overkill" 0.6, "target: off for each teammate past the cap";
     InRange "w_in_range" 0.7, "target: in direct range now";
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
@@ -74,11 +91,11 @@ weights! {
     PressOdds "press_odds" 1.5, "odds: above these, close in";
     ComingR "coming_r" 45.0, "odds: teammates this near are coming, tiles";
     MassFor "mass_for" 12.0, "odds: seconds to hold off for them";
-    AnswerCap "answer_cap" 3.0, "pings: this many nearer teammates answer instead";
+    AnswerCap "answer_cap" 3.0, "pings: this many nearer teammates answer instead (rounded)";
     CrewReach "crew_reach" 40.0, "pings: a crew on a job answers only this near, tiles";
     Exposure "w_exposure" 1.0, "stand: cost per gun covering a firing point";
     Flank "w_flank" 0.3, "stand: cost of leaving the flank's bearing";
-    Kite "kite" 1.0, "kite: on (1) or off (0)";
+    Kite "kite" 1.0, "kite: on (1) or off (0) (rounded)";
     KiteMargin "kite_margin" 1.5, "kite: the waiting ring past the target's reach, tiles";
     KiteIn "kite_in" 9.0, "kite: the ring a step in ends on, tiles";
     KiteTurn "kite_turn" 0.8, "kite: seconds a step in takes beyond the drive";
@@ -87,8 +104,8 @@ weights! {
     Alpha "alpha" 0.4, "smooth: the move's desire vector, share of the new pull a think";
     Beta "beta" 0.3, "smooth: the advance scalar, share of the new pull a think";
     Margin "margin" 0.15, "smooth: a challenger must beat the intent by this share";
-    Confirm "confirm" 2.0, "smooth: thinks in a row a challenger must win";
-    ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target";
+    Confirm "confirm" 2.0, "smooth: thinks in a row a challenger must win (rounded)";
+    ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target (rounded)";
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
     AdvanceBand "advance_band" 0.35, "smooth: the advance scalar presses above this and falls back below minus this";
     Jitter "jitter" 3.0, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
@@ -168,6 +185,11 @@ macro_rules! caps {
             /// what is new, off), and what Paul has made the default since
             /// (`castle_cap`, 18 October).
             pub const BASELINE: Caps = Caps(0 $(| if $on { 1 << $bit } else { 0 })*);
+            /// What a capability does, for the sliders' page.
+            pub fn doc(self) -> &'static str {
+                $(if self == Caps::$id { return $doc; })*
+                ""
+            }
         }
     };
 }
@@ -288,6 +310,13 @@ impl Settings {
     /// The weights that differ from the defaults: what makes a genome.
     pub fn diff(&self) -> Vec<(W, f32)> {
         W::ALL.iter().filter(|w| self.w[**w] != w.default_value()).map(|w| (*w, self.w[*w])).collect()
+    }
+
+    /// A slider moved `by` steps: never under nothing, and kept to four
+    /// places so a step back is the number it was.
+    pub fn nudge(&mut self, w: W, by: i32) {
+        let v = (self.w[w] + by as f32 * w.step()).max(0.0);
+        self.w[w] = (v * 1e4).round() / 1e4;
     }
 
     /// Seconds into ticks, for the time weights.
@@ -421,5 +450,21 @@ mod tests {
         assert!((utility(2.0, &[0.25, 1.0], true, 0.1) - 2.0 * 0.5 * 1.1).abs() < 1e-4);
         assert_eq!(Curve::Logistic { m: 10.0, c: 0.5 }.eval(0.5), 0.5);
         assert_eq!(Curve::Linear { m: 2.0, b: 0.0 }.eval(0.9), 1.0);
+    }
+
+    #[test]
+    fn a_slider_steps_and_steps_back() {
+        assert_eq!((W::Alpha.step(), W::NearScale.step(), W::ForgetFor.step(), W::Margin.step()), (0.05, 2.0, 10.0, 0.02));
+        assert_eq!((W::CastleInside.step(), W::Confirm.step(), W::Kite.step()), (1.0, 1.0, 1.0), "a rounded weight steps by one");
+        let mut s = Settings::default();
+        s.nudge(W::Alpha, 3);
+        assert_eq!(s.w[W::Alpha], 0.55);
+        s.nudge(W::Alpha, -3);
+        assert_eq!(s.w[W::Alpha], 0.4, "three up and three down is where it was");
+        s.nudge(W::Commit, -10);
+        assert_eq!(s.w[W::Commit], 0.0, "never under nothing");
+        for w in W::ALL {
+            assert!(w.step() > 0.0 && w.step() <= w.default_value().max(1.0), "{}: {}", w.name(), w.step());
+        }
     }
 }

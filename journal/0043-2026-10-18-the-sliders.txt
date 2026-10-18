@@ -1,0 +1,75 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 00:30:00 -0700
+Subject: [JOURNAL 0043] The sliders: the coordination screen's weights page
+Message-ID: <0043.20261018@treadcore.org>
+In-Reply-To: <0042.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: sliders, weights, coordination screen, backlog 15, roadmap 12c
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair. Paul: "commit to main and start the sliders".
+X-Commits: 41c9ebf (journals 0040 to 0042); this entry's work is in
+           the tree
+
+         THE SLIDERS: THE COORDINATION SCREEN'S WEIGHTS PAGE
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    "A slider for each coefficient weights", from the first message of
+    step 12. `U` on the coordination screen opens the weights page: a
+    switch for each of the 15 capabilities and a slider for each of the
+    70 weights, its default at the middle of a bar and its doc line
+    under the rows. It is the player's own team's: the tank on auto
+    and, when the window hosts, the bots of the player's side, at once
+    and at each new match. Enter saves to ~/.config/treadcore/weights.
+    `--weights FILE` stays every bot's. Driven in the window: a switch
+    and a slider moved, put back and closed.
+
+I. METHOD
+
+    Brain: `W::step` (one for a rounded weight, else a tenth of the
+    default to 1, 2 or 5 of its power of ten), `Settings::nudge`,
+    `Caps::doc`, `Brain::set_settings`. `Commander::set_settings` now
+    updates the tactician in place and gives back a switch's setting
+    when it is turned on again (`CapHeld`). Client: `tune.rs`, the
+    `tune` action on U, `View::tune` among the keys taken.
+
+    The window: build/bigstack.so preloaded (journal 0013; without it
+    lavapipe segfaults on musl's small thread stacks), a solo match,
+    keys sent to the window with `hyprctl dispatch sendshortcut` (not
+    to whatever had focus), shots with grim.
+
+II. RESULTS
+
+    Brain tests 58 passed, 8 ignored; client 31. In the window: Space
+    then U showed the page; Down to `near_scale`, Right twice took it
+    from 15 to 19 with the `*`; Delete put it back; Esc returned to the
+    ladder with the rotation and the fleet. Left on `forget`, already
+    off, left it off. Enter was not pressed: it would have written the
+    real team file.
+
+III. DISCUSSION
+
+    The page changes who can tune, not how well the bots play: a
+    player can try a weight in the match in front of them, and the
+    saved file is a genome the ledger reads. Two things the page found
+    out about the brain: the window's pilot never had settings at all
+    (it now has the page's), and four switches could only be turned
+    off. Switches read only at the deal (`board`) take hold at the next
+    match.
+
+IV. OPEN PROBLEMS
+
+    1. The page's settings into the ledger when a match ends, so a
+       player's tuning is scored like the tuner's.
+    2. A remote player's sliders reach only their own tank; the host
+       could take a team's settings over the wire.
+    3. Bridge jobs on the team board (0042's second).
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

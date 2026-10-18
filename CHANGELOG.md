@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the sliders (backlog 15; Paul: "a slider for each coefficient
+  weights"). `U` on the coordination screen opens the weights page: a
+  switch for each of the 15 capabilities and a slider for each of the
+  70 weights, with its default, its step and what it does. It is the
+  player's own team's: their tank on auto and, when the window hosts,
+  their side's bots, at once and at each new match. Enter saves it to
+  `~/.config/treadcore/weights`. `--weights FILE` stays every bot's.
+  A bot keeps its target through a change, and a switch turned off and
+  on again gives back what the bot's role had.
 - Changed: the brain census is fair (backlog 16): each seed is played
   three times, every team in the trial seat once, so the starts'
   unevenness cancels and a null run reads exactly even (13.93 against

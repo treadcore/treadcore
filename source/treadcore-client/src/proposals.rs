@@ -215,7 +215,7 @@ pub fn proposals(keys: Res<ButtonInput<KeyCode>>, bind: Res<crate::keys::Keys>, 
     // A key typed into a chat line this frame (even one closed by the
     // Esc that came with it) is the line's, not the list's; and Key
     // Setup's keys are its own.
-    if view.typing.is_some() || view.keys_eaten || view.key_setup.is_some() {
+    if view.typing.is_some() || view.keys_eaten || view.key_setup.is_some() || view.tune.is_some() {
         return;
     }
     let mut menu = view.menu.take();

@@ -653,3 +653,67 @@ against 7.70 exactly. No team reached a far fetch in 900 s, so the bit
 never acted and the matches were the null run's. `escort` stays off
 until a longer census (goal 5's longer matches) can see it work.
 
+## 17. The sliders, 18 October
+
+Paul's first message asked for "a slider for each coefficient
+weights". The weights page is the coordination screen's second page:
+`U` opens it (a new rebindable action, `tune`). It has a row for each
+of the 15 capabilities, a switch, and a row for each of the 70
+weights, a slider (`client::tune`).
+- Up and down pick a row; left and right move it one step.
+- Delete puts the row back to its default; Enter saves; `U` or Esc goes
+  back to the ladder.
+- Each row shows its value and a bar from nothing to twice the default,
+  the default at the middle. A `*` marks a row that differs from the
+  default. Under the rows is the doc line of the picked row, with its
+  default and its step.
+
+A step is one for a rounded weight (the doc says "(rounded)"; five docs
+gained the word: `focus_cap`, `answer_cap`, `kite`, `confirm`,
+`confirm_turret`). Otherwise it is a tenth of the default, taken to
+1, 2 or 5 of its power of ten: `alpha` 0.05, `near_scale` 2,
+`forget_for` 10 (`W::step`). `Settings::nudge` never goes under nothing
+and keeps four places, so three steps up and three down is the number
+it was.
+
+Whose bots, the table of section 10 decided: the host's `--weights`
+file stays every bot's, and a player's sliders are their own team's.
+The page gives its settings to the tank under the goal at once, and,
+when the window hosts, to the bots of the player's side, again at each
+new match (`Brain::set_settings`, new, a no-op for a brain without
+weights). A remote player's page reaches only their own tank, and it
+says so. Enter keeps the team's settings in
+`~/.config/treadcore/weights`, beside the keys file, and the next start
+reads them for the team only. Without that file the page starts from
+`--weights` or the defaults.
+
+Two changes in the brain made a mid-match change safe:
+- `Commander::set_settings` updates the tactician in place, keeping
+  its target and the team's calls.
+- The four switches it used to turn off for good (dodge, pings, rotate,
+  bridges) now put away the role's own setting when turned off and give
+  it back when turned on again (`CapHeld`).
+
+Before this, no settings ever reached the window's pilot. It now has
+the page's, so `--weights` or the team file steer the person's own
+tank on auto too.
+
+Some switches are read only when a match is dealt: `board` gives a team
+its board in `fleet::equip`. Set on the page, such a switch takes hold
+at the next match.
+
+Proof:
+- `a_slider_steps_and_steps_back`;
+  `a_switch_comes_back_and_a_slider_keeps_the_target`;
+- `the_page_moves_a_weight_and_puts_it_back`,
+  `the_page_switches_a_capability_and_wraps`, `a_saved_page_reads_back`,
+  `the_bar_marks_the_default_in_the_middle`.
+- Brain tests: 58 passed; client: 31.
+- The window, driven with `hyprctl dispatch sendshortcut` and shot with
+  `grim` (journal 0043): Space, then `U`, then a switch and a slider
+  moved, Delete, then Esc back to the ladder with the fleet listed.
+
+The page measures nothing by itself, so it has no census. What it
+changes is who can tune: a player can now try a weight in the match in
+front of them, and a saved file is a genome the ledger can read.
+

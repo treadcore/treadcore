@@ -106,6 +106,8 @@ pub struct View {
     pub goal: String,
     /// The coordination screen's text while it is up (goal.rs).
     pub coord: Option<String>,
+    /// The weights page's text while it is open (tune.rs).
+    pub tune: Option<String>,
     /// Every event since the goal's brain last thought: the window may
     /// draw one frame for several ticks, and a plan that misses a Built
     /// waits a minute for it (goal.rs).
@@ -116,10 +118,10 @@ pub struct View {
 }
 
 impl View {
-    /// A chat line, the proposal list or Key Setup is open: the keys
-    /// are theirs.
+    /// A chat line, the proposal list, Key Setup or the weights page is
+    /// open: the keys are theirs.
     pub fn keys_taken(&self) -> bool {
-        self.typing.is_some() || self.menu.is_some() || self.key_setup.is_some()
+        self.typing.is_some() || self.menu.is_some() || self.key_setup.is_some() || self.tune.is_some()
     }
 }
 

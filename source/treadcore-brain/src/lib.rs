@@ -56,6 +56,11 @@ pub trait Brain: Send + Sync {
     fn settings(&self) -> Option<&weights::Settings> {
         None
     }
+    /// New weights mid-match (the coordination screen's sliders,
+    /// backlog 15); a brain without them ignores it.
+    fn set_settings(&mut self, s: weights::Settings) {
+        let _ = s;
+    }
 }
 
 /// Run every bot seat for one tick.

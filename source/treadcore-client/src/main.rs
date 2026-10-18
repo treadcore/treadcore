@@ -35,6 +35,7 @@ mod render;
 mod session;
 mod sound;
 mod speed;
+mod tune;
 mod voxel;
 
 use bevy::prelude::*;
@@ -289,7 +290,7 @@ fn main() {
         .insert_resource(keys::Keys::load(args.keys.as_ref().map(std::path::PathBuf::from).or_else(keys::Keys::default_path)))
         .add_plugins(speed::SpeedPlugin { want: args.speed })
         .insert_resource(args)
-        .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }, commander::CommanderPlugin, goal::GoalPlugin, battlefield::BattlefieldPlugin))
+        .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }, commander::CommanderPlugin, goal::GoalPlugin, tune::TunePlugin, battlefield::BattlefieldPlugin))
         .run();
 }
 
