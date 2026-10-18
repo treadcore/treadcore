@@ -9,7 +9,7 @@ reasoning is LAB-REPORT.md; this is the map.
 
 > **Sections 1 to 3 and 5 are archived in place: the snapshot of 13
 > October.** The code has grown since (the brain from one file of
-> 1,158 lines to sixteen of 11,936), and they are kept as the
+> 1,158 lines to seventeen of 12,566), and they are kept as the
 > development record, not refreshed. Section 4 (the documents) is kept
 > current, and section 6 maps what came after the snapshot, step 12
 > above all. `archive/README.md` says what else is archived.
@@ -587,26 +587,27 @@ To refresh the table: `grep -c -w NAME` over `source/*/src/*.rs`,
 
 ## 6. Since the snapshot: step 12, the brain on weights (18 October 2026)
 
-The brain was one file at the snapshot (2.6). Step 12 made it sixteen;
+The brain was one file at the snapshot (2.6). Step 12 made it seventeen;
 the lab report's section 20 says how they fit, and
 `archive/BRAIN-METHODS.md` which old methods they replaced. Line
 counts of 18 October evening.
 
 | file | lines | what |
 | --- | --- | --- |
-| treadcore-brain/src/lib.rs | 2,259 | the `Brain` trait (with `settings`, `set_settings`), the RuleBot doctrine, `Dodge`, `lead`, `run_bots` metered; `a_led_direct_shot_cannot_be_dodged` |
-| treadcore-brain/src/commander.rs | 3,674 | the Commander: goals, the Auto ladder, the fleet, the board's post and jobs, road posts, `bridge_jobs`, the escort's gather, the duck |
-| treadcore-brain/src/weights.rs | 474 | `W` (76 weights, each with a default, a doc line and a slider step), `Caps` (17 switches), `Settings` and its file form, `Curve`, `utility` |
+| treadcore-brain/src/lib.rs | 2,264 | the `Brain` trait (with `settings`, `set_settings`, `act`), the RuleBot doctrine, `Dodge`, `lead`, `run_bots` metered; `a_led_direct_shot_cannot_be_dodged` |
+| treadcore-brain/src/commander.rs | 3,721 | the Commander: goals, the Auto ladder, the fleet, the board's post and jobs, road posts, `bridge_jobs`, the escort's gather, the duck |
+| treadcore-brain/src/weights.rs | 478 | `W` (76 weights, each with a default, a doc line and a slider step), `Caps` (17 switches), `Settings` and its file form, `Curve`, `utility` |
+| treadcore-brain/src/status.rs | 344 | status as codes: `Act`, `HopAct`, `CycleAct`, `KiteStep`, `Why`, each with a stable `code()` |
 | treadcore-brain/src/meter.rs | 118 | per-thread counters: seats, thinks, Moves, crossings searched and cached, plan copies, microseconds |
 | treadcore-brain/src/memory.rs | 96 | `Forget`: memories that run out |
 | treadcore-brain/src/intent.rs | 181 | `Desire`, `Confirm`, `Advance`: holding a decision |
 | treadcore-brain/src/facts.rs | 212 | `MapFacts`: islands, the crossing cache, scarcity, site scores, the crossing price |
 | treadcore-brain/src/board.rs | 486 | `TeamBoard`: influence, front, defence points, posture, kept jobs, swaps, part-laid bridges |
-| treadcore-brain/src/cycle.rs | 431 | the base cycle: item, improvement by weight, road out, road posts |
+| treadcore-brain/src/cycle.rs | 438 | the base cycle: item, improvement by weight, road out, road posts |
 | treadcore-brain/src/ledger.rs | 296 | genomes, outcomes, the JSON-lines ledger, Elo ratings |
-| treadcore-brain/src/fleet.rs | 930 | roles and teams, the process's and the thread's settings, the team boards of a deal; `brain_census` (`CENSUS_*`) |
-| treadcore-brain/src/tactics.rs | 656 | target scores, odds, stance, kiting; weights from `Settings` |
-| treadcore-brain/src/hop.rs | 860 | island hops, bridges (and adopted ones), boats, landfall, priced crossings |
+| treadcore-brain/src/fleet.rs | 954 | roles and teams, the process's and the thread's settings, the team boards of a deal; `brain_census` (`CENSUS_*`) |
+| treadcore-brain/src/tactics.rs | 676 | target scores, odds, stance, kiting; weights from `Settings` |
+| treadcore-brain/src/hop.rs | 873 | island hops, bridges (and adopted ones), boats, landfall, priced crossings |
 | treadcore-brain/src/fortify.rs | 656 | the castle plan: the capped castle and its road slot, posts |
 | treadcore-brain/src/crew.rs | 502 | the fleet commander and its crews |
 | treadcore-brain/src/rotation.rs | 271 | push and defence points |

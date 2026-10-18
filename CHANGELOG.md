@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the bots' status is written as codes beside the words
+  (`status.rs`; roadmap 12b). The brain's own logic (when a guard is
+  idle, when a focus call goes out), the census counts and the
+  coordination screen's reasons read codes, so rewording a status can
+  no longer change play or a measurement. The words are kept for
+  people. Measured: the strings cost nothing (15 us a seat-tick either
+  way), and a census match is identical before and after.
 - Added, off: the duck (`duck`; Paul: "build the duck reflex"). A
   direct shot cannot be dodged once fired, so it is denied: a tank
   leaves a hostile gun's range or line when that gun is ready within

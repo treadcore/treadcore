@@ -50,6 +50,7 @@
 //! weight reads as "worth this many of the others". `Tactics::default`
 //! is the team's; a test or a bot of another temper changes the numbers.
 
+use crate::status::KiteStep;
 use treadcore_sim::*;
 
 /// The weights. Every number here is a reason a bot can give.
@@ -194,7 +195,8 @@ pub struct Kite {
     pub to: V2,
     /// Stepping in to fire, not waiting.
     pub stepping_in: bool,
-    pub word: &'static str,
+    /// Which step, and why (status.rs); `step.word()` says it.
+    pub step: KiteStep,
 }
 
 /// How far a hostile tank's gun reaches now: its direct gun while it has
@@ -213,6 +215,17 @@ pub fn ready_in(t: &Tank) -> f32 {
     t.reload as f32 * DT
 }
 
+/// The parts of a target's reason other logic reads (`Tactician::tags`).
+pub struct Tags;
+
+impl Tags {
+    pub const ONE_SHOT: u8 = 1;
+    pub const CALLED: u8 = 2;
+    pub const ON_IT: u8 = 4;
+    /// A focus call is worth making: the team's pick, or a kill.
+    pub const FOCUS: u8 = Tags::ONE_SHOT | Tags::CALLED | Tags::ON_IT;
+}
+
 /// The weights and what a bot remembers with them: its team's calls,
 /// its target, and why.
 #[derive(Clone, Debug, Default)]
@@ -229,6 +242,9 @@ pub struct Tactician {
     pub switched: bool,
     /// Why it was chosen, for the status line and team chat.
     pub reason: String,
+    /// The reason's parts that other logic reads, as bits (`Tags`):
+    /// the focus call goes out on these, not on the words.
+    pub tags: u8,
     pub score: f32,
     /// When massing began for the fight now, so it ends.
     massing_since: Option<Tick>,
@@ -274,19 +290,19 @@ impl Tactician {
     }
 
     /// A target's score and the reasons that made it.
-    pub fn score(&self, obs: &Observation, me: &Tank, t: &Tank) -> (f32, Vec<String>) {
-        let mut why = Some(Vec::new());
-        let s = self.rate(obs, me, t, &mut why);
-        (s, why.unwrap_or_default())
+    pub fn score(&self, obs: &Observation, me: &Tank, t: &Tank) -> (f32, Vec<String>, u8) {
+        let (mut why, mut tags) = (Some(Vec::new()), 0);
+        let s = self.rate(obs, me, t, &mut why, &mut tags);
+        (s, why.unwrap_or_default(), tags)
     }
 
     /// The score alone: what `pick` asks of every candidate, with no
     /// words built for the ones that lose (roadmap 12b).
     pub fn value(&self, obs: &Observation, me: &Tank, t: &Tank) -> f32 {
-        self.rate(obs, me, t, &mut None)
+        self.rate(obs, me, t, &mut None, &mut 0)
     }
 
-    fn rate(&self, obs: &Observation, me: &Tank, t: &Tank, why: &mut Option<Vec<String>>) -> f32 {
+    fn rate(&self, obs: &Observation, me: &Tank, t: &Tank, why: &mut Option<Vec<String>>, tags: &mut u8) -> f32 {
         let mut say = |f: &dyn Fn() -> String| {
             if let Some(w) = why.as_mut() {
                 w.push(f());
@@ -303,6 +319,7 @@ impl Tactician {
         }
         if t.armor <= DIRECT_DAMAGE {
             s += w.w_finish;
+            *tags |= Tags::ONE_SHOT;
             say(&|| "one shot".into());
         }
         if t.boat {
@@ -311,6 +328,7 @@ impl Tactician {
         }
         if self.called.iter().any(|(at, _)| at.dist(t.pos) <= 8.0) {
             s += w.w_called;
+            *tags |= Tags::CALLED;
             say(&|| "called".into());
         }
         let on_it = obs.allied_tanks().filter(|a| a.alive && a.owner != obs.player && a.pos.dist(t.pos) <= DIRECT_RANGE).count();
@@ -318,6 +336,7 @@ impl Tactician {
             let focus = on_it.min(w.focus_cap) as f32 * w.w_focus;
             let over = on_it.saturating_sub(w.focus_cap) as f32 * w.w_overkill;
             s += focus - over;
+            *tags |= Tags::ON_IT;
             say(&|| if on_it > w.focus_cap { format!("{} on it: enough", on_it) } else { format!("{} on it", on_it) });
         }
         if d <= DIRECT_RANGE {
@@ -374,7 +393,8 @@ impl Tactician {
         if self.target == Some(t.id) && self.challenger.map(|(id, _)| id == t.id).unwrap_or(false) {
             self.challenger = None;
         }
-        let (s, why) = self.score(obs, me, t);
+        let (s, why, tags) = self.score(obs, me, t);
+        self.tags = tags;
         self.switched = self.target != Some(t.id);
         if self.switched {
             self.since = obs.tick;
@@ -469,7 +489,7 @@ impl Tactician {
     pub fn kite(&self, obs: &Observation, me: &Tank, target: &Tank, from: V2, stance: Stance, mass_r: f32) -> Kite {
         let w = &self.w;
         if stance == Stance::Mass {
-            return Kite { to: self.stand(obs, target, from, mass_r).0, stepping_in: false, word: "massing out of its reach" };
+            return Kite { to: self.stand(obs, target, from, mass_r).0, stepping_in: false, step: KiteStep::Mass };
         }
         let out = (reach(target) + w.kite_margin).max(INDIRECT_MIN_RANGE + 0.5);
         let d = me.pos.dist(target.pos);
@@ -490,25 +510,25 @@ impl Tactician {
         let loaded = me.shells > 0 && ready_in(me) <= (d - w.kite_in).max(0.0) / TANK_SPEED + 0.1;
         let step = loaded && others == 0 && (harmless || open || (stance == Stance::Press && crowd));
         if step {
-            let word = if harmless {
-                "closing: it has no shells"
+            let step = if harmless {
+                KiteStep::Close
             } else if open {
-                "stepping in: its gun is reloading"
+                KiteStep::StepInReloading
             } else {
-                "stepping in: it is busy with the group"
+                KiteStep::StepInBusy
             };
-            return Kite { to: in_at, stepping_in: true, word };
+            return Kite { to: in_at, stepping_in: true, step };
         }
-        let word = if !loaded && d < out - 0.5 {
-            "stepping out to reload"
+        let step = if !loaded && d < out - 0.5 {
+            KiteStep::StepOut
         } else if !loaded {
-            "holding past its reach, reloading"
+            KiteStep::HoldReloading
         } else if others > 0 {
-            "holding: other guns cover the way in"
+            KiteStep::HoldCovered
         } else {
-            "holding past its reach, gun loaded"
+            KiteStep::HoldLoaded
         };
-        Kite { to: self.stand(obs, target, from, out).0, stepping_in: false, word }
+        Kite { to: self.stand(obs, target, from, out).0, stepping_in: false, step }
     }
 
     /// Teammates nearer a ping than me: past `answer_cap` I stay.
@@ -621,11 +641,11 @@ mod tests {
         assert!(k.stepping_in && d < DIRECT_RANGE, "reloading: {:?} at {:.1}", k, d);
         place(&mut w, 3, c + V2::new(-9.0, 6.0));
         let (k, _) = look(&w, Stance::Engage);
-        assert!(!k.stepping_in && k.word.contains("other guns"), "a second gun: {:?}", k);
+        assert!(!k.stepping_in && k.step == KiteStep::HoldCovered, "a second gun: {:?}", k);
         place(&mut w, 3, c + V2::new(40.0, 30.0));
         w.tanks.iter_mut().find(|t| t.owner == 0).unwrap().reload = RELOAD_TICKS;
         let (k, _) = look(&w, Stance::Engage);
-        assert!(!k.stepping_in && k.word.contains("reload"), "own gun empty: {:?}", k);
+        assert!(!k.stepping_in && matches!(k.step, KiteStep::StepOut | KiteStep::HoldReloading), "own gun empty: {:?}", k);
         w.tanks.iter_mut().find(|t| t.owner == 0).unwrap().reload = 0;
         let (k, d) = look(&w, Stance::Mass);
         assert!(!k.stepping_in && d > DIRECT_RANGE * 1.5, "massing: {:?} at {:.1}", k, d);
@@ -634,7 +654,7 @@ mod tests {
         let (k, _) = look(&w, Stance::Engage);
         assert!(!k.stepping_in, "engaging, loaded, a teammate in: {:?}", k);
         let (k, _) = look(&w, Stance::Press);
-        assert!(k.stepping_in && k.word.contains("group"), "pressing with a teammate in: {:?}", k);
+        assert!(k.stepping_in && k.step == KiteStep::StepInBusy, "pressing with a teammate in: {:?}", k);
     }
 
     #[test]

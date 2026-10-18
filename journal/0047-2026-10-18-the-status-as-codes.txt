@@ -1,0 +1,72 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 04:30:00 -0700
+Subject: [JOURNAL 0047] The status as codes
+Message-ID: <0047.20261018@treadcore.org>
+In-Reply-To: <0046.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: status, codes, measurement, equivalence, roadmap 12b
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair. Paul: "do the status text as codes, commit and
+           push".
+X-Commits: c2451b9 (journal 0046, pushed); this entry's work is in the
+           tree
+
+                       THE STATUS AS CODES
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    Roadmap 12b's string item, after finding L3: the `why` and `doing`
+    strings formatted every think. Measured first, they cost nothing:
+    15 us a seat-tick with them or without. The real fault was that
+    the brain's logic and the census read the sentences back, so a
+    rewording could change play or a count. Every status is now
+    written with a code beside its words (status.rs: Act, HopAct,
+    CycleAct, KiteStep, Why, and the tactician's Tags), and logic and
+    measurement read the codes. A census match is identical before and
+    after.
+
+I. METHOD
+
+    The cost: one census match of 300 s, as it was and with the `why`
+    formatting stubbed out. The change: a one-off script rewrote each
+    status write into a call with its code, 81 in the Commander and 28
+    in the hop, after checking that every listed line was a write.
+    Five Commander sites that hold a borrow of the fort plan set the
+    two fields directly. The proof of equivalence: the same census
+    match (600 s, five new switches on) before and after, by stashing
+    the change.
+
+II. RESULTS
+
+    Cost: 14.9 and 15.0 us a seat-tick as it was, 15.3 and 15.7
+    without `why`, which is noise. Logic that read words, found and
+    moved to codes: the guard's busy check, the rotation's "on guard",
+    the focus call, and the census's part counts, kiting tally, step
+    shots and revive tracking. Equivalence: identical score, kills,
+    deaths, thinks, moves and crossings. Brain tests 63 passed, 8
+    ignored; client 31; no new clippy warnings.
+
+III. DISCUSSION
+
+    The step was asked for on L3's charge of repeated work, and the
+    measurement threw that charge out. It found a better reason in the
+    same place: a program that reads its own prose back is one typo
+    from changing how it plays. The diagnostic histograms of the quad
+    census still read the words, because their value is the detail the
+    codes leave out.
+
+IV. OPEN PROBLEMS
+
+    1. The Observation shared per team: the rest of 12b, a sim change
+       that must keep the world hash.
+    2. Backlog 18: twelve seeds a switch, longer matches.
+    3. Backlog 19: the 70 partial_cmp().unwrap() calls.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

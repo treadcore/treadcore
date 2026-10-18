@@ -31,6 +31,7 @@ pub mod ledger;
 pub mod memory;
 pub mod meter;
 pub mod rotation;
+pub mod status;
 pub mod tactics;
 pub mod weights;
 pub use commander::{Commander, Goal, Rung};
@@ -55,6 +56,11 @@ pub trait Brain: Send + Sync {
     /// for a brain without them.
     fn settings(&self) -> Option<&weights::Settings> {
         None
+    }
+    /// What it is doing, as a code (status.rs): for logic and the
+    /// census, where `status` is for people.
+    fn act(&self) -> status::Act {
+        status::Act::Idle
     }
     /// New weights mid-match (the coordination screen's sliders,
     /// backlog 15); a brain without them ignores it.
@@ -2185,7 +2191,6 @@ mod tests {
 #[cfg(test)]
 mod direct_fire {
     use super::*;
-    use treadcore_sim::*;
 
     /// Roadmap 12d, backlog 8 (LR 19): a direct shell flies five ticks at
     /// most (10 tiles at 40 a second), and a tank at full speed turning

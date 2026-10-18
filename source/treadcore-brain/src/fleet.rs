@@ -554,10 +554,11 @@ mod tests {
         let mut kinds: std::collections::BTreeMap<String, u32> = Default::default();
         let (mut kills, mut downs, mut revives, mut stuck, mut sunk, mut boats) = (0, 0, 0, 0, 0, 0);
         let mut sunk_by: std::collections::BTreeMap<&str, u32> = Default::default();
-        // Kiting's states, seat-ticks each, and the direct shots fired
-        // while stepping in (tactics.rs `kite`).
-        const KITE: [&str; 9] = ["stepping in: its gun", "stepping in: it is busy", "closing: it has no", "stepping out to reload", "holding: other guns", "holding past its reach", "massing out of", "lost sight of it", "kiting the intruder"];
-        let mut kite = [0u32; 9];
+        // Kiting's steps, seat-ticks each, by code (status.rs), with a
+        // rally that lost sight of its target and kiting at the base; and
+        // the direct shots fired while stepping in (tactics.rs `kite`).
+        let mut kite = [0u32; 8];
+        let (mut lost_sight, mut intruder) = (0u32, 0u32);
         let mut step_shots = 0u32;
         let mut cohesion = (0u32, 0u32);
         // Bridge and road tiles laid.
@@ -597,7 +598,8 @@ mod tests {
                 if w.tick % TICK_HZ as Tick == 0 && w.tanks.iter().any(|t| t.owner == *p && t.alive) {
                     last_status[*p as usize] = st.clone();
                 }
-                let now = st.contains("REVIVE:");
+                let act = b.act();
+                let now = act == crate::status::Act::Revive;
                 if reviving[*p as usize] && !now {
                     let ok = w.events.iter().any(|e| matches!(e, Event::Revived { by, .. } if by == p));
                     let alive = w.tanks.iter().any(|t| t.owner == *p && t.alive);
@@ -605,12 +607,14 @@ mod tests {
                     *revive_end.entry(to).or_default() += 1;
                 }
                 reviving[*p as usize] = now;
-                for (i, k) in KITE.iter().enumerate() {
-                    if st.contains(k) {
-                        kite[i] += 1;
-                    }
+                use crate::status::{Act, KiteStep};
+                if let Some(k) = act.kite() {
+                    kite[KiteStep::ALL.iter().position(|x| *x == k).unwrap()] += 1;
                 }
-                if st.contains("stepping in") && orders.iter().any(|o| o.player == *p && matches!(o.cmd, Command::FireDirect { .. })) {
+                lost_sight += (act == Act::RallyLost) as u32;
+                intruder += matches!(act, Act::Kite(_)) as u32;
+                let stepping = matches!(act.kite(), Some(KiteStep::StepInReloading | KiteStep::StepInBusy));
+                if stepping && orders.iter().any(|o| o.player == *p && matches!(o.cmd, Command::FireDirect { .. })) {
                     step_shots += 1;
                 }
             }
@@ -728,7 +732,13 @@ mod tests {
         }
         eprintln!("laid: {} bridge tiles, {} road tiles; bridge tiles by the three pilots {}, by the other seats {}", bridged, roaded, by_leader, by_other);
         eprintln!("fleet cohesion: {} of {} wingman samples within 12 tiles of the leader ({:.0}%)", cohesion.0, cohesion.1, 100.0 * cohesion.0 as f32 / cohesion.1.max(1) as f32);
-        eprintln!("kiting, seat-seconds: {}; direct shots fired stepping in: {}", KITE.iter().zip(kite.iter()).map(|(k, n)| format!("{} {:.0}", k, *n as f32 * DT)).collect::<Vec<_>>().join(", "), step_shots);
+        eprintln!(
+            "kiting, seat-seconds: {}, lost sight of it {:.0}, kiting the intruder {:.0}; direct shots fired stepping in: {}",
+            crate::status::KiteStep::ALL.iter().zip(kite.iter()).map(|(k, n)| format!("{} {:.0}", k.word(), *n as f32 * DT)).collect::<Vec<_>>().join(", "),
+            lost_sight as f32 * DT,
+            intruder as f32 * DT,
+            step_shots
+        );
         eprintln!("{}", crate::meter::read().line());
     }
 
@@ -806,8 +816,24 @@ mod tests {
                 .collect();
             let mut tally = Tally::new(&w);
             crate::meter::reset();
-            // Seat-seconds in each new part's words, the trial team's.
+            // Seat-seconds in each new part, the trial team's, by code
+            // (status.rs): a rewording of a status cannot move a count.
+            use crate::status::{Act, CycleAct, HopAct};
             const WORDS: [&str; 10] = ["base cycle", "relieving", "relieved", "cheaper by boat", "gathering the fleet", "road post", "a mine on the approach", "works for the base", "for the team", "ducking"];
+            let part = |a: Act| -> [bool; 10] {
+                [
+                    matches!(a, Act::Cycle(_)),
+                    a == Act::Relieving,
+                    a == Act::Relieved,
+                    a == Act::Hop(HopAct::CheaperByBoat),
+                    matches!(a, Act::Gather | Act::FetchGather),
+                    a == Act::RoadPost,
+                    a == Act::Cycle(CycleAct::Mine),
+                    a == Act::Cycle(CycleAct::Works),
+                    a == Act::TeamBridge,
+                    a == Act::Duck,
+                ]
+            };
             let mut words = [0u32; 10];
             while !w.over && w.tick < secs * TICK_HZ as Tick {
                 let orders = crate::run_bots(&w, &mut bots);
@@ -816,11 +842,8 @@ mod tests {
                 if w.tick % TICK_HZ as Tick == 0 {
                     for (p, b) in &bots {
                         if teams()[*p as usize] == lucky {
-                            let st = b.status();
-                            for (i, k) in WORDS.iter().enumerate() {
-                                if st.contains(k) {
-                                    words[i] += 1;
-                                }
+                            for (i, on) in part(b.act()).into_iter().enumerate() {
+                                words[i] += on as u32;
                             }
                         }
                     }

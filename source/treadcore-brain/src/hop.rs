@@ -28,6 +28,7 @@
 //!      target that took `MAX_BOATS` boats, or that even the sea does
 //!      not reach, is given up.
 
+use crate::status::HopAct;
 use treadcore_sim::*;
 
 /// Seconds of idling before a bot goes looking over the water.
@@ -147,8 +148,9 @@ pub struct Hop {
     /// The fleet lays the bridge with it (commander.rs): out of
     /// material, it waits at the end rather than fetches.
     pub helpers: usize,
-    /// What it is doing, for `status`.
+    /// What it is doing, for `status`, and its code (status.rs).
     pub doing: String,
+    pub act: crate::status::HopAct,
     /// Crossings asked of the map, kept, failures too (facts.rs,
     /// roadmap 12b); the islands, for pricing a crossing.
     pub facts: crate::facts::MapFacts,
@@ -169,6 +171,17 @@ impl Hop {
         self.bridge = None;
         self.road = None;
         self.adopted = false;
+    }
+
+    /// Say what it is doing: the code and the words (status.rs).
+    fn say(&mut self, act: HopAct, text: String) {
+        self.act = act;
+        self.doing = text;
+    }
+
+    /// Laying a teammate's bridge taken from the board.
+    pub fn adopted(&self) -> bool {
+        self.adopted
     }
 
     pub fn active(&self) -> bool {
@@ -210,7 +223,7 @@ impl Hop {
         self.idle_since = None;
         self.bridge = Some(Bridge { tiles, progress: now, fails: 0 });
         self.road = None;
-        self.doing = format!("bridging for the team to ({:.0},{:.0})", target.x, target.y);
+        self.say(HopAct::Bridging, format!("bridging for the team to ({:.0},{:.0})", target.x, target.y));
         true
     }
 
@@ -232,7 +245,7 @@ impl Hop {
         self.by_sea = true;
         self.boats = 0;
         self.sent = true;
-        self.doing = format!("by sea for ({:.0},{:.0})", to.x, to.y);
+        self.say(HopAct::BySea, format!("by sea for ({:.0},{:.0})", to.x, to.y));
         true
     }
 
@@ -256,7 +269,7 @@ impl Hop {
     fn give_up(&mut self, why: &str) {
         if let Some(t) = self.target.take() {
             self.tried.push((t.tile(), self.now));
-            self.doing = format!("gave up on ({:.0},{:.0}): {}", t.x, t.y, why);
+            self.say(HopAct::GaveUp, format!("gave up on ({:.0},{:.0}): {}", t.x, t.y, why));
         }
         self.by_sea = false;
         self.boats = 0;
@@ -296,14 +309,14 @@ impl Hop {
                 self.target = None;
                 self.sent = false;
                 self.by_sea = false;
-                self.doing = format!("bridge to ({:.0},{:.0}) finished for the team", target.x, target.y);
+                self.say(HopAct::TeamBridgeDone, format!("bridge to ({:.0},{:.0}) finished for the team", target.x, target.y));
                 return None;
             }
             // Done: by land, and the road on to the target.
             self.by_sea = false;
             self.road = Some(Self::road_line(map, me.pos, target));
             self.road_progress = None;
-            self.doing = format!("bridge built for ({:.0},{:.0})", target.x, target.y);
+            self.say(HopAct::BridgeBuilt, format!("bridge built for ({:.0},{:.0})", target.x, target.y));
             return None;
         };
         let left = b.tiles.len();
@@ -314,14 +327,14 @@ impl Hop {
         if obs.tick.saturating_sub(b.progress) as f32 * DT > limit || b.fails >= 3 {
             self.no_bridge.put(target.tile(), obs.tick);
             self.bridge = None;
-            self.doing = format!("bridge to ({:.0},{:.0}) given up: by boat", target.x, target.y);
+            self.say(HopAct::BridgeGivenUp, format!("bridge to ({:.0},{:.0}) given up: by boat", target.x, target.y));
             return None;
         }
         let mut cmds = Vec::new();
         let ready = obs.tick.saturating_sub(self.last_order) >= TICK_HZ as Tick;
         let squad = &me.pillboys;
         if !squad.aboard {
-            self.doing = format!("bridging to ({:.0},{:.0}): the squad is laying it, {} tiles left", target.x, target.y, left);
+            self.say(HopAct::Bridging, format!("bridging to ({:.0},{:.0}): the squad is laying it, {} tiles left", target.x, target.y, left));
             return Some(cmds);
         }
         if squad.strength == 0 {
@@ -330,7 +343,7 @@ impl Hop {
             return None;
         }
         if squad.material < ROAD_COST && self.helpers > 0 {
-            self.doing = format!("bridging to ({:.0},{:.0}): the fleet lays the next tile, {} left", target.x, target.y, left);
+            self.say(HopAct::Bridging, format!("bridging to ({:.0},{:.0}): the fleet lays the next tile, {} left", target.x, target.y, left));
             return Some(Vec::new());
         }
         if squad.material < ROAD_COST {
@@ -338,7 +351,7 @@ impl Hop {
             let forest = obs.forest.iter().filter(|f| f.dist(me.pos) <= 20.0).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).copied();
             let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
             let depot = obs.depots.iter().filter(|d| ours(d.owner) && d.pos.dist(me.pos) <= RESTOCK_WALK).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()).map(|d| d.pos);
-            self.doing = format!("bridging to ({:.0},{:.0}): fetching material, {} tiles left", target.x, target.y, left);
+            self.say(HopAct::Bridging, format!("bridging to ({:.0},{:.0}): fetching material, {} tiles left", target.x, target.y, left));
             if ready {
                 match (forest, depot) {
                     (Some(f), _) => cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: f } }),
@@ -368,7 +381,7 @@ impl Hop {
             }
             return Some(cmds);
         };
-        self.doing = format!("bridging to ({:.0},{:.0}): {} tiles left", target.x, target.y, left);
+        self.say(HopAct::Bridging, format!("bridging to ({:.0},{:.0}): {} tiles left", target.x, target.y, left));
         if ready {
             if me.pos.dist(stand) > 1.2 {
                 cmds.push(Command::Move { to: stand });
@@ -431,14 +444,14 @@ impl Hop {
         }
         let squad = &me.pillboys;
         if squad.material < ROAD_COST && squad.strength > 0 && self.helpers > 0 {
-            self.doing = format!("laying the road on from the bridge: the fleet lays the next tile, {} left", left);
+            self.say(HopAct::RoadOn, format!("laying the road on from the bridge: the fleet lays the next tile, {} left", left));
             return true;
         }
         if squad.material < ROAD_COST || squad.strength == 0 {
             self.road = None;
             return false;
         }
-        self.doing = format!("laying the road on from the bridge: {} tiles left", left);
+        self.say(HopAct::RoadOn, format!("laying the road on from the bridge: {} tiles left", left));
         if !squad.aboard {
             return true;
         }
@@ -604,7 +617,7 @@ impl Hop {
             self.idle_since = None;
             self.sent = false;
             self.adopted = false;
-            self.doing = format!("arrived at ({:.0},{:.0})", target.x, target.y);
+            self.say(HopAct::Arrived, format!("arrived at ({:.0},{:.0})", target.x, target.y));
             return None;
         }
         if self.boats > MAX_BOATS {
@@ -630,7 +643,7 @@ impl Hop {
             if self.sent && me.pos.dist(target) <= ARRIVED * 0.5 {
                 self.target = None;
                 self.sent = false;
-                self.doing = format!("at ({:.0},{:.0}), which is sea", target.x, target.y);
+                self.say(HopAct::AtSea, format!("at ({:.0},{:.0}), which is sea", target.x, target.y));
                 return None;
             }
             // The landing: of the beaches in sight near the target, the
@@ -640,8 +653,8 @@ impl Hop {
             // at the target whatever stood on its beach.
             let landing = self.landing(obs, target);
             match landing {
-                Some(b) => self.doing = format!("sailing for ({:.0},{:.0}), {:.0} tiles, landing at ({:.0},{:.0})", target.x, target.y, me.pos.dist(target), b.x, b.y),
-                None => self.doing = format!("sailing for ({:.0},{:.0}), {:.0} tiles", target.x, target.y, me.pos.dist(target)),
+                Some(b) => self.say(HopAct::Sailing, format!("sailing for ({:.0},{:.0}), {:.0} tiles, landing at ({:.0},{:.0})", target.x, target.y, me.pos.dist(target), b.x, b.y)),
+                None => self.say(HopAct::Sailing, format!("sailing for ({:.0},{:.0}), {:.0} tiles", target.x, target.y, me.pos.dist(target))),
             }
             let to = landing.unwrap_or(target);
             let changed = self.landing_at.map(|(b, t)| b.tile() == to.tile() && t == obs.tick).unwrap_or(false);
@@ -658,7 +671,7 @@ impl Hop {
                     return Some(cmds);
                 }
             }
-            self.doing = format!("driving for ({:.0},{:.0})", target.x, target.y);
+            self.say(HopAct::Driving, format!("driving for ({:.0},{:.0})", target.x, target.y));
             if me.goal.is_none() {
                 order(Command::Move { to: target }, &mut cmds, &mut self.last_order);
             }
@@ -682,7 +695,7 @@ impl Hop {
                         if crate::facts::bridge_it(s, t.len(), scarce) {
                             Some(t)
                         } else {
-                            self.doing = format!("{} tiles of water: cheaper by boat", t.len());
+                            self.say(HopAct::CheaperByBoat, format!("{} tiles of water: cheaper by boat", t.len()));
                             self.no_bridge.put(target.tile(), obs.tick);
                             None
                         }
@@ -722,7 +735,7 @@ impl Hop {
         if let Some(why) = Self::covered(obs, me) {
             let since = *self.held.get_or_insert(obs.tick);
             if (obs.tick.saturating_sub(since) as f32 * DT) < HOLD_LAUNCH {
-                self.doing = format!("holding the launch: {}", why);
+                self.say(HopAct::HoldingLaunch, format!("holding the launch: {}", why));
                 return Some(cmds);
             }
         } else {
@@ -744,7 +757,7 @@ impl Hop {
             if self.boarding.map(|(id, _, _)| id != b.id).unwrap_or(true) {
                 self.boarding = Some((b.id, b.pos, obs.tick));
             }
-            self.doing = format!("to the boat at ({:.0},{:.0})", b.pos.x, b.pos.y);
+            self.say(HopAct::ToBoat, format!("to the boat at ({:.0},{:.0})", b.pos.x, b.pos.y));
             if me.goal.is_none() {
                 order(Command::Move { to: b.pos }, &mut cmds, &mut self.last_order);
             }
@@ -752,7 +765,7 @@ impl Hop {
         }
         self.boarding = None;
         if !me.pillboys.aboard {
-            self.doing = "the squad is out".into();
+            self.say(HopAct::SquadOut, "the squad is out".into());
             return Some(cmds);
         }
         if me.pillboys.strength == 0 {
@@ -762,7 +775,7 @@ impl Hop {
         // Beside the water already: launch at once (`Command::Embark`),
         // no squad walk; refused, the squad builds one as before.
         if obs.tick >= self.no_embark_until && obs.launch.iter().any(|s| s.dist(me.pos) <= 1.6) {
-            self.doing = format!("launching a boat for ({:.0},{:.0})", target.x, target.y);
+            self.say(HopAct::Launching, format!("launching a boat for ({:.0},{:.0})", target.x, target.y));
             order(Command::Embark, &mut cmds, &mut self.last_order);
             return Some(cmds);
         }
@@ -780,7 +793,7 @@ impl Hop {
             };
             if (obs.tick.saturating_sub(since) as f32 * DT) <= BANK_FOR {
                 self.banking = Some((s, bank, since));
-                self.doing = format!("to the bank at ({:.0},{:.0}) to launch for ({:.0},{:.0})", s.x, s.y, target.x, target.y);
+                self.say(HopAct::ToBank, format!("to the bank at ({:.0},{:.0}) to launch for ({:.0},{:.0})", s.x, s.y, target.x, target.y));
                 if me.goal.is_none() || self.last_order + 4 * TICK_HZ as Tick <= obs.tick {
                     order(Command::Move { to: bank }, &mut cmds, &mut self.last_order);
                 }
@@ -794,13 +807,13 @@ impl Hop {
         if me.pillboys.material >= BOAT_COST || site.is_none() {
             match site {
                 Some(s) => {
-                    self.doing = format!("building a boat at ({:.0},{:.0}) for ({:.0},{:.0})", s.x, s.y, target.x, target.y);
+                    self.say(HopAct::BuildingBoat, format!("building a boat at ({:.0},{:.0}) for ({:.0},{:.0})", s.x, s.y, target.x, target.y));
                     order(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Boat, at: s } }, &mut cmds, &mut self.last_order);
                 }
                 None => {
                     // No bank in sight: walk toward the target's side of
                     // the island and look again.
-                    self.doing = "looking for a bank to launch from".into();
+                    self.say(HopAct::SeekingBank, "looking for a bank to launch from".into());
                     if me.goal.is_none() {
                         let to = obs.clamp(me.pos + (target - me.pos).norm().scale(8.0));
                         order(Command::Move { to }, &mut cmds, &mut self.last_order);
@@ -825,7 +838,7 @@ impl Hop {
         if let Some(d) = depot {
             self.scouting = None;
             self.restock = Some(d);
-            self.doing = format!("restocking at the depot for a boat: {}/{} material", me.pillboys.material, BOAT_COST);
+            self.say(HopAct::Restocking, format!("restocking at the depot for a boat: {}/{} material", me.pillboys.material, BOAT_COST));
             if me.pos.dist(d) > DEPOT_RADIUS * 0.5 && (me.goal.is_none() || self.last_order + 4 * TICK_HZ as Tick <= obs.tick) {
                 order(Command::Move { to: d }, &mut cmds, &mut self.last_order);
             }
@@ -835,7 +848,7 @@ impl Hop {
         match forest {
             Some(t) => {
                 self.scouting = None;
-                self.doing = format!("felling for a boat: {}/{} material", me.pillboys.material, BOAT_COST);
+                self.say(HopAct::Felling, format!("felling for a boat: {}/{} material", me.pillboys.material, BOAT_COST));
                 order(Command::Deploy { task: PillboyTask::Harvest { at: t } }, &mut cmds, &mut self.last_order);
                 Some(cmds)
             }
@@ -847,7 +860,7 @@ impl Hop {
                     self.give_up("no forest for a boat");
                     return None;
                 }
-                self.doing = format!("looking for forest for a boat, {:.0} s", (obs.tick - since) as f32 * DT);
+                self.say(HopAct::SeekingForest, format!("looking for forest for a boat, {:.0} s", (obs.tick - since) as f32 * DT));
                 if me.goal.is_none() {
                     let way = way + std::f32::consts::FRAC_PI_2 * ((obs.tick - since) as f32 * DT / 10.0).floor();
                     let to = obs.clamp(me.pos + V2::new(way.cos(), way.sin()).scale(12.0));

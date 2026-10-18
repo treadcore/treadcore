@@ -258,8 +258,11 @@ to 8.93 a seat).
 - [~] 12b memory: the plan copy gone (`Plan::turret_preview`), crossings
   cached with their failures (`facts::MapFacts`), reasons built for the
   winner only, given-up lists that can expire (`memory::Forget`,
-  `forget`). Not yet: the Observation shared per team (the sim change),
-  the `why` and `doing` strings as codes.
+  `forget`); the status as codes (LR 22, `status.rs`): logic, the
+  census and the coordination screen read codes, the words kept for
+  people; measured, the strings cost nothing, and a census match is
+  identical before and after. Not yet: the Observation shared per
+  team (the sim change).
 - [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
   The sliders, 18 October (LR 17): the coordination screen's weights

@@ -886,7 +886,7 @@ The findings of section 2, now:
 | --- | --- |
 | L1 first-match ladders | every number is a named weight with a slider; the ladder and the wingman's priorities are still fixed orders |
 | L2 a full world copy per bot per tick | unchanged: the Observation shared per team is 12b's remainder |
-| L3 repeated work | the plan copy and the reasons per candidate gone; the `why` and `doing` strings still formatted each tick |
+| L3 repeated work | the plan copy and the reasons per candidate gone; the status as codes (LR 22): the `why` column formatted only when the screen shows it, logic and census reading codes; the `doing` words still written, measured as costing nothing |
 | L4 failed searches not cached | answered: the crossing cache keeps failures 60 s |
 | L5 no shared team memory | the team board (off) |
 | L6 lists that never forget | `Forget` with `forget_for` (off) |
@@ -894,8 +894,8 @@ The findings of section 2, now:
 | L8 a reactive economy | the base cycle (`cycle`, off) |
 
 The numbers, 18 October evening:
-- 12,107 lines in 16 files (8,458 in 8 on 18 October morning).
-- Brain tests: 62 passed, 8 ignored; client: 31.
+- 12,566 lines in 17 files (8,458 in 8 on 18 October morning).
+- Brain tests: 63 passed, 8 ignored; client: 31.
 - 76 weights and 17 switches, with the duck (LR 21).
 - 23 to 33 us a seat-tick in the census.
 - On by default: kite, pings, dodge, bridges, rotate, and since 18
@@ -969,3 +969,69 @@ Fair census (naval.map, two seeds, six matches of 900 s, respawns 3):
 matches, 2 to 16 seat-seconds in five and 567 in one. The 0.51 is
 inside the noise; `duck` stays off, and its four weights are for the
 tuner.
+
+## 22. The status as codes, 18 October
+
+The last of 12b's string work. Finding L3 counted "six `why` strings
+and a `doing` string formatted every tick" as repeated work. The step
+measured the cost first, and found the case for codes was not speed.
+
+**The cost.** One census match (naval.map, 300 s), as it was and with
+the `why` formatting stubbed out: 14.9 and 15.0 us a seat-tick as it
+was, 15.3 and 15.7 without. The difference is noise. `why` is built
+only for tanks on auto. A `doing` string is one or two formats a
+think, about 0.1 us against a think of 15.
+
+**The case.** The brain's own logic and its measurements read the
+sentences back:
+- a guard counted as idle if its words began "on guard" or "to the
+  post", and the rotation looked for exactly "on guard";
+- a focus call went out if the target's reason said "called", "on it"
+  or "one shot";
+- the census counted its parts by substring, the quad census its kiting
+  steps by phrase and its revives by "REVIVE:";
+- the tests read the words.
+
+Rewording any of those sentences would have changed play or a count,
+silently.
+
+**The change** (`status.rs`, new):
+- **`Act`.** What a Commander is doing, 48 codes, three of them
+  carrying a `KiteStep` and two a step of the hop or the base cycle.
+  It is set beside the words at all 81 places the Commander writes
+  them: 76 through `set_doing`, and 5 that hold a borrow of the fort
+  plan set the two fields directly.
+- **`HopAct`.** The island hop's 23 steps, set at its 28 writes
+  (`Hop::say`).
+- **`CycleAct`.** The base cycle's steps; `Cycle::improvement` returns
+  the code, not words.
+- **`KiteStep`.** The tactician's eight kiting steps. `Kite::word`
+  became `Kite::step`, and its words come from `step.word()`.
+- **`Tags`.** The tactician keeps bits beside its reason (one shot,
+  called, on it), and the focus call reads them.
+- **`Why`.** The ladder's reasons, a code and its numbers; the
+  coordination screen puts them in words with `why_text`.
+- **`Brain::act`.** The census and the quad census count by code, the
+  ledger can carry one, and `code()` is a stable dotted name
+  (`kite.step_in.reloading`, `hop.bridging`).
+- The words stay, exactly as they were, for people: the status line,
+  the coordination screen, the logs.
+
+The quad census's diagnostic histograms (the status shapes, what a
+seat was doing when it went down, the stuck detector) still read the
+words. They want detail the codes do not carry: one hop code covers
+"bridging, the squad is laying it" and "bridging, fetching material".
+
+Proof:
+- `every_code_is_its_own`: no two codes the same.
+- The tests that checked logic by words now check codes: the duck, the
+  escort, the base under threat, and the tactician's three kiting
+  tests.
+- **The equivalence.** The codes must change nothing a tank does. One
+  census match (600 s, `board, cycle, escort, duck, bridge_jobs` on
+  for the trial team, `board` for all) before and after: identical, in
+  score, kills, deaths, thinks, moves and crossings.
+- Brain tests: 63 passed, 8 ignored; client 31.
+
+What is left of 12b is the Observation shared per team, a sim change
+that must keep the world hash.

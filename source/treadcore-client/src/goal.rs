@@ -87,7 +87,7 @@ impl Pilot {
         for r in Rung::ALL {
             let i = r.index();
             let now = b.goal == Goal::Auto && b.rung == Some(r);
-            t.push_str(&format!(" {} [{}] {} {:<12} {}\n", if now { ">" } else { " " }, if b.ladder[i] { "x" } else { " " }, i + 1, r.label(), b.why[i]));
+            t.push_str(&format!(" {} [{}] {} {:<12} {}\n", if now { ">" } else { " " }, if b.ladder[i] { "x" } else { " " }, i + 1, r.label(), b.why_text(i)));
         }
         if let Some((defense, push)) = b.rotation_points(obs) {
             t.push_str(&format!(

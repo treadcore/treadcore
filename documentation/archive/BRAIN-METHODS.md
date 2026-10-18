@@ -32,6 +32,7 @@ Section numbers are the lab report's (LR); dates are 2026.
 | `Tactician` building a list of reasons for every candidate (L3) | reasons for the winner only | 18 Oct, LR 11 | removed | `value()`, `rate()` |
 | A failed bridge search never cached (L4) | `MapFacts`' crossing cache, failures kept for 60 s | 18 Oct, LR 11 | removed | the meter: 438 crossings searched, 2,539 answered from the cache in six matches |
 | `Commander::set_settings` rebuilding the tactician, and able only to turn four switches off | the tactician updated in place; a switch off and on again gives back the role's own setting (`CapHeld`) | 18 Oct, LR 17 | removed | `a_switch_comes_back_and_a_slider_keeps_the_target` |
+| Logic and the census reading the status sentences back ("on guard", "called", "ducking" by substring) | codes beside the words (`status.rs`: `Act`, `HopAct`, `CycleAct`, `KiteStep`, `Why`, the tactician's `Tags`); the words kept for people | 18 Oct, LR 22 | removed | a census match identical before and after; `every_code_is_its_own` |
 | The window's pilot playing on no settings at all | the pilot on the weights page's settings, which start from the team file or `--weights` | 18 Oct, LR 17 | removed | `client::tune` |
 
 ## Current, challenger off
@@ -59,7 +60,8 @@ Section numbers are the lab report's (LR); dates are 2026.
 ## Still as they were
 
 Not every finding of LR 2 has an answer yet: the observation is still
-a full copy of the world per bot per tick (L2); the `why` and `doing`
-strings are still formatted every tick (L3); the Auto ladder and the
+a full copy of the world per bot per tick (L2); the `doing` words are
+still written every think, beside their codes, measured as costing
+nothing (L3, LR 22); the Auto ladder and the
 wingman's priorities are still first-match orders (L1); and 70
 `partial_cmp().unwrap()` calls would still panic on a NaN.

@@ -38,6 +38,7 @@
 //! Low on shells or armour, the tank goes home first whatever the rung.
 
 use crate::fortify::{Plan, Want};
+use crate::status::{Act, Why};
 use crate::{Brain, RuleBot, PILLBOY_REACH};
 use treadcore_sim::*;
 
@@ -224,13 +225,16 @@ pub struct Commander {
     pub plan: Option<Plan>,
     /// The hunter has the gun this tick: its target is live and theirs.
     gun_reserved: bool,
-    /// What it says it is doing, for the window's status line.
+    /// What it says it is doing, for the window's status line, and the
+    /// same as a code (status.rs), for logic and the census.
     pub doing: String,
-    /// Auto's rungs on and off, the one it is on, and each one's word
-    /// on its condition, for the coordination screen.
+    pub act: Act,
+    /// Auto's rungs on and off, the one it is on, and each one's reason
+    /// on its condition as a code, put into words for the coordination
+    /// screen by `why_text`.
     pub ladder: [bool; 6],
     pub rung: Option<Rung>,
-    pub why: [String; 6],
+    pub why: [Why; 6],
     /// The base: set the first time a base goal needs one.
     pub base: Option<V2>,
     /// A fleet's: the base is this player's depot, not my own (fleet.rs).
@@ -412,7 +416,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new() }
+        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new() }
     }
 
     /// The weights for its fights (tactics.rs); None shoots the nearest
@@ -554,13 +558,13 @@ impl Commander {
         // no way across): turn back for the other end.
         if self.over_water(leg.to) {
             self.rotation.out = !self.rotation.out;
-            self.doing = "rotation: no way there, turning back".into();
+            self.set_doing(Act::Rotation, "rotation: no way there, turning back".into());
             return true;
         }
         if me.pos.dist(leg.to) > crate::rotation::ARRIVED {
             self.go(obs, me, leg.to, cmds);
         }
-        self.doing = leg.word;
+        self.set_doing(Act::Rotation, leg.word);
         true
     }
 
@@ -597,13 +601,13 @@ impl Commander {
         let leg = self.rotation.leg(obs, me, slot, push);
         if self.over_water(leg.to) {
             self.rotation.out = !self.rotation.out;
-            self.doing = "rotation: no way there, turning back".into();
+            self.set_doing(Act::Rotation, "rotation: no way there, turning back".into());
             return true;
         }
         if me.pos.dist(leg.to) > ARRIVED {
             self.go(obs, me, leg.to, cmds);
         }
-        self.doing = leg.word.replace("the defense point", "the slot");
+        self.set_doing(Act::Rotation, leg.word.replace("the defense point", "the slot"));
         true
     }
 
@@ -621,6 +625,43 @@ impl Commander {
     }
 
     /// Low on what the goal needs: go home, and stay until full.
+    /// Say what it is doing: the code and the words (status.rs).
+    fn set_doing(&mut self, act: Act, text: String) {
+        self.act = act;
+        self.doing = text;
+    }
+
+    /// A rung's reason in words, for the coordination screen: the code
+    /// of `why` put into the sentence it has always been.
+    pub fn why_text(&self, rung: usize) -> String {
+        match self.why[rung] {
+            Why::Unknown => String::new(),
+            Why::ThreatTank(d) => format!("THREAT: a tank {:.0} tiles from the base", d),
+            Why::ThreatPillbox => "THREAT: a pillbox of the base is fighting".into(),
+            Why::Quiet { secs, within } => format!("quiet {:.0} s; nothing within {:.0} tiles", secs, within),
+            Why::Building { starved } => match &self.plan {
+                Some(p) if starved => format!("stopped, no forest: {}", p.progress()),
+                Some(p) => p.progress(),
+                None => "nothing built yet".into(),
+            },
+            Why::NothingBuilt => "nothing built yet".into(),
+            Why::CastleFirst => "after the castle stands".into(),
+            Why::TurretsStand => "both turrets stand".into(),
+            Why::Walling => "walling the yard in".into(),
+            Why::WaitingQuiet { need, now } => format!("waiting for {:.0} s of quiet ({:.0} now)", need, now),
+            Why::Carrying => "carrying one home".into(),
+            Why::Outlying(d) => format!("a pillbox of ours out at {:.0} tiles", d),
+            Why::NoOutlying => "no pillbox of ours out there to bring in".into(),
+            Why::PillboxNear(d) => format!("a pillbox not ours {:.0} tiles from the base", d),
+            Why::PillboxFar { within, nearest } => format!("none within {:.0}; the nearest is {:.0} out", within, nearest),
+            Why::AllPillboxesOurs => "every pillbox is ours or an ally's".into(),
+            Why::DepotNear(d) => format!("a depot not ours {:.0} tiles from the base", d),
+            Why::DepotsOursPillboxesFar => "every depot ours; pillboxes left far out".into(),
+            Why::MapOurs => "the map is ours".into(),
+            Why::Always => "always".into(),
+        }
+    }
+
     fn needs_home(&mut self, me: &Tank) -> bool {
         let (low_shells, low_armor) = if self.caps().has(crate::weights::Caps::SMOOTH) {
             use crate::weights::W;
@@ -693,7 +734,7 @@ impl Commander {
             .cloned();
         let Some(p) = target else {
             self.target = None;
-            self.doing = if self.given_up.is_empty() { "every pillbox is ours or an ally's".into() } else { format!("none left to take ({} given up)", self.given_up.len()) };
+            self.set_doing(Act::NoTarget, if self.given_up.is_empty() { "every pillbox is ours or an ally's".into() } else { format!("none left to take ({} given up)", self.given_up.len()) });
             return;
         };
         if self.target != Some(p.id) {
@@ -738,13 +779,13 @@ impl Commander {
                     cmds.push(Command::FireDirect { at: p.pos });
                     self.fired = Some((obs.tick, me.shells));
                 }
-                self.doing = format!("shelling the pillbox, {:.0} health left", p.health);
+                self.set_doing(Act::TakePillbox, format!("shelling the pillbox, {:.0} health left", p.health));
                 // Stand still while firing: a rolling tank leaves the ring.
                 if me.goal.is_some() && me.pos.dist(stand) < 1.5 {
                     cmds.push(Command::Stop);
                 }
             } else {
-                self.doing = format!("to the firing point, {:.0} tiles off", me.pos.dist(stand));
+                self.set_doing(Act::TakePillbox, format!("to the firing point, {:.0} tiles off", me.pos.dist(stand)));
                 self.go(obs, me, stand, cmds);
             }
             return;
@@ -754,26 +795,26 @@ impl Commander {
         if p.alive() && me.pos.dist(p.pos) <= PILLBOX_RANGE + 0.5 {
             self.go(obs, me, stand, cmds);
         } else if me.pos.dist(p.pos) > PILLBOY_REACH * 0.8 {
-            self.doing = "closing in for the squad".into();
+            self.set_doing(Act::TakePillbox, "closing in for the squad".into());
             self.go(obs, me, stand, cmds);
             return;
         }
         let squad = &me.pillboys;
         match &squad.task {
             Some(PillboyTask::Capture { pillbox }) if *pillbox == p.id => {
-                self.doing = format!("the squad is taking it, {:.0} s", (PILLBOX_CAPTURE_TICKS.saturating_sub(squad.progress)) as f32 * DT);
+                self.set_doing(Act::TakePillbox, format!("the squad is taking it, {:.0} s", (PILLBOX_CAPTURE_TICKS.saturating_sub(squad.progress)) as f32 * DT));
             }
             Some(_) => {
                 // Out on something else: bring them home first.
                 cmds.push(Command::Deploy { task: PillboyTask::Return });
-                self.doing = "calling the squad back".into();
+                self.set_doing(Act::TakePillbox, "calling the squad back".into());
             }
             None if squad.aboard && squad.strength > 0 => {
                 cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: p.id } });
-                self.doing = "sending the squad".into();
+                self.set_doing(Act::TakePillbox, "sending the squad".into());
             }
             None => {
-                self.doing = "no squad: to a depot for one".into();
+                self.set_doing(Act::NoSquad, "no squad: to a depot for one".into());
                 self.resupplying = true;
             }
         }
@@ -863,27 +904,27 @@ impl Commander {
                     Wing::Ahead(_) => "hitting what is ahead",
                     _ => "helping an ally",
                 };
-                self.doing = match kite {
-                    Some(k) => format!("{}: {}", what, k.word),
+                self.set_doing(kite.as_ref().map(|k| Act::WingKite(k.step)).unwrap_or(Act::Wing), match kite {
+                    Some(k) => format!("{}: {}", what, k.step.word()),
                     None => what.into(),
-                };
+                });
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
             }
             Wing::Pillbox => {
                 self.hunt(obs, me, Some((lp, WING_GREED)), cmds);
-                self.doing = format!("pillbox by the leader: {}", self.doing);
+                self.set_doing(Act::TakePillbox, format!("pillbox by the leader: {}", self.doing));
                 !self.gun_reserved
             }
             Wing::Depot(id) => {
                 let at = obs.depots.iter().find(|d| d.id == id).unwrap().pos;
                 self.go(obs, me, at, cmds);
-                self.doing = "taking the depot".into();
+                self.set_doing(Act::TakeDepot, "taking the depot".into());
                 true
             }
             Wing::Regroup if leader.boat && !me.boat && self.slot.is_some() && me.pos.dist(lp) <= WING_LEASH && !self.inner.hop.active() && self.inner.hop.send(lp) => {
                 // The leader is launching: launch with it (the hop finds
                 // the bank), and sail in the wedge (think's afloat fleet).
-                self.doing = "the leader is launching: launching with it".into();
+                self.set_doing(Act::WingSea, "the leader is launching: launching with it".into());
                 true
             }
             Wing::Regroup if leader.boat && !me.boat && self.slot.is_some() => {
@@ -892,12 +933,12 @@ impl Commander {
                 if me.goal.is_some() && me.pos.dist(lp) <= WING_LEASH {
                     cmds.push(Command::Stop);
                 }
-                self.doing = "the leader is afloat: waiting for its landing".into();
+                self.set_doing(Act::WingSea, "the leader is afloat: waiting for its landing".into());
                 true
             }
             Wing::Regroup if self.slot.is_some() && !self.inner.hop.active() && self.refused.iter().any(|(t, _)| V2::new(t.0 as f32 + 0.5, t.1 as f32 + 0.5).dist(lp) <= WING_LEASH) && self.inner.hop.send(lp) => {
                 // The leader is over the water: after it by sea.
-                self.doing = format!("following the leader by sea, to ({:.0},{:.0})", lp.x, lp.y);
+                self.set_doing(Act::WingSea, format!("following the leader by sea, to ({:.0},{:.0})", lp.x, lp.y));
                 true
             }
             Wing::Regroup => {
@@ -943,12 +984,12 @@ impl Commander {
                 if self.wing_rotate(obs, me, leader, to, map, cmds) {
                 } else if me.pos.dist(to) > 1.5 && !close {
                     self.go(obs, me, to, cmds);
-                    self.doing = format!("{}: closing up, {:.0} tiles", word, me.pos.dist(to));
+                    self.set_doing(Act::Wing, format!("{}: closing up, {:.0} tiles", word, me.pos.dist(to)));
                 } else {
                     if me.goal.is_some() && leader.speed < 0.3 {
                         cmds.push(Command::Stop);
                     }
-                    self.doing = word;
+                    self.set_doing(Act::Wing, word);
                 }
                 true
             }
@@ -989,7 +1030,7 @@ impl Commander {
             if obs.tick >= since + TOTAL_HOLD {
                 cmds.push(Command::Alliance(AllianceCmd::Leave));
                 self.total_since = None;
-                self.doing = "100% held: leaving the side with what it took".into();
+                self.set_doing(Act::Leave, "100% held: leaving the side with what it took".into());
             }
         } else {
             self.total_since = None;
@@ -1024,13 +1065,13 @@ impl Commander {
         // off the road, inside the squad's reach of every tile.
         let post = plan.post;
         self.defend(obs, me, post, None, cmds);
-        let busy = !self.doing.starts_with("on guard") && !self.doing.starts_with("to the post");
+        let busy = !matches!(self.act, Act::OnGuard | Act::ToPost);
         let squad = &me.pillboys;
         if !squad.aboard || squad.task.is_some() || squad.strength == 0 {
             if squad.strength == 0 {
-                self.doing = "no squad: waiting on the depot for one".into();
+                self.set_doing(Act::NoSquad, "no squad: waiting on the depot for one".into());
             } else if !busy {
-                self.doing = format!("the squad is building: {}", self.plan.as_ref().unwrap().progress());
+                self.set_doing(Act::Fortify, format!("the squad is building: {}", self.plan.as_ref().unwrap().progress()));
             }
             return;
         }
@@ -1041,6 +1082,7 @@ impl Commander {
         match plan.next(obs, squad.material) {
             Want::Order(task) => {
                 self.starved = false;
+                self.act = Act::Fortify;
                 self.doing = match &task {
                     PillboyTask::Harvest { .. } => "felling for material".into(),
                     _ => format!("building: {}", plan.progress()),
@@ -1049,10 +1091,11 @@ impl Commander {
             }
             Want::Starved => {
                 self.starved = true;
+                self.act = Act::Fortify;
                 self.doing = format!("no forest in reach; {}", plan.progress());
             }
-            Want::Wait => self.doing = format!("waiting on the site: {}", plan.progress()),
-            Want::Finished => self.doing = format!("the castle stands: {}", plan.progress()),
+            Want::Wait => { self.act = Act::Fortify; self.doing = format!("waiting on the site: {}", plan.progress()) },
+            Want::Finished => { self.act = Act::Fortify; self.doing = format!("the castle stands: {}", plan.progress()) },
         }
     }
 
@@ -1157,14 +1200,14 @@ impl Commander {
         // is, and the squad still mends from wherever the tank is.
         let rotating = tank.is_none() && !alarm && !self.rotation.off && me.pillboys.aboard;
         self.defend_within(obs, me, if rotating { me.pos } else { post }, BASE_ALARM, mend, cmds);
-        if rotating && self.doing == "on guard" {
+        if rotating && self.act == Act::OnGuard {
             self.rotate(obs, me, base, cmds);
         }
         if let Some(t) = &tank {
             let who = obs.players.iter().find(|p| p.id == t.owner).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", t.owner));
-            self.doing = format!("BASE UNDER THREAT: {} {:.0} tiles out; {}", who, t.pos.dist(base), self.doing);
+            self.set_doing(Act::BaseThreat, format!("BASE UNDER THREAT: {} {:.0} tiles out; {}", who, t.pos.dist(base), self.doing));
         } else if alarm {
-            self.doing = format!("BASE UNDER THREAT out of sight: to the pillbox that heard it; {}", self.doing);
+            self.set_doing(Act::BaseThreat, format!("BASE UNDER THREAT out of sight: to the pillbox that heard it; {}", self.doing));
         }
         !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
     }
@@ -1190,6 +1233,7 @@ impl Commander {
         let Some((slot, forest)) = plan.turret_slot() else {
             // The pillboxes are down: the walls that close them in.
             if plan.turrets_stand() {
+                self.act = Act::Turrets;
                 self.doing = format!("the turrets stand: {}", plan.progress());
                 self.rotate(obs, me, base, cmds);
             } else {
@@ -1203,16 +1247,16 @@ impl Commander {
             if squad.aboard && squad.task.is_none() {
                 cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: slot } });
                 self.plan.as_mut().unwrap().felling_slot(slot);
-                self.doing = "felling the turret's tile".into();
+                self.set_doing(Act::Turrets, "felling the turret's tile".into());
             } else {
-                self.doing = "waiting for the squad".into();
+                self.set_doing(Act::Turrets, "waiting for the squad".into());
             }
             return;
         }
         if squad.carrying.is_some() {
             self.fetching = None;
             if !squad.aboard || squad.task.is_some() {
-                self.doing = "the squad is setting a pillbox down".into();
+                self.set_doing(Act::Turrets, "the squad is setting a pillbox down".into());
                 return;
             }
             // A road post far out (roadmap 12h): carried out to it, the
@@ -1220,16 +1264,16 @@ impl Commander {
             let post = if slot.dist(base) > BASE_R + 2.0 { slot + (base - slot).norm().scale(3.0) } else { self.post(base) };
             if me.pos.dist(post) > DEFEND_HOLD {
                 self.go(obs, me, post, cmds);
-                self.doing = if slot.dist(base) > BASE_R + 2.0 { format!("carrying a pillbox to a road post, {:.0} tiles", me.pos.dist(post)) } else { format!("bringing a pillbox home, {:.0} tiles", me.pos.dist(post)) };
+                self.set_doing(if slot.dist(base) > BASE_R + 2.0 { Act::RoadPost } else { Act::CarryHome }, if slot.dist(base) > BASE_R + 2.0 { format!("carrying a pillbox to a road post, {:.0} tiles", me.pos.dist(post)) } else { format!("bringing a pillbox home, {:.0} tiles", me.pos.dist(post)) });
                 return;
             }
             cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Pillbox, at: slot } });
             self.plan.as_mut().unwrap().ordered(slot, obs.tick);
-            self.doing = format!("setting it down in a turret: {}", self.plan.as_ref().unwrap().progress());
+            self.set_doing(Act::Turrets, format!("setting it down in a turret: {}", self.plan.as_ref().unwrap().progress()));
             return;
         }
         if !squad.aboard || squad.task.is_some() {
-            self.doing = if matches!(squad.task, Some(PillboyTask::Lift { .. })) { "the squad is lifting it".into() } else { "waiting for the squad".into() };
+            self.set_doing(Act::Turrets, if matches!(squad.task, Some(PillboyTask::Lift { .. })) { "the squad is lifting it".into() } else { "waiting for the squad".into() });
             return;
         }
         let target = self.fetching.and_then(|id| obs.pillboxes.iter().find(|p| p.id == id && p.owner == Some(obs.player)).cloned()).or_else(|| self.outlying(obs, base));
@@ -1239,7 +1283,7 @@ impl Commander {
             if self.plan.as_ref().map(|p| p.yard_left()).unwrap_or(false) {
                 self.fortify(obs, me, Some(base), cmds);
             } else if !self.rotate(obs, me, base, cmds) {
-                self.doing = "no pillbox of ours out there to bring in".into();
+                self.set_doing(Act::NoTarget, "no pillbox of ours out there to bring in".into());
             }
             return;
         };
@@ -1250,20 +1294,20 @@ impl Commander {
         // waits for the wingmen first, so they go out in formation and
         // screen the carry home.
         if self.caps().has(crate::weights::Caps::ESCORT) && !self.members.is_empty() && p.pos.dist(base) > self.settings.w[crate::weights::W::FetchGather] && me.pos.dist(base) <= BASE_R + 2.0 && self.gathering(obs, me, cmds) {
-            self.doing = format!("{} (to fetch the pillbox at ({:.0},{:.0}))", self.doing, p.pos.x, p.pos.y);
+            self.set_doing(Act::FetchGather, format!("{} (to fetch the pillbox at ({:.0},{:.0}))", self.doing, p.pos.x, p.pos.y));
             return;
         }
         if me.pos.dist(p.pos) > FETCH_NEAR + 1.5 {
             let to = p.pos + (me.pos - p.pos).norm().scale(FETCH_NEAR);
             self.go(obs, me, to, cmds);
-            self.doing = format!("fetching the pillbox at ({:.0},{:.0}), {:.0} tiles", p.pos.x, p.pos.y, me.pos.dist(p.pos));
+            self.set_doing(Act::Fetch, format!("fetching the pillbox at ({:.0},{:.0}), {:.0} tiles", p.pos.x, p.pos.y, me.pos.dist(p.pos)));
             return;
         }
         if me.goal.is_some() {
             cmds.push(Command::Stop);
         }
         cmds.push(Command::Deploy { task: PillboyTask::Lift { pillbox: p.id } });
-        self.doing = "the squad is lifting it".into();
+        self.set_doing(Act::Fetch, "the squad is lifting it".into());
     }
 
     /// The ladder: each rung's condition, top down; the first that holds
@@ -1292,42 +1336,41 @@ impl Commander {
         ];
         self.why = [
             match (&tank, alarm) {
-                (Some(t), _) => format!("THREAT: a tank {:.0} tiles from the base", t.pos.dist(base)),
-                (None, true) => "THREAT: a pillbox of the base is fighting".into(),
-                _ => format!("quiet {:.0} s; nothing within {:.0} tiles", q, BASE_ALARM),
+                (Some(t), _) => Why::ThreatTank(t.pos.dist(base)),
+                (None, true) => Why::ThreatPillbox,
+                _ => Why::Quiet { secs: q, within: BASE_ALARM },
             },
             match &self.plan {
-                Some(p) if self.starved => format!("stopped, no forest: {}", p.progress()),
-                Some(p) => p.progress(),
-                None => "nothing built yet".into(),
+                Some(_) => Why::Building { starved: self.starved },
+                None => Why::NothingBuilt,
             },
             if !stands {
-                "after the castle stands".into()
+                Why::CastleFirst
             } else if !slot && !walls {
-                "both turrets stand".into()
+                Why::TurretsStand
             } else if !slot {
-                "walling the yard in".into()
+                Why::Walling
             } else if quiet < QUIET {
-                format!("waiting for {:.0} s of quiet ({:.0} now)", QUIET as f32 / TICK_HZ as f32, q)
+                Why::WaitingQuiet { need: QUIET as f32 / TICK_HZ as f32, now: q }
             } else if carrying {
-                "carrying one home".into()
+                Why::Carrying
             } else {
                 match &outlying {
-                    Some(p) => format!("a pillbox of ours out at {:.0} tiles", p.pos.dist(base)),
-                    None => "no pillbox of ours out there to bring in".into(),
+                    Some(p) => Why::Outlying(p.pos.dist(base)),
+                    None => Why::NoOutlying,
                 }
             },
             match wanted {
-                Some(d) if d <= EXPAND_R => format!("a pillbox not ours {:.0} tiles from the base", d),
-                Some(d) => format!("none within {:.0}; the nearest is {:.0} out", EXPAND_R, d),
-                None => "every pillbox is ours or an ally's".into(),
+                Some(d) if d <= EXPAND_R => Why::PillboxNear(d),
+                Some(d) => Why::PillboxFar { within: EXPAND_R, nearest: d },
+                None => Why::AllPillboxesOurs,
             },
             match (depot, wanted) {
-                (Some(d), _) => format!("a depot not ours {:.0} tiles from the base", d),
-                (None, Some(_)) => "every depot ours; pillboxes left far out".into(),
-                _ => "the map is ours".into(),
+                (Some(d), _) => Why::DepotNear(d),
+                (None, Some(_)) => Why::DepotsOursPillboxesFar,
+                _ => Why::MapOurs,
             },
-            "always".into(),
+            Why::Always,
         ];
         let mut rung = Rung::ALL.iter().copied().find(|r| self.ladder[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
         // Smoothed (roadmap 12d): a new rung must win `confirm` thinks in a
@@ -1455,7 +1498,7 @@ impl Commander {
         if let Some((tiles, target)) = b.take_bridge(obs.player, me.pos, self.settings.w[W::BridgeReach], obs.tick, |t| !hop.bridge_refused(t, obs.tick)) {
             let left = tiles.len();
             if self.inner.hop.adopt_bridge(tiles, target, obs.tick) {
-                self.doing = format!("taking the team's bridge to ({:.0},{:.0}), {} tiles left", target.x, target.y, left);
+                self.set_doing(Act::TeamBridge, format!("taking the team's bridge to ({:.0},{:.0}), {} tiles left", target.x, target.y, left));
             }
         }
     }
@@ -1547,7 +1590,7 @@ impl Commander {
             cmds.push(Command::Stop);
         }
         self.last_move = None;
-        self.doing = format!("gathering the fleet: {} of {} in formation, {:.0} s", near, fleet.len(), (obs.tick - since) as f32 * DT);
+        self.set_doing(Act::Gather, format!("gathering the fleet: {} of {} in formation, {:.0} s", near, fleet.len(), (obs.tick - since) as f32 * DT));
         true
     }
 
@@ -1581,14 +1624,14 @@ impl Commander {
         if guarded {
             self.gun_reserved = false;
             self.hunt(obs, me, Some((d.pos, guard)), cmds);
-            self.doing = format!("clearing the depot at ({:.0},{:.0}): {}", d.pos.x, d.pos.y, self.doing);
+            self.set_doing(Act::TakeDepot, format!("clearing the depot at ({:.0},{:.0}): {}", d.pos.x, d.pos.y, self.doing));
             return !self.gun_reserved;
         }
         if me.pos.dist(d.pos) > DEPOT_RADIUS * 0.5 {
             self.go(obs, me, d.pos, cmds);
-            self.doing = format!("to the depot at ({:.0},{:.0}), {:.0} tiles", d.pos.x, d.pos.y, me.pos.dist(d.pos));
+            self.set_doing(Act::TakeDepot, format!("to the depot at ({:.0},{:.0}), {:.0} tiles", d.pos.x, d.pos.y, me.pos.dist(d.pos)));
         } else {
-            self.doing = format!("taking the depot: {:.0}%", d.capture as f32 * 100.0 / CAPTURE_TICKS as f32);
+            self.set_doing(Act::TakeDepot, format!("taking the depot: {:.0}%", d.capture as f32 * 100.0 / CAPTURE_TICKS as f32));
         }
         true
     }
@@ -1632,7 +1675,7 @@ impl Commander {
                     let at_it = matches!(me.pillboys.task, Some(PillboyTask::Repair { target }) if target == id);
                     let name = obs.players.iter().find(|p| p.id == w.owner).map(|p| p.name.clone()).unwrap_or_default();
                     if at_it {
-                        self.doing = format!("REVIVE: the squad is mending {}, {:.0} s left", name, left(w));
+                        self.set_doing(Act::Revive, format!("REVIVE: the squad is mending {}, {:.0} s left", name, left(w)));
                         if me.goal.is_some() {
                             cmds.push(Command::Stop);
                         }
@@ -1653,15 +1696,15 @@ impl Commander {
                     if me.pos.dist(w.pos) > REVIVE_NEAR {
                         let to = w.pos + (me.pos - w.pos).norm().scale(REVIVE_NEAR * 0.6);
                         self.go(obs, me, to, cmds);
-                        self.doing = format!("REVIVE: to {}, {:.0} tiles, {:.0} s left{}", name, me.pos.dist(w.pos), left(w), if me.pillboys.aboard { "" } else { ", the squad called in" });
+                        self.set_doing(Act::Revive, format!("REVIVE: to {}, {:.0} tiles, {:.0} s left{}", name, me.pos.dist(w.pos), left(w), if me.pillboys.aboard { "" } else { ", the squad called in" }));
                     } else if me.pillboys.aboard {
                         cmds.push(Command::Deploy { task: PillboyTask::Repair { target: id } });
-                        self.doing = format!("REVIVE: the squad out to {}", name);
+                        self.set_doing(Act::Revive, format!("REVIVE: the squad out to {}", name));
                     } else {
                         if me.goal.is_some() {
                             cmds.push(Command::Stop);
                         }
-                        self.doing = format!("REVIVE: by {}, waiting for the squad, {:.0} s left", name, left(w));
+                        self.set_doing(Act::Revive, format!("REVIVE: by {}, waiting for the squad, {:.0} s left", name, left(w)));
                     }
                     return true;
                 }
@@ -1770,7 +1813,7 @@ impl Commander {
                 let spot = at + V2::new(-side.y, side.x).scale(1.2);
                 self.go(obs, me, spot, cmds);
             }
-            self.doing = format!("CHAIN: to help {} haul ({:.0},{:.0}), {:.0} tiles", name, at.x, at.y, me.pos.dist(at));
+            self.set_doing(Act::Chain, format!("CHAIN: to help {} haul ({:.0},{:.0}), {:.0} tiles", name, at.x, at.y, me.pos.dist(at)));
             return true;
         }
         // Hauling: where the chainer drives, a tile and a half to its side.
@@ -1778,7 +1821,7 @@ impl Commander {
         let across = (c.pos - at).norm();
         let beside = V2::new(-across.y, across.x).scale(1.5);
         self.go(obs, me, dest + beside, cmds);
-        self.doing = format!("CHAIN: hauling with {}", name);
+        self.set_doing(Act::Chain, format!("CHAIN: hauling with {}", name));
         true
     }
 
@@ -1839,11 +1882,11 @@ impl Commander {
                     if let Some(t) = self.inner.tactics.as_ref().filter(|_| !order) {
                         if fresh {
                             if let Some(n) = t.enough_answer(obs, me, *at, *player) {
-                                self.doing = format!("the ping at ({:.0},{:.0}): {} of us nearer, I keep at it", at.x, at.y, n);
+                                self.set_doing(Act::Ping, format!("the ping at ({:.0},{:.0}): {} of us nearer, I keep at it", at.x, at.y, n));
                                 continue;
                             }
                             if self.crew.working() && me.pos.dist(*at) > t.w.crew_reach {
-                                self.doing = format!("the ping at ({:.0},{:.0}): {:.0} out, past a crew's {:.0}", at.x, at.y, me.pos.dist(*at), t.w.crew_reach);
+                                self.set_doing(Act::Ping, format!("the ping at ({:.0},{:.0}): {:.0} out, past a crew's {:.0}", at.x, at.y, me.pos.dist(*at), t.w.crew_reach));
                                 continue;
                             }
                         }
@@ -1935,7 +1978,7 @@ impl Commander {
                     _ => None,
                 };
                 let word = match kite {
-                    Some(k) => format!("{}, {}", word, k.word),
+                    Some(k) => format!("{}, {}", word, k.step.word()),
                     None => word,
                 };
                 let (stand, guns) = match (kite, self.inner.tactics.as_ref()) {
@@ -1963,14 +2006,14 @@ impl Commander {
                             self.rally = None;
                             self.rally_cool = obs.tick + RALLY_COOL;
                             self.last_move = None;
-                            self.doing = format!("RALLY: a standoff with {}: back to the errand", who);
+                            self.set_doing(Act::Rally, format!("RALLY: a standoff with {}: back to the errand", who));
                             return false;
                         }
                     }
                     _ => self.kite_held = None,
                 }
                 self.go(obs, me, stand, cmds);
-                self.doing = format!("RALLY: on {} at ({:.0},{:.0}), the {} flank, odds {:.1}: {}{}", who, e.pos.x, e.pos.y, Self::flank_word(obs.player), at_odds, word, if guns > 0 { format!(", {} other guns on the spot", guns) } else { String::new() });
+                self.set_doing(kite.map(|k| Act::RallyKite(k.step)).unwrap_or(Act::Rally), format!("RALLY: on {} at ({:.0},{:.0}), the {} flank, odds {:.1}: {}{}", who, e.pos.x, e.pos.y, Self::flank_word(obs.player), at_odds, word, if guns > 0 { format!(", {} other guns on the spot", guns) } else { String::new() }));
             }
             None if me.pos.dist(at) <= 5.0 => {
                 self.rally = None;
@@ -1985,11 +2028,11 @@ impl Commander {
                     let to = at + (me.pos - at).norm().scale(ring);
                     self.go(obs, me, to, cmds);
                 }
-                self.doing = format!("RALLY: lost sight of it at ({:.0},{:.0}): holding past its reach", at.x, at.y);
+                self.set_doing(Act::RallyLost, format!("RALLY: lost sight of it at ({:.0},{:.0}): holding past its reach", at.x, at.y));
             }
             None => {
                 self.go(obs, me, at, cmds);
-                self.doing = format!("RALLY: to the ping at ({:.0},{:.0}), {:.0} tiles", at.x, at.y, me.pos.dist(at));
+                self.set_doing(Act::Rally, format!("RALLY: to the ping at ({:.0},{:.0}), {:.0} tiles", at.x, at.y, me.pos.dist(at)));
             }
         }
         true
@@ -2050,28 +2093,28 @@ impl Commander {
                     self.last_move = None;
                 }
                 self.go(obs, me, to, cmds);
-                self.doing = format!("kiting the intruder: {}", k.word);
+                self.set_doing(Act::Kite(k.step), format!("kiting the intruder: {}", k.step.word()));
             }
             (Some(t), None) if t.pos.dist(me.pos) <= DIRECT_RANGE - 0.2 => {
                 if me.reload == 0 && me.shells > 0 && obs.tick >= self.hold_fire_until {
                     cmds.push(Command::FireDirect { at: crate::lead(me, t) });
                 }
-                self.doing = "engaging an intruder".into();
+                self.set_doing(Act::Engage, "engaging an intruder".into());
             }
             (Some(t), None) => {
                 // Between the intruder and what is defended, not past it.
                 let toward = at + (t.pos - at).norm().scale(DEFEND_HOLD.min(t.pos.dist(at)));
                 self.go(obs, me, toward, cmds);
-                self.doing = "moving to cover it".into();
+                self.set_doing(Act::Cover, "moving to cover it".into());
             }
             (None, _) => {
                 if me.pos.dist(at) > DEFEND_HOLD && self.over_water(at) {
-                    self.doing = format!("the post is over the water, {:.0} tiles, and no boat: holding here", me.pos.dist(at));
+                    self.set_doing(Act::NoWayToPost, format!("the post is over the water, {:.0} tiles, and no boat: holding here", me.pos.dist(at)));
                 } else if me.pos.dist(at) > DEFEND_HOLD {
                     self.go(obs, me, at, cmds);
-                    self.doing = format!("to the post, {:.0} tiles", me.pos.dist(at));
+                    self.set_doing(Act::ToPost, format!("to the post, {:.0} tiles", me.pos.dist(at)));
                 } else {
-                    self.doing = "on guard".into();
+                    self.set_doing(Act::OnGuard, "on guard".into());
                 }
             }
         }
@@ -2081,11 +2124,11 @@ impl Commander {
                 let squad = &me.pillboys;
                 if p.health < PILLBOX_HEALTH * 0.7 && squad.aboard && squad.task.is_none() && squad.material >= PILLBOX_REPAIR_COST && threat.is_none() {
                     cmds.push(Command::Deploy { task: PillboyTask::Repair { target: id } });
-                    self.doing = "mending the pillbox".into();
+                    self.set_doing(Act::Mend, "mending the pillbox".into());
                 } else if !p.alive() && p.owner != Some(obs.player) && squad.aboard && squad.task.is_none() && squad.strength > 0 {
                     // Lost while we watched: take it back.
                     cmds.push(Command::Deploy { task: PillboyTask::Capture { pillbox: id } });
-                    self.doing = "taking the pillbox back".into();
+                    self.set_doing(Act::Retake, "taking the pillbox back".into());
                 }
             }
         }
@@ -2103,6 +2146,10 @@ impl Brain for Commander {
 
     fn set_settings(&mut self, s: crate::weights::Settings) {
         Commander::set_settings(self, s);
+    }
+
+    fn act(&self) -> Act {
+        self.act
     }
 
     fn status(&self) -> String {
@@ -2201,7 +2248,7 @@ impl Commander {
         // of the side's scores lean the same way (a focus call).
         // Only a fight in reach: a call on a tank sixty tiles off is noise.
         let near = |t: &crate::tactics::Tactician| t.target.and_then(|id| obs.tanks.iter().find(|x| x.id == id)).zip(obs.me.as_ref()).map(|(x, me)| x.pos.dist(me.pos) <= FOCUS_REACH).unwrap_or(false);
-        if let Some(t) = self.inner.tactics.as_ref().filter(|t| t.switched && near(t) && (t.reason.contains("called") || t.reason.contains("on it") || t.reason.contains("one shot"))) {
+        if let Some(t) = self.inner.tactics.as_ref().filter(|t| t.switched && near(t) && t.tags & crate::tactics::Tags::FOCUS != 0) {
             if self.pings && obs.tick >= self.focus_said + FOCUS_EVERY {
                 self.focus_said = obs.tick;
                 self.say.push(format!("focus {}", t.reason));
@@ -2246,7 +2293,7 @@ impl Commander {
                     let ours = self.last_move.map(|(at, _)| at.tile() == to.tile()).unwrap_or(false);
                     if self.rally.map(|(r, _)| r.dist(*to) <= DIRECT_RANGE * 2.0).unwrap_or(false) {
                         self.rally = None;
-                        self.doing = format!("the fight at ({:.0},{:.0}) is over the water: not by boat", to.x, to.y);
+                        self.set_doing(Act::NoBoat, format!("the fight at ({:.0},{:.0}) is over the water: not by boat", to.x, to.y));
                     } else if ours && obs.me.as_ref().map(|t| t.alive && !t.boat).unwrap_or(false) && self.inner.hop.send(*to) {
                         self.last_move = None;
                     }
@@ -2264,7 +2311,7 @@ impl Commander {
             }
             self.flush_say(obs, &mut cmds);
             self.reviving = None;
-            self.doing = if down { format!("down: {:.0} s for an ally to revive", (me.last_hit_tick + DOWNED_TICKS as Tick).saturating_sub(obs.tick) as f32 * DT) } else { "dead".into() };
+            self.set_doing(if down { Act::Down } else { Act::Dead }, if down { format!("down: {:.0} s for an ally to revive", (me.last_hit_tick + DOWNED_TICKS as Tick).saturating_sub(obs.tick) as f32 * DT) } else { "dead".into() });
             return cmds;
         }
         // Afloat, whatever the goal: the doctrine's run for the beach
@@ -2284,7 +2331,7 @@ impl Commander {
         if dodge.is_some() || (self.dodges && self.dodge.holding(obs, &me)) {
             cmds.extend(dodge);
             self.last_move = None;
-            self.doing = "dodging".into();
+            self.set_doing(Act::Dodge, "dodging".into());
             cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
             return cmds;
         }
@@ -2297,7 +2344,7 @@ impl Commander {
                     cmds.push(Command::Move { to });
                     self.duck_to = Some((to, obs.tick));
                 }
-                self.doing = format!("ducking a gun at ({:.0},{:.0})", from.x, from.y);
+                self.set_doing(Act::Duck, format!("ducking a gun at ({:.0},{:.0})", from.x, from.y));
                 cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
                 return cmds;
             }
@@ -2349,13 +2396,13 @@ impl Commander {
                     cmds.push(Command::Move { to: obs.clamp(to) });
                     self.last_move = Some((to, obs.tick));
                 }
-                self.doing = format!("{}, slot {}", word, self.slot.unwrap() + 1);
+                self.set_doing(Act::WingSea, format!("{}, slot {}", word, self.slot.unwrap() + 1));
                 cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
                 return cmds;
             }
         }
         if me.boat || (self.inner.hops && self.inner.hop.active()) {
-            self.doing = self.inner.status();
+            self.set_doing(if self.inner.hop.adopted() { Act::TeamBridge } else { Act::Hop(self.inner.hop.act) }, self.inner.status());
             return doctrine;
         }
         // A teammate on a chain alone: help haul it.
@@ -2394,7 +2441,7 @@ impl Commander {
             let working = self.crew.working() && free;
             cmds.extend(work);
             if working {
-                self.doing = self.crew.doing.clone();
+                self.set_doing(Act::Crew, self.crew.doing.clone());
                 self.last_move = None;
                 self.flush_say(obs, &mut cmds);
                 cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
@@ -2426,7 +2473,7 @@ impl Commander {
                 if since.map(|t| obs.tick >= t + wait).unwrap_or(false) {
                     self.base_owner.get_or_insert(l);
                     self.set_goal(Goal::Auto);
-                    self.doing = "the leader is down: taking command".into();
+                    self.set_doing(Act::TakeCommand, "the leader is down: taking command".into());
                 }
             }
         }
@@ -2469,7 +2516,7 @@ impl Commander {
                 }
                 let to = self.scoot.unwrap().0;
                 self.go(obs, &me, to, &mut cmds);
-                self.doing = "under fire from out of sight: scooting, recon up".into();
+                self.set_doing(Act::Scoot, "under fire from out of sight: scooting, recon up".into());
                 cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
                 return cmds;
             }
@@ -2478,7 +2525,7 @@ impl Commander {
         }
         if self.needs_home(&me) {
             if let Some(home) = self.home(obs, &me) {
-                self.doing = format!("home to resupply, {:.0} tiles", me.pos.dist(home));
+                self.set_doing(Act::Resupply, format!("home to resupply, {:.0} tiles", me.pos.dist(home)));
                 self.go(obs, &me, home, &mut cmds);
                 cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
                 return cmds;
@@ -2498,7 +2545,7 @@ impl Commander {
                     }
                     self.resupplying = true;
                     if let Some(home) = self.home(obs, &me) {
-                        self.doing = "relieved: home to fill up".into();
+                        self.set_doing(Act::Relieved, "relieved: home to fill up".into());
                         self.go(obs, &me, home, &mut cmds);
                         cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
                         return cmds;
@@ -2506,7 +2553,7 @@ impl Commander {
                 }
                 Some(crate::board::BoardOrder::Relieve(at)) => {
                     self.defend(obs, &me, at, None, &mut cmds);
-                    self.doing = format!("relieving a teammate at ({:.0},{:.0})", at.x, at.y);
+                    self.set_doing(Act::Relieving, format!("relieving a teammate at ({:.0},{:.0})", at.x, at.y));
                     let gun_free = !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }));
                     cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, gun_free)));
                     return cmds;
@@ -2522,7 +2569,7 @@ impl Commander {
                 (true, Some(base)) => {
                     if let Some((c, word)) = self.cycle.think(obs, &me, base, self.plan.as_mut(), &self.settings, map) {
                         cmds.extend(c);
-                        self.doing = word;
+                        self.set_doing(Act::Cycle(self.cycle.act), word);
                         let post = self.post(base);
                         if me.pos.dist(post) > 3.0 {
                             self.go(obs, &me, post, &mut cmds);
@@ -2553,7 +2600,7 @@ impl Commander {
                         self.goal = Goal::DefendPillbox(Some(p.id));
                         self.defend(obs, &me, p.pos, Some(p.id), &mut cmds);
                     }
-                    None => self.doing = "no pillbox of ours to defend".into(),
+                    None => self.set_doing(Act::Defend, "no pillbox of ours to defend".into()),
                 }
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
             }
@@ -2569,14 +2616,14 @@ impl Commander {
                         let guard = obs.pillboxes.iter().filter(|p| p.owner == Some(obs.player) && p.pos.dist(d.pos) <= PILLBOX_RANGE).min_by(|a, b| a.pos.dist(d.pos).partial_cmp(&b.pos.dist(d.pos)).unwrap()).map(|p| p.id);
                         self.defend(obs, &me, d.pos, guard, &mut cmds);
                     }
-                    None => self.doing = "no depot of ours to defend".into(),
+                    None => self.set_doing(Act::Defend, "no depot of ours to defend".into()),
                 }
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
             }
             Goal::Escort(who) => match obs.tanks.iter().find(|t| t.owner == who && t.alive).cloned() {
                 Some(leader) => self.fly_wing(obs, &me, &leader, map, &mut cmds),
                 None => {
-                    self.doing = "the leader is not in sight".into();
+                    self.set_doing(Act::Escort, "the leader is not in sight".into());
                     true
                 }
             },
@@ -2688,7 +2735,7 @@ mod tests {
         for _ in 0..(1200 * TICK_HZ) {
             let mut orders: Vec<Order> = c.think_on(&w.observe(0), Some(&w.map)).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
             orders.extend(wing.think_on(&w.observe(2), Some(&w.map)).into_iter().map(|cmd| Order { player: 2, cmd }));
-            if c.rung == Some(Rung::Turrets) && c.doing.contains("gathering the fleet") && c.doing.contains("to fetch") {
+            if c.rung == Some(Rung::Turrets) && c.act == Act::FetchGather {
                 gathered = true;
             }
             w.step(&orders);
@@ -2741,20 +2788,20 @@ mod tests {
         let cmds = c.think_on(&w.observe(0), Some(&w.map));
         let to = cmds.iter().find_map(|c| match c { Command::Move { to } => Some(*to), _ => None }).expect("a duck");
         assert!(to.dist(V2::new(71.5, 64.5)) > DIRECT_RANGE + 1.0, "out of its reach: {:?}", to);
-        assert!(c.doing.starts_with("ducking"), "{}", c.doing);
+        assert_eq!(c.act, Act::Duck, "{}", c.doing);
         let mut w2 = setup();
         for t in w2.tanks.iter_mut() {
             t.reload = if t.owner == 0 { 0 } else { 60 };
         }
         let mut c = commander(on, 1.0);
         c.think_on(&w2.observe(0), Some(&w2.map));
-        assert!(!c.doing.starts_with("ducking"), "my gun is ready first: {}", c.doing);
+        assert_ne!(c.act, Act::Duck, "my gun is ready first: {}", c.doing);
         let mut c = commander(on, 0.0);
         c.think_on(&w.observe(0), Some(&w.map));
-        assert!(!c.doing.starts_with("ducking"), "w_duck 0 never ducks");
+        assert_ne!(c.act, Act::Duck, "w_duck 0 never ducks");
         let mut c = commander(Caps::BASELINE, 1.0);
         c.think_on(&w.observe(0), Some(&w.map));
-        assert!(!c.doing.starts_with("ducking"), "off, no duck");
+        assert_ne!(c.act, Act::Duck, "off, no duck");
         // The duel: the gunner stands and fires a led shot whenever it
         // can; my tank holds its post, its gun held reloading, so the
         // gunner is always ready first and it never answers.
@@ -3271,7 +3318,7 @@ mod tests {
             }
             let obs = w.observe(0);
             let orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
-            warned |= c.doing.starts_with("BASE UNDER THREAT");
+            warned |= c.act == Act::BaseThreat;
             w.step(&orders);
             for e in &w.events {
                 match e {
@@ -3536,7 +3583,7 @@ mod tests {
                 }
             }
             if std::env::var("COMMANDER_TRACE").is_ok() && w.tick % (5 * TICK_HZ as Tick) == 0 && w.tick > 330 * TICK_HZ as Tick {
-                eprintln!("[{:>6.1}s] {:?} doing '{}' at {:?} squad {:?} why {:?}", w.tick as f32 / TICK_HZ as f32, c.rung, c.doing, w.tanks[0].pos, (w.tanks[0].pillboys.aboard, &w.tanks[0].pillboys.task, w.tanks[0].pillboys.carrying), c.why[2]);
+                eprintln!("[{:>6.1}s] {:?} doing '{}' at {:?} squad {:?} why {:?}", w.tick as f32 / TICK_HZ as f32, c.rung, c.doing, w.tanks[0].pos, (w.tanks[0].pillboys.aboard, &w.tanks[0].pillboys.task, w.tanks[0].pillboys.carrying), c.why_text(2));
             }
             for e in &w.events {
                 if std::env::var("COMMANDER_TRACE").is_ok() {

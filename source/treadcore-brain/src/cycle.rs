@@ -17,6 +17,7 @@
 //! never holds a tank long; a hostile tank near ends it (the Commander
 //! checks that before asking).
 
+use crate::status::CycleAct;
 use crate::fortify::{Plan, Want};
 use crate::weights::{Settings, W};
 use treadcore_sim::*;
@@ -52,6 +53,8 @@ pub struct Cycle {
     out: bool,
     /// Mines laid on the approach this match.
     mines: u8,
+    /// The step it is on, as a code (status.rs).
+    pub act: CycleAct,
 }
 
 impl Cycle {
@@ -112,17 +115,17 @@ impl Cycle {
     /// (worth its hurt); a mine on the approach, past the wall facing
     /// the threat and off the road (worth half, at most `MINES`); works
     /// on a free pad by the base, a power plant first (worth half).
-    pub fn improvement(obs: &Observation, base: V2, facing: Option<V2>, s: &Settings, material: u8, mines: u8) -> Option<(PillboyTask, &'static str)> {
+    pub fn improvement(obs: &Observation, base: V2, facing: Option<V2>, s: &Settings, material: u8, mines: u8) -> Option<(PillboyTask, CycleAct)> {
         let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
-        let mut best: Option<(f32, PillboyTask, &'static str)> = None;
-        let mut offer = |u: f32, t: PillboyTask, w: &'static str| {
+        let mut best: Option<(f32, PillboyTask, CycleAct)> = None;
+        let mut offer = |u: f32, t: PillboyTask, w: CycleAct| {
             if u > 0.0 && best.as_ref().map(|b| u > b.0).unwrap_or(true) {
                 best = Some((u, t, w));
             }
         };
         if let Some(p) = obs.pillboxes.iter().filter(|p| ours(p.owner) && p.pos.dist(base) <= CONNECT_NEAR && p.health < PILLBOX_HEALTH * MEND_BELOW).min_by(|a, b| a.health.total_cmp(&b.health).then(a.id.cmp(&b.id))) {
             if material >= 1 {
-                offer(s.w[W::Mend] * (1.0 - p.health / PILLBOX_HEALTH), PillboyTask::Repair { target: p.id }, "base cycle: mending the base");
+                offer(s.w[W::Mend] * (1.0 - p.health / PILLBOX_HEALTH), PillboyTask::Repair { target: p.id }, CycleAct::Mend);
             }
         }
         if let Some(f) = facing.filter(|_| material >= BuildKind::Mine.cost() && mines < MINES) {
@@ -131,14 +134,14 @@ impl Cycle {
             let k = mines as f32;
             let side = if mines % 2 == 0 { 1.0 } else { -1.0 };
             let at = Map::tile_centre(base + f.scale(r) + across.scale(side * (2.0 + k)));
-            offer(s.w[W::Mine] * 0.5, PillboyTask::Build { what: BuildKind::Mine, at }, "base cycle: a mine on the approach");
+            offer(s.w[W::Mine] * 0.5, PillboyTask::Build { what: BuildKind::Mine, at }, CycleAct::Mine);
         }
         let built = |p: V2| obs.structures.iter().any(|x| x.alive() && x.pos.dist(p) < 0.5);
         if let Some(pad) = obs.pads.iter().copied().filter(|p| p.dist(base) <= CONNECT_NEAR && !built(*p)).min_by(|a, b| a.dist(base).total_cmp(&b.dist(base))) {
             let powered = obs.structures.iter().any(|x| x.alive() && ours(x.owner) && x.kind == StructureKind::Power && x.pos.dist(base) <= POWER_RANGE);
             let kind = if powered { StructureKind::Workshop } else { StructureKind::Power };
             if material >= kind.cost() {
-                offer(s.w[W::Works] * 0.5, PillboyTask::Build { what: BuildKind::Structure(kind), at: pad }, "base cycle: works for the base");
+                offer(s.w[W::Works] * 0.5, PillboyTask::Build { what: BuildKind::Structure(kind), at: pad }, CycleAct::Works);
             }
         }
         best.map(|(_, t, w)| (t, w))
@@ -208,7 +211,8 @@ impl Cycle {
             return None;
         }
         if !squad.aboard || squad.task.is_some() {
-            return Some((Vec::new(), "base cycle: the squad is out".into()));
+            self.act = CycleAct::SquadOut;
+            return Some((Vec::new(), CycleAct::SquadOut.word().into()));
         }
         if self.out {
             // The squad came back from the stage's order: on to the next.
@@ -237,7 +241,8 @@ impl Cycle {
                         if !felling {
                             self.out = true;
                         }
-                        return Some((cmds, if felling { "base cycle: felling for the item".into() } else { "base cycle: one item for the base".into() }));
+                        self.act = if felling { CycleAct::Felling } else { CycleAct::Item };
+                        return Some((cmds, self.act.word().into()));
                     }
                     None => self.advance(now),
                 }
@@ -251,13 +256,14 @@ impl Cycle {
             // wanted; `upgrade_vs_mend` will give 11g's upgrades their
             // share of the slot once there are upgrades to buy.
             match Self::improvement(obs, base, facing, s, squad.material, self.mines).filter(|_| s.w[W::GiveUpgrade] > 0.0) {
-                Some((task, word)) => {
+                Some((task, act)) => {
                     if matches!(task, PillboyTask::Build { what: BuildKind::Mine, .. }) {
                         self.mines += 1;
                     }
                     cmds.push(Command::Deploy { task });
                     self.out = true;
-                    return Some((cmds, word.into()));
+                    self.act = act;
+                    return Some((cmds, act.word().into()));
                 }
                 None => self.advance(now),
             }
@@ -291,7 +297,8 @@ impl Cycle {
                     self.laid += 1;
                     // Each tile is its own trip; stay on Connect.
                     self.since = now;
-                    return Some((cmds, format!("base cycle: road out, tile {} of {}", self.laid, n)));
+                    self.act = CycleAct::Road;
+                    return Some((cmds, format!("{}, tile {} of {}", CycleAct::Road.word(), self.laid, n)));
                 }
                 None => self.advance(now),
             }
