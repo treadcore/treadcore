@@ -703,6 +703,17 @@ and other players see their own pick for their own side. Turrets turn
 to what they fire at, treads roll as tanks drive, and tracks and scorch
 marks stay on the ground a while.
 
+**Game speed.** **`** (backquote; game-speed in Key Setup) steps the
+match through 1x, 2x and 4x: the world, the bots and the match clock
+all run that many times as fast, and the title bar shows `x2` or `x4`.
+Only the host's window changes it (a joined window says "the host
+sets it" and follows the host's pace by itself). `--speed 4` or
+`SPEED=4` starts there, also for `make quad` and `treadcore-server`.
+When the host cannot keep up, its ticks falling under 85% of the
+speed (frames of the world skipped), the speed steps down a notch (4x to 2x to
+1x) and the newswire says why; after 30 s of keeping up easily it
+tries the next notch up again, never above what you asked for.
+
 ## 9. Sides
 
 Everyone starts on a side (with `TEAMS`, a side of several; without,

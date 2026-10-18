@@ -64,13 +64,14 @@ pub enum Action {
     Leave,
     Mute,
     TankStyle,
+    Speed,
     KeySetup,
 }
 
 use Action::*;
 
 impl Action {
-    pub const ALL: [Action; 38] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, KeySetup];
+    pub const ALL: [Action; 39] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, Speed, KeySetup];
 
     /// The word in the file and in Key Setup.
     pub fn word(self) -> &'static str {
@@ -112,6 +113,7 @@ impl Action {
             Leave => "leave-side",
             Mute => "mute",
             TankStyle => "tank-style",
+            Speed => "game-speed",
             KeySetup => "key-setup",
         }
     }
@@ -167,6 +169,7 @@ impl Action {
             Leave => KeyCode::KeyL,
             Mute => KeyCode::KeyM,
             TankStyle => KeyCode::KeyT,
+            Speed => KeyCode::Backquote,
             KeySetup => KeyCode::KeyK,
         }
     }

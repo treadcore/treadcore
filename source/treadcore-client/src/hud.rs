@@ -821,7 +821,7 @@ fn top(view: &View) -> String {
             me.map(|p| p.team).unwrap_or(0),
             obs.tick,
             obs.seconds(),
-            view.status,
+            if view.speed > 1.01 || view.speed < 0.99 { format!("{}  x{}", view.status, view.speed) } else { view.status.clone() },
             t.map(|t| if obs.tick.saturating_sub(t.last_hit_tick) < (3 * TICK_HZ) as Tick && t.last_hit_tick > 0 { "   !! UNDER FIRE !!" } else { "" }).unwrap_or("")
         );
         // Under a goal (step 11a), what the tank is doing for it.

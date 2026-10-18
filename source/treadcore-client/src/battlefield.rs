@@ -258,7 +258,7 @@ pub fn sync_tanks(
     let dt = time.delta_secs().min(0.1);
     let me = obs.player;
     let mine = field.style;
-    let ahead = view.received.map(|r| r.elapsed().as_secs_f32().min(0.2)).unwrap_or(0.0);
+    let ahead = view.received.map(|r| r.elapsed().as_secs_f32().min(0.2)).unwrap_or(0.0) * view.speed.max(0.25);
     let predicted = view.predicted.as_ref().filter(|(t, _)| t.owner == me);
     let mut marks_left = MARK_MAX.saturating_sub(marks.iter().count());
 

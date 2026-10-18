@@ -39,6 +39,8 @@ pub struct Orders(pub Vec<Command>);
 /// What the window draws. Replaced whenever a new observation arrives.
 #[derive(Resource, Default)]
 pub struct View {
+    /// The game's speed (speed.rs): 1.0 is TICK_HZ.
+    pub speed: f32,
     pub obs: Option<Observation>,
     pub map: Option<Map>,
     pub me: Option<PlayerId>,

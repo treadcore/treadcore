@@ -6,6 +6,19 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: game speed (Paul, 17 October: "a 4x speed adjuster. it will
+  speed up (the server and all clients), if we skip frames then reduce
+  speed"; client `speed.rs`). **`** (Key Setup: game-speed) steps the
+  host through 1x, 2x and 4x; `--speed N` or `SPEED=N` starts there,
+  in the window and in `treadcore-server`. The host's FixedUpdate
+  timestep is `1 / (TICK_HZ * speed)`; a joined window measures the
+  host's tick rate and steps its prediction to match, so there is no
+  wire change. The governor steps down a notch when the host's ticks
+  fall under 85% of the speed (none in the first 10 s after a start
+  or a change), and back up after 30 s of keeping up; the frame rate
+  is logged, not judged (the VM's three windows draw 4 fps at 1x and
+  4x alike, and kept 3.76x of 4x). The dedicated server steps down
+  when it falls a second behind. The title bar shows `x2` or `x4`.
 - Added: rotation, a push point and a defense point for every bot
   (Paul, 17 October: "there was too much waiting ... the tank does
   not wait around ... alternate between the adjustable push point and

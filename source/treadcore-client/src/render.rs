@@ -263,7 +263,7 @@ fn sync_entities(
     let me = obs.player;
     // Interpolate forward from the observation by wall time, so a 10 Hz
     // snapshot stream still moves at 60 fps.
-    let ahead = view.received.map(|r| r.elapsed().as_secs_f32().min(0.2)).unwrap_or(0.0);
+    let ahead = view.received.map(|r| r.elapsed().as_secs_f32().min(0.2)).unwrap_or(0.0) * view.speed.max(0.25);
 
     // Place a model: a parent that moves, children that are its cubes
     // (rebuilt when the model's key changes) and its label.

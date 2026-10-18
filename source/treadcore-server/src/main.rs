@@ -30,6 +30,9 @@ mod listen;
 struct Args {
     net: bool,
     realtime: bool,
+    /// The game's speed (`--speed 1|2|4`, `SPEED`): ticks come this many
+    /// times as often; a host that falls a second behind steps it down.
+    speed: f32,
     seed: u64,
     ticks: Tick,
     name: String,
@@ -87,6 +90,7 @@ fn parse() -> Args {
     let mut a = Args {
         net: false,
         realtime: false,
+        speed: std::env::var("SPEED").ok().and_then(|s| s.parse().ok()).unwrap_or(1.0),
         seed: 0x7EAD_C0DE,
         ticks: 0,
         name: "server".into(),
@@ -126,6 +130,7 @@ fn parse() -> Args {
             "--net" => a.net = true,
             "--local" => a.net = false,
             "--realtime" => a.realtime = true,
+            "--speed" => a.speed = val().trim_end_matches('x').parse().unwrap_or(1.0),
             "--seed" => a.seed = parse_num(&val()),
             "--ticks" => a.ticks = parse_num(&val()),
             "--seconds" => a.ticks = parse_num::<u64>(&val()) * TICK_HZ as u64,
@@ -205,6 +210,8 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --local            bot-only match in this process (default)
   --net              run the lobby; host if elected, else join as a bot
   --realtime         tick at 20 Hz instead of flat out (--net always does)
+  --speed 1|2|4      ticks that many times as fast (also SPEED=); a host
+                     that falls a second behind steps it down
   --seed N           map and RNG seed (default 0x7EADC0DE)
   --seconds N        stop the match after N game seconds (default 15 min)
   --ticks N          the same, in ticks
@@ -809,7 +816,7 @@ fn run_local(args: Args) {
             progress(&host.world, &bots);
         }
         if args.realtime {
-            next += Duration::from_secs_f32(DT);
+            next += Duration::from_secs_f32(DT / args.speed.max(0.25));
             if let Some(d) = next.checked_duration_since(Instant::now()) {
                 std::thread::sleep(d);
             }
@@ -890,10 +897,19 @@ fn host_match(args: &Args, me: PeerId, sock: Socket, result: &LobbyResult, route
     log::info!("hosting: {} remote seat(s), {} bot(s){}", host.seats.len(), bots.len(), if host.registration.is_some() { "; registered as hosting with the introducer" } else { "" });
     let mut next = Instant::now();
     let mut report = Report::default();
+    let mut speed = args.speed.clamp(1.0, 4.0);
     while !host.world.over {
         host.poll();
+        // Fallen a second behind the speed asked for: a notch down
+        // (4x, 2x, 1x), as the window's governor does (client speed.rs).
+        if speed > 1.0 && Instant::now() > next + Duration::from_secs(1) {
+            let was = speed;
+            speed = if speed > 2.0 { 2.0 } else { 1.0 };
+            next = Instant::now();
+            log::warn!("speed {}x to {}x: ticks skipped", was, speed);
+        }
         if Instant::now() >= next {
-            next += Duration::from_secs_f32(DT);
+            next += Duration::from_secs_f32(DT / speed);
             let orders = run_bots(&host.world, &mut bots);
             let events = host.tick(orders).to_vec();
             retire_taken(&mut bots, &events);
@@ -961,7 +977,7 @@ fn run_net(args: Args) {
             // the tick rate; the headless seat is how prediction is
             // proved against a lagged link (`make lobby-test LAG=200`).
             if Instant::now() >= next_tick {
-                next_tick += Duration::from_secs_f32(DT);
+                next_tick += Duration::from_secs_f32(DT / args.speed.clamp(1.0, 4.0));
                 client.predict_tick();
             }
             // Read what arrived before judging the connection: the last

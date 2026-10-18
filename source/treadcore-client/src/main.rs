@@ -34,6 +34,7 @@ mod proposals;
 mod render;
 mod session;
 mod sound;
+mod speed;
 mod voxel;
 
 use bevy::prelude::*;
@@ -102,6 +103,8 @@ pub struct Args {
     /// Bot teammates and rivals as plain RuleBots, not fleet roles
     /// (`--plain-bots`).
     pub plain_bots: bool,
+    /// The game's speed asked for (`--speed 1|2|4`, `SPEED`; ` in play).
+    pub speed: f32,
 }
 
 fn parse_args() -> Args {
@@ -137,6 +140,7 @@ fn parse_args() -> Args {
         style: voxel::TankStyle::default(),
         autopilot: false,
         plain_bots: false,
+        speed: std::env::var("SPEED").ok().and_then(|s| s.parse().ok()).unwrap_or(1.0),
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -173,6 +177,7 @@ fn parse_args() -> Args {
             "--fleets" => a.fleets = true,
             "--autopilot" => a.autopilot = true,
             "--plain-bots" => a.plain_bots = true,
+            "--speed" => a.speed = val().trim_end_matches('x').parse().unwrap_or(1.0),
             "--style" => {
                 let w = val();
                 match voxel::TankStyle::from_word(&w) {
@@ -219,7 +224,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--fleets] [--style bulwark|strider|rattler] [--autopilot] [--plain-bots] [--keys FILE] [--map FILE|island] [--industry] [--respawns N|unlimited] [--mute] [--write-sounds DIR]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--fleets] [--style bulwark|strider|rattler] [--autopilot] [--plain-bots] [--speed 1|2|4] [--keys FILE] [--map FILE|island] [--industry] [--respawns N|unlimited] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);
@@ -267,6 +272,7 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.05, 0.06, 0.07)))
         .insert_resource(Time::<Fixed>::from_hz(TICK_HZ as f64))
         .insert_resource(keys::Keys::load(args.keys.as_ref().map(std::path::PathBuf::from).or_else(keys::Keys::default_path)))
+        .add_plugins(speed::SpeedPlugin { want: args.speed })
         .insert_resource(args)
         .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }, commander::CommanderPlugin, goal::GoalPlugin, battlefield::BattlefieldPlugin))
         .run();
