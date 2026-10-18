@@ -2740,7 +2740,9 @@ mod tests {
     }
 
     /// The settings with the castle of 11b and 11h: three towers and two
-    /// bastions, no cap.
+    /// bastions, no cap. Archived 18 October (documentation/archive/
+    /// BRAIN-METHODS.md): `castle_cap` replaced it as the default, and
+    /// the two proofs that use this keep the old castle playable.
     fn bastions() -> crate::weights::Settings {
         let mut s = crate::weights::Settings::default();
         s.caps = s.caps.without(crate::weights::Caps::CASTLE_CAP);

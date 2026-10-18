@@ -7,6 +7,13 @@ and a keyword cross-reference. Line numbers are those of those commits;
 `grep -n` is the authority when they drift. The walk-through with the
 reasoning is LAB-REPORT.md; this is the map.
 
+> **Sections 1 to 3 and 5 are archived in place: the snapshot of 13
+> October.** The code has grown since (the brain from one file of
+> 1,158 lines to sixteen of 11,936), and they are kept as the
+> development record, not refreshed. Section 4 (the documents) is kept
+> current, and section 6 maps what came after the snapshot, step 12
+> above all. `archive/README.md` says what else is archived.
+
 ## 1. The tree
 
 ```
@@ -493,12 +500,14 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/DESIGN.md | the rules and the numbers, and why; "what is not here yet" |
 | documentation/PROTOCOL.md | the wire protocol, the election, the relay, prediction |
 | documentation/ROADMAP.md | the goals, the steps under each with Change / Must not change / Proof, and the backlog |
-| documentation/ROADMAP-STEPS-0-11.md | the roadmap as it ran to 18 October 2026: steps 0 to 11 in full, the record the journal cites |
+| documentation/archive/README.md | the archive: what is archived, where, and why |
+| documentation/archive/ROADMAP-STEPS-0-11.md | archived: the roadmap as it ran to 18 October 2026, steps 0 to 11 in full, the record the journal cites |
+| documentation/archive/BRAIN-METHODS.md | the register of the bot AI's methods since step 12: archived, current with a challenger off, shown impossible |
 | documentation/RESEARCH.md | what the game is modelled on, with sources |
 | documentation/BUILD.md | the build on a small machine; `make warm` |
 | documentation/MAPS.md | the map file format; converting prior-art maps |
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
-| documentation/LAB-REPORT-BRAIN.md | the bot AI as of 18 October 2026, the research it was reviewed against, and the step 12 design |
+| documentation/LAB-REPORT-BRAIN.md | the bot AI: the baseline of 17 October (section 2, archived), the research, the step 12 design, the record of building it (sections 11 to 19) and the brain now (section 20) |
 | documentation/PROPOSAL-UPGRADES.md | the proposal for roadmap 11g: supply, sixteen upgrades and how they are bought (18 October 2026) |
 | documentation/LAB-REPORT-PILLBOYS.md | the Pillboy requirement audited against the prior art's builder |
 | documentation/LAB-REPORT-PLAYTEST.md | the first playtest build, 13 October 2026: the driver and the stack, a solo and a three-client match with frames, the multiclient end to end, nine findings |
@@ -506,8 +515,11 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/PLAYABILITY.md | the playability review: fourteen items ranked and costed; Bolo's interface elements checked off against the window before and after the frame |
 | documentation/SPEC-PRIOR-ART-1.14.md | the clean-room functional specification of the prior art, with the preface on what treadcore takes |
 | documentation/RELEASE.md | the cycle, versions, releases, playtesting |
+| documentation/LAB-REPORT-PACKAGES.md | packages for every platform as a Cargo tutorial: the targets, .deb, .rpm, .msi, the flake, the one-day limit |
+| documentation/DEPLOY.md | the deploy procedure: tag on day 0, publish on day 1 or later, and what to do when a step fails |
 | documentation/GOVERNANCE.md | roles, joining, proposals (section 5: a change to rules.rs wants a trace), review, leaving |
 | documentation/INDEX.md | this |
+| documentation/HOW-TO-PLAY.md | the player's guide with pictures, every key |
 | journal/0001 to 0017 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes; sub-cubes |
 | reports/images/ | the playtest frames, playtest-01 to 18, 256-colour PNG |
 
@@ -572,3 +584,42 @@ per file at this commit (`treadcore-sim/lib.rs` means
 
 To refresh the table: `grep -c -w NAME` over `source/*/src/*.rs`,
 `scripts/*`, `Makefile`.
+
+## 6. Since the snapshot: step 12, the brain on weights (18 October 2026)
+
+The brain was one file at the snapshot (2.6). Step 12 made it sixteen;
+the lab report's section 20 says how they fit, and
+`archive/BRAIN-METHODS.md` which old methods they replaced. Line
+counts of 18 October evening.
+
+| file | lines | what |
+| --- | --- | --- |
+| treadcore-brain/src/lib.rs | 2,259 | the `Brain` trait (with `settings`, `set_settings`), the RuleBot doctrine, `Dodge`, `lead`, `run_bots` metered; `a_led_direct_shot_cannot_be_dodged` |
+| treadcore-brain/src/commander.rs | 3,508 | the Commander: goals, the Auto ladder, the fleet, the board's post and jobs, road posts, `bridge_jobs`, the escort's gather |
+| treadcore-brain/src/weights.rs | 474 | `W` (73 weights, each with a default, a doc line and a slider step), `Caps` (16 switches), `Settings` and its file form, `Curve`, `utility` |
+| treadcore-brain/src/meter.rs | 118 | per-thread counters: seats, thinks, Moves, crossings searched and cached, plan copies, microseconds |
+| treadcore-brain/src/memory.rs | 96 | `Forget`: memories that run out |
+| treadcore-brain/src/intent.rs | 181 | `Desire`, `Confirm`, `Advance`: holding a decision |
+| treadcore-brain/src/facts.rs | 212 | `MapFacts`: islands, the crossing cache, scarcity, site scores, the crossing price |
+| treadcore-brain/src/board.rs | 486 | `TeamBoard`: influence, front, defence points, posture, kept jobs, swaps, part-laid bridges |
+| treadcore-brain/src/cycle.rs | 431 | the base cycle: item, improvement by weight, road out, road posts |
+| treadcore-brain/src/ledger.rs | 296 | genomes, outcomes, the JSON-lines ledger, Elo ratings |
+| treadcore-brain/src/fleet.rs | 930 | roles and teams, the process's and the thread's settings, the team boards of a deal; `brain_census` (`CENSUS_*`) |
+| treadcore-brain/src/tactics.rs | 656 | target scores, odds, stance, kiting; weights from `Settings` |
+| treadcore-brain/src/hop.rs | 860 | island hops, bridges (and adopted ones), boats, landfall, priced crossings |
+| treadcore-brain/src/fortify.rs | 656 | the castle plan: the capped castle and its road slot, posts |
+| treadcore-brain/src/crew.rs | 502 | the fleet commander and its crews |
+| treadcore-brain/src/rotation.rs | 271 | push and defence points |
+| treadcore-client/src/tune.rs | 311 | the weights page on the coordination screen (`U`) and the team file |
+| scripts/tune.sh | 82 | `make tune`: a (1 + lambda) evolution strategy over the census |
+
+New words:
+
+- **capability**, **switch**: a bit of `Caps`; on or off per bot.
+- **census**: `brain_census`, matches of one team on trial settings
+  against the baseline; fair: every team in the trial seat per seed.
+- **genome**: a bot's weights, capabilities, seed and role, in the
+  ledger.
+- **team board**: a team's one shared picture, rebuilt once a second.
+- **archived**: replaced as the default and kept as the record
+  (`archive/`).

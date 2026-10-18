@@ -224,9 +224,12 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/DESIGN.md](documentation/DESIGN.md): the rules, the numbers, and why.
 - [documentation/PROTOCOL.md](documentation/PROTOCOL.md): the wire protocol and the host election.
 - [documentation/RESEARCH.md](documentation/RESEARCH.md): what the game is modelled on, with sources.
-- [documentation/ROADMAP.md](documentation/ROADMAP.md): the next architectural steps, in dependency order.
+- [documentation/ROADMAP.md](documentation/ROADMAP.md): the goals, the steps still between here and each, and the backlog.
 - [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
+- [documentation/LAB-REPORT-BRAIN.md](documentation/LAB-REPORT-BRAIN.md): the bot AI: the baseline of 17 October (archived), the research, the step 12 design, the record of building it, and the brain now, an improved prototype on weights, switches and a team board.
+- [documentation/PROPOSAL-UPGRADES.md](documentation/PROPOSAL-UPGRADES.md): the proposal for supply, sixteen base upgrades and how they are bought.
+- [documentation/archive/](documentation/archive/README.md): the development record: the roadmap of steps 0 to 11, and the register of the brain's methods, archived and current.
 - [documentation/LAB-REPORT-PILLBOYS.md](documentation/LAB-REPORT-PILLBOYS.md): the Pillboy requirement checked against the prior art's builder, and what was decided.
 - [documentation/LAB-REPORT-PLAYTEST.md](documentation/LAB-REPORT-PLAYTEST.md): the first playtest build, with pictures: the window on a CPU rasteriser, a three-client match through the introducer, the multiclient explained, nine findings.
 - [documentation/INTERFACE.md](documentation/INTERFACE.md): what Bolo, a garage screen and the military HUD graphics put on the screen, and treadcore's layout drawn from them; built 13 October.

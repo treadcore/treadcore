@@ -6,6 +6,22 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the documentation marks what the improved prototype
+  replaced. `documentation/archive/` is the development record: the
+  roadmap of steps 0 to 11 moved there, and `BRAIN-METHODS.md`
+  registers the brain's methods: archived (replaced as the default,
+  most still one switch away, such as the old castle and the old
+  census), current with an improved challenger still off, and shown
+  impossible. In place: the brain lab report's section 2 is marked as
+  the archived baseline of 17 October, with section 20 for the brain
+  now, and the code index's snapshot of 13 October as archived, with
+  section 6 for the files since. The roadmap and its backlog are
+  updated (items 17 to 19 new), and the README lists the brain report,
+  the upgrades proposal and the archive.
+- Found: a led direct shot cannot be dodged once fired, from any range
+  (LR 19, `a_led_direct_shot_cannot_be_dodged`). The shell flies five
+  ticks at most, and a tank moves about 0.4 tiles off the lead in that
+  time against a hit radius of 0.8. What to do instead is backlog 17.
 - Added, off: bridge jobs on the team board (`bridge_jobs`, needs
   `board`; LR 6.2's plan). A bridge a teammate gave up half laid stays
   on the board. The next teammate with material within `bridge_reach`

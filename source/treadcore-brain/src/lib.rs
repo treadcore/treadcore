@@ -2181,3 +2181,79 @@ mod tests {
         assert!(launches > 10, "bots never launched: {}", launches);
     }
 }
+
+#[cfg(test)]
+mod direct_fire {
+    use super::*;
+    use treadcore_sim::*;
+
+    /// Roadmap 12d, backlog 8 (LR 19): a direct shell flies five ticks at
+    /// most (10 tiles at 40 a second), and a tank at full speed turning
+    /// as hard as it can moves about 0.4 tiles off the gunner's lead in
+    /// that time, inside the 0.8 tiles of `DIRECT_HIT_RADIUS`. So no
+    /// answer after the launch saves it, at any range: a dodge of direct
+    /// fire has to come before the shot.
+    #[test]
+    fn a_led_direct_shot_cannot_be_dodged() {
+        for r in [4.0f32, 7.0, 9.5] {
+            let mut line = format!("range {:>4}:", r);
+            for (k, react) in ["none", "reverse", "turn away", "turn toward", "stop"].iter().enumerate() {
+                let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+                w.pillboxes.clear();
+                for x in 30..110 {
+                    for y in 40..90 {
+                        w.map.set(V2::new(x as f32 + 0.5, y as f32 + 0.5), Terrain::Grass);
+                    }
+                }
+                let (g, t) = (w.players[0].tank, w.players[1].tank);
+                {
+                    let tt = w.tanks.iter_mut().find(|x| x.id == t).unwrap();
+                    tt.pos = V2::new(50.5, 64.5);
+                    tt.heading = 0.0;
+                    tt.speed = 0.0;
+                }
+                {
+                    let gt = w.tanks.iter_mut().find(|x| x.id == g).unwrap();
+                    gt.pos = V2::new(70.5, 64.5 + r);
+                    gt.reload = 0;
+                    gt.shells = 10;
+                }
+                let far = V2::new(105.5, 64.5);
+                for _ in 0..(4 * TICK_HZ) {
+                    w.step(&[Order { player: 1, cmd: Command::Move { to: far } }]);
+                }
+                let e = w.tank(t).unwrap().clone();
+                {
+                    let gt = w.tanks.iter_mut().find(|x| x.id == g).unwrap();
+                    gt.pos = e.pos + V2::new(0.0, r);
+                    gt.speed = 0.0;
+                    gt.goal = None;
+                    gt.route.clear();
+                }
+                let me = w.tank(g).unwrap().clone();
+                let aim = lead(&me, &e);
+                let armor = e.armor;
+                w.step(&[Order { player: 0, cmd: Command::FireDirect { at: aim } }]);
+                let f = V2::from_heading(e.heading);
+                let side = V2::new(-f.y, f.x);
+                let away = if { let d = e.pos - me.pos; d.x * side.x + d.y * side.y >= 0.0 } { side } else { side.scale(-1.0) };
+                let cmd = match k {
+                    1 => Some(Command::Move { to: e.pos - f.scale(10.0) }),
+                    2 => Some(Command::Move { to: e.pos + away.scale(10.0) }),
+                    3 => Some(Command::Move { to: e.pos - away.scale(10.0) }),
+                    4 => Some(Command::Stop),
+                    _ => None,
+                };
+                let mut orders: Vec<Order> = cmd.into_iter().map(|cmd| Order { player: 1, cmd }).collect();
+                for _ in 0..10 {
+                    w.step(&orders);
+                    orders.clear();
+                }
+                let hit = w.tank(t).unwrap().armor < armor;
+                line.push_str(&format!("  {} {}", react, if hit { "hit" } else { "miss" }));
+                assert!(hit, "{}: {} got out of it", line, react);
+            }
+            eprintln!("{}", line);
+        }
+    }
+}

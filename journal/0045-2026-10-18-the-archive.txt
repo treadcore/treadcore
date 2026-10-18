@@ -1,0 +1,77 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 02:30:00 -0700
+Subject: [JOURNAL 0045] The archive: the old methods kept as the record
+Message-ID: <0045.20261018@treadcore.org>
+In-Reply-To: <0044.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: documentation, archive, direct fire, roadmap 12d, backlog
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair. Paul: "update the documentation with all what
+           we did. we need to mark the old methods as archived and part
+           of the development, we have improved the prototype."
+X-Commits: 01a8261 (journal 0044, pushed with 0040 to 0043); this
+           entry's work is in the tree
+
+          THE ARCHIVE: THE OLD METHODS KEPT AS THE RECORD
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    Two things. First, a measurement: the dodge for direct fire, the
+    next roadmap step, cannot be built as asked. A led direct shot
+    hits whatever the target does once it is fired, from 4, 7 and 9.5
+    tiles, and a kept test says so. Second, the documentation now
+    separates the improved prototype from what it replaced. A new
+    folder, documentation/archive/, holds the old roadmap and a
+    register of the brain's methods: nine archived, ten current with
+    an improved challenger off, one shown impossible. The lab report's
+    baseline section and the index's old snapshot are marked archived
+    where they stand, since their numbers are cited, and each gained a
+    section for what is current.
+
+I. METHOD
+
+    The direct-fire question: a throwaway experiment first, made the
+    test `a_led_direct_shot_cannot_be_dodged` once it held (lib.rs).
+    The documents: every claim of the register checked against the
+    code, the tests and the censuses of journals 0038 to 0044; line
+    counts and test counts taken the same evening.
+
+II. RESULTS
+
+    Direct fire: hit at every range and every answer. Brain tests 61
+    passed, 8 ignored; client 31. Archive: archive/README.md,
+    archive/BRAIN-METHODS.md, archive/ROADMAP-STEPS-0-11.md (moved,
+    with a banner). LAB-REPORT-BRAIN.md: a guide to reading it, section
+    2 marked archived, sections 19 (direct fire) and 20 (the brain
+    now). ROADMAP.md: goal 4 "the prototype built", 12d's finding,
+    backlog 3 and 8 annotated, 17 to 19 new. INDEX.md: the snapshot
+    marked, section 6 for step 12's files, the documents table
+    complete. README: the brain report, the proposal, the archive.
+    Code: two comments mark the old castle and the old census as
+    archived.
+
+III. DISCUSSION
+
+    Nothing step 12 replaced was thrown away: the old castle, the old
+    census and the brain of 17 October all still run, one switch away,
+    and the census needs them as the baseline. Archiving is a label
+    and a pointer, not a deletion. The honest line in the lab report's
+    section 20 is the last one: the prototype is better built, but no
+    new part has yet been shown to win more matches.
+
+IV. OPEN PROBLEMS
+
+    1. Backlog 17, Paul's choice: a duck reflex, close the item, or a
+       rules change.
+    2. Backlog 18: twelve seeds for each switch alone, and longer
+       matches for the late-paying parts.
+    3. Backlog 19: the 70 partial_cmp().unwrap() calls.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

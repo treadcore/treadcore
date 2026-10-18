@@ -1,5 +1,11 @@
 # The next architectural steps
 
+> **Archived 18 October 2026.** The roadmap as it ran from the opening
+> day to step 11, kept word for word as part of the development record:
+> the journal and the changelog cite its step numbers, and they keep
+> their meaning. The live roadmap is `../ROADMAP.md`, rewritten by goal
+> the same day; the archive's README says what else is kept here.
+
 Where the architecture goes from the opening day, in the order the
 steps depend on each other. Each step says what it changes in which
 crate, what it must not change, and how it is proven. The constraint

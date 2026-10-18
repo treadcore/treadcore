@@ -9,6 +9,15 @@ diagrams drawn, is the shared document
 this file is the copy that lives with the code. The work it plans is
 step 12 of `ROADMAP.md`.
 
+**How to read it now.** Sections 1 to 10 are the review and the design
+of 17 and 18 October. Section 2, the brain as it stood then, is
+**archived in place**: it is the baseline every later number is
+measured against, and the improved prototype has replaced it. Sections
+11 to 19 are the record of building the design, a step and a census
+at a time. Section 20 is the brain as it stands now. Which old methods
+were archived, and which still run with an improved challenger
+switched off, is the register `archive/BRAIN-METHODS.md`.
+
 Five conclusions, numbered so the rest can cite them:
 
 - **C1.** The brain is a stack of first-match ladders with 22 tunable
@@ -47,7 +56,14 @@ is a code constant or a starting guess, never a measurement. The
 measurement is step 12a.
 
 
-## 2. The brain as it stands
+## 2. The brain as it stood on 17 October (archived)
+
+> **Archived 18 October 2026: the baseline.** This is the brain step 12
+> started from, kept as the development record and as the baseline the
+> census measures against. The brain now is section 20; what replaced
+> each method here, and what is still current, is
+> `archive/BRAIN-METHODS.md`. Findings L1 to L8 keep their numbers,
+> since the rest of the report cites them.
 
 ### Who runs, how often
 
@@ -774,3 +790,122 @@ five of the six matches, 69 to 783 seat-seconds. One trial team laid
 36 bridge tiles against 15 to 20 in the others. The 0.70 a seat it
 cost is about the noise of six matches; `bridge_jobs` stays off, and
 `bridge_wing`, `bridge_reach` and `bridge_keep` are for the tuner.
+
+## 19. A dodge for direct fire, measured first, 18 October
+
+Backlog 8 and finding "direct fire is never dodged before it lands"
+asked for a dodge of direct fire beside the dodge of indirect shells.
+Before designing one, the step measured whether a tank that sees a
+direct shell launched can get out of its way at all.
+
+The numbers are against it:
+- Direct range is 10 tiles and a direct shell flies at 40 tiles a
+  second, so it is in the air five ticks at most (0.25 s).
+- It hits if the tank is within `DIRECT_HIT_RADIUS` (0.8 tiles) of
+  where it was aimed when it lands, and a bot aims where the tank will
+  be at the speed and heading it has now (`lead`).
+- In 0.25 s a standing tank accelerating at 4 tiles a second squared
+  covers 0.125 tiles. A tank at full speed turning at its 3 radians a
+  second strays about v w t^2 / 2 = 4 x 3 x 0.0625 / 2, roughly 0.4
+  tiles, off the line the gunner led; braking gains about 0.125.
+
+Measured (`a_led_direct_shot_cannot_be_dodged`, `lib.rs`): a tank
+crossing at full speed, a gunner square to it at 4, 7 and 9.5 tiles
+firing a led shot, and the target answering the launch five ways (carry
+on, reverse, turn away, turn toward, stop). Every one was hit at every
+range. The test asserts it, so a change of the rules that made a dodge
+possible would show.
+
+A weave before the shot is no better against a bot, because it leads
+from the speed and heading at the moment it fires, and only what
+changes during the flight counts.
+
+So the only defence against direct fire is denying the shot: not being
+inside an enemy gun's range, in its line, when that gun is ready
+before one's own. Every tank's reload is in the observation. Kiting
+already does this against the one enemy a tank is fighting; a builder,
+a hauler or a bridge-layer shot by a tank it is not fighting has
+nothing. Three ways on, for Paul to choose (ROADMAP backlog 17):
+1. a "duck" reflex behind its own switch: out of range or line when a
+   hostile gun ready before one's own covers the tank and the exchange
+   is not one it wins, with a weight for how far it outranks the
+   errand; measured by the fair census;
+2. close the item as impossible, as this section records;
+3. change the rules (a slower direct shell, a smaller hit radius) so a
+   dodge is possible, which changes how every match plays.
+
+## 20. The brain now: the improved prototype, 18 October
+
+What runs after step 12. Every row of section 2's tables is still
+there, and around it are the parts step 12 added; those marked (off)
+are built, proven and measured but wait for a census to promote them.
+
+| Level | Code | Rate | Output |
+| --- | --- | --- | --- |
+| Settings | `weights.rs`: 73 weights, 16 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
+| Team board (off) | `board.rs`, one per team, shared | rebuilt 1 Hz by the first member due | influence, front, defence points, posture, kept jobs, swaps, part-laid bridges |
+| Fleet commander | `crew::FleetCommand` | 20 Hz; musters every 30 s | jobs, as before |
+| Commander, one per tank | `commander.rs` | 20 Hz | `Vec<Command>` |
+| Auto ladder | DefendBase > Fortify > Turrets > Hunt > Expand > Guard, the rung confirmed over two thinks under `smooth` (off) | 20 Hz | a goal |
+| Base cycle (off) | `cycle.rs` | after a fill | an item, an improvement by weight (mend, a mine, works), a road out |
+| Doctrine and tactician | `lib.rs`, `tactics.rs`, its weights from `Settings` | 4 Hz | guns, drones, target, odds, stance (smoothed under `smooth`) |
+| Hop | `hop.rs`, `facts.rs`: the crossing cache, priced crossings (off), adopted bridges (off) | each doctrine think | bridge, boat, landfall |
+| Memory | `memory.rs` `Forget` (expiry off by default), `intent.rs` | per use | what was given up, smoothed goals |
+| Ledger and meter | `ledger.rs`, `meter.rs`, `brain_census`, `make tune` | per match | a line per tank: genome, seed, score; the cost a seat-tick |
+
+```
+Settings (weights.rs: 73 weights, 16 switches)  <-- --weights FILE, weights page (U)
+   |
+Team board, one per team, 1 Hz (board)                         (L5)
+   |  influence, front, points, posture, jobs kept,
+   |  swaps (team_rotate), part-laid bridges (bridge_jobs)
+   v
+Commander, each tank, 20 Hz, first match wins                  (L1)
+   +-- survival: downed, dodge (indirect shells), revive, home
+   |      (direct fire: cannot be dodged once fired, LR 19)
+   +-- bridges: help the leader's; take a part-laid one (bridge_jobs)
+   +-- afloat, shore gather, column on a bridge (column)
+   +-- board: post, rebuild, adopt a missed job, relieve or fall back
+   +-- road posts once the capped castle stands (castle_cap, on)
+   +-- pings, rally, fleet, crew job
+   +-- Auto ladder (6 rungs; confirmed under smooth)
+   |      Fortify: the capped castle; Turrets: the fetch, gathered
+   |      first when far (escort)
+   +-- base cycle after a fill (cycle)
+   +-- go(): desire vector under smooth                        (L7)
+   +-- Doctrine, 4 Hz
+          +-- Tactician (its 22 weights from Settings; smoothed
+          |   stance under smooth)
+          +-- Hop (crossing cache with failures; priced under
+              priced_crossing; island sites under island_site)  (L4)
+```
+
+The findings of section 2, now:
+
+| Finding | Now |
+| --- | --- |
+| L1 first-match ladders | every number is a named weight with a slider; the ladder and the wingman's priorities are still fixed orders |
+| L2 a full world copy per bot per tick | unchanged: the Observation shared per team is 12b's remainder |
+| L3 repeated work | the plan copy and the reasons per candidate gone; the `why` and `doing` strings still formatted each tick |
+| L4 failed searches not cached | answered: the crossing cache keeps failures 60 s |
+| L5 no shared team memory | the team board (off) |
+| L6 lists that never forget | `Forget` with `forget_for` (off) |
+| L7 uneven commitment | desire vectors and confirmation (`smooth`, off: measured worse) |
+| L8 a reactive economy | the base cycle (`cycle`, off) |
+
+The numbers, 18 October evening:
+- 11,936 lines in 16 files (8,458 in 8 on 18 October morning).
+- Brain tests: 61 passed, 8 ignored; client: 31.
+- 23 to 33 us a seat-tick in the census.
+- On by default: kite, pings, dodge, bridges, rotate, and since 18
+  October `castle_cap`.
+- Measured fairly: the capped castle against the old, +0.72 a seat;
+  `smooth` -1.92; `escort` even (never reached); `bridge_jobs` -0.70
+  with `board` on for every team.
+
+What the prototype has not shown yet: that any of its new parts makes
+the bots win more. The fair census can now tell a real difference from
+the starts, but six matches of 900 s are not enough to see the parts
+that pay late (the escort, bridges, the base cycle), and none has had
+the twelve seeds the roadmap asks for. That is the next measurement,
+and goal 5's longer matches the one after.

@@ -784,7 +784,8 @@ mod tests {
         // on every seed, three matches a seed, so the starts' unevenness
         // cancels; a null run then reads exactly even. `CENSUS_FAIR=0`
         // rotates the trial team over the seeds instead, a third of the
-        // matches.
+        // matches: the census before 18 October, archived
+        // (documentation/archive/BRAIN-METHODS.md).
         let fair = std::env::var("CENSUS_FAIR").map(|v| v != "0").unwrap_or(true);
         let plays: Vec<(u64, TeamId)> = (0..seeds).flat_map(|n| if fair { (0..3).map(|t| (n, t as TeamId)).collect::<Vec<_>>() } else { vec![(n, (n % 3) as TeamId)] }).collect();
         for (n, lucky) in plays {

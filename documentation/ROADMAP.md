@@ -8,19 +8,24 @@ is unchanged: the simulation stays headless and deterministic, and
 every layer above it drives it through `step` and `observe`.
 
 Rewritten 18 October 2026. Steps 0 to 11 as they ran, with every proof
-and finding, are kept word for word in `ROADMAP-STEPS-0-11.md`; the
+and finding, are kept word for word in `archive/ROADMAP-STEPS-0-11.md`; the
 journal and the changelog cite those step numbers, and they keep their
 meaning. The brain work of goal 4 is designed in `LAB-REPORT-BRAIN.md`,
 and in the shared document it was drafted in,
 [Treadcore: Status Update & Brain AI Lab Report](https://claude.ai/code/artifact/97f399bf-9abe-4094-a060-6a9666f273bd);
 section numbers below (LR 5, LR 6.2) are that report's.
 
+What is archived and what is current: `archive/README.md`. The brain's
+methods, old and new, are registered in `archive/BRAIN-METHODS.md`:
+archived (replaced as the default, most still one switch away),
+current with an improved challenger still off, and shown impossible.
+
 | Goal | What it means | State |
 | --- | --- | --- |
 | 1. One world, many machines | playable, editable, networked, programmable: the prior art's idea on today's network | met (steps 0 to 9) |
 | 2. The battlefield the war made | indirect fire, drones over every tank, industry under drones | met (step 10) |
 | 3. Command, not only driving | goal modes, fleets, castles, pillboxes that move, a coordination screen | half met (step 11) |
-| 4. Bots that think as a team | one tunable decision pattern on shared memory, cheap enough to run sixteen | planned (step 12) |
+| 4. Bots that think as a team | one tunable decision pattern on shared memory, cheap enough to run sixteen | the prototype built (12a to 12h, LR 11 to 20); the census promotes parts |
 | 5. Longer, truer matches | real numbers, upgrades, towns that see, matches past sixteen minutes | open (11f, 11g, 11j) |
 | 6. In players' hands | packages, a release, two real routers | waiting (Actions paused since 13 October) |
 
@@ -70,17 +75,22 @@ Steps left:
   build list. 12f's base cycle is the bots' half of it.
 
 
-## Goal 4. Bots that think as a team (step 12, planned)
+## Goal 4. Bots that think as a team (step 12, the prototype built)
 
 Bots that decide together, on one picture of the map, by one weighted
 pattern a person can read, switch off in parts and tune with sliders;
 that hold to a decision until it is confirmed, except to dodge or
 retreat; that build economies, roads, forts and front lines; and that
 cost little enough for sixteen at 4x game speed. The case for it is
-`LAB-REPORT-BRAIN.md`. In short (LR 2): today's brain is a stack of
-first-match ladders with 22 weights, all in combat; each tank decides
-alone on a full copy of the world twenty times a second; the team
-shares nothing but one-tick events.
+`LAB-REPORT-BRAIN.md`. In short (LR 2, archived as the baseline): the
+brain of 17 October was a stack of first-match ladders with 22
+weights, all in combat; each tank decided alone on a full copy of the
+world twenty times a second; the team shared nothing but one-tick
+events. By the evening of 18 October the improved prototype (LR 20)
+has every number as a named weight with a slider, 16 switches, a team
+board, a crossing cache, a ledger, a fair census and a tuner; its new
+behaviours are built and proven, and wait for the census to promote
+them.
 
 Rules for every part of step 12:
 
@@ -261,8 +271,10 @@ to 8.93 a seat).
   `a_challenger_needs_two_thinks`, `a_dodge_skips_confirmation`; then
   the ladder's rungs confirmed and the advance scalar for the stance
   (LR 15). Measured fairly it cost 1.9 a seat (7.55 against 9.47, six
-  naval matches), so it stays off for the tuner. Not yet: a dodge for
-  direct fire.
+  naval matches), so it stays off for the tuner. A dodge for direct
+  fire measured first (LR 19): a led direct shot cannot be dodged once
+  fired, at any range (`a_led_direct_shot_cannot_be_dodged`); what
+  replaces it waits on Paul (backlog 17).
 - [x] 12e the team board (`board`, `team_rotate`):
   `the_front_is_where_influence_crosses_zero`, `a_hurt_tank_swaps_out`,
   `a_missed_job_is_still_on_the_board`. Not yet: allies' goals shown on
@@ -372,13 +384,17 @@ the end with a date.
 2. A boat on naval.map at (61,102) keeps choosing (60,102) and sails
    in place (CHANGELOG, Unreleased). Goal 4, 12f2.
 3. Most bridges left part-laid; the road on from a bridge about a tile
-   a match. Goal 4, 12f2.
+   a match. Goal 4, 12f2. Answered in part 18 October (LR 18): a
+   part-laid bridge is a job on the team board (`bridge_jobs`, off);
+   the road on is still about a tile a match.
 4. Revives fell from 113 to 63 over a census (CHANGELOG). Goal 4.
 5. Kiting even at best; plain RuleBot kiting tried and off. Goal 4,
    12c then 12g.
 6. The RuleBot attacking a castle, unproved (journal 0036). Goal 3.
 7. A wingman in a headless server's seats (journal 0034). Goal 3.
 8. Direct fire is never dodged before it lands (LR 2). Goal 4, 12d.
+   Measured 18 October (LR 19): it cannot be, once fired; backlog 17
+   holds what could be done instead.
 9. A Hunt target given up after twelve bearings is given up for good
    (LR 2). Goal 4, 12b.
 10. `partial_cmp().unwrap()` in the brain panics on a NaN (LR 2).
@@ -407,6 +423,19 @@ the end with a date.
     seat on every seed (`CENSUS_FAIR`); a null run reads exactly even,
     and the capped castle measured again at -0.72 a seat for the old
     one. Goal 4, 12g.
+17. 18 October (LR 19), for Paul: direct fire is denied, not dodged.
+    Choose one: a "duck" reflex behind its own switch (out of an
+    enemy gun's range or line when it is ready before one's own and
+    the exchange is lost, with a weight against the errand); close the
+    item as impossible; or change the rules so a dodge is possible.
+    Goal 4, 12d.
+18. 18 October: the census at twelve seeds or more for each switch
+    alone (`forget`, `board`, `team_rotate`, `priced_crossing`,
+    `column`, `cycle`, `island_site`), none measured alone yet; and
+    longer matches for the parts that pay late (`escort`,
+    `bridge_jobs`, `cycle`). Goal 4, 12g; goal 5.
+19. 18 October: 70 `partial_cmp().unwrap()` calls in the brain (backlog
+    10, counted). Goal 4, 12b.
 
 
 ## Sequencing
