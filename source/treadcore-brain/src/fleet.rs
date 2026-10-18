@@ -807,8 +807,8 @@ mod tests {
             let mut tally = Tally::new(&w);
             crate::meter::reset();
             // Seat-seconds in each new part's words, the trial team's.
-            const WORDS: [&str; 9] = ["base cycle", "relieving", "relieved", "cheaper by boat", "gathering the fleet", "road post", "a mine on the approach", "works for the base", "for the team"];
-            let mut words = [0u32; 9];
+            const WORDS: [&str; 10] = ["base cycle", "relieving", "relieved", "cheaper by boat", "gathering the fleet", "road post", "a mine on the approach", "works for the base", "for the team", "ducking"];
+            let mut words = [0u32; 10];
             while !w.over && w.tick < secs * TICK_HZ as Tick {
                 let orders = crate::run_bots(&w, &mut bots);
                 w.step(&orders);

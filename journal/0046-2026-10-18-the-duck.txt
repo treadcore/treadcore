@@ -1,0 +1,75 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 03:30:00 -0700
+Subject: [JOURNAL 0046] The duck: direct fire denied before it is fired
+Message-ID: <0046.20261018@treadcore.org>
+In-Reply-To: <0045.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: duck, direct fire, memory, census, roadmap 12d, backlog 17
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair. Paul: "build the duck reflex, commit and push".
+X-Commits: f97750f (journal 0045, pushed); this entry's work is in the
+           tree
+
+          THE DUCK: DIRECT FIRE DENIED BEFORE IT IS FIRED
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    Journal 0045 found that a direct shot cannot be dodged once fired;
+    Paul chose the duck. Behind the bit `duck`, a tank leaves a hostile
+    gun's range or line when that gun will be ready before its own,
+    with its armour share at or under `w_duck`. It took four duels to
+    prove, and the fourth found the real problem. Sight and direct
+    range are both 10 tiles, so the gun that fires is often unseen.
+    Guns are now remembered for `duck_memory`, refreshed by any direct
+    shell of theirs in flight. Duel: hit 2 times ducking against 3
+    standing. Fair census: 7.01 a seat against 7.52, inside the noise;
+    the bit stays off.
+
+I. METHOD
+
+    Commander::duck and its place after the dodge; weights `w_duck` 1,
+    `duck_ready` 1.5 s, `duck_memory` 5 s; the bit `duck` (19). Proof:
+    `a_tank_ducks_a_gun_ready_before_its_own`, the rules and a 40 s
+    duel against a standing gunner firing a led shot whenever it can.
+    Census: `CENSUS_CAPS=duck`, naval.map, two seeds of 900 s, respawns
+    3, and a "ducking" count.
+
+II. RESULTS
+
+    The duels, in order:
+      1. 3 hits each: a tank is down after three, so the count capped.
+      2. 3 each, my gun silenced: a ready gun does not duck, by the
+         rule, and the duel had silenced it.
+      3. 1 each: return fire and strike drones ended the match by 3.5 s.
+      4. 3 each, my gun held reloading and only its moves passed: at
+         the second shot the gun, 10.3 tiles off, was not in my
+         observation.
+    With the memory, a 13-tile margin and the shells' `from`: 2
+    against 3. Brain tests 62 passed, 8 ignored; client 31. Census
+    7.01 against 7.52; ducking in all six matches, 2 to 16
+    seat-seconds in five and 567 in one.
+
+III. DISCUSSION
+
+    Each failed duel was the test telling the truth about the test
+    first, and the last one about the game: a tank cannot see the gun
+    that is about to hit it. The duck is right in a duel. In a match a
+    tank on an errand may need to be in reach to do its errand, which
+    is the trade `w_duck` weighs. Whether ducking wins matches is for
+    longer censuses and the tuner, like the rest of step 12.
+
+IV. OPEN PROBLEMS
+
+    1. Backlog 18: twelve seeds a switch, longer matches.
+    2. The `why` and `doing` strings as codes; the Observation shared
+       per team (12b).
+    3. Backlog 19: the 70 partial_cmp().unwrap() calls.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

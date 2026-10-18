@@ -842,7 +842,7 @@ are built, proven and measured but wait for a census to promote them.
 
 | Level | Code | Rate | Output |
 | --- | --- | --- | --- |
-| Settings | `weights.rs`: 73 weights, 16 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
+| Settings | `weights.rs`: 76 weights, 17 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
 | Team board (off) | `board.rs`, one per team, shared | rebuilt 1 Hz by the first member due | influence, front, defence points, posture, kept jobs, swaps, part-laid bridges |
 | Fleet commander | `crew::FleetCommand` | 20 Hz; musters every 30 s | jobs, as before |
 | Commander, one per tank | `commander.rs` | 20 Hz | `Vec<Command>` |
@@ -854,15 +854,15 @@ are built, proven and measured but wait for a census to promote them.
 | Ledger and meter | `ledger.rs`, `meter.rs`, `brain_census`, `make tune` | per match | a line per tank: genome, seed, score; the cost a seat-tick |
 
 ```
-Settings (weights.rs: 73 weights, 16 switches)  <-- --weights FILE, weights page (U)
+Settings (weights.rs: 76 weights, 17 switches)  <-- --weights FILE, weights page (U)
    |
 Team board, one per team, 1 Hz (board)                         (L5)
    |  influence, front, points, posture, jobs kept,
    |  swaps (team_rotate), part-laid bridges (bridge_jobs)
    v
 Commander, each tank, 20 Hz, first match wins                  (L1)
-   +-- survival: downed, dodge (indirect shells), revive, home
-   |      (direct fire: cannot be dodged once fired, LR 19)
+   +-- survival: downed, dodge (indirect shells), duck (direct
+   |      fire denied before it is fired: duck, LR 21), revive, home
    +-- bridges: help the leader's; take a part-laid one (bridge_jobs)
    +-- afloat, shore gather, column on a bridge (column)
    +-- board: post, rebuild, adopt a missed job, relieve or fall back
@@ -894,14 +894,15 @@ The findings of section 2, now:
 | L8 a reactive economy | the base cycle (`cycle`, off) |
 
 The numbers, 18 October evening:
-- 11,936 lines in 16 files (8,458 in 8 on 18 October morning).
-- Brain tests: 61 passed, 8 ignored; client: 31.
+- 12,107 lines in 16 files (8,458 in 8 on 18 October morning).
+- Brain tests: 62 passed, 8 ignored; client: 31.
+- 76 weights and 17 switches, with the duck (LR 21).
 - 23 to 33 us a seat-tick in the census.
 - On by default: kite, pings, dodge, bridges, rotate, and since 18
   October `castle_cap`.
 - Measured fairly: the capped castle against the old, +0.72 a seat;
   `smooth` -1.92; `escort` even (never reached); `bridge_jobs` -0.70
-  with `board` on for every team.
+  with `board` on for every team; `duck` -0.51 (LR 21).
 
 What the prototype has not shown yet: that any of its new parts makes
 the bots win more. The fair census can now tell a real difference from
@@ -909,3 +910,62 @@ the starts, but six matches of 900 s are not enough to see the parts
 that pay late (the escort, bridges, the base cycle), and none has had
 the twelve seeds the roadmap asks for. That is the next measurement,
 and goal 5's longer matches the one after.
+
+## 21. The duck: direct fire denied, 18 October
+
+Paul chose the first of section 19's three ways: "build the duck
+reflex". A shot that cannot be dodged once fired can still be denied,
+by not being in reach when the gun is ready.
+
+The reflex (`Commander::duck`, the bit `duck`, off):
+- **Which guns.** A hostile tank with shells, not afloat, within 12
+  tiles (direct range plus 2, since its lead reaches past its range by
+  the target's own motion) and in line. Its gun is ready within
+  `duck_ready` (1.5 s), and before mine, or I have no shells.
+- **Seen or remembered.** Sight and direct range are both 10 tiles, so
+  a gunner just past sight leads its shot into it unseen. The first
+  duel showed exactly that: the gun that fired was not in the
+  observation. So a gun is remembered for `duck_memory` (5 s) where it
+  was last seen, its reload counted down. A direct shell in flight
+  refreshes the memory, seen or not, because it carries its gun's
+  position (`from`) and says the gun has just reloaded.
+- **When.** Only with the tank's armour share at or under `w_duck`.
+  This is the scalar between safety and the errand: 1 always ducks, 0
+  never.
+- **Where to.** It looks at sixteen points around it, at the distance
+  that clears the gun with a margin (13 tiles out, 3 to 8 tiles away).
+  Of those out of its reach or line, it takes the one nearest the
+  errand (the last Move's goal); if none, it backs straight away.
+- It holds the point a second at a time. The guns stay free while it
+  ducks, as in a dodge. It never ducks afloat or while its squad mends
+  a wreck. Once the gun is no longer a threat, the errand plans again.
+
+The census counts the trial team's seat-seconds "ducking".
+
+Proof: `a_tank_ducks_a_gun_ready_before_its_own`.
+- **The rules.** It ducks out of reach when the gun will fire first,
+  and not when its own gun is ready first, not with `w_duck` 0, and not
+  with the bit off.
+- **The duel.** A gunner standing 7 tiles off fires a led shot whenever
+  it can; the tank holds its post with its gun held reloading, never
+  able to answer. Kiting is off in both arms, since kiting already
+  holds a fighting tank past the gun's reach; the duck is for the tank
+  that does not kite. Over 40 s: hit 2 times ducking, 3 standing. The
+  hit that remains comes when the memory lapses and the post, 7 tiles
+  from the gun, draws the tank back into its fire. Holding a post under
+  a waiting gun is the trade `w_duck` is there to weigh.
+- Brain tests: 62 passed, 8 ignored.
+
+Building it took four duels, each of which found something before the
+reflex did:
+1. Three direct hits down a tank, so counting hits needed a fair cap.
+2. A tank whose gun is ready does not duck, by the rule, and a duel
+   that silenced its gun hid that.
+3. Return fire and strike drones ended the match in four seconds.
+4. The unseen gun at 10.3 tiles, the real finding.
+
+Fair census (naval.map, two seeds, six matches of 900 s, respawns 3):
+7.01 a seat for the trial team against 7.52. It ducked in all six
+matches, 2 to 16 seat-seconds in five and 567 in one. The 0.51 is
+inside the noise; `duck` stays off, and its four weights are for the
+tuner.

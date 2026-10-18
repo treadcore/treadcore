@@ -147,6 +147,9 @@ weights! {
     BridgeKeep "bridge_keep" 180.0, "bridge jobs: seconds a part-laid bridge stays on the team board with no tile laid";
     BridgeReach "bridge_reach" 40.0, "bridge jobs: a teammate this near its next tile takes it, tiles";
     BridgeWing "bridge_wing" 1.0, "bridge jobs: a wingman with material takes one too, leaving its leader's wedge (1), or only tanks on auto (0) (rounded)";
+    Duck "w_duck" 1.0, "duck: safety against the errand; a tank ducks with its armour share at or under this, 1 always, 0 never";
+    DuckMemory "duck_memory" 5.0, "duck: seconds a hostile gun seen is remembered where it was, its reload counted down (sight and direct range are both 10 tiles, so a gun at the edge is often unseen)";
+    DuckReady "duck_ready" 1.5, "duck: a hostile gun ready within this many seconds threatens, if it fires before mine (a tank covers about five tiles in 1.5 s)";
     FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
@@ -213,6 +216,7 @@ caps! {
     ISLAND_SITE 15 "island_site" false, "a small island with few trees is a poor base (12f2)";
     ESCORT 17 "escort" false, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
     BRIDGE_JOBS 18 "bridge_jobs" false, "a part-laid bridge is a job on the team board, taken by the next teammate with material; needs board (12f)";
+    DUCK 19 "duck" false, "out of a hostile gun's range or line when it is ready before mine: direct fire denied, since it cannot be dodged once fired (12d, LR 19)";
     CASTLE_CAP 16 "castle_cap" true, "the castle stops at castle_inside and castle_road pillboxes; the rest go to posts on the roads between bases (12h)";
 }
 

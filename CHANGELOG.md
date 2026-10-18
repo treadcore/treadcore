@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added, off: the duck (`duck`; Paul: "build the duck reflex"). A
+  direct shot cannot be dodged once fired, so it is denied: a tank
+  leaves a hostile gun's range or line when that gun is ready within
+  `duck_ready` (1.5 s) and before its own. The gun can be in sight or
+  remembered for `duck_memory` (5 s), from a sighting or a direct shell
+  of its in flight, since a gunner just past sight fires unseen. It
+  ducks only with its armour share at or under `w_duck` (1: always).
+  In a duel the tank was hit 2 times ducking against 3 standing. Fair
+  census: 7.01 a seat against 7.52, inside the noise.
 - Changed: the documentation marks what the improved prototype
   replaced. `documentation/archive/` is the development record: the
   roadmap of steps 0 to 11 moved there, and `BRAIN-METHODS.md`

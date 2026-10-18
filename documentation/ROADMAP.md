@@ -260,7 +260,7 @@ to 8.93 a seat).
   winner only, given-up lists that can expire (`memory::Forget`,
   `forget`). Not yet: the Observation shared per team (the sim change),
   the `why` and `doing` strings as codes.
-- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs),
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
   The sliders, 18 October (LR 17): the coordination screen's weights
   page (`U`) for the player's own team, saved to
@@ -273,8 +273,11 @@ to 8.93 a seat).
   (LR 15). Measured fairly it cost 1.9 a seat (7.55 against 9.47, six
   naval matches), so it stays off for the tuner. A dodge for direct
   fire measured first (LR 19): a led direct shot cannot be dodged once
-  fired, at any range (`a_led_direct_shot_cannot_be_dodged`); what
-  replaces it waits on Paul (backlog 17).
+  fired, at any range (`a_led_direct_shot_cannot_be_dodged`); in its
+  place the duck (`duck`, LR 21; `a_tank_ducks_a_gun_ready_before_its_own`):
+  out of a gun's range or line before it is ready, seen or remembered;
+  measured fairly at 7.01 a seat against 7.52, inside the noise, so it
+  stays off.
 - [x] 12e the team board (`board`, `team_rotate`):
   `the_front_is_where_influence_crosses_zero`, `a_hurt_tank_swaps_out`,
   `a_missed_job_is_still_on_the_board`. Not yet: allies' goals shown on
@@ -423,17 +426,15 @@ the end with a date.
     seat on every seed (`CENSUS_FAIR`); a null run reads exactly even,
     and the capped castle measured again at -0.72 a seat for the old
     one. Goal 4, 12g.
-17. 18 October (LR 19), for Paul: direct fire is denied, not dodged.
-    Choose one: a "duck" reflex behind its own switch (out of an
-    enemy gun's range or line when it is ready before one's own and
-    the exchange is lost, with a weight against the errand); close the
-    item as impossible; or change the rules so a dodge is possible.
-    Goal 4, 12d.
+17. Done 18 October (LR 19, LR 21): direct fire is denied, not
+    dodged. Paul chose the duck: `duck`, with `w_duck`, `duck_ready`
+    and `duck_memory`; off, measured inside the noise. Goal 4, 12d.
 18. 18 October: the census at twelve seeds or more for each switch
     alone (`forget`, `board`, `team_rotate`, `priced_crossing`,
     `column`, `cycle`, `island_site`), none measured alone yet; and
     longer matches for the parts that pay late (`escort`,
-    `bridge_jobs`, `cycle`). Goal 4, 12g; goal 5.
+    `bridge_jobs`, `cycle`); and `duck`, which acted little in 900 s.
+    Goal 4, 12g; goal 5.
 19. 18 October: 70 `partial_cmp().unwrap()` calls in the brain (backlog
     10, counted). Goal 4, 12b.
 

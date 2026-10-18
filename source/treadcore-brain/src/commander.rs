@@ -335,6 +335,10 @@ pub struct Commander {
     rung_challenger: Option<(Rung, Tick)>,
     /// What a switch turned off put away (`set_settings`).
     cap_held: CapHeld,
+    /// The point last ducked to, and when (`duck`).
+    duck_to: Option<(V2, Tick)>,
+    /// Hostile guns seen lately: whose, where, its reload and when.
+    guns_seen: Vec<(PlayerId, V2, u16, Tick)>,
 }
 
 /// The role's own settings of the switches `set_settings` turns off,
@@ -408,7 +412,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default() }
+        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new() }
     }
 
     /// The weights for its fights (tactics.rs); None shoots the nearest
@@ -1456,6 +1460,64 @@ impl Commander {
         }
     }
 
+    /// The duck (roadmap 12d, LR 19): a hostile tank with shells in
+    /// direct range and line, its gun ready within `duck_ready` and
+    /// before mine, and my armour share at or under `w_duck`: where to
+    /// go, out of its range or line, and where the gun is. Of the points
+    /// round at the distance that leaves its range with a margin (3 to 8
+    /// tiles), the one out of reach nearest the errand (the last Move's
+    /// goal, else here); none, straight away from the gun. A gun is the
+    /// one in sight, or remembered for `duck_memory` from a sighting or
+    /// a direct shell of its in flight.
+    fn duck(&mut self, obs: &Observation, me: &Tank, map: Option<&Map>) -> Option<(V2, V2)> {
+        use crate::weights::W;
+        // The guns in sight, remembered: sight and direct range are both
+        // 10 tiles, and a gunner just past sight leads its shot into it.
+        let keep = self.settings.ticks(W::DuckMemory);
+        for t in obs.hostile_tanks().filter(|t| t.alive && !t.boat && t.shells > 0) {
+            self.guns_seen.retain(|g| g.0 != t.owner);
+            self.guns_seen.push((t.owner, t.pos, t.reload, obs.tick));
+        }
+        for t in obs.hostile_tanks().filter(|t| !t.alive || t.boat || t.shells == 0) {
+            self.guns_seen.retain(|g| g.0 != t.owner);
+        }
+        // A direct shell in flight says where its gun is, seen or not,
+        // and that it has just reloaded.
+        for sh in obs.shells.iter().filter(|s| s.kind == ShellKind::Direct && s.owner != obs.player && !obs.allied(s.owner)) {
+            if !self.guns_seen.iter().any(|g| g.0 == sh.owner && g.3 >= sh.launch_tick) {
+                self.guns_seen.retain(|g| g.0 != sh.owner);
+                self.guns_seen.push((sh.owner, sh.from, RELOAD_TICKS, sh.launch_tick));
+            }
+        }
+        self.guns_seen.retain(|g| obs.tick < g.3.saturating_add(keep));
+        let w = &self.settings.w;
+        if me.armor / TANK_ARMOR > w[W::Duck] {
+            return None;
+        }
+        let ready = (w[W::DuckReady].max(0.0) * TICK_HZ as f32) as u16;
+        let clear = |a: V2, b: V2| map.map(|m| m.line_clear(a, b)).unwrap_or(true);
+        // A gun this near threatens (its lead reaches past its range by
+        // the tank's own motion); a duck goes this far.
+        let (reach, safe_at) = (DIRECT_RANGE + 2.0, DIRECT_RANGE + 3.0);
+        let reload = |g: &(PlayerId, V2, u16, Tick)| g.2.saturating_sub(obs.tick.saturating_sub(g.3).min(u16::MAX as Tick) as u16);
+        let gun = self
+            .guns_seen
+            .iter()
+            .filter(|g| g.1.dist(me.pos) <= reach && reload(g) <= ready && (reload(g) < me.reload || me.shells == 0) && clear(g.1, me.pos))
+            .min_by(|a, b| reload(a).cmp(&reload(b)).then(a.1.dist(me.pos).total_cmp(&b.1.dist(me.pos))))
+            .map(|g| g.1)?;
+        let errand = self.last_move.map(|(at, _)| at).unwrap_or(me.pos);
+        let safe = |p: V2| p.dist(gun) > safe_at || !clear(gun, p);
+        let ok = |p: V2| map.map(|m| m.in_bounds(p) && m.at(p).passable()).unwrap_or(true);
+        let r = (safe_at - gun.dist(me.pos) + 0.5).clamp(3.0, 8.0);
+        let best = (0..16)
+            .map(|k| me.pos + V2::from_heading(k as f32 * std::f32::consts::TAU / 16.0).scale(r))
+            .filter(|p| ok(*p) && safe(*p))
+            .min_by(|a, b| a.dist(errand).total_cmp(&b.dist(errand)));
+        let to = best.unwrap_or_else(|| me.pos + (me.pos - gun).norm().scale(r));
+        Some((obs.clamp(to), gun))
+    }
+
     fn gathering(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
         // Afloat they are on their way: counted, not near.
         let fleet: Vec<&Tank> = obs.tanks.iter().filter(|t| t.alive && self.members.contains(&t.owner)).collect();
@@ -2226,6 +2288,23 @@ impl Commander {
             cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
             return cmds;
         }
+        // Out of a hostile gun's range or line before it fires (LR 19:
+        // a direct shot cannot be dodged once fired). The guns stay free.
+        if !me.boat && !mending && self.caps().has(crate::weights::Caps::DUCK) {
+            if let Some((to, from)) = self.duck(obs, &me, map) {
+                let fresh = self.duck_to.map(|(at, t)| at.dist(to) > 1.0 || obs.tick >= t + TICK_HZ as Tick).unwrap_or(true);
+                if fresh {
+                    cmds.push(Command::Move { to });
+                    self.duck_to = Some((to, obs.tick));
+                }
+                self.doing = format!("ducking a gun at ({:.0},{:.0})", from.x, from.y);
+                cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                return cmds;
+            }
+            if self.duck_to.take().is_some() {
+                self.last_move = None;
+            }
+        }
         if !me.boat && self.revive(obs, &me, &mut cmds) {
             self.flush_say(obs, &mut cmds);
             cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
@@ -2621,6 +2700,91 @@ mod tests {
         eprintln!("a_far_fetch_gathers_the_fleet: gathered {}, lifted {} at {} s; {}", gathered, lifted, w.tick / TICK_HZ as Tick, c.doing);
         assert!(gathered, "the leader never gathered for the fetch");
         assert!(lifted >= 1, "and never fetched");
+    }
+
+    /// The duck (roadmap 12d, LR 19): a hostile gun in range and line,
+    /// ready before mine, is ducked out of range; not when my gun is
+    /// ready first, not with `w_duck` at 0, not with the switch off. In
+    /// a duel with a gunner that fires a led shot whenever it can, the
+    /// tank holding its post is hit less ducking than standing.
+    #[test]
+    fn a_tank_ducks_a_gun_ready_before_its_own() {
+        use crate::weights::{Caps, Settings, W};
+        let setup = || {
+            let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+            w.pillboxes.clear();
+            for x in 40..100 {
+                for y in 40..90 {
+                    w.map.set(V2::new(x as f32 + 0.5, y as f32 + 0.5), Terrain::Grass);
+                }
+            }
+            for (p, at, reload) in [(0, V2::new(64.5, 64.5), 60u16), (1, V2::new(71.5, 64.5), 0)] {
+                let t = w.tanks.iter_mut().find(|t| t.owner == p).unwrap();
+                (t.pos, t.reload, t.shells, t.speed) = (at, reload, 20, 0.0);
+                t.route.clear();
+                t.goal = None;
+            }
+            w
+        };
+        let commander = |caps: Caps, duck: f32| {
+            let mut s = Settings::default();
+            s.caps = caps;
+            s.w[W::Duck] = duck;
+            let mut c = Commander::new(31, "ducker");
+            c.set_settings(s);
+            c.set_goal(Goal::Hold(V2::new(64.5, 64.5)));
+            c
+        };
+        let on = Caps::BASELINE.with(Caps::DUCK);
+        let w = setup();
+        let mut c = commander(on, 1.0);
+        let cmds = c.think_on(&w.observe(0), Some(&w.map));
+        let to = cmds.iter().find_map(|c| match c { Command::Move { to } => Some(*to), _ => None }).expect("a duck");
+        assert!(to.dist(V2::new(71.5, 64.5)) > DIRECT_RANGE + 1.0, "out of its reach: {:?}", to);
+        assert!(c.doing.starts_with("ducking"), "{}", c.doing);
+        let mut w2 = setup();
+        for t in w2.tanks.iter_mut() {
+            t.reload = if t.owner == 0 { 0 } else { 60 };
+        }
+        let mut c = commander(on, 1.0);
+        c.think_on(&w2.observe(0), Some(&w2.map));
+        assert!(!c.doing.starts_with("ducking"), "my gun is ready first: {}", c.doing);
+        let mut c = commander(on, 0.0);
+        c.think_on(&w.observe(0), Some(&w.map));
+        assert!(!c.doing.starts_with("ducking"), "w_duck 0 never ducks");
+        let mut c = commander(Caps::BASELINE, 1.0);
+        c.think_on(&w.observe(0), Some(&w.map));
+        assert!(!c.doing.starts_with("ducking"), "off, no duck");
+        // The duel: the gunner stands and fires a led shot whenever it
+        // can; my tank holds its post, its gun held reloading, so the
+        // gunner is always ready first and it never answers.
+        let duel = |caps: Caps| {
+            let mut w = setup();
+            let mut c = commander(caps, 1.0);
+            let (mut hits, mut shots, mut died) = (0, 0, None);
+            for _ in 0..(40 * TICK_HZ) {
+                w.tanks.iter_mut().find(|t| t.owner == 0).unwrap().reload = RELOAD_TICKS;
+                // Its moves only: no drones or shots to end the duel.
+                let mut orders: Vec<Order> = c.think_on(&w.observe(0), Some(&w.map)).into_iter().filter(|c| matches!(c, Command::Move { .. } | Command::Stop)).map(|cmd| Order { player: 0, cmd }).collect();
+                let (g, me) = (w.tanks.iter().find(|t| t.owner == 1).unwrap().clone(), w.tanks.iter().find(|t| t.owner == 0).unwrap().clone());
+                let aim = crate::lead(&g, &me);
+                if g.reload == 0 && me.alive && g.pos.dist(aim) <= DIRECT_RANGE && w.map.line_clear(g.pos, aim) {
+                    orders.push(Order { player: 1, cmd: Command::FireDirect { at: aim } });
+                    shots += 1;
+                }
+                w.step(&orders);
+                hits += w.events.iter().filter(|e| matches!(e, Event::ShellImpact { hits, kind: ShellKind::Direct, .. } if hits.contains(&me.id))).count();
+                if died.is_none() && !w.tanks.iter().any(|t| t.owner == 0 && t.alive) {
+                    died = Some(w.tick / TICK_HZ as Tick);
+                }
+            }
+            (hits, shots, died)
+        };
+        // Kiting off in both: it already holds a fighting tank past the
+        // gun's reach; the duck is for the tank that does not kite.
+        let (ducking, standing) = (duel(on.without(Caps::KITE)), duel(Caps::BASELINE.without(Caps::KITE)));
+        eprintln!("a_tank_ducks_a_gun_ready_before_its_own: (hits taken, gunner's shots, down at s) in 40 s, ducking {:?}, standing {:?}", ducking, standing);
+        assert!(ducking.0 < standing.0, "ducking {:?} against standing {:?}", ducking, standing);
     }
 
     /// A part-laid bridge on the team board (roadmap 12f, LR 6.2): a

@@ -595,8 +595,8 @@ counts of 18 October evening.
 | file | lines | what |
 | --- | --- | --- |
 | treadcore-brain/src/lib.rs | 2,259 | the `Brain` trait (with `settings`, `set_settings`), the RuleBot doctrine, `Dodge`, `lead`, `run_bots` metered; `a_led_direct_shot_cannot_be_dodged` |
-| treadcore-brain/src/commander.rs | 3,508 | the Commander: goals, the Auto ladder, the fleet, the board's post and jobs, road posts, `bridge_jobs`, the escort's gather |
-| treadcore-brain/src/weights.rs | 474 | `W` (73 weights, each with a default, a doc line and a slider step), `Caps` (16 switches), `Settings` and its file form, `Curve`, `utility` |
+| treadcore-brain/src/commander.rs | 3,674 | the Commander: goals, the Auto ladder, the fleet, the board's post and jobs, road posts, `bridge_jobs`, the escort's gather, the duck |
+| treadcore-brain/src/weights.rs | 474 | `W` (76 weights, each with a default, a doc line and a slider step), `Caps` (17 switches), `Settings` and its file form, `Curve`, `utility` |
 | treadcore-brain/src/meter.rs | 118 | per-thread counters: seats, thinks, Moves, crossings searched and cached, plan copies, microseconds |
 | treadcore-brain/src/memory.rs | 96 | `Forget`: memories that run out |
 | treadcore-brain/src/intent.rs | 181 | `Desire`, `Confirm`, `Advance`: holding a decision |
