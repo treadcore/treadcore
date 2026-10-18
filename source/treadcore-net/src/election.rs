@@ -49,7 +49,10 @@ fn link(rows: &BTreeMap<PeerId, Row>, a: PeerId, b: PeerId) -> Option<u32> {
     }
 }
 
-fn dijkstra(peers: &BTreeSet<PeerId>, rows: &BTreeMap<PeerId, Row>, from: PeerId) -> BTreeMap<PeerId, (u32, PeerId)> {
+/// Per peer: its distance from the root, and the neighbour it goes through.
+type Tree = BTreeMap<PeerId, (u32, PeerId)>;
+
+fn dijkstra(peers: &BTreeSet<PeerId>, rows: &BTreeMap<PeerId, Row>, from: PeerId) -> Tree {
     // (distance, parent) for each reached peer.
     let mut done: BTreeMap<PeerId, (u32, PeerId)> = BTreeMap::new();
     let mut open: BTreeMap<PeerId, (u32, PeerId)> = BTreeMap::new();
@@ -91,7 +94,7 @@ pub fn elect_among(peers: &[PeerId], servers: &[PeerId], rows: &BTreeMap<PeerId,
     }
     // (key, eccentricity, host, tree); the key is the eccentricity less
     // any preference, then the total, then the id.
-    let mut best: Option<((u32, u64, PeerId), u32, BTreeMap<PeerId, (u32, PeerId)>)> = None;
+    let mut best: Option<((u32, u64, PeerId), u32, Tree)> = None;
     let mut weigh = |cand: PeerId, among: &BTreeSet<PeerId>, preference: u32| {
         let tree = dijkstra(among, rows, cand);
         if tree.len() != among.len() {

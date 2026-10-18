@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # run.sh MODE
-#   solo   the window, fifteen bots (PLAYERS=n), no network
+#   solo   the window, fifteen bots (PLAYERS=n), no network; the window's
+#          default match: the naval map, three teams (TEAMS=n), three
+#          respawns; MAP=island for the generated island
 #   lan    the window, LAN lobby, elect a host among whoever answers
 #   host   headless host on the LAN; bots in empty seats
 #   seat   headless bot that joins the LAN lobby
@@ -37,7 +39,7 @@ case "$MODE" in
         say "building the window (release) -> $LOGDIR/build-$STAMP.log"
         cargo build --release -p treadcore-client 2>&1 | tee "$LOGDIR/build-$STAMP.log" >/dev/null || die "build failed: see $LOGDIR/build-$STAMP.log"
         BIN="$ROOT/target/release/treadcore"
-        if [ "$MODE" = solo ]; then ARGS=(--solo --seed "${SEED:-0x7EADC0DE}" --players "${PLAYERS:-16}" --teams "${TEAMS:-0}"); else ARGS=(--lan "${NET[@]}" --seed "${SEED:-0x7EADC0DE}"); fi
+        if [ "$MODE" = solo ]; then ARGS=(--solo --seed "${SEED:-0x7EADC0DE}" --players "${PLAYERS:-16}" --teams "${TEAMS:-3}"); else ARGS=(--lan "${NET[@]}" --seed "${SEED:-0x7EADC0DE}"); fi
         ;;
     host|seat)
         say "building headless (release) -> $LOGDIR/build-$STAMP.log"
@@ -67,6 +69,7 @@ case "$MODE" in
     *) die "unknown mode $MODE" ;;
 esac
 [ -n "${MAP:-}" ] && ARGS+=(--map "$MAP")
+[ -n "${RESPAWNS:-}" ] && ARGS+=(--respawns "$RESPAWNS")
 case "$MODE" in solo|lan|host|seat|listen) [ "${INDUSTRY:-0}" = 1 ] && ARGS+=(--industry) ;; esac
 case "$MODE" in solo|lan|host|listen) [ "${ROOKIES:-0}" != 0 ] && ARGS+=(--rookies "$ROOKIES") ;; esac
 case "$MODE" in solo|lan) [ "${WINGMEN:-0}" != 0 ] && ARGS+=(--wingmen "$WINGMEN") ;; esac

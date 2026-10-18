@@ -14,18 +14,33 @@ pub const TANK_FUEL: f32 = 600.0;
 /// 100 m, so this is a brisk 360 km/h. A game speed. Real tanks at 40 km/h
 /// would make a 3 km map a seven-minute drive.
 pub const TANK_SPEED: f32 = 4.0;
-pub const TANK_ACCEL: f32 = 3.0;
-/// Radians per second of hull turn.
-pub const TANK_TURN: f32 = 2.5;
-/// A heading error larger than this is a corner: the tank brakes to
-/// `TURN_CRAWL` of its speed and pivots, instead of swinging wide of the
-/// road (and, at a bridge, into the river).
+/// Tiles per second per second, up and down: momentum (Paul, 17
+/// October: "more momentum, more consistent top speed ... something
+/// that still moves forward during a turn"). Was 3 up and an instant
+/// stop down.
+pub const TANK_ACCEL: f32 = 4.0;
+pub const TANK_BRAKE: f32 = 6.0;
+/// Radians per second of hull turn (was 2.5).
+pub const TANK_TURN: f32 = 3.0;
+/// A heading error larger than this is a corner: the tank eases off,
+/// down to `TURN_CRAWL` of its speed for a turn right round, and keeps
+/// rolling; near the corner's waypoint it slows enough to turn inside
+/// it, not swing wide of the road (and, at a bridge, into the river).
+/// Was a crawl at a quarter for any corner, a pivot.
 pub const TURN_BRAKE_ANGLE: f32 = 0.6;
-pub const TURN_CRAWL: f32 = 0.25;
+pub const TURN_CRAWL: f32 = 0.35;
+/// The way on is behind it, more than this off its heading: it pivots
+/// where it stands. Rolling on through that turn put a tank facing a
+/// wall into the wall, blocked, every tick (the ladder's fortifier, ten
+/// minutes at one spot).
+pub const TURN_PIVOT: f32 = 2.0;
 
 pub const FUEL_PER_TILE: f32 = 1.0;
-/// Own eyes: not far. The tank sees the drones' picture, not the ground.
-pub const TANK_VISION: f32 = 7.0;
+/// Own eyes: as far as the direct gun reaches, so what it can shoot it
+/// can see (Paul, 16 October: "increase visual sight of all, especially
+/// air units"; was 7, three tiles short of `DIRECT_RANGE`). The drones'
+/// picture is still the wide one.
+pub const TANK_VISION: f32 = 10.0;
 /// the prior art's forest concealment (SPEC VIS-02, PIL-07): a tank inside a 2 x 2
 /// block of forest is hidden from every eye and every pillbox beyond
 /// this many tiles, a recon drone's included. Tree cover against the
@@ -68,8 +83,11 @@ pub const STRIKE_BATTERY: f32 = 45.0;
 pub const RECON_SPEED: f32 = 5.0;
 pub const INTERCEPTOR_SPEED: f32 = 9.0;
 pub const STRIKE_SPEED: f32 = 6.5;
-pub const RECON_VISION: f32 = 12.0;
-pub const DRONE_VISION: f32 = 4.0;
+/// Eyes in the air, raised with the tank's (were 12 and 4): a recon
+/// sees half its link; an interceptor or a strike its own bubble's
+/// width.
+pub const RECON_VISION: f32 = 20.0;
+pub const DRONE_VISION: f32 = 8.0;
 /// Telemetry link. Link quality is 1 at the tank and 0 at this range; below
 /// `LINK_FLOOR` the drone is on its own and turns for home.
 pub const RECON_LINK: f32 = 40.0;
@@ -191,6 +209,54 @@ pub const WALL_BUILD_TICKS: u16 = 3 * TICK_HZ as u16;
 pub const WALL_COST: u8 = 1;
 pub const ROAD_BUILD_TICKS: u16 = 3 * TICK_HZ as u16;
 pub const ROAD_COST: u8 = 1;
+/// A squad laying a bridge tile lays on, straight out from where it
+/// stands, up to this many tiles in the trip, a material each.
+pub const BRIDGE_SPAN: usize = 3;
+// ---- the chain ---------------------------------------------------------
+/// How near a tank must be to hitch a chain to a pillbox or a depot.
+pub const TOW_REACH: f32 = 2.5;
+/// The chain's length: what is towed trails this far behind the tanks
+/// pulling it, and a tank cannot get further from it than this.
+pub const TOW_CHAIN: f32 = 2.0;
+/// Tanks it takes to move what is chained: one alone holds it, and is
+/// held by it (Paul: "it should be 10% if there are two tanks tugging
+/// the chain. so this action requires an ally").
+pub const TOW_HAULERS: usize = 2;
+/// A tank hauling drives at this share of its speed.
+pub const TOW_SPEED: f32 = 0.1;
+
+// ---- down, revive, respawn ---------------------------------------------
+/// A destroyed tank is down this long before it is dead (Paul, 16
+/// October: "a tank has 20 seconds to be repaired before death and
+/// respawn"): an ally's squad may revive it meanwhile.
+pub const DOWNED_TICKS: u32 = 20 * TICK_HZ;
+/// The revive: material from the squad that does it, the squad's work
+/// at the wreck, and the armour the tank comes back with.
+pub const REVIVE_COST: u8 = 2;
+pub const REVIVE_TICKS: u16 = (4 * TICK_HZ) as u16;
+pub const REVIVE_ARMOR: f32 = TANK_ARMOR * 0.5;
+/// How long a destroyed tank waits before it may come back, when the
+/// scenario allows it (`Scenario::respawns`): until it is dead, the
+/// time down, in which an ally may still revive it.
+pub const RESPAWN_TICKS: u32 = DOWNED_TICKS;
+/// `Scenario::respawns` at this is no limit.
+pub const RESPAWNS_UNLIMITED: u8 = u8::MAX;
+
+// ---- boats (SPEC TNK-08, TNK-11 to TNK-14, the mode table) -------------
+/// A boat: the prior art's five trees, so a little over one harvest.
+pub const BOAT_COST: u8 = 5;
+pub const BOAT_BUILD_TICKS: u16 = 5 * TICK_HZ as u16;
+/// A tank afloat crosses water at this terrain cost: fast (TNK-11),
+/// between a road and open ground.
+pub const BOAT_MOVE_COST: f32 = 0.7;
+/// How far an afloat tank's observation looks for a landing, for a
+/// Brain with no map: the beaches it could make for.
+pub const SHORE_SIGHT: f32 = 60.0;
+/// How many headings the landing search casts, one beach per heading.
+pub const SHORE_RAYS: usize = 24;
+/// How far an observation looks for a place to build a boat: about the
+/// squad's walk.
+pub const LAUNCH_SIGHT: f32 = 16.0;
 pub const MINE_LAY_TICKS: u16 = 3 * TICK_HZ as u16;
 pub const MINE_COST: u8 = 1;
 /// Within this of a wall or mine site the squad works from beside it,
@@ -214,7 +280,6 @@ pub const MINE_AVOID_COST: f32 = 50.0;
 /// lists for a Brain that has no map.
 pub const FOREST_SIGHT: f32 = 20.0;
 /// A pillbox holds shells for its owner's tank, like a small depot:
-
 /// a tank within `DEPOT_RADIUS` of its own live pillbox takes one a
 /// resupply cycle while they last; they come back slowly.
 pub const PILLBOX_SHELLS: u16 = 8;
@@ -307,10 +372,83 @@ pub const SCORE_INTERCEPT: u32 = 5;
 pub const SWARM_OWNER: PlayerId = 255;
 
 pub fn drone_speed(k: crate::DroneKind) -> f32 {
-    match k {
-        crate::DroneKind::Recon => RECON_SPEED,
-        crate::DroneKind::Interceptor => INTERCEPTOR_SPEED,
-        crate::DroneKind::Strike => STRIKE_SPEED,
-        crate::DroneKind::Longshot => LONGSHOT_SPEED,
+    drone_spec(k, 1).speed
+}
+
+// ---- drone marks -------------------------------------------------------
+// Paul, 16 October: "reference each of the drones in the prior art
+// research lab report material ... similar flight times and
+// capabilities, a rotation of upgrades and a variety". Every kind comes
+// in three marks, each after a system in documentation/RESEARCH.md; the
+// whole match moves up a mark together at `MARK_II_AT` and
+// `MARK_III_AT`, and a drone keeps the mark it was launched with. The
+// game takes the systems' shape, not their numbers: flight times are
+// scaled to a 3.2 km map as the guns are (RESEARCH.md).
+
+/// When the match moves to Mk II and Mk III drones.
+pub const MARK_II_AT: u32 = 4 * 60 * TICK_HZ;
+pub const MARK_III_AT: u32 = 8 * 60 * TICK_HZ;
+
+/// The mark launched at this tick.
+pub fn mark_at(tick: u64) -> u8 {
+    if tick >= MARK_III_AT as u64 {
+        3
+    } else if tick >= MARK_II_AT as u64 {
+        2
+    } else {
+        1
+    }
+}
+
+/// What a drone of a kind and mark is.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DroneSpec {
+    /// What it is modelled on, for the newswire and the HUD.
+    pub name: &'static str,
+    pub speed: f32,
+    /// Seconds of flight.
+    pub battery: f32,
+    /// How far it sees, tiles.
+    pub vision: f32,
+    /// An interceptor's kill chance on its own camera and on a perfect
+    /// link (a ram); unused by the others.
+    pub intercept_base: f32,
+    pub intercept_linked: f32,
+    /// A strike's damage on the tank it dives on; a longshot's is
+    /// scaled by `blast` on everything it lands on.
+    pub damage: f32,
+    pub blast: f32,
+    /// Flies through a jammer: a fibre-optic link has no radio to jam.
+    pub jam_proof: bool,
+}
+
+const SPEC_DEFAULT: DroneSpec = DroneSpec { name: "", speed: 0.0, battery: 0.0, vision: DRONE_VISION, intercept_base: INTERCEPT_BASE, intercept_linked: INTERCEPT_LINKED, damage: 0.0, blast: 1.0, jam_proof: false };
+
+/// The table. Mark 1 is the game as it was; 2 and 3 add range, speed or
+/// a trick each, never all three, so a later mark is better and also
+/// different:
+///
+/// | kind | Mk I | Mk II | Mk III |
+/// | --- | --- | --- | --- |
+/// | recon | quadcopter | VTOL fixed-wing (the closed-hatch demonstrator's VTOL): faster, longer, sees further | high-altitude VTOL: further still, slower to turn on station |
+/// | interceptor | kinetic rammer (the five-EOS carrier, the Turkish hunter) | radar-cued (Merops): better on its own camera | high-speed autonomous (OSIRIS UEB-1): much faster, best on its own |
+/// | strike | FPV | fibre-optic FPV: unjammable, a little longer | loitering munition: twice the flight, a heavier warhead, slower dive |
+/// | longshot | one-way drone | faster, further | heavier warhead |
+pub fn drone_spec(k: crate::DroneKind, mark: u8) -> DroneSpec {
+    use crate::DroneKind::*;
+    let s = SPEC_DEFAULT;
+    match (k, mark.clamp(1, 3)) {
+        (Recon, 1) => DroneSpec { name: "quadcopter", speed: RECON_SPEED, battery: RECON_BATTERY, vision: RECON_VISION, ..s },
+        (Recon, 2) => DroneSpec { name: "VTOL fixed-wing", speed: 6.5, battery: 210.0, vision: RECON_VISION + 3.0, ..s },
+        (Recon, _) => DroneSpec { name: "high-altitude VTOL", speed: 6.0, battery: 270.0, vision: RECON_VISION + 7.0, ..s },
+        (Interceptor, 1) => DroneSpec { name: "kinetic rammer", speed: INTERCEPTOR_SPEED, battery: INTERCEPTOR_BATTERY, ..s },
+        (Interceptor, 2) => DroneSpec { name: "radar-cued interceptor", speed: 10.0, battery: 100.0, intercept_base: 0.68, intercept_linked: 0.92, ..s },
+        (Interceptor, _) => DroneSpec { name: "high-speed interceptor", speed: 14.0, battery: 80.0, intercept_base: 0.78, intercept_linked: 0.95, ..s },
+        (Strike, 1) => DroneSpec { name: "FPV", speed: STRIKE_SPEED, battery: STRIKE_BATTERY, damage: STRIKE_DAMAGE, ..s },
+        (Strike, 2) => DroneSpec { name: "fibre-optic FPV", speed: STRIKE_SPEED, battery: 55.0, damage: STRIKE_DAMAGE, jam_proof: true, ..s },
+        (Strike, _) => DroneSpec { name: "loitering munition", speed: 5.5, battery: 90.0, damage: 48.0, ..s },
+        (Longshot, 1) => DroneSpec { name: "one-way drone", speed: LONGSHOT_SPEED, battery: LONGSHOT_BATTERY, ..s },
+        (Longshot, 2) => DroneSpec { name: "fast one-way drone", speed: 4.0, battery: 170.0, ..s },
+        (Longshot, _) => DroneSpec { name: "heavy one-way drone", speed: 3.5, battery: 190.0, blast: 1.4, ..s },
     }
 }

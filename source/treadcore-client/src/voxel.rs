@@ -16,8 +16,10 @@
 //!
 //! The models are Bolo's things in Bolo's colours (the WinBolo screen
 //! and the cover, journal 0015): a tan stepped pyramid of a pillbox
-//! with an orange gun on top, a tan base plate with the owner's mark,
-//! an olive hull with dark tracks and a turret in the seat's colour.
+//! with an orange gun on top, a tan base plate with the owner's mark.
+//! The tanks are the sprite kit's three chassis (`TankStyle`), each a
+//! hull, four frames of running gear and a turret apart, so the turret
+//! turns and the treads roll (battlefield.rs).
 
 use crate::TILE;
 use bevy::color::Mix;
@@ -147,40 +149,341 @@ pub const TAN: Color = Color::srgb(0.75, 0.63, 0.44);
 pub const TAN_DARK: Color = Color::srgb(0.50, 0.37, 0.25);
 pub const GUN: Color = Color::srgb(0.95, 0.55, 0.2);
 pub const OLIVE: Color = Color::srgb(0.42, 0.42, 0.26);
-pub const TRACK: Color = Color::srgb(0.2, 0.19, 0.16);
-pub const TREAD: Color = Color::srgb(0.3, 0.29, 0.25);
 pub const STEEL: Color = Color::srgb(0.62, 0.64, 0.62);
 pub const MINE: Color = Color::srgb(0.95, 0.2, 0.15);
 pub const EARTH: Color = Color::srgb(0.45, 0.36, 0.26);
 
-/// The tank, Bolo's way: an olive hull fourteen cubes long and eight
-/// wide, tracks two wide down each side with their treads, a
-/// superstructure, a turret in the seat's colour and a barrel forward
-/// (+x). `damage` is 1 minus armor over full armor: the turret and the
-/// upper hull chip away. Dead, it is grey and burnt down to the hull.
-pub fn tank(color: Color, alive: bool, damage: f32) -> Model {
-    let mut m = Model::new(0.1);
-    let hull = if alive { OLIVE } else { Color::srgb(0.28, 0.28, 0.27) };
-    let turret = if alive { color } else { Color::srgb(0.35, 0.35, 0.34) };
-    m.slab(-7, -4, 6, 3, 0, hull);
-    for x in -7..=6 {
-        let tread = if x % 2 == 0 { TRACK } else { TREAD };
-        m.cube(x, -4, 0, tread);
-        m.cube(x, -3, 0, tread);
-        m.cube(x, 3, 0, tread);
-        m.cube(x, 2, 0, tread);
+/// The three chassis a side can field (the sprite kit, journal 0037):
+/// each a hull, its running gear in four frames, and a turret that
+/// turns on its own. Cosmetic: the world's tank is one tank whatever
+/// it is drawn as.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TankStyle {
+    /// Slab-sided battle tank: wide tracks, a long gun, a grille astern.
+    #[default]
+    Bulwark,
+    /// Twin-track raider: broad chevron tracks, an open cockpit, a light
+    /// bar, two short guns on a small mount.
+    Strider,
+    /// Wheeled scout: four fat tyres, a red body with stripes, a wing.
+    Rattler,
+}
+
+impl TankStyle {
+    pub const ALL: [TankStyle; 3] = [TankStyle::Bulwark, TankStyle::Strider, TankStyle::Rattler];
+
+    pub fn word(self) -> &'static str {
+        match self {
+            TankStyle::Bulwark => "bulwark",
+            TankStyle::Strider => "strider",
+            TankStyle::Rattler => "rattler",
+        }
     }
-    m.slab(-5, -2, 4, 1, 1, hull.lighter(0.04));
-    m.slab(-3, -2, 2, 1, 2, turret);
-    m.slab(-2, -1, 1, 0, 3, turret.lighter(0.06));
-    for x in 3..=11 {
-        m.cube(x, 0, 2, STEEL);
+
+    pub fn from_word(w: &str) -> Option<TankStyle> {
+        TankStyle::ALL.into_iter().find(|s| s.word() == w)
+    }
+
+    pub fn next(self) -> TankStyle {
+        TankStyle::ALL[(TankStyle::ALL.iter().position(|s| *s == self).unwrap() + 1) % 3]
+    }
+
+    /// The other two, for the sides that are not mine.
+    pub fn others(self) -> [TankStyle; 2] {
+        let o: Vec<TankStyle> = TankStyle::ALL.into_iter().filter(|s| *s != self).collect();
+        [o[0], o[1]]
+    }
+
+    /// Where the turret sits on the hull, in cubes forward of centre.
+    pub fn mount(self) -> f32 {
+        match self {
+            TankStyle::Bulwark => -0.5,
+            TankStyle::Strider => -2.0,
+            TankStyle::Rattler => -0.5,
+        }
+    }
+
+    /// The kit's turret traverse, radians a second: the battle tank's
+    /// heavy turret slow, the raider's mount quick.
+    pub fn traverse(self) -> f32 {
+        match self {
+            TankStyle::Bulwark => 1.7,
+            TankStyle::Strider => 3.4,
+            TankStyle::Rattler => 2.6,
+        }
+    }
+
+    /// How far the turret kicks back on a shot, in tiles, and how many
+    /// sparks leave the muzzle: the kit's 8 and 10 for the long gun,
+    /// 3 and 4 for the light ones.
+    pub fn recoil(self) -> f32 {
+        if self == TankStyle::Bulwark { 0.14 } else { 0.05 }
+    }
+
+    pub fn sparks(self) -> usize {
+        if self == TankStyle::Bulwark { 10 } else { 4 }
+    }
+
+    /// The barrels, in cubes across the turret: the raider's two fire
+    /// in turn.
+    pub fn barrels(self) -> &'static [f32] {
+        match self {
+            TankStyle::Strider => &[-1.0, 0.0],
+            _ => &[0.0],
+        }
+    }
+
+    /// The muzzle, in cubes forward of the turret's pivot.
+    pub fn muzzle(self) -> f32 {
+        match self {
+            TankStyle::Bulwark => 12.0,
+            TankStyle::Strider => 7.0,
+            TankStyle::Rattler => 9.0,
+        }
+    }
+}
+
+const DEAD_HULL: Color = Color::srgb(0.28, 0.28, 0.27);
+const DEAD_TOP: Color = Color::srgb(0.35, 0.35, 0.34);
+
+const fn hex(rgb: u32) -> Color {
+    Color::srgb(((rgb >> 16) & 0xff) as f32 / 255.0, ((rgb >> 8) & 0xff) as f32 / 255.0, (rgb & 0xff) as f32 / 255.0)
+}
+
+// The kit's colours, sampled from its SVG plates.
+const SAND: Color = hex(0xa58d61);
+const SAND_TOP: Color = hex(0xc2a877);
+const SAND_BOW: Color = hex(0xcdb88a);
+const SAND_DARK: Color = hex(0x6f5d3e);
+const SAND_DEEP: Color = hex(0x4a3e29);
+const SAND_TRACK: (Color, Color) = (hex(0x2b2620), hex(0x51483a));
+const LAMP_WHITE: Color = hex(0xece5c8);
+const SLATE: Color = hex(0x5b6470);
+const SLATE_TOP: Color = hex(0x717c88);
+const SLATE_GREY: Color = hex(0x4a525c);
+const CAGE: Color = hex(0x2a2f35);
+const COCKPIT: Color = hex(0x18222d);
+const GLASS: Color = hex(0x46688a);
+const LED: Color = hex(0xffd75e);
+const TAIL: Color = hex(0xff4d3a);
+const SLATE_TRACK: (Color, Color) = (hex(0x1a1d20), hex(0x3b4147));
+const RED: Color = hex(0xb8342b);
+const STRIPE: Color = hex(0xefe9dc);
+const HEADLAMP: Color = hex(0xfff3c4);
+const BLACK_TRIM: Color = hex(0x222222);
+const TYRE: (Color, Color) = (hex(0x141414), hex(0x3a3a3a));
+const AXLE: Color = hex(0x8a8f96);
+const DISC: Color = hex(0xe4dfd4);
+const GUNMETAL: Color = hex(0x2a2a2a);
+
+/// The hull without its running gear or turret. The seat's colour is
+/// the kit's trim: the Bulwark's skirts, the Strider's rails. Damage
+/// chips it as `tank` did; dead, it is grey.
+pub fn hull(style: TankStyle, color: Color, alive: bool, damage: f32) -> Model {
+    let mut m = Model::new(0.1);
+    let live = |c: Color| if alive { c } else { DEAD_HULL };
+    match style {
+        TankStyle::Bulwark => {
+            m.slab(-7, -2, 6, 1, 0, live(SAND));
+            m.slab(-5, -2, 4, 1, 1, live(SAND_TOP));
+            // The glacis at the bow with its two lamps and the dashed
+            // plate, the engine grille and the exhausts astern.
+            m.slab(5, -2, 6, 1, 1, live(SAND_BOW));
+            m.cube(6, -2, 1, live(LAMP_WHITE));
+            m.cube(6, 1, 1, live(LAMP_WHITE));
+            m.cube(5, -1, 1, live(SAND_DEEP));
+            m.cube(5, 0, 1, live(SAND_DEEP));
+            for x in -6..=-4 {
+                for y in -2..=1 {
+                    m.cube(x, y, 1, live(if x % 2 == 0 { SAND_DEEP } else { SAND_DARK }));
+                }
+            }
+            m.cube(-7, -2, 1, live(hex(0x3a332a)));
+            m.cube(-7, 1, 1, live(hex(0x3a332a)));
+            for x in -3..=2 {
+                m.cube(x, -2, 1, live(color.mix(&SAND_DARK, 0.35)));
+                m.cube(x, 1, 1, live(color.mix(&SAND_DARK, 0.35)));
+            }
+        }
+        TankStyle::Strider => {
+            m.slab(-7, -1, 6, 0, 0, live(SLATE));
+            m.slab(-6, -1, 5, 0, 1, live(SLATE));
+            m.slab(4, -1, 6, 0, 1, live(SLATE_TOP));
+            // The rails down each side in the seat's colour (the kit's
+            // orange), the open cockpit under its roll cage, the light
+            // bar on the cage, the engine deck and the tail lights.
+            for x in -5..=4 {
+                m.cube(x, -2, 1, live(color));
+                m.cube(x, 1, 1, live(color));
+            }
+            m.slab(1, -1, 3, 0, 1, live(COCKPIT));
+            m.cube(3, -1, 2, live(GLASS));
+            m.cube(3, 0, 2, live(GLASS));
+            for y in [-1, 0] {
+                m.cube(3, y, 3, live(LED));
+                m.cube(0, y, 3, live(CAGE));
+            }
+            for x in 0..=3 {
+                m.cube(x, -2, 3, live(CAGE));
+                m.cube(x, 1, 3, live(CAGE));
+            }
+            m.slab(-7, -1, -5, 0, 2, live(SLATE_GREY));
+            m.cube(-7, -1, 1, live(TAIL));
+            m.cube(-7, 0, 1, live(TAIL));
+        }
+        TankStyle::Rattler => {
+            m.slab(-6, -2, 6, 1, 0, live(RED));
+            m.slab(-5, -2, 5, 1, 1, live(RED));
+            // Racing stripes nose to tail, the windscreen, the lamps and
+            // the bumper, the wing astern on red end plates.
+            for x in -5..=5 {
+                m.cube(x, -1, 2, live(STRIPE));
+                m.cube(x, 0, 2, live(STRIPE));
+            }
+            m.slab(3, -2, 4, -2, 2, live(COCKPIT));
+            m.slab(3, 1, 4, 1, 2, live(COCKPIT));
+            m.cube(6, -2, 1, live(HEADLAMP));
+            m.cube(6, 1, 1, live(HEADLAMP));
+            m.slab(7, -3, 7, 2, 0, live(BLACK_TRIM));
+            m.slab(-7, -4, -7, 3, 2, live(BLACK_TRIM));
+            m.cube(-7, -4, 1, live(RED));
+            m.cube(-7, 3, 1, live(RED));
+        }
+    }
+    if alive {
+        m.chip(damage * 0.45);
+    } else {
+        m.chip(0.4);
+    }
+    m
+}
+
+/// The running gear at `phase` (0 to 3), the kit's four-frame tread
+/// cycle: the links, or the tyres' blocks, a cube further back each
+/// frame, so driving rolls them under the hull. Forward is +x; the
+/// pattern walks -x as the phase rises.
+pub fn running_gear(style: TankStyle, alive: bool, phase: u8) -> Model {
+    let mut m = Model::new(0.1);
+    let p = phase as i32;
+    let link = |x: i32, (a, b): (Color, Color)| if !alive { DEAD_TOP.darker(0.1) } else if (x + p).rem_euclid(4) < 2 { a } else { b };
+    match style {
+        TankStyle::Bulwark => {
+            for x in -7..=6i8 {
+                for y in [-4, -3, 2, 3] {
+                    m.cube(x, y, 0, link(x as i32, SAND_TRACK));
+                }
+            }
+        }
+        TankStyle::Strider => {
+            // Broad chevron tracks: three wide, the middle link a cube
+            // ahead of its sides, the idlers at both ends.
+            for x in -7..=6i8 {
+                for (y, lead) in [(-4, 0), (-3, 1), (-2, 0), (1, 0), (2, 1), (3, 0)] {
+                    m.cube(x, y, 0, link(x as i32 + lead, SLATE_TRACK));
+                }
+            }
+            if alive {
+                for x in [-7, 6] {
+                    m.cube(x, -3, 1, hex(0x444b52));
+                    m.cube(x, 2, 1, hex(0x444b52));
+                }
+            }
+        }
+        TankStyle::Rattler => {
+            for x0 in [-6i8, 3] {
+                for x in x0..x0 + 3 {
+                    for y in [-5, -4, 3, 4] {
+                        m.cube(x, y, 0, link(x as i32, TYRE));
+                    }
+                }
+                if alive {
+                    m.cube(x0 + 1, -3, 0, AXLE);
+                    m.cube(x0 + 1, 2, 0, AXLE);
+                }
+            }
+        }
+    }
+    m
+}
+
+/// The turret on its own, the pivot at the grid's origin and the gun
+/// forward (+x), so it turns apart from the hull as the kit's does.
+pub fn turret(style: TankStyle, color: Color, alive: bool, damage: f32) -> Model {
+    let mut m = Model::new(0.1);
+    let live = |c: Color| if alive { c } else { DEAD_TOP };
+    match style {
+        TankStyle::Bulwark => {
+            m.slab(-3, -2, 2, 1, 2, live(SAND_TOP));
+            m.slab(1, -2, 2, 1, 3, live(SAND_BOW));
+            // The commander's cupola in the seat's colour, the hatch.
+            m.slab(-2, 0, -1, 1, 3, live(color));
+            m.cube(-2, -2, 3, live(SAND));
+            for x in 3..=10 {
+                m.cube(x, 0, 2, live(SAND_DARK));
+            }
+            m.cube(11, 0, 2, live(SAND_DEEP));
+            m.cube(12, 0, 2, live(SAND_DEEP));
+        }
+        TankStyle::Strider => {
+            // The remote weapon station: a slate box, cheeks either side,
+            // two short guns.
+            m.slab(-1, -1, 1, 0, 3, live(SLATE_TOP));
+            m.cube(0, -2, 3, live(color.mix(&SLATE_TOP, 0.3)));
+            m.cube(0, 1, 3, live(color.mix(&SLATE_TOP, 0.3)));
+            for x in 2..=6 {
+                m.cube(x, -1, 3, live(CAGE));
+                m.cube(x, 0, 3, live(CAGE));
+            }
+            m.cube(7, -1, 3, live(SLATE_TRACK.0));
+            m.cube(7, 0, 3, live(SLATE_TRACK.0));
+        }
+        TankStyle::Rattler => {
+            // The white disc with the ring in the seat's colour (the
+            // kit's red), the gun out of its middle.
+            for (x, y) in [(-1, -2), (0, -2), (-2, -1), (1, -1), (-2, 0), (1, 0), (-1, 1), (0, 1)] {
+                m.cube(x, y, 2, live(color));
+            }
+            m.slab(-1, -1, 0, 0, 3, live(DISC));
+            for x in 1..=8 {
+                m.cube(x, 0, 3, live(GUNMETAL));
+            }
+            m.cube(9, 0, 3, live(TYRE.0));
+        }
     }
     if alive {
         m.chip(damage * 0.45);
     } else {
         m.chip(0.6);
     }
+    m
+}
+
+/// A landing craft (SPEC TNK-08): a flat grey-green hull a size up from
+/// a tank's, low gunwales, the bow ramp forward. Under a tank afloat it
+/// is the boat the tank rides; empty and moored it carries the
+/// builder's colour on its stern.
+pub fn landing_craft(owner: Option<Color>) -> Model {
+    let mut m = Model::new(0.1);
+    let hull = hex(0x55605a);
+    let rail = hex(0x6d7a72);
+    let ramp = hex(0x8a978e);
+    m.slab(-10, -5, 8, 4, 0, hull);
+    for x in -10..=8 {
+        m.cube(x, -5, 1, rail);
+        m.cube(x, 4, 1, rail);
+    }
+    for y in -5..=4 {
+        m.cube(-10, y, 1, rail);
+    }
+    // The ramp, hinged at the bow, a shade lighter, with its ribs.
+    m.slab(9, -4, 10, 3, 0, ramp);
+    m.cube(9, -2, 1, ramp.darker(0.1));
+    m.cube(9, 1, 1, ramp.darker(0.1));
+    if let Some(c) = owner {
+        m.slab(-9, -1, -8, 0, 1, c);
+    }
+    m.cx = -0.5;
+    m.cy = -0.5;
     m
 }
 
@@ -418,4 +721,26 @@ pub fn structure(kind: treadcore_sim::StructureKind, owner: Option<Color>, healt
     }
     m.chip((1.0 - health.clamp(0.0, 1.0)) * 0.5);
     m
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_style_builds_and_its_treads_roll() {
+        let c = Color::srgb(0.4, 0.5, 0.9);
+        for s in TankStyle::ALL {
+            assert_eq!(TankStyle::from_word(s.word()), Some(s));
+            assert!(!s.others().contains(&s));
+            for alive in [true, false] {
+                assert!(!hull(s, c, alive, 0.3).cubes.is_empty(), "{:?} hull", s);
+                assert!(!turret(s, c, alive, 0.3).cubes.is_empty(), "{:?} turret", s);
+            }
+            let colours = |p| running_gear(s, true, p).cubes.iter().map(|c| c.color.to_srgba().red.to_bits()).collect::<Vec<_>>();
+            assert_ne!(colours(0), colours(1), "{:?}: the gear does not roll", s);
+            assert_eq!(colours(0), colours(0), "{:?}", s);
+        }
+        assert_eq!(TankStyle::Rattler.next(), TankStyle::Bulwark);
+    }
 }

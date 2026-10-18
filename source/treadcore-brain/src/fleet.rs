@@ -17,13 +17,13 @@
 //!
 //! A bot team's leader is on Auto and builds the castle at its own
 //! depot; the others take its depot for their base too: a guard on
-//! defend base, two rangers on Auto with fortify and turrets off
-//! (defend the base, hunt near it, guard it), a wingman on the leader.
+//! defend base, and a fleet of three wingmen (two of them called
+//! rangers, crews for the castle) in a wedge on the leader.
 //! Seat 0's team assists the person in it: a builder on Auto whose
 //! castle goes round the person's depot, a guard on it, two wingmen on
 //! the person.
 
-use crate::commander::{Commander, Goal, Rung};
+use crate::commander::{Commander, Goal};
 use crate::{Brain, RuleBot};
 use treadcore_sim::{PlayerId, TeamId};
 
@@ -42,7 +42,7 @@ pub enum Role {
     Builder,
     /// Defend base, the leader's.
     Guard,
-    /// Auto at the leader's depot with fortify and turrets off.
+    /// A wingman of the fleet (fleet_of); it roamed alone on Auto once.
     Ranger,
     /// Escort the leader.
     Wing,
@@ -74,7 +74,12 @@ pub fn role(seat: usize, person_leads: bool) -> (Role, PlayerId) {
     let Some(team) = TEAMS.iter().find(|t| t.contains(&seat)) else { return (Role::Aggro, seat as PlayerId) };
     let leader = team[0] as PlayerId;
     let rank = team.iter().position(|s| *s == seat).unwrap();
-    let role = match (person_leads, rank) {
+    (role_by_rank(rank, person_leads), leader)
+}
+
+/// A seat's role by its place in its team, the leader first.
+pub fn role_by_rank(rank: usize, person_leads: bool) -> Role {
+    match (person_leads, rank) {
         (_, 0) => Role::Leader,
         (true, 1) => Role::Builder,
         (true, 2) => Role::Guard,
@@ -82,8 +87,46 @@ pub fn role(seat: usize, person_leads: bool) -> (Role, PlayerId) {
         (false, 1) => Role::Guard,
         (false, 2) | (false, 3) => Role::Ranger,
         (false, _) => Role::Wing,
-    };
-    (role, leader)
+    }
+}
+
+/// Any team, as the window deals one (`--teams N`, seat i on team
+/// i % N; the default match): `team` is its seats in order, the first
+/// the leader. The same roles as a fleet's: a person's team gets a
+/// builder for the person's castle, a guard and wingmen; a bots' team a
+/// leader, a guard, rangers and wingmen.
+pub fn team_role(seat: usize, team: &[usize], person_leads: bool) -> (Role, PlayerId) {
+    let rank = team.iter().position(|s| *s == seat).unwrap_or(team.len());
+    (role_by_rank(rank, person_leads), team.first().copied().unwrap_or(seat) as PlayerId)
+}
+
+/// The brain for a seat of a team dealt by the window, named for its
+/// role.
+pub fn team_brain(seat: usize, team: &[usize], seed: u64, person_leads: bool, name: &str) -> Box<dyn Brain> {
+    let (role, leader) = team_role(seat, team, person_leads);
+    match commander_as(role, leader, seed, name) {
+        Some(mut c) => {
+            fleet_of(&mut c, seat, team, person_leads);
+            Box::new(c)
+        }
+        None => Box::new(RuleBot::new(seed, name)),
+    }
+}
+
+/// The fleet (Paul, 17 October: "i want to see the tanks prioritise
+/// grouping and traveling in formation. and then using shared orders
+/// and attack together"): a team's wingmen, rangers among them, each
+/// with its slot in the leader's wedge, in team order; the leader with
+/// their seats, to gather them before it travels and to give them its
+/// calls as orders.
+pub fn fleet_of(c: &mut Commander, seat: usize, team: &[usize], person_leads: bool) {
+    let wings: Vec<usize> = team.iter().copied().filter(|s| matches!(team_role(*s, team, person_leads).0, Role::Wing | Role::Ranger)).collect();
+    if let Some(k) = wings.iter().position(|s| *s == seat) {
+        c.slot = Some(k);
+    }
+    if team.first() == Some(&seat) {
+        c.members = wings.iter().map(|s| *s as PlayerId).collect();
+    }
 }
 
 /// The seat's name in the roster: team and role.
@@ -102,11 +145,38 @@ fn seat_zero_team(seat: usize) -> bool {
 /// The brain for a bot seat. `person_leads`: the team's leader seat is a
 /// person's.
 pub fn brain(seat: usize, seed: u64, person_leads: bool) -> Box<dyn Brain> {
-    let (role, leader) = role(seat, person_leads);
-    let name = name(seat);
+    match TEAMS.iter().find(|t| t.contains(&seat)) {
+        Some(team) => team_brain(seat, team, seed, person_leads, &name(seat)),
+        None => {
+            let (role, leader) = role(seat, person_leads);
+            brain_as(role, leader, seed, &name(seat))
+        }
+    }
+}
+
+/// A role's brain. Every Commander of a team calls out the enemies it
+/// sees with a ping; all but the builder and the guard, who keep the
+/// base, answer a teammate's ping by converging on it.
+pub fn brain_as(role: Role, leader: PlayerId, seed: u64, name: &str) -> Box<dyn Brain> {
+    match commander_as(role, leader, seed, name) {
+        Some(c) => Box::new(c),
+        None => Box::new(RuleBot::new(seed, name)),
+    }
+}
+
+/// A role's Commander, to change before it plays (a test's tactics);
+/// None for the aggro seat, a RuleBot.
+pub fn commander_as(role: Role, leader: PlayerId, seed: u64, name: &str) -> Option<Commander> {
+    let name = name.to_string();
     let mut c = Commander::new(seed, &name);
+    c.pings = true;
+    c.answers_pings = !matches!(role, Role::Builder | Role::Guard);
+    // The side's fleet commander (crew.rs): a bots' team's leader, a
+    // person's team's builder. Rangers crew for it.
+    c.fleet.on = matches!(role, Role::Leader | Role::Builder);
+    c.crew.on = role == Role::Ranger;
     match role {
-        Role::Aggro => return Box::new(RuleBot::new(seed, &name)),
+        Role::Aggro => return None,
         Role::Leader => c.set_goal(Goal::Auto),
         Role::Builder => {
             c.base_owner = Some(leader);
@@ -116,19 +186,18 @@ pub fn brain(seat: usize, seed: u64, person_leads: bool) -> Box<dyn Brain> {
             c.base_owner = Some(leader);
             c.set_goal(Goal::DefendBase);
         }
-        Role::Ranger => {
-            c.base_owner = Some(leader);
-            c.ladder[Rung::Fortify.index()] = false;
-            c.ladder[Rung::Turrets.index()] = false;
-            c.set_goal(Goal::Auto);
-        }
-        Role::Wing => {
+        // A ranger is a wingman of the fleet now: it roamed alone, and
+        // a side that arrives one at a time is beaten one at a time.
+        Role::Ranger | Role::Wing => {
             let mut w = Commander::wingman(seed, &name, leader);
             w.base_owner = Some(leader);
-            return Box::new(w);
+            w.pings = true;
+            w.answers_pings = true;
+            w.crew.on = true;
+            return Some(w);
         }
     }
-    Box::new(c)
+    Some(c)
 }
 
 #[cfg(test)]
@@ -171,6 +240,425 @@ mod tests {
         assert!(w.winning_team.map(|t| t < 3).unwrap_or(false), "won by {:?}", w.winning_team);
     }
 
+    /// The window's default match: the naval map, sixteen seats dealt
+    /// into three teams (seat i on team i % 3), every bot in a team role
+    /// and seat 0 on Auto as a person on the autopilot would be. In five
+    /// minutes the teams call enemies with pings and answer them, take
+    /// depots, and a castle goes up.
+    #[test]
+    /// Does fleet tactics pay (tactics.rs)? Three teams of five bots on
+    /// the naval map, one team with the weights and two without (the
+    /// nearest tank shot, every ping answered), the team with them
+    /// turned round the three seats over the seeds so no shore favours
+    /// it. Kills, deaths and depots, the tactics team against the mean
+    /// of the other two. `cargo test -p treadcore-brain --release --
+    /// --ignored tactics_pay --nocapture`.
+    #[ignore]
+    fn tactics_pay() {
+        use treadcore_sim::*;
+        let seats = 15;
+        let seeds: u64 = std::env::var("TACTICS_SEEDS").ok().and_then(|s| s.parse().ok()).unwrap_or(6);
+        let (mut on, mut off) = ([0f32; 3], [0f32; 3]);
+        for k in 0..seeds {
+            let seed = 0x07AC_71C5_u64 ^ (k * 0x9E37_79B9);
+            let lucky = (k % 3) as usize;
+            let team = |s: usize| (0..seats).filter(|x| x % 3 == s % 3).collect::<Vec<usize>>();
+            let names: Vec<(String, bool)> = (0..seats).map(|i| (format!("s{}", i), true)).collect();
+            let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
+            let sc = Scenario { seed, players: names, map, respawns: 3, time_limit: 0, ..Scenario::default() }.with_teams(3);
+            let mut w = World::new(sc);
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats)
+                .map(|i| {
+                    let t = team(i);
+                    let (role, leader) = team_role(i, &t, false);
+                    let mut c = commander_as(role, leader, seed ^ i as u64, &format!("s{}", i)).unwrap();
+                    fleet_of(&mut c, i, &t, false);
+                    if i % 3 != lucky {
+                        c.set_tactics(None);
+                    }
+                    (i as PlayerId, Box::new(c) as Box<dyn Brain>)
+                })
+                .collect();
+            let (mut kills, mut deaths) = ([0f32; 3], [0f32; 3]);
+            while w.tick < 8 * 60 * TICK_HZ as Tick && !w.over {
+                let orders = crate::run_bots(&w, &mut bots);
+                w.step(&orders);
+                for e in &w.events {
+                    if let Event::TankDestroyed { owner, by, .. } = e {
+                        deaths[*owner as usize % 3] += 1.0;
+                        if let Some(b) = by.filter(|b| *b as usize % 3 != *owner as usize % 3) {
+                            kills[b as usize % 3] += 1.0;
+                        }
+                    }
+                }
+            }
+            let depots: Vec<f32> = (0..3).map(|t| w.depots.iter().filter(|d| d.owner.map(|o| o as usize % 3 == t).unwrap_or(false)).count() as f32).collect();
+            eprintln!("seed {} tactics on team {}: kills {:?} deaths {:?} depots {:?}", k, lucky, kills, deaths, depots);
+            for (i, x) in [kills, deaths, [depots[0], depots[1], depots[2]]].iter().enumerate() {
+                on[i] += x[lucky];
+                off[i] += (x.iter().sum::<f32>() - x[lucky]) / 2.0;
+            }
+        }
+        let n = seeds as f32;
+        eprintln!("tactics_pay over {} seeds, a team's mean: with tactics kills {:.1} deaths {:.1} depots {:.1}; without kills {:.1} deaths {:.1} depots {:.1}", seeds, on[0] / n, on[1] / n, on[2] / n, off[0] / n, off[1] / n, off[2] / n);
+    }
+
+    /// Does kiting pay (tactics.rs `kite`)? As `tactics_pay`, every
+    /// team with the weights, one of the three kiting and two not, the
+    /// kiting team turned round the seats over the seeds. Kills, deaths,
+    /// direct hits taken and depots, the kiting team against the mean of
+    /// the other two. `KITE_SEEDS` (default 6). `cargo test -p
+    /// treadcore-brain --release -- --ignored kiting_pays --nocapture`.
+    #[test]
+    #[ignore]
+    fn kiting_pays() {
+        use treadcore_sim::*;
+        let seats = 15;
+        let seeds: u64 = std::env::var("KITE_SEEDS").ok().and_then(|s| s.parse().ok()).unwrap_or(6);
+        let (mut on, mut off) = ([0f32; 4], [0f32; 4]);
+        for k in 0..seeds {
+            let seed = 0x0C17_E5A1_u64 ^ (k * 0x9E37_79B9);
+            let lucky = (k % 3) as usize;
+            let team = |s: usize| (0..seats).filter(|x| x % 3 == s % 3).collect::<Vec<usize>>();
+            let names: Vec<(String, bool)> = (0..seats).map(|i| (format!("s{}", i), true)).collect();
+            let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
+            let sc = Scenario { seed, players: names, map, respawns: 3, time_limit: 0, ..Scenario::default() }.with_teams(3);
+            let mut w = World::new(sc);
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats)
+                .map(|i| {
+                    let t = team(i);
+                    let (role, leader) = team_role(i, &t, false);
+                    let mut c = commander_as(role, leader, seed ^ i as u64, &format!("s{}", i)).unwrap();
+                    fleet_of(&mut c, i, &t, false);
+                    c.set_tactics(Some(crate::tactics::Tactics { kite: i % 3 == lucky, ..Default::default() }));
+                    (i as PlayerId, Box::new(c) as Box<dyn Brain>)
+                })
+                .collect();
+            let (mut kills, mut deaths, mut hit) = ([0f32; 3], [0f32; 3], [0f32; 3]);
+            while w.tick < 8 * 60 * TICK_HZ as Tick && !w.over {
+                let orders = crate::run_bots(&w, &mut bots);
+                w.step(&orders);
+                for e in &w.events {
+                    match e {
+                        Event::TankDestroyed { owner, by, .. } => {
+                            deaths[*owner as usize % 3] += 1.0;
+                            if let Some(b) = by.filter(|b| *b as usize % 3 != *owner as usize % 3) {
+                                kills[b as usize % 3] += 1.0;
+                            }
+                        }
+                        Event::TankDamaged { tank, by: Some(b), damage, .. } if *damage == DIRECT_DAMAGE => {
+                            if let Some(t) = w.tanks.iter().find(|t| t.id == *tank).filter(|t| t.owner as usize % 3 != *b as usize % 3) {
+                                hit[t.owner as usize % 3] += 1.0;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            let depots: Vec<f32> = (0..3).map(|t| w.depots.iter().filter(|d| d.owner.map(|o| o as usize % 3 == t).unwrap_or(false)).count() as f32).collect();
+            eprintln!("seed {} kiting team {}: kills {:?} deaths {:?} direct hits taken {:?} depots {:?}", k, lucky, kills, deaths, hit, depots);
+            for (i, x) in [kills, deaths, hit, [depots[0], depots[1], depots[2]]].iter().enumerate() {
+                on[i] += x[lucky];
+                off[i] += (x.iter().sum::<f32>() - x[lucky]) / 2.0;
+            }
+        }
+        let n = seeds as f32;
+        eprintln!("kiting_pays over {} seeds, a team's mean: kiting kills {:.1} deaths {:.1} direct hits taken {:.1} depots {:.1}; not kiting kills {:.1} deaths {:.1} direct hits taken {:.1} depots {:.1}", seeds, on[0] / n, on[1] / n, on[2] / n, on[3] / n, off[0] / n, off[1] / n, off[2] / n, off[3] / n);
+    }
+
+    #[test]
+    fn the_default_match_plays_as_teams() {
+        use treadcore_sim::*;
+        let seed = 0x7EAD_C0DE_u64;
+        let seats = 16;
+        let team = |s: usize| (0..seats).filter(|x| x % 3 == s % 3).collect::<Vec<usize>>();
+        let names: Vec<(String, bool)> = (0..seats).map(|i| (format!("s{}", i), i != 0)).collect();
+        let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
+        let sc = Scenario { seed, players: names, map, respawns: 3, time_limit: 0, ..Scenario::default() }.with_teams(3);
+        let mut w = World::new(sc);
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats)
+            .map(|i| {
+                let b: Box<dyn Brain> = if i == 0 {
+                    let mut c = Commander::new(seed, "me");
+                    c.set_goal(Goal::Auto);
+                    c.pings = true;
+                    c.answers_pings = true;
+                    Box::new(c)
+                } else {
+                    let t = team(i);
+                    team_brain(i, &t, seed ^ i as u64, t[0] == 0, &format!("s{}", i))
+                };
+                (i as PlayerId, b)
+            })
+            .collect();
+        let (mut pings, mut boats, mut walls) = (0, 0, 0);
+        let (mut musters, mut jobs, mut crew_built) = (0, 0, 0);
+        let (mut downs, mut revives) = (0, 0);
+        let mut given: Vec<(PlayerId, (i32, i32))> = Vec::new();
+        let mut rallied = std::collections::HashSet::new();
+        while w.tick < 8 * 60 * TICK_HZ as Tick && !w.over {
+            let orders = crate::run_bots(&w, &mut bots);
+            w.step(&orders);
+            for e in &w.events {
+                match e {
+                    Event::Pinged { .. } => pings += 1,
+                    Event::TankDestroyed { .. } => downs += 1,
+                    Event::Revived { .. } => revives += 1,
+                    Event::Boarded { .. } => boats += 1,
+                    Event::Built { what: BuildKind::Wall, .. } => walls += 1,
+                    Event::Requested { job: Job::Muster { .. }, .. } => musters += 1,
+                    Event::Requested { to: Some(p), job: Job::Build { at, .. } | Job::Fetch { to: at, .. }, .. } => {
+                        jobs += 1;
+                        given.push((*p, at.tile()));
+                    }
+                    _ => {}
+                }
+                match e {
+                    Event::Built { owner, at, .. } if given.contains(&(*owner, at.tile())) => crew_built += 1,
+                    Event::PillboxBuilt { by, at, .. } if given.contains(&(*by, at.tile())) => crew_built += 1,
+                    _ => {}
+                }
+            }
+            for (p, b) in &bots {
+                if b.status().contains("RALLY") {
+                    rallied.insert(*p);
+                }
+            }
+        }
+        let held: Vec<usize> = (0..3).map(|t| w.depots.iter().filter(|d| d.owner.map(|o| o as usize % 3 == t).unwrap_or(false)).count()).collect();
+        eprintln!("the_default_match_plays_as_teams: {} pings, {} seats rallied, {} boats boarded, {} walls, depots by team {:?}; {} musters, {} jobs given, {} done by crews; {} tanks down, {} revived", pings, rallied.len(), boats, walls, held, musters, jobs, crew_built, downs, revives);
+        assert!(musters > 0 && jobs > 0, "no fleet commander set a crew to work");
+        assert!(crew_built > 0, "no crew built what it was asked");
+        assert!(pings > 0, "nobody pinged");
+        assert!(rallied.len() >= 2, "{} seats answered a ping", rallied.len());
+        assert!(revives > 0, "of {} tanks down, nobody revived one", downs);
+        assert!(held.iter().sum::<usize>() >= 4, "depots {:?}", held);
+    }
+
+    /// The quad match headless (scripts/quad.sh): fifteen seats, three
+    /// teams, each led by a window's autopilot (a fleet commander on
+    /// Auto), respawns without limit. Every 30 s each seat's place and
+    /// status; a seat whose status says it is on the way somewhere but
+    /// has moved under 3 tiles in 90 s is printed as stuck, and at the
+    /// end the share of the match each kind of status took. A finder of
+    /// what to mend, not a pass or fail: `QUAD_SEED`, `QUAD_SECS`
+    /// (default 600). `cargo test -p treadcore-brain --release --
+    /// --ignored quad_census --nocapture`.
+    #[test]
+    #[ignore]
+    fn quad_census() {
+        use treadcore_sim::*;
+        let seed = std::env::var("QUAD_SEED").ok().and_then(|s| u64::from_str_radix(s.trim_start_matches("0x"), 16).ok()).unwrap_or(0x0_0AD5_u64);
+        let secs: Tick = std::env::var("QUAD_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(600);
+        let seats = 15;
+        let team = |s: usize| (0..seats).filter(|x| x % 3 == s % 3).collect::<Vec<usize>>();
+        let names: Vec<(String, bool)> = (0..seats).map(|i| (name(i), i >= 3)).collect();
+        let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
+        let sc = Scenario { seed, players: names, map, respawns: RESPAWNS_UNLIMITED, time_limit: 0, ..Scenario::default() }.with_teams(3);
+        let mut w = World::new(sc);
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats)
+            .map(|i| {
+                let b: Box<dyn Brain> = if i < 3 {
+                    let mut c = Commander::new(seed ^ i as u64, &format!("pilot{}", i));
+                    c.set_goal(Goal::Auto);
+                    c.pings = true;
+                    c.answers_pings = true;
+                    c.fleet.on = true;
+                    fleet_of(&mut c, i, &team(i), true);
+                    Box::new(c)
+                } else {
+                    team_brain(i, &team(i), seed ^ i as u64, true, &name(i))
+                };
+                (i as PlayerId, b)
+            })
+            .collect();
+        const MOVING: [&str; 9] = ["to the post", "sailing", "driving", "to the ping", "to the boat", "for the beach", "closing up", "to the firing point", "REVIVE: to"];
+        let shape = |s: &str| -> String {
+            let s = s.split(" | ").next().unwrap_or("");
+            let s = s.split(": ").take(3).collect::<Vec<_>>().join(": ");
+            s.chars().map(|c| if c.is_ascii_digit() { '#' } else { c }).collect::<String>().replace("##", "#").replace("##", "#")
+        };
+        let mut seen: Vec<Vec<(V2, String, bool)>> = vec![Vec::new(); seats];
+        let mut kinds: std::collections::BTreeMap<String, u32> = Default::default();
+        let (mut kills, mut downs, mut revives, mut stuck, mut sunk, mut boats) = (0, 0, 0, 0, 0, 0);
+        let mut sunk_by: std::collections::BTreeMap<&str, u32> = Default::default();
+        // Kiting's states, seat-ticks each, and the direct shots fired
+        // while stepping in (tactics.rs `kite`).
+        const KITE: [&str; 9] = ["stepping in: its gun", "stepping in: it is busy", "closing: it has no", "stepping out to reload", "holding: other guns", "holding past its reach", "massing out of", "lost sight of it", "kiting the intruder"];
+        let mut kite = [0u32; 9];
+        let mut step_shots = 0u32;
+        let mut cohesion = (0u32, 0u32);
+        // Bridge and road tiles laid.
+        let (mut bridged, mut roaded) = (0u32, 0u32);
+        let (mut by_leader, mut by_other) = (0u32, 0u32);
+        // What each seat was doing a second before it went down, and
+        // what got it.
+        let mut last_status: Vec<String> = vec![String::new(); seats];
+        let mut died_doing: std::collections::BTreeMap<String, u32> = Default::default();
+        // Revives: each seat's attempts and how each ended (the status
+        // it went to next; "revived" when the wreck came back).
+        let mut reviving = vec![false; seats];
+        let mut revive_end: std::collections::BTreeMap<String, u32> = Default::default();
+        // Downs with an ally of the seat in reach of the wreck, and none.
+        let (mut down_near, mut down_alone) = (0u32, 0u32);
+        // The last hit each seat took, by weapon, read from its damage.
+        let mut last_hit: Vec<&str> = vec!["?"; seats];
+        // Indirect splash falls off from 70 to a floor of 17.5, so it is
+        // whatever the exact weapons are not.
+        let weapon = |d: f32| -> &'static str {
+            if d == DIRECT_DAMAGE {
+                "direct shell"
+            } else if d == STRIKE_DAMAGE {
+                "strike drone"
+            } else if d == PILLBOX_DAMAGE {
+                "pillbox"
+            } else if d == MINE_DAMAGE {
+                "mine"
+            } else {
+                "indirect shell"
+            }
+        };
+        while w.tick < secs * TICK_HZ as Tick && !w.over {
+            let orders = crate::run_bots(&w, &mut bots);
+            for (p, b) in &bots {
+                let st = b.status();
+                if w.tick % TICK_HZ as Tick == 0 && w.tanks.iter().any(|t| t.owner == *p && t.alive) {
+                    last_status[*p as usize] = st.clone();
+                }
+                let now = st.contains("REVIVE:");
+                if reviving[*p as usize] && !now {
+                    let ok = w.events.iter().any(|e| matches!(e, Event::Revived { by, .. } if by == p));
+                    let alive = w.tanks.iter().any(|t| t.owner == *p && t.alive);
+                    let to = if ok { "revived".to_string() } else if !alive { "(reviver down)".into() } else { shape(&st) };
+                    *revive_end.entry(to).or_default() += 1;
+                }
+                reviving[*p as usize] = now;
+                for (i, k) in KITE.iter().enumerate() {
+                    if st.contains(k) {
+                        kite[i] += 1;
+                    }
+                }
+                if st.contains("stepping in") && orders.iter().any(|o| o.player == *p && matches!(o.cmd, Command::FireDirect { .. })) {
+                    step_shots += 1;
+                }
+            }
+            w.step(&orders);
+            for e in &w.events {
+                match e {
+                    Event::TankDamaged { tank, damage, .. } => {
+                        if let Some(t) = w.tanks.iter().find(|t| t.id == *tank) {
+                            // A boat sunk says so first; the damage after it is the shot's.
+                            if last_hit[t.owner as usize] != "boat sunk" || t.alive {
+                                last_hit[t.owner as usize] = weapon(*damage);
+                            }
+                        }
+                    }
+                    Event::TankDestroyed { tank, owner, by } => {
+                        if by.is_some() {
+                            kills += 1;
+                        }
+                        let at = w.tanks.iter().find(|t| t.id == *tank).map(|t| t.pos).unwrap_or(V2::new(0.0, 0.0));
+                        if w.tanks.iter().any(|t| t.alive && t.owner != *owner && w.allied(t.owner, *owner) && t.pos.dist(at) <= crate::commander::REVIVE_REACH) {
+                            down_near += 1;
+                        } else {
+                            down_alone += 1;
+                        }
+                        downs += 1;
+                        let by_what = match by {
+                            Some(b) if w.tanks.iter().any(|t| t.owner == *b && t.alive && w.tanks.iter().any(|v| v.owner == *owner && v.pos.dist(t.pos) <= DIRECT_RANGE + 1.0)) => "tank near",
+                            Some(_) => "from afar",
+                            None => "swarm or mine",
+                        };
+                        *died_doing.entry(format!("{} <- {}, {}", shape(&last_status[*owner as usize]), by_what, last_hit[*owner as usize])).or_default() += 1;
+                        *died_doing.entry(format!("ALL <- {}", last_hit[*owner as usize])).or_default() += 1;
+                    }
+                    Event::Revived { .. } => revives += 1,
+                    Event::Sunk { owner, at, .. } => {
+                        sunk += 1;
+                        last_hit[*owner as usize] = "boat sunk";
+                        let foe = |o: Option<PlayerId>| o.map(|o| !w.allied(o, *owner)).unwrap_or(false);
+                        let why = if w.pillboxes.iter().any(|p| p.alive() && foe(p.owner) && p.pos.dist(*at) <= PILLBOX_RANGE + 0.5) {
+                            "a pillbox"
+                        } else if w.tanks.iter().any(|t| t.alive && foe(Some(t.owner)) && t.pos.dist(*at) <= DIRECT_RANGE + 0.5) {
+                            "a tank"
+                        } else {
+                            "out of direct reach"
+                        };
+                        *sunk_by.entry(why).or_default() += 1;
+                    }
+                    Event::Built { owner, what: BuildKind::Road, at } if w.map.at(*at) == Terrain::Bridge => {
+                        if (*owner as usize) < 3 {
+                            by_leader += 1;
+                        } else {
+                            by_other += 1;
+                        }
+                    }
+                    Event::TerrainChanged { to, .. } if *to == Terrain::Bridge as u8 => bridged += 1,
+                    Event::TerrainChanged { to, .. } if *to == Terrain::Road as u8 => roaded += 1,
+                    Event::Boarded { .. } => boats += 1,
+                    _ => {}
+                }
+            }
+            if w.tick % (30 * TICK_HZ as Tick) != 0 {
+                continue;
+            }
+            // Cohesion: each leader's fleet, alive and ashore, and how
+            // many of it are within 12 tiles of it.
+            for l in 0..3usize {
+                let Some(lt) = w.tanks.iter().find(|t| t.owner == l as PlayerId && t.alive) else { continue };
+                let t = team(l);
+                let wings: Vec<usize> = t.iter().copied().filter(|s| matches!(team_role(*s, &t, true).0, Role::Wing | Role::Ranger)).collect();
+                for s in wings {
+                    if let Some(x) = w.tanks.iter().find(|x| x.owner == s as PlayerId && x.alive) {
+                        cohesion.1 += 1;
+                        if x.pos.dist(lt.pos) <= 12.0 {
+                            cohesion.0 += 1;
+                        }
+                    }
+                }
+            }
+            for (p, b) in &bots {
+                let i = *p as usize;
+                let t = w.tanks.iter().find(|t| t.owner == *p);
+                let (pos, alive) = t.map(|t| (t.pos, t.alive)).unwrap_or((V2::new(0.0, 0.0), false));
+                let st = b.status();
+                *kinds.entry(if alive { shape(&st) } else { "(dead)".into() }).or_default() += 1;
+                seen[i].push((pos, st.clone(), alive));
+                let h = &seen[i];
+                if h.len() >= 4 {
+                    let w4 = &h[h.len() - 4..];
+                    let still = w4.iter().all(|(q, s, a)| *a && q.dist(pos) < 3.0 && MOVING.iter().any(|m| s.contains(m)));
+                    if still {
+                        stuck += 1;
+                        eprintln!("[{:>4}s] STUCK seat {} at ({:.0},{:.0}): {}", w.tick / TICK_HZ as Tick, i, pos.x, pos.y, st);
+                    }
+                }
+            }
+        }
+        let total: u32 = kinds.values().sum();
+        let mut by: Vec<_> = kinds.into_iter().collect();
+        by.sort_by_key(|k| std::cmp::Reverse(k.1));
+        for (k, n) in by.iter().take(30) {
+            eprintln!("{:>5.1}%  {}", 100.0 * *n as f32 / total as f32, k);
+        }
+        eprintln!("quad_census seed {:x}, {} s: {} kills, {} down, {} revived, {} stuck samples; {} boats, {} sunk", seed, w.tick / TICK_HZ as Tick, kills, downs, revives, stuck, boats, sunk);
+        eprintln!("sunk by {:?}", sunk_by);
+        let mut dd: Vec<_> = died_doing.into_iter().collect();
+        dd.sort_by_key(|k| std::cmp::Reverse(k.1));
+        for (k, n) in dd.iter().take(20) {
+            eprintln!("died {:>3}  {}", n, k);
+        }
+        let mut re: Vec<_> = revive_end.into_iter().collect();
+        re.sort_by_key(|k| std::cmp::Reverse(k.1));
+        eprintln!("downs with an ally within {} tiles: {}, alone: {}", crate::commander::REVIVE_REACH, down_near, down_alone);
+        for (k, n) in re.iter().take(10) {
+            eprintln!("revive ended {:>3}  {}", n, k);
+        }
+        eprintln!("laid: {} bridge tiles, {} road tiles; bridge tiles by the three pilots {}, by the other seats {}", bridged, roaded, by_leader, by_other);
+        eprintln!("fleet cohesion: {} of {} wingman samples within 12 tiles of the leader ({:.0}%)", cohesion.0, cohesion.1, 100.0 * cohesion.0 as f32 / cohesion.1.max(1) as f32);
+        eprintln!("kiting, seat-seconds: {}; direct shots fired stepping in: {}", KITE.iter().zip(kite.iter()).map(|(k, n)| format!("{} {:.0}", k, *n as f32 * DT)).collect::<Vec<_>>().join(", "), step_shots);
+    }
+
     /// Sixteen seats as the window deals them with `--fleets`, seat 0 on
     /// Auto as a person under the coordination screen would be. Every
     /// team builds at its leader's depot; printed, and asserted for the
@@ -208,7 +696,8 @@ mod tests {
                     let all = w.pillboxes.iter().filter(|p| side(p.owner)).count();
                     let held = w.depots.iter().filter(|x| side(x.owner)).count();
                     let alive = TEAMS[t].iter().filter(|s| w.tanks[**s].alive).count();
-                    eprintln!("[{:>4}s] team {}: {} alive, {} pillboxes ({} at the base), {} depots; {}", w.tick / TICK_HZ as Tick, t, alive, all, boxes, held, TEAMS[t].iter().filter(|s| w.tanks[**s].alive).map(|s| format!("{}={}", s, bots[*s].1.status().chars().take(32).collect::<String>())).collect::<Vec<_>>().join(" | "));
+                    let near = |k: Terrain| (-7..=7).flat_map(|dy| (-7..=7).map(move |dx| V2::new(dx as f32, dy as f32))).filter(|o| o.len() <= 6.0 && w.map.at(*d + *o) == k).count();
+                    eprintln!("[{:>4}s] team {}: {} alive, {} pillboxes ({} at the base, walls {} roads {}), {} depots; {}", w.tick / TICK_HZ as Tick, t, alive, all, boxes, near(Terrain::Wall), near(Terrain::Road), held, TEAMS[t].iter().filter(|s| w.tanks[**s].alive).map(|s| format!("{}={}", s, bots[*s].1.status().chars().take(32).collect::<String>())).collect::<Vec<_>>().join(" | "));
                 }
                 eprintln!("        aggro alive {}", w.tanks[AGGRO].alive);
             }

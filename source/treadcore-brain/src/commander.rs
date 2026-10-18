@@ -256,7 +256,115 @@ pub struct Commander {
     scoot_left: bool,
     /// Where the last shell at the tank came from.
     gun_seen_at: Option<V2>,
+    /// Call out hostile tanks it sees with a ping (fleet.rs sets it).
+    pub pings: bool,
+    /// Answer a teammate's ping: converge on it and fight what is there.
+    pub answers_pings: bool,
+    /// The ping being answered: where, and until when; and the bearing
+    /// this bot comes in on, fixed when it answered, its flank's turn
+    /// added (`flank`).
+    rally: Option<(V2, Tick)>,
+    rally_from: Option<V2>,
+    /// When the rally's target was last in the side's sight.
+    rally_seen: Option<Tick>,
+    /// The fleet (fleet.rs `fleet_of`): a wingman's place in its
+    /// leader's wedge, and a leader's wingmen. A leader waits for them
+    /// before it moves on (`GATHER_R`), since when, and not again until
+    /// `gather_cool`.
+    pub slot: Option<usize>,
+    pub members: Vec<PlayerId>,
+    gather_since: Option<Tick>,
+    gather_cool: Tick,
+    /// The last bridge tile handed to a wingman.
+    bridge_asked: Tick,
+    /// Kiting a rally's target past its reach with no window: which,
+    /// since when (`KITE_STALL`); and no rally until `rally_cool`.
+    kite_held: Option<(EntityId, Tick)>,
+    rally_cool: Tick,
+    /// The rally is the fleet leader's order: the fleet attacks together.
+    rally_order: bool,
+    /// When it last pinged, and the pings it has heard lately, so a team
+    /// that all sees one tank pings it once.
+    last_ping: Tick,
+    heard: Vec<(V2, Tick)>,
+    /// Team chat to send, a line a second (the world's limit).
+    say: Vec<String>,
+    /// A teammate's chain this bot is helping haul: whose, and on what
+    /// (`help_chain`). Before anything else but a dodge.
+    helping: Option<(PlayerId, EntityId)>,
+    last_hitch: Tick,
+    /// The side's fleet commander: musters crews and hands them the
+    /// castle plan's work (crew.rs).
+    pub fleet: crate::crew::FleetCommand,
+    /// A crew: takes the fleet commander's jobs.
+    pub crew: crate::crew::Crew,
+    /// Push point and defense point (rotation.rs): where idle time goes.
+    pub rotation: crate::rotation::Rotation,
+    said: Tick,
+    /// Out of a shell's way (lib.rs `Dodge`), unless `dodges` is off.
+    dodge: crate::Dodge,
+    pub dodges: bool,
+    /// The last focus call in team chat (tactics.rs).
+    focus_said: Tick,
+    /// Tiles the world refused a drive to as unreachable (over the
+    /// water), and when: home skips them for `REFUSED_FOR`.
+    refused: Vec<((i32, i32), Tick)>,
+    /// Since when the leader has been down.
+    leader_down: Option<Tick>,
+    /// The ally's wreck this bot's squad is reviving, and the fall it
+    /// last called for help for (its own).
+    reviving: Option<EntityId>,
+    called_down: Tick,
+    /// Wrecks the world would not let the squad reach, by tank and fall.
+    revive_failed: Vec<EntityId>,
 }
+
+/// A downed ally this far off is driven to and revived, if the time
+/// left allows the drive, the squad's walk and the work.
+pub const REVIVE_REACH: f32 = 45.0;
+/// The tank stops this near the wreck and sends the squad.
+const REVIVE_NEAR: f32 = 2.5;
+/// A revive under the square law's odds at the wreck this low is not
+/// tried: the reviver would be the next one down.
+pub const REVIVE_ODDS: f32 = 0.5;
+
+/// How long a tile refused as unreachable is kept out of `home`.
+const REFUSED_FOR: Tick = 60 * TICK_HZ as Tick;
+
+/// A teammate's ping this far off is answered.
+pub const RALLY_REACH: f32 = 90.0;
+/// How long a ping is answered with nothing found there; seen enemies
+/// keep it going.
+const RALLY_FOR: Tick = 40 * TICK_HZ as Tick;
+/// Kiting, a target out of sight this long is looked for at its last
+/// spot again (it may have gone).
+const RALLY_LOST: Tick = 6 * TICK_HZ as Tick;
+/// The wedge (Paul, 17 October: "i want to see the tanks prioritise
+/// grouping and traveling in formation"): slot k is row k / 2 + 1
+/// behind the leader, left for even k and right for odd, `WEDGE`
+/// tiles back and across per row.
+pub const WEDGE: f32 = 4.0;
+/// A leader moves on only with half its wingmen within this, waiting
+/// at most `GATHER_FOR`, and then not again for `GATHER_COOL`.
+pub const GATHER_R: f32 = 10.0;
+const GATHER_FOR: Tick = 30 * TICK_HZ as Tick;
+const GATHER_COOL: Tick = 30 * TICK_HZ as Tick;
+/// A wingman this near its leader lays the leader's bridge with it.
+pub const BRIDGE_HELP_R: f32 = 20.0;
+/// Kiting with no window this long is a standoff: the rally ends, and
+/// no ping is answered for `RALLY_COOL`.
+const KITE_STALL: Tick = 15 * TICK_HZ as Tick;
+const RALLY_COOL: Tick = 20 * TICK_HZ as Tick;
+/// A bot calls an enemy within this, at most once in `PING_EVERY`, and
+/// not one a teammate pinged within `PING_HEARD` tiles in the last
+/// `PING_EVERY`.
+pub const PING_SIGHT: f32 = 25.0;
+const PING_EVERY: Tick = 15 * TICK_HZ as Tick;
+const PING_HEARD: f32 = 10.0;
+/// At most one focus call in team chat in this long.
+const FOCUS_EVERY: Tick = 8 * TICK_HZ as Tick;
+/// A focus call is for a target within this.
+const FOCUS_REACH: f32 = DIRECT_RANGE * 2.0;
 
 impl Commander {
     /// A bot seat that follows `leader` (step 11a after Paul's notes): an
@@ -269,7 +377,15 @@ impl Commander {
     }
 
     pub fn new(seed: u64, name: &str) -> Commander {
-        Commander { name: name.into(), goal: Goal::Manual, inner: RuleBot::new(seed, name), target: None, bearing: None, given_up: Vec::new(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Vec::new(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None }
+        let mut inner = RuleBot::new(seed, name);
+        inner.tactics = Some(crate::tactics::Tactician::default());
+        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Vec::new(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Vec::new(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Vec::new(), rotation: Default::default() }
+    }
+
+    /// The weights for its fights (tactics.rs); None shoots the nearest
+    /// and answers every ping, as before them.
+    pub fn set_tactics(&mut self, t: Option<crate::tactics::Tactics>) {
+        self.inner.tactics = t.map(crate::tactics::Tactician::with);
     }
 
     /// A new goal: what was half done for the old one is dropped.
@@ -299,6 +415,12 @@ impl Commander {
             }
             return;
         }
+        // Refused as over the water and no boat under way (the hop gave
+        // it up): asking again each second changes nothing; the refusal
+        // runs out (`REFUSED_FOR`) and it is asked once more then.
+        if self.over_water(to) {
+            return;
+        }
         let fresh = match self.last_move {
             Some((at, tick)) => at.dist(to) > 1.0 || obs.tick >= tick + MOVE_EVERY * 4 || (me.goal.is_none() && obs.tick >= tick + MOVE_EVERY),
             None => true,
@@ -309,9 +431,93 @@ impl Commander {
         }
     }
 
-    /// The nearest depot of my side, for resupply.
-    fn home(obs: &Observation, me: &Tank) -> Option<V2> {
-        obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap())
+    /// A place the world lately refused a drive to, and no sea trip on
+    /// the way there.
+    /// The rotation's two ends for the window: the defense point and the
+    /// push point, once the base is known.
+    pub fn rotation_points(&self, obs: &Observation) -> Option<(V2, V2)> {
+        let base = self.base?;
+        Some((self.post(base), self.rotation.peek(obs, base)))
+    }
+
+    /// Idle: rotate between the defense point (the base's post) and the
+    /// push point instead of waiting (rotation.rs). False when rotation
+    /// is off and the caller's waiting stands.
+    fn rotate(&mut self, obs: &Observation, me: &Tank, base: V2, cmds: &mut Vec<Command>) -> bool {
+        if self.rotation.off {
+            return false;
+        }
+        let defense = self.post(base);
+        let push = self.rotation.push(obs, base);
+        let leg = self.rotation.leg(obs, me, defense, push);
+        // A point the world will not have us drive to (over the water,
+        // no way across): turn back for the other end.
+        if self.over_water(leg.to) {
+            self.rotation.out = !self.rotation.out;
+            self.doing = "rotation: no way there, turning back".into();
+            return true;
+        }
+        if me.pos.dist(leg.to) > crate::rotation::ARRIVED {
+            self.go(obs, me, leg.to, cmds);
+        }
+        self.doing = leg.word;
+        true
+    }
+
+    /// A wingman in formation by a parked leader (`WING_PARKED`):
+    /// rotate between its slot (the defense point) and a point toward
+    /// the objective, inside the leader's gathering ring (rotation.rs).
+    /// The leader moving off ends it (fly_wing). False: stay in the slot.
+    fn wing_rotate(&mut self, obs: &Observation, me: &Tank, leader: &Tank, slot: V2, map: Option<&Map>, cmds: &mut Vec<Command>) -> bool {
+        use crate::rotation::{ARRIVED, WING_PARKED};
+        if self.rotation.off || leader.speed >= 0.3 || leader.boat || me.boat {
+            return false;
+        }
+        let since = *self.rotation.parked.get_or_insert(obs.tick);
+        if obs.tick < since + WING_PARKED {
+            return false;
+        }
+        // Ground all the way from the leader: no sea trip on a patrol.
+        let lp = leader.pos;
+        let ground = |p: V2| {
+            let steps = (p.dist(lp) * 2.0).ceil().max(1.0) as i32;
+            let land = match map {
+                Some(m) => (0..=steps).all(|i| {
+                    let q = lp + (p - lp).scale(i as f32 / steps as f32);
+                    m.in_bounds(q) && m.at(q).passable()
+                }),
+                None => true,
+            };
+            land && !self.over_water(p)
+        };
+        let push = self.rotation.wing_push(obs, leader.pos, ground);
+        if push.dist(slot) <= ARRIVED {
+            return false;
+        }
+        let leg = self.rotation.leg(obs, me, slot, push);
+        if self.over_water(leg.to) {
+            self.rotation.out = !self.rotation.out;
+            self.doing = "rotation: no way there, turning back".into();
+            return true;
+        }
+        if me.pos.dist(leg.to) > ARRIVED {
+            self.go(obs, me, leg.to, cmds);
+        }
+        self.doing = leg.word.replace("the defense point", "the slot");
+        true
+    }
+
+    fn over_water(&self, to: V2) -> bool {
+        !self.inner.hop.active() && self.refused.iter().any(|(t, _)| *t == to.tile())
+    }
+
+    /// The nearest depot of my side, for resupply: of those the world
+    /// has not lately refused as over the water, if any; else the
+    /// nearest, and the drive's refusal sends the tank by sea.
+    fn home(&self, obs: &Observation, me: &Tank) -> Option<V2> {
+        let ours = || obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).map(|d| d.pos);
+        let near = |a: &V2, b: &V2| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap();
+        ours().filter(|p| !self.refused.iter().any(|(t, _)| *t == p.tile())).min_by(near).or_else(|| ours().min_by(near))
     }
 
     /// Low on what the goal needs: go home, and stay until full.
@@ -474,7 +680,7 @@ impl Commander {
     /// `WING_COMMIT` unless one ranked above it appears, and nothing
     /// further than the leash from the leader. Returns whether the
     /// inner doctrine may use the gun.
-    fn fly_wing(&mut self, obs: &Observation, me: &Tank, leader: &Tank, cmds: &mut Vec<Command>) -> bool {
+    fn fly_wing(&mut self, obs: &Observation, me: &Tank, leader: &Tank, map: Option<&Map>, cmds: &mut Vec<Command>) -> bool {
         let lp = leader.pos;
         let hostile = |t: &&Tank| t.alive && !obs.allied(t.owner);
         let near = |a: V2, b: V2| a.dist(lp).partial_cmp(&b.dist(lp)).unwrap();
@@ -519,21 +725,41 @@ impl Commander {
         let behind = lp - facing.scale(ESCORT_DISTANCE);
         match task {
             Wing::Defend(id) | Wing::Ahead(id) | Wing::Help(id) => {
-                let t = obs.tanks.iter().find(|t| t.id == id).unwrap();
+                let t = obs.tanks.iter().find(|t| t.id == id).unwrap().clone();
                 let d = me.pos.dist(t.pos);
                 if d <= DIRECT_RANGE - 0.2 && me.reload == 0 && me.shells > 0 {
-                    cmds.push(Command::FireDirect { at: t.pos });
+                    cmds.push(Command::FireDirect { at: crate::lead(me, &t) });
                 }
-                // Close to direct range, on the leash.
-                if d > DIRECT_RANGE - 1.0 {
-                    let to = t.pos + (me.pos - t.pos).norm().scale(DIRECT_RANGE - 2.0);
+                // Kiting it (tactics.rs) on the leash; without the
+                // weights, close to direct range as before.
+                let kite = match self.inner.tactics.as_mut() {
+                    Some(tc) if tc.w.kite => {
+                        let odds = tc.odds(obs, me, t.pos);
+                        let st = tc.stance(obs.tick, &odds);
+                        Some(tc.kite(obs, me, &t, (me.pos - t.pos).norm(), st, DIRECT_RANGE * 1.8))
+                    }
+                    _ => None,
+                };
+                let to = match kite {
+                    Some(k) => Some(k.to),
+                    None if d > DIRECT_RANGE - 1.0 => Some(t.pos + (me.pos - t.pos).norm().scale(DIRECT_RANGE - 2.0)),
+                    None => None,
+                };
+                if let Some(to) = to {
                     let to = if to.dist(lp) > WING_LEASH { lp + (to - lp).norm().scale(WING_LEASH) } else { to };
+                    if kite.map(|k| k.stepping_in).unwrap_or(false) {
+                        self.last_move = None;
+                    }
                     self.go(obs, me, to, cmds);
                 }
-                self.doing = match task {
-                    Wing::Defend(_) => "covering the leader".into(),
-                    Wing::Ahead(_) => "hitting what is ahead".into(),
-                    _ => "helping an ally".into(),
+                let what = match task {
+                    Wing::Defend(_) => "covering the leader",
+                    Wing::Ahead(_) => "hitting what is ahead",
+                    _ => "helping an ally",
+                };
+                self.doing = match kite {
+                    Some(k) => format!("{}: {}", what, k.word),
+                    None => what.into(),
                 };
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
             }
@@ -548,12 +774,75 @@ impl Commander {
                 self.doing = "taking the depot".into();
                 true
             }
+            Wing::Regroup if leader.boat && !me.boat && self.slot.is_some() && me.pos.dist(lp) <= WING_LEASH && !self.inner.hop.active() && self.inner.hop.send(lp) => {
+                // The leader is launching: launch with it (the hop finds
+                // the bank), and sail in the wedge (think's afloat fleet).
+                self.doing = "the leader is launching: launching with it".into();
+                true
+            }
+            Wing::Regroup if leader.boat && !me.boat && self.slot.is_some() => {
+                // The leader crossed without us: wait at the shore for
+                // where it lands, then follow it over (below).
+                if me.goal.is_some() && me.pos.dist(lp) <= WING_LEASH {
+                    cmds.push(Command::Stop);
+                }
+                self.doing = "the leader is afloat: waiting for its landing".into();
+                true
+            }
+            Wing::Regroup if self.slot.is_some() && !self.inner.hop.active() && self.refused.iter().any(|(t, _)| V2::new(t.0 as f32 + 0.5, t.1 as f32 + 0.5).dist(lp) <= WING_LEASH) && self.inner.hop.send(lp) => {
+                // The leader is over the water: after it by sea.
+                self.doing = format!("following the leader by sea, to ({:.0},{:.0})", lp.x, lp.y);
+                true
+            }
             Wing::Regroup => {
-                if me.pos.dist(lp) > ESCORT_DISTANCE + 2.0 {
-                    self.go(obs, me, behind, cmds);
-                    self.doing = format!("closing up, {:.0} tiles", me.pos.dist(lp));
+                if leader.speed >= 0.3 || leader.boat {
+                    self.rotation.parked = None;
+                    self.rotation.out = false;
+                }
+                // The wedge: my slot, where it will be in a second at the
+                // leader's speed; a slot over the water, the plain place
+                // behind it.
+                let slot = self.slot_point(leader);
+                let to = match slot.map(|p| obs.clamp(p)) {
+                    Some(p) if !self.over_water(p) => p,
+                    _ => behind,
+                };
+                // A slot on the water (the leader at a bridge's end, on a
+                // shore): the nearest ground to it, nearer the leader
+                // first. The quad's wingmen sat "closing up" to a slot
+                // the world refused, for minutes.
+                let to = match map {
+                    Some(m) if !m.at(to).passable() => {
+                        let mut best: Option<(V2, f32)> = None;
+                        for dy in -4i32..=4 {
+                            for dx in -4i32..=4 {
+                                let p = Map::tile_centre(to + V2::new(dx as f32, dy as f32));
+                                if m.in_bounds(p) && m.at(p).passable() && p.tile() != lp.tile() {
+                                    let score = p.dist(to) + 0.5 * p.dist(lp);
+                                    if best.map(|(_, b)| score < b).unwrap_or(true) {
+                                        best = Some((p, score));
+                                    }
+                                }
+                            }
+                        }
+                        best.map(|(p, _)| p).unwrap_or(me.pos)
+                    }
+                    _ => to,
+                };
+                let word = self.slot.map(|k| format!("in formation, slot {}", k + 1)).unwrap_or_else(|| "on the leader's wing".into());
+                // Beside the leader already, near the slot: in formation.
+                let close = me.pos.dist(lp) <= WEDGE * 2.0 && me.pos.dist(to) <= WEDGE;
+                // Rotating (the leader parked): the rotation drives to
+                // the slot and away from it; closing up would undo it.
+                if self.wing_rotate(obs, me, leader, to, map, cmds) {
+                } else if me.pos.dist(to) > 1.5 && !close {
+                    self.go(obs, me, to, cmds);
+                    self.doing = format!("{}: closing up, {:.0} tiles", word, me.pos.dist(to));
                 } else {
-                    self.doing = "on the leader's wing".into();
+                    if me.goal.is_some() && leader.speed < 0.3 {
+                        cmds.push(Command::Stop);
+                    }
+                    self.doing = word;
                 }
                 true
             }
@@ -619,10 +908,9 @@ impl Commander {
         }
         let plan = self.plan.as_mut().unwrap();
         plan.hear(obs);
-        let centre = plan.centre;
         // The tank sits behind the work, beside the point: off the gate,
         // off the road, inside the squad's reach of every tile.
-        let post = centre - plan.facing.scale(1.5);
+        let post = plan.post;
         self.defend(obs, me, post, None, cmds);
         let busy = !self.doing.starts_with("on guard") && !self.doing.starts_with("to the post");
         let squad = &me.pillboys;
@@ -670,14 +958,21 @@ impl Commander {
                 self.base = obs.depots.iter().filter(|d| d.owner == Some(owner)).min_by(|a, b| a.pos.dist(near).partial_cmp(&b.pos.dist(near)).unwrap()).map(|d| Map::tile_centre(d.pos));
             }
         }
-        *self.base.get_or_insert_with(|| Self::home(obs, me).map(Map::tile_centre).unwrap_or(me.pos))
+        // No depot of the side yet (a naval start: everyone at sea, every
+        // depot neutral): the base is where the tank is for now, and is
+        // not kept, so the first depot taken becomes it. Kept, it was a
+        // patch of open water for the rest of the match.
+        if self.base.is_none() {
+            self.base = self.home(obs, me).map(Map::tile_centre);
+        }
+        self.base.unwrap_or(me.pos)
     }
 
     /// Where the tank waits at the base: behind the gate when there is a
     /// castle, else beside the centre.
     fn post(&self, base: V2) -> V2 {
         match &self.plan {
-            Some(p) => p.centre - p.facing.scale(1.5),
+            Some(p) => p.post,
             None => base,
         }
     }
@@ -732,7 +1027,14 @@ impl Commander {
             _ => self.post(base),
         };
         let mend = Self::neediest(obs, base);
-        self.defend_within(obs, me, post, BASE_ALARM, mend, cmds);
+        // Nothing at the base: out to the push point and back, not on
+        // guard (rotation.rs). The guard answers what it meets where it
+        // is, and the squad still mends from wherever the tank is.
+        let rotating = tank.is_none() && !alarm && !self.rotation.off && me.pillboys.aboard;
+        self.defend_within(obs, me, if rotating { me.pos } else { post }, BASE_ALARM, mend, cmds);
+        if rotating && self.doing == "on guard" {
+            self.rotate(obs, me, base, cmds);
+        }
         if let Some(t) = &tank {
             let who = obs.players.iter().find(|p| p.id == t.owner).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", t.owner));
             self.doing = format!("BASE UNDER THREAT: {} {:.0} tiles out; {}", who, t.pos.dist(base), self.doing);
@@ -764,6 +1066,7 @@ impl Commander {
             // The pillboxes are down: the walls that close them in.
             if plan.turrets_stand() {
                 self.doing = format!("the turrets stand: {}", plan.progress());
+                self.rotate(obs, me, base, cmds);
             } else {
                 self.fortify(obs, me, Some(base), cmds);
             }
@@ -805,7 +1108,12 @@ impl Commander {
         let target = self.fetching.and_then(|id| obs.pillboxes.iter().find(|p| p.id == id && p.owner == Some(obs.player)).cloned()).or_else(|| self.outlying(obs, base));
         let Some(p) = target else {
             self.fetching = None;
-            self.doing = "no pillbox of ours out there to bring in".into();
+            // Nothing to bring in yet: the yard's walls and roads meanwhile.
+            if self.plan.as_ref().map(|p| p.yard_left()).unwrap_or(false) {
+                self.fortify(obs, me, Some(base), cmds);
+            } else if !self.rotate(obs, me, base, cmds) {
+                self.doing = "no pillbox of ours out there to bring in".into();
+            }
             return;
         };
         self.fetching = Some(p.id);
@@ -833,15 +1141,15 @@ impl Commander {
         let quiet = self.threatened.map(|t| obs.tick.saturating_sub(t)).unwrap_or(obs.tick);
         let stands = self.plan.as_ref().map(|p| p.castle_stands()).unwrap_or(false);
         let carrying = me.pillboys.carrying.is_some();
-        let (slot, walls) = self.plan.as_ref().map(|p| { let mut q = p.clone(); q.add_turrets(); (q.turret_slot().is_some(), !q.turrets_stand()) }).unwrap_or((false, false));
+        let (slot, walls) = self.plan.as_ref().map(|p| { let mut q = p.clone(); q.add_turrets(); (q.turret_slot().is_some(), q.yard_left()) }).unwrap_or((false, false));
         let outlying = self.outlying(obs, base);
         let wanted = obs.pillboxes.iter().filter(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.contains(&p.id)).min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap()).map(|p| p.pos.dist(base));
         let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.contains(&d.id)).map(|d| d.pos.dist(base)).min_by(|a, b| a.partial_cmp(b).unwrap());
         let q = quiet as f32 / TICK_HZ as f32;
         let holds = [
             tank.is_some() || alarm,
-            self.plan.as_ref().map(|p| !p.castle_stands()).unwrap_or(true) && !self.starved,
-            stands && quiet >= QUIET && ((slot && (carrying || outlying.is_some() || self.fetching.is_some())) || (!slot && walls)),
+            self.plan.as_ref().map(|p| !p.castle_stands()).unwrap_or(true) && !self.starved && self.base.is_some(),
+            stands && quiet >= QUIET && ((slot && (carrying || outlying.is_some() || self.fetching.is_some())) || (walls && !self.starved)),
             wanted.map(|d| d <= EXPAND_R).unwrap_or(false),
             depot.is_some() || wanted.is_some(),
             true,
@@ -862,7 +1170,7 @@ impl Commander {
             } else if !slot && !walls {
                 "both turrets stand".into()
             } else if !slot {
-                "walling the turrets in".into()
+                "walling the yard in".into()
             } else if quiet < QUIET {
                 format!("waiting for {:.0} s of quiet ({:.0} now)", QUIET as f32 / TICK_HZ as f32, q)
             } else if carrying {
@@ -890,6 +1198,11 @@ impl Commander {
             self.last_move = None;
             self.rung = Some(rung);
         }
+        // A fleet's leader gathers it before it travels: the hunt and the
+        // expand take it off, the fleet comes with it.
+        if matches!(rung, Rung::Hunt | Rung::Expand) && self.gathering(obs, me, cmds) {
+            return true;
+        }
         match rung {
             Rung::DefendBase | Rung::Guard => self.defend_base(obs, me, cmds),
             Rung::Fortify => {
@@ -907,6 +1220,57 @@ impl Commander {
             }
             Rung::Expand => self.expand(obs, me, base, cmds),
         }
+    }
+
+    /// My place in the leader's wedge (`WEDGE`), where it will be in a
+    /// second at the leader's speed.
+    fn slot_point(&self, leader: &Tank) -> Option<V2> {
+        let k = self.slot?;
+        let facing = V2::from_heading(leader.heading);
+        let row = (k / 2 + 1) as f32;
+        let side = if k % 2 == 0 { -1.0 } else { 1.0 };
+        let across = V2::new(-facing.y, facing.x);
+        Some(leader.pos - facing.scale(WEDGE * row) + across.scale(side * WEDGE * row) + facing.scale(leader.speed))
+    }
+
+    /// A fleet leader's wingmen near enough to lay its bridge.
+    fn helpers<'a>(&self, obs: &'a Observation, me: &Tank) -> Vec<&'a Tank> {
+        obs.tanks.iter().filter(|t| t.alive && !t.boat && self.members.contains(&t.owner) && t.pos.dist(me.pos) <= BRIDGE_HELP_R && t.pillboys.strength > 0).collect()
+    }
+
+    /// A fleet's leader, about to travel: half its wingmen within
+    /// `GATHER_R`, or it holds for them (`GATHER_FOR` at most). True while
+    /// it holds. Nothing to gather with no wingmen, a fight in reach, or
+    /// afloat.
+    fn gathering(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
+        // Afloat they are on their way: counted, not near.
+        let fleet: Vec<&Tank> = obs.tanks.iter().filter(|t| t.alive && self.members.contains(&t.owner)).collect();
+        let fight = obs.hostile_tanks().any(|t| t.alive && t.pos.dist(me.pos) <= INDIRECT_MIN_RANGE + 4.0);
+        if fleet.is_empty() || fight || me.boat || obs.tick < self.gather_cool {
+            self.gather_since = None;
+            return false;
+        }
+        let near = fleet.iter().filter(|t| !t.boat && t.pos.dist(me.pos) <= GATHER_R).count();
+        if near * 2 >= fleet.len() {
+            self.gather_since = None;
+            return false;
+        }
+        let since = *self.gather_since.get_or_insert(obs.tick);
+        if obs.tick >= since + GATHER_FOR {
+            self.gather_since = None;
+            self.gather_cool = obs.tick + GATHER_COOL;
+            self.say.push("fleet: moving on, close up on me".into());
+            return false;
+        }
+        if since == obs.tick {
+            self.say.push(format!("fleet: form up on me at ({:.0},{:.0})", me.pos.x, me.pos.y));
+        }
+        if me.goal.is_some() {
+            cmds.push(Command::Stop);
+        }
+        self.last_move = None;
+        self.doing = format!("gathering the fleet: {} of {} in formation, {:.0} s", near, fleet.len(), (obs.tick - since) as f32 * DT);
+        true
     }
 
     /// Expand: the nearest depot not of my side to the base, its guards
@@ -951,6 +1315,416 @@ impl Commander {
         true
     }
 
+    /// Team chat, oldest first, one line a second; a backlog of more
+    /// than three is stale and dropped.
+    fn flush_say(&mut self, obs: &Observation, cmds: &mut Vec<Command>) {
+        if self.say.len() > 3 {
+            self.say.drain(..self.say.len() - 3);
+        }
+        if !self.say.is_empty() && obs.tick > self.said + TICK_HZ as Tick {
+            self.said = obs.tick;
+            cmds.push(Command::Chat { text: self.say.remove(0), to: ChatTo::Team });
+        }
+    }
+
+    /// Revive (Paul, 16 October: "can we have an ally repair a fallen
+    /// tank"): an allied tank down, not yet dead, inside `REVIVE_REACH`,
+    /// with time left for the drive, the squad's walk and the work. The
+    /// one ally best placed goes, by what each can see: none nearer with
+    /// a squad aboard and the material, and no squad already at it. It
+    /// says so, drives beside the wreck, sends the squad and holds
+    /// while it works. True while it is driving the tank.
+    fn revive(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
+        let down = |t: &Tank| !t.alive && t.last_hit_tick > 0 && obs.tick < t.last_hit_tick + DOWNED_TICKS as Tick;
+        let left = |t: &Tank| (t.last_hit_tick + DOWNED_TICKS as Tick).saturating_sub(obs.tick) as f32 * DT;
+        // At it now: hold while the squad works.
+        // The world refused the squad (a wreck at sea, out of reach):
+        // that fall is given up.
+        for e in &obs.events {
+            if let Event::Rejected { player, cmd: Command::Deploy { task: PillboyTask::Repair { target } }, .. } = e {
+                if *player == obs.player && self.reviving == Some(*target) {
+                    self.revive_failed.push(*target);
+                    self.reviving = None;
+                }
+            }
+        }
+        if let Some(id) = self.reviving {
+            match obs.tanks.iter().find(|t| t.id == id) {
+                Some(w) if down(w) && me.pillboys.strength > 0 => {
+                    let at_it = matches!(me.pillboys.task, Some(PillboyTask::Repair { target }) if target == id);
+                    let name = obs.players.iter().find(|p| p.id == w.owner).map(|p| p.name.clone()).unwrap_or_default();
+                    if at_it {
+                        self.doing = format!("REVIVE: the squad is mending {}, {:.0} s left", name, left(w));
+                        if me.goal.is_some() {
+                            cmds.push(Command::Stop);
+                        }
+                        return true;
+                    }
+                    // No longer time for the drive and the work: give up.
+                    let need = (me.pos.dist(w.pos) - REVIVE_NEAR).max(0.0) / TANK_SPEED + REVIVE_TICKS as f32 * DT;
+                    if me.pillboys.material < REVIVE_COST || me.boat || need > left(w) {
+                        self.reviving = None;
+                        self.last_move = None;
+                        return false;
+                    }
+                    // Out on something else: called home, and it meets
+                    // the tank on its way to the wreck.
+                    if !me.pillboys.aboard && !matches!(me.pillboys.task, Some(PillboyTask::Return)) {
+                        cmds.push(Command::Deploy { task: PillboyTask::Return });
+                    }
+                    if me.pos.dist(w.pos) > REVIVE_NEAR {
+                        let to = w.pos + (me.pos - w.pos).norm().scale(REVIVE_NEAR * 0.6);
+                        self.go(obs, me, to, cmds);
+                        self.doing = format!("REVIVE: to {}, {:.0} tiles, {:.0} s left{}", name, me.pos.dist(w.pos), left(w), if me.pillboys.aboard { "" } else { ", the squad called in" });
+                    } else if me.pillboys.aboard {
+                        cmds.push(Command::Deploy { task: PillboyTask::Repair { target: id } });
+                        self.doing = format!("REVIVE: the squad out to {}", name);
+                    } else {
+                        if me.goal.is_some() {
+                            cmds.push(Command::Stop);
+                        }
+                        self.doing = format!("REVIVE: by {}, waiting for the squad, {:.0} s left", name, left(w));
+                    }
+                    return true;
+                }
+                _ => {
+                    self.reviving = None;
+                    self.last_move = None;
+                    return false;
+                }
+            }
+        }
+        if me.boat || me.pillboys.strength == 0 || me.pillboys.material < REVIVE_COST {
+            return false;
+        }
+        // A squad out walks back first (`PILLBOY_SPEED`), but no further
+        // than it is from the wreck.
+        let squad_back = |w: &Tank| if me.pillboys.aboard { 0.0 } else { me.pillboys.pos.dist(w.pos).min(me.pillboys.pos.dist(me.pos)) / PILLBOY_SPEED };
+        let able = |t: &Tank| t.alive && !t.boat && t.pillboys.strength > 0 && t.pillboys.material >= REVIVE_COST;
+        let wreck = obs
+            .tanks
+            .iter()
+            .filter(|w| w.owner != obs.player && obs.allied(w.owner) && down(w) && w.pos.dist(me.pos) <= REVIVE_REACH && !self.revive_failed.contains(&w.id))
+            // Time for the drive, the walk and the work.
+            .filter(|w| (me.pos.dist(w.pos) / (TANK_SPEED * 0.7)).max(squad_back(w)) + 2.0 + REVIVE_TICKS as f32 * DT < left(w))
+            // Nobody at it already, and nobody able nearer.
+            .filter(|w| !obs.tanks.iter().any(|a| a.owner != obs.player && obs.allied(a.owner) && matches!(a.pillboys.task, Some(PillboyTask::Repair { target }) if target == w.id)))
+            .filter(|w| !obs.tanks.iter().any(|a| a.owner != obs.player && a.owner != w.owner && obs.allied(a.owner) && able(a) && a.pos.dist(w.pos) < me.pos.dist(w.pos)))
+            // Not into a fight being lost: the guns that downed it are
+            // likely still there (tactics.rs odds, below `REVIVE_ODDS`).
+            .filter(|w| self.inner.tactics.as_ref().map(|t| t.odds(obs, me, w.pos).ratio() >= REVIVE_ODDS).unwrap_or(true))
+            .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap().then(a.id.cmp(&b.id)))
+            .cloned();
+        let Some(w) = wreck else { return false };
+        self.reviving = Some(w.id);
+        self.last_move = None;
+        let name = obs.players.iter().find(|p| p.id == w.owner).map(|p| p.name.clone()).unwrap_or_default();
+        self.say.push(format!("reviving {} at ({:.0},{:.0}), {:.0} tiles, {:.0} s left", name, w.pos.x, w.pos.y, me.pos.dist(w.pos), left(&w)));
+        self.revive(obs, me, cmds)
+    }
+
+    /// Chain help (Paul: "tell the bots to prioritize chain help"). A
+    /// tank of my side that hitches a chain alone cannot move what it is
+    /// on: the bot of the side nearest it that is free (alive, ashore,
+    /// on no chain) answers, the one bot and not all of them, by what
+    /// each can see. It says so, drives over, hitches on, and then keeps
+    /// beside the chainer, driving where the chainer drives, so the two
+    /// haul together. It lets go when the chainer does, or is lost. True
+    /// while it is driving the tank.
+    fn help_chain(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
+        if self.goal == Goal::Manual {
+            return false;
+        }
+        for e in &obs.events {
+            let Event::Chained { owner, target, on, haulers, .. } = e else { continue };
+            if *owner == obs.player || !obs.allied(*owner) {
+                continue;
+            }
+            match (*on, self.helping) {
+                // A crew on a haul of its own (crew.rs) is not chain help.
+                (true, None) if *haulers == 1 && me.towing.is_none() && !me.boat && self.crew.hauling() != Some(*target) => {
+                    let Some(at) = Self::chain_target(obs, *target) else { continue };
+                    let bot = |p: PlayerId| obs.players.iter().any(|x| x.id == p && x.is_bot);
+                    let nearest = obs.allied_tanks().chain(std::iter::once(me)).filter(|t| t.alive && !t.boat && t.towing.is_none() && t.owner != *owner && bot(t.owner)).min_by(|a, b| a.pos.dist(at).partial_cmp(&b.pos.dist(at)).unwrap().then(a.owner.cmp(&b.owner))).map(|t| t.owner);
+                    if nearest == Some(obs.player) {
+                        self.helping = Some((*owner, *target));
+                        let who = obs.players.iter().find(|p| p.id == *owner).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", owner));
+                        self.say.push(format!("on my way to the chain with {}, {:.0} tiles", who, me.pos.dist(at)));
+                    }
+                }
+                (false, Some((who, t))) if who == *owner && t == *target => {
+                    self.helping = None;
+                    if me.towing == Some(t) {
+                        cmds.push(Command::Tow { target: None });
+                    }
+                    return false;
+                }
+                _ => {}
+            }
+        }
+        let Some((who, target)) = self.helping else { return false };
+        let chainer = obs.allied_tanks().find(|t| t.owner == who && t.alive).cloned();
+        let (Some(at), Some(c)) = (Self::chain_target(obs, target), chainer) else {
+            self.helping = None;
+            if me.towing.is_some() {
+                cmds.push(Command::Tow { target: None });
+            }
+            return false;
+        };
+        if c.towing != Some(target) {
+            self.helping = None;
+            if me.towing == Some(target) {
+                cmds.push(Command::Tow { target: None });
+            }
+            return false;
+        }
+        let name = obs.players.iter().find(|p| p.id == who).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", who));
+        if me.towing != Some(target) {
+            if me.pos.dist(at) <= TOW_REACH * 0.8 {
+                if obs.tick >= self.last_hitch + TICK_HZ as Tick {
+                    self.last_hitch = obs.tick;
+                    cmds.push(Command::Tow { target: Some(target) });
+                    self.say.push(format!("on the chain with {}: pull", name));
+                }
+            } else {
+                // Beside it, on the far side from the chainer.
+                let side = (at - c.pos).norm();
+                let spot = at + V2::new(-side.y, side.x).scale(1.2);
+                self.go(obs, me, spot, cmds);
+            }
+            self.doing = format!("CHAIN: to help {} haul ({:.0},{:.0}), {:.0} tiles", name, at.x, at.y, me.pos.dist(at));
+            return true;
+        }
+        // Hauling: where the chainer drives, a tile and a half to its side.
+        let dest = c.route.last().copied().or(c.goal).unwrap_or(c.pos);
+        let across = (c.pos - at).norm();
+        let beside = V2::new(-across.y, across.x).scale(1.5);
+        self.go(obs, me, dest + beside, cmds);
+        self.doing = format!("CHAIN: hauling with {}", name);
+        true
+    }
+
+    fn chain_target(obs: &Observation, id: EntityId) -> Option<V2> {
+        obs.pillboxes.iter().find(|p| p.id == id).map(|p| p.pos).or_else(|| obs.depots.iter().find(|d| d.id == id).map(|d| d.pos))
+    }
+
+    /// A seat's flank in a group attack: seats taken three ways, left,
+    /// centre and right, each coming in sixty degrees round from the way
+    /// it was coming, so three bots answering one ping close from three
+    /// sides.
+    fn flank(seat: PlayerId, from: V2) -> V2 {
+        let turn = [-1.05f32, 0.0, 1.05][seat as usize % 3];
+        let (s, c) = turn.sin_cos();
+        V2::new(from.x * c - from.y * s, from.x * s + from.y * c)
+    }
+
+    fn flank_word(seat: PlayerId) -> &'static str {
+        ["left", "centre", "right"][seat as usize % 3]
+    }
+
+    /// What a ping marks, in a word or two: the hostile tank by it, or
+    /// the place.
+    fn called(obs: &Observation, at: V2) -> String {
+        match obs.hostile_tanks().find(|t| t.alive && t.pos.dist(at) <= 4.0) {
+            Some(t) => obs.players.iter().find(|p| p.id == t.owner).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", t.owner)),
+            None => format!("ping at ({:.0},{:.0})", at.x, at.y),
+        }
+    }
+
+    /// A teammate's ping within `RALLY_REACH`, if this bot answers them.
+    fn hear_pings(&mut self, obs: &Observation, me: &Tank) {
+        self.heard.retain(|(_, t)| obs.tick < t + PING_EVERY);
+        for e in &obs.events {
+            if let Event::Pinged { player, at } = e {
+                if *player == obs.player || !obs.allied(*player) {
+                    continue;
+                }
+                self.heard.push((*at, obs.tick));
+                // A fleet's orders: a wingman in a wedge answers its own
+                // leader's calls, all of them, and nobody else's while
+                // the leader is up.
+                let leader = match self.goal {
+                    Goal::Escort(l) if self.slot.is_some() => Some(l),
+                    _ => None,
+                };
+                let order = leader == Some(*player);
+                let leader_up = leader.map(|l| obs.players.iter().any(|p| p.id == l && p.alive)).unwrap_or(false);
+                if leader_up && !order {
+                    continue;
+                }
+                if self.answers_pings && me.pos.dist(*at) <= RALLY_REACH && obs.tick >= self.rally_cool {
+                    let fresh = self.rally.map(|(r, _)| r.dist(*at) > PING_HEARD).unwrap_or(true);
+                    self.rally_order = order;
+                    // Assignment (tactics.rs): enough of us nearer it
+                    // already; a crew on a job keeps to its reach. Not
+                    // for the leader's order: the fleet goes together.
+                    if let Some(t) = self.inner.tactics.as_ref().filter(|_| !order) {
+                        if fresh {
+                            if let Some(n) = t.enough_answer(obs, me, *at, *player) {
+                                self.doing = format!("the ping at ({:.0},{:.0}): {} of us nearer, I keep at it", at.x, at.y, n);
+                                continue;
+                            }
+                            if self.crew.working() && me.pos.dist(*at) > t.w.crew_reach {
+                                self.doing = format!("the ping at ({:.0},{:.0}): {:.0} out, past a crew's {:.0}", at.x, at.y, me.pos.dist(*at), t.w.crew_reach);
+                                continue;
+                            }
+                        }
+                    }
+                    self.rally = Some((*at, obs.tick + RALLY_FOR));
+                    if fresh {
+                        self.rally_from = Some(Self::flank(obs.player, (me.pos - *at).norm()));
+                        self.say.push(format!("{} on the {}, {:.0} tiles out", Self::flank_word(obs.player), Self::called(obs, *at), me.pos.dist(*at)));
+                    }
+                }
+            }
+        }
+    }
+
+    /// A hostile tank in sight that nobody of the side has called: ping
+    /// it, and go for it too.
+    fn call_enemy(&mut self, obs: &Observation, me: &Tank) -> Option<Command> {
+        if !self.pings || (self.last_ping > 0 && obs.tick < self.last_ping + PING_EVERY) {
+            return None;
+        }
+        let e = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(me.pos) <= PING_SIGHT).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())?;
+        if self.heard.iter().any(|(at, _)| at.dist(e.pos) <= PING_HEARD) {
+            return None;
+        }
+        self.last_ping = obs.tick;
+        if self.answers_pings && obs.tick >= self.rally_cool {
+            self.rally = Some((e.pos, obs.tick + RALLY_FOR / 2));
+            self.rally_from = Some((me.pos - e.pos).norm());
+        }
+        // The call, in team chat: who, where, and the plan for how many
+        // of us can come.
+        let near = obs.allied_tanks().filter(|t| t.alive && t.owner != obs.player && t.pos.dist(e.pos) <= RALLY_REACH).count();
+        let who = obs.players.iter().find(|p| p.id == e.owner).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", e.owner));
+        let plan = match near {
+            // A fleet's leader: the call is the fleet's order.
+            _ if !self.members.is_empty() => format!("fleet: attack together, {} of us", 1 + obs.allied_tanks().filter(|t| t.alive && self.members.contains(&t.owner) && t.pos.dist(me.pos) <= RALLY_REACH).count()),
+            0 => "engaging alone".to_string(),
+            1 => "focus fire with me".to_string(),
+            n => format!("pincer, {} of us: left, centre, right", n + 1),
+        };
+        self.say.push(format!("contact: {} at ({:.0},{:.0}), {:.0} armour. {}", who, e.pos.x, e.pos.y, e.armor, plan));
+        Some(Command::Ping { at: e.pos })
+    }
+
+    /// Answering a ping: to it, and onto any hostile tank near it, with
+    /// the doctrine's gun free. A wingman, a ranger, a leader on Auto; not
+    /// a tank going home low. Ends when the time is up, or at the point
+    /// with nothing there. True while it is driving the tank.
+    fn rallying(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
+        let Some((at, until)) = self.rally else { return false };
+        if obs.tick >= until || !matches!(self.goal, Goal::Auto | Goal::Escort(_) | Goal::HuntPillboxes | Goal::Hold(_)) || me.shells <= LOW_SHELLS || me.armor <= LOW_ARMOR {
+            self.rally = None;
+            return false;
+        }
+        let enemy = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(at) <= PING_SIGHT * 0.7).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap());
+        match enemy {
+            Some(e) => {
+                // Follow it, and keep at it while it is seen.
+                self.rally = Some((e.pos, until.max(obs.tick + 10 * TICK_HZ as Tick)));
+                self.rally_seen = Some(obs.tick);
+                let from = self.rally_from.unwrap_or_else(|| (me.pos - e.pos).norm());
+                let who = obs.players.iter().find(|p| p.id == e.owner).map(|p| p.name.clone()).unwrap_or_else(|| format!("p{}", e.owner));
+                // The engagement (tactics.rs): the square law's odds say
+                // how near; of the flank's firing points, the one with
+                // the fewest other guns on it.
+                let (range, word, at_odds, stance) = match self.inner.tactics.as_mut() {
+                    Some(t) => {
+                        let odds = t.odds(obs, me, e.pos);
+                        let r = odds.ratio();
+                        let mut stance = t.stance(obs.tick, &odds);
+                        // The fleet's order, with the fleet there: attack
+                        // together, whatever one tank's odds say.
+                        let with_me = obs.allied_tanks().filter(|a| a.alive && a.owner != obs.player && a.pos.dist(e.pos) <= t.w.odds_r + 4.0).count();
+                        if self.rally_order && with_me >= 2 && stance != crate::tactics::Stance::Press {
+                            stance = crate::tactics::Stance::Press;
+                        }
+                        match stance {
+                            crate::tactics::Stance::Mass => (DIRECT_RANGE * 1.8, format!("massing, {} coming", odds.coming), r, Some(stance)),
+                            crate::tactics::Stance::Engage => (DIRECT_RANGE * 0.8, "engaging".to_string(), r, Some(stance)),
+                            crate::tactics::Stance::Press => (DIRECT_RANGE * 0.5, "pressing".to_string(), r, Some(stance)),
+                        }
+                    }
+                    None => (DIRECT_RANGE * 0.7, "engaging".to_string(), 1.0, None),
+                };
+                // Kiting (tactics.rs): past its reach until its gun is
+                // reloading, then in, a shot, and out.
+                let kite = match (self.inner.tactics.as_ref(), stance) {
+                    (Some(t), Some(st)) if t.w.kite => Some(t.kite(obs, me, e, from, st, DIRECT_RANGE * 1.8)),
+                    _ => None,
+                };
+                let word = match kite {
+                    Some(k) => format!("{}, {}", word, k.word),
+                    None => word,
+                };
+                let (stand, guns) = match (kite, self.inner.tactics.as_ref()) {
+                    (Some(k), _) => (k.to, 0),
+                    (None, Some(t)) => t.stand(obs, e, from, range),
+                    (None, None) => (e.pos + from.scale(range), 0),
+                };
+                if kite.map(|k| k.stepping_in).unwrap_or(false) {
+                    // A step in is a dash: every tick, not once a second.
+                    self.last_move = None;
+                }
+                // A standoff (the kiting team held fewer depots, 3.8
+                // against 4.4): past its reach for `KITE_STALL` with no
+                // window, the errand matters more. Back to the goal, and
+                // no rally for `RALLY_COOL`.
+                match kite {
+                    Some(k) if !k.stepping_in => {
+                        let since = match self.kite_held {
+                            Some((id, t)) if id == e.id => t,
+                            _ => obs.tick,
+                        };
+                        self.kite_held = Some((e.id, since));
+                        if obs.tick >= since + KITE_STALL {
+                            self.kite_held = None;
+                            self.rally = None;
+                            self.rally_cool = obs.tick + RALLY_COOL;
+                            self.last_move = None;
+                            self.doing = format!("RALLY: a standoff with {}: back to the errand", who);
+                            return false;
+                        }
+                    }
+                    _ => self.kite_held = None,
+                }
+                self.go(obs, me, stand, cmds);
+                self.doing = format!("RALLY: on {} at ({:.0},{:.0}), the {} flank, odds {:.1}: {}{}", who, e.pos.x, e.pos.y, Self::flank_word(obs.player), at_odds, word, if guns > 0 { format!(", {} other guns on the spot", guns) } else { String::new() });
+            }
+            None if me.pos.dist(at) <= 5.0 => {
+                self.rally = None;
+                return false;
+            }
+            // Kiting, and the target out of the side's sight: hold the
+            // ring round where it was last seen, not drive onto the spot
+            // and into its reach.
+            None if self.inner.tactics.as_ref().map(|t| t.w.kite).unwrap_or(false) && self.rally_seen.map(|s| obs.tick < s + RALLY_LOST).unwrap_or(false) => {
+                let ring = DIRECT_RANGE + self.inner.tactics.as_ref().unwrap().w.kite_margin;
+                if me.pos.dist(at) < ring - 0.5 || me.pos.dist(at) > ring + 4.0 {
+                    let to = at + (me.pos - at).norm().scale(ring);
+                    self.go(obs, me, to, cmds);
+                }
+                self.doing = format!("RALLY: lost sight of it at ({:.0},{:.0}): holding past its reach", at.x, at.y);
+            }
+            None => {
+                self.go(obs, me, at, cmds);
+                self.doing = format!("RALLY: to the ping at ({:.0},{:.0}), {:.0} tiles", at.x, at.y, me.pos.dist(at));
+            }
+        }
+        true
+    }
+
+    /// The target the doctrine's gun is on and why, for `status`.
+    fn fire_word(&self) -> String {
+        match self.inner.tactics.as_ref() {
+            Some(t) if t.target.is_some() => format!(" | target {}", t.reason),
+            _ => String::new(),
+        }
+    }
+
     /// No line from here: round the target to the next firing point; a
     /// whole circle and a half without one, and it is given up.
     fn blocked(&mut self) {
@@ -977,21 +1751,45 @@ impl Commander {
             .iter()
             .filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(at) <= leash)
             .min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap().then(a.id.cmp(&b.id)));
-        match threat {
-            Some(t) if t.pos.dist(me.pos) <= DIRECT_RANGE - 0.2 => {
+        // Kiting it (tactics.rs), from the side of what is defended and
+        // on the leash: in range, the gun; the tank steps in only while
+        // its gun cannot answer. Without the weights, stand and trade.
+        let kite = match (threat, self.inner.tactics.as_mut()) {
+            (Some(t), Some(tc)) if tc.w.kite => {
+                let odds = tc.odds(obs, me, t.pos);
+                let st = tc.stance(obs.tick, &odds);
+                Some(tc.kite(obs, me, t, (at - t.pos).norm(), st, DIRECT_RANGE * 1.8))
+            }
+            _ => None,
+        };
+        match (threat, kite) {
+            (Some(t), Some(k)) => {
+                if t.pos.dist(me.pos) <= DIRECT_RANGE - 0.2 && me.reload == 0 && me.shells > 0 && obs.tick >= self.hold_fire_until {
+                    cmds.push(Command::FireDirect { at: crate::lead(me, t) });
+                }
+                let to = if k.to.dist(at) > leash { at + (k.to - at).norm().scale(leash) } else { k.to };
+                if k.stepping_in {
+                    self.last_move = None;
+                }
+                self.go(obs, me, to, cmds);
+                self.doing = format!("kiting the intruder: {}", k.word);
+            }
+            (Some(t), None) if t.pos.dist(me.pos) <= DIRECT_RANGE - 0.2 => {
                 if me.reload == 0 && me.shells > 0 && obs.tick >= self.hold_fire_until {
-                    cmds.push(Command::FireDirect { at: t.pos });
+                    cmds.push(Command::FireDirect { at: crate::lead(me, t) });
                 }
                 self.doing = "engaging an intruder".into();
             }
-            Some(t) => {
+            (Some(t), None) => {
                 // Between the intruder and what is defended, not past it.
                 let toward = at + (t.pos - at).norm().scale(DEFEND_HOLD.min(t.pos.dist(at)));
                 self.go(obs, me, toward, cmds);
                 self.doing = "moving to cover it".into();
             }
-            None => {
-                if me.pos.dist(at) > DEFEND_HOLD {
+            (None, _) => {
+                if me.pos.dist(at) > DEFEND_HOLD && self.over_water(at) {
+                    self.doing = format!("the post is over the water, {:.0} tiles, and no boat: holding here", me.pos.dist(at));
+                } else if me.pos.dist(at) > DEFEND_HOLD {
                     self.go(obs, me, at, cmds);
                     self.doing = format!("to the post, {:.0} tiles", me.pos.dist(at));
                 } else {
@@ -1024,30 +1822,239 @@ impl Brain for Commander {
     fn status(&self) -> String {
         match (self.goal, self.rung) {
             (Goal::Manual, _) => String::new(),
-            (Goal::Auto, Some(r)) => format!("auto > {}: {}", r.label(), self.doing),
-            (g, _) => format!("{}: {}", g.label(), self.doing),
+            (Goal::Auto, Some(r)) if self.fleet.on && self.plan.is_some() => format!("auto > {} (commanding {} crews): {}{}", r.label(), self.fleet.crews(), self.doing, self.fire_word()),
+            (Goal::Auto, Some(r)) => format!("auto > {}: {}{}", r.label(), self.doing, self.fire_word()),
+            (g, _) => format!("{}: {}{}", g.label(), self.doing, self.fire_word()),
         }
     }
 
     fn think(&mut self, obs: &Observation) -> Vec<Command> {
+        self.think_map(obs, None)
+    }
+
+    fn think_on(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
+        self.think_map(obs, map)
+    }
+}
+
+impl Commander {
+    fn think_map(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
         let mut cmds = Vec::new();
         // The doctrine thinks every tick so its memory stays current;
         // what it says is kept or dropped below.
-        let doctrine = self.inner.think(obs);
+        self.inner.hops = self.goal == Goal::Auto || self.inner.hop.sent();
+        if let Some(t) = self.inner.tactics.as_mut() {
+            t.base = self.base;
+        }
+        if let (Some(p), Some(m)) = (self.plan.as_mut(), map) {
+            p.fit_post(m);
+        }
+        if let (Some(b), Some(m)) = (self.base, map) {
+            if !self.rotation.off {
+                self.rotation.fit(obs, m, b);
+            }
+        }
+        // The fleet lays a bridge together: a leader's wingmen near it
+        // are its helpers, and a wingman takes its leader's jobs.
+        if let Goal::Escort(l) = self.goal {
+            if self.slot.is_some() {
+                self.crew.leader = Some(l);
+            }
+        }
+        self.inner.hop.no_bridges = self.slot.is_some() && matches!(self.goal, Goal::Escort(_));
+        // Helpers with material: the leader waits for them at the end
+        // rather than leaving it to fetch its own.
+        self.inner.hop.helpers = match obs.me.as_ref() {
+            Some(me) => self.helpers(obs, me).iter().filter(|t| t.pillboys.material >= ROAD_COST).count(),
+            None => 0,
+        };
+        self.crew.take_jobs(obs);
+        let doctrine = self.inner.think_map(obs, map);
+        // A new target the team is on, or called: say it, so the rest
+        // of the side's scores lean the same way (a focus call).
+        // Only a fight in reach: a call on a tank sixty tiles off is noise.
+        let near = |t: &crate::tactics::Tactician| t.target.and_then(|id| obs.tanks.iter().find(|x| x.id == id)).zip(obs.me.as_ref()).map(|(x, me)| x.pos.dist(me.pos) <= FOCUS_REACH).unwrap_or(false);
+        if let Some(t) = self.inner.tactics.as_ref().filter(|t| t.switched && near(t) && (t.reason.contains("called") || t.reason.contains("on it") || t.reason.contains("one shot"))) {
+            if self.pings && obs.tick >= self.focus_said + FOCUS_EVERY {
+                self.focus_said = obs.tick;
+                self.say.push(format!("focus {}", t.reason));
+            }
+        }
+        // A fleet wingman ashore again: its crossing was the leader's,
+        // and is over.
+        if self.slot.is_some() && self.inner.hop.sent() && obs.events.iter().any(|e| matches!(e, Event::Landed { owner, .. } if *owner == obs.player)) {
+            self.inner.hop.reset();
+            self.last_move = None;
+        }
+        // Back in a new tank (respawn): the old one's errands are over.
+        if obs.events.iter().any(|e| matches!(e, Event::Respawned { owner, .. } if *owner == obs.player)) {
+            self.resupplying = false;
+            self.rally = None;
+            self.helping = None;
+            self.crew.reset();
+            self.last_move = None;
+            self.target = None;
+            self.scoot = None;
+            self.task = None;
+            self.fetching = None;
+        }
         if self.goal == Goal::Manual {
             return cmds;
         }
+        self.refused.retain(|(_, t)| obs.tick < t + REFUSED_FOR);
         for e in &obs.events {
             if let Event::Rejected { player, cmd: Command::FireDirect { .. }, why } = e {
                 if *player == obs.player && why.contains("line") {
                     self.hold_fire_until = obs.tick + 2 * TICK_HZ as Tick;
                 }
             }
+            // A drive refused as over the water: a rally there is
+            // dropped (a boat sinks at one hit, no way into a fight);
+            // anything else of the goal's (home, the post, a depot) goes
+            // by sea, the island hop's way (hop.rs `send`).
+            if let Event::Rejected { player, cmd: Command::Move { to }, why } = e {
+                if *player == obs.player && why == "unreachable" {
+                    self.refused.push((to.tile(), obs.tick));
+                    let ours = self.last_move.map(|(at, _)| at.tile() == to.tile()).unwrap_or(false);
+                    if self.rally.map(|(r, _)| r.dist(*to) <= DIRECT_RANGE * 2.0).unwrap_or(false) {
+                        self.rally = None;
+                        self.doing = format!("the fight at ({:.0},{:.0}) is over the water: not by boat", to.x, to.y);
+                    } else if ours && obs.me.as_ref().map(|t| t.alive && !t.boat).unwrap_or(false) && self.inner.hop.send(*to) {
+                        self.last_move = None;
+                    }
+                }
+            }
         }
         let Some(me) = obs.me.clone() else { return cmds };
         if !me.alive {
-            self.doing = "dead".into();
+            // Down: call the side to come and mend it, once a fall.
+            let down = me.last_hit_tick > 0 && obs.tick < me.last_hit_tick + DOWNED_TICKS as Tick;
+            if down && self.called_down != me.last_hit_tick && self.pings {
+                self.called_down = me.last_hit_tick;
+                cmds.push(Command::Ping { at: me.pos });
+                self.say.push(format!("down at ({:.0},{:.0}): a squad with {} material revives me, {} s", me.pos.x, me.pos.y, REVIVE_COST, DOWNED_TICKS / TICK_HZ));
+            }
+            self.flush_say(obs, &mut cmds);
+            self.reviving = None;
+            self.doing = if down { format!("down: {:.0} s for an ally to revive", (me.last_hit_tick + DOWNED_TICKS as Tick).saturating_sub(obs.tick) as f32 * DT) } else { "dead".into() };
             return cmds;
+        }
+        // Afloat, whatever the goal: the doctrine's run for the beach
+        // (RuleBot::landfall_order). A boat sinks at one hit.
+        // An island hop (hop.rs) is the doctrine's too, once it is under
+        // way: the ladder had nothing left in reach by land.
+        // An ally down: revive it before it dies, first of all, a hop
+        // or not (a hop was why the first match's bots revived nobody).
+        // Out of a shell's way, or a jink when hit, before anything that
+        // holds the tank still: a tank parked by a wreck while its squad
+        // mended it never dodged (the quad: a dozen revivers killed by
+        // indirect shells in four matches). A shell's dodge holds until
+        // it lands (lib.rs `Dodge::until`); the guns stay free; a revive
+        // or a hop picks up again after.
+        let mending = self.reviving.is_some() && matches!(me.pillboys.task, Some(PillboyTask::Repair { .. }));
+        let dodge = self.dodge.order_with(obs, &me, !mending).filter(|_| self.dodges);
+        if dodge.is_some() || (self.dodges && self.dodge.holding(obs, &me)) {
+            cmds.extend(dodge);
+            self.last_move = None;
+            self.doing = "dodging".into();
+            cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+            return cmds;
+        }
+        if !me.boat && self.revive(obs, &me, &mut cmds) {
+            self.flush_say(obs, &mut cmds);
+            cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+            return cmds;
+        }
+        // A fleet's leader laying a bridge, out of material: the next
+        // tile to a wingman of its that has some (a crew's job).
+        if let Some(front) = self.inner.hop.bridge_front() {
+            if me.pillboys.aboard && me.pillboys.material < ROAD_COST && obs.tick >= self.bridge_asked + 4 * TICK_HZ as Tick {
+                // One with material first, nearest; else the nearest: a
+                // crew short of it fells some first.
+                let helper = self.helpers(obs, &me).into_iter().filter(|t| t.pillboys.aboard).min_by(|a, b| {
+                    let key = |t: &Tank| (t.pillboys.material < ROAD_COST, t.pos.dist(front));
+                    key(a).partial_cmp(&key(b)).unwrap()
+                });
+                if let Some(h) = helper {
+                    self.bridge_asked = obs.tick;
+                    cmds.push(Command::Request { to: Some(h.owner), job: Job::Build { what: BuildKind::Road, at: front } });
+                }
+            }
+        }
+        // A fleet's leader crosses with its fleet: at the shore, about
+        // to launch, it gathers them first.
+        if !me.boat && self.inner.hops && self.inner.hop.launching() && self.gathering(obs, &me, &mut cmds) {
+            self.flush_say(obs, &mut cmds);
+            cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+            return cmds;
+        }
+        // A fleet afloat: in the wedge round the leader's boat while it
+        // sails; landed, up the beach beside it.
+        if me.boat {
+            let leader = match self.goal {
+                Goal::Escort(l) if self.slot.is_some() => obs.tanks.iter().find(|t| t.owner == l && t.alive).cloned(),
+                _ => None,
+            };
+            // The leader ashore: the hop (sent for it) or the landfall
+            // brings the boat in; a boat steered at an inland leader sat
+            // on the water.
+            if let Some(leader) = leader.filter(|l| l.boat && l.pos.dist(me.pos) <= RALLY_REACH) {
+                let (to, word) = (self.slot_point(&leader).unwrap_or(leader.pos), "sailing in formation");
+                if self.last_move.map(|(at, t)| at.dist(to) > 2.0 || obs.tick >= t + MOVE_EVERY).unwrap_or(true) {
+                    cmds.push(Command::Move { to: obs.clamp(to) });
+                    self.last_move = Some((to, obs.tick));
+                }
+                self.doing = format!("{}, slot {}", word, self.slot.unwrap() + 1);
+                cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                return cmds;
+            }
+        }
+        if me.boat || (self.inner.hops && self.inner.hop.active()) {
+            self.doing = self.inner.status();
+            return doctrine;
+        }
+        // A teammate on a chain alone: help haul it.
+        if self.help_chain(obs, &me, &mut cmds) {
+            self.flush_say(obs, &mut cmds);
+            cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+            return cmds;
+        }
+        // The team's pings: call what I see, answer what they call.
+        self.hear_pings(obs, &me);
+        if let Some(c) = self.call_enemy(obs, &me) {
+            cmds.push(c);
+        }
+        self.flush_say(obs, &mut cmds);
+        if self.rallying(obs, &me, &mut cmds) {
+            cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+            return cmds;
+        }
+        // The fort (crew.rs): a fleet commander musters and hands out the
+        // plan; a crew does what it is given, a wingman only while its
+        // leader is at the fort.
+        if self.fleet.on {
+            let base = self.base_of(obs, &me);
+            cmds.extend(self.fleet.think(obs, base, self.plan.as_mut()));
+        }
+        let free = !self.resupplying
+            && (self.crew.laying_road() || match self.goal {
+                Goal::Escort(l) => match (obs.allied_tanks().find(|t| t.owner == l && t.alive), self.crew.muster_at()) {
+                    (Some(t), Some(m)) => t.pos.dist(m) <= 25.0,
+                    _ => false,
+                },
+                Goal::Auto | Goal::HuntPillboxes => true,
+                _ => false,
+            });
+        if let Some(work) = self.crew.think(obs, &me, free) {
+            let working = self.crew.working() && free;
+            cmds.extend(work);
+            if working {
+                self.doing = self.crew.doing.clone();
+                self.last_move = None;
+                self.flush_say(obs, &mut cmds);
+                cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                return cmds;
+            }
         }
         // A bot whose leader is down takes command (fleet.rs): a wingman
         // or a guard left on its own goes to Auto at the same base. A
@@ -1059,7 +2066,19 @@ impl Brain for Commander {
                 _ => None,
             };
             if let Some(l) = leader.filter(|l| *l != obs.player) {
-                if obs.players.iter().any(|p| p.id == l && !p.alive) {
+                // With respawns the leader is back in five seconds: a
+                // guard that took command at every death (the quad's
+                // guards all had by the third minute) left its post for
+                // good. Down past a respawn and more, it is for good.
+                let down = obs.players.iter().any(|p| p.id == l && !p.alive);
+                let since = match (down, self.leader_down) {
+                    (false, _) => None,
+                    (true, Some(t)) => Some(t),
+                    (true, None) => Some(obs.tick),
+                };
+                self.leader_down = since;
+                let wait = if obs.respawns > 0 { (RESPAWN_TICKS + 5 * TICK_HZ) as Tick } else { 0 };
+                if since.map(|t| obs.tick >= t + wait).unwrap_or(false) {
                     self.base_owner.get_or_insert(l);
                     self.set_goal(Goal::Auto);
                     self.doing = "the leader is down: taking command".into();
@@ -1075,7 +2094,7 @@ impl Brain for Commander {
         let in_sight = obs.tanks.iter().any(|t| t.alive && !obs.allied(t.owner));
         if hit_now && !in_sight && self.scoot.map(|(_, until)| obs.tick >= until).unwrap_or(true) {
             self.scoot_left = !self.scoot_left;
-            let side = V2::from_heading(me.heading + if self.scoot_left { 1.5708 } else { -1.5708 });
+            let side = V2::from_heading(me.heading + if self.scoot_left { std::f32::consts::FRAC_PI_2 } else { -std::f32::consts::FRAC_PI_2 });
             self.scoot = Some((me.pos + side.scale(SCOOT), obs.tick + SCOOT_FOR));
             self.last_move = None;
             // A shell says where it was fired from: eyes there, and the
@@ -1113,7 +2132,7 @@ impl Brain for Commander {
             self.last_move = None;
         }
         if self.needs_home(&me) {
-            if let Some(home) = Self::home(obs, &me) {
+            if let Some(home) = self.home(obs, &me) {
                 self.doing = format!("home to resupply, {:.0} tiles", me.pos.dist(home));
                 self.go(obs, &me, home, &mut cmds);
                 cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
@@ -1161,7 +2180,7 @@ impl Brain for Commander {
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
             }
             Goal::Escort(who) => match obs.tanks.iter().find(|t| t.owner == who && t.alive).cloned() {
-                Some(leader) => self.fly_wing(obs, &me, &leader, &mut cmds),
+                Some(leader) => self.fly_wing(obs, &me, &leader, map, &mut cmds),
                 None => {
                     self.doing = "the leader is not in sight".into();
                     true
@@ -1327,9 +2346,10 @@ mod tests {
             }
             furthest = furthest.max(w.tanks[1].pos.dist(w.tanks[0].pos));
         });
-        // Nothing hostile came: it stayed on the wing.
+        // Nothing hostile came: it stayed by the leader, rotating out
+        // toward the objective no further than its push point.
         assert_eq!(hits, 0);
-        assert!(furthest <= ESCORT_DISTANCE + 3.0, "wandered {:.1} tiles off with nothing to do", furthest);
+        assert!(furthest <= crate::rotation::WING_REACH + 1.0, "wandered {:.1} tiles off with nothing to do", furthest);
         // Now the enemy drives up to the leader.
         let t = w.tanks.iter_mut().find(|t| t.owner == 2).unwrap();
         t.pos = at;
@@ -1513,7 +2533,7 @@ mod tests {
     fn free_near(w: &World, from: V2, r: f32) -> V2 {
         (0..64)
             .map(|i| Map::tile_centre(from + V2::from_heading(i as f32 * 0.7).scale(r + (i / 16) as f32)))
-            .find(|p| w.map.in_bounds(*p) && w.map.at(*p).passable() && !matches!(w.map.at(*p), Terrain::Forest | Terrain::Depot) && !w.depots.iter().any(|d| d.pos.dist(*p) <= DEPOT_RADIUS + 1.0) && !w.pillboxes.iter().any(|b| b.pos.dist(*p) < PILLBOX_SPACING) && w.map.route(from, *p).len() > 0)
+            .find(|p| w.map.in_bounds(*p) && w.map.at(*p).passable() && !matches!(w.map.at(*p), Terrain::Forest | Terrain::Depot) && !w.depots.iter().any(|d| d.pos.dist(*p) <= DEPOT_RADIUS + 1.0) && !w.pillboxes.iter().any(|b| b.pos.dist(*p) < PILLBOX_SPACING) && !w.map.route(from, *p).is_empty())
             .expect("no free tile")
     }
 
@@ -1574,13 +2594,17 @@ mod tests {
         w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
         let mut c = Commander::new(14, "commander");
         c.set_goal(Goal::DefendBase);
+        // The scoot is what is proved: with the dodge on, the test's gun
+        // never hits (a_bot_drives_out_from_under_a_shell).
+        c.dodges = false;
         // Settle at the post first.
         for _ in 0..(20 * TICK_HZ) {
             let obs = w.observe(0);
             let orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
             w.step(&orders);
         }
-        let gun = free_near(&w, w.tanks[0].pos, 20.0);
+        // Out of every eye of the tank's: past its recon's 20 tiles.
+        let gun = free_near(&w, w.tanks[0].pos, 32.0);
         let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
         t.pos = gun;
         t.goal = None;
@@ -1616,6 +2640,149 @@ mod tests {
         assert!(recon, "no recon up");
         assert!(seen, "never saw the gun");
         assert!(answered > 0, "never fired back");
+    }
+
+    /// Chain help: a person who chains a pillbox alone is answered by the
+    /// nearest bot of the side, which hitches on and hauls beside them,
+    /// so the pillbox moves when the person drives off.
+    #[test]
+    fn a_bot_answers_a_chain() {
+        let names = vec![("me".to_string(), false), ("foe".to_string(), true), ("wing".to_string(), true), ("foe2".to_string(), true)];
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, players: names, ..Scenario::default() }.with_teams(2);
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let home = w.tanks[0].pos;
+        let toward = (w.map.center() - home).norm();
+        let mut at = Map::tile_centre(home + toward.scale(4.0));
+        while !w.map.at(at).passable() || w.depots.iter().any(|d| d.pos.dist(at) < 4.0) {
+            at = Map::tile_centre(at + toward);
+        }
+        let id = w.next_id;
+        w.next_id += 1;
+        w.pillboxes.push(Pillbox { id, pos: at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+        // The person beside it; the bot a few tiles off; the foes far.
+        w.tanks[0].pos = at - toward.scale(1.0);
+        let near = free_near(&w, at, 8.0);
+        w.tanks[2].pos = near;
+        let mut c = Commander::new(9, "wing");
+        c.set_goal(Goal::Auto);
+        w.step(&[Order { player: 0, cmd: Command::Tow { target: Some(id) } }]);
+        let mut hitched = false;
+        let mut sent = false;
+        for i in 0..60 * TICK_HZ {
+            let obs = w.observe(2);
+            let mut orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 2, cmd }).collect();
+            if hitched && !sent {
+                orders.push(Order { player: 0, cmd: Command::Move { to: at + toward.scale(12.0) } });
+                sent = true;
+            }
+            w.step(&orders);
+            hitched |= w.tanks[2].towing == Some(id);
+            if i > 40 * TICK_HZ && !hitched {
+                break;
+            }
+        }
+        let moved = w.pillbox(id).unwrap().pos.dist(at);
+        eprintln!("a_bot_answers_a_chain: hitched {}, pillbox hauled {:.1} tiles; {}", hitched, moved, c.doing);
+        assert!(hitched, "the bot never came to the chain");
+        assert!(moved > 1.0, "the pillbox did not move: {:.1}", moved);
+    }
+
+    /// Revive: a bot whose ally goes down twelve tiles off drives over,
+    /// sends its squad and has the ally back at half armour inside the
+    /// twenty seconds.
+    #[test]
+    fn a_bot_revives_a_downed_ally() {
+        let names = vec![("me".to_string(), false), ("foe".to_string(), true), ("wing".to_string(), true), ("foe2".to_string(), true)];
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, players: names, ..Scenario::default() }.with_teams(2);
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        for _ in 0..TICK_HZ {
+            w.step(&[]);
+        }
+        let home = w.tanks[0].pos;
+        let near = free_near(&w, home, 12.0);
+        w.tanks[2].pos = near;
+        w.tanks[2].pillboys.pos = near;
+        w.tanks[2].pillboys.material = 4;
+        let mut c = Commander::new(9, "wing");
+        c.set_goal(Goal::Auto);
+        // Down as the world leaves a tank it destroyed.
+        let tick = w.tick;
+        let t = &mut w.tanks[0];
+        t.alive = false;
+        t.armor = 0.0;
+        t.last_hit_tick = tick;
+        t.pillboys.strength = 0;
+        w.players[0].alive = false;
+        let mut revived = None;
+        for i in 0..DOWNED_TICKS {
+            let obs = w.observe(2);
+            let orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 2, cmd }).collect();
+            w.step(&orders);
+            if w.events.iter().any(|e| matches!(e, Event::Revived { owner: 0, by: 2, .. })) {
+                revived = Some(i as f32 * DT);
+                break;
+            }
+        }
+        eprintln!("a_bot_revives_a_downed_ally: revived after {:?} s, {:.1} tiles off; {}", revived, near.dist(home), c.doing);
+        assert!(revived.is_some(), "never revived: {}", c.doing);
+        assert!(w.tanks[0].alive && w.tanks[0].armor == REVIVE_ARMOR);
+    }
+
+    /// Haul: two crews given the same job chain an ally's pillbox and
+    /// drag it to the spot, then let go.
+    #[test]
+    fn two_crews_haul_a_pillbox() {
+        let names: Vec<(String, bool)> = (0..6).map(|i| (format!("s{}", i), i != 0)).collect();
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, players: names, ..Scenario::default() }.with_teams(2);
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let home = w.tanks[0].pos;
+        let toward = (w.map.center() - home).norm();
+        let mut at = Map::tile_centre(home + toward.scale(4.0));
+        let clear = |w: &World, p: V2| w.map.at(p).passable() && !w.depots.iter().any(|d| d.pos.dist(p) < 5.0);
+        while !clear(&w, at) || !clear(&w, at + toward.scale(6.0)) || !clear(&w, at + toward.scale(9.0)) || w.map.route(at, at + toward.scale(9.0)).is_empty() {
+            at = Map::tile_centre(at + toward);
+        }
+        let to = Map::tile_centre(at + toward.scale(6.0));
+        let id = w.next_id;
+        w.next_id += 1;
+        w.pillboxes.push(Pillbox { id, pos: at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+        // Seats 2 and 4 are seat 0's team: the crews, a few tiles off.
+        w.tanks[2].pos = free_near(&w, at, 6.0);
+        w.tanks[4].pos = free_near(&w, at - toward.scale(2.0), 6.0);
+        let mut crews: Vec<(PlayerId, Commander)> = [2, 4].iter().map(|p| {
+            let mut c = Commander::new(*p as u64, "crew");
+            c.set_goal(Goal::Auto);
+            c.crew.on = true;
+            (*p as PlayerId, c)
+        }).collect();
+        w.step(&[Order { player: 0, cmd: Command::Request { to: None, job: Job::Muster { at } } }]);
+        let mut sent = false;
+        let mut chained = 0;
+        for _ in 0..120 * TICK_HZ {
+            let mut orders: Vec<Order> = Vec::new();
+            for (p, c) in crews.iter_mut() {
+                orders.extend(c.think(&w.observe(*p)).into_iter().map(|cmd| Order { player: *p, cmd }));
+            }
+            if !sent {
+                sent = true;
+                for p in [2, 4] {
+                    orders.push(Order { player: 0, cmd: Command::Request { to: Some(p), job: Job::Haul { target: id, to } } });
+                }
+            }
+            w.step(&orders);
+            chained = chained.max(w.tanks.iter().filter(|t| t.towing == Some(id)).count());
+            if w.pillbox(id).unwrap().pos.dist(to) <= 1.5 && !w.tanks.iter().any(|t| t.towing == Some(id)) {
+                break;
+            }
+        }
+        let now = w.pillbox(id).unwrap().pos;
+        eprintln!("two_crews_haul_a_pillbox: {} on the chain at most; the pillbox {:.1} tiles from the spot; {} / {}", chained, now.dist(to), crews[0].1.doing, crews[1].1.doing);
+        assert_eq!(chained, 2);
+        assert!(now.dist(to) <= 1.5, "{:.1} tiles off", now.dist(to));
+        assert!(!w.tanks.iter().any(|t| t.towing == Some(id)), "still on the chain");
     }
 
     /// Auto, alone: fortify first; once the castle stands and the base has

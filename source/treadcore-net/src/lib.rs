@@ -28,6 +28,9 @@
 //! owns the loop -- the server's main, or a Bevy system -- which keeps the
 //! simulation's clock the only clock.
 
+// The module list above is a table aligned in columns, not a Markdown list.
+#![allow(clippy::doc_overindented_list_items)]
+
 pub mod election;
 pub mod introducer;
 pub mod lobby;

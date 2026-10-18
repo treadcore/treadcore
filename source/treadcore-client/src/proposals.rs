@@ -121,7 +121,7 @@ pub fn menu_text(obs: &Observation, m: &Menu) -> String {
         s.push_str(&format!("{} side {:<2} {:<12} {:>4}{}\n", if here { ">" } else { " " }, p.team, p.name.chars().take(12).collect::<String>(), p.score, if p.alive { "" } else { "  dead" }));
     }
     let to = ts[m.row % ts.len()].id;
-    s.push_str("\n");
+    s.push('\n');
     for (i, t) in TERMS.iter().enumerate() {
         s.push_str(&format!("{}{:?}{}  ", if i == m.terms % TERMS.len() { "[" } else { " " }, t, if i == m.terms % TERMS.len() { "]" } else { " " }));
     }

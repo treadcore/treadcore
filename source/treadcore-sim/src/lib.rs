@@ -198,6 +198,20 @@ pub struct Drone {
     /// longshot's fix has drifted already.
     #[serde(default)]
     pub jammed: bool,
+    /// The mark it was launched as (`drone_spec`): 1, 2 or 3.
+    #[serde(default = "mark_one")]
+    pub mark: u8,
+}
+
+fn mark_one() -> u8 {
+    1
+}
+
+impl Drone {
+    /// What this drone is: its kind at its mark.
+    pub fn spec(&self) -> DroneSpec {
+        drone_spec(self.kind, self.mark)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -281,6 +295,25 @@ impl Bay {
 
 // ------------------------------------------------------- pillboys, pillboxes
 
+/// A fleet commander's word to its side (`Command::Request`): the fort
+/// gets built by crews it musters and sets to work.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Job {
+    /// To the side: the fort is at `at`; crews free for work, report.
+    Muster { at: V2 },
+    /// To the commander: free for work.
+    Ready,
+    /// Build this, here, with your squad.
+    Build { what: BuildKind, at: V2 },
+    /// Lift your pillbox and set it down here (a turret slot).
+    Fetch { pillbox: EntityId, to: V2 },
+    /// With another crew given the same job: a chain on this pillbox or
+    /// depot of the side, and drag it here (`Command::Tow`).
+    Haul { target: EntityId, to: V2 },
+    /// Back to what you were doing.
+    Release,
+}
+
 /// What the tank can build through its squad, for material.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BuildKind {
@@ -297,6 +330,9 @@ pub enum BuildKind {
     Concrete,
     /// A structure, on a pad (step 10b).
     Structure(StructureKind),
+    /// A boat, moored on water beside the bank it was built from: a tank
+    /// that drives onto it boards (SPEC TNK-17, the mode table).
+    Boat,
 }
 
 impl BuildKind {
@@ -308,6 +344,7 @@ impl BuildKind {
             BuildKind::Mine => MINE_COST,
             BuildKind::Concrete => CONCRETE_COST,
             BuildKind::Structure(k) => k.cost(),
+            BuildKind::Boat => BOAT_COST,
         }
     }
     pub fn ticks(self) -> u16 {
@@ -318,12 +355,13 @@ impl BuildKind {
             BuildKind::Mine => MINE_LAY_TICKS,
             BuildKind::Concrete => CONCRETE_BUILD_TICKS,
             BuildKind::Structure(_) => STRUCTURE_BUILD_TICKS,
+            BuildKind::Boat => BOAT_BUILD_TICKS,
         }
     }
     /// The squad works from beside a wall or a mine, never on it.
     fn standoff(self) -> f32 {
         match self {
-            BuildKind::Wall | BuildKind::Concrete | BuildKind::Mine => BUILD_STANDOFF,
+            BuildKind::Wall | BuildKind::Concrete | BuildKind::Mine | BuildKind::Boat => BUILD_STANDOFF,
             _ => PILLBOY_WORK_RANGE,
         }
     }
@@ -417,6 +455,19 @@ pub struct Mine {
     pub owner: PlayerId,
 }
 
+/// A boat moored and empty: built by a squad from a bank, or left on the
+/// water by a tank that landed from it; boarded by the first tank to
+/// drive onto it. A boat with a tank in it is the tank's
+/// `boat` flag, not one of these.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Boat {
+    pub id: EntityId,
+    /// The tile's centre, on water.
+    pub pos: V2,
+    /// Whose squad built it; anyone may board it.
+    pub owner: PlayerId,
+}
+
 /// An order to the squad. The prior art's builder: the click is the order, the
 /// squad leaves the tank, walks the world's route, does the work if the
 /// material is there, and walks back. The player drives nothing but the
@@ -444,7 +495,7 @@ impl PillboyTask {
     /// Where the squad has to be to do this. None for Return (the tank).
     fn site(&self, world: &World) -> Option<V2> {
         match self {
-            PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => world.pillbox(*pillbox).map(|p| p.pos).or_else(|| world.structure(*pillbox).map(|s| s.pos)),
+            PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => world.pillbox(*pillbox).map(|p| p.pos).or_else(|| world.structure(*pillbox).map(|s| s.pos)).or_else(|| world.tank(*pillbox).map(|t| t.pos)),
             PillboyTask::Lift { pillbox } => world.pillbox(*pillbox).map(|p| p.pos),
             PillboyTask::Build { at, .. } | PillboyTask::Harvest { at } => Some(*at),
             PillboyTask::Return => None,
@@ -551,6 +602,16 @@ pub struct Tank {
     pub alive: bool,
     /// The squad, aboard or out on an order.
     pub pillboys: Pillboys,
+    /// Afloat on a boat (SPEC TNK-08, TNK-11 to TNK-14): drives over
+    /// water and not over bridges, leaves the boat on the first beach it
+    /// drives onto, and sinks with it at one hit, because all of
+    /// treadcore's water is deep.
+    #[serde(default)]
+    pub boat: bool,
+    /// The pillbox or depot this tank has a chain on (`Command::Tow`).
+    /// It moves when `TOW_HAULERS` tanks of a side pull it together.
+    #[serde(default)]
+    pub towing: Option<EntityId>,
 }
 
 impl Tank {
@@ -589,6 +650,12 @@ pub struct Player {
     pub team: TeamId,
     /// The tick of this player's last message (SPEC UI-23).
     pub last_chat: Option<Tick>,
+    /// Times this player's tank has come back (`Command::Respawn`).
+    #[serde(default)]
+    pub respawned: u8,
+    /// The tick of this player's last ping.
+    #[serde(default)]
+    pub last_ping: Option<Tick>,
 }
 
 /// Who a chat line is for (SPEC UI-22): everyone, the team, the tanks
@@ -721,6 +788,26 @@ pub enum Command {
     /// world hash carry it like any other. Refused for a seat that is
     /// already a person's.
     TakeSeat { name: String },
+    /// A word to my side about the fort: to one player, or to the whole
+    /// side (None). Only to allies; the side sees it (`Event::Requested`).
+    Request { to: Option<PlayerId>, job: Job },
+    /// Hitch a chain to a pillbox or a depot of my side within
+    /// `TOW_REACH` (Some), or let it go (None). It moves when two tanks
+    /// of the side pull it, at `TOW_SPEED`; one alone is held by it.
+    Tow { target: Option<EntityId> },
+    /// Mark a point on the map for my side: an enemy to go for, a place
+    /// to gather. Allies see it (`Event::Pinged`); allied bots answer it
+    /// by converging there. One a second.
+    Ping { at: V2 },
+    /// Bring my destroyed tank back at my start, when the scenario has
+    /// respawns and `RESPAWN_TICKS` have passed since it died.
+    Respawn,
+    /// Launch from the shore (Paul, 16 October: "tanks usually can build
+    /// a boat under it if it is in water"): the squad, aboard, puts a
+    /// boat on the water beside the tank and the tank is on it at once,
+    /// afloat. No walk, no drive onto it. It takes the squad's material
+    /// up to `BOAT_COST`, and launches with none.
+    Embark,
 }
 
 impl Command {
@@ -748,6 +835,9 @@ pub enum Event {
     ShellLaunched { shell: EntityId, owner: PlayerId, kind: ShellKind, spotted: bool, eta_ticks: u32 },
     ShellImpact { shell: EntityId, at: V2, kind: ShellKind, hits: Vec<EntityId> },
     DroneLaunched { drone: EntityId, owner: PlayerId, kind: DroneKind },
+    /// The match's drones move up a mark (`MARK_II_AT`, `MARK_III_AT`):
+    /// every launch from now on is this mark.
+    DronesUpgraded { mark: u8 },
     DroneLost { drone: EntityId, owner: PlayerId, kind: DroneKind, why: LossReason },
     DroneRecovered { drone: EntityId, owner: PlayerId, kind: DroneKind },
     /// To the owner and allies: a drone took a new task by order.
@@ -782,6 +872,9 @@ pub enum Event {
     PillboysLost { tank: EntityId, owner: PlayerId },
     PillboxCaptured { pillbox: EntityId, by: PlayerId, from: Option<PlayerId> },
     PillboxRepaired { pillbox: EntityId, by: PlayerId },
+    /// An ally's squad repaired a tank that was down: it is back, at
+    /// `REVIVE_ARMOR`, where it fell.
+    Revived { tank: EntityId, owner: PlayerId, by: PlayerId, at: V2 },
     PillboxBuilt { pillbox: EntityId, by: PlayerId, at: V2 },
     /// Picked up by its own side's squad (step 11h): gone from the map
     /// until set down, when it is PillboxBuilt again under a new id.
@@ -819,6 +912,23 @@ pub enum Event {
     MatchOver { winner: Option<PlayerId>, team: Option<TeamId> },
     /// A person took a bot's seat: who, by the name they had and have.
     SeatTaken { player: PlayerId, was: String, name: String },
+    /// A tank drove onto a moored boat and is afloat.
+    Boarded { tank: EntityId, owner: PlayerId, boat: EntityId, at: V2 },
+    /// A tank drove its boat onto a beach and is ashore; the boat stays
+    /// moored on the water behind it.
+    Landed { tank: EntityId, owner: PlayerId, at: V2 },
+    /// A boat was hit with its tank in it: both go down (TNK-14).
+    Sunk { tank: EntityId, owner: PlayerId, by: Option<PlayerId>, at: V2 },
+    /// A ping, to the pinger's side.
+    Pinged { player: PlayerId, at: V2 },
+    /// A fort request, to the requester's side.
+    Requested { from: PlayerId, to: Option<PlayerId>, job: Job },
+    /// A chain hitched (`on`) or let go, between a tank and a pillbox or
+    /// a depot; `haulers` is how many tanks are on it now.
+    Chained { tank: EntityId, owner: PlayerId, target: EntityId, on: bool, haulers: u8 },
+    /// A destroyed tank came back at its start; `left` respawns remain
+    /// (`RESPAWNS_UNLIMITED` for no limit).
+    Respawned { tank: EntityId, owner: PlayerId, at: V2, left: u8 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -856,9 +966,10 @@ impl MapSource {
 
 /// the prior art's three game types (SPEC section 11), as what a tank starts
 /// with. Everything else about a match is the scenario's other fields.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GameType {
     /// Every tank starts armed and stocked: shells and material full.
+    #[default]
     Open,
     /// Some free ammunition: half the shells, no material. The depots
     /// and the forest are where the rest comes from.
@@ -892,12 +1003,6 @@ impl GameType {
     }
 }
 
-impl Default for GameType {
-    fn default() -> GameType {
-        GameType::Open
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Scenario {
     /// Seeds the dice (scatter, intercepts, the swarm). The map has its
@@ -928,6 +1033,22 @@ pub struct Scenario {
     /// (`Map::industrialise`, roadmap step 10f).
     #[serde(default)]
     pub industry: bool,
+    /// How many times a destroyed tank may come back, each
+    /// `RESPAWN_TICKS` after it died, at its start (on a landing craft
+    /// if the start is at sea, SPEC TNK-08). 0 is the prior art's
+    /// elimination, as before; `RESPAWNS_UNLIMITED` is no limit. A side
+    /// with a respawn left is not out of the match.
+    #[serde(default)]
+    pub respawns: u8,
+}
+
+/// `--respawns N` as the window and the server read it: a count (254 at
+/// most), or `unlimited`.
+pub fn parse_respawns(s: &str) -> Option<u8> {
+    match s {
+        "unlimited" | "inf" | "always" => Some(RESPAWNS_UNLIMITED),
+        _ => s.parse::<u32>().ok().map(|n| n.min(RESPAWNS_UNLIMITED as u32 - 1) as u8),
+    }
 }
 
 /// The sixteen starts have compass names, in the order `Map::starts`
@@ -965,6 +1086,7 @@ impl Default for Scenario {
             swarm_size: 4,
             time_limit: 15 * 60 * TICK_HZ as Tick,
             industry: false,
+            respawns: 0,
         }
     }
 }
@@ -985,6 +1107,9 @@ pub struct World {
     pub mines: Vec<Mine>,
     pub proposals: Vec<Proposal>,
     pub structures: Vec<Structure>,
+    /// Boats moored and empty.
+    #[serde(default)]
+    pub boats: Vec<Boat>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
@@ -1029,6 +1154,7 @@ impl World {
             mines: Vec::new(),
             proposals: Vec::new(),
             structures: Vec::new(),
+            boats: Vec::new(),
             rng: Rng::new(scenario.seed ^ 0xA5A5_5A5A),
             next_id: 1,
             over: false,
@@ -1079,6 +1205,9 @@ impl World {
                 last_hit_tick: 0,
                 alive: true,
                 pillboys: Pillboys::fresh(pos, scenario.game_type.material()),
+                // A start at sea is a landing craft (TNK-08).
+                boat: w.map.at(pos) == Terrain::Water,
+                towing: None,
             });
             w.players.push(Player {
                 id: i as PlayerId,
@@ -1089,6 +1218,8 @@ impl World {
                 is_bot: *is_bot,
                 team: scenario.teams.as_ref().and_then(|t| t.get(i)).copied().unwrap_or(i as TeamId),
                 last_chat: None,
+                respawned: 0,
+                last_ping: None,
             });
 
         }
@@ -1146,9 +1277,14 @@ impl World {
     /// pillbox hostile to `p` at `PILLBOX_AVOID_COST` extra per tile,
     /// and every hostile mine `p` knows about at `MINE_AVOID_COST`.
     pub fn route_for(&self, p: PlayerId, from: V2, to: V2) -> Vec<V2> {
+        self.route_afloat(p, from, to, false)
+    }
+
+    /// `route_for`, by boat when `afloat` (`Map::route_by`).
+    pub fn route_afloat(&self, p: PlayerId, from: V2, to: V2, afloat: bool) -> Vec<V2> {
         let guns: Vec<V2> = self.pillboxes.iter().filter(|b| b.alive() && !self.allied_opt(b.owner, p)).map(|b| b.pos).collect();
         let mines: Vec<V2> = self.mines.iter().filter(|m| !self.allied(m.owner, p) && self.mine_known_to(p, m)).map(|m| m.pos).collect();
-        self.map.route_with(from, to, |tile| {
+        self.map.route_by(from, to, afloat, |tile| {
             let mut c = 0.0;
             if guns.iter().any(|g| g.dist(tile) <= PILLBOX_RANGE + 0.5) {
                 c += PILLBOX_AVOID_COST;
@@ -1239,10 +1375,7 @@ impl World {
             }
         }
         self.drones.iter().filter(|d| self.allied(d.owner, p)).any(|d| {
-            let r = match d.kind {
-                DroneKind::Recon => RECON_VISION,
-                _ => DRONE_VISION,
-            };
+            let r = d.spec().vision;
             let r = if in_forest { r * 0.6 } else { r };
             d.pos.dist(at) <= r
         })
@@ -1253,10 +1386,10 @@ impl World {
     /// are another's gun. A point under forest cover is spotted only
     /// from inside `CONCEAL_RANGE`.
     pub fn spotted_by(&self, p: PlayerId, at: V2) -> bool {
-        let reach = if self.concealed(at) { CONCEAL_RANGE } else { RECON_VISION };
+        let concealed = self.concealed(at);
         self.drones
             .iter()
-            .any(|d| self.allied(d.owner, p) && d.kind == DroneKind::Recon && d.link >= LINK_FLOOR && d.pos.dist(at) <= reach)
+            .any(|d| self.allied(d.owner, p) && d.kind == DroneKind::Recon && d.link >= LINK_FLOOR && d.pos.dist(at) <= if concealed { CONCEAL_RANGE } else { d.spec().vision })
     }
 
     /// the prior art's cover (VIS-02): `at` lies in a 2 x 2 block of forest. A
@@ -1277,8 +1410,10 @@ impl World {
         if t.owner == p {
             return true;
         }
+        // A wreck is nobody's to see, but an ally's down tank its side
+        // knows of: where to send a squad to revive it.
         if !t.alive {
-            return false;
+            return self.allied(t.owner, p) && self.downed(t);
         }
         if self.concealed(t.pos) {
             return self.tanks.iter().any(|o| o.alive && self.allied(o.owner, p) && o.pos.dist(t.pos) <= CONCEAL_RANGE) || self.drones.iter().any(|d| self.allied(d.owner, p) && d.pos.dist(t.pos) <= CONCEAL_RANGE);
@@ -1298,6 +1433,9 @@ impl World {
         }
         self.tick += 1;
         let now = self.tick;
+        if now == MARK_II_AT as Tick || now == MARK_III_AT as Tick {
+            self.events.push(Event::DronesUpgraded { mark: mark_at(now) });
+        }
         let lapsed: Vec<Proposal> = self.proposals.iter().filter(|p| p.expires <= now).cloned().collect();
         self.proposals.retain(|p| p.expires > now);
         for p in lapsed {
@@ -1308,6 +1446,7 @@ impl World {
         }
 
         self.step_tanks();
+        self.step_chains();
         self.step_pillboys();
         self.step_drones();
         self.step_pillboxes();
@@ -1349,8 +1488,8 @@ impl World {
             Some(p) => p.tank,
             None => return self.reject(o, "no such player"),
         };
-        let (alive, pos, reload, shells) = match self.tank(tid) {
-            Some(t) => (t.alive, t.pos, t.reload, t.shells),
+        let (alive, pos, reload, shells, afloat) = match self.tank(tid) {
+            Some(t) => (t.alive, t.pos, t.reload, t.shells, t.boat),
             None => return self.reject(o, "no tank"),
         };
         if let Command::Chat { text, to } = &o.cmd {
@@ -1358,6 +1497,32 @@ impl World {
         }
         if let Command::TakeSeat { name } = &o.cmd {
             return self.take_seat(o, name);
+        }
+        if let Command::Respawn = &o.cmd {
+            return self.respawn(o, tid);
+        }
+        if let Command::Request { to, job } = &o.cmd {
+            if let Some(t) = to {
+                if *t == o.player || !self.allied(*t, o.player) {
+                    return self.reject(o, "requests go to allies");
+                }
+            }
+            self.events.push(Event::Requested { from: o.player, to: *to, job: job.clone() });
+            return;
+        }
+        // A ping needs no tank: a destroyed one's player can still point.
+        if let Command::Ping { at } = &o.cmd {
+            if !self.map.in_bounds(*at) {
+                return self.reject(o, "off map");
+            }
+            let tick = self.tick;
+            let Some(pl) = self.players.iter_mut().find(|x| x.id == o.player) else { return };
+            if pl.last_ping.map(|t| tick < t + TICK_HZ as Tick).unwrap_or(false) {
+                return self.reject(o, "one ping a second");
+            }
+            pl.last_ping = Some(tick);
+            self.events.push(Event::Pinged { player: o.player, at: *at });
+            return;
         }
         match &o.cmd {
             Command::Alliance(a) => return self.apply_alliance(o, a.clone()),
@@ -1373,15 +1538,34 @@ impl World {
                 if !self.map.in_bounds(*to) {
                     return self.reject(o, "off map");
                 }
-                if self.map.at(*to) == Terrain::Water {
-                    return self.reject(o, "water");
+                // A tank ashore may drive onto a moored boat (TNK-17):
+                // the way to the bank beside it, then onto it.
+                let mut aboard_at = None;
+                if self.map.at(*to) == Terrain::Water && !afloat {
+                    match self.boats.iter().find(|b| b.pos.tile() == to.tile()) {
+                        Some(b) => aboard_at = Some(b.pos),
+                        None => return self.reject(o, "water"),
+                    }
                 }
                 // The world routes. A straight line from a start to the
                 // centre crosses the river beside the bridge, and in the
                 // first traced match one bot sat on that bank for the whole
                 // game. Neither a Brain nor a client has the map in its
                 // observation, so the pathfinding has to live here.
-                let mut wp = self.route_for(o.player, pos, *to);
+                let mut wp = match aboard_at {
+                    Some(b) => match self.approach(b) {
+                        Some(bank) if bank.tile() == pos.tile() => vec![b],
+                        Some(bank) => {
+                            let mut wp = self.route_for(o.player, pos, bank);
+                            if !wp.is_empty() {
+                                wp.push(b);
+                            }
+                            wp
+                        }
+                        None => vec![],
+                    },
+                    None => self.route_afloat(o.player, pos, *to, afloat),
+                };
                 if wp.is_empty() {
                     return self.reject(o, "unreachable");
                 }
@@ -1516,12 +1700,8 @@ impl World {
                     }
                 };
                 let id = self.alloc();
-                let battery = match kind {
-                    DroneKind::Recon => RECON_BATTERY,
-                    DroneKind::Interceptor => INTERCEPTOR_BATTERY,
-                    DroneKind::Strike => STRIKE_BATTERY,
-                    DroneKind::Longshot => LONGSHOT_BATTERY,
-                };
+                let mark = mark_at(self.tick);
+                let battery = drone_spec(*kind, mark).battery;
                 let phase = self.rng.range(0.0, std::f32::consts::TAU);
                 // A longshot is on its own from launch: no tether, so
                 // no link, no way home, and it flies on if the tank
@@ -1539,6 +1719,7 @@ impl World {
                     link: 1.0,
                     phase,
                     jammed: false,
+                    mark,
                 });
                 self.events.push(Event::DroneLaunched { drone: id, owner: o.player, kind: *kind });
             }
@@ -1586,6 +1767,10 @@ impl World {
                 if squad.strength == 0 {
                     return self.reject(o, "no squad");
                 }
+                // The squad walks; from a boat there is nowhere to walk.
+                if afloat && squad.aboard {
+                    return self.reject(o, "afloat: land first");
+                }
                 if let PillboyTask::Return = task {
                     if squad.aboard {
                         return self.reject(o, "squad is aboard");
@@ -1609,6 +1794,22 @@ impl World {
                         Some(s) if s.owner.is_some() && s.alive() => return self.reject(o, "structure is standing and theirs: wreck it first"),
                         Some(_) => {}
                     },
+                    // A tank down: an ally's squad revives it (Paul, 16
+                    // October), for material, inside the time down.
+                    PillboyTask::Repair { target } if self.tank(*target).is_some() => {
+                        let t = self.tank(*target).unwrap();
+                        if t.owner == o.player {
+                            return self.reject(o, "a squad does not mend its own tank");
+                        } else if !self.allied(t.owner, o.player) {
+                            return self.reject(o, "revive only an ally's tank");
+                        } else if t.alive {
+                            return self.reject(o, "that tank is not down");
+                        } else if !self.downed(t) {
+                            return self.reject(o, "too late: that tank is dead");
+                        } else if material < REVIVE_COST {
+                            return self.reject(o, "no material");
+                        }
+                    }
                     PillboyTask::Repair { target } if self.pillbox(*target).is_none() => match self.structure(*target) {
                         None => return self.reject(o, "no such pillbox"),
                         Some(s) if s.health >= STRUCTURE_HEALTH => return self.reject(o, "structure needs no repair"),
@@ -1655,6 +1856,17 @@ impl World {
                             return self.reject(o, "a structure is there");
                         }
                         match what {
+                            BuildKind::Boat => {
+                                if here != Terrain::Water {
+                                    return self.reject(o, "a boat is built on water");
+                                }
+                                if self.approach(*at).is_none() {
+                                    return self.reject(o, "a boat is built beside a bank");
+                                }
+                                if self.boats.iter().any(|b| b.pos.tile() == at.tile()) || self.tanks.iter().any(|t| t.alive && t.pos.tile() == at.tile()) {
+                                    return self.reject(o, "a boat is there");
+                                }
+                            }
                             BuildKind::Structure(_) => {
                                 if here != Terrain::Pad {
                                     return self.reject(o, "structures go on a pad");
@@ -1709,8 +1921,214 @@ impl World {
                 t.pillboys.route = route;
                 self.events.push(Event::PillboysDeployed { tank: tid, owner: o.player, task: task.clone() });
             }
-            Command::Alliance(_) | Command::Propose { .. } | Command::Answer { .. } | Command::Chat { .. } | Command::TakeSeat { .. } => {}
+            Command::Alliance(_) | Command::Propose { .. } | Command::Answer { .. } | Command::Chat { .. } | Command::TakeSeat { .. } | Command::Respawn | Command::Ping { .. } | Command::Request { .. } => {}
+            Command::Tow { target } => self.tow(o, tid, *target),
+            Command::Embark => self.embark(o, tid),
         }
+    }
+
+    /// What a chain is on: a pillbox or a depot, its position.
+    fn chained_pos(&self, id: EntityId) -> Option<V2> {
+        self.pillbox(id).map(|p| p.pos).or_else(|| self.depots.iter().find(|d| d.id == id).map(|d| d.pos))
+    }
+
+    /// The tanks on a chain to `id`.
+    fn haulers(&self, id: EntityId) -> u8 {
+        self.tanks.iter().filter(|t| t.alive && t.towing == Some(id)).count() as u8
+    }
+
+    fn tow(&mut self, o: &Order, tid: EntityId, target: Option<EntityId>) {
+        let Some(t) = self.tank(tid) else { return };
+        let (pos, afloat, had) = (t.pos, t.boat, t.towing);
+        let Some(id) = target else {
+            let Some(was) = had else { return self.reject(o, "no chain on anything") };
+            self.tank_mut(tid).unwrap().towing = None;
+            let haulers = self.haulers(was);
+            self.events.push(Event::Chained { tank: tid, owner: o.player, target: was, on: false, haulers });
+            return;
+        };
+        if afloat {
+            return self.reject(o, "afloat: land first");
+        }
+        let owner = match (self.pillbox(id), self.depots.iter().find(|d| d.id == id)) {
+            (Some(p), _) => p.owner,
+            (None, Some(d)) => d.owner,
+            _ => return self.reject(o, "no pillbox or depot to chain"),
+        };
+        if !self.allied_opt(owner, o.player) {
+            return self.reject(o, "chain only what is your side's: take it first");
+        }
+        if self.chained_pos(id).map(|p| p.dist(pos) > TOW_REACH).unwrap_or(true) {
+            return self.reject(o, "too far to chain");
+        }
+        self.tank_mut(tid).unwrap().towing = Some(id);
+        let haulers = self.haulers(id);
+        self.events.push(Event::Chained { tank: tid, owner: o.player, target: id, on: true, haulers });
+    }
+
+    /// Chains: what two tanks or more pull follows them at the chain's
+    /// length, over land only (a depot's tile goes with it); a tank on a
+    /// chain alone, or one that drives off from the rest, is held at the
+    /// chain's length. A chain whose tank is lost, afloat or not of the
+    /// side any more falls slack.
+    fn step_chains(&mut self) {
+        let chained: Vec<(EntityId, PlayerId, EntityId)> = self.tanks.iter().filter_map(|t| t.towing.map(|id| (t.id, t.owner, id))).collect();
+        if chained.is_empty() {
+            return;
+        }
+        let mut targets: Vec<EntityId> = chained.iter().map(|c| c.2).collect();
+        targets.sort_unstable();
+        targets.dedup();
+        for (tid, owner, id) in &chained {
+            let ok = self.tank(*tid).map(|t| t.alive && !t.boat).unwrap_or(false);
+            let owner_ok = match (self.pillbox(*id), self.depots.iter().find(|d| d.id == *id)) {
+                (Some(p), _) => self.allied_opt(p.owner, *owner),
+                (None, Some(d)) => self.allied_opt(d.owner, *owner),
+                _ => false,
+            };
+            if !ok || !owner_ok {
+                self.tank_mut(*tid).unwrap().towing = None;
+                let haulers = self.haulers(*id);
+                self.events.push(Event::Chained { tank: *tid, owner: *owner, target: *id, on: false, haulers });
+            }
+        }
+        for id in targets {
+            let Some(at) = self.chained_pos(id) else { continue };
+            let pullers: Vec<V2> = self.tanks.iter().filter(|t| t.alive && t.towing == Some(id)).map(|t| t.pos).collect();
+            if pullers.is_empty() {
+                continue;
+            }
+            let mut to = at;
+            if pullers.len() >= TOW_HAULERS {
+                let n = pullers.len() as f32;
+                let mid = pullers.iter().fold(V2::new(0.0, 0.0), |a, p| a + *p).scale(1.0 / n);
+                let d = mid.dist(at);
+                if d > TOW_CHAIN {
+                    let next = at + (mid - at).norm().scale(d - TOW_CHAIN);
+                    let ground = self.map.at(next);
+                    let is_depot = self.depots.iter().any(|x| x.id == id);
+                    // Over land only; a depot onto open ground, not onto
+                    // another's tile, a pad or a wall.
+                    let open = ground.passable() && ground != Terrain::Bridge && (!is_depot || next.tile() == at.tile() || matches!(ground, Terrain::Grass | Terrain::Road | Terrain::Rubble));
+                    let clear = !self.pillboxes.iter().any(|p| p.id != id && p.pos.dist(next) < 1.0) && !self.depots.iter().any(|x| x.id != id && x.pos.dist(next) < 1.5);
+                    if open && clear {
+                        to = next;
+                    }
+                }
+            }
+            if to != at {
+                if let Some(p) = self.pillbox_mut(id) {
+                    p.pos = to;
+                } else if let Some(ix) = self.depots.iter().position(|d| d.id == id) {
+                    let (old, new) = (at.tile(), to.tile());
+                    self.depots[ix].pos = to;
+                    if old != new {
+                        self.set_terrain(Map::tile_centre(at), Terrain::Grass);
+                        self.set_terrain(Map::tile_centre(to), Terrain::Depot);
+                    }
+                }
+            }
+            // The chain is taut: no tank on it gets further than its
+            // length (and a little: two tanks side by side) from what it
+            // pulls.
+            for t in self.tanks.iter_mut().filter(|t| t.alive && t.towing == Some(id)) {
+                let d = t.pos.dist(to);
+                if d > TOW_CHAIN * 1.6 {
+                    t.pos = to + (t.pos - to).norm().scale(TOW_CHAIN * 1.6);
+                    t.speed = t.speed.min(TANK_SPEED * TOW_SPEED);
+                }
+            }
+        }
+    }
+
+    /// Ticks until `p`'s destroyed tank may respawn (0: now), or None
+    /// when it may not: alive, or the scenario's respawns are spent or
+    /// none.
+    /// A destroyed tank inside `DOWNED_TICKS` of its fall: down, not yet
+    /// dead, and an ally's squad may revive it.
+    pub fn downed(&self, t: &Tank) -> bool {
+        !t.alive && t.last_hit_tick > 0 && self.tick < t.last_hit_tick + DOWNED_TICKS as Tick
+    }
+
+    pub fn respawn_in(&self, p: PlayerId) -> Option<Tick> {
+        let pl = self.players.iter().find(|x| x.id == p)?;
+        let t = self.tank(pl.tank)?;
+        let allowed = self.scenario.respawns;
+        if t.alive || allowed == 0 || (allowed != RESPAWNS_UNLIMITED && pl.respawned >= allowed) {
+            return None;
+        }
+        Some((t.last_hit_tick + RESPAWN_TICKS as Tick).saturating_sub(self.tick))
+    }
+
+    /// The tank back as it started: at its start, facing the middle,
+    /// full stocks for the game type, a fresh squad, afloat if the start
+    /// is at sea. The same entity, so every window's picture of it goes
+    /// on. Score is kept.
+    fn respawn(&mut self, o: &Order, tid: EntityId) {
+        match self.respawn_in(o.player) {
+            None if self.tank(tid).map(|t| t.alive).unwrap_or(false) => return self.reject(o, "tank is alive"),
+            None => return self.reject(o, "no respawns left"),
+            Some(n) if n > 0 => return self.reject(o, "too soon to respawn"),
+            Some(_) => {}
+        }
+        let Some(at) = self.map.starts.get(o.player as usize).copied() else { return self.reject(o, "no tank") };
+        let heading = (self.map.center() - at).heading();
+        let afloat = self.map.at(at) == Terrain::Water;
+        let (shells, material) = (self.scenario.game_type.shells(), self.scenario.game_type.material());
+        let allowed = self.scenario.respawns;
+        let mut left = RESPAWNS_UNLIMITED;
+        if let Some(pl) = self.players.iter_mut().find(|x| x.id == o.player) {
+            pl.alive = true;
+            if allowed != RESPAWNS_UNLIMITED {
+                pl.respawned += 1;
+                left = allowed - pl.respawned;
+            }
+        }
+        let t = self.tank_mut(tid).unwrap();
+        *t = Tank { id: tid, owner: t.owner, pos: at, heading, speed: 0.0, armor: TANK_ARMOR, shells, fuel: TANK_FUEL, bay: BAY_FULL, goal: None, route: Vec::new(), reload: 0, bubble: BUBBLE_DEFAULT, last_hit_tick: 0, alive: true, pillboys: Pillboys::fresh(at, material), boat: afloat, towing: None };
+        self.events.push(Event::Respawned { tank: tid, owner: o.player, at, left });
+    }
+
+    /// `Command::Embark`: a boat on the water beside the tank, from the
+    /// squad's material, and the tank on it. The water tile is the one
+    /// beside the tank most nearly ahead of it.
+    fn embark(&mut self, o: &Order, tid: EntityId) {
+        let Some(t) = self.tank(tid) else { return };
+        if t.boat {
+            return self.reject(o, "afloat already");
+        }
+        let s = &t.pillboys;
+        if s.strength == 0 {
+            return self.reject(o, "no squad");
+        }
+        if !s.aboard {
+            return self.reject(o, "squad already out");
+        }
+        let (x, y) = t.pos.tile();
+        let ahead = V2::from_heading(t.heading);
+        let site = (-1..=1)
+            .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
+            .filter(|d| *d != (0, 0))
+            .map(|(dx, dy)| V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5))
+            .filter(|p| self.map.in_bounds(*p) && self.map.at(*p) == Terrain::Water)
+            .filter(|p| !self.boats.iter().any(|b| b.pos.tile() == p.tile()) && !self.tanks.iter().any(|u| u.alive && u.id != tid && u.pos.tile() == p.tile()))
+            .max_by(|a, b| {
+                let toward = |p: &V2| { let v = (*p - t.pos).norm(); v.x * ahead.x + v.y * ahead.y };
+                toward(a).partial_cmp(&toward(b)).unwrap()
+            });
+        let Some(at) = site else { return self.reject(o, "no water beside") };
+        let boat = self.alloc();
+        let t = self.tank_mut(tid).unwrap();
+        // What material the squad has, up to `BOAT_COST`; with none it
+        // still launches (Paul, 17 October: a launch for every tank).
+        t.pillboys.material -= t.pillboys.material.min(BOAT_COST);
+        t.pos = at;
+        t.pillboys.pos = at;
+        t.boat = true;
+        t.goal = None;
+        t.route.clear();
+        t.speed = 0.0;
+        self.events.push(Event::Boarded { tank: tid, owner: o.player, boat, at });
     }
 
     /// A late arrival takes a bot's seat: the seat is a person's from
@@ -1857,6 +2275,7 @@ impl World {
             Built(BuildKind, V2),
             Harvested(V2),
             Lifted(EntityId),
+            Revived(EntityId),
             Abandon(&'static str),
             Home,
         }
@@ -1867,7 +2286,10 @@ impl World {
         let structures = &self.structures;
         let mut takes: Vec<(EntityId, PlayerId)> = Vec::new();
         let tank_tiles: Vec<(i32, i32)> = self.tanks.iter().filter(|t| t.alive).map(|t| t.pos.tile()).collect();
+        let boat_tiles: Vec<(i32, i32)> = self.boats.iter().map(|b| b.pos.tile()).collect();
         let mine_tiles: Vec<(i32, i32)> = self.mines.iter().map(|m| m.pos.tile()).collect();
+        // Tanks a squad may be reviving: where, and whether still down.
+        let wrecks: Vec<(EntityId, V2, bool, bool)> = self.tanks.iter().map(|t| (t.id, t.pos, t.alive, self.downed(t))).collect();
         // A hostile mine under a walking squad: found the hard way.
         let hostile_mines: Vec<(EntityId, PlayerId, (i32, i32))> = self.mines.iter().map(|m| (m.id, m.owner, m.pos.tile())).collect();
         let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
@@ -1887,7 +2309,7 @@ impl World {
             // Where to walk: the site, or beside it when the squad
             // cannot stand on it (water for a bridge).
             let site: Option<V2> = match &task {
-                PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos).or_else(|| structures.iter().find(|x| x.id == *pillbox).map(|x| x.pos)),
+                PillboyTask::Capture { pillbox } | PillboyTask::Repair { target: pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos).or_else(|| structures.iter().find(|x| x.id == *pillbox).map(|x| x.pos)).or_else(|| wrecks.iter().find(|w| w.0 == *pillbox).map(|w| w.1)),
                 PillboyTask::Lift { pillbox } => pillboxes.iter().find(|p| p.id == *pillbox).map(|p| p.pos),
                 PillboyTask::Build { at, .. } | PillboyTask::Harvest { at } => Some(*at),
                 PillboyTask::Return => None,
@@ -1950,6 +2372,21 @@ impl World {
                         }
                     }
                 }
+                PillboyTask::Repair { target } if wrecks.iter().any(|w| w.0 == *target) => {
+                    let &(_, _, alive, down) = wrecks.iter().find(|w| w.0 == *target).unwrap();
+                    if alive {
+                        done.push((t.id, t.owner, Done::Abandon("that tank is back")));
+                    } else if !down {
+                        done.push((t.id, t.owner, Done::Abandon("too late: that tank is dead")));
+                    } else if s.material < REVIVE_COST {
+                        done.push((t.id, t.owner, Done::Abandon("no material")));
+                    } else {
+                        s.progress += 1;
+                        if s.progress >= REVIVE_TICKS {
+                            done.push((t.id, t.owner, Done::Revived(*target)));
+                        }
+                    }
+                }
                 PillboyTask::Repair { target } if !pillboxes.iter().any(|p| p.id == *target) => {
                     let x = structures.iter().find(|x| x.id == *target).unwrap();
                     if x.health >= STRUCTURE_HEALTH {
@@ -1997,6 +2434,7 @@ impl World {
                         BuildKind::Structure(_) => map.at(*at) != Terrain::Pad || structures.iter().any(|x| x.pos.tile() == at.tile()),
                         BuildKind::Road => matches!(map.at(*at), Terrain::Road | Terrain::Bridge | Terrain::Wall | Terrain::Concrete | Terrain::Pad),
                         BuildKind::Mine => !map.at(*at).passable() || mine_tiles.iter().any(|mt| *mt == at.tile()),
+                        BuildKind::Boat => map.at(*at) != Terrain::Water || tank_tiles.iter().chain(boat_tiles.iter()).any(|bt| *bt == at.tile()),
                     };
                     let placing = *what == BuildKind::Pillbox && s.carrying.is_some();
                     if blocked {
@@ -2138,6 +2576,34 @@ impl World {
                     }
                     self.events.push(Event::StructureRepaired { structure: sid, kind, by: owner });
                 }
+                Done::Revived(wid) => {
+                    let tick = self.tick;
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.material -= REVIVE_COST;
+                    }
+                    let mut back = None;
+                    let at_sea = self.tank(wid).map(|w| self.map.at(w.pos) == Terrain::Water).unwrap_or(false);
+                    if let Some(w) = self.tank_mut(wid) {
+                        // Sunk off a beach and mended from it: afloat
+                        // again, on its craft.
+                        w.boat = at_sea;
+                        w.alive = true;
+                        w.armor = REVIVE_ARMOR;
+                        w.goal = None;
+                        w.route.clear();
+                        w.speed = 0.0;
+                        w.reload = 0;
+                        // Not "just hit": the bots' scoot reads this.
+                        w.last_hit_tick = tick.saturating_sub(TICK_HZ as Tick * 2).max(1);
+                        back = Some((w.owner, w.pos));
+                    }
+                    if let Some((who, at)) = back {
+                        if let Some(p) = self.players.iter_mut().find(|p| p.id == who) {
+                            p.alive = true;
+                        }
+                        self.events.push(Event::Revived { tank: wid, owner: who, by: owner, at });
+                    }
+                }
                 Done::Repaired(pid) => {
                     if let Some(p) = self.pillbox_mut(pid) {
                         p.health = PILLBOX_HEALTH;
@@ -2169,9 +2635,39 @@ impl World {
                             self.structures.push(Structure { id, kind, pos: at, owner: Some(owner), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
                             self.events.push(Event::StructureBuilt { structure: id, kind, by: owner, at });
                         }
-                        BuildKind::Road => {
-                            let t = if self.map.at(at) == Terrain::Water { Terrain::Bridge } else { Terrain::Road };
-                            self.set_terrain(at, t);
+                        BuildKind::Road if self.map.at(at) == Terrain::Water => {
+                            // A span (Paul, 17 October: bridges were a
+                            // tile a trip): on from the squad, straight,
+                            // up to `BRIDGE_SPAN` tiles of water, a
+                            // material each, the same trip. It stops at
+                            // ground, a tank or a boat, a depot's ground,
+                            // or the material's end.
+                            self.set_terrain(at, Terrain::Bridge);
+                            let from = self.tank(tid).map(|t| t.pillboys.pos).unwrap_or(at);
+                            let d = at - from;
+                            let step = if d.x.abs() >= d.y.abs() { V2::new(d.x.signum(), 0.0) } else { V2::new(0.0, d.y.signum()) };
+                            for k in 1..BRIDGE_SPAN {
+                                let p = at + step.scale(k as f32);
+                                let blocked = !self.map.in_bounds(p)
+                                    || self.map.at(p) != Terrain::Water
+                                    || self.depots.iter().any(|d| d.pos.dist(p) <= DEPOT_RADIUS)
+                                    || self.boats.iter().any(|b| b.pos.tile() == p.tile())
+                                    || self.tanks.iter().any(|t| t.alive && t.pos.tile() == p.tile());
+                                let material = self.tank(tid).map(|t| t.pillboys.material).unwrap_or(0);
+                                if blocked || material < ROAD_COST {
+                                    break;
+                                }
+                                if let Some(t) = self.tank_mut(tid) {
+                                    t.pillboys.material -= ROAD_COST;
+                                }
+                                self.set_terrain(p, Terrain::Bridge);
+                                self.events.push(Event::Built { owner, what, at: p });
+                            }
+                        }
+                        BuildKind::Road => self.set_terrain(at, Terrain::Road),
+                        BuildKind::Boat => {
+                            let id = self.alloc();
+                            self.boats.push(Boat { id, pos: at, owner });
                         }
                         BuildKind::Mine => {
                             let id = self.alloc();
@@ -2307,8 +2803,13 @@ impl World {
                 }
             }
             for (tid, pid) in draws {
+                // Two tanks at one pillbox with a shell left: the first.
+                let p = self.pillbox_mut(pid).unwrap();
+                if p.shells == 0 {
+                    continue;
+                }
+                p.shells -= 1;
                 self.tank_mut(tid).unwrap().shells += 1;
-                self.pillbox_mut(pid).unwrap().shells -= 1;
                 self.events.push(Event::Resupplied { tank: tid, depot: pid });
             }
         }
@@ -2325,7 +2826,12 @@ impl World {
         };
         let mut shots: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, tank, damage
         let mut air: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, drone, link
+        // A pillbox on a chain is being moved, not manned: silent.
+        let chained: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive).filter_map(|t| t.towing).collect();
         for p in self.pillboxes.iter_mut() {
+            if chained.contains(&p.id) {
+                continue;
+            }
             if p.reload > 0 {
                 p.reload -= 1;
             }
@@ -2434,10 +2940,44 @@ impl World {
         let guns: Vec<(Option<PlayerId>, V2)> = self.pillboxes.iter().filter(|b| b.alive()).map(|b| (b.owner, b.pos)).collect();
         let mines: Vec<(PlayerId, (i32, i32), EntityId)> = self.mines.iter().map(|m| (m.owner, m.pos.tile(), m.id)).collect();
         let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        let mut boats: Vec<(i32, i32)> = self.boats.iter().map(|b| b.pos.tile()).collect();
         let mut triggered: Vec<EntityId> = Vec::new();
+        let mut changed: Vec<(EntityId, PlayerId, bool, V2, V2)> = Vec::new();
         for t in self.tanks.iter_mut() {
-            if let Some(m) = drive_tank(t, map, &guns, &mines, &teams) {
+            let (was, from) = (t.boat, t.pos);
+            if let Some(m) = drive_tank(t, map, &guns, &mines, &teams, &boats) {
                 triggered.push(m);
+            }
+            if t.boat != was {
+                changed.push((t.id, t.owner, t.boat, t.pos, from));
+                // Boarded: that boat is taken, for the tanks after this one too.
+                if t.boat {
+                    boats.retain(|b| *b != t.pos.tile());
+                }
+            }
+        }
+        for (tank, owner, afloat, at, from) in changed {
+            if afloat {
+                let Some(ix) = self.boats.iter().position(|b| b.pos.tile() == at.tile()) else { continue };
+                let b = self.boats.remove(ix);
+                self.events.push(Event::Boarded { tank, owner, boat: b.id, at: b.pos });
+            } else {
+                // The boat stays moored on the water it was driven off
+                // (the prior art's: TNK-17 boards it again), for anyone:
+                // beside the beach tile, not at its corner, where no tank
+                // could drive onto it again.
+                let (x, y) = at.tile();
+                let moor = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+                    .iter()
+                    .map(|(dx, dy)| V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5))
+                    .filter(|p| self.map.in_bounds(*p) && self.map.at(*p) == Terrain::Water)
+                    .filter(|p| !self.boats.iter().any(|b| b.pos.tile() == p.tile()) && !self.tanks.iter().any(|u| u.alive && u.id != tank && u.pos.tile() == p.tile()))
+                    .min_by(|a, b| a.dist(from).partial_cmp(&b.dist(from)).unwrap());
+                if let Some(moor) = moor {
+                    let id = self.alloc();
+                    self.boats.push(Boat { id, pos: moor, owner });
+                }
+                self.events.push(Event::Landed { tank, owner, at });
             }
         }
         for mid in triggered {
@@ -2470,9 +3010,10 @@ impl World {
         let guns: Vec<(Option<PlayerId>, V2)> = self.pillboxes.iter().filter(|b| b.alive()).map(|b| (b.owner, b.pos)).collect();
         let mines: Vec<(PlayerId, (i32, i32), EntityId)> = self.mines.iter().map(|m| (m.owner, m.pos.tile(), m.id)).collect();
         let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|x| (x.id, x.team)).collect();
+        let boats: Vec<(i32, i32)> = self.boats.iter().map(|b| b.pos.tile()).collect();
         let map = &self.map;
         if let Some(t) = self.tanks.iter_mut().find(|t| t.owner == p) {
-            drive_tank(t, map, &guns, &mines, &teams);
+            drive_tank(t, map, &guns, &mines, &teams, &boats);
         }
     }
 
@@ -2485,7 +3026,8 @@ impl World {
         {
             for d in self.drones.iter_mut() {
                 let by = jammers.iter().find(|(_, p)| p.dist(d.pos) <= JAMMER_RANGE).map(|(id, _)| *id);
-                let jammable = d.tether.is_some() || d.kind == DroneKind::Longshot;
+                // A fibre-optic strike has no radio to jam.
+                let jammable = (d.tether.is_some() || d.kind == DroneKind::Longshot) && !d.spec().jam_proof;
                 match by {
                     Some(j) if jammable && !d.jammed => {
                         d.jammed = true;
@@ -2606,13 +3148,13 @@ impl World {
             // Low battery: go home while it still can.
             if d.tether.is_some() && !matches!(d.task, DroneTask::Return | DroneTask::Strike { .. } | DroneTask::Intercept { .. }) {
                 if let Some((hp, _)) = home {
-                    let need = hp.dist(d.pos) / drone_speed(d.kind) + 3.0;
+                    let need = hp.dist(d.pos) / d.spec().speed + 3.0;
                     if d.battery < need {
                         d.task = DroneTask::Return;
                     }
                 }
             }
-            let speed = drone_speed(d.kind);
+            let speed = d.spec().speed;
             let target: V2 = match &d.task {
                 DroneTask::Orbit { center, radius } => {
                     d.phase += DT * ORBIT_RATE / radius.max(1.0);
@@ -2684,9 +3226,11 @@ impl World {
         for (i, tgt) in rams {
             let owner = self.drones.iter().find(|d| d.id == i).map(|d| d.owner).unwrap_or(0);
             let link = self.drones.iter().find(|d| d.id == i).map(|d| d.link).unwrap_or(0.0);
+            let spec = self.drones.iter().find(|d| d.id == i).map(|d| d.spec()).unwrap_or(drone_spec(DroneKind::Interceptor, 1));
             // A good link is a good vector from the tank's radar; a bad one
-            // leaves the interceptor hunting on its own small camera.
-            let p_kill = INTERCEPT_BASE + (INTERCEPT_LINKED - INTERCEPT_BASE) * link;
+            // leaves the interceptor hunting on its own small camera, which
+            // a later mark does better with (radar-cued, then autonomous).
+            let p_kill = spec.intercept_base + (spec.intercept_linked - spec.intercept_base) * link;
             let roll = self.rng.f32();
             lost.push((i, LossReason::Expended));
             if roll < p_kill {
@@ -2701,9 +3245,10 @@ impl World {
         }
         for (i, tank) in strikes {
             let owner = self.drones.iter().find(|d| d.id == i).map(|d| d.owner);
+            let damage = self.drones.iter().find(|d| d.id == i).map(|d| d.spec().damage).unwrap_or(STRIKE_DAMAGE);
             lost.push((i, LossReason::Expended));
-            self.events.push(Event::StrikeHit { drone: i, tank, damage: STRIKE_DAMAGE });
-            self.damage(tank, STRIKE_DAMAGE, owner.filter(|o| *o != SWARM_OWNER));
+            self.events.push(Event::StrikeHit { drone: i, tank, damage });
+            self.damage(tank, damage, owner.filter(|o| *o != SWARM_OWNER));
         }
         for (id, owner, at) in longshots {
             lost.push((id, LossReason::Expended));
@@ -2868,6 +3413,7 @@ impl World {
     /// `LONGSHOT_RADIUS` take its warhead, by kind; nothing else.
     fn longshot_lands(&mut self, drone: EntityId, owner: PlayerId, at: V2) {
         let by = Some(owner).filter(|o| *o != SWARM_OWNER);
+        let blast = self.drones.iter().find(|d| d.id == drone).map(|d| d.spec().blast).unwrap_or(1.0);
         let works: Vec<EntityId> = self.structures.iter().filter(|x| x.alive() && x.pos.dist(at) <= LONGSHOT_RADIUS + STRUCTURE_SIZE).map(|x| x.id).collect();
         let boxes: Vec<EntityId> = self.pillboxes.iter().filter(|p| p.alive() && p.pos.dist(at) <= LONGSHOT_RADIUS).map(|p| p.id).collect();
         let tanks: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive && t.pos.dist(at) <= LONGSHOT_RADIUS).map(|t| t.id).collect();
@@ -2876,13 +3422,13 @@ impl World {
         let hits: Vec<EntityId> = works.iter().chain(&boxes).chain(&tanks).copied().collect();
         self.events.push(Event::LongshotHit { drone, owner, at, hits });
         for id in works {
-            self.damage_structure(id, LONGSHOT_STRUCTURE_DAMAGE, by);
+            self.damage_structure(id, LONGSHOT_STRUCTURE_DAMAGE * blast, by);
         }
         for id in boxes {
-            self.damage_pillbox(id, LONGSHOT_PILLBOX_DAMAGE, by);
+            self.damage_pillbox(id, LONGSHOT_PILLBOX_DAMAGE * blast, by);
         }
         for id in tanks {
-            self.damage(id, LONGSHOT_TANK_DAMAGE, by);
+            self.damage(id, LONGSHOT_TANK_DAMAGE * blast, by);
         }
     }
 
@@ -2991,10 +3537,18 @@ impl World {
         if !t.alive {
             return;
         }
-        t.armor -= amount;
+        // One hit sinks a boat, and the water takes the tank (TNK-14,
+        // TNK-15: the shooter has the kill).
+        let sunk = t.boat && amount > 0.0;
+        t.armor -= if sunk { t.armor.max(amount) } else { amount };
         t.last_hit_tick = tick;
         let owner = t.owner;
         let left = t.armor;
+        if sunk {
+            let at = t.pos;
+            t.boat = false;
+            self.events.push(Event::Sunk { tank, owner, by, at });
+        }
         self.events.push(Event::TankDamaged { tank, by, damage: amount, armor_left: left.max(0.0) });
         if left <= 0.0 {
             let t = self.tank_mut(tank).unwrap();
@@ -3158,6 +3712,7 @@ impl World {
                 link: 1.0,
                 phase,
                 jammed: false,
+                mark: 1,
             });
         }
         self.events.push(Event::SwarmInbound { count: n, from });
@@ -3167,8 +3722,12 @@ impl World {
     /// The winning team is the last one standing, or the one with the
     /// highest total score; the winner is its top-scoring player.
     fn step_match(&mut self) {
-        let alive: Vec<PlayerId> = self.players.iter().filter(|p| p.alive).map(|p| p.id).collect();
-        let mut teams_alive: Vec<TeamId> = self.players.iter().filter(|p| p.alive).map(|p| p.team).collect();
+        // A destroyed tank with a respawn to come is still in it.
+        // So is one down with an ally standing, who may yet revive it.
+        let revivable = |p: &Player| self.tank(p.tank).map(|t| self.downed(t)).unwrap_or(false) && self.players.iter().any(|q| q.id != p.id && q.alive && self.allied(q.id, p.id));
+        let standing = |p: &Player| p.alive || self.respawn_in(p.id).is_some() || revivable(p);
+        let alive: Vec<PlayerId> = self.players.iter().filter(|p| standing(p)).map(|p| p.id).collect();
+        let mut teams_alive: Vec<TeamId> = self.players.iter().filter(|p| standing(p)).map(|p| p.team).collect();
         teams_alive.sort_unstable();
         teams_alive.dedup();
         let limit = self.scenario.time_limit;
@@ -3234,6 +3793,13 @@ impl World {
             .filter(|t| t.alive)
             .map(|t| self.map.terrain_near(Terrain::Pad, t.pos, FOREST_SIGHT, 32).into_iter().filter(|p| !self.structures.iter().any(|x| x.pos.tile() == p.tile())).take(8).collect())
             .unwrap_or_default();
+        let shore = me.as_ref().filter(|t| t.alive && t.boat).map(|t| self.map.shore_from(t.pos, SHORE_SIGHT, SHORE_RAYS)).unwrap_or_default();
+        let launch = me
+            .as_ref()
+            .filter(|t| t.alive && !t.boat)
+            .map(|t| self.map.launch_sites(t.pos, LAUNCH_SIGHT, 12).into_iter().filter(|s| !self.depots.iter().any(|d| d.pos.dist(*s) <= DEPOT_RADIUS) && !self.boats.iter().any(|b| b.pos.tile() == s.tile())).collect())
+            .unwrap_or_default();
+        let boats = self.boats.iter().filter(|b| self.allied(b.owner, p) || self.visible_to(p, b.pos)).cloned().collect();
         let advantage = self.scenario.advantage && self.players.iter().any(|x| x.id == p && x.is_bot);
         let tanks = self.tanks.iter().filter(|t| self.tank_visible_to(p, t) || (advantage && t.alive)).cloned().collect();
         let drones = self.drones.iter().filter(|d| d.owner == p || self.visible_to(p, d.pos) || self.radar_sees(p, d.pos)).cloned().collect();
@@ -3253,6 +3819,11 @@ impl World {
             structures: self.structures.clone(),
             forest,
             pads,
+            boats,
+            shore,
+            launch,
+            respawn_in: self.respawn_in(p),
+            respawns: self.scenario.respawns,
             players: self.players.iter().map(|x| PlayerView { id: x.id, name: x.name.clone(), alive: x.alive, score: x.score, is_bot: x.is_bot, team: x.team }).collect(),
             proposals: self.proposals.iter().filter(|r| r.from == p || self.allied(r.to, p)).cloned().collect(),
             events: self.events.iter().filter(|e| self.event_visible(e, p)).cloned().collect(),
@@ -3280,6 +3851,8 @@ impl World {
                 *player == p || matches!((pos(*player), pos(p)), (Some(a), Some(b)) if a.dist(b) <= CHAT_NEARBY)
             }
             Event::Proposed { from, to, .. } => *from == p || self.allied(*to, p),
+            Event::Pinged { player, .. } => self.allied(*player, p),
+            Event::Requested { from, .. } => self.allied(*from, p),
             _ => true,
         }
     }
@@ -3291,7 +3864,7 @@ impl World {
 /// its own in `World::predict`, which is why it is a function of what
 /// it reads and not a method on the world. Returns the mine the tank
 /// drove onto, if any, for the caller to set off.
-fn drive_tank(t: &mut Tank, map: &Map, guns: &[(Option<PlayerId>, V2)], mines: &[(PlayerId, (i32, i32), EntityId)], teams: &[(PlayerId, TeamId)]) -> Option<EntityId> {
+fn drive_tank(t: &mut Tank, map: &Map, guns: &[(Option<PlayerId>, V2)], mines: &[(PlayerId, (i32, i32), EntityId)], teams: &[(PlayerId, TeamId)], boats: &[(i32, i32)]) -> Option<EntityId> {
     let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
     let allied_with = |a: PlayerId, b: PlayerId| a == b || (team_of(a).is_some() && team_of(a) == team_of(b));
     if !t.alive {
@@ -3324,7 +3897,8 @@ fn drive_tank(t: &mut Tank, map: &Map, guns: &[(Option<PlayerId>, V2)], mines: &
         }
         return None;
     }
-    let cost = map.move_cost(t.pos);
+    let here = map.at(t.pos);
+    let cost = if t.boat && here == Terrain::Water { BOAT_MOVE_COST } else { map.move_cost(t.pos) };
     let dir = to.norm();
     let want = t.heading;
     let turn = wrap_angle(dir.heading() - want);
@@ -3332,8 +3906,53 @@ fn drive_tank(t: &mut Tank, map: &Map, guns: &[(Option<PlayerId>, V2)], mines: &
     // TANK_TURN swings two tiles wide, which on a one-tile bridge
     // is the river; a tank facing the wrong way pivots at a crawl
     // and accelerates once it is pointed down the road.
-    let max = if turn.abs() > TURN_BRAKE_ANGLE { TANK_SPEED * TURN_CRAWL / cost } else { TANK_SPEED / cost };
-    t.speed = (t.speed + TANK_ACCEL * DT).min(max);
+    let max = if turn.abs() > TURN_BRAKE_ANGLE {
+        // Easing off with the angle, down to the crawl for a turn right
+        // round; within a turn's circle of the waypoint, slow enough to
+        // turn inside it.
+        let over = ((turn.abs() - TURN_BRAKE_ANGLE) / (std::f32::consts::PI - TURN_BRAKE_ANGLE)).clamp(0.0, 1.0);
+        let ease = TANK_SPEED * (1.0 - over * (1.0 - TURN_CRAWL)) / cost;
+        if turn.abs() > TURN_PIVOT {
+            0.0
+        } else {
+            ease.min((dist * TANK_TURN * 0.6).max(TANK_SPEED * 0.15))
+        }
+    } else {
+        TANK_SPEED / cost
+    };
+    // Momentum needs foresight: the corner at this waypoint, braked for
+    // before it, so the tank comes round it at the corner's speed and
+    // does not swing wide into a wall or the river.
+    let max = match t.route.first() {
+        Some(next) if !t.boat => {
+            let corner = wrap_angle((*next - goal).heading() - (goal - t.pos).heading()).abs();
+            if corner > TURN_BRAKE_ANGLE {
+                let over = ((corner - TURN_BRAKE_ANGLE) / (std::f32::consts::PI - TURN_BRAKE_ANGLE)).clamp(0.0, 1.0);
+                let at_corner = TANK_SPEED * (1.0 - over * (1.0 - TURN_CRAWL)) * 0.6 / cost;
+                max.min((at_corner * at_corner + 2.0 * TANK_BRAKE * dist).sqrt())
+            } else {
+                max
+            }
+        }
+        _ => max,
+    };
+    // A boat's crawl is fast water's crawl: turning for a waypoint
+    // under a tile off, its circle was wider than the waypoint and it
+    // went round it for a whole match. It slows to turn inside it, and
+    // so does a tank ashore on the bank before a moored boat (the quad's
+    // leader went round it, 0.4 tiles off, for 90 s). Not every tank
+    // ashore: that changed how the bots fight.
+    let to_boat = !t.boat && t.route.first().map(|n| map.at(*n) == Terrain::Water).unwrap_or(false);
+    let max = if (t.boat || to_boat) && turn.abs() > TURN_BRAKE_ANGLE { max.min(dist * TANK_TURN * 0.4) } else { max };
+    // Ashore for a moored boat, all but a pivot until it faces the boat:
+    // at the crawl it went round the boat, its circle wider than the
+    // bank it stood on.
+    let max = if !t.boat && map.at(goal) == Terrain::Water && turn.abs() > TURN_BRAKE_ANGLE { max.min(0.2) } else { max };
+    // On a chain, a crawl.
+    let max = if t.towing.is_some() { max.min(TANK_SPEED * TOW_SPEED) } else { max };
+    // Momentum: up at `TANK_ACCEL`, down at `TANK_BRAKE`, never past the
+    // limit by more than a tick's braking.
+    t.speed = if t.speed < max { (t.speed + TANK_ACCEL * DT).min(max) } else { (t.speed - TANK_BRAKE * DT).max(max) };
     let step = TANK_TURN * DT;
     t.heading = want + turn.clamp(-step, step);
     let fwd = V2::from_heading(t.heading);
@@ -3341,17 +3960,53 @@ fn drive_tank(t: &mut Tank, map: &Map, guns: &[(Option<PlayerId>, V2)], mines: &
     if dist < t.speed * DT {
         next = goal;
     }
-    if !map.at(next).passable() || !map.in_bounds(next) {
+    let ahead = map.at(next);
+    // Afloat: water, or a beach to land on. Ashore: land, or a moored
+    // boat to board.
+    let open = if t.boat { Map::afloat_step(here, ahead) } else { ahead.passable() || (ahead == Terrain::Water && boats.contains(&next.tile())) };
+    if !open || !map.in_bounds(next) {
         // Blocked: stop, and plan again from here to where the
         // route was going. Giving up left a tank parked at the
         // water's edge for a whole match.
         t.speed = 0.0;
         let dest = t.route.last().copied().unwrap_or(goal);
-        let mut wp = map.route_with(t.pos, dest, |tile| if guns.iter().any(|(o, g)| !o.map(|o| allied_with(o, t.owner)).unwrap_or(false) && g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 });
+        let avoid = |tile: V2| if guns.iter().any(|(o, g)| !o.map(|o| allied_with(o, t.owner)).unwrap_or(false) && g.dist(tile) <= PILLBOX_RANGE + 0.5) { PILLBOX_AVOID_COST } else { 0.0 };
+        // Ashore, bound for a moored boat: by land to the bank beside
+        // it, then onto it (a route by land to the water is none, and
+        // the tank stopped at the water's edge with the boat a tile off).
+        let boarding = !t.boat && map.at(dest) == Terrain::Water && boats.contains(&dest.tile());
+        let mut wp = if boarding {
+            let (x, y) = dest.tile();
+            let bank = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+                .iter()
+                .map(|(dx, dy)| V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5))
+                .filter(|p| map.in_bounds(*p) && map.at(*p).passable())
+                .min_by(|a, b| a.dist(t.pos).partial_cmp(&b.dist(t.pos)).unwrap());
+            match bank {
+                Some(b) if b.tile() == t.pos.tile() => vec![dest],
+                Some(b) => {
+                    let mut wp = map.route_by(t.pos, b, false, avoid);
+                    if !wp.is_empty() {
+                        wp.push(dest);
+                    }
+                    wp
+                }
+                None => Vec::new(),
+            }
+        } else {
+            map.route_by(t.pos, dest, t.boat, avoid)
+        };
         if wp.is_empty() {
             t.goal = None;
             t.route.clear();
         } else {
+            // The same way again from off a tile's centre: the straight
+            // line from here clips a corner the route keeps clear of.
+            // To the middle of this tile first, then on.
+            let centre = V2::new(t.pos.x.floor() + 0.5, t.pos.y.floor() + 0.5);
+            if wp[0].tile() == goal.tile() && t.pos.dist(centre) > 0.2 {
+                wp.insert(0, centre);
+            }
             t.goal = Some(wp.remove(0));
             t.route = wp;
         }
@@ -3359,6 +4014,13 @@ fn drive_tank(t: &mut Tank, map: &Map, guns: &[(Option<PlayerId>, V2)], mines: &
     }
     t.pos = next;
     t.fuel = (t.fuel - FUEL_PER_TILE * t.speed * DT).max(0.0);
+    if t.boat && ahead != Terrain::Water {
+        // On the beach: out of the boat, which `step_tanks` moors on
+        // the water behind.
+        t.boat = false;
+    } else if !t.boat && ahead == Terrain::Water {
+        t.boat = true;
+    }
     mines.iter().find(|(o, tile, _)| !allied_with(*o, t.owner) && *tile == next.tile()).map(|m| m.2)
 }
 
@@ -3412,10 +4074,8 @@ impl Replay {
         for o in orders {
             self.orders.push((world.tick, o.clone()));
         }
-        if world.tick % CHECKPOINT_EVERY == 0 || world.over {
-            if self.checkpoints.last().map(|(t, _)| *t != world.tick).unwrap_or(true) {
-                self.checkpoints.push((world.tick, world.hash()));
-            }
+        if (world.tick % CHECKPOINT_EVERY == 0 || world.over) && self.checkpoints.last().map(|(t, _)| *t != world.tick).unwrap_or(true) {
+            self.checkpoints.push((world.tick, world.hash()));
         }
     }
 
@@ -3480,6 +4140,24 @@ pub struct Observation {
     /// where a Brain with no map can build a structure.
     #[serde(default)]
     pub pads: Vec<V2>,
+    /// Moored boats this player knows of: its side's, and any in sight.
+    #[serde(default)]
+    pub boats: Vec<Boat>,
+    /// Afloat, the beaches the tank could land on, one per heading out
+    /// to `SHORE_SIGHT` (`Map::shore_from`); empty ashore.
+    #[serde(default)]
+    pub shore: Vec<V2>,
+    /// Ashore, the nearest water tiles beside the bank where the squad
+    /// could build a boat (`Map::launch_sites`, out to `LAUNCH_SIGHT`).
+    #[serde(default)]
+    pub launch: Vec<V2>,
+    /// Destroyed, the ticks until `Command::Respawn` is taken (0: now);
+    /// None when it will not be.
+    #[serde(default)]
+    pub respawn_in: Option<Tick>,
+    /// The scenario's respawns a seat (0 none, `RESPAWNS_UNLIMITED`).
+    #[serde(default)]
+    pub respawns: u8,
 
     pub players: Vec<PlayerView>,
     /// Proposals this player made or may answer.
@@ -3668,6 +4346,10 @@ mod tests {
             let t = w.tank_mut(me).unwrap();
             t.pos = home;
             t.fuel = 300.0;
+            // From a standstill each time: a tank keeps its speed now.
+            t.speed = 0.0;
+            t.goal = None;
+            t.route.clear();
             w.step(&[Order { player: 0, cmd: Command::Move { to: home + V2::new(0.0, 12.0) } }]);
             for _ in 0..(2 * TICK_HZ) {
                 w.step(&[]);
@@ -4411,6 +5093,495 @@ mod tests {
         assert!(w2.tank_of(0).unwrap().armor <= TANK_ARMOR - MINE_DAMAGE + 0.01);
     }
 
+    fn naval_world(players: usize) -> World {
+        let scenario = Scenario { map: MapSource::Text(include_str!("../../../maps/naval.map").into()), swarm_interval: 0, ..Scenario::bots(players) };
+        World::new(scenario)
+    }
+
+    /// Paul, 16 October: a tank on the shore launches its own boat, at
+    /// once, for five material, or with none; inland it is refused.
+    #[test]
+    fn a_tank_on_the_shore_launches_a_boat() {
+        let mut w = naval_world(2);
+        let water = |w: &World, x: i32, y: i32| w.map.in_bounds(V2::new(x as f32 + 0.5, y as f32 + 0.5)) && w.map.at(V2::new(x as f32 + 0.5, y as f32 + 0.5)) == Terrain::Water;
+        let (mut beach, mut inland) = (None, None);
+        for y in 2..(w.map.h as i32 - 2) {
+            for x in 2..(w.map.w as i32 - 2) {
+                let p = V2::new(x as f32 + 0.5, y as f32 + 0.5);
+                if w.map.at(p) != Terrain::Grass {
+                    continue;
+                }
+                let wet = (-2..=2).any(|dy| (-2..=2).any(|dx| water(&w, x + dx, y + dy)));
+                let near = (-1..=1).any(|dy| (-1..=1).any(|dx| water(&w, x + dx, y + dy)));
+                if near && beach.is_none() {
+                    beach = Some(p);
+                }
+                if !wet && inland.is_none() {
+                    inland = Some(p);
+                }
+            }
+        }
+        let (beach, inland) = (beach.unwrap(), inland.unwrap());
+        let id = w.tank_of(0).unwrap().id;
+        let t = w.tank_mut(id).unwrap();
+        t.pos = inland;
+        t.boat = false;
+        t.pillboys.material = BOAT_COST;
+        w.step(&[Order { player: 0, cmd: Command::Embark }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "no water beside")), "{:?}", w.events);
+        w.tank_mut(id).unwrap().pos = beach;
+        w.step(&[Order { player: 0, cmd: Command::Embark }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Boarded { owner: 0, .. })), "{:?}", w.events);
+        let t = w.tank(id).unwrap();
+        assert!(t.boat && w.map.at(t.pos) == Terrain::Water && t.pos.dist(beach) < 1.5 && t.pillboys.material == 0);
+        w.step(&[Order { player: 0, cmd: Command::Embark }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "afloat already")));
+        // With no material it launches all the same.
+        let t = w.tank_mut(id).unwrap();
+        t.pos = beach;
+        t.boat = false;
+        t.pillboys.material = 0;
+        w.step(&[Order { player: 0, cmd: Command::Embark }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Boarded { owner: 0, .. })), "{:?}", w.events);
+        assert!(w.tank(id).unwrap().boat);
+    }
+
+    /// Drone marks: the match moves to Mk II and Mk III on the clock, a
+    /// drone launched after is that mark, and a later mark is better at
+    /// something and different (RESEARCH.md's systems).
+    #[test]
+    fn drones_move_up_a_mark_with_the_clock() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let launch = |w: &mut World| {
+            w.step(&[Order { player: 0, cmd: Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center: w.tanks[0].pos, radius: 3.0 } } }]);
+            w.drones.iter().filter(|d| d.owner == 0 && d.kind == DroneKind::Recon).max_by_key(|d| d.id).cloned().unwrap()
+        };
+        let d = launch(&mut w);
+        assert!(d.mark == 1 && (d.battery - RECON_BATTERY).abs() < 0.1, "{} {}", d.mark, d.battery);
+        w.tick = MARK_II_AT as Tick - 1;
+        w.step(&[]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::DronesUpgraded { mark: 2 })));
+        let d = launch(&mut w);
+        assert_eq!(d.mark, 2);
+        assert!((d.battery - drone_spec(DroneKind::Recon, 2).battery).abs() < 0.1);
+        assert!(d.spec().vision > RECON_VISION);
+        assert_eq!(mark_at(MARK_III_AT as Tick), 3);
+        for k in [DroneKind::Recon, DroneKind::Interceptor, DroneKind::Strike, DroneKind::Longshot] {
+            for m in 1..=3 {
+                assert!(!drone_spec(k, m).name.is_empty() && drone_spec(k, m).battery > 0.0 && drone_spec(k, m).speed > 0.0);
+            }
+        }
+        let i = |m| drone_spec(DroneKind::Interceptor, m);
+        assert!(i(1).intercept_base < i(2).intercept_base && i(2).intercept_base < i(3).intercept_base && i(3).speed > i(1).speed);
+        assert!(drone_spec(DroneKind::Strike, 2).jam_proof && !drone_spec(DroneKind::Strike, 1).jam_proof);
+        assert!(drone_spec(DroneKind::Strike, 3).damage > STRIKE_DAMAGE && drone_spec(DroneKind::Strike, 3).battery > STRIKE_BATTERY);
+    }
+
+    /// A boat off a shore with a bridge's end beside it lands (the
+    /// quad's escort sat three minutes at (30,85): its route cut past
+    /// the bridge's corner, and a boat cannot go onto a bridge).
+    #[test]
+    fn a_boat_lands_beside_a_bridge() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let c = w.tanks[0].pos.tile();
+        let at = |dx: i32, dy: i32| V2::new((c.0 + dx) as f32 + 0.5, (c.1 + dy) as f32 + 0.5);
+        for dy in -6..=3 {
+            for dx in -6..=4 {
+                let t = if dy >= 0 { if dx == -1 { Terrain::Bridge } else { Terrain::Water } } else { Terrain::Grass };
+                w.map.set(at(dx, dy), t);
+            }
+        }
+        let id = w.tanks[0].id;
+        let t = w.tank_mut(id).unwrap();
+        t.pos = V2::new(c.0 as f32 + 0.001, c.1 as f32 + 0.808);
+        t.boat = true;
+        let inland = at(-4, -4);
+        w.step(&[Order { player: 0, cmd: Command::Move { to: inland } }]);
+        for _ in 0..15 * TICK_HZ {
+            w.step(&[]);
+        }
+        let t = w.tank(id).unwrap();
+        assert!(!t.boat && t.pos.dist(inland) < 1.0, "still at {:?}, boat {}", t.pos, t.boat);
+    }
+
+    /// SPEC TNK-08, TNK-11, TNK-12: a tank that starts at sea is on a
+    /// boat, crosses water to a beach and lands, and is ashore after.
+    #[test]
+    fn a_landing_craft_makes_the_beach() {
+        let mut w = naval_world(8);
+        for p in 0..8 {
+            let t = w.tank_of(p).unwrap().clone();
+            assert!(t.boat, "p{} did not start afloat", p);
+            let beach = *w.map.shore_from(t.pos, SHORE_SIGHT, SHORE_RAYS).iter().min_by(|a, b| a.dist(t.pos).partial_cmp(&b.dist(t.pos)).unwrap()).expect("no beach in sight");
+            w.step(&[Order { player: p, cmd: Command::Move { to: beach } }]);
+            assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "p{}: {:?}", p, w.events);
+            let mut landed = false;
+            for _ in 0..30 * TICK_HZ {
+                w.step(&[]);
+                if w.events.iter().any(|e| matches!(e, Event::Landed { owner, .. } if *owner == p)) {
+                    landed = true;
+                    break;
+                }
+            }
+            let t = w.tank_of(p).unwrap();
+            assert!(landed, "p{} still afloat at ({:.1},{:.1}), beach ({:.1},{:.1}), goal {:?} route {:?}", p, t.pos.x, t.pos.y, beach.x, beach.y, t.goal, t.route);
+            assert!(!t.boat && w.map.at(t.pos).passable());
+            // Ashore, water is refused again.
+            w.step(&[Order { player: p, cmd: Command::Move { to: t.pos + V2::new(0.0, -200.0) } }]);
+        }
+    }
+
+    /// A bridge across a channel, the way a bot plans and lays it: the
+    /// crossing names three water tiles, the squad lays the first from
+    /// the bank and the span the other two in the same trip
+    /// (`BRIDGE_SPAN`), three material, and the tank drives over to the
+    /// far side, which was unreachable before.
+    #[test]
+    fn a_squad_bridges_a_channel_in_a_span() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(1) });
+        let me = w.tank_of(0).unwrap().id;
+        let start = Map::tile_centre(w.tank(me).unwrap().pos);
+        let dir = if start.x < w.map.w as f32 / 2.0 { 1.0 } else { -1.0 };
+        // A channel three tiles wide, the whole height of the map, and
+        // open ground either side of where it is crossed.
+        let x0 = start.x + 4.0 * dir;
+        for y in 0..w.map.h {
+            for k in 0..3 {
+                w.map.set(V2::new(x0 + k as f32 * dir, y as f32 + 0.5), Terrain::Water);
+            }
+        }
+        for k in -3..=10 {
+            for dy in -1..=1 {
+                let p = start + V2::new(k as f32 * dir, dy as f32);
+                if w.map.at(p) != Terrain::Water {
+                    w.map.set(p, Terrain::Grass);
+                }
+            }
+        }
+        let far = start + V2::new(9.0 * dir, 0.0);
+        assert!(w.map.route(start, far).is_empty(), "the far side was reachable already");
+        let bridge = w.map.crossing(start, far, 10, |_| false).expect("no crossing");
+        assert_eq!(bridge.len(), 3, "{:?}", bridge);
+        w.tank_mut(me).unwrap().pillboys.material = PILLBOY_MATERIAL_MAX;
+        let mut trips = 0;
+        for tile in &bridge {
+            if w.map.at(*tile) == Terrain::Bridge {
+                continue;
+            }
+            trips += 1;
+            w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Road, at: *tile } } }]);
+            assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+            let mut built = false;
+            for _ in 0..30 * TICK_HZ {
+                w.step(&[]);
+                if w.map.at(*tile) == Terrain::Bridge && w.tank(me).unwrap().pillboys.aboard {
+                    built = true;
+                    break;
+                }
+            }
+            assert!(built, "tile {:?} not bridged: {:?}", tile, w.tank(me).unwrap().pillboys);
+        }
+        assert_eq!(trips, 1, "a span lays three tiles in a trip");
+        assert_eq!(w.tank(me).unwrap().pillboys.material, PILLBOY_MATERIAL_MAX - 3);
+        w.step(&[Order { player: 0, cmd: Command::Move { to: far } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        for _ in 0..20 * TICK_HZ {
+            w.step(&[]);
+        }
+        assert!(w.tank(me).unwrap().pos.dist(far) < 1.0, "the tank did not cross: at {:?}", w.tank(me).unwrap().pos);
+    }
+
+    /// The boat a tank lands from stays moored behind it (TNK-17), and
+    /// the tank drives back onto it and is afloat again.
+    #[test]
+    fn a_landed_boat_stays_moored() {
+        let mut w = naval_world(1);
+        let t = w.tank_of(0).unwrap().clone();
+        let beach = *w.map.shore_from(t.pos, SHORE_SIGHT, SHORE_RAYS).iter().min_by(|a, b| a.dist(t.pos).partial_cmp(&b.dist(t.pos)).unwrap()).unwrap();
+        w.step(&[Order { player: 0, cmd: Command::Move { to: beach } }]);
+        let mut landed = false;
+        for _ in 0..30 * TICK_HZ {
+            w.step(&[]);
+            if w.events.iter().any(|e| matches!(e, Event::Landed { owner: 0, .. })) {
+                landed = true;
+                break;
+            }
+        }
+        assert!(landed);
+        let at = w.tank_of(0).unwrap().pos;
+        let b = w.boats.iter().find(|b| b.pos.dist(at) < 2.0).expect("no boat moored by the beach").clone();
+        assert_eq!(w.map.at(b.pos), Terrain::Water);
+        // Turning about on the beach may stop it at the water's edge: the
+        // order again, as a Brain would give it.
+        let mut boarded = false;
+        for i in 0..10 * TICK_HZ {
+            let stopped = w.tank_of(0).unwrap().goal.is_none();
+            let orders = if i == 0 || (stopped && i % TICK_HZ == 0) { vec![Order { player: 0, cmd: Command::Move { to: b.pos } }] } else { vec![] };
+            w.step(&orders);
+            assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+            if w.events.iter().any(|e| matches!(e, Event::Boarded { owner: 0, boat, .. } if *boat == b.id)) {
+                boarded = true;
+                break;
+            }
+        }
+        let t = w.tank_of(0).unwrap();
+        assert!(boarded && t.boat, "at ({:.2},{:.2}) boat ({:.2},{:.2}) goal {:?} route {:?}", t.pos.x, t.pos.y, b.pos.x, b.pos.y, t.goal, t.route);
+        assert!(!w.boats.iter().any(|x| x.id == b.id));
+    }
+
+    /// The mode table's boat (five trees), TNK-17 and TNK-14: a squad
+    /// builds a boat on the water beside its bank, the tank drives onto
+    /// it and is afloat, the boat crosses water, and one shell sinks it
+    /// and the tank with it, the kill to the shooter.
+    #[test]
+    fn a_squad_builds_a_boat_and_one_shell_sinks_it() {
+        let mut w = naval_world(2);
+        // Put p0 ashore beside open water on the big island's west beach.
+        let beach = (0..80).map(|x| V2::new(x as f32 + 0.5, 80.5)).find(|p| w.map.at(*p) != Terrain::Water && w.map.at(*p).passable()).unwrap();
+        let sea = beach - V2::new(1.0, 0.0);
+        assert_eq!(w.map.at(sea), Terrain::Water);
+        let id = w.tank_of(0).unwrap().id;
+        {
+            let t = w.tank_mut(id).unwrap();
+            t.pos = beach + V2::new(1.0, 0.0);
+            t.boat = false;
+            t.pillboys.pos = t.pos;
+            t.pillboys.material = BOAT_COST;
+        }
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Boat, at: sea } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        for _ in 0..30 * TICK_HZ {
+            w.step(&[]);
+            if !w.boats.is_empty() {
+                break;
+            }
+        }
+        assert_eq!(w.boats.len(), 1, "no boat built");
+        assert_eq!(w.tank_of(0).unwrap().pillboys.material, 0);
+        // Water is refused without a boat; the boat's tile is not.
+        w.step(&[Order { player: 0, cmd: Command::Move { to: sea - V2::new(3.0, 0.0) } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "water")));
+        let mut boarded = false;
+        w.step(&[Order { player: 0, cmd: Command::Move { to: sea } }]);
+        for _ in 0..10 * TICK_HZ {
+            w.step(&[]);
+            boarded |= w.events.iter().any(|e| matches!(e, Event::Boarded { owner: 0, .. }));
+            if boarded {
+                break;
+            }
+        }
+        assert!(boarded && w.tank_of(0).unwrap().boat && w.boats.is_empty());
+        // Afloat, out to sea; a squad order waits for land.
+        w.step(&[Order { player: 0, cmd: Command::Move { to: sea - V2::new(6.0, 0.0) } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        for _ in 0..3 * TICK_HZ {
+            w.step(&[]);
+        }
+        let at = w.tank_of(0).unwrap().pos;
+        assert!(at.x < sea.x - 3.0 && w.map.at(at) == Terrain::Water, "afloat at {:?}", at);
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Harvest { at: beach } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why.starts_with("afloat"))));
+        // One shell: sunk and gone, p1's kill.
+        land_shell(&mut w, 1, at);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Sunk { owner: 0, by: Some(1), .. })), "{:?}", w.events);
+        assert!(!w.tank_of(0).unwrap().alive);
+        assert_eq!(w.players[1].score, SCORE_KILL);
+    }
+
+    /// Respawns: off by default, as before; with one allowed, a
+    /// destroyed tank is refused until `RESPAWN_TICKS` have passed, then
+    /// comes back at its start with full stocks (afloat at a sea start),
+    /// once; and a side with a respawn left is not out of the match.
+    #[test]
+    fn a_destroyed_tank_respawns_at_its_start_once() {
+        let kill = |w: &mut World, p: PlayerId| {
+            let id = w.tank_of(p).unwrap().id;
+            w.damage(id, TANK_ARMOR + 1.0, None);
+        };
+        // Off: refused, and two seats down to one is the end.
+        let mut w = World::new(Scenario { swarm_interval: 0, ..Scenario::bots(2) });
+        kill(&mut w, 1);
+        w.step(&[Order { player: 1, cmd: Command::Respawn }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "no respawns left")));
+        assert!(w.over);
+
+        let mut w = naval_world(2);
+        w.scenario.respawns = 1;
+        let start = w.map.starts[1];
+        w.step(&[Order { player: 1, cmd: Command::Move { to: w.map.shore_from(start, SHORE_SIGHT, SHORE_RAYS)[0] } }]);
+        for _ in 0..TICK_HZ {
+            w.step(&[]);
+        }
+        kill(&mut w, 1);
+        w.step(&[]);
+        assert!(!w.over, "a side with a respawn left is out");
+        assert_eq!(w.observe(1).respawn_in, Some(RESPAWN_TICKS as Tick - 1));
+        w.step(&[Order { player: 1, cmd: Command::Respawn }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "too soon to respawn")));
+        for _ in 0..RESPAWN_TICKS {
+            w.step(&[]);
+        }
+        assert_eq!(w.observe(1).respawn_in, Some(0));
+        w.step(&[Order { player: 1, cmd: Command::Respawn }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Respawned { owner: 1, left: 0, .. })), "{:?}", w.events);
+        let t = w.tank_of(1).unwrap();
+        assert!(t.alive && t.boat && t.pos == start && t.armor == TANK_ARMOR && t.shells == w.scenario.game_type.shells());
+        assert!(w.players[1].alive);
+        // The second death is the last: with no ally to revive it, at once.
+        kill(&mut w, 1);
+        w.step(&[]);
+        assert_eq!(w.observe(1).respawn_in, None);
+        assert!(w.over);
+    }
+
+    /// Paul, 16 October: a destroyed tank is down for twenty seconds,
+    /// and an ally's squad that reaches it with the material in time
+    /// brings it back at half armour. Not one's own squad, not an
+    /// enemy's, not after the time is up.
+    #[test]
+    fn an_allys_squad_revives_a_tank_that_is_down() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(3) }.with_teams(2));
+        // Seats 0 and 2 are a team.
+        for _ in 0..TICK_HZ {
+            w.step(&[]);
+        }
+        let a = w.tank_of(0).unwrap().pos;
+        let near = w.map.starts.iter().copied().chain((0..40).map(|i| a + V2::from_heading(i as f32 * 0.4).scale(3.0))).find(|p| p.dist(a) < 5.0 && p.dist(a) > 2.0 && w.map.at(*p).passable()).unwrap();
+        let down = w.tank_of(0).unwrap().id;
+        for p in [1, 2] {
+            let t = w.tanks.iter_mut().find(|t| t.owner == p).unwrap();
+            t.pos = near;
+            t.pillboys.pos = near;
+            t.pillboys.material = 5;
+        }
+        w.damage(down, TANK_ARMOR + 1.0, Some(1));
+        w.step(&[]);
+        assert!(w.downed(w.tank(down).unwrap()) && !w.over);
+        w.step(&[Order { player: 1, cmd: Command::Deploy { task: PillboyTask::Repair { target: down } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "revive only an ally's tank")), "{:?}", w.events);
+        w.step(&[Order { player: 2, cmd: Command::Deploy { task: PillboyTask::Repair { target: down } } }]);
+        let mut back = None;
+        for _ in 0..DOWNED_TICKS {
+            w.step(&[]);
+            if let Some(e) = w.events.iter().find(|e| matches!(e, Event::Revived { .. })) {
+                back = Some(e.clone());
+                break;
+            }
+        }
+        assert!(matches!(back, Some(Event::Revived { owner: 0, by: 2, .. })), "never revived");
+        let t = w.tank(down).unwrap();
+        assert!(t.alive && t.armor == REVIVE_ARMOR && w.players[0].alive);
+        assert_eq!(w.tank_of(2).unwrap().pillboys.material, 5 - REVIVE_COST);
+        // Down again with nobody to help: dead at twenty seconds.
+        w.damage(down, TANK_ARMOR + 1.0, Some(1));
+        for _ in 0..DOWNED_TICKS {
+            w.step(&[]);
+        }
+        assert!(!w.downed(w.tank(down).unwrap()));
+        w.step(&[Order { player: 2, cmd: Command::Deploy { task: PillboyTask::Repair { target: down } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "too late: that tank is dead" || why == "squad already out")), "{:?}", w.events);
+    }
+
+    /// The chain: one tank on a pillbox of its side holds it and is held
+    /// (Paul: "this action requires an ally"); two haul it at a tenth of
+    /// their speed; a depot's tile goes with it; let go, it stays put;
+    /// another side's is refused.
+    #[test]
+    fn two_tanks_on_a_chain_haul_a_pillbox_and_a_depot() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(3) }.with_teams(2));
+        w.pillboxes.clear();
+        // Seats 0 and 2 are allies; open ground east of seat 0's tank.
+        let mut at = w.tanks[0].pos;
+        let open = |w: &World, p: V2| (0..12).all(|k| w.map.at(p + V2::new(k as f32, 0.0)).passable() && w.map.at(p + V2::new(k as f32, 0.0)) != Terrain::Bridge && !w.depots.iter().any(|d| d.pos.dist(p + V2::new(k as f32, 0.0)) < 4.0));
+        while !open(&w, at) {
+            at = at + V2::new(1.0, 1.0);
+        }
+        let at = Map::tile_centre(at);
+        let id = w.alloc();
+        w.pillboxes.push(Pillbox { id, pos: at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+        for (i, off) in [(0usize, -1.0f32), (2, 1.0)] {
+            let t = w.tanks.iter_mut().find(|t| t.owner == i as PlayerId).unwrap();
+            t.pos = at + V2::new(-1.0, off * 0.8);
+            t.goal = None;
+            t.route.clear();
+        }
+        // The other side's tank may not chain ours.
+        let enemy = w.tanks.iter().position(|t| t.owner == 1).unwrap();
+        w.tanks[enemy].pos = at + V2::new(0.0, 1.5);
+        w.step(&[Order { player: 1, cmd: Command::Tow { target: Some(id) } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why.starts_with("chain only"))));
+        w.tanks[enemy].pos = w.map.starts[1];
+        // One alone: held.
+        w.step(&[Order { player: 0, cmd: Command::Tow { target: Some(id) } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Chained { haulers: 1, on: true, .. })));
+        w.step(&[Order { player: 0, cmd: Command::Move { to: at + V2::new(10.0, 0.0) } }]);
+        for _ in 0..5 * TICK_HZ {
+            w.step(&[]);
+        }
+        assert_eq!(w.pillbox(id).unwrap().pos, at, "one tank moved it");
+        assert!(w.tank_of(0).unwrap().pos.dist(at) <= TOW_CHAIN * 1.6 + 0.01, "the chain let it go");
+        // Two: hauled, slowly.
+        w.step(&[Order { player: 2, cmd: Command::Tow { target: Some(id) } }, Order { player: 2, cmd: Command::Move { to: at + V2::new(10.0, 1.0) } }, Order { player: 0, cmd: Command::Move { to: at + V2::new(10.0, -1.0) } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Chained { haulers: 2, on: true, .. })));
+        for _ in 0..10 * TICK_HZ {
+            w.step(&[]);
+        }
+        let moved = w.pillbox(id).unwrap().pos.dist(at);
+        eprintln!("two_tanks_on_a_chain_haul_a_pillbox_and_a_depot: pillbox hauled {:.1} tiles in 10 s", moved);
+        assert!(moved > 1.5 && moved <= TANK_SPEED * TOW_SPEED * 10.0 + TOW_CHAIN * 1.6, "{:.1}", moved);
+        // Let go: it stays.
+        w.step(&[Order { player: 0, cmd: Command::Tow { target: None } }, Order { player: 2, cmd: Command::Tow { target: None } }]);
+        let left = w.pillbox(id).unwrap().pos;
+        for _ in 0..TICK_HZ {
+            w.step(&[]);
+        }
+        assert_eq!(w.pillbox(id).unwrap().pos, left);
+
+        // A depot of ours: its tile goes with it.
+        let d = w.depots.iter().position(|d| d.owner == Some(0)).unwrap();
+        let did = w.depots[d].id;
+        let from = w.depots[d].pos;
+        let away = (w.map.center() - from).norm();
+        for (i, off) in [(0usize, -0.8f32), (2, 0.8)] {
+            let t = w.tanks.iter_mut().find(|t| t.owner == i as PlayerId).unwrap();
+            t.pos = from + away.scale(1.0) + V2::new(-away.y, away.x).scale(off);
+            t.goal = None;
+            t.route.clear();
+        }
+        let target = from + away.scale(12.0);
+        w.step(&[Order { player: 0, cmd: Command::Tow { target: Some(did) } }, Order { player: 2, cmd: Command::Tow { target: Some(did) } }]);
+        w.step(&[Order { player: 0, cmd: Command::Move { to: target } }, Order { player: 2, cmd: Command::Move { to: target + V2::new(0.5, 0.5) } }]);
+        for _ in 0..15 * TICK_HZ {
+            w.step(&[]);
+        }
+        let now = w.depots[d].pos;
+        eprintln!("  depot hauled {:.1} tiles", now.dist(from));
+        if now.tile() != from.tile() {
+            assert_eq!(w.map.at(now), Terrain::Depot);
+            assert_ne!(w.map.at(from), Terrain::Depot);
+        }
+        assert!(now.dist(from) > 1.0, "the depot did not move");
+    }
+
+    /// A ping is the pinger's side's: allies see it, others do not; one
+    /// a second; off the map is refused.
+    #[test]
+    fn a_ping_goes_to_the_side_only() {
+        let mut w = World::new(Scenario { swarm_interval: 0, ..Scenario::bots(3) }.with_teams(2));
+        // Seats 0 and 2 are team 0, seat 1 team 1.
+        let at = w.map.center();
+        w.step(&[Order { player: 0, cmd: Command::Ping { at } }]);
+        let seen = |w: &World, p: PlayerId| w.observe(p).events.iter().any(|e| matches!(e, Event::Pinged { player: 0, .. }));
+        assert!(seen(&w, 0) && seen(&w, 2) && !seen(&w, 1));
+        w.step(&[Order { player: 0, cmd: Command::Ping { at } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "one ping a second")));
+        for _ in 0..TICK_HZ {
+            w.step(&[]);
+        }
+        w.step(&[Order { player: 0, cmd: Command::Ping { at: V2::new(-5.0, 1.0) } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "off map")));
+    }
+
     /// A world built from a map file: four starts seat four even when
     /// the scenario names sixteen, a pillbox's owner is honoured, and
     /// the scenario (map text and all) survives a replay round trip.
@@ -4463,7 +5634,8 @@ mod tests {
         let t2 = w.players[2].tank;
         w.tank_mut(t0).unwrap().pos = c + V2::new(-20.0, 0.0);
         w.tank_mut(t2).unwrap().pos = c + V2::new(0.0, 0.0);
-        let enemy_at = c + V2::new(8.0, 0.0);
+        // Twelve tiles from 2: past its tank's ten of sight.
+        let enemy_at = c + V2::new(12.0, 0.0);
         w.tank_mut(t1).unwrap().pos = enemy_at;
         w.tank_mut(w.players[3].tank).unwrap().pos = c + V2::new(0.0, 50.0);
         // Blind: 0 cannot see the enemy (30 tiles, no recon up).
@@ -4801,7 +5973,7 @@ mod tests {
         assert!(w.concealed(c));
         // A recon of seat 0 orbits right over it (untethered, so its
         // link does not fail for the distance to its tank).
-        w.drones.push(Drone { id: 900, owner: 0, kind: DroneKind::Recon, pos: c + V2::new(4.0, 0.0), heading: 0.0, battery: 100.0, tether: None, task: DroneTask::Orbit { center: c, radius: 4.0 }, link: 1.0, phase: 0.0, jammed: false });
+        w.drones.push(Drone { id: 900, owner: 0, kind: DroneKind::Recon, pos: c + V2::new(4.0, 0.0), heading: 0.0, battery: 100.0, tether: None, task: DroneTask::Orbit { center: c, radius: 4.0 }, link: 1.0, phase: 0.0, jammed: false, mark: 1 });
         // A neutral pillbox six tiles north, with a clear line, and out
         // of its own air range of the drone.
         for dy in 0..=6 {

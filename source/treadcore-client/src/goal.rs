@@ -27,7 +27,7 @@ pub struct GoalPlugin;
 
 impl Plugin for GoalPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(Pilot { brain: Commander::new(0x60A1, "goal"), coord: false, folded: false, last: None }).add_systems(Update, pilot);
+        app.insert_resource(Pilot { brain: { let mut c = Commander::new(0x60A1, "goal"); c.pings = true; c.answers_pings = true; c }, coord: false, folded: false, last: None }).add_systems(Startup, autopilot).add_systems(Update, (pilot, rotation_marks));
     }
 }
 
@@ -81,13 +81,23 @@ impl Pilot {
     /// The coordination screen.
     pub fn screen(&self, obs: &Observation, fleet: &[String]) -> String {
         let b = &self.brain;
-        let mut t = String::from("COORDINATION  Space: the wheel  1-6: rungs  G: one goal  click: hold there  Tab: fold\n");
+        let mut t = String::from("COORDINATION  Space: the wheel  1-6: rungs  G: one goal  click: hold there  right-click: push point  Tab: fold\n");
         t.push_str(&format!("goal: {}{}\n", b.goal.label(), if b.doing.is_empty() { String::new() } else { format!(": {}", b.doing) }));
         t.push_str(if b.goal == Goal::Auto { "THE LADDER  the first rung on whose condition holds is what the tank does\n" } else { "THE LADDER  (not in use: G back to auto)\n" });
         for r in Rung::ALL {
             let i = r.index();
             let now = b.goal == Goal::Auto && b.rung == Some(r);
             t.push_str(&format!(" {} [{}] {} {:<12} {}\n", if now { ">" } else { " " }, if b.ladder[i] { "x" } else { " " }, i + 1, r.label(), b.why[i]));
+        }
+        if let Some((defense, push)) = b.rotation_points(obs) {
+            t.push_str(&format!(
+                "\nROTATION  defense ({:.0},{:.0})  push ({:.0},{:.0}) {}\n",
+                defense.x,
+                defense.y,
+                push.x,
+                push.y,
+                if b.rotation.own.is_some() { "your own (right-click it to share the fleet's)" } else { "the fleet's, halfway to the objective" }
+            ));
         }
         if let Some(me) = obs.me.as_ref() {
             let s = &me.pillboys;
@@ -124,6 +134,17 @@ impl Pilot {
     }
 }
 
+/// `--autopilot`: the tank starts on Auto, the player watching, and
+/// leads its team as a bots' leader does: the side's fleet commander,
+/// who musters the crews and hands out the fort (the host deals the
+/// team as a bots' team for it, session.rs).
+fn autopilot(args: Res<crate::Args>, mut pilot: ResMut<Pilot>) {
+    if args.autopilot {
+        pilot.brain.fleet.on = true;
+        pilot.brain.set_goal(Goal::Auto);
+    }
+}
+
 fn pilot(mut view: ResMut<View>, mut orders: ResMut<Orders>, mut pilot: ResMut<Pilot>) {
     let Some(obs) = view.obs.as_ref() else { return };
     if pilot.last != Some(obs.tick) {
@@ -134,10 +155,33 @@ fn pilot(mut view: ResMut<View>, mut orders: ResMut<Orders>, mut pilot: ResMut<P
             view.unthought.clear();
         } else {
             // The brain hears every tick's events, not only this one's.
+            let back = obs.respawn_in == Some(0) && obs.tick % TICK_HZ as Tick == 0;
+            // The window's log, every 30 s: what the pilot is doing.
+            let log = (obs.tick % (30 * TICK_HZ as Tick) == 0).then(|| (obs.tick as f32 * DT, obs.me.as_ref().map(|t| (t.armor, t.shells)).unwrap_or_default()));
+            // The fleet: this seat leads its team, and its team's
+            // wingmen (fleet.rs `fleet_of`, a person's team) are the
+            // fleet it gathers and gives its calls to.
+            if pilot.brain.members.is_empty() {
+                let mine = obs.my_team();
+                let mut team: Vec<usize> = obs.players.iter().filter(|p| p.team == mine).map(|p| p.id as usize).collect();
+                team.sort();
+                if let Some(i) = team.iter().position(|s| *s == obs.player as usize) {
+                    team.rotate_left(i);
+                    treadcore_brain::fleet::fleet_of(&mut pilot.brain, obs.player as usize, &team, true);
+                }
+            }
             let mut seen = obs.clone();
             seen.events = std::mem::take(&mut view.unthought);
-            let cmds = pilot.brain.think(&seen);
+            let cmds = pilot.brain.think_on(&seen, view.map.as_ref());
             orders.0.extend(cmds);
+            // On the autopilot, the tank comes back by itself when the
+            // match allows it, as a bot's does (V by hand otherwise).
+            if pilot.brain.goal != Goal::Manual && back {
+                orders.0.push(treadcore_sim::Command::Respawn);
+            }
+            if let (Some((s, (armor, shells))), false) = (log, pilot.brain.goal == Goal::Manual) {
+                info!("pilot at {:.0}s: armor {:.0} shells {} {}", s, armor, shells, pilot.status());
+            }
         }
     }
     let status = pilot.status();
@@ -148,4 +192,20 @@ fn pilot(mut view: ResMut<View>, mut orders: ResMut<Orders>, mut pilot: ResMut<P
     if view.coord != screen {
         view.coord = screen;
     }
+}
+
+/// On the coordination screen, the rotation's ends on the map: a ring
+/// at the defense point, a cross at the push point, and a faint line
+/// between.
+fn rotation_marks(view: Res<View>, pilot: Res<Pilot>, mut gizmos: Gizmos) {
+    if !pilot.coord {
+        return;
+    }
+    let Some(obs) = view.obs.as_ref() else { return };
+    let Some((defense, push)) = pilot.brain.rotation_points(obs) else { return };
+    let c = crate::player_color(obs.player);
+    let (d, p) = (crate::to_screen(defense), crate::to_screen(push));
+    gizmos.circle_2d(d, crate::TILE * 1.2, c);
+    gizmos.cross_2d(p, crate::TILE * 1.2, c);
+    gizmos.line_2d(d, p, c.with_alpha(0.25));
 }

@@ -10,8 +10,10 @@ scripted match, so what you see is the build this guide ships with
 
 ```
 make configure
-make run                 # solo: you against fifteen bots
-PLAYERS=4 make run       # against three
+make run                 # solo: the naval match, three teams, sixteen tanks
+MAP=island make run      # the generated island instead
+TEAMS=0 make run         # everyone alone
+PLAYERS=4 make run       # four tanks
 ROOKIES=15 make run      # against fifteen bots that play badly: start here
 make lan                 # a LAN game: waits for peers, elects a host
 ```
@@ -25,9 +27,73 @@ Or, from crates.io, `cargo install treadcore-client` puts the window
 on your path as `treadcore`; `treadcore --solo` starts the same solo
 match. The headless server is `cargo install treadcore-server`.
 
-The window opens on a lobby screen, then the match. You are one tank
-on an island of 128 by 128 tiles with up to fifteen others. Last tank
-standing wins; at the time limit, the highest score.
+The window opens on a lobby screen, then the match. By default it is
+the **naval match**: sixteen tanks in **three teams** (you lead team
+0, the north), each team starting together out at sea on landing
+craft (section 5b), with **respawns without limit** (section 6e), so
+the fifteen-minute clock ends it: the highest score wins, or the last
+team standing if one is wiped out first.
+`--map island` (or `MAP=island`) is the generated island of 128 by
+128 tiles, `--teams 0` everyone alone, `--respawns 0` no respawns:
+the old default is `--map island --teams 0 --respawns 0`.
+
+Your team plays as a fleet: a **builder** raising a castle round your
+depot (walls, a gate, your pillboxes lifted in as turrets; depots stay
+where the map puts them), a **guard** on it, and **wingmen** who stay
+with you and fight what fights you. The other teams have a leader, a
+guard, rangers and wingmen of their own. `--plain-bots` gives plain
+bots instead.
+
+Each side has a **fleet commander**: the leader of a bots' team, the
+builder on yours. It keeps the side's castle plan and organises the
+work: every half minute while the fort is unfinished it musters crews
+("t0-builder3: fort at (40,60), crews report"), and each crew that
+reports ready gets the next piece of the plan nobody has, a wall, the
+road or a tower ("asks t0-wing6: build a wall at (44,57)"), or, if
+it owns an outlying pillbox, a turret slot to carry it to. A crew fells
+forest for the material, sends its squad and reports ready for the
+next; a job not done in a minute goes to someone else, and a tile two
+crews could not build is dropped from the plan. Once the castle
+stands, a pillbox of an ally's (yours, say) out beyond the fort is
+**hauled** in: two crews are given the same job, chain it, drag it to a
+turret slot and let go. Rangers crew, and so
+do your wingmen while you are at the fort; guards guard. It is all on
+your newswire.
+
+The bots **talk** in team chat (the newswire shows it): a bot that
+sees an enemy calls it, `contact: t1-ranger4 at (61,40), 80 armour.
+pincer, 3 of us: left, centre, right`, and each that answers says
+which flank it takes and how far out it is, then comes in from that
+side: left, centre and right, sixty degrees apart, so a group closes
+from three sides at once.
+
+**Chain** (**C**): hitch a chain to the nearest pillbox or depot of
+your side within two and a half tiles, or let go of yours. One tank on
+a chain cannot move it and is held by it; with an ally's tank on the
+same chain, the two of you drag it at a tenth of your speed, over land
+(a depot's tile goes with it). The pillbox is silent while on a chain.
+You need not wait for an ally: chain on alone and the nearest free bot
+of your side drops what it is doing, says "on my way to the chain",
+drives over, hitches on, and hauls beside you wherever you drive; it
+lets go when you do.
+Another way to move a pillbox is still the squad's lift (pillbox mode,
+Shift-click your own; section 5); a depot only moves by chain.
+
+On the autopilot your tank also comes back by itself after it is
+destroyed, as the bots' do; by hand it is **V**.
+
+**Ping** with **Q** or the middle mouse button: a ring in your colour
+marks the spot for your side (and circles spread from it on the
+minimap), and your wingmen and the other bots of
+your side that answer pings (all but the builder and the guard)
+converge on it and attack what is there. Bots ping the enemies they
+see too; their rings show on your map, and the newswire says who
+pinged what. Bots, and your autopilot, also **dodge**: a shell coming
+down on them is driven out from under, and a hit makes them jink.
+
+The big **AUTOPILOT** button at the top of the right column hands the
+tank to the bot and back (the same as **O**, section 6d); it is green
+while the bot drives.
 
 **The first minute is yours.** For the first sixty seconds the bots
 hold fire at a tank that has not moved and has not fired, so you can
@@ -103,17 +169,21 @@ shape.
 
 ![The orders column: five drone tiles, then the five builder modes with a lamp each, then return](../reports/images/guide-column.png)
 
-Each tile is a picture of what the order makes, with its key and its
-name beside it. The key is lit amber when the order can be given and
-dim when it cannot (no drone left in the bay, the squad out, no
-material). Click the tile or press the key; they are the same.
+The column is one row of icons down the left edge, no words: each
+tile is a picture of what the order makes, with its key in a round
+badge on its corner. The key is lit amber when the order can be given
+and dim when it cannot (no drone left in the bay, the squad out, no
+material); a builder mode's badge goes red while that mode is armed.
+Under the column, the works kind `B` has chosen. Click the tile or
+press the key; they are the same. (The screenshot above is the older,
+worded column.)
 
 **The drones** (the top five). Your tank carries a bay of drones.
 
 | key | order | what happens |
 | --- | --- | --- |
 | `1` | interceptor | launches one to hold station on the *bubble*, the ring round your tank, and ram any strike drone that flies in. One shot each. |
-| `2` | recon | launches one to orbit the point under the cursor. It sees 12 tiles and feeds the gun: a shell at a target the recon can see lands within 0.6 tiles. |
+| `2` | recon | launches one to orbit the point under the cursor. It sees 20 tiles (more at later marks) and feeds the gun: a shell at a target the recon can see lands within 0.6 tiles. |
 | `3` | strike | launches the FPV at the nearest hostile tank to the cursor: it flies there and dives, 35 of 100 armor if it gets through the target's bubble. |
 | `R` | recall | brings every drone home to the bay. |
 | `[` `]` | bubble | shrinks or widens the ring: wide catches strikes early but thins the ring and stretches every link. |
@@ -121,6 +191,23 @@ material). Click the tile or press the key; they are the same.
 
 The bay refills at a depot. The lamps along the bottom (RECON, INTCP,
 STRIKE, LONG) show what is left in it.
+
+**Marks.** The drones get better as the match goes on, for every side
+at once: at **4 minutes** every launch is a Mk II, at **8 minutes** a
+Mk III, and a drone keeps the mark it was launched as. The newswire
+says so, and the air panel shows the mark after the letter (`R2`,
+`S3`). Each mark is modelled on a system in `RESEARCH.md`, and each
+is better at one thing rather than at everything:
+
+| | Mk I | Mk II (4 min) | Mk III (8 min) |
+| --- | --- | --- | --- |
+| recon | quadcopter: 150 s, sees 20 | VTOL fixed-wing: faster, 210 s, sees 23 | high-altitude VTOL: 270 s, sees 27, a little slower |
+| interceptor | kinetic rammer: kills half the time on its own camera, 9 in 10 on a good link | radar-cued: 7 in 10 on its own, faster | high-speed autonomous: half again as fast, 8 in 10 on its own, shorter flight |
+| strike | FPV: 45 s, 35 armour | fibre-optic FPV: 55 s, **flies through jammers** | loitering munition: 90 s, 48 armour, slower |
+| longshot | one-way drone | faster, further | heavy: 40% more on what it lands on |
+
+Sight: a tank sees 10 tiles with its own eyes (as far as its direct
+gun reaches), a recon 20, an interceptor or strike 8.
 
 ## 5. The builder: the Pillboys
 
@@ -144,7 +231,7 @@ in the column's lower half, in the order the prior art had them.
 | key | mode | on the square |
 | --- | --- | --- |
 | `4` | farm | fells the forest there: four material a tile, in four seconds. Only on forest. |
-| `5` | road | lays a road; on water, a bridge. |
+| `5` | road | lays a road; on water, a bridge. With Shift held, on water beside the bank, it builds a **boat** instead: five material (a little over one tile of forest felled), five seconds. Section 5b. |
 | `6` | wall | raises a wall three levels high. Blocks tanks, shots and a pillbox's line of fire; a shell's splash knocks it to rubble. Armed with Shift held (or clicked with Shift), it pours **concrete** instead: two material, pale grey, and a splash only cracks it to a plain wall, so it takes two. |
 | `7` | pillbox | on open ground, builds one. On a pillbox: repairs it, whoever owns it; if it is dead or nobody's, captures it (ten seconds standing on it). Shift-click one of **yours** and the squad lifts it (five seconds) and carries it; the next pillbox you build is that one set down, in five seconds, for no material, at the health it had. One at a time. If the squad or the tank is lost with it, it falls there, dead, still yours to mend. |
 | `8` | mine | buries a mine. Hidden until found; set off by a tank, a shell or a neighbouring mine; ignored by drones. |
@@ -183,6 +270,47 @@ after its plant is mended or retaken, a dropped seat that returns),
 the newswire or the host's log says so the helpdesk way: "We're back
 up." "Well, it's working now. That's the main thing."
 
+## 5b. Boats
+
+A start out at sea puts its tank on a **landing craft** (the grey-green
+hull under it). Afloat, the tank crosses water faster than open ground
+but cannot pass under a bridge. Click a beach: the world routes across
+the water and the tank drives up onto the sand, and the boat stays
+moored on the water beside the beach for anyone to board. Nothing else waits on the boat: the squad cannot leave
+it, so build and capture once ashore.
+
+**Launching from the shore: `E`.** A tank on the beach with its squad
+aboard puts a boat on the water beside it (the tile most nearly ahead)
+and is aboard at once: no walk, no drive onto it. It takes up to five
+of the squad's material, and launches with none. Bots on an island hop
+drive to the bank and launch this way unless a moored boat is within
+six tiles.
+
+**One hit sinks a boat**, and the tank goes down with it: all of
+treadcore's water is deep. The shooter has the kill. A tank on a boat
+is the easiest target on the map, so get to land.
+
+To go back to sea, have the squad build a boat (road mode, `5`, with
+Shift, on a water square beside the bank: five material). It lies
+moored in its builder's colour; drive onto it and the tank is afloat.
+Any tank may board any moored boat.
+
+The bots, and your autopilot, **island hop**. One that has stood idle
+for twenty seconds with nothing hostile in sight while a depot or a
+neutral or dead pillbox is still untaken goes for the nearest of them;
+if the world says it cannot be reached by land, the bot boards a
+moored boat nearby or has its squad fell forest and build one on the
+bank facing it, sails straight for it and lands. Its status (the
+autopilot's line, a `--local` match's progress lines) reads
+`island hop: ...`.
+
+Otherwise the bots do what they should: afloat, a bot drops everything and runs
+for the nearest beach that is away from every enemy tank and hostile
+pillbox it knows of, and changes its mind only for a clearly better
+one. `maps/naval.map` is an archipelago where every seat starts at sea:
+
+    MAP=maps/naval.map make run
+
 ## 6. Pillboxes and depots
 
 Twenty neutral pillboxes start on the map and shoot anyone within
@@ -194,9 +322,9 @@ them; stand on a neutral one for ten seconds and it is yours.
 
 ![The right column: the roster, a lamp per tank, kills and deaths, a lamp per pillbox and per depot, and the WORKS row, empty on a map with no economy](../reports/images/guide-right.png)
 
-The right column is the state of everyone: the roster with team, seat
-and score; a round lamp per tank; your kills and deaths; a square lamp
-per pillbox and a round one per depot, each in its owner's colour
+The right column, under the autopilot and your stock (section 7), is
+the state of everyone: your kills and deaths; a round lamp per tank; a
+square lamp per pillbox and a round one per depot, each in its owner's colour
 (yours in your seat's colour, green an ally's, red hostile, dim
 neutral, dark dead). **Click a pillbox lamp** and the view jumps to
 that pillbox; the **apostrophe** steps through your own and your
@@ -255,7 +383,10 @@ amber when it has no power, red under half its health, dark wrecked.
 Over eight seats the column folds the tank lamps away and sets the
 roster smaller, so the depots and the works still fit.
 
-The **minimap** at the right of the bottom strip is the whole map:
+The **roster** is under them, with team, seat and score, as many
+seats as the window's height leaves room for.
+
+The **minimap** at the foot of the right column is the whole map:
 the ground dimmed where your side cannot see, every depot, pillbox
 and structure in its owner's colour, the tanks you can see, your own
 in white. Click it, or hold the button and drag, to move the view.
@@ -320,7 +451,13 @@ geeker's expense.
 ## 6d. Goals: commanding instead of driving
 
 **G** steps the tank's goal, and the top strip says the goal and what
-the tank is doing for it:
+the tank is doing for it. **O** is the autopilot: it puts the tank on
+auto (below) without the coordination screen, and **O** again, or a
+click to drive, gives you the wheel. `--autopilot` starts a match with
+it on, and on it you lead your team as a bots' leader does: you are
+the side's fleet commander (you muster the crews and hand out the
+fort), and your team is dealt a guard, rangers and a wingman.
+`make quad` plays three windows that way, one commander a team (§11).
 
 1. **auto**: the tank picks its own goal from a ladder, below.
 2. **hunt pillboxes**: the nearest pillbox not of your side. A live
@@ -337,7 +474,7 @@ the tank is doing for it:
    firing or fired on, is a threat. The tank fights under the base's
    guns, a few tiles out toward the threat, and the squad mends the
    most hurt pillbox of the base, or takes back a dead one, between
-   shots. A tank sees seven tiles and a pillbox sees nothing, so a gun
+   shots. A tank sees ten tiles and a pillbox sees nothing, so a gun
    of the base at work is how it hears of what it cannot see: it goes
    to that pillbox to look.
 5. **defend pillbox**: the same about the nearest pillbox of yours,
@@ -389,11 +526,30 @@ wheel. On it:
 
 `1` to `6` turn the rungs on and off (turn off 4 and the tank never
 leaves home; turn off 2 and it never builds). `G` gives it one goal
-instead of the ladder. A click on the map holds the tank there. Tab
+instead of the ladder. A click on the map holds the tank there. A
+right click sets the tank's own **push point** there (right click it
+again to go back to the fleet's). Tab
 folds the screen away to see the map under it, and back; Esc closes
 it as Space does. While it is up the drone and builder keys wait.
 When your window hosts bots of your side (`--fleets`, `--wingmen`),
 the screen lists them under FLEET with what each is doing.
+
+**Rotation: the push point and the defense point.** A tank on auto
+does not wait about. Every one has a defense point, the post at its base, and
+a push point, halfway from the base to the side's objective (the
+nearest depot not yours, else the nearest pillbox not yours) and
+moved onto ground a tank can drive to. A side shares its base, so it
+shares the push point: the fleet's. When there is nothing to shoot,
+mend, build or fetch, the tank rotates: out to the push point, a look
+round, home to the defense point (staying to refill if it is short of
+shells or armour), a look round, out again. A guard rotates too, and
+comes home the moment the base is threatened. A wingman whose leader
+has stood still 8 s rotates as well, between its slot and a point
+toward the objective no further than 9 tiles from the leader (inside
+the leader's gathering ring, so the fleet never waits on it), and
+closes up the moment the leader moves. On the coordination
+screen ROTATION gives both points, and the map shows them: a ring at
+the defense point, a cross at the push point.
 
 **Fleets.** `--fleets` (`FLEETS=1 make run`) deals sixteen seats into
 three teams of five neighbours round the map's edge, every team
@@ -409,8 +565,37 @@ When a team's leader dies, its wingmen and guard take command: each
 goes to auto at the same base, so a fleet fights on to the end.
 
 Under fire from something nobody can see (shells from beyond a tank's
-seven tiles), the tank under any goal scoots a few tiles, puts its
+ten tiles), the tank under any goal scoots a few tiles, puts its
 recon over the place the shells came from, and fires back there.
+
+**Fleet tactics.** A team's bots and the autopilot fight by a set of
+weights (`treadcore-brain/src/tactics.rs`, `Tactics::default`), and
+say why. The status line ends `| target NAME (score): reasons`:
+
+- **Which tank to shoot.** Each hostile tank in sight scores for being
+  near, wounded, one shot from dead, afloat (one hit sinks a boat),
+  called by a teammate's ping, already under a teammate's gun, in
+  range now, and threatening a teammate or the base; the target held
+  scores a little more. Past two teammates on one tank, more is
+  overkill and scores less, so the rest pick the next. A new target
+  the team is on goes out in team chat: `focus NAME (1.9): 14 out,
+  armour 40, one shot, called, 1 on it`.
+- **Whether to close.** Answering a ping, a bot reckons the odds by
+  Lanchester's square law: each side's tanks inside 14 tiles of the
+  enemy, weighted by armour (and a hostile pillbox at 0.7 of a tank),
+  squared, ours over theirs. Below 0.7 with teammates on the way it
+  holds off out of direct range and waits for them, up to 12 seconds
+  (`massing, 2 coming`); above 1.5 it closes in (`pressing`).
+- **Where to stand.** Of seven firing points round the enemy on its
+  flank's side, the one with the fewest other hostile guns on it.
+- **Who answers.** Three teammates nearer a ping than this bot are
+  enough; it keeps at what it was doing. A crew on a fort job answers
+  only within 40 tiles.
+
+A drive the world refuses because the place is over the water (home
+to resupply, a guard's post, a leader across the sea) now goes by
+boat, the island hop's way; a ping over the water is not answered by
+boat.
 
 **Wingmen.** `--wingmen N` (`WINGMEN=n make run`) makes the first N
 bots wingmen: each follows you, asks to join your side (`Y` lets it
@@ -423,12 +608,47 @@ anyone who has not shot at it. It leaves your side only once every
 pillbox and every depot on the map has been the side's for ten
 seconds, and takes what it captured with it.
 
+## 6e. Down, revived, respawned
+
+**Down.** A destroyed tank is *down* for twenty seconds before it is
+dead. The air panel counts them (`TANK DOWN. 14s for an ally's squad
+to revive you`). Meanwhile an ally can bring it back: click the
+fallen tank with any builder mode and your squad walks to it and works
+four seconds, for **two material**, and the tank is back where it
+fell at **half armour** (its squad was lost with it; a depot refills
+one). The newswire says who revived whom. Allies see their side's
+downed tanks; nobody else does. Bots do it too: the ally best placed
+(within 45 tiles, with a squad and the material, time enough to get
+there, and no ally better placed) says `reviving NAME ...` and goes,
+calling its squad in first if it is out; it does not go into a fight
+the side is losing there (square-law odds under 0.5, section 6d). A
+bot that goes down pings where it fell and asks for a squad. A side with a tank down and a tank standing is still in the
+match.
+
+**Respawned.** In the default match (and with `--respawns
+unlimited`) a tank that is not revived comes back without limit; the
+prior art's elimination is `--respawns 0`:
+
+    treadcore --solo --respawns 3          # three more tanks each
+    treadcore --solo --respawns unlimited  # no limit; the clock ends it
+    treadcore-server --respawns 3 ...      # the host decides for a LAN match
+
+When the twenty seconds down are over the air panel reads
+`V to respawn` (the autopilot does it for you); press **V** and a new
+tank is at your start, facing
+the middle, with full shells, armour, fuel, bay and squad (on a landing
+craft, if your start is at sea). Your score is kept. The newswire says
+how many respawns are left. Bots come back as soon as they may. A side
+is out of the match only when its tanks are destroyed and it has no
+respawns left.
+
 ## 7. The stock
 
 ![The bottom strip: shells, the bay, the squad and material, armor and fuel, the air](../reports/images/guide-bottom.png)
 
-Along the bottom: 24 shells as red lamps; the bay by kind; the squad
-and its material; armor and fuel as bars; and the air table, which
+At the top of the right column, under the autopilot: 24 shells as red
+lamps; the bay by kind; the squad and its material; armor and fuel as
+bars. Along the bottom, beside the newswire, the air table, which
 lists every drone of yours in the air with its link to the tank and
 its battery, and what hostile air is in your detection ring. A link
 goes green to red with distance; a drone on a dead link flies on its
@@ -471,6 +691,17 @@ warning the screen cannot give for a gun you have not spotted. A
 capture, a loss, the swarm, a refused order and the end of the match
 have a short tone each. **M** turns the sound off and on; `--mute`
 starts with it off.
+
+Your side's tanks are drawn as one of three chassis: the **bulwark**
+(a slab-sided battle tank with a long gun), the **strider** (a
+twin-track raider with an open cockpit and two short guns) or the
+**rattler** (a wheeled scout). **T** steps through them;
+`--style rattler` starts with one. The other sides take the other two
+by team, so a foe differs from a friend in shape as well as colour.
+The style is your window's alone: it changes nothing in the match,
+and other players see their own pick for their own side. Turrets turn
+to what they fire at, treads roll as tanks drive, and tracks and scorch
+marks stay on the ground a while.
 
 ## 9. Sides
 
@@ -529,6 +760,11 @@ orders column and the hints under it show your keys, not these.
 | `H` | stop; also takes the wheel back from a goal |
 | Space | the coordination screen and auto, or back to the wheel |
 | `G` | the next goal: auto, hunt pillboxes, defend depot, defend base, defend pillbox, hold, fortify, escort, the wheel |
+| `O` | autopilot on and off: the tank on auto with the map clear; a click to drive also takes the wheel |
+| `V` | respawn, when the match allows it and the wait is over (section 6e) |
+| `Q`, middle button | ping the cursor for your side: allied bots converge and attack (section 1) |
+| `C` | chain on the nearest pillbox or depot of your side in reach, or let go; two tanks of a side haul it (section 1) |
+| `E` | on the shore, launch a boat beside the tank and board it (five material; section 5b) |
 | Shift-click a pillbox of yours in pillbox mode | lift it, to set it down with the next pillbox built |
 | `F` | the view back on the tank |
 | Enter | talk to everyone: type, Enter sends, Esc puts it away |
@@ -540,6 +776,7 @@ orders column and the hints under it show your keys, not these.
 | wheel | zoom |
 | Tab | the events scrollback; on the coordination screen, fold it |
 | M | sound off and on |
+| T | your side's tank style: bulwark, strider, rattler |
 | K | Key Setup: rebind any of the keys above |
 
 ## 11. Over a network
@@ -556,6 +793,15 @@ player's), match after match, keeping every match's trace and replay
 and showing what it is doing at `http://that-machine:47296/`. When a
 player is better placed, a player hosts, as without it. `README.md`
 has the details; `PROTOCOL.md` has the reasons.
+
+`make quad` plays a networked match on one machine to watch: three
+windows, one a team, each its team's commander on the autopilot, the
+teams filled with bots to fifteen seats, on the naval map. The host's
+log (`build/logs/quad-*-client*.log`, whichever window was elected)
+has every seat's line every 30 seconds, by team, with what each bot
+says it is doing and whom it is shooting and why; each window's log
+has its own commander's line. `CLIENTS=4`, `TEAMS=n`, `PLAYERS=n`,
+`AUTOPILOT=0` to drive, `MATCH_SECONDS=n`.
 
 ![Before the match: the window has joined the elected host and waits for the world, with the first-minute help on screen](../reports/images/guide-lobby.png)
 

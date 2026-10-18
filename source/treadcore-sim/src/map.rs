@@ -457,6 +457,64 @@ impl Map {
 
     /// Up to `n` forest tile centres nearest `around`, within `radius`:
     /// what a crew can see of the trees, for a Brain that has no map.
+    /// Beaches for a tank afloat at `around`, for a Brain with no map:
+    /// along each of `rays` headings, the first land tile (not a bridge)
+    /// within `radius` reached over water, as its centre. One per
+    /// heading at most, so the list spreads round the compass and a
+    /// bot can pick the one away from the guns.
+    pub fn shore_from(&self, around: V2, radius: f32, rays: usize) -> Vec<V2> {
+        let mut out: Vec<V2> = Vec::new();
+        for i in 0..rays {
+            let dir = V2::from_heading(i as f32 * std::f32::consts::TAU / rays as f32);
+            let mut r = 1.0;
+            while r <= radius {
+                let p = around + dir.scale(r);
+                if !self.in_bounds(p) {
+                    break;
+                }
+                let t = self.at(p);
+                if t != Terrain::Water {
+                    if t.passable() && t != Terrain::Bridge {
+                        let c = Map::tile_centre(p);
+                        if !out.iter().any(|q| q.tile() == c.tile()) {
+                            out.push(c);
+                        }
+                    }
+                    break;
+                }
+                r += 0.5;
+            }
+        }
+        out
+    }
+
+    /// Where a squad could build a boat near `around`, for a Brain with
+    /// no map: water tiles beside a bank a squad can stand on (land, not
+    /// a bridge), within `radius`, the `n` nearest as tile centres.
+    pub fn launch_sites(&self, around: V2, radius: f32, n: usize) -> Vec<V2> {
+        let (cx, cy) = around.tile();
+        let r = radius.ceil() as i32;
+        let mut out: Vec<(f32, V2)> = Vec::new();
+        for y in (cy - r).max(0)..(cy + r + 1).min(self.h as i32) {
+            for x in (cx - r).max(0)..(cx + r + 1).min(self.w as i32) {
+                if self.at_tile(x as usize, y as usize) != Terrain::Water {
+                    continue;
+                }
+                let bank = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|(dx, dy)| {
+                    let (nx, ny) = (x + dx, y + dy);
+                    self.in_tile(nx, ny) && { let t = self.at_tile(nx as usize, ny as usize); t.passable() && t != Terrain::Bridge }
+                });
+                let c = V2::new(x as f32 + 0.5, y as f32 + 0.5);
+                let d = c.dist(around);
+                if bank && d <= radius {
+                    out.push((d, c));
+                }
+            }
+        }
+        out.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        out.into_iter().take(n).map(|(_, c)| c).collect()
+    }
+
     pub fn forest_near(&self, around: V2, radius: f32, n: usize) -> Vec<V2> {
         self.terrain_near(Terrain::Forest, around, radius, n)
     }
@@ -497,6 +555,110 @@ impl Map {
     /// about instead of down the road through it. Not a hard wall: a
     /// tile inside a ring is still passable when there is no other way.
     pub fn route_with(&self, a: V2, b: V2, danger: impl Fn(V2) -> f32) -> Vec<V2> {
+        self.route_by(a, b, false, danger)
+    }
+
+    /// Where a boat may go next from `from` to `to`: water to water, or
+    /// water onto a beach (land but a bridge, which blocks a boat, SPEC
+    /// TNK-13). Never back from land to water: the boat stays on the
+    /// beach (TNK-12).
+    pub fn afloat_step(from: Terrain, to: Terrain) -> bool {
+        from == Terrain::Water && (to == Terrain::Water || (to.passable() && to != Terrain::Bridge)) || from != Terrain::Water && to.passable()
+    }
+
+    /// `route_with` for a tank on a boat when `afloat`: over water at
+    /// `BOAT_MOVE_COST` and onto a beach, then on by land.
+    /// The way from `a` to `b` for a side that will bridge the water on
+    /// it (Paul, 17 October: "the tanks should not try to cross water
+    /// ... build roads where it would drive ... prefer long straight
+    /// roads"): the cheapest path by four-way steps, ground at its move
+    /// cost, a water tile at `WATER_STEP` and a turn on the water at
+    /// `WATER_TURN` more, so the bridge is short and straight. The water
+    /// tiles to bridge, in order from `a`'s side; None if `b` is not
+    /// ground, no way exists, or it needs more than `max_water`. Water
+    /// for which `forbidden` holds is not bridged (beside a depot, where
+    /// nothing is built).
+    pub fn crossing(&self, a: V2, b: V2, max_water: usize, forbidden: impl Fn(V2) -> bool) -> Option<Vec<V2>> {
+        use std::cmp::Ordering;
+        use std::collections::BinaryHeap;
+        const WATER_STEP: f32 = 8.0;
+        const WATER_TURN: f32 = 4.0;
+        #[derive(PartialEq)]
+        struct Node(f32, usize);
+        impl Eq for Node {}
+        impl PartialOrd for Node {
+            fn partial_cmp(&self, o: &Self) -> Option<Ordering> {
+                Some(self.cmp(o))
+            }
+        }
+        impl Ord for Node {
+            fn cmp(&self, o: &Self) -> Ordering {
+                o.0.partial_cmp(&self.0).unwrap_or(Ordering::Equal)
+            }
+        }
+        let (ax, ay) = a.tile();
+        let (bx, by) = b.tile();
+        if !self.in_tile(ax, ay) || !self.in_tile(bx, by) || !self.at(b).passable() {
+            return None;
+        }
+        const DIRS: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+        let n = self.w * self.h;
+        // A state is a tile and the way it was entered.
+        let state = |x: i32, y: i32, d: usize| (y as usize * self.w + x as usize) * 4 + d;
+        let mut g = vec![f32::INFINITY; n * 4];
+        let mut came = vec![usize::MAX; n * 4];
+        let mut open = BinaryHeap::new();
+        for d in 0..4 {
+            let s = state(ax, ay, d);
+            g[s] = 0.0;
+            open.push(Node(0.0, s));
+        }
+        let mut end = None;
+        while let Some(Node(cost, cur)) = open.pop() {
+            if cost > g[cur] {
+                continue;
+            }
+            let (tile, d) = (cur / 4, cur % 4);
+            let (cx, cy) = ((tile % self.w) as i32, (tile / self.w) as i32);
+            if (cx, cy) == (bx, by) {
+                end = Some(cur);
+                break;
+            }
+            for (nd, (dx, dy)) in DIRS.iter().enumerate() {
+                let (nx, ny) = (cx + dx, cy + dy);
+                if !self.in_tile(nx, ny) {
+                    continue;
+                }
+                let t = self.at_tile(nx as usize, ny as usize);
+                let step = match t {
+                    Terrain::Water if forbidden(V2::new(nx as f32 + 0.5, ny as f32 + 0.5)) => continue,
+                    Terrain::Water => WATER_STEP + if nd != d && self.at_tile(cx as usize, cy as usize) == Terrain::Water { WATER_TURN } else { 0.0 },
+                    t if t.passable() => t.move_cost(),
+                    _ => continue,
+                };
+                let ns = state(nx, ny, nd);
+                if g[cur] + step < g[ns] {
+                    g[ns] = g[cur] + step;
+                    came[ns] = cur;
+                    open.push(Node(g[ns], ns));
+                }
+            }
+        }
+        let mut cur = end?;
+        let mut water = Vec::new();
+        while came[cur] != usize::MAX {
+            let tile = cur / 4;
+            let (x, y) = (tile % self.w, tile / self.w);
+            if self.at_tile(x, y) == Terrain::Water {
+                water.push(V2::new(x as f32 + 0.5, y as f32 + 0.5));
+            }
+            cur = came[cur];
+        }
+        water.reverse();
+        (water.len() <= max_water).then_some(water)
+    }
+
+    pub fn route_by(&self, a: V2, b: V2, afloat: bool, danger: impl Fn(V2) -> f32) -> Vec<V2> {
         use std::cmp::Ordering;
         use std::collections::BinaryHeap;
         #[derive(PartialEq)]
@@ -514,7 +676,7 @@ impl Map {
         }
         let (ax, ay) = a.tile();
         let (bx, by) = b.tile();
-        if !self.in_tile(ax, ay) || !self.in_tile(bx, by) || !self.at(b).passable() {
+        if !self.in_tile(ax, ay) || !self.in_tile(bx, by) || !(self.at(b).passable() || afloat && self.at(b) == Terrain::Water) {
             return vec![];
         }
         let idx = |x: i32, y: i32| y as usize * self.w + x as usize;
@@ -544,14 +706,41 @@ impl Map {
                 }
                 let ni = idx(nx, ny);
                 let t = Terrain::from_u8(self.cells[ni]);
-                if !t.passable() {
-                    continue;
-                }
-                // No cutting corners through water on a diagonal.
-                if dx != 0 && dy != 0 && (!self.at_tile(cx as usize, ny as usize).passable() || !self.at_tile(nx as usize, cy as usize).passable()) {
-                    continue;
-                }
-                let step = if dx != 0 && dy != 0 { 1.4142 } else { 1.0 } * t.move_cost() * (1.0 + danger(V2::new(nx as f32 + 0.5, ny as f32 + 0.5)));
+                let here = Terrain::from_u8(self.cells[cur]);
+                let cost = if afloat {
+                    if !Map::afloat_step(here, t) {
+                        continue;
+                    }
+                    // Afloat, a diagonal keeps to open water, and a
+                    // landing does not cut a wall's corner.
+                    let (c1, c2) = (self.at_tile(cx as usize, ny as usize), self.at_tile(nx as usize, cy as usize));
+                    // Nor brushes a bridge: a boat cannot go onto one, and a
+                    // landing cut past one's corner was driven into it,
+                    // blocked and planned again the same way every tick
+                    // (the quad's escort, three minutes off a beach).
+                    let open = |c: Terrain| if t == Terrain::Water { c == Terrain::Water } else { c == Terrain::Water || (c.passable() && c != Terrain::Bridge) };
+                    if dx != 0 && dy != 0 && !(open(c1) && open(c2)) {
+                        continue;
+                    }
+                    if t == Terrain::Water {
+                        crate::rules::BOAT_MOVE_COST
+                    } else {
+                        t.move_cost()
+                    }
+                } else {
+                    if !t.passable() {
+                        continue;
+                    }
+                    // No cutting corners through water on a diagonal.
+                    if dx != 0 && dy != 0 && (!self.at_tile(cx as usize, ny as usize).passable() || !self.at_tile(nx as usize, cy as usize).passable()) {
+                        continue;
+                    }
+                    t.move_cost()
+                };
+                // 1.4142, not SQRT_2: the routes are part of the simulation,
+                // and a recorded replay was driven with this value.
+                #[allow(clippy::approx_constant)]
+                let step = if dx != 0 && dy != 0 { 1.4142 } else { 1.0 } * cost * (1.0 + danger(V2::new(nx as f32 + 0.5, ny as f32 + 0.5)));
 
                 let ng = g[cur] + step;
                 if ng < g[ni] {
@@ -707,8 +896,10 @@ impl Map {
                     let t = Terrain::from_u8(cells[y as usize * w + x as usize]);
                     match head {
                         "start" => {
-                            if !t.passable() {
-                                return Err(err(n, "a start on water or a wall"));
+                            // A start at sea puts its tank on a landing
+                            // craft (SPEC TNK-08).
+                            if !t.passable() && t != Terrain::Water {
+                                return Err(err(n, "a start on a wall"));
                             }
                             starts.push(p);
                         }
@@ -855,12 +1046,17 @@ mod tests {
         lines[first_row].replace_range(0..1, "?");
         let e = Map::from_text(&lines.join("\n")).unwrap_err();
         assert_eq!(e.line, first_row + 1, "{}", e);
-        // A start in the river.
+        // A start in the river is a landing craft (TNK-08); a start on
+        // a wall is refused.
         let water = (0..m.w * m.h).position(|i| m.cells[i] == Terrain::Water as u8).unwrap();
         let (wx, wy) = (water % m.w, water / m.w);
-        let bad = format!("{}start {} {}\n", good, wx, wy);
-        let e = Map::from_text(&bad).unwrap_err();
-        assert!(e.msg.contains("water"), "{}", e);
+        let fewer = |text: String| text.lines().filter(|l| !l.starts_with("start ")).map(|l| format!("{}\n", l)).collect::<String>();
+        let at_sea = Map::from_text(&format!("{}start {} {}\n", fewer(good.clone()), wx, wy)).unwrap();
+        assert_eq!(at_sea.at(at_sea.starts[0]), Terrain::Water);
+        let mut walled = m.clone();
+        walled.cells[water] = Terrain::Wall as u8;
+        let e = Map::from_text(&format!("{}start {} {}\n", fewer(walled.to_text()), wx, wy)).unwrap_err();
+        assert!(e.msg.contains("wall"), "{}", e);
         // No starts at all.
         let no_starts: String = good.lines().filter(|l| !l.starts_with("start ")).map(|l| format!("{}\n", l)).collect();
         assert!(Map::from_text(&no_starts).unwrap_err().msg.contains("no start"));

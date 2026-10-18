@@ -19,8 +19,12 @@ use std::io::{BufRead, Write};
 use treadcore_sim::*;
 
 pub mod commander;
+pub mod crew;
 pub mod fleet;
 pub mod fortify;
+pub mod hop;
+pub mod rotation;
+pub mod tactics;
 pub use commander::{Commander, Goal, Rung};
 
 // Send + Sync so a seat's Brain can live in a Bevy resource; JsonBrain keeps
@@ -28,6 +32,13 @@ pub use commander::{Commander, Goal, Rung};
 pub trait Brain: Send + Sync {
     fn name(&self) -> &str;
     fn think(&mut self, obs: &Observation) -> Vec<Command>;
+    /// `think` with the map (the host's world map, or a window's copy):
+    /// public, as every window draws it, and what plans a bridge or a
+    /// road needs (hop.rs). A Brain that does not plan ignores it.
+    fn think_on(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
+        let _ = map;
+        self.think(obs)
+    }
     /// What it is doing, in a line, for a window that shows its fleet.
     fn status(&self) -> String {
         String::new()
@@ -50,9 +61,13 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
     for (p, b) in bots.iter_mut() {
         let obs = world.observe(*p);
         if obs.me.as_ref().map(|t| !t.alive).unwrap_or(true) {
+            // A bot comes back as soon as the world lets it.
+            if obs.respawn_in == Some(0) {
+                out.push(Order { player: *p, cmd: Command::Respawn });
+            }
             continue;
         }
-        for cmd in b.think(&obs) {
+        for cmd in b.think_on(&obs, Some(&world.map)) {
             out.push(Order { player: *p, cmd });
         }
     }
@@ -61,41 +76,6 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
 
 // ------------------------------------------------------------------ rule bot
 
-/// A doctrine, not an intelligence:
-///
-///   1. Keep the bubble up. Interceptors on station: four while anything
-///      hostile is airborne nearby, two otherwise.
-///   2. Take a firing position. The objective is the nearest depot that is
-///      not mine (the centre, to begin with). Drive to `STANDOFF` tiles
-///      short of it, by road: the world routes a Move around the river.
-///   3. Eyes over the objective. Once stationary, one recon drone orbits
-///      the objective (or the nearest known enemy), inside the link.
-///      The first bot fired its recon toward the centre at launch and
-///      then drove past it; a recon launched from a standing tank at its
-///      firing position stays useful.
-///   4. Shoot what the recon sees. A spotted tank between minimum and
-///      maximum range gets a shell every reload, led by its motion.
-///   5. Shoot and scoot. After firing, move a few tiles: counter-battery
-///      is coming. Stay out of direct range of anything that can see you.
-///   6. Strike a thin bubble: a strike drone at the nearest enemy once
-///      fewer than two interceptors are visible around it.
-///   7. Resupply when low; capture the nearest depot if none is mine.
-///   8. Advance. Nothing seen for `PATIENCE` seconds at the firing
-///      position: drive onto the objective and capture it, under the
-///      recon, and the next unowned depot becomes the objective.
-///   9. Pillboys (when `pillboys` is on). From a standing tank with no
-///      enemy in view: send the squad to the nearest neutral or dead
-///      pillbox within `PILLBOY_REACH` whose gun cannot reach the tank,
-///      or to repair an owned one below half health. While the squad is
-///      out the tank holds its position, so the squad has a home to
-///      come back to; that wait is the cost the proof weighs.
-///  10. Storm (roadmap step 6d, backlog item 14). An enemy that has
-///      been in view for twice the bot's patience and is still alive is
-///      sitting on a depot being repaired as fast as it is shelled; the
-///      firing position is not working. The bot shells the live
-///      hostile pillboxes guarding the objective, then drives onto it
-///      to capture it, firing direct on the way, and stops scooting.
-///      Low on anything, it goes home instead and the storm is off.
 /// The first minute (PLAYABILITY.md item 1). For this long after the
 /// start a bot will not fire at, or send a strike at, a hostile tank
 /// that has never moved and never fired: a newcomer sitting at the
@@ -138,6 +118,41 @@ impl Grace {
     }
 }
 
+/// A doctrine, not an intelligence:
+///
+///   1. Keep the bubble up. Interceptors on station: four while anything
+///      hostile is airborne nearby, two otherwise.
+///   2. Take a firing position. The objective is the nearest depot that is
+///      not mine (the centre, to begin with). Drive to `STANDOFF` tiles
+///      short of it, by road: the world routes a Move around the river.
+///   3. Eyes over the objective. Once stationary, one recon drone orbits
+///      the objective (or the nearest known enemy), inside the link.
+///      The first bot fired its recon toward the centre at launch and
+///      then drove past it; a recon launched from a standing tank at its
+///      firing position stays useful.
+///   4. Shoot what the recon sees. A spotted tank between minimum and
+///      maximum range gets a shell every reload, led by its motion.
+///   5. Shoot and scoot. After firing, move a few tiles: counter-battery
+///      is coming. Stay out of direct range of anything that can see you.
+///   6. Strike a thin bubble: a strike drone at the nearest enemy once
+///      fewer than two interceptors are visible around it.
+///   7. Resupply when low; capture the nearest depot if none is mine.
+///   8. Advance. Nothing seen for `PATIENCE` seconds at the firing
+///      position: drive onto the objective and capture it, under the
+///      recon, and the next unowned depot becomes the objective.
+///   9. Pillboys (when `pillboys` is on). From a standing tank with no
+///      enemy in view: send the squad to the nearest neutral or dead
+///      pillbox within `PILLBOY_REACH` whose gun cannot reach the tank,
+///      or to repair an owned one below half health. While the squad is
+///      out the tank holds its position, so the squad has a home to
+///      come back to; that wait is the cost the proof weighs.
+///  10. Storm (roadmap step 6d, backlog item 14). An enemy that has
+///      been in view for twice the bot's patience and is still alive is
+///      sitting on a depot being repaired as fast as it is shelled; the
+///      firing position is not working. The bot shells the live
+///      hostile pillboxes guarding the objective, then drives onto it
+///      to capture it, firing direct on the way, and stops scooting.
+///      Low on anything, it goes home instead and the storm is off.
 pub struct RuleBot {
     name: String,
     rng: Rng,
@@ -183,6 +198,188 @@ pub struct RuleBot {
     works_hit: bool,
     /// Structures found with no free pad beside them for a kind (10k).
     no_room: Vec<(EntityId, StructureKind)>,
+    /// How the match is going for this bot, and what it does about it.
+    pub form: Form,
+    /// Afloat: the beach it is making for, and when it chose it.
+    landfall: Option<(V2, Tick)>,
+    /// Out of a shell's way (`Dodge`); not a rookie's.
+    dodge: Dodge,
+    /// Island hopping, when nothing is left in reach by land (hop.rs).
+    pub hop: hop::Hop,
+    /// Hop at all: a Commander turns it off but on its Auto goal, so a
+    /// wingman or a guard keeps its post.
+    pub hops: bool,
+    /// Fleet tactics (tactics.rs): the target by score, not by distance
+    /// alone. A Commander's; a plain RuleBot shoots the nearest.
+    pub tactics: Option<tactics::Tactician>,
+    /// A plain RuleBot's kiting (tactics.rs `kite`): its standoff is
+    /// past direct range already; it steps in to fire direct while the
+    /// target's gun cannot answer. Never a rookie's. Off: tried on 17
+    /// October, `rulebot_kiting_pays` over ten seeds gave the kiting
+    /// half kills 20 against 15 but deaths 26 against 18 and direct
+    /// hits taken 31 against 15 (a step in walks into the next tank's
+    /// gun, which a RuleBot does not weigh), and it broke
+    /// `defenders_hold`.
+    pub kites: bool,
+}
+
+/// Getting out of the way (Paul, 16 October: "when being shot at, drive
+/// around to dodge"). Two cases, each answered once:
+///
+///   - An indirect shell of another side in the air that will land
+///     within its splash (and a margin) of the tank, or of where the
+///     tank will be when it lands, with time to move: the tank drives
+///     across the shell's line, out of the splash, on the side it is
+///     already on. The impact point is what every window draws at the
+///     end of a shell's arc; a bot reads it the same way.
+///   - Hit (a direct shot, a strike, a splash it did not see coming):
+///     a jink, three tiles across its heading and two on, the other
+///     side from last time, so a gunner leading it misses the next.
+///
+/// The bot's own route is lost to the dodge; its doctrine plans again
+/// from where the dodge leaves it.
+#[derive(Clone, Debug, Default)]
+pub struct Dodge {
+    dodged: Vec<EntityId>,
+    jinked: Tick,
+    side: f32,
+    /// A shell's dodge holds until the shell has landed: a Commander's
+    /// next tick re-ordered the tank's errand and drove it back under
+    /// the shell. A jink is one order, as before: held, it ran tanks out
+    /// of their own bubble (strike deaths 46 to 100 over eight quad
+    /// seeds) and off the wrecks they were reviving.
+    pub until: Tick,
+}
+
+impl Dodge {
+    pub fn order(&mut self, obs: &Observation, me: &Tank) -> Option<Command> {
+        self.order_with(obs, me, true)
+    }
+
+    /// `jink`: answer a hit with a jink too. A tank whose squad is
+    /// mending a wreck beside it dodges a shell it sees but takes a hit
+    /// where it stands: a jink pulled revivers off and the wreck died.
+    pub fn order_with(&mut self, obs: &Observation, me: &Tank, jink: bool) -> Option<Command> {
+        self.dodged.retain(|id| obs.shells.iter().any(|s| s.id == *id));
+        let hostile = |o: PlayerId| o != obs.player && !obs.allied(o);
+        for s in obs.shells.iter().filter(|s| s.kind == ShellKind::Indirect && hostile(s.owner)) {
+            if self.dodged.contains(&s.id) {
+                continue;
+            }
+            let eta = s.impact_tick.saturating_sub(obs.tick);
+            if eta < 2 || eta as f32 * DT > 4.0 {
+                continue;
+            }
+            let ahead = me.pos + V2::from_heading(me.heading).scale(me.speed * eta as f32 * DT);
+            if s.impact.dist(me.pos).min(s.impact.dist(ahead)) > SPLASH_RADIUS + 0.8 {
+                continue;
+            }
+            self.dodged.push(s.id);
+            self.until = s.impact_tick + 2;
+            let line = (s.impact - s.from).norm();
+            let across = V2::new(-line.y, line.x);
+            let off = me.pos - s.impact;
+            let side = if off.x * across.x + off.y * across.y >= 0.0 { 1.0 } else { -1.0 };
+            return Some(Command::Move { to: obs.clamp(s.impact + across.scale(side * (SPLASH_RADIUS + 2.5))) });
+        }
+        if jink && me.last_hit_tick > self.jinked && obs.tick.saturating_sub(me.last_hit_tick) <= TICK_HZ as Tick / 2 {
+            self.jinked = me.last_hit_tick;
+            self.side = if self.side > 0.0 { -1.0 } else { 1.0 };
+            let f = V2::from_heading(me.heading);
+            return Some(Command::Move { to: obs.clamp(me.pos + V2::new(-f.y, f.x).scale(3.0 * self.side) + f.scale(2.0)) });
+        }
+        None
+    }
+
+    /// A dodge under way: hold it.
+    pub fn holding(&self, obs: &Observation, me: &Tank) -> bool {
+        obs.tick < self.until && me.goal.is_some()
+    }
+}
+
+/// Where to aim a direct shot at a moving tank: where it will be when
+/// the shell lands (40 tiles a second, 0.8 tiles of hit radius; a tank
+/// at full speed moves a tile in the flight from 10 tiles off, so a shot
+/// at where it is misses). Inside direct range, else where it is.
+pub fn lead(me: &Tank, e: &Tank) -> V2 {
+    let flight = me.pos.dist(e.pos) / SHELL_SPEED_DIRECT;
+    let aim = e.pos + V2::from_heading(e.heading).scale(e.speed * flight);
+    if me.pos.dist(aim) <= DIRECT_RANGE {
+        aim
+    } else {
+        e.pos
+    }
+}
+
+/// Seconds between a bot's looks at its own progress.
+pub const FORM_EVERY: f32 = 30.0;
+
+/// The bot watching its own progress, every `FORM_EVERY` seconds, and
+/// playing to it. What it counts: score gained (kills, captures), depots
+/// its side gained or lost, armour lost. Getting hurt for nothing makes
+/// it careful: it waits longer before advancing, fires from further
+/// off and goes home for repairs sooner. Nothing happening at all, no
+/// gain, no harm and no contact, makes it bold: a bot that sat at a
+/// firing position for a whole match is the one this answers. Gaining
+/// keeps it pressing. `mood` runs from -1 (careful) to +1 (bold), half
+/// the last reading and half the new, so one bad half minute does not
+/// turn it.
+#[derive(Clone, Debug, Default)]
+pub struct Form {
+    /// When it last looked, and what it saw then.
+    at: Tick,
+    score: u32,
+    depots: usize,
+    armor: f32,
+    contact: Tick,
+    /// -1 careful .. +1 bold.
+    pub mood: f32,
+    /// The last reading, in words, for `status` and the trace.
+    pub note: String,
+}
+
+impl Form {
+    /// Look again if it is time. Returns true when the mood was read.
+    fn update(&mut self, obs: &Observation, me: &Tank, last_contact: Tick) -> bool {
+        let score = obs.players.iter().find(|p| p.id == obs.player).map(|p| p.score).unwrap_or(0);
+        let depots = obs.depots.iter().filter(|d| d.owner.map(|o| obs.allied(o)).unwrap_or(false)).count();
+        if self.at == 0 {
+            *self = Form { at: obs.tick.max(1), score, depots, armor: me.armor, contact: last_contact, mood: 0.0, note: "steady".into() };
+            return false;
+        }
+        if (obs.tick.saturating_sub(self.at) as f32 * DT) < FORM_EVERY {
+            return false;
+        }
+        let gained = score.saturating_sub(self.score) as f32 / SCORE_KILL.max(1) as f32 + depots as f32 - self.depots as f32;
+        // Repairs at a depot raise armour; only the loss counts.
+        let hurt = (self.armor - me.armor).max(0.0) / 25.0;
+        let quiet = last_contact == self.contact && gained == 0.0 && hurt == 0.0;
+        let reading = if quiet { 0.6 } else { (gained - hurt).clamp(-1.0, 1.0) };
+        self.mood = (self.mood * 0.5 + reading * 0.5).clamp(-1.0, 1.0);
+        self.note = if quiet {
+            "stalled: pushing".into()
+        } else if reading < -0.2 {
+            format!("hurt {:.0}: careful", hurt * 25.0)
+        } else if reading > 0.2 {
+            format!("+{:.0}: pressing", gained)
+        } else {
+            "even".into()
+        };
+        *self = Form { at: obs.tick, score, depots, armor: me.armor, contact: last_contact, mood: self.mood, note: std::mem::take(&mut self.note) };
+        true
+    }
+    /// The patience, scaled: bold waits less.
+    pub fn patience(&self, base: f32) -> f32 {
+        base * (1.0 - 0.4 * self.mood)
+    }
+    /// The firing position's distance, scaled: careful stands further off.
+    pub fn standoff(&self) -> f32 {
+        STANDOFF * (1.0 - 0.2 * self.mood)
+    }
+    /// The armour below which the bot goes home: careful goes sooner.
+    pub fn home_armor(&self) -> f32 {
+        45.0 - 15.0 * self.mood
+    }
 }
 
 /// Seconds between a RuleBot's longshots: a cheap drone, but two in the
@@ -221,7 +418,57 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new() }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, tactics: None, kites: false }
+    }
+
+    /// Afloat (SPEC TNK-08): run for land. One hit sinks a boat, so the
+    /// bot does not fight from one: it picks the beach that is near and
+    /// far from every hostile gun it knows of, tank or pillbox, and goes,
+    /// changing its mind only for a beach clearly better, or when a
+    /// threat comes near the one it chose. With no beach in sight it
+    /// heads for the middle of the map, away from whoever is closest.
+    fn landfall_order(&mut self, obs: &Observation, me: &Tank) -> Option<Command> {
+        let threats: Vec<V2> = obs
+            .hostile_tanks()
+            .filter(|t| t.alive)
+            .map(|t| t.pos)
+            .chain(obs.pillboxes.iter().filter(|p| p.alive() && !p.owner.map(|o| obs.allied(o)).unwrap_or(false)).map(|p| p.pos))
+            .collect();
+        let danger = |b: V2| {
+            let near = threats.iter().map(|t| t.dist(b)).fold(f32::INFINITY, f32::min);
+            if near < DIRECT_RANGE + 4.0 {
+                80.0
+            } else if near < PILLBOX_RANGE + 6.0 {
+                40.0
+            } else if near < INDIRECT_MAX_RANGE {
+                (INDIRECT_MAX_RANGE - near) * 0.6
+            } else {
+                0.0
+            }
+        };
+        // A beach the way an enemy is costs more: the run is the
+        // dangerous part, not only the landing.
+        let toward = |b: V2| threats.iter().filter(|t| t.dist(me.pos) < INDIRECT_MAX_RANGE).map(|t| ((b - me.pos).norm().x * (*t - me.pos).norm().x + (b - me.pos).norm().y * (*t - me.pos).norm().y).max(0.0) * 15.0).sum::<f32>();
+        let score = |b: V2| b.dist(me.pos) + danger(b) + toward(b);
+        let best = obs.shore.iter().filter(|b| !self.unreachable_tiles.contains(&b.tile())).min_by(|a, b| score(**a).partial_cmp(&score(**b)).unwrap()).copied();
+        let going = me.route.last().copied().or(me.goal);
+        let Some(best) = best else {
+            if going.is_some() {
+                return None;
+            }
+            let away = threats.iter().min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap()).map(|t| (me.pos - *t).norm().scale(20.0)).unwrap_or(V2::new(0.0, 0.0));
+            return Some(Command::Move { to: obs.clamp(obs.centre().lerp(me.pos, 0.5) + away) });
+        };
+        let since = self.landfall.map(|(_, t)| obs.tick.saturating_sub(t) as f32 * DT).unwrap_or(f32::INFINITY);
+        let change = match (self.landfall, going) {
+            (Some((chosen, _)), Some(_)) => since >= 2.0 && score(best) + 6.0 < score(chosen),
+            _ => since >= 1.0,
+        };
+        if !change {
+            return None;
+        }
+        self.landfall = Some((best, obs.tick));
+        Some(Command::Move { to: best })
     }
 
     /// The same doctrine, badly (PLAYABILITY item 9): thinks half as
@@ -304,9 +551,11 @@ impl RuleBot {
         obs.forest.iter().find(|t| t.dist(me.pos) <= PILLBOY_REACH).map(|t| Command::Deploy { task: PillboyTask::Harvest { at: *t } })
     }
 
+    /// The nearest depot of the side (or not), of those the world has
+    /// not refused a drive to as over the water.
     fn nearest_depot<'a>(&self, obs: &'a Observation, me: &Tank, friendly: bool) -> Option<&'a Depot> {
         let ours = |d: &&Depot| d.owner.map(|o| obs.allied(o)).unwrap_or(false);
-        obs.depots.iter().filter(|d| if friendly { ours(d) } else { !ours(d) }).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
+        obs.depots.iter().filter(|d| (if friendly { ours(d) } else { !ours(d) }) && !self.unreachable_tiles.contains(&d.pos.tile())).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap())
     }
 
 
@@ -317,7 +566,25 @@ impl Brain for RuleBot {
         &self.name
     }
 
+    fn status(&self) -> String {
+        match self.landfall {
+            _ if self.hop.active() => format!("island hop: {}", self.hop.doing),
+            Some((b, _)) => format!("afloat: for the beach at ({:.0},{:.0})", b.x, b.y),
+            None => format!("form {:+.2} {}", self.form.mood, self.form.note),
+        }
+    }
+
     fn think(&mut self, obs: &Observation) -> Vec<Command> {
+        self.think_map(obs, None)
+    }
+
+    fn think_on(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
+        self.think_map(obs, map)
+    }
+}
+
+impl RuleBot {
+    pub(crate) fn think_map(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
         let mut cmds = Vec::new();
         let Some(me) = obs.me.as_ref() else { return cmds };
         if !me.alive {
@@ -325,6 +592,10 @@ impl Brain for RuleBot {
         }
         // Every tick: who hurt us, and what the world refused as
         // unreachable stays so.
+        self.hop.hear(obs, me);
+        if let Some(t) = self.tactics.as_mut() {
+            t.hear(obs);
+        }
         for e in &obs.events {
             if let Event::TankDamaged { tank, by: Some(b), .. } = e {
                 if *tank == me.id && !self.hurt_by.contains(b) {
@@ -336,17 +607,30 @@ impl Brain for RuleBot {
                     self.works_hit = true;
                 }
             }
+            // Back in a new tank at the start (respawn): what the old one
+            // was in the middle of is over.
+            if matches!(e, Event::Respawned { owner, .. } if *owner == obs.player) {
+                self.resupplying = false;
+                self.storm = None;
+                self.landfall = None;
+                self.settled_at = None;
+                self.scoot_until = 0;
+                self.hop.reset();
+                self.unreachable_tiles.clear();
+                self.unreachable_pillboxes.clear();
+            }
+            // A new shore: what was out of reach from the last may not be.
+            if matches!(e, Event::Landed { owner, .. } if *owner == obs.player) {
+                self.unreachable_tiles.clear();
+                self.unreachable_pillboxes.clear();
+            }
             if let Event::Rejected { cmd, why, .. } = e {
                 match cmd {
-                    Command::Deploy { task: PillboyTask::Capture { pillbox } } | Command::Deploy { task: PillboyTask::Repair { target: pillbox } } if why.contains("unreachable") => {
-                        if !self.unreachable_pillboxes.contains(pillbox) {
-                            self.unreachable_pillboxes.push(*pillbox);
-                        }
+                    Command::Deploy { task: PillboyTask::Capture { pillbox } } | Command::Deploy { task: PillboyTask::Repair { target: pillbox } } if why.contains("unreachable") && !self.unreachable_pillboxes.contains(pillbox) => {
+                        self.unreachable_pillboxes.push(*pillbox);
                     }
-                    Command::Move { to } if why.contains("unreachable") || why == "water" => {
-                        if !self.unreachable_tiles.contains(&to.tile()) {
-                            self.unreachable_tiles.push(to.tile());
-                        }
+                    Command::Move { to } if (why.contains("unreachable") || why == "water") && !self.unreachable_tiles.contains(&to.tile()) => {
+                        self.unreachable_tiles.push(to.tile());
                     }
                     _ => {}
                 }
@@ -373,7 +657,13 @@ impl Brain for RuleBot {
         let my_strikes = obs.my_drones().filter(|d| d.kind == DroneKind::Strike).count();
         let hostile_air = obs.hostile_drones().filter(|d| d.pos.dist(me.pos) <= me.bubble + DETECT_MARGIN + 6.0).count();
         self.grace.update(obs);
-        let enemy = self.nearest_enemy(obs, me);
+        let enemy = match self.tactics.as_mut() {
+            Some(t) => {
+                let grace = &self.grace;
+                t.pick(obs, me, |e| grace.fair(obs, e))
+            }
+            None => self.nearest_enemy(obs, me),
+        };
         if enemy.is_some() {
             self.last_contact = obs.tick;
             self.contact_total += every as f32 * DT;
@@ -424,6 +714,37 @@ impl Brain for RuleBot {
         if (me.bubble - want_bubble).abs() > 0.5 {
             cmds.push(Command::SetBubble { radius: want_bubble });
         }
+
+        // Out of the way of a shell coming down on us, or a jink when
+        // hit; the rest of the think waits for the next.
+        if !self.rookie {
+            if let Some(d) = self.dodge.order(obs, me) {
+                cmds.push(d);
+                self.settled_at = None;
+                return cmds;
+            }
+        }
+
+        // 0. Afloat: make for land and do nothing else. The bubble is up;
+        // the gun, the drones and the squad wait for the beach. An island
+        // hop sails for its target; any other boat runs for the nearest
+        // safe beach.
+        if me.boat {
+            if let Some(hop) = self.hop.think(obs, me, false, map).filter(|_| self.hops) {
+                self.landfall = None;
+                cmds.extend(hop);
+                return cmds;
+            }
+            if let Some(cmd) = self.landfall_order(obs, me) {
+                cmds.push(cmd);
+            }
+            return cmds;
+        }
+        self.landfall = None;
+        if self.form.update(obs, me, self.last_contact) {
+            log::debug!("{} form {:+.2}: {}", self.name, self.form.mood, self.form.note);
+        }
+        let patience = self.form.patience(self.patience);
 
         // 3. Eyes. Launched from a standing tank, over what matters: the
         // enemy if one is known, else the objective. A second recon goes
@@ -511,7 +832,7 @@ impl Brain for RuleBot {
         // is ours or the bot runs low (section 7 takes it home).
         let hostile_box = |p: &&Pillbox| p.alive() && !p.owner.map(|o| obs.allied(o)).unwrap_or(false);
         if self.storm.is_none() && !self.rookie {
-            let long_contact = self.contact_total >= self.patience * 2.0;
+            let long_contact = self.contact_total >= patience * 2.0;
             if long_contact && me.pos.dist(objective) <= INDIRECT_MAX_RANGE {
                 self.storm = Some(objective);
                 // Said in tank speak, picked by tick and seat: never by the
@@ -543,7 +864,8 @@ impl Brain for RuleBot {
             let range = me.pos.dist(e.pos);
             if me.reload == 0 && me.shells > 0 && gun_target.is_none() {
                 if range <= DIRECT_RANGE {
-                    cmds.push(Command::FireDirect { at: e.pos });
+                    let aim = if self.rookie { e.pos } else { lead(me, e) };
+                    cmds.push(Command::FireDirect { at: aim });
                     self.last_fire_tick = obs.tick;
                 } else if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&range) {
                     // Lead a moving target by its flight time; if the
@@ -599,7 +921,7 @@ impl Brain for RuleBot {
         // Blind counts as low: a bot with no recon up and none in the bay
         // cannot see to shoot or to advance.
         let blind = me.bay.recon == 0 && my_recon.is_empty();
-        let low = me.shells < 6 || me.armor < 45.0 || me.bay.interceptor == 0 || me.fuel < 120.0 || blind;
+        let low = me.shells < 6 || me.armor < self.form.home_armor() || me.bay.interceptor == 0 || me.fuel < 120.0 || blind;
         let full = me.shells >= TANK_SHELLS - 2 && me.armor >= TANK_ARMOR - 5.0 && me.bay.interceptor >= BAY_FULL.interceptor - 1 && me.bay.recon > 0;
         if self.resupplying && full {
             self.resupplying = false;
@@ -609,6 +931,20 @@ impl Brain for RuleBot {
             self.storm = None;
         }
         if self.resupplying {
+            // Every depot of the side over the water (the quad's
+            // fortifier drove at one, refused, for six minutes): there
+            // by sea, the island hop's way.
+            let ours = |d: &&Depot| d.owner.map(|o| obs.allied(o)).unwrap_or(false);
+            if self.hops && self.nearest_depot(obs, me, true).is_none() {
+                if let Some(d) = obs.depots.iter().filter(ours).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+                    if self.hop.active() || self.hop.send(d.pos) {
+                        if let Some(h) = self.hop.think(obs, me, true, map) {
+                            cmds.extend(h);
+                            return cmds;
+                        }
+                    }
+                }
+            }
             let depot = self.nearest_depot(obs, me, true).or_else(|| self.nearest_depot(obs, me, false));
             // A working workshop of the side mends and restocks the bay
             // twice as fast as a depot, but has no shells: it is the
@@ -633,6 +969,13 @@ impl Brain for RuleBot {
                     cmds.push(Command::Move { to: at });
                 }
             }
+            return cmds;
+        }
+
+        // 11. Island hopping (hop.rs): with nothing left in reach for a
+        // while, across the water for what is not.
+        if let Some(hop) = self.hop.think(obs, me, self.storm.is_some() || !self.hops, map).filter(|_| self.hops) {
+            cmds.extend(hop);
             return cmds;
         }
 
@@ -672,6 +1015,16 @@ impl Brain for RuleBot {
 
         // 5. Scoot, and keep distance: out of direct range, inside indirect.
         if let Some(e) = enemy {
+            // 5b. A plain RuleBot kites (a Commander drives its own): in
+            // to direct range while the target's gun is reloading, a
+            // shot, and the standoff below takes it out again.
+            if self.kites && !self.rookie && self.tactics.is_none() {
+                let k = tactics::Tactician::default().kite(obs, me, e, (me.pos - e.pos).norm(), tactics::Stance::Engage, DIRECT_RANGE * 1.8);
+                if k.stepping_in {
+                    cmds.push(Command::Move { to: k.to });
+                    return cmds;
+                }
+            }
             let range = e.pos.dist(me.pos);
             let too_close = range < INDIRECT_MIN_RANGE + 2.0;
             let too_far = range > INDIRECT_MAX_RANGE * 0.9;
@@ -717,15 +1070,16 @@ impl Brain for RuleBot {
 
         // 2. The firing position, and 8. the advance.
         let to_obj = me.pos.dist(objective);
-        if to_obj > STANDOFF + 3.0 && stationary {
-            let p = obs.clamp(objective + (me.pos - objective).norm().scale(STANDOFF));
+        let standoff = self.form.standoff();
+        if to_obj > standoff + 3.0 && stationary {
+            let p = obs.clamp(objective + (me.pos - objective).norm().scale(standoff));
             if !self.unreachable_tiles.contains(&p.tile()) {
                 cmds.push(Command::Move { to: p });
             }
         } else if to_obj > DEPOT_RADIUS * 0.6 && stationary {
             let settled = self.settled_at.map(|t| obs.tick.saturating_sub(t)).unwrap_or(0) as f32 * DT;
             let quiet = obs.tick.saturating_sub(self.last_contact) as f32 * DT;
-            if settled >= self.patience && quiet >= self.patience && !my_recon.is_empty() {
+            if settled >= patience && quiet >= patience && !my_recon.is_empty() {
 
                 cmds.push(Command::Move { to: objective });
             }
@@ -796,6 +1150,10 @@ pub struct Defender {
     /// Sidestepping under fire until this tick; the post rule waits.
     dodge_until: Tick,
     rng: Option<Rng>,
+    /// Out of a spotted shell's way, inside the moat (the attackers'
+    /// dodge, as tanks keep their speed through a turn, beat a defender
+    /// that only stepped once hit).
+    shells: Dodge,
 }
 
 pub const MOAT_RADIUS: f32 = 3.0;
@@ -831,6 +1189,7 @@ impl Defender {
             watch: None,
             dodge_until: 0,
             rng: None,
+            shells: Dodge::default(),
         }
     }
 
@@ -939,6 +1298,13 @@ impl Brain for Defender {
         // 6c proof turned the other way round when the step was longer).
         let post = home + (home - centre).norm().scale(1.0);
         let dodging = obs.tick < self.dodge_until;
+        if let Some(Command::Move { to }) = self.shells.order_with(obs, me, false) {
+            let r = MOAT_RADIUS - MINE_RADIUS - 0.3;
+            let to = if to.dist(home) > r { home + (to - home).norm().scale(r) } else { to };
+            self.dodge_until = obs.tick + 2 * TICK_HZ as Tick;
+            cmds.push(Command::Move { to: obs.clamp(to) });
+            return cmds;
+        }
         let just_hit = me.last_hit_tick > 0 && obs.tick.saturating_sub(me.last_hit_tick) <= TICK_HZ as Tick;
         if just_hit && !dodging && me.goal.is_none() {
             let rng = self.rng.get_or_insert_with(|| Rng::new(fnv1a64(self.name.as_bytes()) ^ (obs.player as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)));
@@ -1024,7 +1390,8 @@ impl Brain for Defender {
             let range = me.pos.dist(e.pos);
             if me.reload == 0 && me.shells > 0 {
                 if range <= DIRECT_RANGE {
-                    cmds.push(Command::FireDirect { at: e.pos });
+                    let aim = lead(me, e);
+                    cmds.push(Command::FireDirect { at: aim });
                 } else if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&range) {
                     let lead = V2::from_heading(e.heading).scale(e.speed * range / SHELL_SPEED_INDIRECT * 0.8);
                     let aim = e.pos + lead;
@@ -1236,8 +1603,84 @@ mod tests {
 
     /// PLAYABILITY item 9: a rookie is beatable. Four RuleBots and four
     /// rookies, alternating seats, ten seeds of five minutes: the
+    /// Dodge: a shell of another side's coming down on a standing bot is
+    /// driven out from under, and the bot is not hurt when it lands.
+    #[test]
+    fn a_bot_drives_out_from_under_a_shell() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        let me = w.tanks[0].pos;
+        let id = w.next_id;
+        w.next_id += 1;
+        let tick = w.tick;
+        w.shells.push(Shell { id, owner: 1, kind: ShellKind::Indirect, from: me + V2::new(30.0, 0.0), aim: me, impact: me, launch_tick: tick, impact_tick: tick + 3 * TICK_HZ as Tick, spotted: true });
+        let mut b = RuleBot::new(5, "dodger");
+        let mut hurt = false;
+        for _ in 0..4 * TICK_HZ {
+            let obs = w.observe(0);
+            let orders: Vec<Order> = b.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            w.step(&orders);
+            hurt |= w.events.iter().any(|e| matches!(e, Event::TankDamaged { tank, .. } if *tank == w.tanks[0].id));
+        }
+        let now = w.tanks[0].pos;
+        eprintln!("a_bot_drives_out_from_under_a_shell: {:.1} tiles from the impact", now.dist(me));
+        assert!(!hurt, "the shell hurt it");
+        assert!(now.dist(me) > SPLASH_RADIUS);
+    }
+
     /// RuleBots win more than twice as often, kill more and outlive
     /// them, and the rookies still kill something.
+    /// Does a plain RuleBot's kiting pay? Eight RuleBots on the island,
+    /// the even seats kiting and the odd not, then the other way round,
+    /// over `RB_KITE_SEEDS` seeds (default 10). `cargo test -p
+    /// treadcore-brain --release -- --ignored rulebot_kiting_pays
+    /// --nocapture`.
+    #[test]
+    #[ignore]
+    fn rulebot_kiting_pays() {
+        let seeds: u64 = std::env::var("RB_KITE_SEEDS").ok().and_then(|s| s.parse().ok()).unwrap_or(10);
+        let (mut on, mut off) = ([0f32; 3], [0f32; 3]);
+        for seed in 0..seeds {
+            let kiting = (seed % 2) as u8;
+            let scenario = Scenario { seed: 0x0B0B_0000 + seed * 7919, swarm_interval: 45 * TICK_HZ, time_limit: 5 * 60 * TICK_HZ as Tick, ..Scenario::bots(8) };
+            let mut w = World::new(scenario);
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..8u8)
+                .map(|i| {
+                    let mut b = RuleBot::new(3000 + seed * 16 + i as u64, "rulebot");
+                    b.kites = i % 2 == kiting;
+                    (i, Box::new(b) as Box<dyn Brain>)
+                })
+                .collect();
+            let (mut kills, mut deaths, mut hit) = ([0f32; 2], [0f32; 2], [0f32; 2]);
+            while !w.over {
+                let orders = run_bots(&w, &mut bots);
+                w.step(&orders);
+                for e in &w.events {
+                    match e {
+                        Event::TankDestroyed { owner, by, .. } => {
+                            deaths[*owner as usize % 2] += 1.0;
+                            if let Some(b) = by.filter(|b| *b != *owner) {
+                                kills[b as usize % 2] += 1.0;
+                            }
+                        }
+                        Event::TankDamaged { tank, damage, .. } if *damage == DIRECT_DAMAGE => {
+                            if let Some(t) = w.tanks.iter().find(|t| t.id == *tank) {
+                                hit[t.owner as usize % 2] += 1.0;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            let k = kiting as usize;
+            for (i, x) in [kills, deaths, hit].iter().enumerate() {
+                on[i] += x[k];
+                off[i] += x[1 - k];
+            }
+        }
+        eprintln!("rulebot_kiting_pays over {} seeds, four bots each: kiting kills {} deaths {} direct hits taken {}; not kiting kills {} deaths {} direct hits taken {}", seeds, on[0], on[1], on[2], off[0], off[1], off[2]);
+    }
+
     #[test]
     fn rookies_are_beatable() {
         let (mut wins, mut kills, mut alive) = ((0u32, 0u32), (0u32, 0u32), (0u32, 0u32));
@@ -1286,7 +1729,7 @@ mod tests {
         let home = Map::tile_centre(w.tanks[0].pos);
         let toward = (w.map.center() - home).norm();
         let zone = Map::tile_centre(home + toward.scale(30.0));
-        assert!(w.map.route(home, zone).len() > 0, "the zone is not reachable on this island");
+        assert!(!w.map.route(home, zone).is_empty(), "the zone is not reachable on this island");
         for dy in -1..2 {
             for dx in -1..2 {
                 w.map.set(zone + V2::new(dx as f32, dy as f32), Terrain::Pad);
@@ -1296,7 +1739,7 @@ mod tests {
         w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
         let mut bot = RuleBot::new(17, "rulebot");
         let mut power = None;
-        for i in 0..(150 * TICK_HZ) as u32 {
+        for i in 0..(150 * TICK_HZ) {
             let obs = w.observe(0);
             let orders: Vec<Order> = bot.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
             w.step(&orders);
@@ -1330,7 +1773,7 @@ mod tests {
         w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
         let mut bot = RuleBot::new(13, "rulebot");
         let mut built: Vec<StructureKind> = Vec::new();
-        for _ in 0..(180 * TICK_HZ) as u32 {
+        for _ in 0..(180 * TICK_HZ) {
             let obs = w.observe(0);
             let orders: Vec<Order> = bot.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
             w.step(&orders);
@@ -1372,7 +1815,7 @@ mod tests {
         let mut jammer: Option<(EntityId, V2)> = None;
         let mut launched_inside = 0;
         let mut out_at = None;
-        for i in 0..(120 * TICK_HZ) as u32 {
+        for i in 0..(120 * TICK_HZ) {
             let mut obs = w.observe(0);
             // The hit comes at the twentieth second.
             if i == 20 * TICK_HZ {

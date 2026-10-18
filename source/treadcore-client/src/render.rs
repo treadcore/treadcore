@@ -24,7 +24,7 @@ impl Plugin for RenderPlugin {
         app.init_resource::<Sprites>()
             .init_resource::<Fog>()
             .add_systems(Startup, setup_camera)
-            .add_systems(Update, (build_map, update_fog, sync_entities, overlay, debris).chain());
+            .add_systems(Update, (build_map, update_fog, sync_entities, crate::battlefield::sync_tanks, overlay, debris).chain());
     }
 }
 
@@ -77,10 +77,13 @@ pub struct Fog {
 }
 
 fn setup_camera(mut commands: Commands) {
+    // TREADCORE_ZOOM starts the camera closer (smaller) or further out:
+    // a playtest's screenshots of the bases (scripts, not players).
+    let scale = std::env::var("TREADCORE_ZOOM").ok().and_then(|s| s.parse::<f32>().ok()).map(|z| z.clamp(0.15, 2.5)).unwrap_or(0.7);
     commands.spawn((
         Camera2d,
         MainCamera,
-        Projection::Orthographic(OrthographicProjection { scale: 0.7, ..OrthographicProjection::default_2d() }),
+        Projection::Orthographic(OrthographicProjection { scale, ..OrthographicProjection::default_2d() }),
         // Centred on a default-sized map until the first observation
         // puts the camera on the tank (input.rs centres it once).
         Transform::from_translation(Vec3::new(MAP_W as f32 * TILE * 0.5, -(MAP_H as f32) * TILE * 0.5, 0.0)),
@@ -110,6 +113,8 @@ pub fn terrain_color(t: Terrain) -> Color {
 }
 
 /// The ground's colours, sampled from WinBolo's sprites.
+/// The bearing ring's radius round the own tank, tiles.
+const BEARING_RING: f32 = 3.2;
 pub const GRASS: Color = Color::srgb(0.0, 0.44, 0.125);
 pub const FOREST: Color = Color::srgb(0.12, 0.69, 0.06);
 pub const ROAD: Color = Color::srgb(0.42, 0.42, 0.42);
@@ -313,45 +318,15 @@ fn sync_entities(
         }
     };
 
-    // The player's own tank is the predicted one when there is one
-    // (a client), interpolated from its last predicted tick rather than
-    // from the snapshot; every other tank is the snapshot's.
-    let predicted = view.predicted.as_ref().filter(|(t, _)| t.owner == me);
-    for t in &obs.tanks {
-        let (t, ahead) = match predicted {
-            Some((p, at)) if p.id == t.id => (p, at.elapsed().as_secs_f32().min(0.1)),
-            _ => (t, ahead),
-        };
-        let pos = t.pos + V2::from_heading(t.heading).scale(t.speed * ahead);
-        let c = player_color(t.owner);
-        let name = obs.players.get(t.owner as usize).map(|p| p.name.clone()).unwrap_or_default();
-        let label = format!("{}{} {:.0}", if t.owner == me { "* " } else { "" }, name, t.armor);
-        let alive = t.alive;
-        // Damage in tenths, so the hull chips as the armor goes.
-        let damage = (1.0 - t.armor / TANK_ARMOR).clamp(0.0, 1.0);
-        let bucket = (damage * 10.0).round() as u32;
-        place(&mut commands, t.id, to_screen(pos), -t.heading, model_key(1, c, alive as u32 | (bucket << 1)), &|| voxel::tank(c, alive, bucket as f32 / 10.0), 2.0, Some((label, if alive { c } else { Color::srgb(0.5, 0.5, 0.5) })));
-    }
+    // Tanks are battlefield.rs's: hull, gear and a turret of their own.
     for d in &obs.drones {
         let pos = d.pos + V2::from_heading(d.heading).scale(drone_speed(d.kind) * ahead * 0.5);
         let base = player_color(d.owner);
         let c = if d.kind == DroneKind::Strike && d.owner == SWARM_OWNER { Color::srgb(1.0, 0.25, 0.2) } else { base };
-        let label = if d.owner == me {
-            let k = match d.kind {
-                DroneKind::Recon => "R",
-                DroneKind::Interceptor => "I",
-                DroneKind::Strike => "S",
-                DroneKind::Longshot => "L",
-            };
-            // A longshot has no link to show: only its time left.
-            if d.kind == DroneKind::Longshot {
-                Some((format!("{} {:.0}s", k, d.battery), voxel::LIT))
-            } else {
-                Some((format!("{} {:.0}% {:.0}s", k, d.link * 100.0, d.battery), link_color(d.link)))
-            }
-        } else {
-            None
-        };
+        // No text over drones (Paul, 17 October: "the drones have too
+        // much text"): a small bar under each of mine instead
+        // (`draw_overlays`), its battery left, coloured by its link.
+        let label = None;
         let kind = d.kind;
         place(&mut commands, d.id, to_screen(pos), -d.heading, model_key(2 + kind as u8, c, 0), &|| match kind {
             DroneKind::Recon => voxel::recon(c),
@@ -429,7 +404,7 @@ fn sync_entities(
 /// ones in the air: gravity, a bounce, a roll that slows, a fade.
 fn debris(mut commands: Commands, time: Res<Time>, mut view: ResMut<View>, mut q: Query<(Entity, &mut Debris, &mut Transform, &mut Sprite)>) {
     let dt = time.delta_secs().min(0.1);
-    let impacts: Vec<(V2, Color, u8)> = view.impacts.drain(..).collect();
+    let impacts = std::mem::take(&mut view.impacts);
     let mut seed = (time.elapsed_secs() * 1000.0) as u32;
     let mut rnd = || {
         seed ^= seed << 13;
@@ -532,6 +507,26 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>, window: Quer
         if hud.aiming {
             gizmos.circle_2d(to_screen(my_pos), DIRECT_RANGE * TILE, Color::srgba(1.0, 1.0, 1.0, 0.5));
         }
+        // The bearing ring (Paul, 16 October: "a visual arc ... around the
+        // radius indicating the presence of an enemy or ally ... a thin
+        // line. this helps me find all enemy angles"): a faint circle
+        // close round the tank and on it a short thin arc toward every
+        // tank the side can see, red hostile, green ally; the nearer
+        // the tank, the longer and brighter its arc, so a threat close
+        // by stands out from one across the map.
+        let at = to_screen(my_pos);
+        gizmos.circle_2d(at, BEARING_RING * TILE, Color::srgba(1.0, 1.0, 1.0, 0.07));
+        for t in obs.tanks.iter().filter(|t| t.alive && t.owner != me) {
+            let d = to_screen(t.pos) - at;
+            if d.length() < 1.0 {
+                continue;
+            }
+            let near = (1.0 - t.pos.dist(my_pos) / INDIRECT_MAX_RANGE).clamp(0.0, 1.0);
+            let span = (8.0 + 18.0 * near).to_radians();
+            let c = if obs.allied(t.owner) { Color::srgba(0.25, 1.0, 0.35, 0.45 + 0.45 * near) } else { Color::srgba(1.0, 0.22, 0.15, 0.55 + 0.45 * near) };
+            let rot = d.y.atan2(d.x) - std::f32::consts::FRAC_PI_2 - span / 2.0;
+            gizmos.arc_2d(Isometry2d::new(at, Rot2::radians(rot)), span, BEARING_RING * TILE, c).resolution(8);
+        }
         // Where it is driving: the leg in progress, then the rest of the
         // route the world planned, fainter.
         if let Some(g) = my.goal {
@@ -555,6 +550,18 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>, window: Quer
         if d.owner == me {
             if let Some(t) = tank {
                 gizmos.line_2d(to_screen(t.pos), to_screen(d.pos), link_color(d.link).with_alpha(0.35 + 0.5 * d.link));
+            }
+            // Its health at a glance: battery left as a short bar under
+            // it, green, amber or red by the link (a longshot has none:
+            // white).
+            let full = drone_spec(d.kind, d.mark).battery.max(1.0);
+            let left = (d.battery / full).clamp(0.0, 1.0);
+            let c = if d.kind == DroneKind::Longshot { voxel::LIT } else { link_color(d.link) };
+            let at = to_screen(d.pos) + Vec2::new(-TILE * 0.5, -TILE * 0.8);
+            let w = TILE;
+            for dy in [0.0, 1.0] {
+                gizmos.line_2d(at + Vec2::new(0.0, dy), at + Vec2::new(w, dy), Color::srgba(0.0, 0.0, 0.0, 0.55));
+                gizmos.line_2d(at + Vec2::new(0.0, dy), at + Vec2::new(w * left, dy), c);
             }
             match d.kind {
                 DroneKind::Recon => {

@@ -6,6 +6,480 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: rotation, a push point and a defense point for every bot
+  (Paul, 17 October: "there was too much waiting ... the tank does
+  not wait around ... alternate between the adjustable push point and
+  defense point"; `treadcore-brain::rotation`). The defense point is
+  the base's post; the push point is halfway from the base to the
+  side's objective, moved onto ground the tank can drive to from the
+  base (halfway to an island is on the water), refitted every 10 s.
+  A side's members work it out alike: the fleet's push point; a tank
+  can have its own instead. A layer over the ladder and the fleet,
+  not a change to them: where a tank used to wait (defend base on
+  guard with nothing in the leash, the turrets rung with nothing to
+  fetch or standing) it drives out, looks round 6 s, drives home
+  (staying up to 25 s to refill), looks round, and out again. In the
+  window, a right click on the coordination screen sets the tank's
+  own push point; the screen and the map show both points.
+  Over six 600 s quad censuses: kills 226 to 249, revives 44 to 51;
+  "on guard" (15 to 18% of all seat time) gone. Moving the fleet's
+  gathering to the push point too was tried and dropped (kills 191:
+  a leader past it drove back to it).
+  - Wingmen rotate too (Paul: "rotate the idle wingmen too"): with
+    the leader parked 8 s, a wingman goes between its slot and a
+    point toward the objective, 9 tiles from the leader at most and
+    on ground all the way there (inside the gathering ring), and
+    closes up the moment the leader moves. Over the same six
+    censuses: kills 249 to 260, "in formation" 9.4% to 4.4% of
+    wingman time, stuck samples 12 to 0; revives 51 to 44.
+  - Open: a boat on naval.map at (61,102) keeps choosing (60,102),
+    water on the map as drawn (a bridge, likely), to land on, and
+    sails in place; it was there before rotation.
+- Added: the yard (Paul, 17 October: "a base, with roads in the
+  centre, walls on the outside, and pillboxes and depots to
+  recharge"). Once the castle and its turrets are down, the plan
+  closes the curtain wall right round the depot (the gate left open)
+  and lays a ring road inside it, 3 tiles out, between the depot and
+  the towers. The turrets rung builds the yard while there is no
+  outlying pillbox to bring in, and crews take its tiles as they take
+  the castle's. A headless three-fleets match: the first team to
+  finish had 25 wall tiles, 21 road tiles and 6 pillboxes (2 carried
+  in) round its depot by 300 s. `three_fleets_build` prints each
+  base's walls and roads.
+- Fixed: three autopilot leaders of a windowed quad stuck most of
+  the match, seen in its screenshots.
+  - The road on from a bridge ran its straight line on past more
+    water; the drive up to the next tile was refused ("water") and
+    the leader sat at its depot 440 s. The line now ends at the
+    shore, and a road on with no tile laid in 20 s is given up.
+  - A bridge waiting on the fleet (or on material) counted the wait
+    as progress, so it never stalled out: a leader waited 200 s on
+    a part-laid bridge. Only a tile laid is progress now; with no
+    material the stall is 80 s, not 40.
+  - The castle's post, 1.5 tiles behind the depot, was on the water
+    at an island's shore depot, and the leader hopped at it under
+    fortify. The plan's post is now the nearest land within 3 tiles.
+  `the_default_match_plays_as_teams` passes again.
+- Changed: no text over drones on the battlefield (Paul, 17 October:
+  "the drones have too much text"). Each drone of yours has a small
+  bar under it instead: battery left, green, amber or red by its link
+  (white for a longshot, which has none). The air line at the bottom
+  left still has the figures. The old label turned with the drone.
+- Added: `TREADCORE_ZOOM` starts the window's camera at that scale
+  (0.7 by default, smaller is closer): for a playtest's screenshots.
+
+- Fixed: bots stuck for the rest of a match, found by a headless quad
+  (`fleet::quad_census`, ignored: fifteen seats, three autopilot
+  leaders, a stuck seat is one on its way somewhere that has moved
+  under 3 tiles in 90 s). Over six seeds, stuck samples 112 to 0,
+  kills 189 to 260, revives 31 to 51.
+  - A guard whose post was over the water, once the island hop gave
+    the post up ("no forest for a boat"), drove at it, refused, for
+    the rest of the match. A refused drive is now not asked again
+    until the refusal runs out (60 s); the guard holds where it is
+    and says so. A target the hop gave up on is tried again after
+    60 s.
+  - The hop gets a boat's material at a depot of the side within 40
+    tiles (one a half second) before felling, and with no forest in
+    sight drives along looking for 40 s before giving up.
+  - A moored boat that cannot be reached (refused, or not boarded in
+    30 s) is given up for another.
+  - A hop pauses for a hostile tank within 1.5 direct ranges, not one
+    merely in sight (sight grew; a far boat held every hop up).
+  - A RuleBot whose every depot is over the water resupplies by sea
+    instead of driving at the nearest, refused, for good.
+  - Sim: a boat's route no longer cuts a landing past a bridge's
+    corner (a boat cannot go onto a bridge; it was blocked and routed
+    the same way every tick), and a blocked tank planned the same
+    way again goes to its tile's centre first.
+
+- Added: drone marks (`rules::drone_spec`, `Drone.mark`,
+  `Event::DronesUpgraded`). Every kind comes in three marks after the
+  systems in RESEARCH.md; the match moves to Mk II at 4 minutes and Mk
+  III at 8, a drone keeping the mark it was launched as. Recon:
+  quadcopter, VTOL, high-altitude VTOL (longer, further sight).
+  Interceptor: kinetic rammer, radar-cued, high-speed autonomous
+  (better on its own camera, faster). Strike: FPV, fibre-optic FPV
+  (flies through jammers), loitering munition (longer, heavier).
+  Longshot: faster, then heavier. The air panel shows the mark.
+
+- Added: bridges before boats (Paul, 17 October: "the tanks should not
+  try to cross water ... build roads where it would drive ... prefer
+  long straight roads ... after a bridge is made, continuing that road
+  to a pillbox or a depot"). `Map::crossing` plans the way to a target
+  for a side that will bridge it: four-way steps, ground at its move
+  cost, water at 8 a tile and 4 more a turn on the water, so a bridge
+  is short and straight. An island hop with the map bridges a crossing
+  of up to 20 water tiles: the tank at the end so far, its squad lays
+  the next tile (1 material, 3 s), felling or fetching material as it
+  runs out; no tile in 40 s or three refusals and it goes by boat. A
+  bridge done, it lays a straight road on to the target, 12 tiles at
+  most. Brains get the map (`Brain::think_on`, the host's world map, a
+  window's copy for the autopilot): every window draws it already.
+  Four quad seeds: 44 to 70 bridge tiles a match, boats boarded 577 to
+  122, boats sunk 45 to 2, but kills 161 to 108: the fleets spend the
+  opening building and meet late. Bridging only up to 8 tiles: kills
+  184, boats 462, sunk 33.
+  - Spans (`BRIDGE_SPAN`, a sim rule; Paul, 17 October): a squad that
+    lays a bridge tile lays on straight out from where it stands, up to
+    3 tiles in the trip, a material each; it stops at ground, a tank or
+    a boat, a depot's ground or the material's end. Four quad seeds:
+    kills 98 to 129, bridge time 28% to 20% of bot time.
+  - The fleet lays it: a leader out of material hands the next tile to
+    a wingman near it (a crew's job, `Job::Build`) and waits at the end
+    rather than leaving for more; a wingman takes its leader's jobs,
+    takes any job before anything else of its can return (a job is one
+    tick's event, and a wingman dodging that tick lost it), and starts
+    no bridge of its own (two of a fleet began the same one). Wingmen
+    laid three bridge tiles in four.
+  - No bridge through water beside a depot, where nothing is built:
+    bridges to a depot on the shore were refused at the last tile.
+  - Open: most bridges are still left part-laid (the hop changes its
+    target or stalls), the road on from a bridge is down to a tile a
+    match, and `the_default_match_plays_as_teams` fails: in its eight
+    minutes the teams barely meet.
+  - Fleet: a wingman's slot on the water (the leader at a bridge's end)
+    moves to the nearest ground; one beside its leader is in formation.
+    A wingman afloat steers at its leader only while the leader is
+    afloat too.
+  - `quad_census` counts bridge and road tiles laid.
+
+- Changed: driving (Paul, 17 October: "more momentum, more consistent
+  top speed ... something that still moves forward during a turn").
+  Acceleration 4 tiles/s/s (was 3), braking 6 (was instant), hull turn
+  3 rad/s (was 2.5). A corner past 34 degrees eases the tank down with
+  the angle to 35% for a turn right round (was 25% for any corner); it
+  brakes before a waypoint for the corner after it, and pivots where it
+  stands when the way on is more than 115 degrees off (rolling on, a
+  tank facing a wall drove into it every tick).
+  - The Defender dodges a spotted shell inside its moat: the attackers
+    kept their speed through a turn and dodged better; `defenders_hold`
+    was 35 defenders of 120 alive against 18 attackers of 40, and is
+    66 against 13 (48 against 11 before the change).
+
+- Fixed: `make quad` and `make run` were free-for-alls of plain
+  RuleBots: the Makefile exported `TEAMS ?= 0`, which the scripts'
+  `${TEAMS:-3}` kept. It is empty now, each script's own default.
+
+- Added: fleets (Paul, 17 October: "the allies dont seem to group up.
+  can we have fleets. i want to see the tanks prioritise grouping and
+  traveling in formation. and then using shared orders and attack
+  togeather"). A bots' team is a leader, a guard and three wingmen
+  (the two rangers, which roamed alone, are wingmen now and still crew
+  for the castle); a person's team keeps its builder, guard and two
+  wingmen (`fleet::fleet_of`).
+  - The wedge: each wingman has a slot, row k / 2 + 1 behind the
+    leader, left and right in turn, 4 tiles a row, where it will be
+    in a second at the leader's speed.
+  - Grouping first: a leader about to hunt, expand or launch holds
+    until half its wingmen are within 10 tiles, at most 30 s, then
+    not again for 30 s; it says "fleet: form up on me" in team chat.
+  - Crossing together: wingmen within 20 tiles launch with a leader
+    that launches, sail in the wedge round its boat, and land beside
+    it; one left ashore waits for the landing and follows by sea.
+  - Shared orders: a leader's ping is its fleet's order. A wingman
+    answers its own leader's calls and nobody else's while the leader
+    is up, past the "enough of us" cap, and with two of the fleet at
+    the target presses whatever its own odds say. The leader's call
+    says "fleet: attack together, n of us".
+  - `quad_census` prints the fleet's cohesion: wingmen within 12 tiles
+    of their leader, 31% to 60% of samples over four seeds, no seat
+    stuck.
+
+- Added: kiting (`tactics.rs` `kite`; Paul, 17 October: "more directed
+  kiting, where we estimate the range of the opponent and avoid
+  getting hit while aggressing closer in a group"). A bot closing on a
+  hostile tank, answering a ping or as a wingman covering its leader,
+  waits at 12.5 tiles, past the target's direct reach and inside its
+  own indirect gun. It steps in to 9 tiles, fires, and steps out only
+  while the target's gun is reloading for longer than the trip (its
+  reload is in the observation), no other loaded gun or live pillbox
+  covers the spot, and its own gun is loaded. Pressing, it also steps
+  in while a teammate is already inside the target's reach; massing,
+  never. With the target out of the side's sight for under 6 s it
+  holds the ring round the last spot instead of driving onto it.
+  Its own gun counts as loaded if it will be by the time it is in:
+  the indirect gun at the ring fires every reload, and a gun loaded
+  now was rarely so when the target's window opened. `kiting_pays`
+  (ignored; one team of three kiting, turned round the seats), six
+  seeds, a team's mean: kills 12.7 against 10.7, direct hits taken 3.5
+  against 4.6, deaths 13.0 against 13.0, depots 3.8 against 4.4.
+  - Defenders (guards, defend and hold) kite an intruder too, from
+    the side of what they defend and on their leash. No measurable
+    effect over eight quad seeds: guards rarely meet a tank.
+
+- Changed: the forks the brain map showed missing, found by where the
+  quad's bots died (`quad_census` now prints what each seat was doing
+  when it went down, and by what: of 233 downs over four seeds, 108 to
+  indirect shells, 69 boats sunk, 30 strike drones, 20 direct shells,
+  and three in five during island hops). Eight seeds, against the
+  brain before them: downs 489 to 404, downs not revived 376 to 341,
+  indirect-shell downs 243 to 143.
+  - A Commander's dodge held for one tick: the next, its errand
+    re-ordered the tank back under the shell. A shell's dodge now
+    holds until it lands, and comes before a revive and a hop (a
+    reviver parked by a wreck never dodged). A jink stays one order:
+    held, it ran tanks out of their own bubble (strike downs 46 to
+    100) and off wrecks (revives 113 to 62). A tank whose squad is
+    mending a wreck does not jink.
+  - A covered crossing (`hop.rs` `covered`): a hop holds its launch
+    while a hostile tank with shells is within 40 tiles, a shell is
+    coming down within 8, or a live hostile pillbox is on the bank;
+    at most 20 s, then it goes. Without it: downs 429, not revived
+    383 (against 404 and 341). 1.8% of bot time is spent holding.
+  - Air in the odds (`Tactics::strike_worth`): a hostile strike drone
+    over the fight counts 0.35 of a tank. Without it: strike downs 92
+    against 64, downs 435 against 404.
+  - Revives fell (113 to 63 over the eight seeds): fewer downs, and a
+    reviver now leaves for a shell. Open; `quad_census` now prints
+    how each revive attempt ended.
+  - Afloat, a hop lands on the beach in sight within 25 tiles of its
+    target that is least covered by hostile guns (the doctrine's
+    landfall scale), not the world's beach nearest the target.
+  - A kited target past reach for 15 s with no window is a standoff:
+    the rally ends and no ping is answered for 20 s (the kiting team
+    held fewer depots). Over twelve `kiting_pays` seeds kiting is
+    even at best now: deaths 14.1 against 13.1 with this, 13.8
+    against 12.7 without; depots 4.0 against 4.4, 3.8 against 4.5.
+  - Tried and off: a plain RuleBot kiting (`RuleBot::kites`). Ten
+    seeds of `rulebot_kiting_pays`: kills 20 against 15, deaths 26
+    against 18, direct hits taken 31 against 15.
+  - Bots lead a direct shot: a shell flies 10 tiles in 0.25 s and
+    hits within 0.8 of where it lands, so a tank at full speed was
+    missed. Rookies still aim at where the tank is.
+
+- Changed: the HUD again (Paul, 17 October). The right column is a
+  quarter narrower (148 px, was 196), the top strip a quarter shorter
+  (44, was 58) and the bottom strip half as tall (64, was 128). The
+  stock (shells, the bay, squad and material, armor and fuel) moved
+  from the bottom strip to the top of the right column, under the
+  autopilot; the roster moved below the lamps, in 20-character lines,
+  and the pillbox, depot, tank and works lamps take only the rows the
+  match fills. The minimap is at the foot of the right column, as wide
+  as it. The bottom strip is the air table and the newswire.
+  The guide's screenshots of the columns and the bottom strip are of
+  the old layout.
+
+- Changed: a launch from the shore (**E**) takes the squad's material
+  up to five and launches with none (Paul, 17 October: a launch for
+  every tank). A bot with a bank in sight boards a moored boat only
+  within 6 tiles (was 30) and launches from the bank otherwise. Six
+  quad seeds: walking to a moored boat 8.5% of bot time to 4.6%, kills
+  349 to 344, revives 73 to 69, boats sunk 102 to 111, time dead 12.7%
+  to 12.9%.
+  - Sim: a tank on its way to a moored boat slows to turn inside the
+    bank's waypoint, as a boat already did (an autopilot leader went
+    round the bank, 0.4 tiles off, for 90 s). Doing it for every tank
+    ashore changed how bots fight: rookies won 4 of 10.
+
+- Changed: a boat a tank lands from stays moored on the water beside
+  the beach, for anyone to board (TNK-17, the prior art's way; it was
+  spent). Over the same six seeds, after the change below: finding
+  material 12.4% of bot time to 0%, boats boarded 569 to 864, kills
+  263 to 349, revives 45 to 73; time dead 9.1% to 12.7%, boats sunk
+  71 to 102, walking to a moored boat 8.5%.
+  - Sim: a tank driving onto a moored boat that is blocked plans
+    again by land to the bank beside it (it planned by land to the
+    water, found nothing and stopped a tile off), and pivots to face
+    the boat rather than going round it at a crawl.
+  - Sim: two tanks drawing a pillbox's last shell in one tick took
+    it twice (an overflow, found by the default match's test).
+
+- Changed: a bot on an island hop with a boat's material drives to the
+  bank and launches (**E**) instead of sending its squad to build a
+  boat there; the squad still builds if the bank is refused or not
+  reached in 20 s. Over six quad seeds (`quad_census`, which now also
+  counts boats and boats sunk) building boats fell from 13.8% of bot
+  time to 3.7%, but finding material rose from 7.2% to 12.4%: sea
+  errands 37.3% to 34.5%, time dead 11.0% to 9.1%, boats sunk 81 to
+  71, kills 289 to 263, revives 64 to 45.
+
+- Added: launching from the shore. `Command::Embark` (**E**): a tank
+  on the beach, squad aboard with five material, puts a boat on the
+  water beside it and is aboard at once. Bots on an island hop use it
+  at the water's edge.
+
+- Changed: sight. A tank sees 10 tiles (was 7: three short of its
+  direct gun), a recon 20 (was 12), an interceptor or strike 8 (was 4).
+
+- Changed: the HUD. The side columns are narrower (the orders column
+  52 px, the right 196 px) and the field wider. The orders column is
+  one column of icons, no words, each key in a round badge on its tile
+  that goes red while that mode is armed. A bearing ring round your
+  tank: a thin arc toward every tank in sight, red hostile, green ally,
+  longer and brighter the nearer it is.
+
+- Changed: the window's bezel is brushed metal. The four gray panels
+  are metal plates with rounded, outlined corners, a chrome gradient,
+  horizontal brush streaks, a lit top rim and a shaded bottom; the
+  autopilot button is a metal capsule, pushed in (the gradient turned
+  over) while held or on, green-cast when on. The textures are drawn
+  at startup (`client/src/metal.rs`), no image files, and every frame
+  wears one nine-sliced, so the corners and outline keep their size
+  whatever the frame's. Words on the metal are etched dark, the order
+  keys oxide red; the black displays are rounder.
+
+- Added: down and revived. A destroyed tank is down for twenty
+  seconds (`DOWNED_TICKS`) before it is dead; an ally's squad sent to
+  it (`PillboyTask::Repair { target: tank }`; in the window a click on
+  the fallen tank in any builder mode) works four seconds for two
+  material and brings it back where it fell at half armour
+  (`Event::Revived`). Allies see their side's downed tanks. Bots
+  revive the ally they are best placed for and ping for help when
+  down; the autopilot does both. A side with a tank down and one
+  standing is still in the match. Respawn opens when the time down
+  ends (`RESPAWN_TICKS` is now `DOWNED_TICKS`). Wire version 16.
+
+- Changed: the window's default match has respawns without limit (it
+  ends on its fifteen minutes); three each ran the quad out of tanks.
+
+- Added: fleet tactics (`treadcore-brain/src/tactics.rs`), weights
+  with reasons for a team's Commanders and the autopilot. Targets by
+  score: near, wounded, one shot from dead, afloat, called by a ping,
+  a teammate on it (to two; past that, overkill), in range, a threat
+  to a teammate or the base, the held target kept. Focus calls in team
+  chat. A rally reckons Lanchester's square-law odds at the fight:
+  masses out of range for teammates coming when behind, presses when
+  ahead, and stands on the firing point with fewest other guns on it.
+  Three teammates nearer a ping are enough; a crew on a job answers
+  within 40 tiles. The status line and the logs say the target and
+  why. `fleet::commander_as`, `Commander::set_tactics`; the ignored
+  test `tactics_pay` plays a team with them against two without.
+
+- Changed: `make quad` is three windows, one a team, each its team's
+  commander on the autopilot, bots to fifteen seats (`CLIENTS`,
+  `TEAMS`, `PLAYERS`, `AUTOPILOT=0`, `RESPAWNS`); it now loads the
+  musl stack preload as `make run` does. On `--autopilot` the pilot
+  is the side's fleet commander and the person's team is dealt as a
+  bots' team. The host's log has every seat's line every 30 s; each
+  window's log its commander's.
+
+- Fixed: a Commander whose drive was refused as over the water (home
+  to resupply, a guard's post, a leader across the sea) drove at it
+  again every second for the rest of the match; now it goes by boat
+  (`Hop::send`), and resupply tries the nearest depot not refused. A
+  rally to a fight over the water is dropped.
+
+- Added: teams play as fleets. In the window's dealt teams (the
+  default three) a person's team gets a castle builder, a guard and
+  wingmen who stay with the person; a bots' team a leader, guard,
+  rangers and wingmen (`fleet::team_brain`). `--plain-bots` for the
+  old RuleBots.
+
+- Added: the chain. `Command::Tow { target }`, `Event::Chained`; **C**
+  in the window. A tank hitches a chain to a pillbox or depot of its
+  side within 2.5 tiles; it moves only with two tanks of the side on
+  it (Paul: "this action requires an ally"), dragged at a tenth of
+  their speed over land, a depot's tile with it; one tank alone is held
+  at the chain's length. A pillbox on a chain is silent.
+
+- Added: hauls. `Job::Haul { target, to }`: once the castle stands, a
+  fleet commander gives two crews the same job on an ally's outlying
+  pillbox within 40 tiles; they chain it, drag it to a turret slot
+  (the lower seat left of the line, the other right) and let go. Chain
+  help stands aside for a crew on a haul of its own.
+
+- Added: the autopilot respawns its tank as bots do. A bot or the
+  autopilot back in a new tank drops the old one's errands (resupply,
+  rally, chain help, crew job, island hop).
+
+- Added: pings on the minimap, as rings spreading from the point in
+  the pinger's colour for four seconds.
+
+- Added: fleet commanders (treadcore-brain `crew`). One Commander a
+  side, a bots' team's leader or a person's team's builder, keeps the
+  castle plan and organises it: `Command::Request { to, job }` with
+  `Job::Muster`, `Ready`, `Build`, `Fetch` (lift your pillbox into a
+  turret slot) and `Release`, `Event::Requested` to the side. Crews
+  (rangers, wingmen while their leader is at the fort) take a job,
+  fell for it, build it and report ready; a late job goes out again,
+  and a tile that fails twice leaves the plan. The plan counts a
+  crew's builds on its tiles.
+
+- Added: chain help, first of a bot's priorities after a dodge. A tank
+  of the side that chains on alone is answered by the nearest free bot
+  of the side, which says so, hitches on and hauls beside it to where
+  it drives, and lets go with it.
+
+- Added: bot talk. A fleet bot that calls an enemy says so in team
+  chat with a plan for the allies in reach (alone, focus fire, or a
+  pincer); each that answers says its flank and distance and comes in
+  from it, left, centre or right, sixty degrees apart.
+
+- Added: pings. `Command::Ping`, `Event::Pinged` (to the pinger's side;
+  one a second). **Q** or the middle button pings the cursor; a ring
+  in the pinger's colour marks it. Fleet bots ping hostile tanks they
+  see, and answer a teammate's ping within 90 tiles by converging on it
+  and fighting what is there (not the builder or the guard).
+
+- Added: dodging. A bot (not a rookie) or the autopilot drives out from
+  under a hostile indirect shell that will land on it, and jinks across
+  its heading when hit.
+
+- Fixed: a Commander that started at sea took the open water as its
+  base for the match; it now waits for its side's first depot, and
+  builds no castle until then.
+
+- Added: island hopping (treadcore-brain `hop`). A RuleBot or the
+  autopilot idle for 20 seconds, with nothing hostile in sight and
+  something untaken on the map, goes for the nearest depot or neutral
+  or dead pillbox; over water, it boards a moored boat within 30 tiles
+  or has its squad fell forest and build one at the bank facing the
+  target, then sails for it. Landing clears what the bot had found
+  unreachable. The observation carries `launch`, the water beside the
+  bank near the tank. The first naval match had tanks sit on their
+  first island for the rest of the match.
+
+- Changed: the window's default match is the naval one: `maps/naval.map`
+  built in, three teams (`--teams 3`; the map's starts are now three
+  sectors, one a team), three respawns each. `--map island`,
+  `--teams 0` and `--respawns 0` give the old default; `make run` takes
+  `TEAMS`, `MAP=island` and `RESPAWNS`. The server's defaults are
+  unchanged.
+
+- Added: a big AUTOPILOT button at the head of the right column, green
+  while the bot drives; a click is **O**.
+
+- Added: respawns. `--respawns N` (or `unlimited`) on the window or
+  the server lets a destroyed tank come back N times, five seconds
+  after, at its start with full stocks (on a landing craft at a sea
+  start, SPEC TNK-08); **V** in play, and bots come back on their own.
+  A side with a respawn left is not out. Off by default: elimination
+  as before. New `Command::Respawn`, `Event::Respawned`; wire
+  version 15.
+
+- Added: boats, after the prior art (SPEC TNK-08, TNK-11 to TNK-14,
+  TNK-17). A start on water puts its tank on a landing craft; afloat
+  it crosses water fast, cannot pass a bridge, and lands by driving
+  onto a beach. One hit sinks a boat and the tank with it, the kill to
+  the shooter. A squad builds a boat from five material on water
+  beside its bank (road mode with Shift); any tank boards a moored boat
+  by driving onto it. New map `maps/naval.map` (scripts/navalmap.py),
+  every start at sea. Wire version 15.
+
+- Added: bots run for the beach. A RuleBot (and a Commander, on any
+  goal) afloat does nothing but make for the nearest beach that is
+  away from every hostile tank and pillbox it knows of.
+
+- Added: bots watch their own progress. Every 30 seconds a RuleBot
+  reads its form (score gained, depots gained or lost, armour lost,
+  contact or none) and plays to it: hurt for nothing, it waits longer,
+  stands further off and goes home for repairs sooner; stalled, or
+  gaining, it presses. A `--local` match logs a progress line a seat
+  every 30 seconds with what each bot says of its form.
+
+- Added: tank styles and a livelier battlefield, after the sprite kit.
+  Three chassis, bulwark, strider and rattler: `--style NAME`, or **T**
+  in play, picks your side's; other sides take the other two. Turrets
+  turn apart from the hull toward what they shoot at, with a flash
+  and a kick; treads roll in four frames; tanks cast shadows and leave
+  track marks; shells, mines and wrecks leave scorch. Tank labels stay
+  upright. Cosmetic only: nothing new on the wire.
+
+- Added: the autopilot. **O** (or `--autopilot`) puts your tank on
+  auto, the Commander's ladder, without the coordination screen; **O**
+  again or a click to drive takes the wheel back.
+
 - Added: the ladder's **expand** rung (sixth on the coordination
   screen): take depots not yours, their guard pillboxes first, then the
   far pillboxes. A side on auto used to hold its first three depots all

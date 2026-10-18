@@ -32,10 +32,12 @@
 #                    traces and replays to LISTEN_DIR (build/matches), a
 #                    status page on http://this-machine:PORT/; GAME="a b"
 #                    serves both lobbies at once
-#   make quad        four windows on this machine, networked: a LAN lobby
-#                    over loopback, a host elected among them, the windows
-#                    tiled two by two (CLIENTS=n, PLAYERS=n for bots too,
-#                    MATCH_SECONDS=n); logs in build/logs/quad-*
+#   make quad        three windows on this machine, networked, one a team:
+#                    each its team's commander on the autopilot, bots to
+#                    fifteen seats; a LAN lobby over loopback, a host
+#                    elected among them, the windows tiled two by two
+#                    (CLIENTS=n, PLAYERS=n, TEAMS=n, AUTOPILOT=0,
+#                    RESPAWNS=n, MATCH_SECONDS=n); logs in build/logs/quad-*
 #   make lobby-test  four headless seats on this machine negotiate a host
 #   make rematch-test  the window plays a networked match, Enter, and a second
 #                    (LAG=200 for lag; INTRODUCER=1 to meet through an
@@ -48,7 +50,9 @@
 #                    MAP=maps/x.map make debug|run|host plays on it
 #                    (INDUSTRY=1: with pads and neutral structures)
 #   make worldmaps   draw maps/world/atlantic.map and europe.map from
-#                    scripts/worldmap.py's coastlines (roadmap step 10g)
+#                    scripts/worldmap.py's coastlines (roadmap step 10g),
+#                    and maps/naval.map, every start at sea, from
+#                    scripts/navalmap.py
 #   make convert FROM=file.map  convert a prior-art map into maps/prior-art/
 #   make replay      play back the newest build/logs/replay-*.json (or
 #                    REPLAY=file) and check every world hash it recorded;
@@ -151,7 +155,10 @@ LOBBIES  ?= 1
 # The introducer's port (make introduce), and the server's (make listen).
 PORT     ?= 47296
 # Deal the seats into N teams (0: everyone alone, allying in play).
-TEAMS    ?= 0
+# Empty: each target's own default, three teams for quad and run, none
+# for lan, listen and debug. A 0 here made quad and run free-for-alls of
+# plain RuleBots: the scripts' ${TEAMS:-3} keeps a 0.
+TEAMS    ?=
 # What a tank starts with: open, tournament or strict (SPEC section 11).
 GAMETYPE ?= open
 # A map file to play on instead of the generated one (documentation/MAPS.md).
@@ -233,6 +240,7 @@ worldmaps:
 	@mkdir -p maps/world
 	@python3 -I scripts/worldmap.py atlantic maps/world/atlantic.map
 	@python3 -I scripts/worldmap.py europe maps/world/europe.map
+	@python3 -I scripts/navalmap.py maps/naval.map
 
 test:
 	@scripts/build.sh test

@@ -53,6 +53,8 @@ pub const ROAD_TO: f32 = 7.0;
 /// near tower, 6.2 from the rear pillbox.
 pub const TURRET_PAST: f32 = 12.0 * std::f32::consts::PI / 180.0;
 pub const TURRET_WALL: f32 = 14.0 * std::f32::consts::PI / 180.0;
+/// The yard's ring road, between the depot and the towers.
+pub const YARD_R: f32 = 3.0;
 /// A tile refused because a tank stood on it is tried again after this.
 const RETRY: Tick = 5 * TICK_HZ as Tick;
 
@@ -104,6 +106,14 @@ pub struct Plan {
     felling: Option<V2>,
     /// Items before this are the castle; after, the turrets' (step 11h).
     castle_len: usize,
+    /// Tiles a fleet commander has given to a crew: its own squad leaves
+    /// them be (`next`).
+    pub skip: Vec<(i32, i32)>,
+    /// Where the tank sits while the squad builds: behind the point,
+    /// moved onto land by `fit_post` (an island's depot at the shore had
+    /// it on the water, and the leader hopped at it all match).
+    pub post: V2,
+    post_fitted: bool,
 }
 
 impl Plan {
@@ -152,7 +162,7 @@ impl Plan {
             for dx in -ri..=ri {
                 let p = Map::tile_centre(c + V2::new(dx as f32, dy as f32));
                 let d = p.dist(c);
-                if d >= WALL_R - 0.5 && d < WALL_R + 0.5 && off(p) <= WALL_ARC {
+                if (WALL_R - 0.5..WALL_R + 0.5).contains(&d) && off(p) <= WALL_ARC {
                     if off(p) > GATE_HALF {
                         wall.push(p);
                     } else {
@@ -171,7 +181,7 @@ impl Plan {
             k += 1.0;
         }
         let castle_len = items.len();
-        Plan { centre: c, facing, items, gate_tiles, felled: Vec::new(), felling: None, castle_len }
+        Plan { centre: c, facing, items, gate_tiles, felled: Vec::new(), felling: None, castle_len, skip: Vec::new(), post: c - facing.scale(1.5), post_fitted: false }
     }
 
     /// The turrets' slots and their walls, once.
@@ -191,6 +201,72 @@ impl Plan {
             if !self.items.iter().any(|i| i.at.tile() == at.tile()) {
                 self.items.push(Item { what: BuildKind::Wall, at, state: State::Pending, lifted: false });
             }
+        }
+        // The yard (Paul, 17 October: "a base, with roads in the centre,
+        // walls on the outside"): the ring closed round the back, on from
+        // the bastions, and a ring road inside it round the depot.
+        let c = self.centre;
+        let off = |p: V2| {
+            let mut d = (p - c).heading() - h;
+            while d > std::f32::consts::PI {
+                d -= std::f32::consts::TAU;
+            }
+            while d < -std::f32::consts::PI {
+                d += std::f32::consts::TAU;
+            }
+            d.abs()
+        };
+        let ring = |r: f32| {
+            let ri = r.ceil() as i32 + 1;
+            let mut out: Vec<V2> = Vec::new();
+            for dy in -ri..=ri {
+                for dx in -ri..=ri {
+                    let p = Map::tile_centre(c + V2::new(dx as f32, dy as f32));
+                    if (r - 0.5..r + 0.5).contains(&p.dist(c)) {
+                        out.push(p);
+                    }
+                }
+            }
+            out.sort_by(|a, b| off(*a).partial_cmp(&off(*b)).unwrap().then(a.x.partial_cmp(&b.x).unwrap()).then(a.y.partial_cmp(&b.y).unwrap()));
+            out
+        };
+        for p in ring(WALL_R).into_iter().filter(|p| off(*p) > WALL_ARC) {
+            if !self.items.iter().any(|i| i.at.tile() == p.tile()) {
+                self.items.push(Item { what: BuildKind::Wall, at: p, state: State::Pending, lifted: false });
+            }
+        }
+        for p in ring(YARD_R) {
+            if !self.items.iter().any(|i| i.at.tile() == p.tile()) {
+                self.items.push(Item { what: BuildKind::Road, at: p, state: State::Pending, lifted: false });
+            }
+        }
+    }
+
+    /// Walls and roads of the turrets' part still to build: work for the
+    /// squad while there is no pillbox to fetch.
+    pub fn yard_left(&self) -> bool {
+        self.items.len() > self.castle_len && self.items[self.castle_len..].iter().any(|i| !i.lifted && !matches!(i.state, State::Done | State::Skipped))
+    }
+
+    /// The post on land: the nearest passable ground, not water, within
+    /// 3 tiles of the centre, to the post as drawn. Once, with the map.
+    pub fn fit_post(&mut self, map: &Map) {
+        if self.post_fitted {
+            return;
+        }
+        self.post_fitted = true;
+        let ok = |p: V2| map.in_bounds(p) && map.at(p).passable() && !matches!(map.at(p), Terrain::Water | Terrain::Bridge);
+        if ok(self.post) {
+            return;
+        }
+        let want = self.post;
+        let c = self.centre;
+        if let Some(p) = (-3..=3)
+            .flat_map(|dy| (-3..=3).map(move |dx| Map::tile_centre(c + V2::new(dx as f32, dy as f32))))
+            .filter(|p| p.dist(c) <= 3.0 && ok(*p))
+            .min_by(|a, b| a.dist(want).partial_cmp(&b.dist(want)).unwrap())
+        {
+            self.post = p;
         }
     }
 
@@ -230,6 +306,29 @@ impl Plan {
         }
     }
 
+    /// The first item a crew could take: pending, not a turret, not in
+    /// `taken` (given out already, or the commander's own squad's).
+    pub fn free_item(&self, taken: &[(i32, i32)]) -> Option<(BuildKind, V2)> {
+        self.items.iter().find(|i| !i.lifted && matches!(i.state, State::Pending | State::Fell) && !taken.contains(&i.at.tile())).map(|i| (i.what, i.at))
+    }
+
+    /// Turret slots waiting for a pillbox, not in `taken`.
+    pub fn free_slots(&self, taken: &[(i32, i32)]) -> Vec<V2> {
+        self.items.iter().filter(|i| i.lifted && matches!(i.state, State::Pending) && !taken.contains(&i.at.tile())).map(|i| i.at).collect()
+    }
+
+    /// The commander's own squad is on this tile: crews keep off it.
+    pub fn own_order(&self) -> Option<(i32, i32)> {
+        self.items.iter().find(|i| matches!(i.state, State::Ordered(_))).map(|i| i.at.tile())
+    }
+
+    /// A crew failed here twice: the plan does without it.
+    pub fn give_up(&mut self, at: V2) {
+        if let Some(i) = self.item_at(at) {
+            i.state = State::Skipped;
+        }
+    }
+
     /// The gate's middle: where the road crosses the wall.
     pub fn gate(&self) -> V2 {
         self.centre + self.facing.scale(WALL_R)
@@ -248,12 +347,14 @@ impl Plan {
         let me = obs.player;
         for e in &obs.events {
             match e {
-                Event::Built { owner, at, .. } if *owner == me => {
+                // Built by me, or by a crew of the side on a tile of the
+                // plan (a fleet commander's request).
+                Event::Built { owner, at, .. } if *owner == me || obs.allied(*owner) => {
                     if let Some(i) = self.item_at(*at) {
                         i.state = State::Done;
                     }
                 }
-                Event::PillboxBuilt { by, at, .. } if *by == me => {
+                Event::PillboxBuilt { by, at, .. } if *by == me || obs.allied(*by) => {
                     if let Some(i) = self.item_at(*at) {
                         i.state = State::Done;
                     }
@@ -332,7 +433,7 @@ impl Plan {
             }
         }
         self.felling = None;
-        let next = self.items.iter().position(|i| !i.lifted && matches!(i.state, State::Pending | State::Fell));
+        let next = self.items.iter().position(|i| !i.lifted && matches!(i.state, State::Pending | State::Fell) && !self.skip.contains(&i.at.tile()));
         let Some(n) = next else {
             return if self.items.iter().any(|i| !i.lifted && matches!(i.state, State::Ordered(_) | State::Later(_))) { Want::Wait } else { Want::Finished };
         };
@@ -425,6 +526,13 @@ mod tests {
             assert!(boxes.iter().filter(|b| b.dist(*t) <= PILLBOX_RANGE).count() >= 2, "turret {:?} covered by one", t);
             assert!(walls.iter().any(|w| w.dist(*t) < 1.6), "turret {:?} not at the wall's end", t);
         }
-        assert_eq!(plan.items.iter().filter(|i| i.what == BuildKind::Wall).count(), walls.len() + 2);
+        // The yard: the ring closed but for the gate, a road round the
+        // depot inside it.
+        let ring: Vec<V2> = plan.items.iter().filter(|i| i.what == BuildKind::Wall).map(|i| i.at).collect();
+        assert!(ring.len() >= walls.len() + 12, "{} wall tiles round, {} in front", ring.len(), walls.len());
+        assert!(ring.iter().all(|w| w.dist(gate) >= 0.9), "the gate is walled");
+        assert!(ring.iter().any(|w| w.x < c.x - 4.0), "no wall behind the point");
+        let roads = plan.items.iter().filter(|i| i.what == BuildKind::Road && i.at.dist(c) < 4.0).count();
+        assert!(roads >= 10, "{} yard road tiles", roads);
     }
 }

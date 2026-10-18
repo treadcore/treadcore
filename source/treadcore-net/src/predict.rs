@@ -33,13 +33,16 @@ use treadcore_sim::{Command, Event, Map, Observation, PlayerId, Scenario, ShellK
 const HISTORY: usize = 64;
 const MAX_AHEAD: u32 = 40;
 
+/// What `Tank::tick_state` returns: the part of a tank a check compares.
+type TickState = (u32, u32, u32, u32, Option<(u32, u32)>, usize);
+
 pub struct Predictor {
     pub world: World,
     pub me: PlayerId,
     /// Orders sent and not yet seen applied in a snapshot: (seq, cmd).
     in_flight: Vec<(u32, Command)>,
     /// What we predicted, per tick, for the check.
-    history: VecDeque<(Tick, (u32, u32, u32, u32, Option<(u32, u32)>, usize), V2)>,
+    history: VecDeque<(Tick, TickState, V2)>,
     /// Ticks predicted past the last snapshot.
     pub ahead: u32,
     pub checks: u64,

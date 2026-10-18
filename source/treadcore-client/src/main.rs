@@ -18,12 +18,18 @@
 //! snapshots and corrected by each (treadcore-net's Predictor). See
 //! treadcore-net for the protocol.
 
+// Bevy systems take their resources and queries as arguments, and the
+// queries are long types; both lints count what Bevy asks for.
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
 mod hud;
+mod battlefield;
 mod chat;
 mod commander;
 mod goal;
 mod input;
 mod keys;
+mod metal;
 mod proposals;
 mod render;
 mod session;
@@ -33,6 +39,10 @@ mod voxel;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowPosition, WindowResolution};
 use treadcore_sim::TICK_HZ;
+
+/// The default match's map (`maps/naval.map`), built in so an installed
+/// window has it.
+pub const NAVAL_MAP: &str = include_str!("../../../maps/naval.map");
 
 /// Pixels per tile at zoom 1.
 pub const TILE: f32 = 8.0;
@@ -67,6 +77,9 @@ pub struct Args {
     pub mute: bool,
     /// Give a map with no structures an economy (`--industry`).
     pub industry: bool,
+    /// Times a destroyed tank may come back, when this window hosts
+    /// (`--respawns N|unlimited`; V in play).
+    pub respawns: u8,
     /// Where the key bindings are kept (`--keys FILE`; else the config
     /// directory's treadcore/keys).
     pub keys: Option<String>,
@@ -81,6 +94,14 @@ pub struct Args {
     /// bot alone (`--fleets`; `treadcore-brain::fleet`): the player
     /// leads team 0, assisted by a builder, a guard and two wingmen.
     pub fleets: bool,
+    /// My side's chassis (`--style bulwark|strider|rattler`; T in play):
+    /// how this window draws its own side's tanks (battlefield.rs).
+    pub style: voxel::TankStyle,
+    /// Start with the bot driving my tank (`--autopilot`; O in play).
+    pub autopilot: bool,
+    /// Bot teammates and rivals as plain RuleBots, not fleet roles
+    /// (`--plain-bots`).
+    pub plain_bots: bool,
 }
 
 fn parse_args() -> Args {
@@ -94,8 +115,13 @@ fn parse_args() -> Args {
         seed: 0x7EAD_C0DE,
         swarm: 45 * TICK_HZ,
         players: treadcore_sim::MAX_PLAYERS,
-        map: None,
-        teams: 0,
+        // The default match is the naval one: three teams, every tank
+        // at sea on a landing craft, respawns without limit (the match
+        // ends on its fifteen minutes; Paul's quad ran out of tanks at
+        // three each). `--map island` is the generated island, `--teams
+        // 0` everyone alone, `--respawns 0` the prior art's elimination.
+        map: Some(NAVAL_MAP.into()),
+        teams: 3,
         introducer: None,
         beacon: true,
         identity: None,
@@ -103,10 +129,14 @@ fn parse_args() -> Args {
         window: None,
         mute: false,
         industry: false,
+        respawns: treadcore_sim::RESPAWNS_UNLIMITED,
         rookies: 0,
         wingmen: 0,
         fleets: false,
         keys: None,
+        style: voxel::TankStyle::default(),
+        autopilot: false,
+        plain_bots: false,
     };
     let mut it = std::env::args().skip(1);
     while let Some(f) = it.next() {
@@ -131,9 +161,25 @@ fn parse_args() -> Args {
             "--seconds" => a.seconds = val().parse().ok(),
             "--mute" => a.mute = true,
             "--industry" => a.industry = true,
+            "--respawns" => {
+                let w = val();
+                match treadcore_sim::parse_respawns(&w) {
+                    Some(n) => a.respawns = n,
+                    None => eprintln!("{} (going on without respawns)", treadcore_sim::chair::usage("treadcore", &format!("--respawns {}: a number or unlimited", w))),
+                }
+            }
             "--rookies" => a.rookies = val().parse().unwrap_or(0),
             "--wingmen" => a.wingmen = val().parse().unwrap_or(0),
             "--fleets" => a.fleets = true,
+            "--autopilot" => a.autopilot = true,
+            "--plain-bots" => a.plain_bots = true,
+            "--style" => {
+                let w = val();
+                match voxel::TankStyle::from_word(&w) {
+                    Some(s) => a.style = s,
+                    None => eprintln!("{} (going on with {})", treadcore_sim::chair::usage("treadcore", &format!("no tank style {}: bulwark, strider or rattler", w)), a.style.word()),
+                }
+            }
             "--keys" => a.keys = Some(val()),
             "--write-sounds" => {
                 // Every sound the window makes, as WAV files, and out:
@@ -155,8 +201,12 @@ fn parse_args() -> Args {
                 }
             }
             "--map" => {
-
                 let path = val();
+                // The generated island, the old default, by name.
+                if path == "island" || path == "generated" {
+                    a.map = None;
+                    continue;
+                }
                 let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
                     eprintln!("{}", treadcore_sim::chair::usage("treadcore", &format!("map {}: {}", path, e)));
                     std::process::exit(2)
@@ -169,7 +219,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--fleets] [--keys FILE] [--map FILE] [--industry] [--mute] [--write-sounds DIR]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--fleets] [--style bulwark|strider|rattler] [--autopilot] [--plain-bots] [--keys FILE] [--map FILE|island] [--industry] [--respawns N|unlimited] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);
@@ -218,7 +268,7 @@ fn main() {
         .insert_resource(Time::<Fixed>::from_hz(TICK_HZ as f64))
         .insert_resource(keys::Keys::load(args.keys.as_ref().map(std::path::PathBuf::from).or_else(keys::Keys::default_path)))
         .insert_resource(args)
-        .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }, commander::CommanderPlugin, goal::GoalPlugin))
+        .add_plugins((session::SessionPlugin, render::RenderPlugin, hud::HudPlugin, input::InputPlugin, sound::SoundPlugin { muted }, commander::CommanderPlugin, goal::GoalPlugin, battlefield::BattlefieldPlugin))
         .run();
 }
 

@@ -69,6 +69,8 @@ struct Args {
     advantage: bool,
     /// Give a map with no structures an economy (`--industry`, step 10f).
     industry: bool,
+    /// Times a destroyed tank may come back (`--respawns N|unlimited`).
+    respawns: u8,
     /// A map file's text, read and checked at start (`--map`).
     map: Option<String>,
     /// Write the map as played to this file when the match ends.
@@ -110,6 +112,7 @@ fn parse() -> Args {
         game_type: GameType::Open,
         advantage: false,
         industry: false,
+        respawns: 0,
         map: None,
         save_map: None,
         write_map: None,
@@ -145,6 +148,7 @@ fn parse() -> Args {
             "--teams" => a.teams = parse_num(&val()),
             "--advantage" => a.advantage = true,
             "--industry" => a.industry = true,
+            "--respawns" => a.respawns = treadcore_sim::parse_respawns(&val()).unwrap_or_else(|| usage("--respawns wants a number or unlimited")),
             "--game-type" => {
                 let v = val();
                 a.game_type = GameType::parse(&v).unwrap_or_else(|| usage(&format!("game type '{}': open, tournament or strict", v)));
@@ -218,6 +222,9 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --advantage        bot seats are told where every tank is, regardless
                      of range (the prior art's brain advantage; a handicap for a
                      human against bots)
+  --respawns N       a destroyed tank may come back N times (or
+                     `unlimited`), five seconds after, at its start; a
+                     side with one left is not out (0, the default: no)
   --industry         give a map with no structures of its own an economy:
                      pad zones with neutral power plants, refineries and
                      data centres (roadmap step 10f)
@@ -644,6 +651,15 @@ fn narrate(world: &World, events: &[Event]) {
             Event::Chat { player, text, to } => log::info!("[{:>6} {:>6.1}s] p{} ({:?}): {}", t, s, player, to, text),
             Event::MatchOver { winner, team } => log::warn!("[{:>6} {:>6.1}s] MATCH OVER winner {:?} team {:?}", t, s, winner, team),
             Event::SeatTaken { player, was, name } => log::warn!("[{:>6} {:>6.1}s] p{} SEAT TAKEN: {} has {}'s seat", t, s, player, name, was),
+            Event::Chained { owner, target, on, haulers, .. } => log::info!("[{:>6} {:>6.1}s] p{} {} #{} ({} on it)", t, s, owner, if *on { "CHAINS" } else { "UNCHAINS" }, target, haulers),
+            Event::Requested { from, to, job } => log::info!("[{:>6} {:>6.1}s] p{} REQUESTS {:?} of {}", t, s, from, job, to.map(|p| format!("p{}", p)).unwrap_or_else(|| "the side".into())),
+            Event::Pinged { player, at } => log::info!("[{:>6} {:>6.1}s] p{} PINGS ({:.0},{:.0})", t, s, player, at.x, at.y),
+            Event::Boarded { owner, boat, at, .. } => log::warn!("[{:>6} {:>6.1}s] p{} BOARDS boat #{} at ({:.0},{:.0})", t, s, owner, boat, at.x, at.y),
+            Event::Landed { owner, at, .. } => log::warn!("[{:>6} {:>6.1}s] p{} LANDS at ({:.0},{:.0})", t, s, owner, at.x, at.y),
+            Event::DronesUpgraded { mark } => log::warn!("[{:>6} {:>6.1}s] DRONES now Mk {}: {}", t, s, mark, [DroneKind::Recon, DroneKind::Interceptor, DroneKind::Strike, DroneKind::Longshot].iter().map(|k| drone_spec(*k, *mark).name).collect::<Vec<_>>().join(", ")),
+            Event::Revived { owner, by, at, .. } => log::warn!("[{:>6} {:>6.1}s] p{} REVIVED by p{}'s squad at ({:.0},{:.0})", t, s, owner, by, at.x, at.y),
+            Event::Respawned { owner, at, left, .. } => log::warn!("[{:>6} {:>6.1}s] p{} RESPAWNS at ({:.0},{:.0}), {} left", t, s, owner, at.x, at.y, if *left == RESPAWNS_UNLIMITED { "no limit".to_string() } else { left.to_string() }),
+            Event::Sunk { owner, by, at, .. } => log::warn!("[{:>6} {:>6.1}s] p{} SUNK by {:?} at ({:.0},{:.0})", t, s, owner, by, at.x, at.y),
             Event::FriendlyFireSpared { target, by, damage } => log::info!("[{:>6} {:>6.1}s] friendly fire spared #{} from p{} ({:.0})", t, s, target, by, damage),
             Event::Proposed { from, to, terms, .. } => log::info!("[{:>6} {:>6.1}s] p{} proposes {:?} to p{}", t, s, from, terms, to),
             Event::ProposalResolved { from, to, terms, accepted, by, why, .. } => log::warn!("[{:>6} {:>6.1}s] PROPOSAL p{} {:?} p{}: {}{}{}", t, s, from, terms, to, if *accepted { "ACCEPTED" } else { "refused" }, by.map(|b| format!(" by p{}", b)).unwrap_or_default(), why.as_ref().map(|w| format!(" ({})", w)).unwrap_or_default()),
@@ -694,6 +710,23 @@ fn narrate(world: &World, events: &[Event]) {
     }
 }
 
+/// Ticks between progress lines in a local match: every 30 game seconds.
+const PROGRESS_EVERY: Tick = 30 * TICK_HZ as Tick;
+
+/// The match so far, a line a seat: alive or not, afloat, score, armour,
+/// depots held, and what the bot says of itself (a RuleBot's form, read
+/// from its own progress, is what it is adapting to).
+fn progress(world: &World, bots: &[(PlayerId, Box<dyn Brain>)]) {
+    log::info!("---- progress at {:.0}s ----", world.seconds());
+    for (p, b) in bots {
+        let Some(pl) = world.players.iter().find(|x| x.id == *p) else { continue };
+        let Some(t) = world.tank_of(*p) else { continue };
+        let depots = world.depots.iter().filter(|d| d.owner == Some(*p)).count();
+        let state = if !t.alive { "dead " } else if t.boat { "afloat" } else { "ashore" };
+        log::info!("  p{:<2} {:<6} score {:>4} armor {:>3.0} depots {:>2}  {}", p, state, pl.score, t.armor.max(0.0), depots, if t.alive { b.status() } else { String::new() });
+    }
+}
+
 fn summary(world: &World, started: Instant, report: &Report) {
     log::info!("---- match over after {} ticks ({:.0} game seconds, {:.1}s wall) ----", world.tick, world.seconds(), started.elapsed().as_secs_f32());
     let mut ps: Vec<&Player> = world.players.iter().collect();
@@ -739,7 +772,7 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
         Some(text) => MapSource::Text(text.clone()),
         None => MapSource::FromScenarioSeed,
     };
-    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, advantage: args.advantage, swarm_interval: args.swarm, industry: args.industry, ..Scenario::default() };
+    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, advantage: args.advantage, swarm_interval: args.swarm, industry: args.industry, respawns: args.respawns, ..Scenario::default() };
     if args.ticks > 0 {
         s.time_limit = args.ticks;
     }
@@ -772,6 +805,9 @@ fn run_local(args: Args) {
         narrate(&host.world, &events);
         trace.write(host.world.tick, &events);
         report.tally(host.world.tick, &events);
+        if host.world.tick % PROGRESS_EVERY == 0 {
+            progress(&host.world, &bots);
+        }
         if args.realtime {
             next += Duration::from_secs_f32(DT);
             if let Some(d) = next.checked_duration_since(Instant::now()) {
@@ -831,6 +867,7 @@ fn routes_from(result: &LobbyResult, me: PeerId) -> RouteTable {
 /// then bots up to --players. `each` sees the host after every tick and
 /// returns false to give the match up (a --listen server whose seats
 /// never came). Returns the host, shut down, for the caller to save from.
+#[allow(clippy::too_many_arguments)]
 fn host_match(args: &Args, me: PeerId, sock: Socket, result: &LobbyResult, routes: RouteTable, registration: Option<Registration>, trace: &mut Trace, mut each: impl FnMut(&Host) -> bool) -> Host {
     let started = Instant::now();
     let mut peers: Vec<(u64, String)> = result.peers.iter().map(|p| (p.id, p.name.clone())).collect();

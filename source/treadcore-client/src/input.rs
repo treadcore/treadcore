@@ -188,6 +188,7 @@ fn orders(
     tiles: Query<(&Interaction, &OrderTile), Changed<Interaction>>,
     bind: Res<crate::keys::Keys>,
     mut pilot: ResMut<crate::goal::Pilot>,
+    autopilot: Query<&Interaction, (Changed<Interaction>, With<hud::AutopilotButton>)>,
 ) {
     use crate::keys::Action as A;
     // While a chat line or the proposal list is open the keys are
@@ -218,12 +219,64 @@ fn orders(
             std::process::exit(0);
         }
     }
+    // O: the autopilot (--autopilot starts with it on). The Commander's
+    // Auto ladder drives, as Space's coordination screen has it but
+    // with the map clear; O again, or a click to drive, is the wheel.
+    if pressed(bind.key(A::Autopilot)) || autopilot.iter().any(|i| *i == Interaction::Pressed) {
+        let on = pilot.brain.goal == treadcore_brain::Goal::Manual;
+        pilot.brain.set_goal(if on { treadcore_brain::Goal::Auto } else { treadcore_brain::Goal::Manual });
+        if !on {
+            orders.0.push(Command::Stop);
+        }
+        let tick = view.last_tick;
+        let k = crate::keys::label(bind.key(A::Autopilot));
+        view.log.push_back((tick, if on { format!("autopilot on: the bot drives ({} or a click to take the wheel)", k) } else { format!("autopilot off: the wheel is yours ({})", k) }));
+    }
+    // V: back in a new tank, when the match has respawns and the wait
+    // is over (`--respawns`; the HUD counts it down).
+    if pressed(bind.key(A::Respawn)) {
+        match view.obs.as_ref().map(|o| o.respawn_in) {
+            Some(Some(0)) => orders.0.push(Command::Respawn),
+            Some(Some(n)) => {
+                let tick = view.last_tick;
+                view.log.push_back((tick, format!("respawn in {:.0} s", n as f32 * DT)));
+            }
+            _ => {}
+        }
+    }
     let before = orders.0.len();
     let Some(obs) = view.obs.as_ref() else { return };
     let Some(me) = obs.me.as_ref() else { return };
     let Ok(window) = window.single() else { return };
     let Ok((camera, cam_tf)) = cam.single() else { return };
     let at = cursor_tile(window, camera, cam_tf);
+    // Q or the middle button: ping the cursor for my side; allied bots
+    // converge on it, and on an enemy there they attack together.
+    if pressed(bind.key(A::Ping)) || mouse.just_pressed(MouseButton::Middle) {
+        if let Some(p) = at {
+            orders.0.push(Command::Ping { at: p });
+        }
+    }
+    // E: on the shore, a boat on the water beside the tank and the tank
+    // on it (five material from the squad aboard).
+    if pressed(bind.key(A::Embark)) {
+        orders.0.push(Command::Embark);
+    }
+    // C: a chain on the nearest pillbox or depot of my side in reach, or
+    // let go of the one I have. Two tanks of the side on it haul it.
+    if pressed(bind.key(A::Chain)) {
+        if me.towing.is_some() {
+            orders.0.push(Command::Tow { target: None });
+        } else {
+            let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
+            // The nearest of ours, near or not: too far, and the world
+            // says so on the newswire.
+            let near = obs.pillboxes.iter().filter(|p| ours(p.owner)).map(|p| (p.id, p.pos)).chain(obs.depots.iter().filter(|d| ours(d.owner)).map(|d| (d.id, d.pos))).min_by(|a, b| a.1.dist(me.pos).partial_cmp(&b.1.dist(me.pos)).unwrap());
+            if let Some((id, _)) = near {
+                orders.0.push(Command::Tow { target: Some(id) });
+            }
+        }
+    }
     let map = view.map.as_ref();
 
     // Space: the coordination screen up or down (goal.rs).
@@ -246,6 +299,17 @@ fn orders(
         if mouse.just_pressed(MouseButton::Left) {
             if let Some(p) = at {
                 pilot.brain.set_goal(treadcore_brain::Goal::Hold(p));
+            }
+        }
+        // A right click: the tank's own push point there (rotation.rs);
+        // on its own push point again, back to the fleet's.
+        if mouse.just_pressed(MouseButton::Right) {
+            if let Some(p) = at {
+                let r = &mut pilot.brain.rotation;
+                r.own = match r.own {
+                    Some(o) if o.dist(p) < 2.0 => None,
+                    _ => Some(p),
+                };
             }
         }
         if orders.0.len() > before {
@@ -351,14 +415,22 @@ fn orders(
 /// forest there; lay a road, or a bridge on water; raise a wall; in
 /// pillbox mode repair the pillbox there whoever owns it, capture it
 /// if it is dead or nobody's, or build one on open ground; bury a mine.
-/// With Shift a wall is poured in concrete (step 10a). In works mode
+/// With Shift a wall is poured in concrete (step 10a), and a road on
+/// water is a boat instead of a bridge (five material; a tank boards it
+/// by driving onto it). In works mode
 /// (step 10d) a click on a structure mends ours or takes one that is
 /// nobody's or wrecked; anywhere else it builds the selected kind,
 /// which the world refuses off a pad. Shift on a pillbox of mine lifts
 /// it (step 11h); carrying one, a pillbox built is that one set down.
+/// In any mode a click on an ally's tank that is down sends the squad
+/// to revive it (two material, four seconds' work, inside its twenty).
 fn builder_task(obs: &Observation, mode: Mode, p: V2, shift: bool, works: StructureKind) -> PillboyTask {
+    if let Some(w) = obs.tanks.iter().filter(|t| !t.alive && t.owner != obs.player && obs.allied(t.owner)).find(|t| t.pos.dist(p) <= 1.5) {
+        return PillboyTask::Repair { target: w.id };
+    }
     match mode {
         Mode::Farm => PillboyTask::Harvest { at: p },
+        Mode::Road if shift => PillboyTask::Build { what: BuildKind::Boat, at: p },
         Mode::Road => PillboyTask::Build { what: BuildKind::Road, at: p },
         Mode::Wall if shift => PillboyTask::Build { what: BuildKind::Concrete, at: p },
         Mode::Wall => PillboyTask::Build { what: BuildKind::Wall, at: p },

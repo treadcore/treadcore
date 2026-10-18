@@ -109,8 +109,10 @@ walls; shot buildings, craters, rubble and swamp become rubble; river,
 deep sea and boats become water; mined variants become their plain
 terrain (mines are laid in play). Every pillbox and base keeps its
 owner (the prior art's bases are usually neutral, and the file says so). Starts,
-which the prior art puts at sea on a boat, move to the nearest passable tile,
-because treadcore has no boats. The start direction is dropped. The
+which the prior art puts at sea on a boat, move to the nearest passable tile:
+the converter was written before treadcore had boats, and the five maps
+here were converted then. A start on water is legal now (it is a
+landing craft, `maps/naval.map` below). The start direction is dropped. The
 input is read as data only; run the script with `python3 -I`.
 
 The five in `maps/prior-art/` came from the author's own collection of the prior art
@@ -130,6 +132,25 @@ bots' doctrine (firing position 25 tiles short of an objective, a squad
 sent 20 tiles) was written for a 128-tile island; on a prior-art map the
 distances are double and the islands are often several, so expect
 refused moves across water and little capturing until step 6d.
+
+## The naval map
+
+`maps/naval.map` (`scripts/navalmap.py`, drawn by `make worldmaps`; the
+window's default map, built into it) is
+a 160 x 160 sea: a large island in the middle, four smaller ones round
+it and a ring of eight islets, forest on all of them, a neutral depot
+on each and six neutral pillboxes on the big island's beaches. Every
+one of the sixteen starts is at sea, so every tank begins on a landing
+craft (SPEC TNK-08; HOW-TO-PLAY section 5b) and the match opens with a
+race for the beaches. The starts are three sectors of the compass, seat
+i in sector i % 3, so dealt into three teams (the window's default)
+each team starts together: north, south-east and south-west.
+
+    MAP=maps/naval.map make debug
+    MAP=maps/naval.map make run
+
+A `start` line on water is a landing craft on any map; one on a wall
+is refused.
 
 ## Industry
 

@@ -51,6 +51,9 @@ struct Hosted {
 }
 
 /// One lobby the server sits in, as the status page shows it.
+/// A match in progress: number, tick, (name, score, joined) per seat.
+type Live = (u32, Tick, Vec<(String, u32, bool)>);
+
 struct Served {
     game: String,
     port: u16,
@@ -59,7 +62,7 @@ struct Served {
     lost: u32,
     hosted: Vec<Hosted>,
     /// The match in progress: number, tick, (name, score, joined) per seat.
-    live: Option<(u32, Tick, Vec<(String, u32, bool)>)>,
+    live: Option<Live>,
 }
 
 type Shared = Arc<Mutex<Vec<Served>>>;

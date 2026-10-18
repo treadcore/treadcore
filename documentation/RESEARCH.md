@@ -59,7 +59,14 @@ moves. Direct fire is kept for the short range.
 - A net-launching concept for armoured vehicles as a last physical layer.
   https://nextgendefense.com/armored-vehicles-drone-catchers/
 
-In the game: the bay holds 2 recon, 6 interceptors, 3 strikes. The
+In the game: the bay holds 2 recon, 6 interceptors, 3 strikes, and
+each kind comes in three marks after the systems above, the match
+moving up a mark at 4 and 8 minutes (`rules::drone_spec`): the
+interceptor from a kinetic rammer (the five-EOS carrier, the Turkish
+hunter) to radar-cued (Merops) to high-speed autonomous (OSIRIS
+UEB-1); the recon from a quadcopter to the demonstrator's VTOL; the
+strike from an FPV to a fibre-optic FPV a jammer cannot touch, to a
+loitering munition. The
 interceptor is one-shot and kinetic: it rams. Its kill probability
 depends on the telemetry link to the tank, because the tank's radar is
 what gives it a vector; on its own camera it gets it right half the
@@ -77,7 +84,7 @@ time. The bubble is where they hold station.
   hatches that also operates a VTOL drone to feed its own picture.
   https://www.edrmagazine.eu/elbit-systems-demonstrates-an-innovative-armored-fighting-vehicle-operated-by-a-helmet-mounted-display
 
-In the game: the HUD. The tank sees 7 tiles with its own eyes; the
+In the game: the HUD. The tank sees 10 tiles with its own eyes; the
 picture the player plays from is the drones'. Each drone's link
 quality, battery and task are on screen, the link drawn as a line from
 tank to drone going green to red, the recon's vision as a disc, every

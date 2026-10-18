@@ -55,6 +55,15 @@ pub struct View {
     /// Impacts the renderer throws cubes out of: where, what colour,
     /// how many. Drained each frame.
     pub impacts: Vec<(V2, Color, u8)>,
+    /// Scorch marks the battlefield keeps (battlefield.rs): where, and
+    /// how wide in tiles. Drained each frame.
+    pub scorches: Vec<(V2, f32)>,
+    /// Pings my side made (battlefield.rs draws them): where and whose.
+    /// Drained each frame.
+    pub pings: Vec<(V2, PlayerId)>,
+    /// The same pings for the minimap (commander.rs), kept while their
+    /// circles spread: where, whose, since when.
+    pub map_pings: Vec<(V2, PlayerId, Instant)>,
     /// Wall-clock when the observation arrived, for interpolation.
     pub received: Option<Instant>,
     /// The player's own tank as predicted (roadmap step 4), and when it
@@ -134,6 +143,8 @@ pub struct NetStats {
     pub predict: Option<(u32, usize, u64, u64, Option<Tick>)>,
 }
 
+// One of these, in a resource: the size of the largest variant costs nothing.
+#[allow(clippy::large_enum_variant)]
 pub enum Session {
     Lobby { lobby: Lobby, sock: Option<Socket>, me: PeerId },
     Hosting { host: Host, bots: Vec<(PlayerId, Box<dyn Brain>)>, me_player: PlayerId },
@@ -195,7 +206,7 @@ fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
         Some(text) => MapSource::Text(text.clone()),
         None => MapSource::FromScenarioSeed,
     };
-    let mut s = Scenario { seed: args.seed, map, swarm_interval: args.swarm, industry: args.industry, ..Scenario::default() };
+    let mut s = Scenario { seed: args.seed, map, swarm_interval: args.swarm, industry: args.industry, respawns: args.respawns, ..Scenario::default() };
     if let Some(secs) = args.seconds {
         s.time_limit = secs * TICK_HZ as u64;
     }
@@ -218,8 +229,32 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
     let me_player = names.len() as PlayerId;
     names.push((args.name.clone(), false));
     let seats = if args.fleets { treadcore_brain::fleet::SEATS } else { args.players.clamp(names.len(), MAX_PLAYERS) };
+    // Teams dealt by the window (`--teams N`, three by default) play as
+    // fleets do: a person's team gets a builder for the person's castle,
+    // a guard and wingmen; a bots' team a leader, a guard, rangers and
+    // wingmen; all of them call enemies with pings and most answer
+    // them. `--plain-bots` keeps RuleBots. On `--autopilot` a person
+    // leads as a bots' leader does (goal.rs makes the pilot the side's
+    // fleet commander), so the team is dealt as a bots' team: a guard,
+    // rangers to crew, a wingman. `make quad` is three of these, one
+    // commander a team.
+    let teamed = !args.fleets && args.teams > 0 && !args.plain_bots;
+    let people = names.len();
+    let team_of = |s: usize| -> Vec<usize> { (0..seats).filter(|x| x % args.teams.max(1) == s % args.teams.max(1)).collect() };
+    let team_role = |s: usize| {
+        let team = team_of(s);
+        let person_leads = !args.autopilot && team.first().map(|l| *l < people).unwrap_or(false);
+        (treadcore_brain::fleet::team_role(s, &team, person_leads).0, team, person_leads)
+    };
     while names.len() < seats {
-        let n = if args.fleets { treadcore_brain::fleet::name(names.len()) } else { format!("bot{}", names.len()) };
+        let s = names.len();
+        let n = if args.fleets {
+            treadcore_brain::fleet::name(s)
+        } else if teamed {
+            format!("t{}-{}{}", s % args.teams, team_role(s).0.word(), s)
+        } else {
+            format!("bot{}", s)
+        };
         names.push((n, true));
     }
     let first_bot = me_player + 1;
@@ -234,6 +269,9 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
                 // A team led from a person's seat assists the person.
                 let (_, leader) = treadcore_brain::fleet::role(i as usize, true);
                 treadcore_brain::fleet::brain(i as usize, seed, leader < first_bot)
+            } else if teamed {
+                let (_, team, person_leads) = team_role(i as usize);
+                treadcore_brain::fleet::team_brain(i as usize, &team, seed, person_leads, &names[i as usize].0)
             } else if n < args.wingmen {
                 Box::new(treadcore_brain::Commander::wingman(seed, "wingman", me_player))
             } else if n < args.wingmen + args.rookies {
@@ -253,6 +291,27 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
 
     info!("{}", view.status);
     Session::Hosting { host, bots, me_player }
+}
+
+/// The host's log every 30 s, as the server's `--local` match has it: a
+/// line a seat, by team, with what each bot says it is doing (a
+/// person's seat says it in its own window's log, goal.rs).
+fn progress(world: &treadcore_sim::World, bots: &[(PlayerId, Box<dyn Brain>)]) {
+    info!("---- progress at {:.0}s ----", world.seconds());
+    let mut ps: Vec<&Player> = world.players.iter().collect();
+    ps.sort_by_key(|p| (p.team, p.id));
+    for pl in ps {
+        let Some(t) = world.tank_of(pl.id) else { continue };
+        let depots = world.depots.iter().filter(|d| d.owner == Some(pl.id)).count();
+        let boxes = world.pillboxes.iter().filter(|b| b.owner == Some(pl.id) && b.alive()).count();
+        let state = if !t.alive { "dead" } else if t.boat { "afloat" } else { "ashore" };
+        let doing = match bots.iter().find(|(p, _)| *p == pl.id) {
+            Some((_, b)) if t.alive => b.status(),
+            Some(_) => String::new(),
+            None => "(a person)".into(),
+        };
+        info!("  t{} p{:<2} {:<12} {:<6} score {:>4} armor {:>3.0} shells {:>2} depots {:>2} boxes {:>2}  {}", pl.team, pl.id, pl.name, state, pl.score, t.armor.max(0.0), t.shells, depots, boxes, doing);
+    }
 }
 
 fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mut view: ResMut<View>) {
@@ -280,6 +339,9 @@ fn step_host(session: Option<ResMut<SessionRes>>, mut orders: ResMut<Orders>, mu
         }
         let events = host.tick(local).to_vec();
         retire_taken(bots, &events);
+        if host.world.tick % (30 * TICK_HZ as Tick) == 0 {
+            progress(&host.world, bots);
+        }
         let obs = host.world.observe(*me_player);
         view.last_tick = obs.tick;
         push_events(&mut view, &obs.events, *me_player);
@@ -529,9 +591,21 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             Event::ShellImpact { at, kind: ShellKind::Indirect, .. } => {
                 let wall = view.map.as_ref().map(|m| m.at(*at) == Terrain::Wall).unwrap_or(false);
                 view.impacts.push((*at, if wall { tan } else { earth }, 10));
+                view.scorches.push((*at, 0.9));
             }
-            Event::ShellImpact { at, kind: ShellKind::Direct, .. } => view.impacts.push((*at, earth, 4)),
-            Event::MineExploded { at, .. } => view.impacts.push((*at, earth, 12)),
+            Event::ShellImpact { at, kind: ShellKind::Direct, .. } => {
+                view.impacts.push((*at, earth, 4));
+                view.scorches.push((*at, 0.45));
+            }
+            Event::Pinged { player, at } => {
+                view.pings.push((*at, *player));
+                view.map_pings.retain(|(_, _, t)| t.elapsed().as_secs_f32() < crate::commander::MAP_PING_FOR);
+                view.map_pings.push((*at, *player, Instant::now()));
+            }
+            Event::MineExploded { at, .. } => {
+                view.impacts.push((*at, earth, 12));
+                view.scorches.push((*at, 1.0));
+            }
             Event::TerrainChanged { at, to } if Terrain::from_u8(*to) == Terrain::Rubble => {
                 let wall = view.map.as_ref().map(|m| m.at(*at) == Terrain::Wall).unwrap_or(false);
                 if wall {
@@ -551,6 +625,7 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
             Event::TankDestroyed { tank, owner, .. } => {
                 if let Some(t) = view.obs.as_ref().and_then(|o| o.tanks.iter().find(|t| t.id == *tank)) {
                     view.impacts.push((t.pos, crate::player_color(*owner), 12));
+                    view.scorches.push((t.pos, 1.3));
                 }
             }
             Event::TankDamaged { tank, .. } => {
@@ -739,6 +814,35 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
             format!("{}{}: {}", name, tag, text)
         }
         Event::SeatTaken { was, name, .. } => format!("{} takes {}'s seat. gl hf", name, was),
+        Event::Boarded { owner, .. } => format!("{} boarded a boat", who(owner)),
+        Event::Landed { owner, .. } => format!("{} landed", who(owner)),
+        Event::Chained { owner, on: true, haulers, .. } if (*haulers as usize) < TOW_HAULERS => format!("{} chained on: one more tank of the side to haul it", who(owner)),
+        Event::Chained { owner, on: true, .. } => format!("{} chained on: hauling, slow", who(owner)),
+        Event::Chained { owner, on: false, .. } => format!("{} let the chain go", who(owner)),
+        Event::Requested { from, to, job } => {
+            let name = |p: &PlayerId| if *p == me { "you".to_string() } else { view.obs.as_ref().and_then(|o| o.players.iter().find(|x| x.id == *p)).map(|x| x.name.clone()).unwrap_or_else(|| who(p)) };
+            let whom = to.map(|t| name(&t)).unwrap_or_else(|| "crews".into());
+            match job {
+                Job::Muster { at } => format!("{}: fort at ({:.0},{:.0}), {} report", name(from), at.x, at.y, whom),
+                Job::Ready => format!("{}: ready for work", name(from)),
+                Job::Build { what, at } => format!("{} asks {}: build {} at ({:.0},{:.0})", name(from), whom, crate::session::build_word(*what), at.x, at.y),
+                Job::Fetch { to: at, .. } => format!("{} asks {}: bring your pillbox to ({:.0},{:.0})", name(from), whom, at.x, at.y),
+                Job::Haul { to: at, .. } => format!("{} asks {}: chain up and haul it to ({:.0},{:.0})", name(from), whom, at.x, at.y),
+                Job::Release => format!("{} stands {} down", name(from), whom),
+            }
+        }
+        Event::Pinged { player, at } => {
+            let obs = view.obs.as_ref();
+            let near = obs.and_then(|o| o.tanks.iter().filter(|t| t.alive && !o.allied(t.owner)).find(|t| t.pos.dist(*at) <= 4.0));
+            match near {
+                Some(t) => format!("{} pings p{} at ({:.0},{:.0}): on it!", who(player), t.owner, at.x, at.y),
+                None => format!("{} pings ({:.0},{:.0})", who(player), at.x, at.y),
+            }
+        }
+        Event::DronesUpgraded { mark } => format!("drones now Mk {}: {}", mark, [DroneKind::Recon, DroneKind::Interceptor, DroneKind::Strike, DroneKind::Longshot].iter().map(|k| drone_spec(*k, *mark).name).collect::<Vec<_>>().join(", ")),
+        Event::Revived { owner, by, .. } => format!("{} revived by {}'s squad", who(owner), who(by)),
+        Event::Respawned { owner, left, .. } => format!("{} respawned{}", who(owner), if *left == RESPAWNS_UNLIMITED { String::new() } else { format!(" ({} left)", left) }),
+        Event::Sunk { owner, by, .. } => format!("{} SUNK by {}", who(owner), by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into())),
         Event::MatchOver { winner, team } => format!("{}{}", treadcore_sim::lingo::match_over(&winner.map(|w| who(&w)).unwrap_or_else(|| "nobody (a draw)".into()), view.last_tick), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
         Event::FriendlyFireSpared { by, damage, .. } => format!("friendly fire from {} spared ({:.0})", who(by), damage),
         Event::Proposed { from, to, terms, .. } => match view.obs.as_ref() {
@@ -798,6 +902,19 @@ impl Drop for SessionRes {
             Session::Hosting { host, .. } => host.shutdown(),
             _ => {}
         }
+    }
+}
+
+/// What a build is, in a word, for the newswire.
+pub fn build_word(what: BuildKind) -> &'static str {
+    match what {
+        BuildKind::Pillbox => "a pillbox",
+        BuildKind::Wall => "a wall",
+        BuildKind::Road => "a road",
+        BuildKind::Mine => "a mine",
+        BuildKind::Concrete => "concrete",
+        BuildKind::Structure(k) => k.word(),
+        BuildKind::Boat => "a boat",
     }
 }
 

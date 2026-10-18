@@ -15,7 +15,7 @@ a descendant. The preface says which parts it takes.
 | 4 World, map and terrain | adapted: grass, forest, road, water, bridge, rubble, depot exist; building, swamp, deep sea, boats, craters-that-flood do not; walls and mines come with step 6c | DESIGN.md, ROADMAP 5, 6c |
 | 5 Tank: movement | adapted: momentum and terrain-limited speed as in TNK-03 to TNK-06; steering replaced by a routed destination (DESIGN.md, LAB-REPORT-PILLBOYS.md) | DESIGN.md |
 | 5 Tank: shooting | diverges by design: the gun fires indirect at a coordinate; TNK-18's "first obstacle" applies to direct fire only, and not yet | DESIGN.md |
-| 5 Tank: stocks, boats | stocks adapted (shells, armor, fuel, trees-as-material in 6c; no mines stock until 6c); boats not adopted | ROADMAP 6c |
+| 5 Tank: stocks, boats | stocks adapted (shells, armor, fuel, trees-as-material in 6c; no mines stock until 6c); boats adopted: TNK-08, TNK-11 to TNK-14, TNK-17 (all water is deep sea for a sunk boat) | ROADMAP 6c |
 | 6 Builder | **adopted** as the Pillboy: BLD-01 to BLD-03, BLD-05, BLD-06, BLD-09, BLD-10, BLD-13; the parachute (BLD-11) becomes resupply at a depot | DESIGN.md "Pillboys and pillboxes", ROADMAP 3, 6c |
 | 7 Mines | **adopted** (step 6c, done): MIN-01 as the squad's lay, MIN-02 as material, MIN-03, MIN-05, MIN-06, MIN-09 to MIN-13; one rule added: drones ignore mines; quick mines (MIN-04) and ally sharing (MIN-08) wait for alliances | ROADMAP 6c |
 

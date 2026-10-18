@@ -28,22 +28,66 @@ pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<HudState>().add_systems(Startup, setup).add_systems(Update, update);
+        app.init_resource::<HudState>().add_systems(Startup, setup).add_systems(Update, (update, autopilot_button));
+    }
+}
+
+/// The big autopilot button at the head of the right column: a click
+/// is O (input.rs). Green and lit while the bot drives.
+#[derive(Component)]
+pub struct AutopilotButton;
+
+#[derive(Component)]
+struct AutopilotWord;
+
+fn autopilot_button(pilot: Res<crate::goal::Pilot>, bind: Res<crate::keys::Keys>, metal: Option<Res<crate::metal::Metal>>, mut button: Query<(&Interaction, &mut ImageNode), With<AutopilotButton>>, mut word: Query<(&mut Text, &mut TextColor), With<AutopilotWord>>) {
+    let on = pilot.brain.goal != treadcore_brain::Goal::Manual;
+    let key = crate::keys::label(bind.key(crate::keys::Action::Autopilot));
+    // A metal capsule (metal.rs): pushed in while held and while on, a
+    // green cast on the steel when on, a little brighter under the mouse.
+    let Some(metal) = metal else { return };
+    for (i, mut img) in button.iter_mut() {
+        let down = on || *i == Interaction::Pressed;
+        let want = if down { &metal.pressed } else { &metal.button };
+        if img.image != *want {
+            img.image = want.clone();
+        }
+        let tint = if on { Color::srgb(0.62, 1.0, 0.66) } else { Color::WHITE };
+        let tint = if *i == Interaction::Hovered { tint } else { tint.darker(0.06) };
+        if img.color != tint {
+            img.color = tint;
+        }
+    }
+    for (mut t, mut c) in word.iter_mut() {
+        let s = if on { format!("AUTOPILOT ON  [{}]", key) } else { format!("AUTOPILOT OFF  [{}]", key) };
+        if t.0 != s {
+            t.0 = s;
+        }
+        c.0 = if on { Color::srgb(0.0, 0.28, 0.06) } else { ETCH };
     }
 }
 
 /// The frame's fixed parts, in pixels. The map takes the rest, and the
 /// camera follows the tank into the middle of what is left (input.rs).
-pub const LEFT: f32 = 156.0;
-pub const RIGHT: f32 = 268.0;
-pub const TOP: f32 = 58.0;
-pub const BOTTOM: f32 = 128.0;
+/// Narrowed for the field (Paul, 16 October: "reduce the width of both
+/// wide bars. expand the visual of the playing field"): were 156 and 268.
+/// Again on 17 October: the right column by a quarter (was 196), the
+/// bottom strip by half (was 128), the top strip by a quarter (was 58);
+/// the minimap at the foot of the right column.
+pub const LEFT: f32 = 52.0;
+pub const RIGHT: f32 = 148.0;
+pub const TOP: f32 = 44.0;
+pub const BOTTOM: f32 = 64.0;
 const FONT: f32 = 13.0;
-const WIRE_FONT: f32 = 22.0;
+const SMALL_FONT: f32 = 9.0;
+/// Lamps a row in the right column.
+const COL_LAMPS: usize = 7;
+const WIRE_FONT: f32 = 15.0;
 const LAMP: f32 = 13.0;
+/// The key's round badge on an order tile.
+const BADGE: f32 = 15.0;
 
 // The palette: Bolo's code, red hostile and green friendly, on a bezel.
-const BEZEL: Color = Color::srgb(0.47, 0.48, 0.46);
 /// A bevel: light where the light falls (top, left), dark where it
 /// does not. Sunken boxes take it the other way up.
 const BEVEL_LIGHT: Color = Color::srgb(0.78, 0.79, 0.76);
@@ -58,8 +102,10 @@ const SHELL: Color = Color::srgb(0.92, 0.18, 0.12);
 const SHELL_DIM: Color = Color::srgb(0.26, 0.07, 0.06);
 const SKY: Color = Color::srgb(0.45, 0.78, 1.0);
 const AMBER: Color = Color::srgb(1.0, 0.75, 0.3);
-/// A key that cannot be given now.
-const KEY_DIM: Color = Color::srgb(0.5, 0.45, 0.35);
+/// Text cut into the metal: dark, as etched (the bezel's own words);
+/// a key in its badge that cannot be given now, faint.
+const ETCH: Color = Color::srgb(0.07, 0.07, 0.08);
+const KEY_DIM: Color = Color::srgb(0.42, 0.42, 0.42);
 
 /// The builder modes, in the prior art's order (SPEC section 6, UI-02):
 /// farm, road or bridge, building, pillbox, mine. Arm one, click a
@@ -126,7 +172,7 @@ pub struct KeyHint;
 pub fn key_hint(k: &crate::keys::Keys) -> String {
     use crate::keys::{label, Action as A};
     format!(
-        "L drive  R fire  {} longshot\n{} tank  {} pillbox  {} alert\n{} kind  shift-{} concrete\nEnter talk  {} sides  {} keys",
+        "L drive  R fire\n{} longshot\n{} tank  {} pillbox\n{} alert  {} kind\nshift-{} concrete\nEnter talk\n{} sides  {} keys",
         label(k.key(A::Longshot)),
         label(k.key(A::TankView)),
         label(k.key(A::PillboxView)),
@@ -219,7 +265,9 @@ struct TankRow;
 /// smaller roster) so the depots and the ledger stay in it: at sixteen
 /// the roster pushed both off the bottom.
 const ROOMY_SEATS: usize = 8;
-const ROSTER_FONT_TIGHT: f32 = 10.0;
+/// The roster in the narrow column: its lines are 20 characters.
+const ROSTER_FONT: f32 = 10.5;
+const ROSTER_FONT_TIGHT: f32 = 9.0;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
 pub enum Bar {
@@ -249,10 +297,6 @@ fn text(p: &mut ChildSpawnerCommands, which: Panel, size: f32) {
     p.spawn((Text::new(""), TextFont { font_size: size, ..default() }, TextColor(INK), which));
 }
 
-fn label(p: &mut ChildSpawnerCommands, s: &str) {
-    p.spawn((Text::new(s), TextFont { font_size: FONT, ..default() }, TextColor(INK)));
-}
-
 /// A sunken box on the bezel: black, bevelled dark above and light
 /// below, a little rounding.
 fn inset<'a, 'w>(p: &'a mut ChildSpawnerCommands<'w>, node: Node) -> EntityCommands<'a> {
@@ -260,7 +304,21 @@ fn inset<'a, 'w>(p: &'a mut ChildSpawnerCommands<'w>, node: Node) -> EntityComma
     n.border = UiRect::all(Val::Px(2.0));
     n.padding = UiRect::all(Val::Px(5.0));
     n.margin = UiRect::all(Val::Px(3.0));
-    p.spawn((n, BackgroundColor(INSET), sunken(), BorderRadius::all(Val::Px(3.0))))
+    p.spawn((n, BackgroundColor(INSET), sunken(), BorderRadius::all(Val::Px(5.0))))
+}
+
+/// The bottom strip's boxes: the inset with less round it, for the
+/// strip's height.
+fn tight<'a, 'w>(p: &'a mut ChildSpawnerCommands<'w>, node: Node) -> EntityCommands<'a> {
+    let mut n = node;
+    n.border = UiRect::all(Val::Px(2.0));
+    n.padding = UiRect::axes(Val::Px(4.0), Val::Px(1.0));
+    n.margin = UiRect::all(Val::Px(1.0));
+    p.spawn((n, BackgroundColor(INSET), sunken(), BorderRadius::all(Val::Px(4.0))))
+}
+
+fn small_label(p: &mut ChildSpawnerCommands, s: &str) {
+    p.spawn((Text::new(s), TextFont { font_size: SMALL_FONT, ..default() }, TextColor(INK)));
 }
 
 fn sunken() -> BorderColor {
@@ -321,7 +379,7 @@ fn pictogram(p: &mut ChildSpawnerCommands, i: usize) {
 }
 
 /// A map square in a picture tile, in pixels.
-const SQ: f32 = 11.0;
+const SQ: f32 = 10.0;
 
 /// A builder mode's picture, the prior art's way: three by three map
 /// squares of the ground with the thing the mode makes on them, drawn
@@ -385,55 +443,65 @@ fn picture(p: &mut ChildSpawnerCommands, i: usize) {
     }
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     let pad = UiRect::all(Val::Px(4.0));
+    // The bezel is brushed metal plates (metal.rs), sliced to any size.
+    let metal = crate::metal::make(&mut images);
+    commands.insert_resource(metal.clone());
+    let plate = || crate::metal::node(metal.plate.clone(), &crate::metal::PLATE);
     commands
         .spawn(Node { position_type: PositionType::Absolute, left: Val::Px(0.0), top: Val::Px(0.0), width: Val::Percent(100.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, ..default() })
         .with_children(|root| {
             // Top strip.
-            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(TOP), padding: pad, flex_shrink: 0.0, ..default() }, BackgroundColor(BEZEL))).with_children(|strip| {
+            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(TOP), padding: pad, flex_shrink: 0.0, ..default() }, plate())).with_children(|strip| {
                 inset(strip, Node { width: Val::Percent(100.0), height: Val::Percent(100.0), ..default() }).with_children(|p| text(p, Panel::Top, FONT));
             });
             root.spawn(Node { width: Val::Percent(100.0), flex_grow: 1.0, flex_direction: FlexDirection::Row, min_height: Val::Px(0.0), ..default() }).with_children(|mid| {
-                // The orders column, the prior art's: a picture of the
-                // ground with the thing on it in a raised bevel, the key
-                // and the word, and for the builder rows a lamp, red
-                // against the armed mode. The drones' rows above wear the
-                // same tile with their glyph on it. Every tile is a button.
-                mid.spawn((Node { width: Val::Px(LEFT), height: Val::Percent(100.0), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Column, overflow: Overflow::clip(), ..default() }, BackgroundColor(BEZEL))).with_children(|col| {
-                    for (i, (key, word)) in ORDERS.iter().enumerate() {
-                        let builder = i >= MODE_ROW;
-                        if i == MODE_ROW {
-                            col.spawn(Node { height: Val::Px(6.0), ..default() });
-                        }
+                // The orders column (Paul, 16 October: "reduce the
+                // wording. use the icons ... with the number inside the
+                // circle of selected"; "a singular column of icons along
+                // the left side"): the prior art's pictures, one above
+                // the next, the drones'
+                // six above and the builder's below, each with its key in
+                // a round badge on its corner; the badge goes red while
+                // that builder mode is armed, its key dim while the order
+                // cannot be given. No words but the works kind chosen.
+                // Every tile is a button.
+                mid.spawn((Node { width: Val::Px(LEFT), height: Val::Percent(100.0), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Column, overflow: Overflow::clip(), ..default() }, plate())).with_children(|col| {
+                    col.spawn(Node { flex_direction: FlexDirection::Row, flex_wrap: FlexWrap::Wrap, width: Val::Percent(100.0), justify_content: JustifyContent::Center, ..default() }).with_children(|grid| {
                         // The tile's size is its content; the 3 px bevel sits outside it.
-                        let (tile, row_h) = (SQ * 3.0, SQ * 3.0 + 4.0);
-                        col.spawn(Node { flex_direction: FlexDirection::Row, align_items: AlignItems::Center, height: Val::Px(row_h), flex_shrink: 0.0, ..default() }).with_children(|row| {
-                            if builder {
-                                lamp(row, Group::Order, i, true);
-                            } else {
-                                row.spawn(Node { width: Val::Px(LAMP + 3.0), ..default() });
+                        let tile = SQ * 3.0;
+                        let cell = tile + 6.0;
+                        for (i, (key, _word)) in ORDERS.iter().enumerate() {
+                            let builder = i >= MODE_ROW;
+                            if i == MODE_ROW {
+                                // A full row's break between the drones and the builder.
+                                grid.spawn(Node { width: Val::Percent(100.0), height: Val::Px(5.0), ..default() });
                             }
-                            let mut n = Node { width: Val::Px(tile), height: Val::Px(tile), margin: UiRect::horizontal(Val::Px(3.0)), border: UiRect::all(Val::Px(3.0)), justify_content: JustifyContent::Center, align_items: AlignItems::Center, overflow: Overflow::clip(), ..default() };
-                            if builder {
-                                n.justify_content = JustifyContent::FlexStart;
-                                n.align_items = AlignItems::FlexStart;
-                            }
-                            row.spawn((n, BackgroundColor(crate::render::GRASS), raised(), BorderRadius::all(Val::Px(2.0)), Button, Interaction::None, OrderTile(i)))
-                                .with_children(|t| if builder { picture(t, i) } else { pictogram(t, i) });
-                            row.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|w| {
-                                w.spawn((Text::new(*key), TextFont { font_size: FONT, ..default() }, TextColor(AMBER), OrderKey(i)));
-                                if Mode::of_row(i) == Some(Mode::Works) {
-                                    w.spawn((Text::new(*word), TextFont { font_size: 11.0, ..default() }, TextColor(INK), WorksWord));
-                                } else {
-                                    w.spawn((Text::new(*word), TextFont { font_size: 11.0, ..default() }, TextColor(INK)));
+                            grid.spawn(Node { width: Val::Px(cell), height: Val::Px(cell), margin: UiRect::all(Val::Px(2.0)), ..default() }).with_children(|c| {
+                                let mut n = Node { position_type: PositionType::Absolute, left: Val::Px(0.0), top: Val::Px(0.0), width: Val::Px(tile), height: Val::Px(tile), border: UiRect::all(Val::Px(3.0)), justify_content: JustifyContent::Center, align_items: AlignItems::Center, overflow: Overflow::clip(), ..default() };
+                                if builder {
+                                    n.justify_content = JustifyContent::FlexStart;
+                                    n.align_items = AlignItems::FlexStart;
                                 }
+                                c.spawn((n, BackgroundColor(crate::render::GRASS), raised(), BorderRadius::all(Val::Px(3.0)), Button, Interaction::None, OrderTile(i)))
+                                    .with_children(|t| if builder { picture(t, i) } else { pictogram(t, i) });
+                                // The badge: over the tile's top-left corner.
+                                c.spawn((
+                                    Node { position_type: PositionType::Absolute, left: Val::Px(-4.0), top: Val::Px(-4.0), width: Val::Px(BADGE), height: Val::Px(BADGE), border: UiRect::all(Val::Px(1.0)), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                    BackgroundColor(DIM),
+                                    BorderColor::all(BEVEL_DARK),
+                                    BorderRadius::all(Val::Px(BADGE)),
+                                    Lamp(Group::Order, i),
+
+                                ))
+                                .with_children(|b| {
+                                    b.spawn((Text::new(*key), TextFont { font_size: 9.0, ..default() }, TextColor(AMBER), OrderKey(i)));
+                                });
                             });
-                        });
-                    }
-                    // Four lines of keys, a size down and with no gap above,
-                    // so the last still shows in the shoot's 740 px window.
-                    col.spawn((Text::new(""), TextFont { font_size: 9.0, ..default() }, TextColor(INK), KeyHint));
+                        }
+                    });
+                    col.spawn((Text::new(""), TextFont { font_size: 9.0, ..default() }, TextColor(ETCH), WorksWord, Node { margin: UiRect::top(Val::Px(4.0)), ..default() }));
                 });
                 // The map, in a sunken frame of its own; nothing drawn in
                 // it; the scrollback and the screens sit over it.
@@ -443,81 +511,88 @@ fn setup(mut commands: Commands) {
                     map.spawn((Node { padding: UiRect::all(Val::Px(14.0)), border: UiRect::all(Val::Px(2.0)), ..default() }, BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)), raised(), BorderRadius::all(Val::Px(4.0)), Visibility::Hidden, Panel::Screen))
                         .with_children(|p| text(p, Panel::Screen, FONT));
                 });
-                // The right column: the roster, kills and deaths, the lamps.
-                mid.spawn((Node { width: Val::Px(RIGHT), height: Val::Percent(100.0), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Column, overflow: Overflow::clip(), ..default() }, BackgroundColor(BEZEL))).with_children(|col| {
-                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, ..default() }).with_children(|p| text(p, Panel::Roster, FONT));
-                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).insert(TankRow).with_children(|p| {
-                        label(p, "TANKS");
-                        lamp_row(p, Group::Tank, MAX_PLAYERS, true, 16);
+                // The right column: the autopilot, the stock, kills and deaths
+                // and the lamps, the roster, the minimap at the foot.
+                mid.spawn((Node { width: Val::Px(RIGHT), height: Val::Percent(100.0), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Column, overflow: Overflow::clip(), ..default() }, plate())).with_children(|col| {
+                    col.spawn((
+                        Node { width: Val::Percent(100.0), height: Val::Px(44.0), flex_shrink: 0.0, margin: UiRect::bottom(Val::Px(4.0)), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                        crate::metal::node(metal.button.clone(), &crate::metal::BUTTON),
+                        Button,
+                        Interaction::None,
+                        AutopilotButton,
+                    ))
+                    .with_children(|b| {
+                        b.spawn((Text::new("AUTOPILOT OFF"), TextFont { font_size: 13.0, ..default() }, TextColor(ETCH), AutopilotWord));
                     });
+                    // The stock, under the autopilot (Paul, 17 October:
+                    // "ammo and items above the player stats").
+                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, row_gap: Val::Px(2.0), ..default() }).with_children(|p| {
+                        small_label(p, "SHELLS");
+                        lamp_row(p, Group::Shell, TANK_SHELLS as usize, false, COL_LAMPS);
+                        p.spawn(Node { flex_direction: FlexDirection::Row, column_gap: Val::Px(6.0), ..default() }).with_children(|r| {
+                            for (word, group, n, round) in [("RECON", Group::Recon, BAY_FULL.recon, true), ("STRIKE", Group::Strike, BAY_FULL.strike, false), ("LONG", Group::Longshot, BAY_FULL.longshot, false)] {
+                                r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
+                                    small_label(c, word);
+                                    lamp_row(c, group, n as usize, round, n as usize);
+                                });
+                            }
+                        });
+                        small_label(p, "INTCP");
+                        lamp_row(p, Group::Interceptor, BAY_FULL.interceptor as usize, true, COL_LAMPS);
+                        p.spawn(Node { flex_direction: FlexDirection::Row, column_gap: Val::Px(6.0), ..default() }).with_children(|r| {
+                            r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
+                                small_label(c, "SQUAD");
+                                lamp_row(c, Group::Squad, PILLBOY_MAX as usize, false, 3);
+                            });
+                            r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
+                                small_label(c, "MATERIAL");
+                                lamp_row(c, Group::Material, PILLBOY_MATERIAL_MAX as usize, false, 4);
+                            });
+                        });
+                        // Armour and fuel, each a label beside its bar.
+                        for (word, which) in [("ARMOR", Bar::Armor), ("FUEL", Bar::Fuel)] {
+                            p.spawn(Node { flex_direction: FlexDirection::Row, align_items: AlignItems::Center, column_gap: Val::Px(4.0), ..default() }).with_children(|r| {
+                                r.spawn(Node { width: Val::Px(34.0), ..default() }).with_children(|w| small_label(w, word));
+                                bar(r, which, 76.0);
+                            });
+                        }
+                    });
+                    // The player's stats.
                     inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Row, justify_content: JustifyContent::SpaceAround, ..default() }).with_children(|p| text(p, Panel::Counters, FONT));
-                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
-                        label(p, "PILLBOXES");
-                        lamp_row(p, Group::Pillbox, 24, false, 12);
+                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).insert(TankRow).with_children(|p| {
+                        small_label(p, "TANKS");
+                        lamp_row(p, Group::Tank, MAX_PLAYERS, true, COL_LAMPS);
                     });
                     inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
-                        label(p, "DEPOTS");
-                        lamp_row(p, Group::Depot, 20, true, 10);
+                        small_label(p, "PILLBOXES");
+                        lamp_row(p, Group::Pillbox, 24, false, COL_LAMPS);
+                    });
+                    inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
+                        small_label(p, "DEPOTS");
+                        lamp_row(p, Group::Depot, 20, true, COL_LAMPS);
                     });
                     // The ledger: a lamp for each structure my side
                     // holds; an empty box on a map with no economy.
                     inset(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
-                        label(p, "WORKS");
-                        lamp_row(p, Group::Structure, LEDGER, false, 12);
+                        small_label(p, "WORKS");
+                        lamp_row(p, Group::Structure, LEDGER, false, COL_LAMPS);
                     });
-                    col.spawn((Text::new("mine in my colour  green ally\nred hostile  dim neutral  dark dead"), TextFont { font_size: 10.0, ..default() }, TextColor(INK), Node { margin: UiRect::all(Val::Px(4.0)), ..default() }));
+                    col.spawn((Text::new("mine in my colour\ngreen ally  red hostile\ndim neutral  dark dead"), TextFont { font_size: SMALL_FONT, ..default() }, TextColor(ETCH), Node { margin: UiRect::all(Val::Px(3.0)), flex_shrink: 0.0, ..default() }));
+                    // The roster at the foot, in what height is left.
+                    inset(col, Node { width: Val::Percent(100.0), flex_grow: 1.0, min_height: Val::Px(0.0), overflow: Overflow::clip(), ..default() }).with_children(|p| text(p, Panel::Roster, ROSTER_FONT));
+                    // The minimap (step 10d) under it, the column's width;
+                    // draw_minimap fits the map into it.
+                    tight(col, Node { width: Val::Percent(100.0), flex_shrink: 0.0, justify_content: JustifyContent::Center, align_items: AlignItems::Center, padding: UiRect::all(Val::Px(1.0)), ..default() }).with_children(|p| {
+                        use crate::commander::{MinimapNode, MINIMAP_H};
+                        p.spawn((ImageNode::default(), Node { width: Val::Px(MINIMAP_H), height: Val::Px(MINIMAP_H), ..default() }, MinimapNode, Button, Interaction::None, bevy::ui::RelativeCursorPosition::default()));
+                    });
                 });
             });
-            // The bottom strip: the stock as lamps and bars, the air, the newswire.
-            // The minimap (step 10d) at its right end, the strip's height.
-            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(BOTTOM), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Row, overflow: Overflow::clip(), ..default() }, BackgroundColor(BEZEL))).with_children(|outer| {
-            outer.spawn(Node { flex_grow: 1.0, min_width: Val::Px(0.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, overflow: Overflow::clip(), ..default() }).with_children(|strip| {
-                strip.spawn(Node { flex_direction: FlexDirection::Row, flex_shrink: 0.0, height: Val::Px(72.0), overflow: Overflow::clip(), ..default() }).with_children(|row| {
-                    inset(row, Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|p| {
-                        label(p, "SHELLS");
-                        lamp_row(p, Group::Shell, TANK_SHELLS as usize, false, 12);
-                    });
-                    inset(row, Node { flex_direction: FlexDirection::Row, column_gap: Val::Px(6.0), ..default() }).with_children(|r| {
-                        r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
-                            label(c, "RECON");
-                            lamp_row(c, Group::Recon, BAY_FULL.recon as usize, true, 2);
-                        });
-                        r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
-                            label(c, "INTCP");
-                            lamp_row(c, Group::Interceptor, BAY_FULL.interceptor as usize, true, 6);
-                        });
-                        r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
-                            label(c, "STRIKE");
-                            lamp_row(c, Group::Strike, BAY_FULL.strike as usize, false, 3);
-                        });
-                        r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
-                            label(c, "LONG");
-                            lamp_row(c, Group::Longshot, BAY_FULL.longshot as usize, false, 2);
-                        });
-                    });
-                    inset(row, Node { flex_direction: FlexDirection::Row, column_gap: Val::Px(6.0), ..default() }).with_children(|r| {
-                        r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
-                            label(c, "SQUAD");
-                            lamp_row(c, Group::Squad, PILLBOY_MAX as usize, false, 4);
-                        });
-                        r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
-                            label(c, "MATERIAL");
-                            lamp_row(c, Group::Material, PILLBOY_MATERIAL_MAX as usize, false, 4);
-                        });
-                    });
-                    inset(row, Node { flex_direction: FlexDirection::Column, width: Val::Px(110.0), ..default() }).with_children(|p| {
-                        label(p, "ARMOR");
-                        bar(p, Bar::Armor, 92.0);
-                        label(p, "FUEL");
-                        bar(p, Bar::Fuel, 92.0);
-                    });
-                    inset(row, Node { flex_grow: 1.0, ..default() }).with_children(|p| text(p, Panel::Air, FONT));
-                });
-                inset(strip, Node { width: Val::Percent(100.0), flex_grow: 1.0, align_items: AlignItems::Center, overflow: Overflow::clip(), ..default() }).with_children(|p| text(p, Panel::Wire, WIRE_FONT));
-            });
-            inset(outer, Node { flex_shrink: 0.0, justify_content: JustifyContent::Center, align_items: AlignItems::Center, padding: UiRect::all(Val::Px(2.0)), ..default() }).with_children(|p| {
-                use crate::commander::{MinimapNode, MINIMAP_H};
-                p.spawn((ImageNode::default(), Node { width: Val::Px(MINIMAP_H), height: Val::Px(MINIMAP_H), ..default() }, MinimapNode, Button, Interaction::None, bevy::ui::RelativeCursorPosition::default()));
+            // The bottom strip, one row: the air and the newswire.
+            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(BOTTOM), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Row, overflow: Overflow::clip(), ..default() }, plate())).with_children(|outer| {
+            outer.spawn(Node { flex_grow: 1.0, min_width: Val::Px(0.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Row, overflow: Overflow::clip(), ..default() }).with_children(|row| {
+                    tight(row, Node { flex_grow: 1.0, min_width: Val::Px(0.0), overflow: Overflow::clip(), ..default() }).with_children(|p| text(p, Panel::Air, SMALL_FONT));
+                    tight(row, Node { flex_grow: 2.0, min_width: Val::Px(0.0), align_items: AlignItems::Center, overflow: Overflow::clip(), ..default() }).with_children(|p| text(p, Panel::Wire, WIRE_FONT));
             });
             });
         });
@@ -529,7 +604,7 @@ fn update(
     mut texts: Query<(&Panel, &mut Text, &mut TextColor, &mut TextFont), Without<OrderKey>>,
     mut nodes: Query<(&Panel, &mut Visibility), Without<Text>>,
     mut frame: Query<&mut BorderColor, With<MapFrame>>,
-    mut lamps: Query<(&Lamp, &mut BackgroundColor, &mut Visibility), (Without<Panel>, Without<Bar>)>,
+    mut lamps: Query<(&Lamp, &mut BackgroundColor, &mut Visibility, &mut Node), (Without<Panel>, Without<Bar>, Without<TankRow>)>,
     mut bars: Query<(&Bar, &mut Node), Without<Lamp>>,
     mut keys: Query<(&OrderKey, &mut TextColor, &mut Text), (Without<Panel>, Without<WorksWord>, Without<KeyHint>)>,
     mut works: Query<&mut Text, (With<WorksWord>, Without<Panel>, Without<KeyHint>)>,
@@ -545,7 +620,7 @@ fn update(
         }
     }
     for mut t in works.iter_mut() {
-        let w = format!("works: {}", crate::commander::name(state.works));
+        let w = crate::commander::name(state.works).to_string();
         if t.0 != w {
             t.0 = w;
         }
@@ -556,7 +631,7 @@ fn update(
     let alarm = wire_alert(&view).is_some() && wire(&view).contains("  ALERT ");
     for (p, mut text, mut color, mut font) in texts.iter_mut() {
         if *p == Panel::Roster {
-            let size = if crowded { ROSTER_FONT_TIGHT } else { FONT };
+            let size = if crowded { ROSTER_FONT_TIGHT } else { ROSTER_FONT };
             if font.font_size != size {
                 font.font_size = size;
             }
@@ -575,8 +650,8 @@ fn update(
         let s = match p {
             Panel::Top => top(&view),
             Panel::Roster => roster(&view),
-            Panel::Counters => format!("KILLS {:>3}     DEATHS {:>3}", view.kills, view.deaths),
-            Panel::Air => air(&view),
+            Panel::Counters => format!("KILLS {:>3}  DEATHS {:>3}", view.kills, view.deaths),
+            Panel::Air => air(&view, crate::keys::label(bind.key(crate::keys::Action::Respawn))),
             Panel::Wire => wire(&view),
             // The proposal list takes the scrollback's place over the map.
             // The proposal list and Key Setup take the scrollback's place.
@@ -627,7 +702,7 @@ fn update(
             }
         }
     };
-    for (l, mut bg, mut vis) in lamps.iter_mut() {
+    for (l, mut bg, mut vis, mut node) in lamps.iter_mut() {
         let (color, shown) = match l.0 {
             Group::Tank => match obs.and_then(|o| o.players.get(l.1)) {
                 Some(p) => (territory(Some(p.id), p.alive), true),
@@ -674,6 +749,12 @@ fn update(
         let v = if shown { Visibility::Inherited } else { Visibility::Hidden };
         if *vis != v {
             *vis = v;
+        }
+        // The map's lists take only the rows the match fills, so the
+        // roster at the column's foot has the rest.
+        let d = if shown || !matches!(l.0, Group::Tank | Group::Pillbox | Group::Depot | Group::Structure) { Display::Flex } else { Display::None };
+        if node.display != d {
+            node.display = d;
         }
     }
     for (k, mut color, mut text) in keys.iter_mut() {
@@ -767,12 +848,12 @@ fn top(view: &View) -> String {
 
 fn roster(view: &View) -> String {
     let Some(obs) = view.obs.as_ref() else { return "ROSTER\nwaiting for the world...".into() };
-    let mut s = String::from("GEEKERS    t  seat  score\n");
+    let mut s = String::from("GEEKERS  t  p score\n");
     let mut ps: Vec<&PlayerView> = obs.players.iter().collect();
     ps.sort_by_key(|p| (p.team, p.id));
     for p in ps {
         let mark = if p.id == obs.player { "*" } else if obs.allied(p.id) { "+" } else { " " };
-        s.push_str(&format!("{}{:<9} {:<2} p{:<3} {:>4} {}\n", mark, p.name.chars().take(9).collect::<String>(), p.team, p.id, p.score, if p.alive { "" } else { "x" }));
+        s.push_str(&format!("{}{:<7}{:>2} {:>2} {:>4}{}\n", mark, p.name.chars().take(7).collect::<String>(), p.team, p.id, p.score, if p.alive { "" } else { "x" }));
     }
     for r in &obs.proposals {
         s.push_str(&crate::proposals::standing(obs, r));
@@ -781,11 +862,26 @@ fn roster(view: &View) -> String {
     s.trim_end().to_string()
 }
 
-fn air(view: &View) -> String {
+fn air(view: &View, respawn_key: String) -> String {
     let Some(obs) = view.obs.as_ref() else { return String::new() };
     let Some(t) = obs.me.as_ref() else { return String::new() };
     if !t.alive {
-        return "TANK DESTROYED. rig down".into();
+        let k = respawn_key;
+        // Down for the first twenty seconds: an ally's squad may revive it.
+        let down = (t.last_hit_tick + DOWNED_TICKS as Tick).saturating_sub(obs.tick);
+        if t.last_hit_tick > 0 && down > 0 {
+            let allies = obs.allied_tanks().filter(|a| a.alive && a.owner != obs.player).count();
+            return if allies > 0 {
+                format!("TANK DOWN. {:.0}s for an ally's squad to revive you ({} allies in sight)", (down as f32 * DT).ceil(), allies)
+            } else {
+                format!("TANK DOWN. {:.0}s for an ally's squad to revive you", (down as f32 * DT).ceil())
+            };
+        }
+        return match obs.respawn_in {
+            Some(0) => format!("TANK DESTROYED. {} to respawn", k),
+            Some(n) => format!("TANK DESTROYED. respawn in {:.0}s", (n as f32 * DT).ceil()),
+            None => "TANK DESTROYED. rig down".into(),
+        };
     }
     let mut mine: Vec<&Drone> = obs.my_drones().collect();
     mine.sort_by_key(|d| (d.kind as u8, d.id));
@@ -805,6 +901,8 @@ fn air(view: &View) -> String {
                 DroneTask::Return => " home".into(),
                 DroneTask::Attack { at } => format!(" to {:.0},{:.0}", at.x, at.y),
             };
+            // The mark after the letter from Mk II on: R2 is a VTOL.
+            let k = if d.mark > 1 { format!("{}{}", k, d.mark) } else { k.to_string() };
             if d.kind == DroneKind::Longshot {
                 format!("{} {:.0}s{}", k, d.battery, task)
             } else {

@@ -45,6 +45,11 @@ pub enum Action {
     Stop,
     Goal,
     Coordinate,
+    Autopilot,
+    Respawn,
+    Ping,
+    Chain,
+    Embark,
     Farm,
     Road,
     Wall,
@@ -58,13 +63,14 @@ pub enum Action {
     Decline,
     Leave,
     Mute,
+    TankStyle,
     KeySetup,
 }
 
 use Action::*;
 
 impl Action {
-    pub const ALL: [Action; 32] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, KeySetup];
+    pub const ALL: [Action; 38] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, KeySetup];
 
     /// The word in the file and in Key Setup.
     pub fn word(self) -> &'static str {
@@ -87,6 +93,11 @@ impl Action {
             Stop => "stop",
             Goal => "goal",
             Coordinate => "coordinate",
+            Autopilot => "autopilot",
+            Respawn => "respawn",
+            Ping => "ping",
+            Chain => "chain",
+            Embark => "launch a boat",
             Farm => "farm",
             Road => "road",
             Wall => "wall",
@@ -100,6 +111,7 @@ impl Action {
             Decline => "decline",
             Leave => "leave-side",
             Mute => "mute",
+            TankStyle => "tank-style",
             KeySetup => "key-setup",
         }
     }
@@ -136,6 +148,11 @@ impl Action {
             Stop => KeyCode::KeyH,
             Goal => KeyCode::KeyG,
             Coordinate => KeyCode::Space,
+            Autopilot => KeyCode::KeyO,
+            Respawn => KeyCode::KeyV,
+            Ping => KeyCode::KeyQ,
+            Chain => KeyCode::KeyC,
+            Embark => KeyCode::KeyE,
             Farm => KeyCode::Digit4,
             Road => KeyCode::Digit5,
             Wall => KeyCode::Digit6,
@@ -149,6 +166,7 @@ impl Action {
             Decline => KeyCode::KeyN,
             Leave => KeyCode::KeyL,
             Mute => KeyCode::KeyM,
+            TankStyle => KeyCode::KeyT,
             KeySetup => KeyCode::KeyK,
         }
     }

@@ -121,9 +121,10 @@ pub struct Minimap {
 #[derive(Component)]
 pub struct MinimapNode;
 
-/// The minimap's box in the bottom strip, in pixels.
-pub const MINIMAP_H: f32 = 112.0;
-pub const MINIMAP_MAX_W: f32 = 160.0;
+/// The minimap's box at the foot of the right column, in pixels: the
+/// column's width less its padding and the box's bevel, and as tall.
+pub const MINIMAP_H: f32 = crate::hud::RIGHT - 18.0;
+pub const MINIMAP_MAX_W: f32 = crate::hud::RIGHT - 18.0;
 
 fn draw_minimap(
     view: Res<View>,
@@ -133,7 +134,10 @@ fn draw_minimap(
     fog: Res<crate::render::Fog>,
 ) {
     let (Some(map), Some(obs)) = (view.map.as_ref(), view.obs.as_ref()) else { return };
-    if minimap.drawn.map(|d| d.elapsed().as_secs_f32() < 0.25).unwrap_or(false) {
+    // Four times a second; ten while a ping's circles spread.
+    let pinging = view.map_pings.iter().any(|(_, _, t)| t.elapsed().as_secs_f32() < MAP_PING_FOR);
+    let every = if pinging { 0.1 } else { 0.25 };
+    if minimap.drawn.map(|d| d.elapsed().as_secs_f32() < every).unwrap_or(false) {
         return;
     }
     minimap.drawn = Some(Instant::now());
@@ -217,7 +221,43 @@ fn draw_minimap(
     if let Some(t) = obs.me.as_ref().filter(|t| t.alive) {
         mark(t.pos, Color::WHITE, 1);
     }
+    // Pings: rings in the pinger's colour spreading from the point, two
+    // a second-and-a-third apart, fading as they go, for `MAP_PING_FOR`.
+    let reach = (w.max(h) as f32 / 12.0).max(6.0);
+    let mut put = |x: i32, y: i32, c: [u8; 4], a: f32| {
+        if x >= 0 && y >= 0 && (x as usize) < w && (y as usize) < h {
+            let i = (y as usize * w + x as usize) * 4;
+            for k in 0..3 {
+                data[i + k] = (data[i + k] as f32 * (1.0 - a) + c[k] as f32 * a) as u8;
+            }
+        }
+    };
+    for (at, who, since) in &view.map_pings {
+        let age = since.elapsed().as_secs_f32();
+        if age >= MAP_PING_FOR {
+            continue;
+        }
+        let c = srgb(player_color(*who));
+        for wave in [0.0, 0.67] {
+            let phase = ((age + wave) / 1.33).fract();
+            let r = 1.0 + phase * reach;
+            let a = (1.0 - phase) * (1.0 - age / MAP_PING_FOR) + 0.15;
+            let steps = (r * 6.3) as usize + 8;
+            for s in 0..steps {
+                let ang = s as f32 / steps as f32 * std::f32::consts::TAU;
+                let (px, py) = (at.x + r * ang.cos(), at.y + r * ang.sin());
+                for d in 0..r.clamp(1.0, 2.0) as i32 {
+                    put(px as i32 + d, py as i32, c, a.min(1.0));
+                }
+            }
+        }
+        // The point itself, solid.
+        put(at.x as i32, at.y as i32, c, 1.0);
+    }
 }
+
+/// How long a ping spreads on the minimap.
+pub const MAP_PING_FOR: f32 = 4.0;
 
 /// Put the view's centre on a tile, as the pillbox view does.
 pub fn look_at(cam: &mut Cam, tf: &mut Transform, scale: f32, at: V2) {

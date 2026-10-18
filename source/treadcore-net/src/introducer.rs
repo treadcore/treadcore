@@ -240,7 +240,7 @@ mod tests {
         let mut is = Socket::bind(0).unwrap();
         let intro_addr = is.local_with_loopback().to_string();
         let mut intro = Introducer::new();
-        let mut socks = vec![Socket::bind(0).unwrap(), Socket::bind(0).unwrap()];
+        let mut socks = [Socket::bind(0).unwrap(), Socket::bind(0).unwrap()];
         let ids = [0x1111u64, 0x2222u64];
         let mut lobbies: Vec<Lobby> = ids
             .iter()
@@ -259,7 +259,7 @@ mod tests {
                 l
             })
             .collect();
-        let mut results = vec![None, None];
+        let mut results = [None, None];
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(6) && results.iter().any(|r| r.is_none()) {
             intro.poll(&mut is);
