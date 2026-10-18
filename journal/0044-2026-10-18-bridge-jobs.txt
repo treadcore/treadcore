@@ -1,0 +1,76 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 01:30:00 -0700
+Subject: [JOURNAL 0044] Bridge jobs: a part-laid bridge waits on the team board
+Message-ID: <0044.20261018@treadcore.org>
+In-Reply-To: <0043.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: bridges, team board, wingmen, census, roadmap 12f
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair. Paul: "commit to main and start the bridge
+           jobs".
+X-Commits: 1c495b1 (journal 0043); this entry's work is in the tree
+
+        BRIDGE JOBS: A PART-LAID BRIDGE WAITS ON THE TEAM BOARD
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    A bridge given up half laid used to stay in the water while its
+    layer went on by boat. Under the new bit `bridge_jobs` (with
+    `board`) each bridge being laid is posted to the team board with
+    its tiles still to lay. Left part laid, it is taken by the next
+    teammate with material within `bridge_reach` and laid from the
+    laid end, and it comes off the board when laid or after
+    `bridge_keep` untouched. In a test match a tank took a three-tile
+    remainder and laid it by 9 s. The first census showed nobody
+    taking anything: the takers allowed (tanks on auto, expanding or
+    guarding) were never there, the wingmen were. A scalar,
+    `bridge_wing`, lets them. The fair census then read 7.31 a seat
+    against 8.01, inside the noise; the bit stays off.
+
+I. METHOD
+
+    Board: `BridgeJob`, `post_bridge`, `prune_bridges`, `take_bridge`.
+    Hop: `bridge_job`, `adopt_bridge`, `bridge_refused`; an adopted
+    bridge's trip ends when it is laid or given up. Commander:
+    `bridge_jobs`, called where the board is posted. Weights
+    `bridge_keep` 180, `bridge_reach` 40, `bridge_wing` 1 (rounded).
+    Census: `CENSUS_BASE_CAPS=board CENSUS_CAPS=bridge_jobs`,
+    naval.map, two seeds of 900 s, respawns 3; and a "for the team"
+    count.
+
+II. RESULTS
+
+    Brain tests 60 passed, 8 ignored; client 31. One match with the
+    first rule: 0 seat-seconds for the team. A temporary line every 10
+    s (removed) showed free bridges of 2 to 17 tiles near wingmen with
+    8 material and the leader, who had given them up, the only tank
+    on auto. With `bridge_wing`: 117 seat-seconds in that match. Fair
+    census: 7.31 against 8.01; acting in five of six matches, 69 to
+    783 seat-seconds; one trial team laid 36 bridge tiles.
+
+III. DISCUSSION
+
+    The plan put the job on the board for "the next tank with
+    material", and the code first read that as the next idle tank. On
+    naval.map the leader is the only tank on auto in the field, so the
+    bridge waited for nobody. Counting before guessing found it in one
+    match. Whether bridges pay is not settled by six matches, and
+    probably not in 900 s: a finished bridge is worth what the road
+    network later carries over it.
+
+IV. OPEN PROBLEMS
+
+    1. Longer matches for `escort` and `bridge_jobs`, both of which pay
+       late (goal 5).
+    2. A dodge for direct fire (12d).
+    3. The `why` and `doing` strings as codes, and the Observation
+       shared per team (12b).
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

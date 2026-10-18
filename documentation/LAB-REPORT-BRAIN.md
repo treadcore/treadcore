@@ -717,3 +717,60 @@ The page measures nothing by itself, so it has no census. What it
 changes is who can tune: a player can now try a weight in the match in
 front of them, and a saved file is a genome the ledger can read.
 
+## 18. Bridge jobs on the team board, 18 October
+
+Section 6.2 planned it: "A part-laid bridge is a job on the board,
+picked up by the next tank with material, dropped only when the
+strategy layer drops the crossing." Before this, a bridge given up
+(stalled 40 s, no material in reach, the layer dead) stayed in the
+water half laid. Its layer went on by boat and wrote the target off.
+
+Under the new bit `bridge_jobs`, which needs `board`:
+- Every member laying a bridge posts it to its team board each think:
+  the water tiles still to lay, in order from the laid end, and what it
+  crosses to (`Hop::bridge_job`, `TeamBoard::post_bridge`). The same
+  bridge is known by a tile or the target in common.
+- Tiles laid by anyone come off; a bridge laid, or untouched for
+  `bridge_keep` (180 s, new), comes off the board
+  (`prune_bridges`). That is the "strategy layer drops the crossing"
+  of the plan, as a time.
+- A bridge whose layer has not posted for 3 s is free. A teammate free
+  of more pressing work takes the nearest whose next tile is within
+  `bridge_reach` (40 tiles, new): the squad aboard with material, not
+  resupplying, no trip under way, a bridge it has not given up itself
+  (`take_bridge`, `Hop::bridge_refused`).
+- The taker's hop lays the rest from the laid end and stops there
+  (`Hop::adopt_bridge`). The crossing was the other tank's errand, so a
+  bridge finished or given up ends the trip; a given-up one stays on
+  the board for another.
+
+Who is free of more pressing work was the step's finding. First it was
+a tank on auto whose rung was expand or guard. A temporary counter in
+one census match showed no such tank: the free bridges were the
+leader's, given up as it sailed on, and the only teammates near them
+with material were its wingmen. So who takes became a scalar, per the
+either/or rule: `bridge_wing` (rounded, default 1) lets a wingman with
+material take a free bridge, leaving the wedge to do it.
+
+The census gained `CENSUS_BASE_CAPS`, the baseline teams'
+capabilities, so a part that needs another is tried against that one
+on: here `board` for every team and `bridge_jobs` for the trial team.
+It also counts the trial team's seat-seconds "for the team".
+
+Proof:
+- `a_part_laid_bridge_waits_for_the_next_tank`: posted, not free while
+  its layer lays it, not taken from too far or by a tank that gave it
+  up, taken by the nearest, laid tiles struck off, dropped untouched
+  and when laid.
+- `a_teammate_finishes_a_part_laid_bridge`: a channel four tiles wide
+  across the map, its first tile laid; a tank on auto with material
+  took the other three and laid them by 9 s, and the bridge came off
+  the board. With the bit off nobody touched it in 240 s.
+- Brain tests: 60 passed.
+
+The fair census (naval.map, two seeds, six matches of 900 s, respawns
+3) read 7.31 a seat for the trial team against 8.01. The bit acted in
+five of the six matches, 69 to 783 seat-seconds. One trial team laid
+36 bridge tiles against 15 to 20 in the others. The 0.70 a seat it
+cost is about the noise of six matches; `bridge_jobs` stays off, and
+`bridge_wing`, `bridge_reach` and `bridge_keep` are for the tuner.

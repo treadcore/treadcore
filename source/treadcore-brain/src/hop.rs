@@ -141,6 +141,9 @@ pub struct Hop {
     /// Start no bridges: a fleet's wingman helps its leader's and starts
     /// none of its own (two of a fleet began the same one).
     pub no_bridges: bool,
+    /// The bridge is a teammate's, taken from the team board (roadmap
+    /// 12f, `BRIDGE_JOBS`): laid, the errand is over.
+    adopted: bool,
     /// The fleet lays the bridge with it (commander.rs): out of
     /// material, it waits at the end rather than fetches.
     pub helpers: usize,
@@ -165,6 +168,7 @@ impl Hop {
         self.sent = false;
         self.bridge = None;
         self.road = None;
+        self.adopted = false;
     }
 
     pub fn active(&self) -> bool {
@@ -175,6 +179,39 @@ impl Hop {
     /// laid: the fleet's job (commander.rs).
     pub fn bridge_front(&self) -> Option<V2> {
         self.bridge.as_ref().and_then(|b| b.tiles.first().copied()).or_else(|| self.road.as_ref().and_then(|r| r.first().copied()))
+    }
+
+    /// The bridge being laid, for the team board: its water tiles still
+    /// to lay, in order, and what it crosses to.
+    pub fn bridge_job(&self) -> Option<(Vec<V2>, V2)> {
+        match (self.bridge.as_ref(), self.target) {
+            (Some(b), Some(t)) if !b.tiles.is_empty() => Some((b.tiles.clone(), t)),
+            _ => None,
+        }
+    }
+
+    /// A bridge to `target` given up here lately: not one to take.
+    pub fn bridge_refused(&self, target: V2, now: Tick) -> bool {
+        self.no_bridge.has(&target.tile(), now)
+    }
+
+    /// Take a teammate's part-laid bridge from the board: lay the rest
+    /// of `tiles` toward `target`, and stop there. False if a trip is
+    /// under way or this bridge was given up here.
+    pub fn adopt_bridge(&mut self, tiles: Vec<V2>, target: V2, now: Tick) -> bool {
+        if self.target.is_some() || tiles.is_empty() || self.no_bridge.has(&target.tile(), now) {
+            return false;
+        }
+        self.target = Some(target);
+        self.by_sea = true;
+        self.boats = 0;
+        self.sent = true;
+        self.adopted = true;
+        self.idle_since = None;
+        self.bridge = Some(Bridge { tiles, progress: now, fails: 0 });
+        self.road = None;
+        self.doing = format!("bridging for the team to ({:.0},{:.0})", target.x, target.y);
+        true
     }
 
     /// Ashore, the target over the water: about to launch.
@@ -225,6 +262,7 @@ impl Hop {
         self.boats = 0;
         self.idle_since = None;
         self.sent = false;
+        self.adopted = false;
         self.scouting = None;
         self.banking = None;
         self.bad_bank.clear();
@@ -250,8 +288,18 @@ impl Hop {
             b.fails = 0;
         }
         let Some(&next) = b.tiles.first() else {
-            // Done: by land, and the road on to the target.
             self.bridge = None;
+            // A teammate's bridge, taken from the board: laid, the errand
+            // is over; the one who wanted the crossing drives it.
+            if self.adopted {
+                self.adopted = false;
+                self.target = None;
+                self.sent = false;
+                self.by_sea = false;
+                self.doing = format!("bridge to ({:.0},{:.0}) finished for the team", target.x, target.y);
+                return None;
+            }
+            // Done: by land, and the road on to the target.
             self.by_sea = false;
             self.road = Some(Self::road_line(map, me.pos, target));
             self.road_progress = None;
@@ -555,6 +603,7 @@ impl Hop {
             self.target = None;
             self.idle_since = None;
             self.sent = false;
+            self.adopted = false;
             self.doing = format!("arrived at ({:.0},{:.0})", target.x, target.y);
             return None;
         }
@@ -647,9 +696,21 @@ impl Hop {
             }
             if self.bridge.is_some() {
                 if let Some(c) = self.bridging(obs, me, map, target) {
+                    if self.adopted {
+                        self.doing = format!("for the team: {}", self.doing);
+                    }
                     cmds.extend(c);
                     return Some(cmds);
                 }
+            }
+            // A teammate's bridge given up here: the errand was the
+            // bridge, not the crossing; it stays on the board for another.
+            if self.adopted && self.bridge.is_none() {
+                self.adopted = false;
+                self.target = None;
+                self.sent = false;
+                self.by_sea = false;
+                return None;
             }
         }
         // A covered crossing: one hit sinks a boat, and the quad's boats

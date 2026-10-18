@@ -250,7 +250,7 @@ to 8.93 a seat).
   winner only, given-up lists that can expire (`memory::Forget`,
   `forget`). Not yet: the Observation shared per team (the sim change),
   the `why` and `doing` strings as codes.
-- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders),
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
   The sliders, 18 October (LR 17): the coordination screen's weights
   page (`U`) for the player's own team, saved to
@@ -274,7 +274,11 @@ to 8.93 a seat).
   escort (`escort`, `a_far_fetch_gathers_the_fleet`: a far fetch
   gathers the fleet, which screens the carry home along the road; LR
   16; it never acted in a 900 s naval census, so it waits on longer
-  matches). Not yet: bridge jobs on the board.
+  matches); bridge jobs on the board (`bridge_jobs`, `bridge_wing`;
+  LR 18; `a_teammate_finishes_a_part_laid_bridge`: a part-laid bridge
+  is posted, taken by the next teammate with material, wingmen too,
+  and laid; measured fairly at 7.31 a seat against 8.01 with `board`
+  on for all, inside the noise, so it stays off).
 - [x] 12g the ledger and the tuner: `brain_census`, `ledger_ratings`,
   `make tune`. Not yet: a tuning run long enough to promote anything.
 - [x] 12h the answers as scalars, the same day: the weights of the

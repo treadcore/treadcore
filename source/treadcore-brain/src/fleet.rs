@@ -742,7 +742,8 @@ mod tests {
     /// three times, every team in the trial seat once (`CENSUS_FAIR=0`
     /// for one match a seed, the trial team rotated). The trial is
     /// `CENSUS_WEIGHTS` (a weights file, weights.rs) or `CENSUS_CAPS`
-    /// (capabilities added to the baseline, comma-separated); seeds
+    /// (capabilities added to the baseline, comma-separated), against
+    /// `CENSUS_BASE_CAPS` (the baseline teams', the same form); seeds
     /// `CENSUS_SEEDS` (3), seconds `CENSUS_SECS` (900). `cargo test -p
     /// treadcore-brain --release -- --ignored brain_census --nocapture`.
     #[test]
@@ -751,19 +752,22 @@ mod tests {
         use crate::ledger::{Genome, ScoreWeights, Tally};
         use crate::weights::{Caps, Settings};
         use treadcore_sim::*;
+        // A name adds it to the default; `-name` takes it off.
+        let caps = |var: &str, mut s: Settings| {
+            for c in std::env::var(var).unwrap_or_default().split(',').map(str::trim).filter(|c| !c.is_empty()) {
+                s.caps = match c.strip_prefix('-') {
+                    Some(off) => s.caps.without(Caps::by_name(off).unwrap_or_else(|| panic!("no capability {}", off))),
+                    None => s.caps.with(if c == "all" { Caps::all() } else { Caps::by_name(c).unwrap_or_else(|| panic!("no capability {}", c)) }),
+                };
+            }
+            s
+        };
+        // The baseline teams' (`CENSUS_BASE_CAPS`): a part that needs
+        // another (bridge_jobs needs board) is tried against that one on.
+        let base = caps("CENSUS_BASE_CAPS", Settings::default());
         let trial = match std::env::var("CENSUS_WEIGHTS") {
             Ok(path) => Settings::parse(&std::fs::read_to_string(&path).expect("CENSUS_WEIGHTS")).unwrap_or_else(|e| panic!("{}: {}", path, e)),
-            Err(_) => {
-                let mut s = Settings::default();
-                for c in std::env::var("CENSUS_CAPS").unwrap_or_default().split(',').map(str::trim).filter(|c| !c.is_empty()) {
-                    // A name adds it to the default; `-name` takes it off.
-                    s.caps = match c.strip_prefix('-') {
-                        Some(off) => s.caps.without(Caps::by_name(off).unwrap_or_else(|| panic!("no capability {}", off))),
-                        None => s.caps.with(if c == "all" { Caps::all() } else { Caps::by_name(c).unwrap_or_else(|| panic!("no capability {}", c)) }),
-                    };
-                }
-                s
-            }
+            Err(_) => caps("CENSUS_CAPS", base.clone()),
         };
         if let Ok(path) = std::env::var("CENSUS_DUMP") {
             std::fs::write(&path, trial.to_text()).expect("CENSUS_DUMP");
@@ -773,7 +777,7 @@ mod tests {
         let ledger = std::env::var("CENSUS_LEDGER").map(|v| v != "0").unwrap_or(true);
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../reports/ledger");
         let k = ScoreWeights::from_long_game(std::env::var("CENSUS_LONG_GAME").ok().and_then(|v| v.parse().ok()).unwrap_or(crate::weights::W::LongGame.default_value()));
-        eprintln!("brain_census: trial caps [{}], {} weights changed {:?}", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>());
+        eprintln!("brain_census: trial caps [{}], {} weights changed {:?}; baseline caps [{}]", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>(), base.caps.names());
         let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
         let mut total = crate::meter::Meter::default();
         // Fair (backlog 16, journal 0038): every team takes the trial seat
@@ -795,15 +799,15 @@ mod tests {
             new_match();
             let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS)
                 .map(|i| {
-                    let s = if teams()[i] == lucky { trial.clone() } else { Settings::default() };
+                    let s = if teams()[i] == lucky { trial.clone() } else { base.clone() };
                     (i as PlayerId, with_settings(s, || brain(i, seed ^ i as u64, false)))
                 })
                 .collect();
             let mut tally = Tally::new(&w);
             crate::meter::reset();
             // Seat-seconds in each new part's words, the trial team's.
-            const WORDS: [&str; 8] = ["base cycle", "relieving", "relieved", "cheaper by boat", "gathering the fleet", "road post", "a mine on the approach", "works for the base"];
-            let mut words = [0u32; 8];
+            const WORDS: [&str; 9] = ["base cycle", "relieving", "relieved", "cheaper by boat", "gathering the fleet", "road post", "a mine on the approach", "works for the base", "for the team"];
+            let mut words = [0u32; 9];
             while !w.over && w.tick < secs * TICK_HZ as Tick {
                 let orders = crate::run_bots(&w, &mut bots);
                 w.step(&orders);

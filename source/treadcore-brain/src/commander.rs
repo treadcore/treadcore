@@ -1424,6 +1424,38 @@ impl Commander {
     /// `GATHER_R`, or it holds for them (`GATHER_FOR` at most). True while
     /// it holds. Nothing to gather with no wingmen, a fight in reach, or
     /// afloat.
+    /// Part-laid bridges on the team board (roadmap 12f, LR 6.2): the
+    /// one I lay, posted; the tiles laid since, off; and, free of more
+    /// pressing work, the squad aboard with material, the nearest one
+    /// nobody lays, taken. The hop lays
+    /// it this think (the doctrine drives an active hop).
+    fn bridge_jobs(&mut self, b: &mut crate::board::TeamBoard, obs: &Observation, me: &Tank, map: Option<&Map>) {
+        use crate::weights::W;
+        if let Some((tiles, target)) = self.inner.hop.bridge_job() {
+            b.post_bridge(obs.player, &tiles, target, obs.tick);
+        }
+        if let Some(m) = map {
+            b.prune_bridges(m, obs.tick, self.settings.ticks(W::BridgeKeep));
+        }
+        let s = &me.pillboys;
+        // On auto with nothing more pressing than expanding or guarding;
+        // or a wingman, `bridge_wing` on: the leader that gave a bridge
+        // up sails on, and its wingmen are the tanks there with material.
+        let auto = self.goal == Goal::Auto && matches!(self.rung, Some(Rung::Expand | Rung::Guard));
+        let wing = matches!(self.goal, Goal::Escort(_)) && self.settings.w[W::BridgeWing] >= 0.5;
+        let idle = (auto || wing) && !self.resupplying && !self.inner.hop.active();
+        if !(idle && me.alive && !me.boat && s.aboard && s.strength > 0 && s.material >= ROAD_COST) {
+            return;
+        }
+        let hop = &self.inner.hop;
+        if let Some((tiles, target)) = b.take_bridge(obs.player, me.pos, self.settings.w[W::BridgeReach], obs.tick, |t| !hop.bridge_refused(t, obs.tick)) {
+            let left = tiles.len();
+            if self.inner.hop.adopt_bridge(tiles, target, obs.tick) {
+                self.doing = format!("taking the team's bridge to ({:.0},{:.0}), {} tiles left", target.x, target.y, left);
+            }
+        }
+    }
+
     fn gathering(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
         // Afloat they are on their way: counted, not near.
         let fleet: Vec<&Tank> = obs.tanks.iter().filter(|t| t.alive && self.members.contains(&t.owner)).collect();
@@ -2073,6 +2105,9 @@ impl Commander {
                     if let Some((job, at)) = b.job_for(obs.player) {
                         self.crew.adopt(job, at);
                     }
+                    if self.caps().has(crate::weights::Caps::BRIDGE_JOBS) {
+                        self.bridge_jobs(&mut b, obs, me, map);
+                    }
                 }
             }
         }
@@ -2586,6 +2621,65 @@ mod tests {
         eprintln!("a_far_fetch_gathers_the_fleet: gathered {}, lifted {} at {} s; {}", gathered, lifted, w.tick / TICK_HZ as Tick, c.doing);
         assert!(gathered, "the leader never gathered for the fetch");
         assert!(lifted >= 1, "and never fetched");
+    }
+
+    /// A part-laid bridge on the team board (roadmap 12f, LR 6.2): a
+    /// teammate on Auto with material, nothing to do but guard, takes it
+    /// and lays the rest, and it comes off the board. Off the capability,
+    /// nobody touches it.
+    #[test]
+    fn a_teammate_finishes_a_part_laid_bridge() {
+        let run = |on: bool| -> (bool, usize, bool) {
+            let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+            w.pillboxes.clear();
+            let me = w.tanks[0].pos;
+            // A channel four tiles wide across the map, six east of the
+            // tank, its first tile bridged by a teammate who gave up.
+            let x0 = me.x.floor() + 6.0;
+            for y in 0..MAP_H {
+                for dx in 0..4 {
+                    w.map.set(V2::new(x0 + dx as f32 + 0.5, y as f32 + 0.5), Terrain::Water);
+                }
+            }
+            let row = me.y.floor() + 0.5;
+            w.map.set(V2::new(x0 + 0.5, row), Terrain::Bridge);
+            let tiles: Vec<V2> = (1..4).map(|dx| V2::new(x0 + dx as f32 + 0.5, row)).collect();
+            let target = V2::new(x0 + 12.5, row);
+            w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
+            let mut s = crate::weights::Settings::default();
+            s.caps = s.caps.with(crate::weights::Caps::BOARD);
+            if on {
+                s.caps = s.caps.with(crate::weights::Caps::BRIDGE_JOBS);
+            }
+            let board = crate::board::shared();
+            board.lock().unwrap().post_bridge(1, &tiles, target, 0);
+            let mut c = Commander::new(29, "builder");
+            c.board = Some(board.clone());
+            c.set_settings(s);
+            c.set_goal(Goal::Auto);
+            c.ladder = [false, false, false, false, false, true];
+            let mut took = false;
+            for _ in 0..(240 * TICK_HZ) {
+                let orders: Vec<Order> = c.think_on(&w.observe(0), Some(&w.map)).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+                took |= board.lock().unwrap().bridges.iter().any(|j| j.by == 0);
+                w.step(&orders);
+                if tiles.iter().all(|t| w.map.at(*t) != Terrain::Water) {
+                    // One more think to strike it off the board.
+                    c.think_on(&w.observe(0), Some(&w.map));
+                    break;
+                }
+            }
+            let left = tiles.iter().filter(|t| w.map.at(**t) == Terrain::Water).count();
+            let gone = board.lock().unwrap().bridges.is_empty();
+            eprintln!("a_teammate_finishes_a_part_laid_bridge (on {}): took {}, {} left at {} s, off the board {}; {}", on, took, left, w.tick / TICK_HZ as Tick, gone, c.doing);
+            (took, left, gone)
+        };
+        let (took, left, gone) = run(true);
+        assert!(took, "nobody took the bridge");
+        assert_eq!(left, 0, "the bridge was not finished");
+        assert!(gone, "a finished bridge stays on the board");
+        let (took, left, _) = run(false);
+        assert!(!took && left == 3, "off the capability, the bridge is left as it was");
     }
 
     /// On a bridge a wingman's slot is in file straight behind the

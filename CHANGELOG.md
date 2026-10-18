@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added, off: bridge jobs on the team board (`bridge_jobs`, needs
+  `board`; LR 6.2's plan). A bridge a teammate gave up half laid stays
+  on the board. The next teammate with material within `bridge_reach`
+  (40 tiles) takes it and lays the rest, wingmen too with `bridge_wing`
+  (1). It comes off the board once laid, or after `bridge_keep` (180 s)
+  untouched. Fairly measured with `board` on for every team: 7.31 a
+  seat against 8.01 over six naval matches, inside the noise.
+- Added: `CENSUS_BASE_CAPS`, the census's baseline teams'
+  capabilities, for a part that needs another on.
 - Added: the sliders (backlog 15; Paul: "a slider for each coefficient
   weights"). `U` on the coordination screen opens the weights page: a
   switch for each of the 15 capabilities and a slider for each of the

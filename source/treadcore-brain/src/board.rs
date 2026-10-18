@@ -16,7 +16,12 @@
 //!   - the posture: what the team should mostly be doing;
 //!   - rotation across the team: a hurt tank at the hottest point is
 //!     swapped for a fresh one at a cold point, confirmed over two
-//!     rebuilds (`TEAM_ROTATE`).
+//!     rebuilds (`TEAM_ROTATE`);
+//!   - the part-laid bridges (`BRIDGE_JOBS`, LR 6.2): each bridge a
+//!     member lays is posted with its water tiles still to lay; left
+//!     part-laid (the layer gave up, went home, died), it stays a job
+//!     for the next teammate with material, until laid or untouched for
+//!     `bridge_keep`.
 //!
 //! Rebuilt once a second by whichever member finds it due first; bots
 //! run in seat order every tick, so that is the same member in every
@@ -46,6 +51,22 @@ pub const AT_POINT: f32 = 8.0;
 pub const ORDER_FOR: Tick = 30 * TICK_HZ as Tick;
 /// A job is kept this long (crew.rs `JOB_FOR`).
 pub const JOB_KEEP: Tick = crate::crew::JOB_FOR;
+/// A bridge not posted by its layer in this long is free to take.
+pub const BRIDGE_FREE: Tick = 3 * TICK_HZ as Tick;
+
+/// A part-laid bridge on the board.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BridgeJob {
+    /// What it crosses to.
+    pub target: V2,
+    /// Its water tiles still to lay, in order from the laid end.
+    pub tiles: Vec<V2>,
+    /// Who lays it, and when they last said so.
+    pub by: PlayerId,
+    pub seen: Tick,
+    /// When a tile of it was last laid (or it was posted).
+    pub laid: Tick,
+}
 
 /// What the team should mostly be doing (LR 9).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -103,6 +124,8 @@ pub struct TeamBoard {
     pub posture: Posture,
     /// Jobs given out: to whom, what, when.
     pub jobs: Vec<(PlayerId, Job, Tick)>,
+    /// Part-laid bridges (`BRIDGE_JOBS`).
+    pub bridges: Vec<BridgeJob>,
     /// A swap waiting for its confirmation: who falls back, who
     /// relieves, at which point, and the rebuilds it has held.
     pending: Option<(PlayerId, PlayerId, V2, u8)>,
@@ -161,6 +184,50 @@ impl TeamBoard {
             }
         }
         self.jobs.retain(|(_, _, t)| obs.tick < t + JOB_KEEP);
+    }
+
+    /// A member laying a bridge says so every think: the same bridge
+    /// (a tile or the target in common) is updated, a new one posted.
+    pub fn post_bridge(&mut self, by: PlayerId, tiles: &[V2], target: V2, now: Tick) {
+        let same = |j: &BridgeJob| j.target.tile() == target.tile() || j.tiles.iter().any(|a| tiles.iter().any(|b| a.tile() == b.tile()));
+        match self.bridges.iter_mut().find(|j| same(j)) {
+            Some(j) => {
+                if tiles.len() < j.tiles.len() {
+                    j.laid = now;
+                }
+                j.tiles = tiles.to_vec();
+                j.target = target;
+                j.by = by;
+                j.seen = now;
+            }
+            None => self.bridges.push(BridgeJob { target, tiles: tiles.to_vec(), by, seen: now, laid: now }),
+        }
+    }
+
+    /// The tiles laid since, by anyone, off the jobs; a bridge laid, or
+    /// untouched for `keep`, off the board.
+    pub fn prune_bridges(&mut self, map: &Map, now: Tick, keep: Tick) {
+        for j in self.bridges.iter_mut() {
+            let before = j.tiles.len();
+            j.tiles.retain(|t| map.at(*t) == Terrain::Water);
+            if j.tiles.len() < before {
+                j.laid = now;
+            }
+        }
+        self.bridges.retain(|j| !j.tiles.is_empty() && now < j.laid.saturating_add(keep));
+    }
+
+    /// A part-laid bridge nobody is laying, its next tile within
+    /// `reach` of `at`, that `ok` takes: the nearest, now `p`'s.
+    pub fn take_bridge(&mut self, p: PlayerId, at: V2, reach: f32, now: Tick, ok: impl Fn(V2) -> bool) -> Option<(Vec<V2>, V2)> {
+        let j = self
+            .bridges
+            .iter_mut()
+            .filter(|j| now >= j.seen + BRIDGE_FREE && j.tiles[0].dist(at) <= reach && ok(j.target))
+            .min_by(|a, b| a.tiles[0].dist(at).total_cmp(&b.tiles[0].dist(at)))?;
+        j.by = p;
+        j.seen = now;
+        Some((j.tiles.clone(), j.target))
     }
 
     pub fn due(&self, now: Tick) -> bool {
@@ -373,6 +440,35 @@ mod tests {
         assert_eq!(b.order_for(0, 40), Some(BoardOrder::FallBack));
         assert_eq!(b.order_for(1, 40), Some(BoardOrder::Relieve(point)));
         assert_eq!(b.order_for(1, 40 + ORDER_FOR), None, "an order runs out");
+    }
+
+    #[test]
+    fn a_part_laid_bridge_waits_for_the_next_tank() {
+        let mut map = World::new(Scenario::bots(2)).map.clone();
+        let tiles: Vec<V2> = (0..3).map(|i| V2::new(40.5 + i as f32, 40.5)).collect();
+        for t in &tiles {
+            map.set(*t, Terrain::Water);
+        }
+        let target = V2::new(50.5, 40.5);
+        let mut b = TeamBoard::default();
+        b.post_bridge(1, &tiles, target, 0);
+        let yes = |_: V2| true;
+        assert_eq!(b.take_bridge(2, V2::new(35.0, 40.0), 40.0, 10, yes), None, "its layer still lays it");
+        assert_eq!(b.take_bridge(3, V2::new(120.0, 120.0), 40.0, BRIDGE_FREE, yes), None, "too far to take");
+        assert_eq!(b.take_bridge(2, V2::new(35.0, 40.0), 40.0, BRIDGE_FREE, |_| false), None, "given up by the taker");
+        assert_eq!(b.take_bridge(2, V2::new(35.0, 40.0), 40.0, BRIDGE_FREE, yes), Some((tiles.clone(), target)));
+        assert_eq!(b.take_bridge(3, V2::new(35.0, 40.0), 40.0, BRIDGE_FREE + 1, yes), None, "taken");
+        map.set(tiles[0], Terrain::Bridge);
+        b.prune_bridges(&map, 100, 180 * TICK_HZ as Tick);
+        assert_eq!(b.bridges[0].tiles.len(), 2, "a tile laid comes off");
+        b.prune_bridges(&map, 100 + 180 * TICK_HZ as Tick, 180 * TICK_HZ as Tick);
+        assert!(b.bridges.is_empty(), "untouched for bridge_keep, dropped");
+        b.post_bridge(1, &tiles[1..], target, 200);
+        for t in &tiles {
+            map.set(*t, Terrain::Bridge);
+        }
+        b.prune_bridges(&map, 201, 180 * TICK_HZ as Tick);
+        assert!(b.bridges.is_empty(), "laid, done");
     }
 
     #[test]
