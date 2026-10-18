@@ -5,8 +5,8 @@
 # copy with the tuned weights multiplied by exp(SIGMA x a normal draw),
 # and plays each in the brain census (treadcore-brain fleet.rs
 # `brain_census`): one team on the child, two on the baseline, the
-# child's team turned round the three starts over the same SEEDS every
-# time, so a difference is the weights' and not the dice's. A child's
+# child in each team's seat in turn on each of the same SEEDS every
+# time, so a difference is the weights' and not the starts'. A child's
 # fitness is its team's mean score a seat less the baseline teams'; the
 # best child replaces the parent only by beating it. Every match goes
 # into reports/ledger/ledger.jsonl with its genome, so any line can be
@@ -15,7 +15,9 @@
 # A weights file is promoted to the default only by the rule in
 # ROADMAP.md goal 4: it beats the baseline over the fixed census.
 #
-#   make tune                         5 generations of 4, 3 seeds, 900 s
+#   make tune                         5 generations of 4, 2 seeds, 900 s
+#                                     (each seed three matches: the census
+#                                     puts every team in the trial seat)
 #   GENERATIONS=10 LAMBDA=6 make tune
 #   START=build/tune/x/best.toml      start from a file, not the defaults
 #   TUNE="w_wounded press_odds k_long" the weights to tune (default below)
@@ -29,7 +31,7 @@
 GENERATIONS="${GENERATIONS:-5}"
 LAMBDA="${LAMBDA:-4}"
 SIGMA="${SIGMA:-0.15}"
-SEEDS="${SEEDS:-3}"
+SEEDS="${SEEDS:-2}"
 SECS="${SECS:-900}"
 TUNE="${TUNE:-w_near w_wounded w_finish w_focus w_overkill w_in_range w_threat w_stick engage_odds press_odds w_exposure w_flank k_long c_boat swap_gap}"
 OUT="$BUILDDIR/tune/$STAMP"

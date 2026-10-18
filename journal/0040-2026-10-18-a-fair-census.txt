@@ -1,0 +1,57 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 18 Oct 2026 23:00:00 -0700
+Subject: [JOURNAL 0040] A fair census: every team in the trial seat
+Message-ID: <0040.20261018@treadcore.org>
+In-Reply-To: <0039.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: census, null run, measurement, backlog 16
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair. Paul: "merge it to main. continue".
+X-Commits: de0aa97 (journals 0037 to 0039); this entry's work is in
+           the tree
+
+            A FAIR CENSUS: EVERY TEAM IN THE TRIAL SEAT
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    Journal 0038 found the brain census biased: on fixed seeds, the
+    trial team drew the better starts (12.66 a seat against 6.44 with
+    every team the same). The census now plays each seed three times,
+    every team in the trial seat once. A null run reads exactly even,
+    13.93 against 13.93. Measured again this way, the old castle scored
+    8.36 a seat against the capped castle's 9.08 over nine naval
+    matches. That agrees with the paired reading of 0038 (-0.96) and
+    keeps the capped castle the default. `make tune` drops to two seeds
+    a child, six matches.
+
+I. METHOD
+
+    `brain_census` (fleet.rs): `CENSUS_FAIR`, on by default, plays
+    every (seed, trial team) pair; `CENSUS_FAIR=0` keeps one match a
+    seed with the trial team rotated. A null run of one seed of 120 s
+    first, then `CENSUS_CAPS=-castle_cap`: naval.map, three seeds of
+    900 s, respawns 3.
+
+II. RESULTS
+
+    Null: 13.93 and 13.93. Old castle against capped: 8.36 and 9.08 a
+    seat; 642 crossings searched and 3,356 answered from the cache;
+    27.8 us a seat-tick.
+
+III. DISCUSSION
+
+    A census that can read a null run as even is one whose differences
+    can be believed. The price is three times the matches.
+
+IV. OPEN PROBLEMS
+
+    1. Twelve seeds per capability, now that the census is fair.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

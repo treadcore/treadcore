@@ -94,10 +94,9 @@ Rules for every part of step 12:
   fixed census (the ignored `quad_census`, `three_fleets_build`, the
   fleet match over seven seeds), as rotation was promoted on kills 249
   to 260, or by Paul's choice, as `castle_cap` was (18 October). The
-  census is read paired: the trial against a null run (the default on
-  every team) on the same seeds, because the trial team's seats are
-  not even (LR 12: the null run's trial team scored 12.66 against
-  6.44).
+  census puts every team in the trial seat on every seed (LR 14), since
+  a trial team in one seat drew the better starts (LR 12: 12.66 against
+  6.44 with every team the same); a fair null run reads exactly even.
 - `make test` green at every commit.
 - Every either/or is a scalar (Paul, 18 October: "should it x or y, we
   choose a scalar of how much x, and how much y is weighted"). Where a
@@ -256,9 +255,11 @@ to 8.93 a seat).
   Not yet: sliders on the coordination screen.
 - [~] 12d intent and smoothing (`smooth`): the desire vector in `go`,
   the turret's confirmation, one resupply threshold;
-  `a_challenger_needs_two_thinks`, `a_dodge_skips_confirmation`. Not
-  yet: confirmation for the ladder's rungs and the wingman's tasks, a
-  dodge for direct fire.
+  `a_challenger_needs_two_thinks`, `a_dodge_skips_confirmation`; then
+  the ladder's rungs confirmed and the advance scalar for the stance
+  (LR 15). Measured fairly it cost 1.9 a seat (7.55 against 9.47, six
+  naval matches), so it stays off for the tuner. Not yet: a dodge for
+  direct fire.
 - [x] 12e the team board (`board`, `team_rotate`):
   `the_front_is_where_influence_crosses_zero`, `a_hurt_tank_swaps_out`,
   `a_missed_job_is_still_on_the_board`. Not yet: allies' goals shown on
@@ -266,10 +267,11 @@ to 8.93 a seat).
 - [~] 12f behaviours: the base cycle (`cycle`,
   `a_full_tank_gives_the_base_an_item`), priced crossings and the island
   site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`),
-  the column (`column`, `a_fleet_crosses_a_bridge_in_file`). Not yet:
-  the escort that brings a pillbox home along the new road (the crews'
-  `Haul` carries pillboxes, but not yet along the road), bridge jobs on
-  the board.
+  the column (`column`, `a_fleet_crosses_a_bridge_in_file`), the
+  escort (`escort`, `a_far_fetch_gathers_the_fleet`: a far fetch
+  gathers the fleet, which screens the carry home along the road; LR
+  16; it never acted in a 900 s naval census, so it waits on longer
+  matches). Not yet: bridge jobs on the board.
 - [x] 12g the ledger and the tuner: `brain_census`, `ledger_ratings`,
   `make tune`. Not yet: a tuning run long enough to promote anything.
 - [x] 12h the answers as scalars, the same day: the weights of the
@@ -393,11 +395,10 @@ the end with a date.
     Goal 5.
 15. The sliders on the coordination screen, one per weight, for the
     player's own team (12c, 12h). Goal 4.
-16. The census's trial team draws better seats than the rest on the
-    fixed seeds (LR 12: 12.66 against 6.44 with every team the same).
-    Read it paired against a null run; better, deal the trial team
-    every start on every seed (three times the matches). Goal 4, 12g.
-    Added 18 October.
+16. Done 18 October (LR 14): the census puts every team in the trial
+    seat on every seed (`CENSUS_FAIR`); a null run reads exactly even,
+    and the capped castle measured again at -0.72 a seat for the old
+    one. Goal 4, 12g.
 
 
 ## Sequencing

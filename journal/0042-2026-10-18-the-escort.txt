@@ -1,0 +1,50 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 18 Oct 2026 23:50:00 -0700
+Subject: [JOURNAL 0042] The escort: the fleet goes out for the pillbox together
+Message-ID: <0042.20261018@treadcore.org>
+In-Reply-To: <0041.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: escort, fleet, fetch, road, roadmap 12f
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair, continuing the roadmap a step at a time.
+X-Commits: none yet; the work is in the tree
+
+       THE ESCORT: THE FLEET GOES OUT FOR THE PILLBOX TOGETHER
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    The last behaviour of Paul's base cycle, the mission. A fleet
+    leader whose fetch trip runs past `fetch_gather` (20 tiles) now
+    gathers its wingmen at the base before it goes, behind the bit
+    `escort`. The fleet then goes out in its wedge and screens the carry
+    home, and the router brings the pillbox along the road, which costs
+    0.6 a tile against grass's 1.0. In a match with one wingman 45
+    tiles off, the leader gathered and its squad lifted the pillbox by
+    324 s. The fair census of six naval matches read exactly even:
+    nobody reached a far fetch in 900 s, so the bit never acted. It
+    stays off until longer matches can show it.
+
+I. METHOD
+
+    `Commander::turrets` gathers before a far fetch when `escort` is on
+    and the leader has members. Proof: `a_far_fetch_gathers_the_fleet`.
+    Census: `CENSUS_CAPS=escort`, naval.map, two seeds of 900 s.
+
+II. RESULTS
+
+    Brain tests 56 passed, 8 ignored. Census 7.70 against 7.70.
+
+III. OPEN PROBLEMS
+
+    1. A census long enough to reach the turrets on naval.map, which
+       means goal 5's longer matches.
+    2. Bridge jobs on the team board.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

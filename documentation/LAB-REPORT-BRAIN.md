@@ -572,3 +572,84 @@ weight in the flat array (12c), so the tuner (12g) can learn the bots'
 buying as it learns their fighting. Until the sim step lands,
 `upgrade_vs_mend` has nothing to weigh, and the brain buys nothing.
 
+
+## 14. The fair census, 18 October
+
+Section 12 found the census biased: the trial team's seat on each fixed
+seed is a good one more often than not. The cure, backlog item 16, is
+in `brain_census`: each seed is played three times, every team in the
+trial seat once (`CENSUS_FAIR`, on by default; `CENSUS_FAIR=0` keeps
+the old rotation, a third of the matches). With every team the same,
+the three matches of a seed are the same match, so a null run reads
+exactly even; one seed of 120 s read 13.93 against 13.93.
+
+The capped castle measured again, fairly, on naval.map, three seeds of
+900 s, nine matches:
+
+| Run | Old castle (trial) | Capped castle (baseline) | Difference a seat |
+| --- | --- | --- | --- |
+| paired against a null run, six seeds (section 12) | 11.70 | 12.66 | -0.96 |
+| fair, three seeds | 8.36 | 9.08 | -0.72 |
+
+The two methods agree: the old castle is a little behind and inside the
+noise, and the capped castle stays the default. A fair census costs
+three times the matches, so `make tune` now defaults to two seeds (six
+matches a child).
+
+
+## 15. Smoothing finished: the ladder and the advance, 18 October
+
+The rest of 12d, under `smooth`:
+
+- **The Auto ladder confirms a change of rung.** A new rung must win
+  `confirm` thinks in a row while the old one still holds; a think is
+  a quarter second. A threat to the base (DefendBase), or the old rung
+  failing its own condition, changes the rung at once
+  (`Commander::rung_challenger`).
+- **The decision to close is an averaged advance scalar.** The odds are
+  read as -1 (at `engage_odds` or under) to +1 (at `press_odds` or
+  over). The reading is averaged once a think by `beta` and held
+  between thinks. The tank presses only above `advance_band` (0.35, a
+  new weight), falls back to mass only below minus it, and engages in
+  between (`Tactician::smooth`). Proof: in
+  `the_square_law`, one think of two-to-one odds is not yet a press,
+  and two are.
+
+The fair census, naval.map, two seeds of 900 s, six matches:
+
+| Trial | Trial team | Baseline teams | Moves a match, all seats |
+| --- | --- | --- | --- |
+| `smooth` | 7.55 | 9.47 | 4,661 |
+
+Smoothing cost 1.9 a seat over six matches; the spread of a team's
+score across them was 3.28 to 14.29. It did not cut the Moves asked of
+the world either (the old castle's nine matches asked 4,391 a match).
+So `smooth` stays off. The likely reasons to look at next: holding a
+rung for half a second delays leaving a rung whose work is done, and a
+smoothed stance arrives at a fight a think or two late. Its weights
+(`confirm`, `beta`, `advance_band`, `margin`) are the tuner's to try
+before the bit is judged again.
+
+
+## 16. The escort, 18 October
+
+Paul's first message asked that the tanks "go out on a mission with the
+team to start moving the pillbox along the newly created road leading
+back to the base". The pieces existed: the turrets rung fetches an
+outlying pillbox, the wingmen fly the leader's wedge, and the world's
+router already prefers road (a road tile costs 0.6 against grass's
+1.0), so a pillbox carried home comes along the road where there is
+one. What was missing was the leaving together. Under the new bit
+`escort`, a fleet leader at its base whose fetch trip runs farther than
+`fetch_gather` (20 tiles, a new weight) gathers its wingmen first, with
+the same gathering the hunt and the expand use. The fleet then goes out
+in its wedge and screens the carry home. Proof:
+`a_far_fetch_gathers_the_fleet`. With the wingman 45 tiles off and the
+pillboxes 26 and 30 out, the leader gathered for the fetch and its
+squad lifted the first pillbox by 324 s. Brain tests: 56 passed.
+
+The fair census (two naval seeds, six matches of 900 s) read 7.70
+against 7.70 exactly. No team reached a far fetch in 900 s, so the bit
+never acted and the matches were the null run's. `escort` stays off
+until a longer census (goal 5's longer matches) can see it work.
+

@@ -738,7 +738,9 @@ mod tests {
     /// over the seeds so no start favours it. Each match writes its
     /// ledger lines (`reports/ledger/ledger.jsonl`, off with
     /// `CENSUS_LEDGER=0`) and the meter's line; the end prints the trial
-    /// team's mean score against the baseline teams'. The trial is
+    /// team's mean score against the baseline teams'. Each seed is played
+    /// three times, every team in the trial seat once (`CENSUS_FAIR=0`
+    /// for one match a seed, the trial team rotated). The trial is
     /// `CENSUS_WEIGHTS` (a weights file, weights.rs) or `CENSUS_CAPS`
     /// (capabilities added to the baseline, comma-separated); seeds
     /// `CENSUS_SEEDS` (3), seconds `CENSUS_SECS` (900). `cargo test -p
@@ -774,9 +776,15 @@ mod tests {
         eprintln!("brain_census: trial caps [{}], {} weights changed {:?}", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>());
         let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
         let mut total = crate::meter::Meter::default();
-        for n in 0..seeds {
+        // Fair (backlog 16, journal 0038): every team takes the trial seat
+        // on every seed, three matches a seed, so the starts' unevenness
+        // cancels; a null run then reads exactly even. `CENSUS_FAIR=0`
+        // rotates the trial team over the seeds instead, a third of the
+        // matches.
+        let fair = std::env::var("CENSUS_FAIR").map(|v| v != "0").unwrap_or(true);
+        let plays: Vec<(u64, TeamId)> = (0..seeds).flat_map(|n| if fair { (0..3).map(|t| (n, t as TeamId)).collect::<Vec<_>>() } else { vec![(n, (n % 3) as TeamId)] }).collect();
+        for (n, lucky) in plays {
             let seed = 0x7EAD_C0DE_u64 ^ (n * 0x9E37_79B9);
-            let lucky = (n % 3) as TeamId;
             let names: Vec<(String, bool)> = (0..SEATS).map(|i| (name(i), true)).collect();
             let map = match std::env::var("CENSUS_MAP") {
                 Ok(path) => MapSource::Text(std::fs::read_to_string(&path).expect("CENSUS_MAP")),
@@ -855,7 +863,7 @@ mod tests {
             eprintln!("  trial team, seat-seconds: {}", WORDS.iter().zip(words.iter()).map(|(k, n)| format!("{} {}", k, n)).collect::<Vec<_>>().join(", "));
             eprintln!("  {}", m.line());
         }
-        eprintln!("brain_census: trial {:.2}, baseline {:.2} (mean score a seat, {} seeds); {}", trial_score / trial_n.max(1) as f32, base_score / base_n.max(1) as f32, seeds, total.line());
+        eprintln!("brain_census: trial {:.2}, baseline {:.2} (mean score a seat, {} seeds, {}); {}", trial_score / trial_n.max(1) as f32, base_score / base_n.max(1) as f32, seeds, if fair { "every team in the trial seat" } else { "the trial seat rotated" }, total.line());
     }
 
     /// Sixteen seats as the window deals them with `--fleets`, seat 0 on

@@ -237,6 +237,13 @@ pub struct Tactician {
     /// once, as before.
     pub confirm: Option<(u8, f32)>,
     challenger: Option<(EntityId, u8)>,
+    /// The engagement smoothed (roadmap 12d): the odds as an advance
+    /// scalar, its share of the new reading a think and its band; None
+    /// takes each reading as it comes, as before.
+    pub smooth: Option<(f32, f32)>,
+    advance: crate::intent::Advance,
+    advance_at: Option<Tick>,
+    held_stance: Option<Stance>,
 }
 
 /// A tank's worth in a fight: armour, and none without shells.
@@ -406,6 +413,41 @@ impl Tactician {
     /// `mass_for` seconds whether or not the team came.
     pub fn stance(&mut self, tick: Tick, odds: &Odds) -> Stance {
         let r = odds.ratio();
+        if let Some((beta, band)) = self.smooth {
+            // The decision to close, rounded off (Paul, 18 October): the
+            // odds read as -1 (at or under `engage_odds`) to +1 (at or over
+            // `press_odds`), averaged a think at a time; press only above
+            // the band, fall back only below it, hold between.
+            if self.advance_at.map(|t| tick < t + TICK_HZ as Tick / 4).unwrap_or(false) {
+                if let Some(st) = self.held_stance {
+                    return st;
+                }
+            }
+            self.advance_at = Some(tick);
+            let (lo, hi) = (self.w.engage_odds, self.w.press_odds.max(self.w.engage_odds + 0.01));
+            let raw = ((r - lo) / (hi - lo) * 2.0 - 1.0).clamp(-1.0, 1.0);
+            let st = match self.advance.update(raw, beta, band) {
+                crate::intent::Step::Push => {
+                    self.massing_since = None;
+                    Stance::Press
+                }
+                crate::intent::Step::Hold => {
+                    self.massing_since = None;
+                    Stance::Engage
+                }
+                crate::intent::Step::Back if odds.coming > 0 => {
+                    let since = *self.massing_since.get_or_insert(tick);
+                    if (tick.saturating_sub(since) as f32 * DT) < self.w.mass_for {
+                        Stance::Mass
+                    } else {
+                        Stance::Engage
+                    }
+                }
+                crate::intent::Step::Back => Stance::Engage,
+            };
+            self.held_stance = Some(st);
+            return st;
+        }
         if r < self.w.engage_odds && odds.coming > 0 {
             let since = *self.massing_since.get_or_insert(tick);
             if (tick.saturating_sub(since) as f32 * DT) < self.w.mass_for {
@@ -605,5 +647,10 @@ mod tests {
         assert_eq!(t.stance(0, &alone), Stance::Mass);
         let alone_for_good = Odds { coming: 0, ..alone };
         assert_eq!(t.stance(0, &alone_for_good), Stance::Engage);
+        // Smoothed: one reading of strong odds is not yet a press; a few are.
+        let mut sm = Tactician { smooth: Some((0.3, 0.35)), ..Tactician::default() };
+        assert_eq!(sm.stance(0, &two_to_one), Stance::Engage, "one think is not a press");
+        assert_eq!(sm.stance(1, &two_to_one), Stance::Engage, "held between thinks");
+        assert_eq!(sm.stance(5, &two_to_one), Stance::Press);
     }
 }

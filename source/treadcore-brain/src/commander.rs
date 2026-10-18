@@ -331,6 +331,8 @@ pub struct Commander {
     on_bridge: bool,
     /// When road posts were last looked for (roadmap 12h).
     posts_at: Tick,
+    /// A rung waiting for its confirmation, and since when (roadmap 12d).
+    rung_challenger: Option<(Rung, Tick)>,
 }
 
 /// A downed ally this far off is driven to and revived, if the time
@@ -393,7 +395,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0 }
+        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None }
     }
 
     /// The weights for its fights (tactics.rs); None shoots the nearest
@@ -416,6 +418,7 @@ impl Commander {
             let mut t = crate::tactics::Tactician::with(crate::tactics::Tactics::from_weights(&s));
             t.base = self.base;
             t.confirm = s.caps.has(Caps::SMOOTH).then(|| (s.w[W::ConfirmTurret].round().clamp(1.0, 255.0) as u8, s.w[W::Margin]));
+            t.smooth = s.caps.has(Caps::SMOOTH).then(|| (s.w[W::Beta], s.w[W::AdvanceBand]));
             self.inner.tactics = Some(t);
         }
         self.inner.own_resupply = !s.caps.has(Caps::SMOOTH);
@@ -1207,6 +1210,15 @@ impl Commander {
             return;
         };
         self.fetching = Some(p.id);
+        // A mission with the fleet (roadmap 12f, Paul: "go out on a
+        // mission with the team to start moving the pillbox along the
+        // newly created road leading back to the base"): a far trip
+        // waits for the wingmen first, so they go out in formation and
+        // screen the carry home.
+        if self.caps().has(crate::weights::Caps::ESCORT) && !self.members.is_empty() && p.pos.dist(base) > self.settings.w[crate::weights::W::FetchGather] && me.pos.dist(base) <= BASE_R + 2.0 && self.gathering(obs, me, cmds) {
+            self.doing = format!("{} (to fetch the pillbox at ({:.0},{:.0}))", self.doing, p.pos.x, p.pos.y);
+            return;
+        }
         if me.pos.dist(p.pos) > FETCH_NEAR + 1.5 {
             let to = p.pos + (me.pos - p.pos).norm().scale(FETCH_NEAR);
             self.go(obs, me, to, cmds);
@@ -1283,7 +1295,28 @@ impl Commander {
             },
             "always".into(),
         ];
-        let rung = Rung::ALL.iter().copied().find(|r| self.ladder[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
+        let mut rung = Rung::ALL.iter().copied().find(|r| self.ladder[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
+        // Smoothed (roadmap 12d): a new rung must win `confirm` thinks in a
+        // row (a think is a quarter second) while the old one still holds;
+        // a threat to the base (DefendBase), or the old rung no longer
+        // holding, changes it at once.
+        if self.caps().has(crate::weights::Caps::SMOOTH) {
+            if let Some(cur) = self.rung.filter(|c| *c != rung && rung != Rung::DefendBase && self.ladder[c.index()] && holds[c.index()]) {
+                let need = (self.settings.w[crate::weights::W::Confirm].round().max(1.0) as Tick) * (TICK_HZ as Tick / 4);
+                let since = match self.rung_challenger {
+                    Some((r, t)) if r == rung => t,
+                    _ => obs.tick,
+                };
+                self.rung_challenger = Some((rung, since));
+                if obs.tick < since + need {
+                    rung = cur;
+                } else {
+                    self.rung_challenger = None;
+                }
+            } else {
+                self.rung_challenger = None;
+            }
+        }
         if self.rung != Some(rung) {
             self.last_move = None;
             self.rung = Some(rung);
@@ -2472,6 +2505,53 @@ mod tests {
             (rel - towards.scale(along)).len() < 2.5 && along > 0.0
         });
         assert!(on_line, "a pillbox stands by the road to the second base");
+    }
+
+    /// The escort (roadmap 12f): with `escort` on, a leader whose fetch
+    /// trip runs past `fetch_gather` waits at the base for its wingman
+    /// before it goes, and the pillbox still comes home.
+    #[test]
+    fn a_far_fetch_gathers_the_fleet() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(3) }.with_teams(2);
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let me = w.tanks[0].pos;
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).total_cmp(&b.pos.dist(me))).unwrap().clone();
+        w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
+        for (n, r) in [26.0, 30.0].into_iter().enumerate() {
+            let at = free_near(&w, depot.pos, r);
+            w.pillboxes.push(Pillbox { id: 70_050 + n as EntityId, pos: at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        }
+        // The enemy far off; the wingman (seat 2, seat 0's team) far too.
+        let far = free_near(&w, depot.pos, 60.0);
+        w.tanks.iter_mut().find(|t| t.owner == 1).unwrap().pos = far;
+        let wing_at = free_near(&w, depot.pos, 45.0);
+        w.tanks.iter_mut().find(|t| t.owner == 2).unwrap().pos = wing_at;
+        let mut s = crate::weights::Settings::default();
+        s.caps = s.caps.with(crate::weights::Caps::ESCORT);
+        let mut c = Commander::new(19, "leader");
+        c.set_settings(s.clone());
+        c.set_goal(Goal::Auto);
+        c.members = vec![2];
+        let mut wing = Commander::wingman(23, "wing", 0);
+        wing.slot = Some(0);
+        wing.set_settings(s);
+        let (mut gathered, mut lifted) = (false, 0);
+        for _ in 0..(1200 * TICK_HZ) {
+            let mut orders: Vec<Order> = c.think_on(&w.observe(0), Some(&w.map)).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            orders.extend(wing.think_on(&w.observe(2), Some(&w.map)).into_iter().map(|cmd| Order { player: 2, cmd }));
+            if c.rung == Some(Rung::Turrets) && c.doing.contains("gathering the fleet") && c.doing.contains("to fetch") {
+                gathered = true;
+            }
+            w.step(&orders);
+            lifted += w.events.iter().filter(|e| matches!(e, Event::PillboxLifted { by: 0, .. })).count();
+            if gathered && lifted >= 1 {
+                break;
+            }
+        }
+        eprintln!("a_far_fetch_gathers_the_fleet: gathered {}, lifted {} at {} s; {}", gathered, lifted, w.tick / TICK_HZ as Tick, c.doing);
+        assert!(gathered, "the leader never gathered for the fetch");
+        assert!(lifted >= 1, "and never fetched");
     }
 
     /// On a bridge a wingman's slot is in file straight behind the

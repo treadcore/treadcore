@@ -90,6 +90,7 @@ weights! {
     Confirm "confirm" 2.0, "smooth: thinks in a row a challenger must win";
     ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target";
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
+    AdvanceBand "advance_band" 0.35, "smooth: the advance scalar presses above this and falls back below minus this";
     Jitter "jitter" 3.0, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
     RetreatArmor "retreat_armor" 35.0, "survival: armour at or under this goes home";
     RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home";
@@ -126,6 +127,7 @@ weights! {
     PostsMax "posts_max" 4.0, "posts: road posts a base fills at most (rounded)";
     JunctionClear "junction_clear" 3.0, "posts: no post this near a road junction, tiles";
     ConnectBases "connect_bases" 0.75, "connect: a base or castle preferred to a lone pillbox, 0 none, 1 its distance counted at nothing";
+    FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
 }
@@ -184,6 +186,7 @@ caps! {
     COLUMN 13 "column" false, "a fleet crosses a bridge in file (12f3)";
     CYCLE 14 "cycle" false, "after filling up, give the base an item and an improvement and road out (12f1)";
     ISLAND_SITE 15 "island_site" false, "a small island with few trees is a poor base (12f2)";
+    ESCORT 17 "escort" false, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
     CASTLE_CAP 16 "castle_cap" true, "the castle stops at castle_inside and castle_road pillboxes; the rest go to posts on the roads between bases (12h)";
 }
 

@@ -6,6 +6,24 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the brain census is fair (backlog 16): each seed is played
+  three times, every team in the trial seat once, so the starts'
+  unevenness cancels and a null run reads exactly even (13.93 against
+  13.93). The capped castle measured again: the old castle 8.36 a seat
+  against 9.08 over nine naval matches. `make tune` defaults to two
+  seeds.
+- Added, off: the rest of the smoothing (`smooth`): the Auto ladder
+  holds a rung until a new one has won two thinks (a threat to the
+  base still changes it at once), and the stance comes from the odds
+  averaged a think at a time, pressing above `advance_band` and falling
+  back below it. Over six fair naval matches it scored 7.55 a seat
+  against 9.47, so it stays off.
+- Added, off: the escort (`escort`, Paul: "go out on a mission with the
+  team to start moving the pillbox along the newly created road"): a
+  fleet leader's fetch trip past `fetch_gather` (20 tiles) gathers its
+  wingmen at the base first, and the fleet screens the carry home, the
+  router preferring the road. Proven in a match alone with one wingman
+  (lifted by 324 s); a 900 s naval census never reached a far fetch.
 - Added: the brain's step 12 groundwork (Paul, 18 October: "a
   flowchart logic system with weights that can be adjusted and
   componentized ... first step is memory and passing of parameters";

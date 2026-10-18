@@ -1,0 +1,58 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 18 Oct 2026 23:30:00 -0700
+Subject: [JOURNAL 0041] Smoothing finished, and measured: not yet
+Message-ID: <0041.20261018@treadcore.org>
+In-Reply-To: <0040.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: smoothing, hysteresis, the ladder, stance, census, roadmap 12d
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair, continuing the roadmap a step at a time.
+X-Commits: none yet; the work is in the tree
+
+              SMOOTHING FINISHED, AND MEASURED: NOT YET
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    The rest of roadmap 12d is built, behind `smooth`. The Auto ladder
+    confirms a change of rung over two thinks, except for a threat to
+    the base. The decision to press or mass comes from the fight's odds
+    averaged a think at a time, with a band either side (`advance_band`
+    0.35, a new weight). This is Paul's "rounded off, averaged ... a few
+    thoughts of confirmation" from 18 October. Measured with the fair
+    census (journal 0040), six naval matches, the smoothed team scored
+    7.55 a seat against 9.47 and asked as many Moves of the world. The
+    bit stays off; its four weights go to the tuner.
+
+I. METHOD
+
+    `Commander::rung_challenger` and `Tactician::smooth`, with a test
+    in `the_square_law`. Brain tests 55 passed, 8 ignored. The census:
+    `CENSUS_CAPS=smooth`, naval.map, two seeds of 900 s, respawns 3,
+    every team in the trial seat.
+
+II. RESULTS
+
+    Trial 7.55, baseline 9.47 a seat; a team's score across the six
+    matches ran 3.28 to 14.29. Moves 4,661 a match.
+
+III. DISCUSSION
+
+    Holding a decision is not free: a rung whose work is done is left
+    half a second late, and a fight is joined a think or two late. The
+    first lesson of step 12 holds here too: a part goes in off, and
+    the census says when it comes on.
+
+IV. OPEN PROBLEMS
+
+    1. `make tune` over `confirm`, `beta`, `advance_band` and `margin`
+       with `smooth` on.
+    2. A dodge for direct fire.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
