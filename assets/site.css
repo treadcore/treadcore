@@ -1,0 +1,282 @@
+/* treadcore.org
+   The game's own look, on the web: brushed metal for the frame (the
+   plate and button gradients of source/treadcore-client/src/metal.rs),
+   black inset screens with phosphor text for what the HUD would show,
+   and the battlefield itself (assets/field.js) behind every page.
+   Techniques after paulricheson.com: a theme switch (auto, day,
+   night), panels that rise into place, showcases whose screen holds
+   while the beats scroll past, driven by scroll-driven CSS animations
+   where the browser has them; nothing hidden without JavaScript or
+   when motion is not welcome. No fonts to load, no libraries.
+
+   THEME  Day values first. The night values appear twice (system
+          setting, theme switch); keep the two copies the same. */
+:root{
+  color-scheme:light;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  /* the field (field.js reads these) */
+  --f-water:#008f9e; --f-deep:#007480; --f-grass:#007020; --f-forest:#1fb00f;
+  --f-road:#6b6b6b; --f-sand:#b8a56e; --f-tank:#bfa070; --f-tank-dark:#805e40;
+  --f-foe:#d0443a; --f-drone:#73c7ff; --f-shell:#ff8c33; --f-veil:rgba(10,14,12,.38);
+  /* the metal: plate and button, light to dark (metal.rs PLATE, BUTTON) */
+  --m0:#c4c4c4; --m1:#ececec; --m2:#d6d6d6; --m3:#bababa; --m4:#a0a0a0; --m5:#8a8a8a;
+  --b0:#7a7a7a; --b1:#cfcfcf; --b2:#bebebe; --b3:#707070; --b4:#545454;
+  --etch:#121214; --etch-soft:#3c3e40; --rim:rgba(255,255,255,.85); --edge:#2b2c2e; --etch-shade:0 1px 0 rgba(255,255,255,.85),0 -1px 0 rgba(0,0,0,.25);
+  /* the screens */
+  --scr:#070807; --scr-2:#101310; --phos:#33f24d; --phos-dim:#1d8a2c; --ink:#e6ede6;
+  --ink-soft:#9fb0a2; --amber:#ffbf4d; --red:#f23326; --sky:#73c7ff; --tan:#bfa070;
+  --lit:#9effa8; --lit-deep:#004712; --plink:#0b5a1c;
+  --shadow:rgba(0,0,0,.45);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --f-water:#03454f; --f-deep:#022f37; --f-grass:#06380f; --f-forest:#0f5a0a;
+    --f-road:#3a3a3a; --f-sand:#5a5036; --f-tank:#8a7350; --f-tank-dark:#4c3826;
+    --f-foe:#b53a31; --f-drone:#73c7ff; --f-shell:#ffa04d; --f-veil:rgba(2,4,3,.55);
+    --m0:#4a4c4e; --m1:#7a7c7e; --m2:#5e6062; --m3:#484a4c; --m4:#37393b; --m5:#2a2c2e;
+    --b0:#323436; --b1:#76787a; --b2:#5e6062; --b3:#323436; --b4:#1e2022;
+    --etch:#eceef0; --etch-soft:#b4b9be; --rim:rgba(255,255,255,.35); --edge:#0c0d0e; --etch-shade:0 -1px 0 rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12); --plink:#9effa8;
+    --shadow:rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+    color-scheme:dark;
+    --f-water:#03454f; --f-deep:#022f37; --f-grass:#06380f; --f-forest:#0f5a0a;
+    --f-road:#3a3a3a; --f-sand:#5a5036; --f-tank:#8a7350; --f-tank-dark:#4c3826;
+    --f-foe:#b53a31; --f-drone:#73c7ff; --f-shell:#ffa04d; --f-veil:rgba(2,4,3,.55);
+    --m0:#4a4c4e; --m1:#7a7c7e; --m2:#5e6062; --m3:#484a4c; --m4:#37393b; --m5:#2a2c2e;
+    --b0:#323436; --b1:#76787a; --b2:#5e6062; --b3:#323436; --b4:#1e2022;
+    --etch:#eceef0; --etch-soft:#b4b9be; --rim:rgba(255,255,255,.35); --edge:#0c0d0e; --etch-shade:0 -1px 0 rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12); --plink:#9effa8;
+    --shadow:rgba(0,0,0,.7);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:5rem}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+body{margin:0;min-height:100vh;background:var(--f-deep);color:var(--ink);font:16px/1.6 var(--sans);overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--phos);text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:4px}
+code,pre,kbd{font-family:var(--mono)}
+p{margin:0 0 1rem}
+.wrap{max-width:68rem;margin:0 auto;padding:0 16px}
+.skip{position:absolute;left:-999px;top:0;z-index:30;background:var(--scr);color:var(--phos);padding:.6rem 1rem}
+.skip:focus{left:0}
+
+/* ---------- the field, fixed behind every page ---------- */
+.field{position:fixed;inset:0;z-index:-2;width:100%;height:100%;display:block;image-rendering:pixelated;
+  background:linear-gradient(160deg,var(--f-water),var(--f-deep))}
+.veil{position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 30%,transparent 0,var(--f-veil) 70%),
+             repeating-linear-gradient(0deg,rgba(0,0,0,.06) 0 1px,transparent 1px 3px)}
+
+/* ---------- brushed metal ----------
+   The plate: metal.rs's gradient, the brush's streaks (fine rows, and a
+   noise stretched along x so each row wavers as a brush leaves it), a
+   dark outline, a bright rim along the top and a shade along the foot. */
+.metal{
+  --streaks:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='120'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .9' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .32 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23b)'/%3E%3C/svg%3E");
+  background:
+    var(--streaks),
+    repeating-linear-gradient(180deg,rgba(255,255,255,.07) 0 1px,rgba(0,0,0,.05) 1px 2px,transparent 2px 3px),
+    linear-gradient(180deg,var(--m0) 0,var(--m1) 3%,var(--m2) 10%,var(--m3) 45%,var(--m4) 85%,var(--m5) 100%);
+  background-size:600px 120px,auto,auto;
+  border:1px solid var(--edge);border-radius:12px;color:var(--etch);
+  box-shadow:inset 0 1px 0 var(--rim),inset 0 -2px 0 rgba(0,0,0,.22),0 14px 40px var(--shadow);
+}
+/* four screws, one in each corner */
+.screws{position:relative}
+.screws::before,.screws::after{content:"";position:absolute;top:10px;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#f4f4f4 0,#9a9a9a 45%,#4a4a4a 100%);
+  box-shadow:0 1px 0 var(--rim),inset 0 0 0 1px rgba(0,0,0,.35)}
+.screws::before{left:10px}.screws::after{right:10px}
+.screws>.foot::before,.screws>.foot::after{content:"";position:absolute;bottom:10px;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#f4f4f4 0,#9a9a9a 45%,#4a4a4a 100%);
+  box-shadow:0 1px 0 var(--rim),inset 0 0 0 1px rgba(0,0,0,.35)}
+.screws>.foot::before{left:10px}.screws>.foot::after{right:10px}
+/* lettering stamped into the plate */
+.etched{color:var(--etch);text-shadow:var(--etch-shade)}
+
+/* a capsule button: the old brushed-metal window's, light above, dark below */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:2.6rem;padding:.55rem 1.15rem;
+  font:700 .82rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;text-decoration:none;cursor:pointer;
+  color:var(--etch);text-shadow:var(--etch-shade);border:1px solid var(--edge);border-radius:999px;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.06) 0 1px,transparent 1px 3px),
+             linear-gradient(180deg,var(--b0) 0,var(--b1) 5%,var(--b2) 10%,var(--b3) 90%,var(--b4) 100%);
+  box-shadow:inset 0 1px 0 var(--rim),0 2px 6px rgba(0,0,0,.35);transition:transform .08s,filter .15s}
+.btn:hover{filter:brightness(1.07)}
+.btn:active,.btn[aria-pressed="true"]{transform:translateY(1px);
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.06) 0 1px,transparent 1px 3px),
+             linear-gradient(180deg,var(--b4) 0,var(--b3) 10%,var(--b2) 90%,var(--b1) 95%,var(--b0) 100%);
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.45),0 1px 0 var(--rim)}
+/* lit: the AUTOPILOT ON button, green with dark lettering */
+.btn.lit{color:var(--lit-deep);text-shadow:0 1px 0 rgba(255,255,255,.55);
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.08) 0 1px,transparent 1px 3px),
+             linear-gradient(180deg,#5fae66 0,#c4ffc8 5%,#9effa8 10%,#4fc95c 90%,#2c7a34 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 18px rgba(51,242,77,.45),0 2px 6px rgba(0,0,0,.35)}
+
+/* ---------- screens: black, inset, phosphor ---------- */
+.screen{background:linear-gradient(180deg,var(--scr-2),var(--scr));color:var(--ink);border-radius:8px;
+  border:1px solid #000;box-shadow:inset 0 2px 8px rgba(0,0,0,.9),0 1px 0 var(--rim);position:relative;overflow:hidden}
+.screen.scan::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+.phos{color:var(--phos);text-shadow:0 0 6px rgba(51,242,77,.45)}
+.amber{color:var(--amber)}.red{color:var(--red)}.sky{color:var(--sky)}
+.label{font:700 .7rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase}
+
+/* ---------- navigation: a metal bar ---------- */
+.nav{position:sticky;top:0;z-index:20;padding:8px 0}
+.nav .bar{display:flex;align-items:center;gap:.75rem;padding:6px 8px 6px 14px;border-radius:14px;transition:box-shadow .2s}
+.nav.scrolled .bar{box-shadow:inset 0 1px 0 var(--rim),inset 0 -2px 0 rgba(0,0,0,.22),0 10px 30px rgba(0,0,0,.55)}
+.brand{display:flex;align-items:center;gap:.55rem;text-decoration:none;font:800 1rem/1 var(--mono);letter-spacing:.22em}
+.brand svg{width:26px;height:26px;image-rendering:pixelated}
+.nav ul{display:flex;align-items:center;gap:.4rem;margin:0 0 0 auto;padding:0;list-style:none}
+.nav .btn{min-height:2.1rem;padding:.4rem .85rem;font-size:.7rem}
+@media (max-width:60rem){.nav li.wide{display:none}}
+@media (min-width:60.01rem) and (max-width:72rem){.nav .btn{padding:.4rem .6rem;letter-spacing:.06em}}
+
+/* ---------- hero ---------- */
+.hero{padding:clamp(2rem,7vw,5rem) 0 2rem;text-align:center}
+.hero .plate{display:inline-block;max-width:44rem;width:100%;padding:1.6rem clamp(1rem,4vw,2.6rem) 1.8rem;
+  transform:translateY(calc(var(--s,0) * -40px));opacity:calc(1 - var(--s,0) * .35)}
+.eyebrow{margin:0 0 .6rem}
+.eyebrow a{color:var(--plink)}
+.hero h1{margin:0;font:900 clamp(2.3rem,8.4vw,4.4rem)/1 var(--sans);letter-spacing:.1em;padding-left:.1em;text-transform:uppercase}
+.hero .lcd{margin:1.1rem auto 1.2rem;padding:.75rem 1rem;max-width:36rem;font:500 1.02rem/1.45 var(--mono);text-align:left}
+.hero .lcd b{font-weight:700}
+.cta{display:flex;flex-wrap:wrap;justify-content:center;gap:.6rem}
+.hero .meta{margin:.9rem 0 0;font:.75rem/1.4 var(--mono);letter-spacing:.06em}
+/* the monitor: a screenshot in a metal bezel */
+.monitor{padding:12px;border-radius:16px}
+.monitor .screen{padding:0;border-radius:6px}
+.monitor img{width:100%;image-rendering:pixelated}
+.monitor .sheen{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.14) 45%,transparent 60%);background-size:250% 100%;background-position:100% 0}
+.hero .monitor{margin:2.2rem auto 0;max-width:60rem}
+
+/* the newswire: the game's own lines, scrolling past */
+.wire{margin:1.6rem 0 0;padding:.55rem 0;white-space:nowrap;font:.85rem/1.4 var(--mono)}
+.wire{padding:.55rem 1rem}
+.wire .run{display:inline-block}
+@media (prefers-reduced-motion:no-preference){.wire{padding:.55rem 0}.wire .run{padding-left:100%;animation:wire 70s linear infinite}}
+@keyframes wire{to{transform:translateX(-100%)}}
+.wire span{margin-right:3rem}
+
+/* ---------- sections ---------- */
+.sec{padding:2.4rem 0}
+.sec>.wrap>.head{padding:1rem 1.4rem;margin-bottom:1.2rem;display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem 1rem}
+.head h2{margin:0;font:800 1.25rem/1.2 var(--mono);letter-spacing:.18em;text-transform:uppercase}
+.head p{margin:0;font-size:.95rem;color:var(--etch-soft)}
+.head p a{color:var(--plink);font-weight:600}
+
+/* ---------- showcases: the beats in one column, the screen in the other ---------- */
+.show{display:grid;gap:1.4rem;margin:0 0 4rem;align-items:start}
+.show .text{padding:1.4rem 1.5rem 1.2rem}
+.show .text h3{margin:.4rem 0 .7rem;font:800 clamp(1.5rem,3.4vw,2.2rem)/1.15 var(--sans);letter-spacing:-.01em}
+.show .text h3 .dim{color:var(--etch-soft)}
+.beats{list-style:none;margin:0 0 1rem;padding:0;display:grid;gap:.55rem}
+.beats li{padding:.7rem .9rem;font:.95rem/1.5 var(--sans)}
+.beats li b{color:var(--phos);font-weight:700}
+.show .deck{font-size:.95rem;color:var(--etch-soft);margin:0}
+.show .shot{--glow:rgba(51,242,77,.35)}
+.show .shot .monitor{box-shadow:inset 0 1px 0 var(--rim),inset 0 -2px 0 rgba(0,0,0,.22),0 24px 60px var(--shadow),0 0 80px var(--glow)}
+.show figcaption{margin:.6rem .4rem 0;font:.8rem/1.45 var(--mono);color:var(--ink)}
+.show figcaption,.on-field{text-shadow:0 1px 3px #000}
+@media (min-width:56rem){
+  .show{grid-template-columns:5fr 7fr;gap:2.2rem}
+  .show.flip{grid-template-columns:7fr 5fr}
+  .show.flip .text{order:2}
+  .show .shot{position:sticky;top:6rem}
+}
+
+/* ---------- get it: the systems as keys ---------- */
+.sys{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fill,minmax(16rem,1fr))}
+.sys a{display:block;text-decoration:none;padding:.85rem .95rem;color:var(--etch);border-radius:12px;transition:transform .12s}
+.sys a:hover{transform:translateY(-2px)}
+.sys .t{display:flex;align-items:center;gap:.65rem;font-weight:800}
+.sys .t small{display:block;font:500 .72rem/1.3 var(--mono);color:var(--etch-soft);letter-spacing:.04em}
+.sys code{display:block;margin:.6rem 0 .45rem;padding:.5rem .6rem;font-size:.78rem;white-space:nowrap;overflow-x:auto}
+.sys .dep{font-size:.76rem;color:var(--etch-soft)}
+.sys .dep b{color:var(--etch)}
+.pico{width:2.1rem;height:2.1rem;flex:none;border-radius:4px;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 0 var(--rim)}
+
+/* the two channels under the systems: the releases and crates.io */
+.chan{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));margin-top:.8rem}
+.chan a{display:block;text-decoration:none;padding:1rem 1.15rem;border-radius:12px;color:var(--etch);transition:transform .12s}
+.chan a:hover{transform:translateY(-2px)}
+.chan .label{margin:0 0 .4rem}
+.chan b{display:block;font:800 1.15rem/1.25 var(--sans);margin-bottom:.35rem}
+.chan span{display:block;font-size:.9rem;color:var(--etch-soft)}
+.chan span code{font-size:.85em;background:rgba(0,0,0,.12);padding:.05em .3em;border-radius:4px}
+.chan>a>code{display:block;margin-top:.7rem;padding:.5rem .6rem;font-size:.8rem;white-space:nowrap;overflow-x:auto}
+
+/* ---------- play: the orders column ---------- */
+.tiles{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))}
+.tiles a{display:block;text-decoration:none;color:var(--etch);padding:8px;border-radius:14px;transition:transform .12s}
+.tiles a:hover{transform:translateY(-3px)}
+.tiles .screen{height:9.5rem}
+.tiles img{width:100%;height:100%;object-fit:cover;object-position:left top;image-rendering:pixelated}
+.tiles .cap{padding:.6rem .35rem .2rem}
+.tiles .cap b{display:block;font:800 .82rem/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.tiles .cap span{font-size:.84rem;color:var(--etch-soft)}
+
+/* ---------- build: a terminal ---------- */
+.term{padding:1.1rem 1.2rem;overflow-x:auto;margin:0}
+.term code{font-size:.86rem;line-height:1.65;color:var(--phos);text-shadow:0 0 6px rgba(51,242,77,.35)}
+.term .c{color:var(--ink-soft);text-shadow:none}
+.links{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0 0;padding:0;list-style:none}
+.links .btn{min-height:2.2rem;font-size:.7rem;letter-spacing:.08em}
+
+/* ---------- the build grid: lamps ---------- */
+.gridwrap{padding:.4rem;overflow-x:auto}
+table.grid{border-collapse:collapse;width:100%;font:.84rem/1.45 var(--mono);color:var(--ink)}
+table.grid th{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--phos);text-align:left;padding:.6rem .7rem;border-bottom:1px solid #1f2a20}
+table.grid td{padding:.5rem .7rem;border-bottom:1px solid #141a15;vertical-align:top}
+table.grid td.c{text-align:center}
+table.grid .deps{color:var(--ink-soft);font-size:.78rem}
+table.grid a{color:var(--sky)}
+.lamp{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;vertical-align:middle;background:#2a2f2b;box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
+.lamp.on{background:radial-gradient(circle at 35% 30%,#d8ffdc,var(--phos) 45%,#0f6b1c);box-shadow:0 0 8px rgba(51,242,77,.8)}
+.na{color:var(--ink-soft)}
+.builtmeta{margin:.8rem .4rem 0;font:.78rem/1.5 var(--mono);color:var(--ink)}
+
+/* ---------- prose on a plate (the download page, the guide) ---------- */
+.prose{padding:1.4rem 1.6rem}
+.prose code{background:rgba(0,0,0,.12);padding:.1em .35em;border-radius:4px;font-size:.88em}
+.prose a{color:var(--plink);font-weight:600}
+
+/* ---------- footer ---------- */
+footer{padding:2rem 0 3rem}
+footer .bar{padding:1.1rem 1.4rem;font-size:.85rem;color:var(--etch-soft)}
+footer ul{display:flex;flex-wrap:wrap;gap:.3rem 1.1rem;margin:0 0 .6rem;padding:0;list-style:none}
+footer a{color:var(--etch);font-weight:600;text-decoration:none}
+footer a:hover{text-decoration:underline}
+footer p{margin:0}
+
+/* ---------- motion: only with JavaScript, and only when motion is welcome ---------- */
+@media (prefers-reduced-motion:no-preference){
+  .js .reveal{opacity:0;transform:translateY(28px) scale(.985);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+  .js .reveal.in{opacity:1;transform:none}
+  /* a showcase's screen: arrives turned and small, squares up, its glass
+     catching the light as it goes; leaves turned the other way. On the
+     card's view timeline where the browser has one (html.sda), else
+     from --in and --out, which site.js sets. */
+  .js .show .shot .monitor{transform-origin:50% 60%;
+    transform:perspective(1400px) rotateX(calc((1 - var(--in,1)) * 16deg + var(--out,0) * -10deg)) rotateY(calc((1 - var(--in,1)) * -10deg))
+              scale(calc(.9 + var(--in,1) * .1 - var(--out,0) * .06));
+    opacity:calc(.35 + var(--in,1) * .65 - var(--out,0) * .4)}
+  .js .show .shot .sheen{background-position:calc(100% - var(--in,1) * 100%) 0}
+  .js.sda .show .shot .monitor{animation:shot linear both;animation-timeline:view();animation-range:cover 0% cover 100%}
+  .js.sda .show .shot .sheen{animation:sheen linear both;animation-timeline:view();animation-range:entry 20% cover 60%}
+}
+@keyframes shot{
+  0%{transform:perspective(1400px) rotateX(16deg) rotateY(-10deg) scale(.9);opacity:.35}
+  35%,70%{transform:perspective(1400px) rotateX(0) rotateY(0) scale(1);opacity:1}
+  100%{transform:perspective(1400px) rotateX(-10deg) rotateY(0) scale(.94);opacity:.6}}
+@keyframes sheen{from{background-position:100% 0}to{background-position:0 0}}
+
+/* text for screen readers only */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media print{.field,.veil,.nav{display:none}body{background:#fff;color:#000}}

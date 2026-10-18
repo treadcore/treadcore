@@ -5,63 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Treadcore Opening Day</title>
 <meta name="description" content="Report on the first day of treadcore: the vision, the research, what was built, what was learned about building it, and where it goes next.">
+<link rel="stylesheet" href="../assets/site.css">
 <style>
-  :root {
-    --bg: #142719;
-    --bg-2: #1f3a24;
-    --line: #2f5a37;
-    --fg: #f4f6ef;
-    --gold: #d9b24c;
-    --gold-bright: #f2d27a;
-    --gold-deep: #9a7a2a;
-    --ok: #8cff9a;
-    --bad: #ff6a5a;
-    --panel: rgba(0,0,0,.45);
-    --shadow: 0 0 2px #000, 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 2px 6px rgba(0,0,0,.8);
-  }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1e13; --bg-2: #18301d; } }
-  :root[data-theme="dark"] { --bg: #0f1e13; --bg-2: #18301d; }
-  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-  body {
-    background-image:
-      linear-gradient(rgba(242,210,122,.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(242,210,122,.045) 1px, transparent 1px),
-      radial-gradient(ellipse at 50% 0%, var(--bg-2) 0%, var(--bg) 60%);
-    background-size: 32px 32px, 32px 32px, 100% 100%;
-    text-shadow: var(--shadow);
-  }
-  main { max-width: 820px; margin: 0 auto; padding: 40px 16px 80px; }
-  header { border: 2px solid var(--gold); border-width: 2px 0; padding: 22px 0 18px; margin-bottom: 36px; position: relative; }
-  header::before, header::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--gold-deep); }
-  header::before { top: 4px; } header::after { bottom: 4px; }
-  .kicker { color: var(--gold); letter-spacing: .14em; text-transform: uppercase; font-size: 12px; margin: 0 0 6px; }
-  h1 { font-size: 38px; letter-spacing: .1em; margin: 0; text-transform: uppercase; line-height: 1.15; }
-  h1 span { color: var(--gold-bright); }
-  .by { color: var(--gold); margin: 10px 0 0; font-size: 14px; }
-  h2 { font-size: 17px; margin: 42px 0 12px; color: var(--gold-bright); letter-spacing: .12em; text-transform: uppercase; border-left: 4px solid var(--gold); padding-left: 10px; }
-  h3 { font-size: 15px; margin: 24px 0 8px; color: var(--gold); letter-spacing: .06em; text-transform: uppercase; }
-  p { margin: 0 0 14px; }
-  a { color: var(--gold-bright); text-decoration-color: var(--gold-deep); }
-  a:hover { color: var(--fg); }
-  ul { padding-left: 22px; margin: 0 0 14px; }
-  li { margin: 4px 0; }
-  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--gold-deep); }
-  td, th { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--gold); font-weight: normal; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; background: rgba(0,0,0,.3); }
-  pre { background: var(--panel); padding: 14px; overflow-x: auto; border: 1px solid var(--gold-deep); border-left: 4px solid var(--gold); font-size: 13px; }
-  .pull { border: 1px solid var(--gold-deep); border-left: 4px solid var(--gold); background: var(--panel); padding: 14px 16px; margin: 18px 0; font-size: 17px; }
-  .ok { color: var(--ok); } .bad { color: var(--bad); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 12px 0 20px; }
-  .card { background: var(--panel); border: 1px solid var(--gold-deep); padding: 12px 14px; }
-  .card b { color: var(--gold-bright); display: block; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; margin-bottom: 6px; }
-  footer { color: var(--gold); margin-top: 60px; font-size: 13px; border-top: 1px solid var(--gold-deep); padding-top: 14px; }
+/* the opening-day report, as a screen in a metal monitor over the field
+   (assets/site.css): phosphor headings, amber for the call-outs */
+.report{max-width:56rem;margin:1rem auto 2rem;padding:14px;border-radius:18px}
+.report>.screen{padding:clamp(1.1rem,4vw,2.6rem);font:15.5px/1.65 var(--mono);color:var(--ink)}
+.report header{padding:1.3rem 1.5rem;margin:0 0 1.8rem;border-radius:10px}
+.kicker{margin:0 0 .5rem}
+.report h1{margin:0;font:900 clamp(1.7rem,4.6vw,2.6rem)/1.15 var(--sans);letter-spacing:.08em;text-transform:uppercase}
+.report h1 span{color:var(--etch-soft)}
+.by{margin:.7rem 0 0;font-size:.92rem;color:var(--etch-soft)}
+.report h2{font:800 1rem/1.3 var(--mono);margin:2.4rem 0 .8rem;color:var(--phos);text-shadow:0 0 6px rgba(51,242,77,.4);letter-spacing:.14em;text-transform:uppercase;border-left:4px solid var(--phos);padding-left:.7rem}
+.report h3{font:700 .9rem/1.3 var(--mono);margin:1.5rem 0 .5rem;color:var(--amber);letter-spacing:.08em;text-transform:uppercase}
+.report p{margin:0 0 .9rem}
+.report a{color:var(--sky)}
+.report ul{padding-left:1.4rem;margin:0 0 .9rem}
+.report li{margin:.25rem 0}
+.report code{color:var(--phos)}
+.report table{border-collapse:collapse;width:100%;margin:.8rem 0 1.3rem;font-size:.86rem;display:block;overflow-x:auto}
+.report td,.report th{text-align:left;padding:.45rem .65rem;border-bottom:1px solid #1d261e;vertical-align:top}
+.report th{color:var(--phos);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase}
+.report pre{background:#000;padding:.9rem 1rem;overflow-x:auto;border:1px solid #1d261e;border-left:4px solid var(--phos);font-size:.82rem;color:var(--phos)}
+.pull{border:1px solid #3a2f12;border-left:4px solid var(--amber);background:rgba(255,191,77,.06);padding:.9rem 1rem;margin:1.1rem 0;font-size:1.05rem;color:var(--amber)}
+.ok{color:var(--phos)}.bad{color:var(--red)}
+.report .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem;margin:.8rem 0 1.3rem}
+.card{background:rgba(255,255,255,.03);border:1px solid #1d261e;border-radius:6px;padding:.75rem .85rem}
+.card b{color:var(--amber);display:block;letter-spacing:.08em;text-transform:uppercase;font-size:.72rem;margin-bottom:.35rem}
+@media (max-width:40rem){.report{padding:8px}}
 </style>
+<script src="../assets/site.js" defer></script>
+<script src="../assets/field.js" defer></script>
+
 </head>
 <body>
-<main>
-<header>
-<p class="kicker">Report &middot; 12 October 2026</p>
-<h1>Treadcore: <span>Opening Day</span></h1>
+<a class="skip" href="#main">Skip to the page</a>
+<canvas class="field" aria-hidden="true"></canvas><div class="veil" aria-hidden="true"></div>
+<nav class="nav" aria-label="Site"><div class="wrap"><div class="bar metal">
+<a class="brand etched" href="../index.html"><svg viewBox="0 0 13 13" aria-hidden="true"><rect x="1" y="2" width="11" height="2" fill="#111"/><rect x="1" y="9" width="11" height="2" fill="#111"/><rect x="2" y="4" width="9" height="5" fill="#bfa070"/><rect x="4" y="5" width="4" height="3" fill="#805e40"/><rect x="8" y="6" width="5" height="1" fill="#805e40"/></svg>TREADCORE</a>
+<ul>
+<li><a class="btn lit" href="../download.html">Download</a></li>
+<li class="wide"><a class="btn" href="../index.html">Home</a></li>
+<li class="wide"><a class="btn" href="../paper.html">Paper</a></li>
+<li class="wide"><a class="btn" href="https://github.com/treadcore/treadcore">GitHub</a></li>
+</ul>
+</div></div></nav>
+<main id="main" class="report metal"><div class="screen scan">
+<header class="metal">
+<p class="kicker label etched">Report &middot; 12 October 2026</p>
+<h1 class="etched">Treadcore: <span>Opening Day</span></h1>
 <p class="by">An afternoon's vision, and what it became by evening. Paul Richeson, with Claude.</p>
 </header>
 
@@ -141,7 +133,11 @@
 </ul>
 <p>First, though: <code>make warm</code>, <code>make test</code>, and the round of fixes the compiler will ask for in the crates above the simulation. The world is proven; the rest is written against it.</p>
 
-<footer>treadcore &middot; MIT &middot; &copy; 2026 Paul Richeson &middot; <a href="https://treadcore.org">treadcore.org</a></footer>
-</main>
+</div></main>
+<footer><div class="wrap"><div class="bar metal">
+<ul><li><a href="../index.html">treadcore.org</a></li><li><a href="../download.html">Download</a></li><li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li><li><a href="../paper.html">Paper</a></li><li><a href="https://github.com/treadcore/treadcore/releases">Releases</a></li><li><a href="https://crates.io/crates/treadcore-client">crates.io</a></li><li><a href="https://github.com/treadcore/treadcore">GitHub</a></li></ul>
+<p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson. No assets: everything drawn is a rectangle.</p>
+</div></div></footer>
+
 </body>
 </html>

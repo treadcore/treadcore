@@ -12,170 +12,7 @@
 <meta property="og:url" content="https://treadcore.org/">
 <meta property="og:image" content="https://treadcore.org/reports/images/guide-screen.png">
 <meta name="twitter:card" content="summary_large_image">
-<style>
-:root{--bg:#fbfaf7;--fg:#1e2a3a;--dim:#5b6472;--faint:#8a919c;--line:#e2ded4;
---card:#fff;--accent:#2f6b3a;--code:#f4f2ec;
---paper:rgba(252,251,247,.97);--ink:#1e2a3a;--ink-soft:#5b6472;--rule:#c9c4b6;
---link:#2f6b3a;--mark:#8a4b1f;--tint:rgba(47,107,58,.08);--shadow:rgba(20,40,25,.35);
---serif:"Times New Roman",Times,"Nimbus Roman","Liberation Serif",serif;
---sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15181c;--fg:#d9dde3;--dim:#9ea5b1;
---faint:#6f7682;--line:#2a2f37;--card:#1d2128;--accent:#8ad39a;--code:#1a1e24;
---paper:rgba(24,28,34,.97);--ink:#dfe4ea;--ink-soft:#a3abb7;--rule:#39404b;
---link:#8ad39a;--mark:#e8a775;--tint:rgba(138,211,154,.1);--shadow:rgba(0,0,0,.6)}}
-:root[data-theme="dark"]{--bg:#15181c;--fg:#d9dde3;--dim:#9ea5b1;
---faint:#6f7682;--line:#2a2f37;--card:#1d2128;--accent:#8ad39a;--code:#1a1e24;
---paper:rgba(24,28,34,.97);--ink:#dfe4ea;--ink-soft:#a3abb7;--rule:#39404b;
---link:#8ad39a;--mark:#e8a775;--tint:rgba(138,211,154,.1);--shadow:rgba(0,0,0,.6)}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 var(--sans)}
-.wrap{max-width:60rem;margin:0 auto;padding:0 1.25rem}
-header.hero{border-bottom:1px solid var(--line);padding:3rem 0 2.25rem}
-.shot img{display:block;width:100%;height:auto;margin:1.75rem 0 0;
-border:1px solid var(--line);border-radius:8px;background:var(--card);image-rendering:pixelated}
-.caption{font-size:.9rem;color:var(--dim);margin:.6rem 0 0;max-width:44rem}
-.eyebrow{font:600 .75rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
-letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .9rem}
-h1{font-size:2.6rem;line-height:1.12;margin:0 0 .75rem;letter-spacing:-.02em}
-.lede{font-size:1.15rem;color:var(--dim);margin:0 0 1.5rem;max-width:44rem}
-.badges{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1.5rem;padding:0;list-style:none}
-.badges li{font:.8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
-border:1px solid var(--line);border-radius:999px;padding:.45rem .8rem;color:var(--dim)}
-.cta{display:flex;flex-wrap:wrap;gap:.6rem}
-.cta a{display:inline-block;text-decoration:none;border-radius:.4rem;
-padding:.6rem 1.1rem;font-weight:600;font-size:.95rem;border:1px solid var(--line);color:var(--fg)}
-.cta a.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
-.facts{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
-padding:2rem 0;border-bottom:1px solid var(--line)}
-.fact{background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:1rem 1.1rem}
-.fact h2{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;
-color:var(--accent);margin:0 0 .4rem}
-.fact p{margin:0;font-size:.92rem;color:var(--dim)}
-main.site{padding:2.5rem 0 3rem}
-main.site h1,main.site h2,main.site h3{line-height:1.25;margin:2rem 0 .7rem;letter-spacing:-.01em}
-main.site h1{font-size:1.9rem} main.site h2{font-size:1.45rem;padding-top:.6rem;
-border-top:1px solid var(--line)} main.site h3{font-size:1.12rem}
-main.site>h1:first-child{margin-top:0;border:0}
-p{margin:0 0 1rem}
-a{color:var(--accent)}
-main.site img{max-width:100%;height:auto;border-radius:.4rem;display:block;margin:1.2rem 0;border:1px solid var(--line);image-rendering:pixelated}
-code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
-background:var(--code);padding:.13em .38em;border-radius:.25rem}
-pre{background:var(--code);border:1px solid var(--line);border-radius:.45rem;
-padding:.9rem 1rem;overflow-x:auto;margin:0 0 1.2rem}
-pre code{background:none;padding:0;font-size:.85rem;line-height:1.55}
-main.site table{border-collapse:collapse;width:100%;margin:0 0 1.3rem;font-size:.93rem;display:block;overflow-x:auto}
-main.site th,main.site td{border:1px solid var(--line);padding:.5rem .7rem;text-align:left;vertical-align:top}
-main.site th{background:var(--card);font-weight:600}
-hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
-ul,ol{margin:0 0 1.1rem;padding-left:1.4rem} li{margin:.3rem 0}
-.pair{display:grid;gap:1rem;grid-template-columns:1fr 1fr;align-items:start}
-.pair figure{margin:0}
-.pair img{margin:0}
-.pair figcaption,.gallery figcaption{font-size:.86rem;color:var(--dim);padding:.5rem 0 0}
-@media (max-width:40rem){h1{font-size:2rem}.lede{font-size:1.05rem}.pair{grid-template-columns:1fr}}
-.gallery{display:grid;gap:1rem;grid-template-columns:1fr 1fr;margin:1rem 0}
-.gallery figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:.5rem}
-.gallery figure.wide{grid-column:1 / -1}
-.gallery img{margin:0;border:0}
-@media (max-width:40rem){.gallery{grid-template-columns:1fr}}
-footer{border-top:1px solid var(--line);padding:2rem 0 3rem;color:var(--faint);font-size:.88rem}
-footer a{color:var(--dim)}
-.platforms{display:grid;gap:.6rem;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));margin:1rem 0 1.4rem;padding:0;list-style:none}
-.platforms a{display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;text-decoration:none;color:var(--fg);
-background:var(--card);border:1px solid var(--line);border-radius:.5rem;font-weight:600;font-size:.92rem;line-height:1.2}
-.platforms a:hover{border-color:var(--accent)}
-.platforms small{display:block;font-weight:400;color:var(--faint);font-size:.75rem}
-.pico{width:2rem;height:2rem;flex:none;border-radius:.3rem}
-.grid{border-collapse:collapse;width:100%;font-size:.86rem;margin:1rem 0 .6rem;display:block;overflow-x:auto}
-.grid th,.grid td{border:1px solid var(--line);padding:.4rem .55rem;text-align:left;vertical-align:middle}
-.grid th{background:var(--card);font-weight:600;white-space:nowrap}
-.grid td.c{text-align:center;font-size:1rem;width:3.2rem}
-.grid .yes{color:var(--accent)} .grid .no{color:var(--faint)} .grid .na{color:var(--faint);font-size:.8rem}
-.grid td.deps{color:var(--dim);font-size:.8rem}
-.builtmeta{font:.8rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim)}
-.nav{display:flex;flex-wrap:wrap;gap:1.1rem;margin:0 0 1rem;padding:0;list-style:none;font-size:.9rem}
-
-/* the paper */
-.below{background:linear-gradient(180deg,var(--bg) 0,var(--code) 100%);padding:3rem 0 2rem}
-.paper{max-width:66rem;margin:0 auto;font-family:var(--serif);font-size:1.05rem;line-height:1.5;color:var(--ink);
-padding:clamp(1.1rem,4.2vw,3.6rem);background:var(--paper);border-radius:4px;box-shadow:0 28px 80px var(--shadow)}
-@media (max-width:70rem){.paper{margin:0 .6rem}}
-.titleblock{text-align:center;margin-bottom:1.6rem}
-.titleblock h1{font-weight:400;font-size:clamp(1.5rem,1.05rem + 2vw,2.5rem);line-height:1.15;margin:0 0 .8rem;letter-spacing:0;text-wrap:balance}
-.author{font-size:1.15rem;margin:0}
-.affil{font-style:italic;font-size:1rem;margin:.2rem 0 0}
-.paper .titleblock p{text-indent:0;text-align:center}
-.runhead{display:flex;justify-content:space-between;gap:1rem;font-family:var(--sans);
-font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);
-border-bottom:1px solid var(--rule);padding-bottom:.45rem;margin-bottom:1.5rem}
-@media (min-width:56.01rem){.cols{column-count:2;column-gap:2.3rem}}
-.paper p{margin:0;text-indent:1em;text-align:justify;-webkit-hyphens:auto;hyphens:auto;orphans:2;widows:2}
-@media (max-width:56rem){.paper p{text-align:left}}
-.paper a{color:var(--link);text-underline-offset:2px}
-.c{text-decoration:none;white-space:nowrap}
-.c:hover{text-decoration:underline}
-.abstract,.terms{font-weight:700;font-size:.98rem}
-.terms{margin-top:.5rem;text-align:left}
-.paper h2{font-size:1.02rem;font-weight:400;text-align:center;font-variant:small-caps;
-letter-spacing:.05em;margin:1.8rem 0 .55rem;break-after:avoid;border:0;padding:0}
-.cols h2{margin-top:1.3rem}
-.runin{font-style:italic}
-.dropcap{text-indent:0}
-.dropcap::first-letter{float:left;font-size:3.05em;line-height:.8;padding:.07em .07em 0 0}
-.lead{text-transform:uppercase;letter-spacing:.02em}
-.paper ul,.paper ol{margin:.4rem 0 .6rem;padding-left:1.6em}
-.paper li{margin:.15rem 0}
-.tablewrap{overflow-x:auto;margin:1rem 0 1.5rem}
-.paper table{border-collapse:collapse;width:100%;font-size:.92rem}
-caption{caption-side:top;text-align:center;padding-bottom:.55rem;font-size:.86rem}
-caption span{display:block}
-caption .tnum{letter-spacing:.06em}
-caption .ttitle{font-variant:small-caps;letter-spacing:.04em}
-.paper thead th{font-family:var(--sans);font-size:.76rem;font-weight:700;text-align:left;padding:.45rem .6rem;
-border-top:3px double var(--ink);border-bottom:1px solid var(--ink)}
-.paper tbody td,.paper tbody th{padding:.45rem .6rem;vertical-align:top;text-align:left;border-bottom:1px solid var(--rule)}
-.paper tbody tr:last-child > *{border-bottom:3px double var(--ink)}
-.paper tbody th{font-family:var(--sans);font-size:.78rem;font-weight:700;color:var(--mark);white-space:nowrap}
-.paper td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.fig{margin:.9rem 0 1rem;break-inside:avoid;text-align:center}
-.fig img{width:100%;max-width:46rem;height:auto;border:1px solid var(--rule);image-rendering:pixelated}
-.fig figcaption{font-size:.84rem;text-align:left;margin-top:.35rem}
-.refs{list-style:none;margin:0;padding:0;counter-reset:r;font-size:.84rem;line-height:1.36}
-.refs li{counter-increment:r;position:relative;padding-left:2.7em;margin-bottom:.34rem;break-inside:avoid;overflow-wrap:anywhere}
-.refs li::before{content:"[" counter(r) "]";position:absolute;left:0}
-.back{text-align:center;margin:1.6rem 0 .4rem}
-.back a{font-family:var(--sans);font-size:.95rem;text-decoration:none;border:1px solid var(--rule);border-radius:999px;padding:.45rem 1.2rem}
-@media print{.below{background:#fff}.paper{box-shadow:none;max-width:none}}
-
-.hero2{text-align:center;padding:2.6rem 0 1.4rem}
-.hero2 h1{font-size:3rem;letter-spacing:-.03em;margin:0 0 .4rem}
-.hero2 .lede{margin:0 auto 1.4rem;max-width:38rem}
-.hero2 .cta{justify-content:center}
-.shot img{margin-top:1.4rem}
-section.s{padding:2.2rem 0;border-bottom:1px solid var(--line)}
-section.s h2{font-size:1.5rem;margin:0 0 .3rem;letter-spacing:-.01em}
-section.s .sub{color:var(--dim);margin:0 0 1.2rem}
-.sys{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))}
-.sys a{display:block;text-decoration:none;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.8rem .9rem}
-.sys a:hover{border-color:var(--accent)}
-.sys .t{display:flex;align-items:center;gap:.6rem;font-weight:700}
-.sys .t small{display:block;font-weight:400;color:var(--faint);font-size:.75rem}
-.sys code{display:block;margin:.55rem 0 .4rem;font-size:.78rem;white-space:nowrap;overflow-x:auto}
-.sys .dep{font-size:.78rem;color:var(--dim)}
-.sys .dep b{color:var(--fg);font-weight:600}
-.pico{width:2.1rem;height:2.1rem;flex:none;border-radius:.3rem}
-.tiles{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr))}
-.tiles a{display:block;text-decoration:none;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:.6rem;overflow:hidden}
-.tiles a:hover{border-color:var(--accent)}
-.tiles img{display:block;width:100%;height:9.5rem;object-fit:cover;object-position:left top;margin:0;border:0;border-radius:0;image-rendering:pixelated;background:#000}
-.tiles .cap{padding:.55rem .75rem .7rem}
-.tiles .cap b{display:block;font-size:.98rem}
-.tiles .cap span{font-size:.82rem;color:var(--dim)}
-.links{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0 0;padding:0;list-style:none}
-.links a{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:.35rem .8rem;font-size:.88rem;color:var(--fg);background:var(--card)}
-.links a:hover{border-color:var(--accent)}
-</style>
+<link rel="stylesheet" href="assets/site.css">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"VideoGame",
 "name":"treadcore","description":"A sixteen-player overhead tank game for the drone battlefield: the gun fires indirect at points a recon drone is watching, interceptors hold a ring round the hull, and the players find each other on a LAN or across the Internet with no server.",
@@ -184,8 +21,12 @@ section.s .sub{color:var(--dim);margin:0 0 1.2rem}
 "author":{"@type":"Person","name":"Paul Richeson"},
 "keywords":"tank game, drone, indirect fire, interceptor, multiplayer, peer to peer, no server, Rust, Bevy, Bolo"}
 </script>
+<script src="assets/site.js" defer></script>
+<script src="assets/field.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to the page</a>
+<canvas class="field" aria-hidden="true"></canvas><div class="veil" aria-hidden="true"></div>
 <svg width="0" height="0" id="platform-icons" style="position:absolute" aria-hidden="true">
   <symbol id="i-copal" viewBox="0 0 16 16"><rect width="16" height="16" fill="#a8630f"/><rect x="3" y="3" width="10" height="10" fill="#e8a33a"/><rect x="5" y="5" width="6" height="6" fill="#ffd27a"/><rect x="7" y="7" width="2" height="2" fill="#7a4505"/></symbol>
   <symbol id="i-alpine" viewBox="0 0 16 16"><rect width="16" height="16" fill="#0d597f"/><rect x="2" y="9" width="12" height="4" fill="#fff"/><rect x="4" y="7" width="4" height="2" fill="#fff"/><rect x="5" y="5" width="2" height="2" fill="#fff"/><rect x="9" y="8" width="3" height="1" fill="#fff"/></symbol>
@@ -201,106 +42,198 @@ section.s .sub{color:var(--dim);margin:0 0 1.2rem}
   <symbol id="i-windows" viewBox="0 0 16 16"><rect width="16" height="16" fill="#0a5aa8"/><rect x="2" y="2" width="5.5" height="5.5" fill="#fff"/><rect x="8.5" y="2" width="5.5" height="5.5" fill="#fff"/><rect x="2" y="8.5" width="5.5" height="5.5" fill="#fff"/><rect x="8.5" y="8.5" width="5.5" height="5.5" fill="#fff"/></symbol>
   <symbol id="i-cargo" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3b2a1c"/><rect x="3" y="5" width="10" height="7" fill="#c97a3a"/><rect x="3" y="5" width="10" height="2" fill="#e8a067"/><rect x="7" y="7" width="2" height="5" fill="#8a4f20"/></symbol>
 </svg>
-<header class="hero2"><div class="wrap">
-<p class="eyebrow">Sixteen tanks &middot; one island &middot; no server</p>
-<h1>treadcore</h1>
-<p class="lede">An overhead tank game for the drone battlefield. Your gun fires where your recon drone looks; your interceptors keep the sky over you.</p>
+
+<nav class="nav" aria-label="Site"><div class="wrap"><div class="bar metal">
+<a class="brand etched" href="index.html"><svg viewBox="0 0 13 13" aria-hidden="true"><rect x="1" y="2" width="11" height="2" fill="#111"/><rect x="1" y="9" width="11" height="2" fill="#111"/><rect x="2" y="4" width="9" height="5" fill="#bfa070"/><rect x="4" y="5" width="4" height="3" fill="#805e40"/><rect x="8" y="6" width="5" height="1" fill="#805e40"/></svg>TREADCORE</a>
+<ul>
+<li><a class="btn lit" href="download.html">Download</a></li>
+<li class="wide"><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li>
+<li class="wide"><a class="btn" href="paper.html">Paper</a></li>
+<li class="wide"><a class="btn" href="https://github.com/treadcore/treadcore/releases">Releases</a></li>
+<li class="wide"><a class="btn" href="https://crates.io/crates/treadcore-client">crates.io</a></li>
+<li class="wide"><a class="btn" href="https://github.com/treadcore/treadcore">GitHub</a></li>
+</ul>
+</div></div></nav>
+
+<header class="hero"><div class="wrap">
+<div class="plate metal screws"><span class="foot"></span>
+<p class="eyebrow label etched">Sixteen tanks &middot; one island &middot; no server</p>
+<h1 class="etched">Treadcore</h1>
+<p class="lcd screen scan phos">An overhead tank game for the drone battlefield. <b>Your gun fires where your recon drone looks;</b> your interceptors keep the sky over you.</p>
 <div class="cta">
-<a class="primary" href="download.html">Download</a>
-<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a>
-<a href="#build">Build from source</a>
+<a class="btn lit" href="download.html">Download</a>
+<a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a>
+<a class="btn" href="#build">Build from source</a>
 </div>
-<div class="shot"><img src="reports/images/guide-screen.png" width="1200" height="740" alt="The game: orders on the left, the map in the middle, everyone's state on the right, your stock along the bottom"></div>
-<p class="caption" style="margin:.6rem auto 0;text-align:center">MIT &middot; <code>0.1.0-rc.6</code> &middot; Linux, macOS, Windows &middot; bots fill empty seats</p>
+<p class="meta etched">MIT &middot; 0.1.0-rc.6 &middot; Linux, macOS, Windows &middot; bots fill empty seats</p>
+</div>
+<figure class="monitor metal" style="margin-top:2.2rem;margin-left:auto;margin-right:auto;max-width:60rem">
+<div class="screen"><img src="assets/shots/wingmen.png" width="1100" height="720" alt="The game on autopilot: a fleet's wingmen spread out toward the pillboxes north of their leader; the brushed-metal frame holds the orders on the left and the shells, drones, squad and armour on the right"><span class="sheen"></span></div>
+</figure>
+<div class="wire screen scan" aria-label="Lines from the game's newswire"><div class="run phos">
+<span>7596 p15 boarded a boat</span><span class="amber">3536 whoop (Interceptor) away. ripping a pack</span><span>7622 you (team): fleet: form up on me at (74,60)</span><span class="red">3520 PICNIC: unreachable (computer says no; the chair says why)</span><span>t0-guard3: rotation: out to the push point (86,32)</span><span class="sky">7466 PEBKAC: squad already out (the lamps called it)</span><span>t2-wing14: island hop: by sea for (45,108)</span>
+</div></div>
 </div></header>
 
-<div class="wrap">
-<section class="s" id="get-it">
-<h2>Get it</h2>
-<p class="sub">One line for your system. The package brings what the game needs.</p>
-<div class="sys">
-<a href="download.html#debian"><div class="t"><svg class="pico"><use href="#i-debian"/></svg><span>Debian, Ubuntu<small>Linux Mint, .deb</small></span></div><code>sudo apt install ./treadcore-*.deb</code><div class="dep"><b>installs</b> Wayland, xkbcommon, Vulkan loader, Mesa Vulkan drivers</div></a>
-<a href="download.html#fedora"><div class="t"><svg class="pico"><use href="#i-fedora"/></svg><span>Fedora<small>.rpm</small></span></div><code>sudo dnf install ./treadcore-*.rpm</code><div class="dep"><b>installs</b> Wayland, xkbcommon, vulkan-loader, mesa-vulkan-drivers</div></a>
-<a href="download.html#windows"><div class="t"><svg class="pico"><use href="#i-windows"/></svg><span>Windows<small>.msi installer</small></span></div><code>treadcore-*-windows-x86_64.msi</code><div class="dep"><b>installs</b> nothing: DirectX 12 or Vulkan from the GPU driver</div></a>
-<a href="download.html#macos"><div class="t"><svg class="pico"><use href="#i-macos"/></svg><span>macOS<small>Apple silicon, .app</small></span></div><code>Treadcore.app</code><div class="dep"><b>installs</b> nothing: Metal</div></a>
-<a href="download.html#nix"><div class="t"><svg class="pico"><use href="#i-nix"/></svg><span>NixOS, Nix<small>flake</small></span></div><code>nix run github:treadcore/treadcore</code><div class="dep"><b>installs</b> everything, from the flake</div></a>
-<a href="download.html#copal"><div class="t"><svg class="pico"><use href="#i-copal"/></svg><span>Copal, Alpine<small>make install</small></span></div><code>make deps && make install</code><div class="dep"><b>installs</b> apk: wayland, xkbcommon, alsa, eudev, vulkan, mesa-vulkan-swrast</div></a>
-<a href="download.html#arch"><div class="t"><svg class="pico"><use href="#i-arch"/></svg><span>Arch, Omarchy<small>make install</small></span></div><code>make deps && make install</code><div class="dep"><b>installs</b> pacman: wayland, libxkbcommon, alsa-lib, vulkan-icd-loader, vulkan-swrast</div></a>
-<a href="download.html#gentoo"><div class="t"><svg class="pico"><use href="#i-gentoo"/></svg><span>Gentoo<small>make install</small></span></div><code>make deps && make install</code><div class="dep"><b>installs</b> emerge: wayland, libxkbcommon, alsa-lib, vulkan-loader, mesa</div></a>
-<a href="download.html#cargo"><div class="t"><svg class="pico"><use href="#i-cargo"/></svg><span>Anywhere<small>cargo install</small></span></div><code>cargo install treadcore-client</code><div class="dep"><b>installs</b> your own Rust 1.85+, and make deps for the system</div></a>
-</div>
-</section>
+<main id="main">
+<section class="sec" id="tour"><div class="wrap">
 
-<section class="s" id="play">
-<h2>Play</h2>
-<p class="sub">The mouse drives and fires; the keys give orders. <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">The guide</a> has the rest.</p>
-<div class="tiles">
-<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#3-driving-and-firing"><img src="reports/images/guide-aim.png" alt="Aim" loading="lazy"><div class="cap"><b>Aim</b><span>Hold right: the gun's reach lights. Release to fire.</span></div></a>
-<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#4-the-orders-column"><img src="reports/images/guide-column-armed.png" alt="Order" loading="lazy" style="object-position:left 72%"><div class="cap"><b>Order</b><span>Pick a mode on the left, click a square.</span></div></a>
-<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#6-pillboxes-and-depots"><img src="reports/images/guide-right.png" alt="Watch" loading="lazy"><div class="cap"><b>Watch</b><span>Every tank, pillbox and depot, by owner.</span></div></a>
-<a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#10-over-a-network"><img src="reports/images/guide-networked.png" alt="Play together" loading="lazy"><div class="cap"><b>Play together</b><span>Up to sixteen. The windows elect a host.</span></div></a>
-</div>
-</section>
-
-<section class="s" id="build">
-<h2>Build it</h2>
-<p class="sub">With your own Rust, 1.85 or newer.</p>
-<pre><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
-make deps        # what this system needs, by its own names (APPLY=1 installs it)
-make install     # into ~/.local, with a menu entry
-make run         # or play from the tree, against fifteen bots</code></pre>
-<ul class="links">
-<li><a href="https://github.com/treadcore/treadcore/blob/main/README.md#building">README: building</a></li>
-<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/BUILD.md">BUILD.md</a></li>
-<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PACKAGES.md">How the packages are made</a></li>
-<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RELEASE.md">The release procedure</a></li>
+<article class="show">
+<div class="text metal reveal">
+<p class="label etched">The gun</p>
+<h3 class="etched">Fire at what <span class="dim">your drone can see.</span></h3>
+<ul class="beats">
+<li class="screen"><b>Indirect fire.</b> The gun lobs a shell at a point; it lands where a recon drone is watching, or blind.</li>
+<li class="screen"><b>Interceptors</b> hold a ring round the hull and rip enemy drones out of the sky.</li>
+<li class="screen"><b>Strike and longshot</b> drones carry the fight past the horizon, one way.</li>
 </ul>
-</section>
+<p class="deck">The tank was just handed a new battlefield. The game is about the sky over it.</p>
+</div>
+<figure class="shot"><div class="monitor metal"><div class="screen"><img src="assets/shots/bridge-fight.png" width="1100" height="720" alt="A fight at a bridge: rangers dodging shells while the leader calls the fleet to form up" loading="lazy"><span class="sheen"></span></div></div>
+<figcaption>A fight by a bridge: two rangers dodge a barrage while their leader calls the fleet in.</figcaption></figure>
+</article>
 
-<section class="s">
-<h2 id="where-built">Where it is built, and for what</h2>
-<p>Every build of the current release, the system it is for, what it needs there, and whether it was
-built, installed and played on that system before the release, and published. A release is not
-published until every package's test passes (<a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PACKAGES.md">how</a>).</p>
+<article class="show flip">
+<div class="text metal reveal">
+<p class="label etched">The fleet</p>
+<h3 class="etched">Bots that hold a line <span class="dim">and never stand about.</span></h3>
+<ul class="beats">
+<li class="screen"><b>Fleets of five:</b> a leader on the autopilot, a guard, rangers and wingmen in a wedge.</li>
+<li class="screen"><b>Rotation.</b> Every tank has a defense point at its base and a push point halfway to the objective, and goes between them.</li>
+<li class="screen"><b>Pings and talk.</b> A bot that calls a target says so in team chat; the minimap rings where.</li>
+</ul>
+<p class="deck">Empty seats fill with bots that play like a side, not a crowd.</p>
+</div>
+<figure class="shot" style="--glow:rgba(115,199,255,.3)"><div class="monitor metal"><div class="screen"><img src="assets/shots/island-hop.png" width="1100" height="720" alt="Team one's leader fells trees for a boat while its fleet guards the island" loading="lazy"><span class="sheen"></span></div></div>
+<figcaption>Island hopping: the leader fells timber for a boat while the guard rotates out to its push point.</figcaption></figure>
+</article>
+
+<article class="show">
+<div class="text metal reveal">
+<p class="label etched">The squad</p>
+<h3 class="etched">Take the pillboxes. <span class="dim">Build the fortress.</span></h3>
+<ul class="beats">
+<li class="screen"><b>Pillboxes move.</b> The squad lifts one, carries it home and sets it down at the gate.</li>
+<li class="screen"><b>Walls and roads.</b> A ring of wall outside, a ring road inside, a depot in the middle to refill.</li>
+<li class="screen"><b>Bridges before boats.</b> Three tiles a trip, laid from the material the squad gathers.</li>
+</ul>
+<p class="deck">Hold the island's depots and pillboxes and the match is yours.</p>
+</div>
+<figure class="shot" style="--glow:rgba(255,191,77,.3)"><div class="monitor metal"><div class="screen"><img src="assets/shots/base.png" width="1100" height="720" alt="A base going up: pillboxes, a depot and a road on a small island" loading="lazy"><span class="sheen"></span></div></div>
+<figcaption>A base going up: two pillboxes brought home, the depot between them, the road begun.</figcaption></figure>
+</article>
+
+<article class="show flip">
+<div class="text metal reveal">
+<p class="label etched">The network</p>
+<h3 class="etched">Sixteen players. <span class="dim">No server.</span></h3>
+<ul class="beats">
+<li class="screen"><b>The windows elect a host.</b> They find each other on a LAN or through an introducer, measure the latency, and pick.</li>
+<li class="screen"><b>Late arrivals</b> take a bot's seat mid-match; a rematch is one key.</li>
+<li class="screen"><b>4&times; speed.</b> The host runs the match at 1&times;, 2&times; or 4&times;, and every window follows.</li>
+</ul>
+<p class="deck">Free, MIT, written in Rust with Bevy. Everything drawn is a rectangle.</p>
+</div>
+<figure class="shot" style="--glow:rgba(242,51,38,.25)"><div class="monitor metal"><div class="screen"><img src="reports/images/guide-networked.png" alt="A networked match: the host's window with its peers listed" loading="lazy"><span class="sheen"></span></div></div>
+<figcaption>A networked match: the host's window, its peers on the newswire.</figcaption></figure>
+</article>
+
+</div></section>
+
+<section class="sec" id="get-it"><div class="wrap">
+<div class="head metal reveal"><h2 class="etched">Get it</h2><p>One line for your system. The package brings what the game needs.</p></div>
+<div class="sys">
+<a class="metal reveal" href="download.html#debian"><div class="t"><svg class="pico"><use href="#i-debian"/></svg><span>Debian, Ubuntu<small>Linux Mint, .deb</small></span></div><code class="screen phos">sudo apt install ./treadcore-*.deb</code><div class="dep"><b>installs</b> Wayland, xkbcommon, Vulkan loader, Mesa Vulkan drivers</div></a>
+<a class="metal reveal" href="download.html#fedora"><div class="t"><svg class="pico"><use href="#i-fedora"/></svg><span>Fedora<small>.rpm</small></span></div><code class="screen phos">sudo dnf install ./treadcore-*.rpm</code><div class="dep"><b>installs</b> Wayland, xkbcommon, vulkan-loader, mesa-vulkan-drivers</div></a>
+<a class="metal reveal" href="download.html#windows"><div class="t"><svg class="pico"><use href="#i-windows"/></svg><span>Windows<small>.msi installer</small></span></div><code class="screen phos">treadcore-*-windows-x86_64.msi</code><div class="dep"><b>installs</b> nothing: DirectX 12 or Vulkan from the GPU driver</div></a>
+<a class="metal reveal" href="download.html#macos"><div class="t"><svg class="pico"><use href="#i-macos"/></svg><span>macOS<small>Apple silicon, .app</small></span></div><code class="screen phos">Treadcore.app</code><div class="dep"><b>installs</b> nothing: Metal</div></a>
+<a class="metal reveal" href="download.html#nix"><div class="t"><svg class="pico"><use href="#i-nix"/></svg><span>NixOS, Nix<small>flake</small></span></div><code class="screen phos">nix run github:treadcore/treadcore</code><div class="dep"><b>installs</b> everything, from the flake</div></a>
+<a class="metal reveal" href="download.html#copal"><div class="t"><svg class="pico"><use href="#i-copal"/></svg><span>Copal, Alpine<small>make install</small></span></div><code class="screen phos">make deps && make install</code><div class="dep"><b>installs</b> apk: wayland, xkbcommon, alsa, eudev, vulkan, mesa-vulkan-swrast</div></a>
+<a class="metal reveal" href="download.html#arch"><div class="t"><svg class="pico"><use href="#i-arch"/></svg><span>Arch, Omarchy<small>make install</small></span></div><code class="screen phos">make deps && make install</code><div class="dep"><b>installs</b> pacman: wayland, libxkbcommon, alsa-lib, vulkan-icd-loader, vulkan-swrast</div></a>
+<a class="metal reveal" href="download.html#gentoo"><div class="t"><svg class="pico"><use href="#i-gentoo"/></svg><span>Gentoo<small>make install</small></span></div><code class="screen phos">make deps && make install</code><div class="dep"><b>installs</b> emerge: wayland, libxkbcommon, alsa-lib, vulkan-loader, mesa</div></a>
+<a class="metal reveal" href="download.html#cargo"><div class="t"><svg class="pico"><use href="#i-cargo"/></svg><span>Anywhere<small>cargo install</small></span></div><code class="screen phos">cargo install treadcore-client</code><div class="dep"><b>installs</b> your own Rust 1.85+, and make deps for the system</div></a>
+</div>
+<div class="chan">
+<a class="metal reveal" href="https://github.com/treadcore/treadcore/releases"><p class="label etched">GitHub releases</p><b class="etched">Every file of every release</b>
+<span>The .deb and .rpm packages, the Windows .msi, the macOS and Windows zips, and their checksums, for each version.</span>
+<code class="screen phos" id="chan-release">github.com/treadcore/treadcore/releases</code></a>
+<a class="metal reveal" href="https://crates.io/crates/treadcore-client"><p class="label etched">crates.io</p><b class="etched">The crates, built by cargo</b>
+<span>The window is <code>treadcore-client</code>, the headless host <code>treadcore-server</code>; under them the sim, the protocol, the network and the bots.</span>
+<code class="screen phos" id="chan-crate">cargo install treadcore-client</code></a>
+</div>
+</div></section>
+
+<section class="sec" id="play"><div class="wrap">
+<div class="head metal reveal"><h2 class="etched">Play</h2><p>The mouse drives and fires; the keys give orders. <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">The guide</a> has the rest.</p></div>
+<div class="tiles">
+<a class="metal reveal" href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#3-driving-and-firing"><div class="screen"><img src="reports/images/guide-aim.png" alt="Aim" loading="lazy"></div><div class="cap"><b>Aim</b><span>Hold right: the gun's reach lights. Release to fire.</span></div></a>
+<a class="metal reveal" href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#4-the-orders-column"><div class="screen"><img src="reports/images/guide-column-armed.png" alt="Order" loading="lazy" style="object-position:left 72%"></div><div class="cap"><b>Order</b><span>Pick a mode on the left, click a square.</span></div></a>
+<a class="metal reveal" href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#6-pillboxes-and-depots"><div class="screen"><img src="reports/images/guide-right.png" alt="Watch" loading="lazy"></div><div class="cap"><b>Watch</b><span>Every tank, pillbox and depot, by owner.</span></div></a>
+<a class="metal reveal" href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md#10-over-a-network"><div class="screen"><img src="reports/images/guide-networked.png" alt="Play together" loading="lazy"></div><div class="cap"><b>Play together</b><span>Up to sixteen. The windows elect a host.</span></div></a>
+</div>
+</div></section>
+
+<section class="sec" id="build"><div class="wrap">
+<div class="head metal reveal"><h2 class="etched">Build it</h2><p>With your own Rust, 1.85 or newer.</p></div>
+<pre class="term screen scan reveal"><code>git clone https://github.com/treadcore/treadcore.git &amp;&amp; cd treadcore
+make deps        <span class="c"># what this system needs, by its own names (APPLY=1 installs it)</span>
+make install     <span class="c"># into ~/.local, with a menu entry</span>
+make run         <span class="c"># or play from the tree, against fifteen bots</span>
+SPEED=4 make quad <span class="c"># three windows, a team each, on the autopilot, at 4x</span></code></pre>
+<ul class="links">
+<li><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/README.md#building">README: building</a></li>
+<li><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/BUILD.md">BUILD.md</a></li>
+<li><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PACKAGES.md">How the packages are made</a></li>
+<li><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/RELEASE.md">The release procedure</a></li>
+</ul>
+</div></section>
+
+<section class="sec"><div class="wrap">
+<div class="head metal reveal"><h2 class="etched" id="where-built">Where it is built</h2><p>Every build of the current release: the system, what it needs there, and whether it was built, installed and played there before it was published. A release is not published until every package's test passes (<a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PACKAGES.md">how</a>).</p></div>
+<div class="gridwrap screen scan reveal">
 <table class="grid" id="build-grid">
 <thead><tr><th>System</th><th>Arch</th><th>Form</th><th>Built</th><th>Tested there</th><th>Published</th><th>Runtime dependencies</th></tr></thead>
 <tbody></tbody>
 </table>
-<p class="builtmeta" id="build-meta"></p>
+</div>
+<p class="builtmeta on-field" id="build-meta"></p>
 <script type="application/json" id="builds"><!-- BUILDS: written by make builds -->{"generated":"2026-10-13 21:47 UTC","release":null,"crate":{"version":"0.1.0-rc.1","date":"2026-10-13"},"rows":[{"system":"Debian 12, 13","arch":"x86-64","kind":".deb","deps":"libwayland-client0, libxkbcommon0, libvulkan1, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Debian 12, 13","arch":"ARM64","kind":".deb","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Ubuntu 22.04, 24.04","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Linux Mint 22","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"x86-64","kind":".rpm","deps":"libwayland-client, libxkbcommon, vulkan-loader, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"AArch64","kind":".rpm","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":".msi","deps":"none (DirectX 12 or Vulkan from the GPU driver)","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":"zip","deps":"none","built":false,"tested":false,"published":false,"url":null},{"system":"macOS 11+","arch":"Apple silicon","kind":"zip","deps":"none (Metal)","built":false,"tested":false,"published":false,"url":null},{"system":"NixOS, Nix","arch":"x86-64, AArch64","kind":"flake","deps":"in the flake","built":true,"tested":false,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Copal, Alpine","arch":"AArch64, x86-64","kind":"make install","deps":"make deps: apk","built":true,"tested":"hand","published":true,"url":"https://treadcore.org/download.html"},{"system":"Arch, Omarchy","arch":"x86-64","kind":"make install","deps":"make deps: pacman","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Gentoo","arch":"any","kind":"make install","deps":"make deps: emerge","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Any, with Rust","arch":"any","kind":"cargo install","deps":"make deps for the system","built":true,"tested":null,"published":true,"url":"https://crates.io/crates/treadcore-client"}]}</script>
 <script>
 // The grid, from data written into this page by `make builds` when a
-// release is published: no API call per visitor.
+// release is published: no API call per visitor. Lamps for yes and not yet.
 (function () {
   let d; try { d = JSON.parse(document.getElementById('builds').textContent.replace(/^<!--.*?-->/, '')); } catch (e) { return; }
-  const box = v => v === true ? '<span class="yes" title="yes">&#9745;</span>' : v === false ? '<span class="no" title="not yet">&#9744;</span>' : v === 'hand' ? '<span class="na">by hand</span>' : '<span class="na">&mdash;</span>';
+  const box = v => v === true ? '<span class="lamp on" title="yes"></span><span class="sr">yes</span>' : v === false ? '<span class="lamp" title="not yet"></span><span class="sr">not yet</span>' : v === 'hand' ? '<span class="na">by hand</span>' : '<span class="na">&mdash;</span>';
   const tb = document.querySelector('#build-grid tbody');
   tb.innerHTML = d.rows.map(r => `<tr><td>${r.url ? `<a href="${r.url}">${r.system}</a>` : r.system}</td><td>${r.arch}</td><td>${r.kind}</td>` +
     `<td class="c">${box(r.built)}</td><td class="c">${box(r.tested)}</td><td class="c">${box(r.published)}</td><td class="deps">${r.deps}</td></tr>`).join('');
   const rel = d.release ? `release <a href="${d.release.url}">${d.release.tag}</a>, built ${d.release.date}${d.release.prerelease ? ' (a candidate)' : ''}` : 'no release with packages published yet';
   const crate = d.crate ? `; crates.io ${d.crate.version} of ${d.crate.date}` : '';
+  if (d.release) document.getElementById('chan-release').textContent = `${d.release.tag}: ${d.release.date}`;
+  if (d.crate) document.getElementById('chan-crate').textContent = `cargo install treadcore-client  # ${d.crate.version}`;
   document.getElementById('build-meta').innerHTML = `${rel}${crate}; this table written ${d.generated}.`;
 })();
 </script>
-</section>
+</div></section>
 
-<section class="s" id="more">
-<h2>Read more</h2>
+<section class="sec" id="more"><div class="wrap">
+<div class="head metal reveal"><h2 class="etched">Read more</h2><p>The rules, the balance, the network, and how it was made.</p></div>
 <ul class="links">
-<li><a href="paper.html">The paper: rules, balance, network</a></li>
-<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">Design</a></li>
-<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">Concept</a></li>
-<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">Research</a></li>
-<li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">Protocol</a></li>
-<li><a href="https://github.com/treadcore/treadcore/tree/main/journal">The journal</a></li>
-<li><a href="reports/2026-10-12-opening-day.html">Opening day</a></li>
+<li><a class="btn" href="paper.html">The paper</a></li>
+<li><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">Design</a></li>
+<li><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">Concept</a></li>
+<li><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">Research</a></li>
+<li><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/PROTOCOL.md">Protocol</a></li>
+<li><a class="btn" href="https://github.com/treadcore/treadcore/tree/main/journal">The journal</a></li>
+<li><a class="btn" href="reports/2026-10-12-opening-day.html">Opening day</a></li>
 </ul>
-</section>
-</div>
+</div></section>
+</main>
 
-<footer><div class="wrap"><ul class="nav"><li><a href="download.html">Download</a></li><li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li><li><a href="paper.html">Paper</a></li><li><a href="https://github.com/treadcore/treadcore/releases">Releases</a></li><li><a href="https://crates.io/crates/treadcore-client">crates.io</a></li><li><a href="https://github.com/treadcore/treadcore">GitHub</a></li></ul>
+<footer><div class="wrap"><div class="bar metal">
+<ul><li><a href="download.html">Download</a></li><li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li><li><a href="paper.html">Paper</a></li><li><a href="https://github.com/treadcore/treadcore/releases">Releases</a></li><li><a href="https://crates.io/crates/treadcore-client">crates.io</a></li><li><a href="https://github.com/treadcore/treadcore">GitHub</a></li></ul>
 <p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson. No assets: everything drawn is a rectangle.
 Made on <a href="https://github.com/copallinux/copal">Copal Linux</a>.</p>
-</div></footer>
+</div></div></footer>
 </body>
 </html>

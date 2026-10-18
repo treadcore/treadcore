@@ -6,6 +6,7 @@
 <title>Treadcore: the paper</title>
 <meta name="description" content="Treadcore: an overhead tank game for the drone battlefield, its rules, and a review of its balance and its network. In the IEEE form.">
 <link rel="canonical" href="https://treadcore.org/paper.html">
+<link rel="stylesheet" href="assets/site.css">
 <style>
 :root{--bg:#fbfaf7;--fg:#1e2a3a;--dim:#5b6472;--faint:#8a919c;--line:#e2ded4;
 --card:#fff;--accent:#2f6b3a;--code:#f4f2ec;
@@ -23,7 +24,6 @@
 --link:#8ad39a;--mark:#e8a775;--tint:rgba(138,211,154,.1);--shadow:rgba(0,0,0,.6)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 var(--sans)}
-.wrap{max-width:60rem;margin:0 auto;padding:0 1.25rem}
 header.hero{border-bottom:1px solid var(--line);padding:3rem 0 2.25rem}
 .shot img{display:block;width:100%;height:auto;margin:1.75rem 0 0;
 border:1px solid var(--line);border-radius:8px;background:var(--card);image-rendering:pixelated}
@@ -73,8 +73,6 @@ ul,ol{margin:0 0 1.1rem;padding-left:1.4rem} li{margin:.3rem 0}
 .gallery figure.wide{grid-column:1 / -1}
 .gallery img{margin:0;border:0}
 @media (max-width:40rem){.gallery{grid-template-columns:1fr}}
-footer{border-top:1px solid var(--line);padding:2rem 0 3rem;color:var(--faint);font-size:.88rem}
-footer a{color:var(--dim)}
 .platforms{display:grid;gap:.6rem;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));margin:1rem 0 1.4rem;padding:0;list-style:none}
 .platforms a{display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;text-decoration:none;color:var(--fg);
 background:var(--card);border:1px solid var(--line);border-radius:.5rem;font-weight:600;font-size:.92rem;line-height:1.2}
@@ -88,7 +86,6 @@ background:var(--card);border:1px solid var(--line);border-radius:.5rem;font-wei
 .grid .yes{color:var(--accent)} .grid .no{color:var(--faint)} .grid .na{color:var(--faint);font-size:.8rem}
 .grid td.deps{color:var(--dim);font-size:.8rem}
 .builtmeta{font:.8rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim)}
-.nav{display:flex;flex-wrap:wrap;gap:1.1rem;margin:0 0 1rem;padding:0;list-style:none;font-size:.9rem}
 
 /* the paper */
 .below{background:linear-gradient(180deg,var(--bg) 0,var(--code) 100%);padding:3rem 0 2rem}
@@ -141,11 +138,36 @@ border-top:3px double var(--ink);border-bottom:1px solid var(--ink)}
 .back{text-align:center;margin:1.6rem 0 .4rem}
 .back a{font-family:var(--sans);font-size:.95rem;text-decoration:none;border:1px solid var(--rule);border-radius:999px;padding:.45rem 1.2rem}
 @media print{.below{background:#fff}.paper{box-shadow:none;max-width:none}}
+/* over the shared look (assets/site.css): the page is paper, mounted
+   on a metal plate over the field; its own --ink and --shadow are the
+   paper's, so the site's screens are not used on this page */
+body{background:var(--f-deep);color:var(--ink);font-family:var(--sans)}
+.below{background:none;padding:1rem 0 1rem}
+.mount{max-width:70rem;margin:0 auto;padding:16px}
+.mount .paper{border-radius:3px;box-shadow:0 2px 0 rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.4)}
+.mount .crumb{margin:0 1.3rem .7rem;display:flex;justify-content:space-between;gap:1rem}
+.mount .crumb a{color:var(--plink)}
+@media (max-width:40rem){.mount{padding:8px}}
+@media print{.mount{background:none;border:0;box-shadow:none;padding:0}.mount .crumb,.skip{display:none}}
 </style>
+<script src="assets/site.js" defer></script>
+<script src="assets/field.js" defer></script>
 </head>
 <body>
-<div class="wrap" style="padding-top:1.2rem"><p class="eyebrow"><a href="index.html" style="color:inherit;text-decoration:none">treadcore</a> &middot; the paper</p></div>
-<div class="below">
+<a class="skip" href="#main">Skip to the page</a>
+<canvas class="field" aria-hidden="true"></canvas><div class="veil" aria-hidden="true"></div>
+<nav class="nav" aria-label="Site"><div class="wrap"><div class="bar metal">
+<a class="brand etched" href="index.html"><svg viewBox="0 0 13 13" aria-hidden="true"><rect x="1" y="2" width="11" height="2" fill="#111"/><rect x="1" y="9" width="11" height="2" fill="#111"/><rect x="2" y="4" width="9" height="5" fill="#bfa070"/><rect x="4" y="5" width="4" height="3" fill="#805e40"/><rect x="8" y="6" width="5" height="1" fill="#805e40"/></svg>TREADCORE</a>
+<ul>
+<li><a class="btn lit" href="download.html">Download</a></li>
+<li class="wide"><a class="btn" href="index.html">Home</a></li>
+<li class="wide"><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li>
+<li class="wide"><a class="btn" href="https://github.com/treadcore/treadcore">GitHub</a></li>
+</ul>
+</div></div></nav>
+<div class="below" id="main">
+<div class="mount metal screws"><span class="foot"></span>
+<p class="crumb label etched"><span><a href="index.html">treadcore</a> &middot; the paper</span><span>IEEE form</span></p>
 <main class="paper" id="paper">
   <div class="runhead"><span>treadcore: an overhead tank game for the drone battlefield</span><span>October 2026</span></div>
   <div class="titleblock">
@@ -337,7 +359,11 @@ border-top:3px double var(--ink);border-bottom:1px solid var(--ink)}
   <p class="back"><a href="index.html">Back to treadcore.org</a></p>
 </main>
 </div>
-<footer><div class="wrap"><p><a href="index.html">treadcore.org</a> &middot; <a href="download.html">Download</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a> &middot; <a href="https://github.com/treadcore/treadcore">Source</a></p>
-<p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson.</p></div></footer>
+</div>
+<footer><div class="wrap"><div class="bar metal">
+<ul><li><a href="index.html">treadcore.org</a></li><li><a href="download.html">Download</a></li><li><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li><li><a href="paper.html">Paper</a></li><li><a href="https://github.com/treadcore/treadcore/releases">Releases</a></li><li><a href="https://crates.io/crates/treadcore-client">crates.io</a></li><li><a href="https://github.com/treadcore/treadcore">GitHub</a></li></ul>
+<p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson. No assets: everything drawn is a rectangle.</p>
+</div></div></footer>
+
 </body>
 </html>

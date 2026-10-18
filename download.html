@@ -6,60 +6,62 @@
 <title>Download treadcore</title>
 <meta name="description" content="treadcore for your system: packages for Debian, Ubuntu, Linux Mint and Fedora; a zip for Windows and macOS; a Nix flake; make install for Copal, Alpine, Arch, Omarchy and Gentoo; cargo install anywhere.">
 <link rel="canonical" href="https://treadcore.org/download.html">
+<link rel="stylesheet" href="assets/site.css">
 <style>
-:root{--bg:#fbfaf7;--fg:#1e2a3a;--dim:#5b6472;--faint:#8a919c;--line:#e2ded4;
---card:#fff;--accent:#2f6b3a;--code:#f4f2ec;--sel:rgba(47,107,58,.1);
---sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
---mono:ui-monospace,SFMono-Regular,Menlo,monospace}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15181c;--fg:#d9dde3;--dim:#9ea5b1;
---faint:#6f7682;--line:#2a2f37;--card:#1d2128;--accent:#8ad39a;--code:#1a1e24;--sel:rgba(138,211,154,.12)}}
-:root[data-theme="dark"]{--bg:#15181c;--fg:#d9dde3;--dim:#9ea5b1;
---faint:#6f7682;--line:#2a2f37;--card:#1d2128;--accent:#8ad39a;--code:#1a1e24;--sel:rgba(138,211,154,.12)}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 var(--sans)}
-.wrap{max-width:60rem;margin:0 auto;padding:0 1.25rem}
-header.hero{border-bottom:1px solid var(--line);padding:2.5rem 0 2rem}
-.eyebrow{font:600 .75rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .9rem}
-.eyebrow a{color:inherit;text-decoration:none}
-h1{font-size:2.4rem;line-height:1.12;margin:0 0 .75rem;letter-spacing:-.02em}
-.lede{font-size:1.1rem;color:var(--dim);margin:0;max-width:44rem}
-a{color:var(--accent)}
-code{font:.88em/1.5 var(--mono);background:var(--code);padding:.13em .38em;border-radius:.25rem}
-pre{background:var(--code);border:1px solid var(--line);border-radius:.45rem;padding:.9rem 1rem;overflow-x:auto;margin:0 0 1rem}
-pre code{background:none;padding:0;font-size:.85rem;line-height:1.55}
-p{margin:0 0 1rem}
-.release{font:.85rem/1.4 var(--mono);color:var(--dim);margin:1.2rem 0 0}
-/* the selector */
-.picker{display:grid;gap:.6rem;grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr));margin:2rem 0 1.5rem;padding:0;list-style:none}
-.picker button{width:100%;display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;font:600 .92rem/1.2 var(--sans);
-color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:.5rem;cursor:pointer;text-align:left}
-.picker button:hover{border-color:var(--accent)}
-.picker button[aria-pressed="true"]{border-color:var(--accent);background:var(--sel);box-shadow:inset 0 0 0 1px var(--accent)}
-.picker small{display:block;font-weight:400;color:var(--faint);font-size:.75rem}
-.icon{width:2rem;height:2rem;flex:none;border-radius:.3rem;image-rendering:pixelated}
-.group{font:600 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:1.6rem 0 -.8rem}
-/* a platform's panel */
-.panel{display:none;background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:1.4rem 1.5rem;margin:0 0 2rem}
+/* the download page, over the shared look (assets/site.css) */
+.dl .plate{text-align:left;display:block;max-width:none}
+.dl h1{font:900 clamp(1.8rem,5vw,2.8rem)/1.1 var(--sans);letter-spacing:.02em;margin:.2rem 0 .8rem;text-transform:none}
+.dl .lede{margin:0;max-width:46rem;color:var(--etch-soft)}
+.dl .lede code{background:rgba(0,0,0,.12);padding:.1em .35em;border-radius:4px}
+.release{font:.85rem/1.4 var(--mono);margin:1rem 0 0;padding:.6rem .8rem}
+.group{font:700 .72rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink);text-shadow:0 1px 3px #000;margin:1.8rem 0 -.6rem}
+.picker{display:grid;gap:.6rem;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));margin:1.4rem 0 1.4rem;padding:0;list-style:none}
+.picker button{width:100%;display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;font:700 .9rem/1.2 var(--sans);text-align:left;cursor:pointer;
+  color:var(--etch);text-shadow:var(--etch-shade);border:1px solid var(--edge);border-radius:12px;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.06) 0 1px,transparent 1px 3px),linear-gradient(180deg,var(--b0) 0,var(--b1) 5%,var(--b2) 10%,var(--b3) 90%,var(--b4) 100%);
+  box-shadow:inset 0 1px 0 var(--rim),0 2px 6px rgba(0,0,0,.35);transition:transform .08s,filter .15s}
+.picker button:hover{filter:brightness(1.07)}
+.picker button[aria-pressed="true"]{color:var(--lit-deep);text-shadow:0 1px 0 rgba(255,255,255,.55);transform:translateY(1px);
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.08) 0 1px,transparent 1px 3px),linear-gradient(180deg,#5fae66 0,#c4ffc8 5%,#9effa8 10%,#4fc95c 90%,#2c7a34 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 16px rgba(51,242,77,.45)}
+.picker small{display:block;font:500 .72rem/1.3 var(--mono);opacity:.8}
+.icon{width:2rem;height:2rem;flex:none;border-radius:4px;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.panel{display:none;margin:0 0 2rem;padding:1.4rem 1.6rem}
 .panel.on{display:block}
-.panel h2{display:flex;align-items:center;gap:.7rem;margin:0 0 .4rem;font-size:1.4rem}
+.panel h2{display:flex;align-items:center;gap:.7rem;margin:0 0 .5rem;font:800 1.4rem/1.2 var(--sans)}
 .panel h2 .icon{width:2.4rem;height:2.4rem}
-.panel h3{font-size:1rem;margin:1.3rem 0 .5rem}
-.panel .how{color:var(--dim);margin:0 0 1rem}
-.get{display:inline-flex;align-items:center;gap:.5rem;text-decoration:none;font-weight:600;border-radius:.4rem;padding:.6rem 1.1rem;margin:0 .5rem .6rem 0;
-background:var(--accent);color:var(--bg);border:1px solid var(--accent)}
-.get.alt{background:transparent;color:var(--fg);border-color:var(--line)}
-.get[aria-disabled="true"]{opacity:.55;pointer-events:none}
-.note{font-size:.88rem;color:var(--dim);border-left:3px solid var(--line);padding:.1rem 0 .1rem .8rem;margin:1rem 0 0}
-table{border-collapse:collapse;width:100%;font-size:.9rem;margin:0 0 1.5rem;display:block;overflow-x:auto}
-th,td{border:1px solid var(--line);padding:.45rem .65rem;text-align:left;vertical-align:top}
-th{background:var(--card)}
-td .icon{width:1.4rem;height:1.4rem;vertical-align:middle;margin-right:.4rem}
-footer{border-top:1px solid var(--line);padding:2rem 0 3rem;color:var(--faint);font-size:.88rem}
-footer a{color:var(--dim)}
-@media (max-width:40rem){h1{font-size:1.9rem}}
+.panel h3{font:800 .8rem/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;margin:1.3rem 0 .5rem}
+.panel .how{color:var(--etch-soft)}
+.panel pre{margin:.9rem 0 1rem;padding:.9rem 1rem;overflow-x:auto}
+.panel pre code{color:var(--phos);font-size:.86rem;line-height:1.6;text-shadow:0 0 6px rgba(51,242,77,.35);background:none;padding:0}
+.get{margin:0 .5rem .6rem 0}
+.get[aria-disabled="true"]{opacity:.6;pointer-events:none}
+.note{font-size:.88rem;color:var(--etch-soft);border-left:3px solid var(--edge);padding:.1rem 0 .1rem .8rem;margin:1rem 0 0}
+.glance h2{margin:0;font:800 1.25rem/1.2 var(--mono);letter-spacing:.18em;text-transform:uppercase}
+.glance{padding:1rem 1.4rem;margin:2.5rem 0 1rem}
+.atglance{padding:.4rem;overflow-x:auto;margin:0 0 1rem}
+.atglance table{border-collapse:collapse;width:100%;font:.84rem/1.45 var(--mono);color:var(--ink)}
+.atglance th{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--phos);text-align:left;padding:.6rem .7rem;border-bottom:1px solid #1f2a20}
+.atglance td{padding:.5rem .7rem;border-bottom:1px solid #141a15;vertical-align:top}
+.atglance td .icon{width:1.4rem;height:1.4rem;vertical-align:middle;margin-right:.45rem}
+.closing{padding:1.1rem 1.4rem}
+.panel a:not(.btn),.closing a{color:var(--plink);font-weight:600}
+.panel code:not(pre code){background:rgba(0,0,0,.12);padding:.1em .35em;border-radius:4px}
 </style>
+<script src="assets/site.js" defer></script>
+<script src="assets/field.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to the page</a>
+<canvas class="field" aria-hidden="true"></canvas><div class="veil" aria-hidden="true"></div>
+<nav class="nav" aria-label="Site"><div class="wrap"><div class="bar metal">
+<a class="brand etched" href="index.html"><svg viewBox="0 0 13 13" aria-hidden="true"><rect x="1" y="2" width="11" height="2" fill="#111"/><rect x="1" y="9" width="11" height="2" fill="#111"/><rect x="2" y="4" width="9" height="5" fill="#bfa070"/><rect x="4" y="5" width="4" height="3" fill="#805e40"/><rect x="8" y="6" width="5" height="1" fill="#805e40"/></svg>TREADCORE</a>
+<ul>
+<li class="wide"><a class="btn" href="index.html">Home</a></li>
+<li class="wide"><a class="btn" href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a></li>
+<li class="wide"><a class="btn" href="https://github.com/treadcore/treadcore/releases">Releases</a></li>
+</ul>
+</div></div></nav>
 <!-- Platform badges: drawn in rectangles, the way the game is, each in its
      family's colour. Not the projects' logos, which are theirs. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -78,16 +80,16 @@ footer a{color:var(--dim)}
   <symbol id="i-cargo" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3b2a1c"/><rect x="3" y="5" width="10" height="7" fill="#c97a3a"/><rect x="3" y="5" width="10" height="2" fill="#e8a067"/><rect x="7" y="7" width="2" height="5" fill="#8a4f20"/></symbol>
 </svg>
 
-<header class="hero"><div class="wrap">
-<p class="eyebrow"><a href="index.html">treadcore</a> &middot; download</p>
-<h1>Get treadcore for your system</h1>
+<header class="hero dl"><div class="wrap"><div class="plate metal screws"><span class="foot"></span>
+<p class="eyebrow label etched"><a href="index.html">treadcore</a> &middot; download</p>
+<h1 class="etched">Get treadcore for your system</h1>
 <p class="lede">Pick your system. Each one has a way in that its own users will recognise:
 a package where there is a package manager to take it, <code>make install</code> where
 building from source is the custom, and a zip where there is neither.</p>
-<p class="release" id="release">Looking up the newest release&hellip;</p>
-</div></header>
+<p class="release screen phos" id="release">Looking up the newest release&hellip;</p>
+</div></div></header>
 
-<div class="wrap"><main>
+<div class="wrap"><main id="main">
 <p class="group">Packages</p>
 <ul class="picker" role="list">
   <li><button data-p="debian"><svg class="icon"><use href="#i-debian"/></svg><span>Debian<small>.deb</small></span></button></li>
@@ -108,122 +110,122 @@ building from source is the custom, and a zip where there is neither.</p>
   <li><button data-p="cargo"><svg class="icon"><use href="#i-cargo"/></svg><span>Anywhere<small>cargo install</small></span></button></li>
 </ul>
 
-<section class="panel" id="debian">
+<section class="panel metal" id="debian">
   <h2><svg class="icon"><use href="#i-debian"/></svg>Debian</h2>
   <p class="how">Debian 12 or newer. The package brings what the window needs: the Wayland and xkbcommon libraries, the Vulkan loader and Mesa's Vulkan drivers, so a machine with no GPU still runs it.</p>
-  <a class="get" data-file="linux-amd64.deb">Download for x86-64</a><a class="get alt" data-file="linux-arm64.deb">ARM64</a>
-  <pre><code>sudo apt install ./treadcore-*-linux-amd64.deb
+  <a class="get btn lit" data-file="linux-amd64.deb">Download for x86-64</a><a class="get alt btn" data-file="linux-arm64.deb">ARM64</a>
+  <pre class="screen scan"><code>sudo apt install ./treadcore-*-linux-amd64.deb
 treadcore --solo</code></pre>
   <p>Treadcore is then in the applications menu under Games. <code>sudo apt remove treadcore</code> takes it out.</p>
 </section>
 
-<section class="panel" id="ubuntu">
+<section class="panel metal" id="ubuntu">
   <h2><svg class="icon"><use href="#i-ubuntu"/></svg>Ubuntu</h2>
   <p class="how">Ubuntu 22.04 or newer. The package brings the Wayland and xkbcommon libraries, the Vulkan loader and Mesa's Vulkan drivers.</p>
-  <a class="get" data-file="linux-amd64.deb">Download for x86-64</a><a class="get alt" data-file="linux-arm64.deb">ARM64</a>
-  <pre><code>sudo apt install ./treadcore-*-linux-amd64.deb
+  <a class="get btn lit" data-file="linux-amd64.deb">Download for x86-64</a><a class="get alt btn" data-file="linux-arm64.deb">ARM64</a>
+  <pre class="screen scan"><code>sudo apt install ./treadcore-*-linux-amd64.deb
 treadcore --solo</code></pre>
   <p>Treadcore is then in the Activities overview and the app grid.</p>
 </section>
 
-<section class="panel" id="mint">
+<section class="panel metal" id="mint">
   <h2><svg class="icon"><use href="#i-mint"/></svg>Linux Mint</h2>
   <p class="how">Linux Mint 21 or newer, Cinnamon, MATE or Xfce. It is the Ubuntu package: double-click the downloaded file and the Package Installer takes it from there, or use the terminal.</p>
-  <a class="get" data-file="linux-amd64.deb">Download for x86-64</a>
-  <pre><code>sudo apt install ./treadcore-*-linux-amd64.deb</code></pre>
+  <a class="get btn lit" data-file="linux-amd64.deb">Download for x86-64</a>
+  <pre class="screen scan"><code>sudo apt install ./treadcore-*-linux-amd64.deb</code></pre>
   <p>In Cinnamon, Treadcore is in the menu under Games, and can be dragged to the panel from there.</p>
 </section>
 
-<section class="panel" id="fedora">
+<section class="panel metal" id="fedora">
   <h2><svg class="icon"><use href="#i-fedora"/></svg>Fedora</h2>
   <p class="how">Fedora 41 or newer. The package names the Wayland and xkbcommon libraries, the Vulkan loader and <code>mesa-vulkan-drivers</code>; dnf fetches whatever is missing.</p>
-  <a class="get" data-file="linux-x86_64.rpm">Download for x86-64</a><a class="get alt" data-file="linux-aarch64.rpm">AArch64</a>
-  <pre><code>sudo dnf install ./treadcore-*-linux-x86_64.rpm
+  <a class="get btn lit" data-file="linux-x86_64.rpm">Download for x86-64</a><a class="get alt btn" data-file="linux-aarch64.rpm">AArch64</a>
+  <pre class="screen scan"><code>sudo dnf install ./treadcore-*-linux-x86_64.rpm
 treadcore --solo</code></pre>
 </section>
 
-<section class="panel" id="nix">
+<section class="panel metal" id="nix">
   <h2><svg class="icon"><use href="#i-nix"/></svg>NixOS and Nix</h2>
   <p class="how">The flake builds the game from source with nixpkgs' own Rust and wraps it with the libraries the window loads at run time. Flakes must be enabled.</p>
-  <pre><code>nix run github:treadcore/treadcore            # play, without installing
+  <pre class="screen scan"><code>nix run github:treadcore/treadcore            # play, without installing
 nix profile install github:treadcore/treadcore  # install</code></pre>
   <p>On NixOS the Vulkan driver comes from <code>hardware.graphics.enable = true;</code>. With Nix on another distribution, start it through nixGL if the GPU's driver is not found.</p>
   <p class="note">Every release builds the flake and plays a bot match from it; the window has not yet been played on NixOS by its author, and a report of how it went is welcome.</p>
 </section>
 
-<section class="panel" id="windows">
+<section class="panel metal" id="windows">
   <h2><svg class="icon"><use href="#i-windows"/></svg>Windows</h2>
   <p class="how">Windows 10 or 11, 64-bit. Nothing to install first: the window uses DirectX 12 or Vulkan from the GPU's own driver.</p>
-  <a class="get" data-file="windows-x86_64.msi">Download the installer (.msi)</a><a class="get alt" data-file="windows-x86_64.zip">or the zip</a>
+  <a class="get btn lit" data-file="windows-x86_64.msi">Download the installer (.msi)</a><a class="get alt btn" data-file="windows-x86_64.zip">or the zip</a>
   <p>The installer puts Treadcore in Program Files and the Start Menu, and its folder on PATH, so <code>treadcore --lan</code> works from any terminal; Settings, Apps removes it. Or unzip the zip anywhere and run <code>treadcore.exe</code>. It opens solo; for a LAN game, from a terminal in that folder: <code>treadcore.exe --lan</code>. Windows will ask once whether to let it through the firewall: allow it on private networks, or other players cannot find you.</p>
   <p class="note">Neither is signed, so SmartScreen may warn the first time: <i>More info</i>, then <i>Run anyway</i>. Every release installs both on Windows and plays a bot match from them before it is published; the window itself has not yet been played on Windows by its author, and a report of how it went is welcome.</p>
 </section>
 
-<section class="panel" id="macos">
+<section class="panel metal" id="macos">
   <h2><svg class="icon"><use href="#i-macos"/></svg>macOS</h2>
   <p class="how">macOS 11 or newer on Apple silicon. The zip holds <code>Treadcore.app</code> and the headless <code>treadcore-server</code>.</p>
-  <a class="get" data-file="macos-arm64.zip">Download the zip</a>
+  <a class="get btn lit" data-file="macos-arm64.zip">Download the zip</a>
   <p>Unzip it and drag <code>Treadcore.app</code> to Applications. It is signed ad hoc, not by an Apple developer account, so the first time: right-click it, <i>Open</i>, then <i>Open</i> again. macOS asks whether it may find devices on the local network; allow it for LAN games.</p>
   <p>Or from source, which also gives you the traces and the scripts:</p>
-  <pre><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
+  <pre class="screen scan"><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
 make install        # Treadcore.app into ~/Applications, the commands into ~/.local/bin</code></pre>
 </section>
 
-<section class="panel" id="copal">
+<section class="panel metal" id="copal">
   <h2><svg class="icon"><use href="#i-copal"/></svg>Copal Linux</h2>
   <p class="how">The system treadcore is made on. From source, with your own Rust: <code>make deps</code> names the apk packages and <code>make install</code> puts the game in the Super+Space menu, behind the small wrapper musl needs for the software Vulkan driver.</p>
-  <pre><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
+  <pre class="screen scan"><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
 APPLY=1 make deps     # apk add ... through doas
 make install          # ~/.local/bin, the menu entry and the icon</code></pre>
   <p>Treadcore is then in the Super+Space menu under Games. <code>make uninstall</code> takes it out.</p>
 </section>
 
-<section class="panel" id="alpine">
+<section class="panel metal" id="alpine">
   <h2><svg class="icon"><use href="#i-alpine"/></svg>Alpine Linux</h2>
   <p class="how">As on Copal: from source with your own Rust. On a machine with no GPU, <code>make deps</code> includes <code>mesa-vulkan-swrast</code>, and <code>make install</code> wraps the window with the stack fix musl needs for it.</p>
-  <pre><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
+  <pre class="screen scan"><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
 APPLY=1 make deps
 make install</code></pre>
 </section>
 
-<section class="panel" id="arch">
+<section class="panel metal" id="arch">
   <h2><svg class="icon"><use href="#i-arch"/></svg>Arch Linux</h2>
   <p class="how">From source, the Arch way. <code>make deps</code> names the pacman packages, <code>vulkan-swrast</code> among them for a machine with no GPU; add your GPU's Vulkan driver if it is not already there. Rust from rustup or <code>pacman -S rust</code>, as you prefer.</p>
-  <pre><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
+  <pre class="screen scan"><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
 APPLY=1 make deps     # pacman -S --needed ... through sudo
 make install</code></pre>
   <p class="note">An AUR package is planned.</p>
 </section>
 
-<section class="panel" id="omarchy">
+<section class="panel metal" id="omarchy">
   <h2><svg class="icon"><use href="#i-omarchy"/></svg>Omarchy</h2>
   <p class="how">Omarchy is Arch with Hyprland, and treadcore is at home there: it runs native on Wayland. Install as on Arch; <code>make deps</code> knows it is Omarchy.</p>
-  <pre><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
+  <pre class="screen scan"><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
 APPLY=1 make deps
 make install</code></pre>
   <p>Treadcore is then in the app launcher (Super+Space).</p>
 </section>
 
-<section class="panel" id="gentoo">
+<section class="panel metal" id="gentoo">
   <h2><svg class="icon"><use href="#i-gentoo"/></svg>Gentoo</h2>
   <p class="how">From source, naturally. <code>make deps</code> prints the emerge line; Mesa's Vulkan drivers follow <code>USE=vulkan</code> and <code>VIDEO_CARDS</code>, with <code>lavapipe</code> for a machine with no GPU.</p>
-  <pre><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
+  <pre class="screen scan"><code>git clone https://github.com/treadcore/treadcore.git && cd treadcore
 make deps             # emerge --ask --noreplace ...
 make install</code></pre>
   <p class="note">An ebuild is planned.</p>
 </section>
 
-<section class="panel" id="cargo">
+<section class="panel metal" id="cargo">
   <h2><svg class="icon"><use href="#i-cargo"/></svg>Anywhere, with cargo</h2>
   <p class="how">Any system with Rust 1.85 or newer: rustup's, or your distribution's. The crate builds the window from source; the system packages it needs are the ones <code>make deps</code> lists for your system.</p>
-  <pre><code>cargo install treadcore-client     # the window, as `treadcore`
+  <pre class="screen scan"><code>cargo install treadcore-client     # the window, as `treadcore`
 cargo install treadcore-server     # the headless host and bot seat
 treadcore --solo</code></pre>
   <p class="note">On musl (Copal, Alpine) with the software Vulkan driver, prefer <code>make install</code>, which adds the stack fix the window needs there.</p>
 </section>
 
-<h2 style="font-size:1.3rem;margin:2.5rem 0 .8rem">Every system at a glance</h2>
-<table>
+<div class="glance metal"><h2 class="etched">Every system at a glance</h2></div>
+<div class="atglance screen scan"><table>
 <thead><tr><th>System</th><th>How</th><th>Runtime dependencies</th><th>Tested before each release</th></tr></thead>
 <tbody>
 <tr><td><svg class="icon"><use href="#i-copal"/></svg>Copal Linux</td><td>make install</td><td>make deps (apk)</td><td>by hand: installed, played</td></tr>
@@ -239,16 +241,16 @@ treadcore --solo</code></pre>
 <tr><td><svg class="icon"><use href="#i-nix"/></svg>NixOS, Nix</td><td>nix run</td><td>in the flake</td><td>built, a bot match played</td></tr>
 <tr><td><svg class="icon"><use href="#i-windows"/></svg>Windows 10, 11</td><td>.msi, or zip</td><td>none</td><td>the .msi installed, a bot match played, uninstalled; the zip run</td></tr>
 </tbody>
-</table>
-<p>The packages are built and tested by the release workflow on GitHub's machines: a release is not made unless every package installs on every system in this table and plays a bot match there. Arch, Omarchy and Gentoo build from source on the user's machine, and have not yet been tried there by the author. Something not right on your system? <a href="https://github.com/treadcore/treadcore/issues/new?template=playtest.md">Tell us</a>, with what you ran and what it said.</p>
+</table></div>
+<div class="closing metal prose"><p>The packages are built and tested by the release workflow on GitHub's machines: a release is not made unless every package installs on every system in this table and plays a bot match there. Arch, Omarchy and Gentoo build from source on the user's machine, and have not yet been tried there by the author. Something not right on your system? <a href="https://github.com/treadcore/treadcore/issues/new?template=playtest.md">Tell us</a>, with what you ran and what it said.</p></div>
 </main></div>
 
-<footer><div class="wrap">
+<footer><div class="wrap"><div class="bar metal">
 <p><a href="index.html">treadcore.org</a> &middot; <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to play</a> &middot;
 <a href="https://github.com/treadcore/treadcore/releases">All releases</a> &middot; <a href="https://crates.io/crates/treadcore-client">crates.io</a> &middot;
 <a href="https://github.com/treadcore/treadcore">Source</a></p>
 <p>treadcore &mdash; MIT. Copyright &copy; 2026 Paul Richeson.</p>
-</div></footer>
+</div></div></footer>
 
 <script type="application/json" id="builds"><!-- BUILDS: written by make builds -->{"generated":"2026-10-13 21:47 UTC","release":null,"crate":{"version":"0.1.0-rc.1","date":"2026-10-13"},"rows":[{"system":"Debian 12, 13","arch":"x86-64","kind":".deb","deps":"libwayland-client0, libxkbcommon0, libvulkan1, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Debian 12, 13","arch":"ARM64","kind":".deb","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Ubuntu 22.04, 24.04","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Linux Mint 22","arch":"x86-64","kind":".deb","deps":"as Debian","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"x86-64","kind":".rpm","deps":"libwayland-client, libxkbcommon, vulkan-loader, mesa-vulkan-drivers","built":false,"tested":false,"published":false,"url":null},{"system":"Fedora 41, 42","arch":"AArch64","kind":".rpm","deps":"as above","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":".msi","deps":"none (DirectX 12 or Vulkan from the GPU driver)","built":false,"tested":false,"published":false,"url":null},{"system":"Windows 10, 11","arch":"x86-64","kind":"zip","deps":"none","built":false,"tested":false,"published":false,"url":null},{"system":"macOS 11+","arch":"Apple silicon","kind":"zip","deps":"none (Metal)","built":false,"tested":false,"published":false,"url":null},{"system":"NixOS, Nix","arch":"x86-64, AArch64","kind":"flake","deps":"in the flake","built":true,"tested":false,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Copal, Alpine","arch":"AArch64, x86-64","kind":"make install","deps":"make deps: apk","built":true,"tested":"hand","published":true,"url":"https://treadcore.org/download.html"},{"system":"Arch, Omarchy","arch":"x86-64","kind":"make install","deps":"make deps: pacman","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Gentoo","arch":"any","kind":"make install","deps":"make deps: emerge","built":true,"tested":null,"published":true,"url":"https://treadcore.org/download.html"},{"system":"Any, with Rust","arch":"any","kind":"cargo install","deps":"make deps for the system","built":true,"tested":null,"published":true,"url":"https://crates.io/crates/treadcore-client"}]}</script>
 <script>
