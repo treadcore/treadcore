@@ -1,0 +1,154 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 18 Oct 2026 18:00:00 -0700
+Subject: [JOURNAL 0037] The brain on weights: memory, the board, the ledger
+Message-ID: <0037.20261018@treadcore.org>
+In-Reply-To: <0036.20261015@treadcore.org>
+Organization: treadcore.org
+Keywords: brain, utility AI, weights, capabilities, team board,
+          ledger, tuning, roadmap step 12
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair, with three helper agents (the brain mapped, the
+           status gathered, the research read). Paul: "can we design a
+           flowchart logic system with weights that can be adjusted
+           and componentized. we need to keep this performant. so first
+           step is memory and passing of parameters". Then: "Please
+           implement this ... rewrite the roadmap ... write the lab
+           report of brain design ai in the docs folder."
+X-Commits: none yet; the work is in the tree
+
+          THE BRAIN ON WEIGHTS: MEMORY, THE BOARD, THE LEDGER
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    The bot AI was read end to end and written up as a lab report
+    (documentation/LAB-REPORT-BRAIN.md, and a shared document with its
+    diagrams): a stack of first-match ladders, 22 weights all in combat,
+    each tank deciding alone on a full copy of the world twenty times a
+    second. The roadmap was rewritten as six goals, the brain's being
+    step 12, and step 12 was built the same day: a meter, memory that
+    is not recomputed (the castle plan copied once a match instead of
+    every tick; crossings answered from a cache 1,368 times against 207
+    searches), 56 named weights and 13 capability bits in one flat
+    array, smoothing and confirmation, a team board, the base cycle,
+    priced crossings, a column on bridges, and a ledger with a tuner.
+    Every new part is off by default. The first census could not judge
+    them: the baseline against itself differed by five points a seat
+    over three seeds.
+
+INDEX TERMS
+
+    utility AI, influence map, Lanchester, hysteresis, evolution
+    strategy, Elo, capability flags.
+
+
+I. INTRODUCTION
+
+    Paul's notes after watching fleets play asked for a lot at once:
+    a status report, a logic tree of the brain, research on Terraria
+    and Minecraft bots and on RTS AI, a weighted flowchart whose parts
+    can be switched off and tuned with sliders, memory and parameters
+    first, tanks that give the base something after filling up and road
+    out to other bases, small islands treated as poor bases with boats
+    preferred to long bridges (six tiles suggested, twenty at most),
+    a fleet in file on a bridge, decisions that hold between thinks
+    unless running from a shell, a record of each tank's weights beside
+    its score, and Total Annihilation's territory, fronts and logistics.
+    Then: implement it.
+
+II. BACKGROUND
+
+    The brain on 17 October: 8,458 lines; `make test` last recorded on
+    15 October; brain tests 34 passed, 6 ignored (run again at the
+    start of this session, 56 s in release). Wire version 16, rc.6 the
+    last candidate, Actions paused since 13 October.
+
+III. METHOD
+
+    1. Three helper agents in parallel: one mapped the brain with file
+       and line for every claim (checked by hand afterward), one
+       gathered the game's status, one read the research and opened
+       every source it cites.
+    2. The report written into a shared document first, then into
+       documentation/LAB-REPORT-BRAIN.md; the old roadmap moved to
+       ROADMAP-STEPS-0-11.md word for word, and ROADMAP.md rewritten as
+       goals with step 12 under goal 4.
+    3. Step 12 built in the order the report gives, each part behind
+       its bit, the brain tests run after each so the defaults stay the
+       17 October brain.
+    4. `brain_census` (new): sixteen seats as `--fleets` deals them, one
+       team on the trial settings, the trial team rotated over the
+       seeds; naval.map, three seeds, 900 s, respawns 3.
+
+IV. RESULTS
+
+    Tests: brain 48 passed and 6 ignored after the groundwork, 56 with
+    the behaviour proofs (the full run is in section VI).
+
+    The census, mean score a seat:
+
+        trial                 trial team   baseline teams
+        the baseline itself      13.95         8.93
+        every new bit on         10.29        11.53
+
+    Crossing searches 207, answered from the cache 1,368; plan copies
+    2 to 5 a match; 28 us a seat-tick. The trial team spent 0 to 44
+    seat-seconds a match in the base cycle, 2 to 36 relieving a
+    teammate, and laid 4.7 bridge tiles a match against 9.3.
+
+V. DISCUSSION
+
+    The meter's first lesson is the census's own noise: identical
+    settings on two teams differed by more than any part moved. A part
+    is promoted only by beating the baseline over a fixed census, and
+    three seeds is not one. The second is that the cheap wins were
+    memory, not cleverness: the ladder's per-tick plan copy and the
+    uncached failed crossings cost more than anything the new parts do.
+
+VI. RESULTS OF MAKE TEST, AND THE ANSWERS
+
+    `make test` after the groundwork: sim 50, brain 51 (8 ignored),
+    client 27, net 14, proto 3, all passed.
+
+    Paul then answered the report's open questions: every either/or
+    is a scalar, how much x and how much y. Each became a weight with
+    his answer as its default (ROADMAP 12h): the improvement slot by
+    weight (mend, a mine on the approach, works), the road out toward
+    bases first, the score between elimination and holding ground, the
+    builder for a person's team. His castle: two pillboxes inside, one
+    outside on its road, and then no more; the rest line the roads to
+    the side's other bases, beside the road and off its junctions
+    (`castle_cap`). Alone with three outlying pillboxes and a second
+    depot, the capped castle stood with two inside, and the road slot
+    and a post toward the second depot were filled by 371 s. Upgrades
+    and how to buy them were designed (11g): supply from what a side
+    holds, twelve base upgrades and four for the tank, a proposal before
+    the sim step. Brain tests after: 55 passed, 8 ignored.
+
+VII. OPEN PROBLEMS
+
+    1. The census at twelve seeds or more per capability alone, before
+       `make tune` spends its hours.
+    2. The Observation is still copied per bot per tick (12b's sim
+       change).
+    3. The escort that tows a pillbox home along the new road; bridge
+       jobs on the board.
+    4. Sliders on the coordination screen; allies' goals from the
+       board.
+    5. The upgrades' proposal (11g), then the sim step; the sliders.
+
+VIII. NEXT STEPS
+
+    1. Twelve-seed censuses, one capability at a time.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

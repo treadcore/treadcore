@@ -198,7 +198,7 @@ pub struct Commander {
     bearing: Option<f32>,
     /// Pillboxes given up on: the squad could not reach them, or no
     /// firing point round them has a line.
-    given_up: Vec<EntityId>,
+    given_up: crate::memory::Forget<EntityId>,
     /// Where it last told the tank to go, and when.
     last_move: Option<(V2, Tick)>,
     /// Going home to resupply until full again.
@@ -246,7 +246,7 @@ pub struct Commander {
     starved: bool,
     /// Expand's depot, and the depots it could not reach.
     depot_target: Option<EntityId>,
-    depots_given_up: Vec<EntityId>,
+    depots_given_up: crate::memory::Forget<EntityId>,
     /// A direct shot refused for no line (a wall of our own, trees): the
     /// gun waits until this tick instead of asking every tick.
     hold_fire_until: Tick,
@@ -316,7 +316,21 @@ pub struct Commander {
     reviving: Option<EntityId>,
     called_down: Tick,
     /// Wrecks the world would not let the squad reach, by tank and fall.
-    revive_failed: Vec<EntityId>,
+    revive_failed: crate::memory::Forget<EntityId>,
+    /// The weights and capabilities (weights.rs, roadmap 12c).
+    pub settings: crate::weights::Settings,
+    /// The goal of the last Move, smoothed (intent.rs, roadmap 12d).
+    desire: crate::intent::Desire,
+    /// The islands (facts.rs), for a base site's worth (roadmap 12f2).
+    facts: crate::facts::MapFacts,
+    /// The team's shared picture (board.rs, roadmap 12e).
+    pub board: Option<crate::board::Shared>,
+    /// The base cycle after a fill (roadmap 12f1).
+    cycle: crate::cycle::Cycle,
+    /// On a bridge or about to be, in file (roadmap 12f3).
+    on_bridge: bool,
+    /// When road posts were last looked for (roadmap 12h).
+    posts_at: Tick,
 }
 
 /// A downed ally this far off is driven to and revived, if the time
@@ -379,13 +393,50 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Vec::new(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Vec::new(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Vec::new(), rotation: Default::default() }
+        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0 }
     }
 
     /// The weights for its fights (tactics.rs); None shoots the nearest
     /// and answers every ping, as before them.
     pub fn set_tactics(&mut self, t: Option<crate::tactics::Tactics>) {
         self.inner.tactics = t.map(crate::tactics::Tactician::with);
+    }
+
+    /// The weights and capabilities: the tactics from the weights, each
+    /// part of the brain on or off by its bit (weights.rs, roadmap 12c).
+    pub fn set_settings(&mut self, s: crate::weights::Settings) {
+        use crate::weights::{Caps, W};
+        let keep = if s.caps.has(Caps::FORGET) { s.ticks(W::ForgetFor).max(1) } else { crate::memory::NEVER };
+        self.given_up.keep = keep;
+        self.depots_given_up.keep = keep;
+        self.revive_failed.keep = keep;
+        self.inner.hop.set_forget(keep);
+        self.inner.hop.pricing = s.caps.has(Caps::PRICED_CROSSING).then(|| s.clone());
+        if self.inner.tactics.is_some() {
+            let mut t = crate::tactics::Tactician::with(crate::tactics::Tactics::from_weights(&s));
+            t.base = self.base;
+            t.confirm = s.caps.has(Caps::SMOOTH).then(|| (s.w[W::ConfirmTurret].round().clamp(1.0, 255.0) as u8, s.w[W::Margin]));
+            self.inner.tactics = Some(t);
+        }
+        self.inner.own_resupply = !s.caps.has(Caps::SMOOTH);
+        if !s.caps.has(Caps::DODGE) {
+            self.dodges = false;
+        }
+        if !s.caps.has(Caps::PINGS) {
+            self.pings = false;
+            self.answers_pings = false;
+        }
+        if !s.caps.has(Caps::ROTATE) {
+            self.rotation.off = true;
+        }
+        if !s.caps.has(Caps::BRIDGES) {
+            self.inner.hop.no_bridges = true;
+        }
+        self.settings = s;
+    }
+
+    fn caps(&self) -> crate::weights::Caps {
+        self.settings.caps
     }
 
     /// A new goal: what was half done for the old one is dropped.
@@ -421,6 +472,18 @@ impl Commander {
         if self.over_water(to) {
             return;
         }
+        // Smoothed (roadmap 12d): a goal that shifts a little each think
+        // (a slot ahead of a moving leader, a rally on a moving enemy) is
+        // followed by its desire vector, not re-routed at every shift; a
+        // jump, a fresh order (no last move) or the way home is taken as
+        // it is.
+        let to = if self.caps().has(crate::weights::Caps::SMOOTH) && self.last_move.is_some() && !self.resupplying {
+            use crate::weights::W;
+            self.desire.toward(to, self.settings.w[W::Alpha], self.settings.w[W::Jitter])
+        } else {
+            self.desire.reset();
+            to
+        };
         let fresh = match self.last_move {
             Some((at, tick)) => at.dist(to) > 1.0 || obs.tick >= tick + MOVE_EVERY * 4 || (me.goal.is_none() && obs.tick >= tick + MOVE_EVERY),
             None => true,
@@ -522,7 +585,13 @@ impl Commander {
 
     /// Low on what the goal needs: go home, and stay until full.
     fn needs_home(&mut self, me: &Tank) -> bool {
-        if me.shells <= LOW_SHELLS || me.armor <= LOW_ARMOR {
+        let (low_shells, low_armor) = if self.caps().has(crate::weights::Caps::SMOOTH) {
+            use crate::weights::W;
+            (self.settings.w[W::RetreatShells].max(0.0) as u16, self.settings.w[W::RetreatArmor])
+        } else {
+            (LOW_SHELLS, LOW_ARMOR)
+        };
+        if me.shells <= low_shells || me.armor <= low_armor {
             self.resupplying = true;
         }
         if self.resupplying && me.shells >= TANK_SHELLS && me.armor >= TANK_ARMOR * 0.95 {
@@ -553,16 +622,16 @@ impl Commander {
                 match cmd {
                     Command::FireDirect { .. } if why.contains("line of sight") => {
                         self.fired = None;
-                        self.blocked();
+                        self.blocked(obs.tick);
                     }
                     // The firing point is water or cannot be reached:
                     // the next one round.
                     Command::Move { .. } if self.target.is_some() && (why.contains("water") || why.contains("unreachable")) => {
                         self.last_move = None;
-                        self.blocked();
+                        self.blocked(obs.tick);
                     }
                     Command::Deploy { task: PillboyTask::Capture { pillbox } } if why.contains("unreachable") => {
-                        self.given_up.push(*pillbox);
+                        self.given_up.put(*pillbox, obs.tick);
                         self.target = None;
                     }
                     _ => {}
@@ -573,12 +642,12 @@ impl Commander {
             if obs.tick >= t + TICK_HZ as Tick / 2 {
                 self.fired = None;
                 if me.shells >= shells && me.reload == 0 {
-                    self.blocked();
+                    self.blocked(obs.tick);
                 }
             }
         }
         // The target: kept while it is still to be had, else the nearest.
-        let wanted = |p: &Pillbox| !Self::mine_or_allied(obs, p.owner) && !self.given_up.contains(&p.id) && area.map(|(at, r)| p.pos.dist(at) <= r).unwrap_or(true);
+        let wanted = |p: &Pillbox| !Self::mine_or_allied(obs, p.owner) && !self.given_up.has(&p.id, obs.tick) && area.map(|(at, r)| p.pos.dist(at) <= r).unwrap_or(true);
         let target = self
             .target
             .and_then(|id| obs.pillboxes.iter().find(|p| p.id == id))
@@ -692,7 +761,7 @@ impl Commander {
             .filter(hostile)
             .filter(|t| t.pos.dist(lp) <= WING_AHEAD && { let d = (t.pos - lp).norm(); d.x * facing.x + d.y * facing.y >= 0.5 })
             .min_by(|a, b| near(a.pos, b.pos).then(a.id.cmp(&b.id)));
-        let pillbox = obs.pillboxes.iter().any(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.contains(&p.id) && p.pos.dist(lp) <= WING_GREED);
+        let pillbox = obs.pillboxes.iter().any(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.has(&p.id, obs.tick) && p.pos.dist(lp) <= WING_GREED);
         let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && d.pos.dist(lp) <= WING_GREED).min_by(|a, b| near(a.pos, b.pos)).map(|d| d.id);
         let help = obs
             .tanks
@@ -802,7 +871,7 @@ impl Commander {
                 // The wedge: my slot, where it will be in a second at the
                 // leader's speed; a slot over the water, the plain place
                 // behind it.
-                let slot = self.slot_point(leader);
+                let slot = self.slot_point(leader, map);
                 let to = match slot.map(|p| obs.clamp(p)) {
                     Some(p) if !self.over_water(p) => p,
                     _ => behind,
@@ -901,7 +970,13 @@ impl Commander {
             // map's middle, which is where everyone else comes from.
             let middle = V2::new(obs.map_w as f32 / 2.0, obs.map_h as f32 / 2.0);
             let threat = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && d.pos.dist(centre) > 4.0).map(|d| d.pos).min_by(|a, b| a.dist(centre).partial_cmp(&b.dist(centre)).unwrap()).unwrap_or(middle);
-            self.plan = Some(Plan::castle(centre, threat));
+            self.plan = Some(if self.caps().has(crate::weights::Caps::CASTLE_CAP) {
+                use crate::weights::W;
+                let w = &self.settings.w;
+                Plan::castle_capped(centre, threat, w[W::CastleInside].round().max(0.0) as usize, w[W::CastleRoad].round().max(0.0) as usize)
+            } else {
+                Plan::castle(centre, threat)
+            });
             if matches!(self.goal, Goal::Fortify(_)) {
                 self.goal = Goal::Fortify(Some(centre));
             }
@@ -962,6 +1037,19 @@ impl Commander {
         // depot neutral): the base is where the tank is for now, and is
         // not kept, so the first depot taken becomes it. Kept, it was a
         // patch of open water for the rest of the match.
+        // A small island with few trees is a poor base (roadmap 12f2): of
+        // the side's depots, the best site, a tile of distance costing a
+        // little.
+        if self.base.is_none() && self.caps().has(crate::weights::Caps::ISLAND_SITE) && !self.facts.islands().is_empty() {
+            let s = &self.settings;
+            self.base = obs
+                .depots
+                .iter()
+                .filter(|d| Self::mine_or_allied(obs, d.owner))
+                .map(|d| (d.pos, self.facts.site_score(s, d.pos) - 0.01 * d.pos.dist(me.pos)))
+                .max_by(|a, b| a.1.total_cmp(&b.1).then(b.0.x.total_cmp(&a.0.x)))
+                .map(|(p, _)| Map::tile_centre(p));
+        }
         if self.base.is_none() {
             self.base = self.home(obs, me).map(Map::tile_centre);
         }
@@ -1090,10 +1178,12 @@ impl Commander {
                 self.doing = "the squad is setting a pillbox down".into();
                 return;
             }
-            let post = self.post(base);
+            // A road post far out (roadmap 12h): carried out to it, the
+            // squad's walk short; a castle slot: home to the post.
+            let post = if slot.dist(base) > BASE_R + 2.0 { slot + (base - slot).norm().scale(3.0) } else { self.post(base) };
             if me.pos.dist(post) > DEFEND_HOLD {
                 self.go(obs, me, post, cmds);
-                self.doing = format!("bringing a pillbox home, {:.0} tiles", me.pos.dist(post));
+                self.doing = if slot.dist(base) > BASE_R + 2.0 { format!("carrying a pillbox to a road post, {:.0} tiles", me.pos.dist(post)) } else { format!("bringing a pillbox home, {:.0} tiles", me.pos.dist(post)) };
                 return;
             }
             cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Pillbox, at: slot } });
@@ -1141,10 +1231,10 @@ impl Commander {
         let quiet = self.threatened.map(|t| obs.tick.saturating_sub(t)).unwrap_or(obs.tick);
         let stands = self.plan.as_ref().map(|p| p.castle_stands()).unwrap_or(false);
         let carrying = me.pillboys.carrying.is_some();
-        let (slot, walls) = self.plan.as_ref().map(|p| { let mut q = p.clone(); q.add_turrets(); (q.turret_slot().is_some(), q.yard_left()) }).unwrap_or((false, false));
+        let (slot, walls) = self.plan.as_ref().map(|p| p.turret_preview()).unwrap_or((false, false));
         let outlying = self.outlying(obs, base);
-        let wanted = obs.pillboxes.iter().filter(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.contains(&p.id)).min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap()).map(|p| p.pos.dist(base));
-        let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.contains(&d.id)).map(|d| d.pos.dist(base)).min_by(|a, b| a.partial_cmp(b).unwrap());
+        let wanted = obs.pillboxes.iter().filter(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.has(&p.id, obs.tick)).min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap()).map(|p| p.pos.dist(base));
+        let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.has(&d.id, obs.tick)).map(|d| d.pos.dist(base)).min_by(|a, b| a.partial_cmp(b).unwrap());
         let q = quiet as f32 / TICK_HZ as f32;
         let holds = [
             tank.is_some() || alarm,
@@ -1224,13 +1314,42 @@ impl Commander {
 
     /// My place in the leader's wedge (`WEDGE`), where it will be in a
     /// second at the leader's speed.
-    fn slot_point(&self, leader: &Tank) -> Option<V2> {
+    fn slot_point(&self, leader: &Tank, map: Option<&Map>) -> Option<V2> {
         let k = self.slot?;
         let facing = V2::from_heading(leader.heading);
+        // On a bridge, in file (roadmap 12f3, LR 6.3): slot k is k + 1
+        // gaps straight behind the leader, no side offset, until the
+        // file is `column_past` tiles off the bridge.
+        if let Some(m) = map.filter(|_| self.caps().has(crate::weights::Caps::COLUMN)) {
+            use crate::weights::W;
+            let gap = self.settings.w[W::ColumnGap].max(1.0);
+            let back = gap * (k + 1) as f32 + self.settings.w[W::ColumnPast];
+            if Self::bridge_near(m, leader, back) {
+                return Some(leader.pos - facing.scale(gap * (k + 1) as f32));
+            }
+        }
         let row = (k / 2 + 1) as f32;
         let side = if k % 2 == 0 { -1.0 } else { 1.0 };
         let across = V2::new(-facing.y, facing.x);
         Some(leader.pos - facing.scale(WEDGE * row) + across.scale(side * WEDGE * row) + facing.scale(leader.speed))
+    }
+
+    /// A bridge under the leader, on its next three route tiles, or on
+    /// the line behind it within `back` tiles (its file still on it).
+    fn bridge_near(m: &Map, leader: &Tank, back: f32) -> bool {
+        let facing = V2::from_heading(leader.heading);
+        if m.at(leader.pos) == Terrain::Bridge || leader.route.iter().take(3).any(|p| m.at(*p) == Terrain::Bridge) {
+            return true;
+        }
+        let mut d = 0.5;
+        while d <= back {
+            let p = leader.pos - facing.scale(d);
+            if m.in_bounds(p) && m.at(p) == Terrain::Bridge {
+                return true;
+            }
+            d += 0.5;
+        }
+        false
     }
 
     /// A fleet leader's wingmen near enough to lay its bridge.
@@ -1246,7 +1365,9 @@ impl Commander {
         // Afloat they are on their way: counted, not near.
         let fleet: Vec<&Tank> = obs.tanks.iter().filter(|t| t.alive && self.members.contains(&t.owner)).collect();
         let fight = obs.hostile_tanks().any(|t| t.alive && t.pos.dist(me.pos) <= INDIRECT_MIN_RANGE + 4.0);
-        if fleet.is_empty() || fight || me.boat || obs.tick < self.gather_cool {
+        // On a bridge the leader drives on straight and fast (LR 6.3): a
+        // fleet gathers on land, not in file on the bridge.
+        if fleet.is_empty() || fight || me.boat || obs.tick < self.gather_cool || self.on_bridge {
             self.gather_since = None;
             return false;
         }
@@ -1280,7 +1401,7 @@ impl Commander {
             if let Event::Rejected { player, cmd: Command::Move { .. }, why } = e {
                 if *player == obs.player && (why.contains("water") || why.contains("unreachable")) {
                     if let Some(d) = self.depot_target.take() {
-                        self.depots_given_up.push(d);
+                        self.depots_given_up.put(d, obs.tick);
                     }
                 }
             }
@@ -1288,7 +1409,7 @@ impl Commander {
         let depot = obs
             .depots
             .iter()
-            .filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.contains(&d.id))
+            .filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.has(&d.id, obs.tick))
             .min_by(|a, b| a.pos.dist(base).partial_cmp(&b.pos.dist(base)).unwrap().then(a.id.cmp(&b.id)))
             .cloned();
         let Some(d) = depot else {
@@ -1299,7 +1420,7 @@ impl Commander {
         };
         self.depot_target = Some(d.id);
         let guard = PILLBOX_RANGE + 1.5;
-        let guarded = obs.pillboxes.iter().any(|p| p.alive() && !Self::mine_or_allied(obs, p.owner) && !self.given_up.contains(&p.id) && p.pos.dist(d.pos) <= guard);
+        let guarded = obs.pillboxes.iter().any(|p| p.alive() && !Self::mine_or_allied(obs, p.owner) && !self.given_up.has(&p.id, obs.tick) && p.pos.dist(d.pos) <= guard);
         if guarded {
             self.gun_reserved = false;
             self.hunt(obs, me, Some((d.pos, guard)), cmds);
@@ -1343,7 +1464,7 @@ impl Commander {
         for e in &obs.events {
             if let Event::Rejected { player, cmd: Command::Deploy { task: PillboyTask::Repair { target } }, .. } = e {
                 if *player == obs.player && self.reviving == Some(*target) {
-                    self.revive_failed.push(*target);
+                    self.revive_failed.put(*target, obs.tick);
                     self.reviving = None;
                 }
             }
@@ -1404,7 +1525,7 @@ impl Commander {
         let wreck = obs
             .tanks
             .iter()
-            .filter(|w| w.owner != obs.player && obs.allied(w.owner) && down(w) && w.pos.dist(me.pos) <= REVIVE_REACH && !self.revive_failed.contains(&w.id))
+            .filter(|w| w.owner != obs.player && obs.allied(w.owner) && down(w) && w.pos.dist(me.pos) <= REVIVE_REACH && !self.revive_failed.has(&w.id, obs.tick))
             // Time for the drive, the walk and the work.
             .filter(|w| (me.pos.dist(w.pos) / (TANK_SPEED * 0.7)).max(squad_back(w)) + 2.0 + REVIVE_TICKS as f32 * DT < left(w))
             // Nobody at it already, and nobody able nearer.
@@ -1727,12 +1848,12 @@ impl Commander {
 
     /// No line from here: round the target to the next firing point; a
     /// whole circle and a half without one, and it is given up.
-    fn blocked(&mut self) {
+    fn blocked(&mut self, now: Tick) {
         let b = self.bearing.unwrap_or(0.0) + STEP_ROUND;
         self.bearing = Some(b);
         self.walked += 1;
         if let (Some(t), true) = (self.target, self.walked > 12) {
-            self.given_up.push(t);
+            self.given_up.put(t, now);
             self.target = None;
             self.bearing = None;
         }
@@ -1819,6 +1940,10 @@ impl Brain for Commander {
         &self.name
     }
 
+    fn settings(&self) -> Option<&crate::weights::Settings> {
+        Some(&self.settings)
+    }
+
     fn status(&self) -> String {
         match (self.goal, self.rung) {
             (Goal::Manual, _) => String::new(),
@@ -1861,7 +1986,7 @@ impl Commander {
                 self.crew.leader = Some(l);
             }
         }
-        self.inner.hop.no_bridges = self.slot.is_some() && matches!(self.goal, Goal::Escort(_));
+        self.inner.hop.no_bridges = (self.slot.is_some() && matches!(self.goal, Goal::Escort(_))) || !self.caps().has(crate::weights::Caps::BRIDGES);
         // Helpers with material: the leader waits for them at the end
         // rather than leaving it to fetch its own.
         self.inner.hop.helpers = match obs.me.as_ref() {
@@ -1869,6 +1994,44 @@ impl Commander {
             None => 0,
         };
         self.crew.take_jobs(obs);
+        // The team board (roadmap 12e): post where I am and what I do;
+        // rebuild it if it is due; a job given me that I missed, take.
+        if self.caps().has(crate::weights::Caps::BOARD) {
+            if let (Some(b), Some(me)) = (self.board.clone(), obs.me.as_ref()) {
+                if let Ok(mut b) = b.lock() {
+                    b.post(obs, me, &self.doing);
+                    if b.due(obs.tick) {
+                        b.rebuild(obs, self.base, &self.settings, self.starved, obs.tick);
+                    }
+                    if let Some((job, at)) = b.job_for(obs.player) {
+                        self.crew.adopt(job, at);
+                    }
+                }
+            }
+        }
+        self.on_bridge = match (map.filter(|_| self.caps().has(crate::weights::Caps::COLUMN)), obs.me.as_ref()) {
+            (Some(m), Some(me)) => Self::bridge_near(m, me, 0.0),
+            _ => false,
+        };
+        // Road posts (roadmap 12h): the capped castle full, the pillboxes
+        // carried in from now on line the roads to the side's other bases.
+        if let (Some(m), Some(base), true) = (map, self.base, self.caps().has(crate::weights::Caps::CASTLE_CAP)) {
+            use crate::weights::W;
+            let w = &self.settings.w;
+            let max = w[W::PostsMax].round().max(0.0) as usize;
+            let due = obs.tick >= self.posts_at + 10 * TICK_HZ as Tick;
+            if let Some(plan) = self.plan.as_mut().filter(|p| due && p.cap.is_some() && p.castle_stands() && p.turret_slot().is_none() && p.posts < max) {
+                self.posts_at = obs.tick;
+                let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
+                let to: Vec<V2> = obs.depots.iter().filter(|d| ours(d.owner) && d.pos.dist(base) > 12.0).map(|d| d.pos).collect();
+                let have: Vec<V2> = obs.pillboxes.iter().filter(|p| ours(p.owner)).map(|p| p.pos).collect();
+                let posts = crate::cycle::Cycle::road_posts(m, base, &to, &have, w[W::PostSpacing], w[W::JunctionClear], max - plan.posts);
+                plan.add_posts(&posts);
+            }
+        }
+        if let Some(m) = map.filter(|_| self.caps().has(crate::weights::Caps::ISLAND_SITE)) {
+            self.facts.refresh(m, obs.tick);
+        }
         let doctrine = self.inner.think_map(obs, map);
         // A new target the team is on, or called: say it, so the rest
         // of the side's scores lean the same way (a focus call).
@@ -1901,6 +2064,7 @@ impl Commander {
         if self.goal == Goal::Manual {
             return cmds;
         }
+        self.cycle.watch(self.resupplying, obs.tick);
         self.refused.retain(|(_, t)| obs.tick < t + REFUSED_FOR);
         for e in &obs.events {
             if let Event::Rejected { player, cmd: Command::FireDirect { .. }, why } = e {
@@ -1999,7 +2163,7 @@ impl Commander {
             // brings the boat in; a boat steered at an inland leader sat
             // on the water.
             if let Some(leader) = leader.filter(|l| l.boat && l.pos.dist(me.pos) <= RALLY_REACH) {
-                let (to, word) = (self.slot_point(&leader).unwrap_or(leader.pos), "sailing in formation");
+                let (to, word) = (self.slot_point(&leader, map).unwrap_or(leader.pos), "sailing in formation");
                 if self.last_move.map(|(at, t)| at.dist(to) > 2.0 || obs.tick >= t + MOVE_EVERY).unwrap_or(true) {
                     cmds.push(Command::Move { to: obs.clamp(to) });
                     self.last_move = Some((to, obs.tick));
@@ -2140,6 +2304,55 @@ impl Commander {
             }
             self.resupplying = false;
         }
+        // The team board's word (roadmap 12e, LR 9): fall back for a
+        // fresh teammate, or relieve a hurt one at its point.
+        if self.caps().has(crate::weights::Caps::TEAM_ROTATE) {
+            let order = self.board.as_ref().and_then(|b| b.lock().ok().and_then(|b| b.order_for(obs.player, obs.tick)));
+            match order {
+                Some(crate::board::BoardOrder::FallBack) => {
+                    if let Some(b) = self.board.as_ref() {
+                        if let Ok(mut b) = b.lock() {
+                            b.done(obs.player);
+                        }
+                    }
+                    self.resupplying = true;
+                    if let Some(home) = self.home(obs, &me) {
+                        self.doing = "relieved: home to fill up".into();
+                        self.go(obs, &me, home, &mut cmds);
+                        cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                        return cmds;
+                    }
+                }
+                Some(crate::board::BoardOrder::Relieve(at)) => {
+                    self.defend(obs, &me, at, None, &mut cmds);
+                    self.doing = format!("relieving a teammate at ({:.0},{:.0})", at.x, at.y);
+                    let gun_free = !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }));
+                    cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, gun_free)));
+                    return cmds;
+                }
+                None => {}
+            }
+        }
+        // The base cycle (roadmap 12f1): just filled up, the base gets an
+        // item, an improvement and road out before the tank goes back out.
+        if self.caps().has(crate::weights::Caps::CYCLE) && matches!(self.goal, Goal::Auto | Goal::Fortify(_) | Goal::DefendBase) && self.cycle.active() {
+            let quiet = !obs.hostile_tanks().any(|t| t.alive && t.pos.dist(me.pos) <= crate::hop::FIGHT_NEAR);
+            match (quiet, self.base) {
+                (true, Some(base)) => {
+                    if let Some((c, word)) = self.cycle.think(obs, &me, base, self.plan.as_mut(), &self.settings, map) {
+                        cmds.extend(c);
+                        self.doing = word;
+                        let post = self.post(base);
+                        if me.pos.dist(post) > 3.0 {
+                            self.go(obs, &me, post, &mut cmds);
+                        }
+                        cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                        return cmds;
+                    }
+                }
+                _ => self.cycle.stage = crate::cycle::Stage::Idle,
+            }
+        }
         let gun_free = match self.goal {
             Goal::Manual => true,
             Goal::HuntPillboxes => {
@@ -2209,6 +2422,99 @@ impl Commander {
 mod tests {
     use super::*;
     use crate::fortify::TOWER_R;
+
+    /// Paul's castle in play (roadmap 12h): alone, the capped castle goes
+    /// up with two pillboxes inside, the first outlying pillbox is carried
+    /// to the slot on its road, and the rest to posts on the road toward
+    /// the side's second depot, none at the castle past its cap.
+    #[test]
+    fn a_capped_castle_fills_then_lines_the_road() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        w.pillboxes.clear();
+        let me = w.tanks[0].pos;
+        let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).total_cmp(&b.pos.dist(me))).unwrap().clone();
+        w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
+        let second = w.depots.iter().filter(|d| d.id != depot.id && d.pos.dist(depot.pos) > 30.0 && !w.map.route(depot.pos, d.pos).is_empty()).min_by(|a, b| a.pos.dist(depot.pos).total_cmp(&b.pos.dist(depot.pos))).unwrap().clone();
+        w.depots.iter_mut().find(|d| d.id == second.id).unwrap().owner = Some(0);
+        for (n, r) in [16.0, 22.0, 28.0].into_iter().enumerate() {
+            let at = free_near(&w, depot.pos, r);
+            w.pillboxes.push(Pillbox { id: 70_040 + n as EntityId, pos: at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        }
+        let far = free_near(&w, depot.pos, 60.0);
+        w.tanks.iter_mut().find(|t| t.owner == 1).unwrap().pos = far;
+        let mut c = Commander::new(17, "commander");
+        c.set_goal(Goal::Auto);
+        assert!(c.settings.caps.has(crate::weights::Caps::CASTLE_CAP), "the capped castle is the default");
+        let mut lifted = 0;
+        for _ in 0..(1200 * TICK_HZ) {
+            let obs = w.observe(0);
+            let orders: Vec<Order> = c.think_on(&obs, Some(&w.map)).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
+            w.step(&orders);
+            lifted += w.events.iter().filter(|e| matches!(e, Event::PillboxLifted { by: 0, .. })).count();
+            if c.plan.as_ref().map(|p| p.posts > 0 && p.turrets().0 >= 2).unwrap_or(false) {
+                break;
+            }
+        }
+        let plan = c.plan.clone().expect("no plan");
+        let base = plan.centre;
+        let inside = w.pillboxes.iter().filter(|p| p.owner == Some(0) && p.pos.dist(base) < crate::fortify::WALL_R).count();
+        eprintln!("a_capped_castle_fills_then_lines_the_road: {} at {} s; lifted {}; {} inside; posts {}; doing {}", plan.progress(), w.tick / TICK_HZ as Tick, lifted, inside, plan.posts, c.doing);
+        assert!(plan.castle_stands(), "{}", plan.progress());
+        assert_eq!(inside, 2, "the castle stops at two inside");
+        assert!(lifted >= 2, "lifted {}", lifted);
+        assert!(plan.posts > 0, "no road post toward the second depot");
+        assert!(plan.turrets().0 >= 2, "the road slot and a post filled: {}", plan.progress());
+        let towards = (second.pos - base).norm();
+        let on_line = w.pillboxes.iter().filter(|p| p.owner == Some(0) && p.pos.dist(base) > 12.0).any(|p| {
+            let rel = p.pos - base;
+            let along = rel.x * towards.x + rel.y * towards.y;
+            (rel - towards.scale(along)).len() < 2.5 && along > 0.0
+        });
+        assert!(on_line, "a pillbox stands by the road to the second base");
+    }
+
+    /// On a bridge a wingman's slot is in file straight behind the
+    /// leader (roadmap 12f3); off it, the wedge; without the capability,
+    /// the wedge on the bridge too.
+    #[test]
+    fn a_fleet_crosses_a_bridge_in_file() {
+        let w = World::new(Scenario { swarm_interval: 0, ..Scenario::bots(2) });
+        let mut map = w.map.clone();
+        let mut leader = w.tanks[0].clone();
+        leader.pos = V2::new(64.5, 64.5);
+        leader.heading = 0.0;
+        leader.speed = 0.0;
+        leader.route.clear();
+        for dx in -12..=12 {
+            map.set(V2::new(64.5 + dx as f32, 64.5), Terrain::Grass);
+        }
+        let mut c = Commander::wingman(1, "w", 0);
+        c.slot = Some(1);
+        let wedge = c.slot_point(&leader, Some(&map)).unwrap();
+        let mut s = crate::weights::Settings::default();
+        s.caps = s.caps.with(crate::weights::Caps::COLUMN);
+        c.set_settings(s);
+        assert_eq!(c.slot_point(&leader, Some(&map)).unwrap(), wedge, "on land the wedge");
+        map.set(V2::new(64.5, 64.5), Terrain::Bridge);
+        let file = c.slot_point(&leader, Some(&map)).unwrap();
+        let facing = V2::from_heading(0.0);
+        assert!(file.dist(leader.pos - facing.scale(4.0)) < 1e-4, "slot 1 is two gaps straight behind: {:?}", file);
+        // The file holds while the bridge is still behind the leader.
+        leader.pos = leader.pos + facing.scale(3.0);
+        assert!(c.slot_point(&leader, Some(&map)).unwrap().dist(leader.pos - facing.scale(4.0)) < 1e-4);
+        c.settings.caps = c.settings.caps.without(crate::weights::Caps::COLUMN);
+        leader.pos = V2::new(64.5, 64.5);
+        assert_eq!(c.slot_point(&leader, Some(&map)).unwrap(), wedge, "without the capability, the wedge");
+    }
+
+    /// The settings with the castle of 11b and 11h: three towers and two
+    /// bastions, no cap.
+    fn bastions() -> crate::weights::Settings {
+        let mut s = crate::weights::Settings::default();
+        s.caps = s.caps.without(crate::weights::Caps::CASTLE_CAP);
+        s
+    }
 
     /// Two seats, no swarm, no time limit, no pillboxes but one placed
     /// `away` tiles from seat 0 toward the middle, owned by `owner`.
@@ -2455,6 +2761,9 @@ mod tests {
         let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).partial_cmp(&b.pos.dist(me)).unwrap()).unwrap().id;
         w.depots.iter_mut().find(|d| d.id == depot).unwrap().owner = Some(0);
         let mut c = Commander::new(11, "commander");
+        // The castle of 11b, three towers, kept by `-castle_cap` (the
+        // capped castle is the default since 18 October, 12h).
+        c.set_settings(bastions());
         c.set_goal(Goal::Fortify(None));
         let mut walls = 0;
         for i in 0..(300 * TICK_HZ) {
@@ -2808,6 +3117,8 @@ mod tests {
         let enemy = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
         enemy.pos = far;
         let mut c = Commander::new(13, "commander");
+        // The bastions of 11h, kept by `-castle_cap`.
+        c.set_settings(bastions());
         c.set_goal(Goal::Auto);
         let mut rungs: Vec<(f32, Rung)> = Vec::new();
         let mut lifted = 0;

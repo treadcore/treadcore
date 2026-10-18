@@ -18,13 +18,21 @@
 use std::io::{BufRead, Write};
 use treadcore_sim::*;
 
+pub mod board;
 pub mod commander;
 pub mod crew;
+pub mod cycle;
+pub mod facts;
 pub mod fleet;
 pub mod fortify;
 pub mod hop;
+pub mod intent;
+pub mod ledger;
+pub mod memory;
+pub mod meter;
 pub mod rotation;
 pub mod tactics;
+pub mod weights;
 pub use commander::{Commander, Goal, Rung};
 
 // Send + Sync so a seat's Brain can live in a Bevy resource; JsonBrain keeps
@@ -43,6 +51,11 @@ pub trait Brain: Send + Sync {
     fn status(&self) -> String {
         String::new()
     }
+    /// Its weights and capabilities, for the ledger (weights.rs); None
+    /// for a brain without them.
+    fn settings(&self) -> Option<&weights::Settings> {
+        None
+    }
 }
 
 /// Run every bot seat for one tick.
@@ -57,8 +70,10 @@ pub fn retire_taken(bots: &mut Vec<(PlayerId, Box<dyn Brain>)>, events: &[Event]
 }
 
 pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<Order> {
+    let started = std::time::Instant::now();
     let mut out = Vec::new();
     for (p, b) in bots.iter_mut() {
+        meter::seat();
         let obs = world.observe(*p);
         if obs.me.as_ref().map(|t| !t.alive).unwrap_or(true) {
             // A bot comes back as soon as the world lets it.
@@ -68,9 +83,13 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
             continue;
         }
         for cmd in b.think_on(&obs, Some(&world.map)) {
+            if matches!(cmd, Command::Move { .. }) {
+                meter::moves(1);
+            }
             out.push(Order { player: *p, cmd });
         }
     }
+    meter::spent(started.elapsed());
     out
 }
 
@@ -209,6 +228,9 @@ pub struct RuleBot {
     /// Hop at all: a Commander turns it off but on its Auto goal, so a
     /// wingman or a guard keeps its post.
     pub hops: bool,
+    /// Go home to resupply by its own thresholds; a Commander with one
+    /// threshold for both turns it off (roadmap 12d).
+    pub own_resupply: bool,
     /// Fleet tactics (tactics.rs): the target by score, not by distance
     /// alone. A Commander's; a plain RuleBot shoots the nearest.
     pub tactics: Option<tactics::Tactician>,
@@ -418,7 +440,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, tactics: None, kites: false }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
     }
 
     /// Afloat (SPEC TNK-08): run for land. One hit sinks a boat, so the
@@ -643,6 +665,7 @@ impl RuleBot {
             return cmds;
         }
         self.last_think = obs.tick;
+        meter::think();
         // A person's proposal (PLAYABILITY item 7) is answered: yes,
         // unless they have hurt this tank. Only people's: bot-only
         // matches, and the traces their balance rests on, are as they
@@ -921,7 +944,12 @@ impl RuleBot {
         // Blind counts as low: a bot with no recon up and none in the bay
         // cannot see to shoot or to advance.
         let blind = me.bay.recon == 0 && my_recon.is_empty();
-        let low = me.shells < 6 || me.armor < self.form.home_armor() || me.bay.interceptor == 0 || me.fuel < 120.0 || blind;
+        // Under a Commander that keeps one resupply threshold for both
+        // (roadmap 12d), the doctrine does not run its own.
+        if !self.own_resupply {
+            self.resupplying = false;
+        }
+        let low = self.own_resupply && (me.shells < 6 || me.armor < self.form.home_armor() || me.bay.interceptor == 0 || me.fuel < 120.0 || blind);
         let full = me.shells >= TANK_SHELLS - 2 && me.armor >= TANK_ARMOR - 5.0 && me.bay.interceptor >= BAY_FULL.interceptor - 1 && me.bay.recon > 0;
         if self.resupplying && full {
             self.resupplying = false;

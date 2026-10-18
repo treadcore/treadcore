@@ -24,6 +24,7 @@
 //! the person.
 
 use crate::commander::{Commander, Goal};
+use crate::weights::{Caps, Settings};
 use crate::{Brain, RuleBot};
 use treadcore_sim::{PlayerId, TeamId};
 
@@ -79,6 +80,10 @@ pub fn role(seat: usize, person_leads: bool) -> (Role, PlayerId) {
 
 /// A seat's role by its place in its team, the leader first.
 pub fn role_by_rank(rank: usize, person_leads: bool) -> Role {
+    // A person's team gets its builder while `assist` is 0.5 or more
+    // (roadmap 12h); under it, the person's team is dealt as a bots'
+    // team is, the same roles for every side.
+    let person_leads = person_leads && settings().w[crate::weights::W::Assist] >= 0.5;
     match (person_leads, rank) {
         (_, 0) => Role::Leader,
         (true, 1) => Role::Builder,
@@ -107,10 +112,72 @@ pub fn team_brain(seat: usize, team: &[usize], seed: u64, person_leads: bool, na
     match commander_as(role, leader, seed, name) {
         Some(mut c) => {
             fleet_of(&mut c, seat, team, person_leads);
+            equip(&mut c, leader);
             Box::new(c)
         }
         None => Box::new(RuleBot::new(seed, name)),
     }
+}
+
+// ------------------------------------------------- settings and boards
+
+/// The weights every new Commander gets (`--weights FILE`, roadmap 12c):
+/// the process's, unless this thread has its own (a census trying a
+/// genome, `with_settings`).
+static SETTINGS: std::sync::Mutex<Option<Settings>> = std::sync::Mutex::new(None);
+
+thread_local! {
+    static OWN: std::cell::RefCell<Option<Settings>> = const { std::cell::RefCell::new(None) };
+    /// The team boards of the match being dealt, by leader seat.
+    static BOARDS: std::cell::RefCell<Vec<(PlayerId, crate::board::Shared)>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// The process's weights for every Commander made from now on.
+pub fn set_settings(s: Settings) {
+    if let Ok(mut g) = SETTINGS.lock() {
+        *g = Some(s);
+    }
+}
+
+/// The weights a new Commander gets here.
+pub fn settings() -> Settings {
+    OWN.with(|o| o.borrow().clone()).or_else(|| SETTINGS.lock().ok().and_then(|g| g.clone())).unwrap_or_default()
+}
+
+/// Run `f` with this thread's Commanders made with `s`.
+pub fn with_settings<R>(s: Settings, f: impl FnOnce() -> R) -> R {
+    let old = OWN.with(|o| o.replace(Some(s)));
+    let r = f();
+    OWN.with(|o| *o.borrow_mut() = old);
+    r
+}
+
+/// A new match is being dealt: each team gets a new board.
+pub fn new_match() {
+    BOARDS.with(|b| b.borrow_mut().clear());
+}
+
+/// The board of `leader`'s team in the match being dealt.
+pub fn board_for(leader: PlayerId) -> crate::board::Shared {
+    BOARDS.with(|b| {
+        let mut b = b.borrow_mut();
+        if let Some((_, s)) = b.iter().find(|(l, _)| *l == leader) {
+            return s.clone();
+        }
+        let s = crate::board::shared();
+        b.push((leader, s.clone()));
+        s
+    })
+}
+
+/// A Commander of `leader`'s team: the weights, and the team's board if
+/// the board is on.
+pub fn equip(c: &mut Commander, leader: PlayerId) {
+    let s = settings();
+    if s.caps.has(Caps::BOARD) {
+        c.board = Some(board_for(leader));
+    }
+    c.set_settings(s);
 }
 
 /// The fleet (Paul, 17 October: "i want to see the tanks prioritise
@@ -159,7 +226,10 @@ pub fn brain(seat: usize, seed: u64, person_leads: bool) -> Box<dyn Brain> {
 /// base, answer a teammate's ping by converging on it.
 pub fn brain_as(role: Role, leader: PlayerId, seed: u64, name: &str) -> Box<dyn Brain> {
     match commander_as(role, leader, seed, name) {
-        Some(c) => Box::new(c),
+        Some(mut c) => {
+            equip(&mut c, leader);
+            Box::new(c)
+        }
         None => Box::new(RuleBot::new(seed, name)),
     }
 }
@@ -456,6 +526,8 @@ mod tests {
         let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
         let sc = Scenario { seed, players: names, map, respawns: RESPAWNS_UNLIMITED, time_limit: 0, ..Scenario::default() }.with_teams(3);
         let mut w = World::new(sc);
+        new_match();
+        crate::meter::reset();
         let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats)
             .map(|i| {
                 let b: Box<dyn Brain> = if i < 3 {
@@ -657,6 +729,133 @@ mod tests {
         eprintln!("laid: {} bridge tiles, {} road tiles; bridge tiles by the three pilots {}, by the other seats {}", bridged, roaded, by_leader, by_other);
         eprintln!("fleet cohesion: {} of {} wingman samples within 12 tiles of the leader ({:.0}%)", cohesion.0, cohesion.1, 100.0 * cohesion.0 as f32 / cohesion.1.max(1) as f32);
         eprintln!("kiting, seat-seconds: {}; direct shots fired stepping in: {}", KITE.iter().zip(kite.iter()).map(|(k, n)| format!("{} {:.0}", k, *n as f32 * DT)).collect::<Vec<_>>().join(", "), step_shots);
+        eprintln!("{}", crate::meter::read().line());
+    }
+
+    /// The brain census (roadmap 12a and 12g): sixteen seats dealt as
+    /// `--fleets` deals them, one team on the trial settings and the
+    /// other two on the baseline, the trial team turned round the three
+    /// over the seeds so no start favours it. Each match writes its
+    /// ledger lines (`reports/ledger/ledger.jsonl`, off with
+    /// `CENSUS_LEDGER=0`) and the meter's line; the end prints the trial
+    /// team's mean score against the baseline teams'. The trial is
+    /// `CENSUS_WEIGHTS` (a weights file, weights.rs) or `CENSUS_CAPS`
+    /// (capabilities added to the baseline, comma-separated); seeds
+    /// `CENSUS_SEEDS` (3), seconds `CENSUS_SECS` (900). `cargo test -p
+    /// treadcore-brain --release -- --ignored brain_census --nocapture`.
+    #[test]
+    #[ignore]
+    fn brain_census() {
+        use crate::ledger::{Genome, ScoreWeights, Tally};
+        use crate::weights::{Caps, Settings};
+        use treadcore_sim::*;
+        let trial = match std::env::var("CENSUS_WEIGHTS") {
+            Ok(path) => Settings::parse(&std::fs::read_to_string(&path).expect("CENSUS_WEIGHTS")).unwrap_or_else(|e| panic!("{}: {}", path, e)),
+            Err(_) => {
+                let mut s = Settings::default();
+                for c in std::env::var("CENSUS_CAPS").unwrap_or_default().split(',').map(str::trim).filter(|c| !c.is_empty()) {
+                    // A name adds it to the default; `-name` takes it off.
+                    s.caps = match c.strip_prefix('-') {
+                        Some(off) => s.caps.without(Caps::by_name(off).unwrap_or_else(|| panic!("no capability {}", off))),
+                        None => s.caps.with(if c == "all" { Caps::all() } else { Caps::by_name(c).unwrap_or_else(|| panic!("no capability {}", c)) }),
+                    };
+                }
+                s
+            }
+        };
+        if let Ok(path) = std::env::var("CENSUS_DUMP") {
+            std::fs::write(&path, trial.to_text()).expect("CENSUS_DUMP");
+        }
+        let seeds: u64 = std::env::var("CENSUS_SEEDS").ok().and_then(|s| s.parse().ok()).unwrap_or(3);
+        let secs: Tick = std::env::var("CENSUS_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(900);
+        let ledger = std::env::var("CENSUS_LEDGER").map(|v| v != "0").unwrap_or(true);
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../reports/ledger");
+        let k = ScoreWeights::from_long_game(std::env::var("CENSUS_LONG_GAME").ok().and_then(|v| v.parse().ok()).unwrap_or(crate::weights::W::LongGame.default_value()));
+        eprintln!("brain_census: trial caps [{}], {} weights changed {:?}", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>());
+        let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
+        let mut total = crate::meter::Meter::default();
+        for n in 0..seeds {
+            let seed = 0x7EAD_C0DE_u64 ^ (n * 0x9E37_79B9);
+            let lucky = (n % 3) as TeamId;
+            let names: Vec<(String, bool)> = (0..SEATS).map(|i| (name(i), true)).collect();
+            let map = match std::env::var("CENSUS_MAP") {
+                Ok(path) => MapSource::Text(std::fs::read_to_string(&path).expect("CENSUS_MAP")),
+                Err(_) => MapSource::FromScenarioSeed,
+            };
+            let sc = Scenario { seed, players: names, teams: Some(teams()), time_limit: 0, map, respawns: std::env::var("CENSUS_RESPAWNS").ok().and_then(|s| s.parse().ok()).unwrap_or(0), ..Scenario::default() };
+            let mut w = World::new(sc);
+            new_match();
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS)
+                .map(|i| {
+                    let s = if teams()[i] == lucky { trial.clone() } else { Settings::default() };
+                    (i as PlayerId, with_settings(s, || brain(i, seed ^ i as u64, false)))
+                })
+                .collect();
+            let mut tally = Tally::new(&w);
+            crate::meter::reset();
+            // Seat-seconds in each new part's words, the trial team's.
+            const WORDS: [&str; 8] = ["base cycle", "relieving", "relieved", "cheaper by boat", "gathering the fleet", "road post", "a mine on the approach", "works for the base"];
+            let mut words = [0u32; 8];
+            while !w.over && w.tick < secs * TICK_HZ as Tick {
+                let orders = crate::run_bots(&w, &mut bots);
+                w.step(&orders);
+                tally.hear(&w);
+                if w.tick % TICK_HZ as Tick == 0 {
+                    for (p, b) in &bots {
+                        if teams()[*p as usize] == lucky {
+                            let st = b.status();
+                            for (i, k) in WORDS.iter().enumerate() {
+                                if st.contains(k) {
+                                    words[i] += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            let m = crate::meter::read();
+            total.seats += m.seats;
+            total.thinks += m.thinks;
+            total.moves += m.moves;
+            total.crossings += m.crossings;
+            total.crossings_cached += m.crossings_cached;
+            total.plan_clones += m.plan_clones;
+            total.nanos += m.nanos;
+            let genomes: Vec<(PlayerId, Genome)> = bots.iter().map(|(p, b)| (*p, Genome::of(&b.settings().cloned().unwrap_or_default(), seed ^ *p as u64, &name(*p as usize), None))).collect();
+            let records = tally.records(&w, "default", &genomes, &k);
+            if ledger {
+                crate::ledger::write(&dir, &records).expect("the ledger");
+            }
+            eprintln!("seed {:x}: trial team {}, over {} at {} s, won by {:?}", seed, lucky, w.over, w.tick / TICK_HZ as Tick, w.winning_team);
+            for t in 0..3u8 {
+                let rs: Vec<_> = records.iter().filter(|r| r.outcome.team == Some(t)).collect();
+                let sum = |f: &dyn Fn(&crate::ledger::Outcome) -> u32| rs.iter().map(|r| f(&r.outcome)).sum::<u32>();
+                let score: f32 = rs.iter().map(|r| r.score).sum::<f32>() / rs.len().max(1) as f32;
+                eprintln!(
+                    "  team {}{}: score {:.2}, kills {}, deaths {}, revives {}, built {}, road {}, bridge {}, held {:.1}",
+                    t,
+                    if t == lucky { " (trial)" } else { "" },
+                    score,
+                    sum(&|o| o.kills),
+                    sum(&|o| o.deaths),
+                    sum(&|o| o.revives),
+                    sum(&|o| o.built),
+                    sum(&|o| o.road_tiles),
+                    sum(&|o| o.bridge_tiles),
+                    rs.first().map(|r| r.outcome.held_s as f32 / r.seconds.max(1) as f32).unwrap_or(0.0)
+                );
+                if t == lucky {
+                    trial_score += score;
+                    trial_n += 1;
+                } else {
+                    base_score += score;
+                    base_n += 1;
+                }
+            }
+            eprintln!("  trial team, seat-seconds: {}", WORDS.iter().zip(words.iter()).map(|(k, n)| format!("{} {}", k, n)).collect::<Vec<_>>().join(", "));
+            eprintln!("  {}", m.line());
+        }
+        eprintln!("brain_census: trial {:.2}, baseline {:.2} (mean score a seat, {} seeds); {}", trial_score / trial_n.max(1) as f32, base_score / base_n.max(1) as f32, seeds, total.line());
     }
 
     /// Sixteen seats as the window deals them with `--fleets`, seat 0 on

@@ -114,6 +114,16 @@ pub struct Plan {
     /// it on the water, and the leader hopped at it all match).
     pub post: V2,
     post_fitted: bool,
+    /// What the turrets would leave to do, asked before they are added
+    /// (`turret_preview`): it depends only on the castle's tiles, so it
+    /// is worked out once (roadmap 12b; the Auto ladder copied the
+    /// whole plan every tick to ask it).
+    preview: std::sync::OnceLock<(bool, bool)>,
+    /// A capped castle (roadmap 12h): pillboxes inside the wall, and
+    /// slots outside on its road; None, the castle and bastions of 11h.
+    pub cap: Option<(usize, usize)>,
+    /// Road posts added (`add_posts`).
+    pub posts: usize,
 }
 
 impl Plan {
@@ -181,7 +191,49 @@ impl Plan {
             k += 1.0;
         }
         let castle_len = items.len();
-        Plan { centre: c, facing, items, gate_tiles, felled: Vec::new(), felling: None, castle_len, skip: Vec::new(), post: c - facing.scale(1.5), post_fitted: false }
+        Plan { centre: c, facing, items, gate_tiles, felled: Vec::new(), felling: None, castle_len, skip: Vec::new(), post: c - facing.scale(1.5), post_fitted: false, preview: std::sync::OnceLock::new(), cap: None, posts: 0 }
+    }
+
+    /// A capped castle (Paul, 18 October: "we also stop filling the
+    /// castle once it has ... 2 on the inside, 1 on the outside along the
+    /// road"): `inside` pillboxes inside the wall (the gate's two towers,
+    /// then the rear, then either flank), built new; and, once it stands,
+    /// `road` slots outside beside its road for pillboxes carried in
+    /// (`add_turrets`), in place of the bastions.
+    pub fn castle_capped(centre: V2, threat: V2, inside: usize, road: usize) -> Plan {
+        let mut p = Plan::castle(centre, threat);
+        let c = p.centre;
+        let h = p.facing.heading();
+        let mut kept = 0;
+        p.items.retain(|i| {
+            if i.what != BuildKind::Pillbox {
+                return true;
+            }
+            kept += 1;
+            kept <= inside
+        });
+        // More than the towers and the rear: the flanks.
+        for a in [std::f32::consts::FRAC_PI_2, -std::f32::consts::FRAC_PI_2].into_iter().take(inside.saturating_sub(3)) {
+            let at = Map::tile_centre(c + V2::from_heading(h + a).scale(REAR_R));
+            if !p.items.iter().any(|i| i.at.tile() == at.tile()) {
+                p.items.insert(kept.min(3), Item { what: BuildKind::Pillbox, at, state: State::Pending, lifted: false });
+            }
+        }
+        p.castle_len = p.items.len();
+        p.cap = Some((inside, road));
+        p
+    }
+
+    /// Road posts (roadmap 12h): slots for carried pillboxes along the
+    /// roads between bases, as lifted items after everything else.
+    pub fn add_posts(&mut self, posts: &[V2]) {
+        for at in posts {
+            let at = Map::tile_centre(*at);
+            if !self.items.iter().any(|i| i.at.tile() == at.tile()) {
+                self.items.push(Item { what: BuildKind::Pillbox, at, state: State::Pending, lifted: true });
+                self.posts += 1;
+            }
+        }
     }
 
     /// The turrets' slots and their walls, once.
@@ -190,13 +242,40 @@ impl Plan {
             return;
         }
         let h = self.facing.heading();
+        if let Some((_, road)) = self.cap {
+            // Capped: the road on past the gate, a slot beside it every
+            // four tiles, alternate sides, for a carried pillbox.
+            let across = V2::new(-self.facing.y, self.facing.x);
+            let far = ROAD_TO + 1.0 + 4.0 * road as f32;
+            let mut k = ROAD_TO + 1.0;
+            while k <= far {
+                let at = Map::tile_centre(self.centre + self.facing.scale(k));
+                if !self.items.iter().any(|i| i.at.tile() == at.tile()) {
+                    self.items.push(Item { what: BuildKind::Road, at, state: State::Pending, lifted: false });
+                }
+                k += 1.0;
+            }
+            for n in 0..road {
+                let side = if n % 2 == 0 { 1.0 } else { -1.0 };
+                let at = Map::tile_centre(self.centre + self.facing.scale(ROAD_TO + 1.0 + 4.0 * n as f32) + across.scale(side));
+                if !self.items.iter().any(|i| i.at.tile() == at.tile()) {
+                    self.items.push(Item { what: BuildKind::Pillbox, at, state: State::Pending, lifted: true });
+                }
+            }
+        }
         for side in [1.0, -1.0] {
+            if self.cap.is_some() {
+                break;
+            }
             let at = Map::tile_centre(self.centre + V2::from_heading(h + side * (WALL_ARC + TURRET_PAST)).scale(WALL_R));
             if !self.items.iter().any(|i| i.at.tile() == at.tile()) {
                 self.items.push(Item { what: BuildKind::Pillbox, at, state: State::Pending, lifted: true });
             }
         }
         for side in [1.0, -1.0] {
+            if self.cap.is_some() {
+                break;
+            }
             let at = Map::tile_centre(self.centre + V2::from_heading(h + side * (WALL_ARC + TURRET_PAST + TURRET_WALL)).scale(WALL_R));
             if !self.items.iter().any(|i| i.at.tile() == at.tile()) {
                 self.items.push(Item { what: BuildKind::Wall, at, state: State::Pending, lifted: false });
@@ -240,6 +319,21 @@ impl Plan {
                 self.items.push(Item { what: BuildKind::Road, at: p, state: State::Pending, lifted: false });
             }
         }
+    }
+
+    /// With the turrets added (whether or not they are yet): a turret
+    /// slot to fill, and yard walls or roads left. Before they are added
+    /// the answer depends only on the castle's tiles, so it is kept.
+    pub fn turret_preview(&self) -> (bool, bool) {
+        if self.items.len() > self.castle_len {
+            return (self.turret_slot().is_some(), self.yard_left());
+        }
+        *self.preview.get_or_init(|| {
+            crate::meter::plan_clone();
+            let mut q = self.clone();
+            q.add_turrets();
+            (q.turret_slot().is_some(), q.yard_left())
+        })
     }
 
     /// Walls and roads of the turrets' part still to build: work for the
@@ -488,6 +582,30 @@ mod tests {
     /// The shape, on paper: towers inside the wall and either side of the
     /// gate, every pillbox in every other's reach, the gate open, the
     /// wall on the threat's side only.
+    /// Paul's castle (roadmap 12h): two pillboxes inside the wall, the
+    /// gate's towers; once it stands, one slot outside beside its road
+    /// and no bastions; road posts after it.
+    #[test]
+    fn the_capped_castle_has_two_inside_one_on_the_road() {
+        let c = V2::new(50.5, 50.5);
+        let mut p = Plan::castle_capped(c, V2::new(80.0, 50.5), 2, 1);
+        let inside: Vec<&Item> = p.items.iter().filter(|i| i.what == BuildKind::Pillbox).collect();
+        assert_eq!(inside.len(), 2);
+        assert!(inside.iter().all(|i| i.at.dist(c) < WALL_R && !i.lifted));
+        p.add_turrets();
+        let slots: Vec<&Item> = p.items.iter().filter(|i| i.lifted).collect();
+        assert_eq!(slots.len(), 1, "one on the road, no bastions");
+        let s = slots[0].at;
+        assert!(s.dist(c) > WALL_R && s.x > c.x + WALL_R, "outside, toward the threat: {:?}", s);
+        assert!(p.items.iter().any(|i| i.what == BuildKind::Road && i.at.dist(s) < 2.0), "beside its road");
+        assert!(p.items.iter().all(|i| i.at.tile() != s.tile() || i.what == BuildKind::Pillbox), "not on the road");
+        p.add_posts(&[V2::new(70.5, 52.5), V2::new(70.5, 52.5)]);
+        assert_eq!(p.posts, 1);
+        assert_eq!(p.items.iter().filter(|i| i.lifted).count(), 2);
+        let three = Plan::castle_capped(c, V2::new(80.0, 50.5), 3, 0);
+        assert_eq!(three.items.iter().filter(|i| i.what == BuildKind::Pillbox).count(), 3);
+    }
+
     #[test]
     fn the_castle_is_drawn_right() {
         let c = V2::new(40.5, 40.5);

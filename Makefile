@@ -58,6 +58,7 @@
 #                    REPLAY=file) and check every world hash it recorded;
 #                    the regression test for a change to the rules
 #   make test        cargo test, every crate
+#   make tune        evolve the bots' weights over the brain census (scripts/tune.sh)
 #   make sounds      write every sound the window makes to build/sounds/*.wav
 #                    (synthesised, no files in the tree): to listen to
 #   make shoot       take the release frames: the window driven by a
@@ -104,7 +105,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -244,6 +245,9 @@ worldmaps:
 
 test:
 	@scripts/build.sh test
+
+tune:
+	@scripts/tune.sh
 
 sounds: configure
 	@cargo run -q --release -p treadcore-client -- --write-sounds "$(BUILDDIR)/sounds"

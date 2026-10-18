@@ -1,1164 +1,412 @@
-# The next architectural steps
-
-Where the architecture goes from the opening day, in the order the
-steps depend on each other. Each step says what it changes in which
-crate, what it must not change, and how it is proven. The constraint
-that shapes all of it: the simulation stays headless and deterministic,
-and every layer above it keeps driving it through `step` and `observe`.
-
-## 0. Prove what exists (before any of the below)
-
-Status after the second session (12 October 2026, evening; journal
-0002):
-
-- [x] `make test`: every crate compiles, 16 tests pass. The dev-profile
-  engine built as a side effect in 4 min 28 s on the 8 GB VM. The
-  release-profile engine (`make warm`, `make run`) is not yet built or
-  measured.
-- [x] `make debug`, read: three bugs and two balance findings, below.
-  Fixed: the UDP receive buffer (no client could ever join), `Move`
-  across water (the sim now routes), the bash `SECONDS` collision in
-  the Makefile. Rewritten: the rule bot's doctrine, so a trace
-  exercises indirect fire. Still open: the balance items in the
-  backlog.
-- [x] `make lobby-test`, with a real assertion (three clients welcomed,
-  all saw the match end). Two machines: not yet.
-- [x] The window. `treadcore-warm` panicked in this VM with no Vulkan
-  driver (`BUILD.md`, "The window in this VM"); with lavapipe in, the
-  window has run since 13 October (journals 0013, 0014), and `make
-  shoot` drives it for every release's frames.
-
-Nothing below should start until step 0's open problems are closed, or
-every later step is built on a guess.
-
-## The reference specification
-
-`SPEC-PRIOR-ART-1.14.md` is the clean-room functional specification of
-the prior art, version 1.14, received 12 October 2026. Every step below that
-touches the prior-art-derived layer (3, 5, 6, 6b, 6c, 6d) cites its
-requirement IDs, and a proposal that changes one of those mechanics
-says which IDs it keeps, adapts or drops. Its preface says which parts
-treadcore adopts; its networking (section 12) is reference only, and
-nothing of the prior art's LAN ring is in it or in treadcore.
-
-## Backlog: what the first traces found
-
-Carried from journal 0002. Each is a proposal in waiting
-(`GOVERNANCE.md` section 5): a decision, with a trace to argue from.
-Where an item has a counterpart in the reference specification, the ID
-is given.
-
-Worked through on 13 October 2026 (journal 0009): every item is done,
-decided from a trace, or deferred to the step that owns it. The traces
-are eight seeds of sixteen bots for 300 game seconds, read through the
-match report (item 8), figures per match.
-
-1. **Interceptors fight interceptors.** When two bubbles overlap
-   (tanks inside 2 x bubble + margin of each other) both rings
-   annihilate each other in two seconds, and the bots refill them from
-   the bay until it is empty; the first trace shows 22 intercepts in 20
-   seconds and three tanks dead to strikes through the stripped rings.
-   Decision wanted: should an interceptor on station engage a hostile
-   *interceptor* at all, or only strikes and recon? The real-world
-   analogue says engage anything; the game may want otherwise.
-   **Done: strikes only** (and a recon inside the bubble, as before).
-   Engaging everything: 7.0 kills by shell to 5.9 by strike, 32
-   interceptors shot down, 2.8 of 16 alive at the end. Strikes only:
-   8.8 to 2.9, 6 shot down (by pillboxes), 4.1 alive. The bubble is a
-   shield, not a sword; the analogue was rejected for the game's sake.
-2. **Tank speed.** 4 tiles/s is 360 km/h; the map is crossed in
-   fifteen seconds and a match of four bots ends in under two minutes.
-   `rules.rs` already calls it a game speed. Try 2.5 and read the
-   trace. **Decided: keep 4.** With item 1 in, 2.5 moved the kills
-   from 8.8 : 2.9 to 9.8 : 2.2, inside the noise; and four bots on the
-   sixteen-start map play out the time limit at either speed (first
-   kill at about 200 s). The complaint was of the four-start map. One
-   constant; a human playtest decides.
-3. **Retasking a drone.** The only way to move a recon is `Recall`,
-   which brings every drone home. A `Command::Retask { drone, task }`
-   (recon orbit centre; a single drone's recall) is small, and both the
-   bot and a human need it. Interceptors stay the world's to task.
-   **Done.** A recon's orbit, a strike's target, or any one drone's
-   recall; `DroneRetasked` to allies. The rule bot moves its recon to
-   an enemy it cannot see instead of launching a second. The window
-   has no key for it yet.
-4. **Rejected orders repeat.** A bot whose `Move` is refused (a point in
-   water) re-issues it four times a second. Harmless; noisy in the
-   trace. The bot should remember a refusal for a few seconds.
-   **Done.** The rule bot already remembered what was unreachable
-   (step 5); its one repeat left was a led shot falling inside minimum
-   range, 8 a match, now aimed at the tank instead. The Fortifier
-   ordered a build with no material and no forest in sight; it waits.
-   The default trace has 0 refused orders; twelve defenders have 46,
-   one per forest tile in a ring, which is how a Fortifier with no map
-   learns where the trees are.
-5. **The HUD's rtt is not an rtt.** The client shows snapshot tick
-   minus last-heartbeat tick, which is mostly heartbeat age. Use the
-   host's `rtt_ticks`, sent back in `Heartbeat`. **Done**; wire
-   version 9.
-6. **`Welcome` is one 16.5 KiB datagram.** Done with step 5: any packet
-   too big for a datagram goes as `Chunk`s (PROTOCOL.md).
-
-7. **The strike is the kill.** In every trace so far the tanks die to
-   strike drones (35 x 3 in the bay) after the rings are stripped, not
-   to shells. If the premise is that the gun is the weapon, either
-   strikes need a longer approach (battery) or interceptors need to
-   survive their own melee (item 1). **Decided by item 1.** Final
-   trace: 9.2 kills by shell to 2.5 by strike; 10 % of strikes get
-   through (24 % before). Battery and damage unchanged.
-8. **A match report.** `make debug` should end with the numbers a
-   balance reader wants (shells by kind and spotted, intercept rate,
-   kills by cause, time to first kill) instead of a reader counting
-   JSON lines. **Done**: six lines after the scoreboard, in a live
-   match and a replay alike.
-9. **Depot armour as the gate.** The spec's bases cannot be driven
-   onto by an enemy while they hold armour; shooting them opens them
-   (SPEC BAS-07 to BAS-09). treadcore's depots are taken by standing
-   on them for ten seconds. Decide whether the shell should be the key.
-   **Decided: not adopted.** Two objects, two keys: the pillbox is
-   shell-gated (shoot it dead, then the squad takes it), the depot is
-   time-gated. A gun with a 12-tile minimum would have to bombard the
-   thing it wants intact, and standing on a depot for ten seconds is
-   what makes the capture a risk. Revisit with a playtest.
-10. **Rejoin.** A player who drops and returns within a window keeps
-    their seat and what was theirs (SPEC GAM-12, OWN-04). Needs a
-    peer identity that survives a process restart. **Deferred to steps
-    7 and 8**, where identity across processes is designed once.
-    **Done in step 7** (journal 0012): `--identity FILE`, the host's
-    standing registration with the introducer, a `session` number on
-    `Join`. The seat waits as long as the match, not five minutes, and
-    what was the player's never changed hands.
-11. **Game types.** Open, Tournament and Strict Tournament (SPEC
-    section 11) as `Scenario` presets once pillboxes and material exist.
-    **Done**: `Scenario.game_type`, what a tank starts with (open: 24
-    shells, 2 material; tournament: 12, 0; strict: 0, 0); `--game-type`,
-    `GAMETYPE=strict make debug`.
-12. **Pillbox view.** Jump the camera between owned pillboxes (SPEC
-    UI-10 to UI-13); the client's one the prior art feature worth having early.
-    **Deferred** to the first session with a working window (step 0's
-    open problem); a client change that cannot be seen is a guess.
-    **Done 13 October 2026** (journal 0014), the first day with a
-    window: the apostrophe steps through the player's and allies'
-    pillboxes, Return or F returns to the tank (UI-10, UI-12, UI-13);
-    the arrows to a neighbouring pillbox (UI-11) are not taken.
-13. **Forest concealment as the prior art had it.** Hidden to everything beyond
-    3 tiles when inside a 2 x 2 block of forest (SPEC VIS-02), against
-    treadcore's halved vision radius. A proposal with a trace. **Done**,
-    as written, pillboxes included (PIL-07): `CONCEAL_RANGE` 3, beside
-    the halved radius in single trees. No bot stands in forest yet, so
-    the proof is a test; a brain that uses cover is step 6d's.
-14. **Pillboxes never fire in a bot match.** With the router keeping
-    tanks out of hostile rings, the default sixteen-bot trace has zero
-    `PillboxFired` events in three minutes: the gun is proven by test,
-    not by play. The proof of step 3 therefore rests on wins (18:2) and
-    survival (37:32), and its score margin is mostly capture points.
-    Step 6d's attackers need a reason to go into a ring (a depot or a
-    dead pillbox inside one), and a defender needs to put its pillbox
-    where the road has to pass. Design work, with traces. **Done in
-    6d as far as it goes:** the attacker storms a depot it cannot
-    shell clear, and the defender's pillbox sits at the mouth and on
-    the spoke; and still 0 to 4 pillbox shots a match, because the
-    artillery duel is decided before anyone drives up. The pillbox's
-    job in this game is to make a depot untakeable by a tank, not to
-    kill; the trace says that is what it does (101 of 120 depots
-    held). Closed with that reading; a playtest may reopen it.
-
-
-
-## 0b. Sixteen seats (done the same evening)
-
-`MAX_PLAYERS` 16; sixteen starts round the map's edge (the four sides
-first, then the corners, then the eight between), a depot each and the
-centre, a ring road through every start and spokes from the four sides;
-`--players N` on the server and the window, `PLAYERS=n` on `make`;
-seats named for their starts. Proof: `sixteen_seats` and
-`every_start_can_reach_the_centre` pass; `make debug` runs sixteen
-bots for 180 game seconds in under a second of wall time with 62
-shells, 128 intercepts, 10 kills and 8 captures on the default seed.
-
-## 1. The replay: traces that run
-
-**Done 12 October 2026 (journal 0003).** `Replay { scenario, ticks,
-orders: Vec<(Tick, Order)>, checkpoints: Vec<(Tick, u64)> }` in
-`treadcore-sim`, serde; `World::run(&replay)` and `Replay::verify()`
-(the first checkpoint that differs, with both hashes). The host records
-when asked (`Host::record`); the server has `--record FILE` and
-`--replay FILE`; `make debug` records beside its trace and `make
-replay` plays the newest back, exit 1 on a mismatch. Proof so far: a
-recorded sixteen-bot match replays to the same hash on this machine,
-and a replay with one shell removed is caught at the first checkpoint
-after it. A different machine is still to do.
-
-**Change.** `treadcore-sim` gains `Replay { scenario, orders: Vec<(Tick,
-Order)> }`, serialisable; `World::run(replay) -> World`. The server
-records one (`--record FILE`) and plays one back (`--replay FILE`),
-asserting the final world hash matches the recorded one.
-
-**Why first.** Every later step (prediction, teams, Pillboys) changes
-the step function. A replay corpus from the current rules is the
-regression test that says a change did only what it meant to. It is
-also the debugging tool for "the bot did something odd at tick 3 412".
-
-**Must not change.** The `Order` type's wire form; a replay is a list
-of the same packets' payloads.
-
-**Proof.** A recorded bot match replays to the same world hash on a
-different machine.
-
-## 2. World hash and desync detection
-
-**Done 12 October 2026 (journal 0003).** `World::hash()`: FNV-1a over
-the bincode serialisation of the world, so every field is in it the
-day it is added and floats hash by their bits. The host hashes every
-`HASH_EVERY` (1 000) ticks, logs it, and carries it in `Heartbeat`
-(wire version 3); clients log what they receive. `make lobby-test`
-asserts one hash at tick 1 000 in all four logs.
-
-**Change.** `World::hash() -> u64` over the state that matters (tick,
-rng, every entity's fields, map cells). The host sends it in
-`Heartbeat`; a client that also runs the world (step 4) compares.
-
-
-**Why.** Before prediction exists, the hash makes replay testable
-(step 1) and gives `make lobby-test` a real assertion: every peer
-observed the same hash sequence.
-
-**Proof.** Four lobby-test peers log identical hashes at tick 1 000.
-
-## 3. Pillboys: the control model, then the unit
-
-**Done 12 October 2026 (journal 0004).** `Pillboys` on `Tank`
-(strength, aboard, pos, task, progress, material, route);
-`Command::Deploy { task }` with `Capture`, `Repair`, `Build { Pillbox,
-at }`, `Return`; `step_pillboys` walks the world's route at 1.5 tiles/s,
-works for the capture, repair or build time, walks home; a splash over a
-deployed squad costs it two men, zero is no squad until a depot. `Pillbox`
-entity: health, owner or neutral, a hitscan gun at hostile tanks within
-8 tiles with a clear line (15 damage every 2 s), an interceptor's odds
-against hostile drones within 4; dead at zero, never removed; captured
-by a squad standing on it for 10 s when neutral or dead; repaired and
-built for material. Twenty neutral pillboxes on the map: one on each
-spoke and four round the centre. A tank's route avoids the range of
-live hostile pillboxes. Wire version 4. Proof: `pillboys_pay`, twenty
-seeds of eight bots, the four with squads against the four without;
-the numbers are in journal 0004 and in the test's output.
-
-**Decision first.**
- Written into DESIGN.md on 12 October 2026 ("Pillboys
-and pillboxes: the decision"), checked against the prior art's builder and
-refuelling bases (`LAB-REPORT-PILLBOYS.md`): Pillboys are an *order the
-tank gives*, not a unit the player drives. The tank is the one thing
-the player drives; that is the premise. `Command::Deploy { task:
-PillboyTask }` where the task is `Capture { pillbox }`, `Repair {
-target }`, `Build { what, at }`, `Return`. The squad is a state on the
-tank (strength 0..N, deployed/aboard, position when deployed, task,
-progress, material) that the HUD shows beside the drones. Depots are
-not a Pillboy's business: they are refuelling bases, taken and used by
-driving onto them, as now.
-
-
-**Reference.** SPEC-PRIOR-ART-1.14.md section 6 (BLD-01 to BLD-03,
-BLD-05, BLD-06, BLD-09, BLD-10, BLD-13) for the squad; section 8
-(PIL-01 to PIL-05, PIL-07 to PIL-17) for the pillbox; OWN-01, OWN-02
-for ownership. BLD-11's parachute becomes resupply at a depot.
-
-**Change.** `treadcore-sim`: `Pillboy` squad struct on `Tank`; a
-`step_pillboys` pass; squads are vulnerable to splash and to strikes
-while deployed, so deploying under a thin bubble is a decision.
-`Pillbox` entity: position, owner, health, a gun that engages tanks
-within range and drones within a shorter range; captured by a squad
-that stays on it for `CAPTURE_TICKS` uncontested. Depots keep their
-role (resupply); pillboxes become territory.
-
-**Must not change.** Drone and shell mechanics. Pillboxes shoot
-drones with the same intercept-probability shape (a link to the owner
-tank's radar if in range, else their own sensor), so one rule serves
-both.
-
-**Proof.** A bot that captures the two nearest pillboxes beats one
-that does not, over twenty seeds, by a margin the trace can show.
-
-## 4. Client-side prediction of the player's own tank
-
-**Done 13 October 2026 (journal 0011).** As written, with one
-narrowing and one widening. The client's `World` is partial: built
-from `Welcome`, it holds the map (kept up from terrain events), every
-pillbox, the mines the player knows, the teams, and the player's own
-tank; nothing else, because a client is shown nothing else, so it
-never calls `World::step`. The sim exposes `World::predict`, which
-applies one player's hull orders and drives the tank by the same
-`drive_tank` the host's `step_tanks` calls (`treadcore-net/src/
-predict.rs`, wire version 10: `Snapshot` carries `acked`, the last
-seq applied). The widening: the hull orders are `Move`, `Stop` and
-both fire orders, because firing turns the tank; the first lagged
-lobby test found that one as fourteen mismatches at zero tiles off.
-The check is bit-for-bit (`Tank::tick_state`) whenever nothing of the
-client's is in flight. Proof, as it came out: there is no `tc` and no
-root in this VM, so the transport grew a lag queue (`TREADCORE_LAG_MS`;
-`make lobby-test LAG=200`) that holds every received datagram.
-`prediction_hides_the_lag_and_matches_the_host`: 100 ms each way,
-the predicted tank moves 250 ms before the snapshot shows it, 53
-checks, 0 mismatches. `LAG=200 make lobby-test`: three client seats,
-598 snapshots each, 1 602 checks, 0 mismatches; the test now requires
-that. The window draws the predicted tank in place of the snapshot's
-and the NET panel shows ticks ahead, orders in flight, checks and
-mismatches; it builds, and is unproven in this VM as before. A client
-still sends no world hash: it cannot run what it is not shown.
-
-**Change.** `treadcore-client` runs its own `World` from `Welcome`
-(seed + map + scenario), applies its own orders immediately, and
-reconciles on each snapshot: replace own-tank state with the host's,
-re-apply unacked orders. Everything that is not the player's tank is
-drawn from the snapshot as now.
-
-**Why after 1 and 2.** Prediction without a hash to check against is
-guesswork; with step 2 the client logs every mismatch.
-
-**Must not change.** The host stays authoritative; a predicted state
-never leaves the client.
-
-**Proof.** With `tc netem delay 200ms` on loopback, driving feels
-immediate and the mismatch log is empty on a straight road.
-
-## 5. Map files and the editor
-
-**Done 12 October 2026 (journal 0006).** `Map::to_text` and
-`Map::from_text` (`documentation/MAPS.md`): a format line, `size`,
-`seed`, 128 rows of glyphs, then `start`, `depot` and `pillbox` lines;
-the loader refuses with the line and repairs an owner that is no seat.
-`Scenario.map: MapSource::Seed(u64) | Text(String)`, so a replay and a
-`Welcome` carry the map whole (wire version 6; `Welcome` sends the
-`Map`, not its cells). `World::map_as_played`; the server's `--map`,
-`--save-map`, `--write-map`; `make map`; `MAP=file` on debug, run and
-host. The world is built at the size the file declares (the generator
-makes 128, the prior art's maps are 256): swarm edges, the brains' clamps and
-the client's camera take it from the map, and `Welcome` is sent in
-`Chunk`s when the map does not fit a datagram (backlog item 6, done).
-`scripts/priorart2map.py` and `make convert` turn a prior-art map
-(its binary format, v1) into a treadcore map; five converted community maps
-ship in `maps/prior-art/` (provenance in `vendor/THIRD-PARTY.md`). Proof:
-`generate(seed).to_text()` reads back equal for two seeds and writes
-back identical; a world built from a four-start file seats four of
-sixteen; sixteen bots play a 256 x 256 prior-art map through `make debug`.
-
-
-**Reference.**
- SPEC MAP-03 to MAP-06, MAP-09, MAP-10: what a map
-defines, what a loader repairs, that a running map can be saved.
-
-**Change.** `treadcore-sim::map` gains `to_file` / `from_file`: a
-header line, then 128 rows of 128 characters (one per terrain), then
-`start x y`, `depot x y`, `pillbox x y owner` lines. Human-editable in
-any text editor, which is the editor for the first release (the prior art's
-BMAPEdit came later; its ASCII import/export came with it). `Scenario`
-takes `map: MapSource::Seed(u64) | File(path)`.
-
-**Why here.** Pillboxes (step 3) need placing by hand to be balanced;
-a seed cannot do that.
-
-**Proof.** `generate(seed).to_file().from_file() == generate(seed)`.
-
-## 6. Teams and alliances
-
-**Done 12 October 2026 (journal 0007).** `Player.team`; a scenario deals
-seats into teams (`with_teams(n)`, `--teams N`, `TEAMS=n make debug`) or
-leaves everyone alone, the prior art's start. Sensors are the team's: `visible_to`
-and `spotted_by` take any ally's tank or drone, so one tank's recon is
-another's gun. Friendly fire is off within a team for shells, strikes,
-mines and splash (`FriendlyFireSpared` in the trace); one's own shells
-still hurt. Interceptors and pillboxes do not engage an ally's drones or
-tanks; a strike at an ally is refused; allies share depots and pillbox
-shells and see each other's mines; an ally's pillbox cannot be captured.
-`Command::Chat { text, to: All | Team }`. Scores stay per player; the
-match ends when one team stands, and the winning team's top scorer is
-the winner (`MatchOver { winner, team }`). The prior art's alliance protocol in
-play: `Command::Alliance(Request | Accept | Decline | Leave)` with
-thirty-second requests, any member accepting, leaving at will, all of it
-events (ALL-01 to ALL-06, ALL-08 to ALL-10). The RuleBot and Fortifier
-read allies as friends. Wire version 7. Proof: `a_team_shares_recon_
-and_spares_its_own` and `alliances_form_and_break_and_teams_end_the_
-match`; a four-team sixteen-bot trace.
-
-**Reference.**
- SPEC ALL-01 to ALL-10 (request, accept, any member
-admits, leave at will, what leaves with the leaver), OWN-03.
-
-**Change.** `Player.team: u8`. `visible_to` unions a team's sensors;
-`event_for` extends to teammates; interceptors do not engage team
-drones; shells and strikes do no damage within a team (friendly fire
-off, so an alliance can stampede together, CONCEPT.md section 9);
-scores are per team. `Command::Chat` gains `to: Team | All`. Four
-teams of four is the first scenario; two-versus-two the smallest.
-
-**Must not change.** The sixteen-seat limit; the election; the wire
-format beyond one field.
-
-**Proof.** Two bots on a team share recon: a shell fired by one at a
-target only the other's drone sees is `spotted`; a shell landing on a
-teammate does no damage and says so in the trace.
-
-## 6b. Betrayal and recruitment: the proposal protocol
-
-**Done 12 October 2026 (journal 0008).** `Command::Propose { to, terms }`
-with `Terms::Join` (I join you: an alliance request, or a defection),
-`Recruit` (you join me), `Swap` (we exchange teams) and `Merge` (my team
-joins yours); `Command::Answer { proposal, accept }` by the one asked or
-any member of their team; a `Proposal` stands `PROPOSAL_TICKS` (30 s).
-**The three-way rule** (`MIN_SIDES` 3): the world refuses, with the
-reason, any proposal whose outcome would leave fewer than three sides
-with a living tank or give one side more than half the living tanks,
-once when proposed and again when accepted. Every resolution is a
-public event (`ProposalResolved`: accepted, declined, refused with why,
-lapsed, or overtaken by a change of sides). The prior art's alliance commands are
-sugar over this (a request is a Join proposal and keeps the prior art's "leave
-first"). Wire version 8. Proof: `proposals_change_sides_under_the_
-three_way_rule`, a recorded match: two sides of eight refuse every
-proposal; of three sides a defection is accepted and the newcomer's
-recon spots for its new side; recruiting to more than half is refused;
-a swap is allowed at any size; the match replays.
-
-**Reference.**
- SPEC ALL-02 to ALL-05 are the request and answer; the
-swap, the recruit and the three-way rule are treadcore's additions.
-
-**Change.** `treadcore-sim`: `Command::Propose { to: PlayerId, terms:
-Terms }`, `Command::Answer { proposal, accept: bool }`; `Terms::Join {
-team }` (recruit, or defect to), `Terms::Swap` (two tanks exchange
-teams). A proposal is an entity with a deadline (`PROPOSAL_TICKS`);
-the world resolves it when answered or expired and emits
-`Event::ProposalResolved` to everyone, so a betrayal is public the
-moment it happens. **The three-way rule**: the world refuses, with the
-reason, any proposal whose outcome would leave fewer than three teams
-with a living tank, or give one team more than half the living tanks.
-
-**Why.** Sixteen players with alliances and no way to change them is a
-fixed bracket; with unconstrained changes it collapses to one side.
-The rule keeps three sides in play, which is the smallest number in
-which an alliance is a choice.
-
-**Must not change.** Validation stays in `apply`; a Brain cannot
-propose anything a human cannot.
-
-**Proof.** A scripted replay: two teams of eight, a proposal that would
-merge them is refused; one that moves one tank to a third team is
-accepted and the trace shows the team change and the shared recon.
-
-## 6c. Material, walls, mines, roads: what a Pillboy builds
-
-**Done 12 October 2026 (journal 0005).** `Terrain::Wall` (impassable,
-blocks a flat shot and a pillbox's line, knocked to rubble by a
-splash); `Mine` entities (hidden from all but the layer until a tank or
-squad comes within 1.5 tiles; set off by a tank or squad on the tile,
-a shell's splash, or an orthogonal neighbour; 50 to the tank on it, 20
-within 1.5, a squad in it lost, the tile cratered; drones untouched);
-`Build { Wall | Road | Mine | Pillbox }` and `Harvest { at }` (a forest
-tile to grass, +4 material, 4 s); roads become bridges over water,
-built from the bank; material capped at 8. Pillboxes hold 8 shells for
-their owner's tank and regrow one every 10 s. `Event::TerrainChanged`
-keeps the client's map current. The Observation carries the mines a
-player knows and the eight nearest forest tiles. A tank's route avoids
-the hostile mines its driver knows about. `Fortifier`, the minimal
-defender (harvest, a gateless ring of mines at radius 3 round the home
-depot, a ring of walls at 4 with a gate toward the centre); `--defenders
-N` on the server, `DEFENDERS=n` on make. Wire version 5. Proof:
-`fortification_pays`, twenty seeds, a scripted attacker against a
-fortified and a bare depot; numbers in journal 0005.
-
-**Reference.**
- SPEC section 6 (the mode table: costs in trees), section
-7 (MIN-01 to MIN-13: who sees a mine, what sets it off, the crater),
-TER-01 to TER-03 (walls take hits to rubble; forest farmed and
-regrowing), BAS-01 (stocks held by a structure). Not taken: boats, deep
-sea, swamp, the edge minefield (MAP-08).
-
-**Change.** `treadcore-sim`: `Terrain::Wall` (impassable, blocks direct
-fire, cratered by indirect) and `Terrain::Mine` (hidden to others;
-destroys a tank or squad that enters it; cleared by a shell's splash;
-ignored by drones, so a moat is no defence against the air).
-`PillboyTask::Build { what: Wall | Road | Mine | Pillbox, at }` costs
-`material`; `PillboyTask::Harvest { at }` turns a forest tile to grass
-and adds material. Pillboxes carry shells: a tank inside `DEPOT_RADIUS`
-of its own pillbox resupplies shells (not drones) from it, so ammo
-comes from pillboxes and depots, as the brief says.
-
-**Must not change.** Drone mechanics; the depot rules; the step order.
-
-**Proof.** A bot that harvests, walls and mines a square round its
-depot survives a scripted attack longer than one that does not, over
-twenty seeds, by a margin the trace shows.
-
-## 6d. The defender brain
-
-**Reference.** SPEC section 16 for what a brain is told (BRN-08 to
-BRN-12); the "advantage" option becomes a scenario flag.
-
-**Change.** `treadcore-brain`:
- `Defender`, the simplest doctrine that
-plays the brief's defensive game: harvest the nearest forest, wall a
-maze round the home depot and a pillbox it builds at the maze's mouth,
-mine the approaches, lay a road from depot to pillbox so the squad can
-reach it to repair, keep two interceptors up, never leave. A scenario
-option `attackers: u8` seats that many `RuleBot`s (the attackers, a
-quarter by default) and `Defender`s in the rest.
-
-**Proof.** Sixteen bots, four attacking: the match lasts to the time
-limit more often than not, and most kills are pillbox kills.
-
-**Done, 13 October 2026 (journal 0010).** `Defender` replaces the
-Fortifier: the doctrine above with a recon on the approach (moved, by
-`Retask`, to the depot of whoever shot it last: counter-battery by
-deduction), a sidestep when hit, the squad in the order moat, mouth
-pillbox, road, approach mines, walls (the moat first: built later, the
-6c proof turned the other way, the attacker walking through the gap
-onto the depot, where a contested depot repairs nobody), and the
-spoke's neutral pillbox captured first of all. The "maze" is the 6c
-ring with a gate. A Defender proposes to recruit its nearest neighbour
-once a minute and accepts any proposal from a player who has never
-hurt it: the first bots to propose and answer. The attacker got its
-half of the step: a recon kept ten tiles short of what it watches, a
-squad recalled under fire, and a storm (shell the guns, then drive onto
-the depot) when a defender has been in view for twice its patience.
-The `attackers` option is `--defenders N` from 6c, the other way up.
-BRN-12 is `Scenario.advantage`, `--advantage`.
-
-The proof, `defenders_hold`, ten seeds of five minutes: every match to
-the time limit; attackers alive 2 of 40, defenders 84 of 120; the
-defenders keep 101 of their 120 depots. Its second clause failed and
-the test says so: the kills are 65 by shell, 7 by mine, 1 by pillbox,
-1 by strike. The gun out-ranges the pillbox 60 tiles to 8, both sides
-have eyes, and an attacker that reaches a prepared depot is one that
-has already lost the duel; the four attackers are dead by the third
-minute. Pillbox kills need a storm, and the storm needs the attacker
-alive at twice its patience. Eight seeds of the same match through the
-report: 7.5 kills a match (6.1 shell, 0.9 mine, 0.4 strike, 0.1
-pillbox), 8.5 of 16 alive at five minutes and the same at ten.
-`fortification_pays` widened to 144 000 against 134 206 ticks.
-
-
-## 7. Across the Internet
-
-**Done as far as one machine proves it, 13 October 2026 (journal
-0012).** `treadcore-net/src/introducer.rs`: the introducer (`Introducer`,
-`treadcore-server --introduce`, `make introduce`), a peer's
-`Registration` with it, the LAN-address guess, and `identity_from_file`
-(`--identity FILE`): a peer id that survives a restart. `Register` and
-`Introduce` on the wire (version 11, with `Join { session }`). The
-lobby registers in Discover (`--introducer HOST:PORT`; `--no-beacon`
-keeps it off the LAN), greets every introduced peer at its public and
-its local address every 250 ms and with every probe until the peer
-answers, and takes the answering address: the hole punch in its plain
-form. The election and the relay are untouched: a pair that never gets
-through is an unmeasured link, routed around. Rejoin (backlog item 10,
-SPEC GAM-12) came with it, because it is the introducer's business: a
-host keeps registering with `hosting` set; a returning peer with the
-same identity is told its host, pings it until it answers, joins it
-with no election, and the host gives the seat back with its sequence
-numbers started over, telling a restart from a repeated Join by the
-session number. Proof so far: `introducer_brings_two_silent_peers_
-together` (no beacon, no seed, two lobbies and an introducer in one
-thread); `seat_comes_back_after_a_restart` (a client dropped mid-match,
-a new one with the same peer id welcomed to the same seat at a later
-tick, its first order applied); `INTRODUCER=1 make lobby-test` (four
-peers, no broadcast, no seed address, met through the introducer
-alone) and `REJOIN=1 make lobby-test` (a seat that is not hosting
-killed outright at twenty seconds, started again, back in its seat at
-the tick the match has reached, sees the match end), plain and under
-`LAG=200`. Two findings on the way: the first run killed the host (the
-election had picked peer 4) and the match died with it, which is step
-8's problem and not this one's, so the script now kills a seat that is
-not hosting; and the returning seat's predictor logged one mismatch at
-zero tiles two ticks after its Welcome, because its copy was the
-scenario's start and the host's tank had turned to fire in the
-meantime, so the first snapshot after a Welcome is now a baseline, not
-a check. A third, older than this step: a shell cratering the road two
-ticks ahead of a client was a mismatch of a fifth of a tile, once in
-some 2 400 checks, the kind journal 0011 said would show first here;
-the predictor now re-drives from the last snapshot's tank when a
-terrain event lands under ticks it has predicted. **Not proven:** two
-peers behind two home routers. That is
-the roadmap's proof clause and it needs two machines on two networks;
-the code for it is in, and the first such run is the next journal's.
-
-**Change.** `treadcore-net`: a rendezvous step before the lobby. Not a
-server that hosts games; a tiny UDP service that tells peers each
-other's public address and port (the "introducer"). The lobby's
-`Hello` already carries addresses; the introducer fills in the ones a
-NAT hides. Hole punching follows the usual shape: both sides send to
-each other's public address on a timer until a packet gets through.
-The election and the relay route need no change: a pair that cannot
-punch through is routed around.
-
-**Must not change.** The lobby on a LAN works with no introducer, as
-now.
-
-**Proof.** Two peers behind two home routers reach Playing.
-
-## 8. The headless server as a service
-
-**Done as far as one machine proves it, 13 October 2026 (journal
-0022).** `treadcore-server --listen DIR` (`make listen`;
-`treadcore-server/src/listen.rs`): a dedicated host that runs the
-lobby with `server` set (wire version 12: on `Beacon`, `Hello` and its
-known list, `Register`, `Introduced`), takes no seat, never hosts
-alone, starts probing when the first seat does, and goes back to the
-lobby after every match or lost election. The preference is
-`election::elect_among`: a server is weighed over the seats plus
-itself with `SERVER_PREFERENCE` (10 ms) off its worst path, every seat
-over the seats alone; a server that loses is in no tree, so never a
-relay. Each hosted match writes `match-NNNN.trace.jsonl` and
-`match-NNNN.replay.json` to DIR, numbered on from what DIR holds; a
-match no seat joins within 15 s is given up. The status page is plain
-HTTP on `--http` (`/`, `/status.json`, and the hosted matches' files).
-With `--introducer` it is listed under its lobby name as a server.
-Proof: `LISTEN=near make lobby-test` (the four seats with 30 ms of lag
-on every receive, the server none: it is elected, hosts all four as
-seats, one world hash at tick 1000 in five logs, no prediction
-mismatches, its replay plays back with every checkpoint matching, its
-status page says `hosting` mid-match) and `LISTEN=far make lobby-test`
-(the server with 100 ms: not elected, hosts nothing, the four elect
-among themselves and pass as without it, the status page counts the
-lost election); `INTRODUCER=1 LISTEN=near`, met through the introducer
-alone. Tests: `server_with_best_links_hosts`,
-`far_server_is_ignored_and_never_relays`, `of_two_servers_one_hosts`,
-`server_in_the_lobby_hosts_and_takes_no_seat`. **Not proven:** a
-server on a public address with players behind home routers (step 7's
-two-router run, with a server in it). A player who arrives
-while the server hosts, with no bot's seat free, is refused until the
-next match, as with any host (one lobby name is one match). **Done (journal 0032):** the
-window's rematch, Enter on a networked match-over screen back to the
-lobby on the same port, proven by `make rematch-test`. **Done
-(journal 0033):** a late arrival takes a bot's seat by order, proven by
-`LATE=1 make lobby-test` and `LISTEN=near LATE=1`, the server's replay
-matching. **Done (journal 0034):** one server for several lobbies at
-once: `--game` again, a thread and a UDP port each (`--port`, then the
-next), each lobby's files in DIR/NAME, one status page listing them
-all; `GAME="a b" make listen`. Proven by `LISTEN=near LOBBIES=2 make
-lobby-test`: the four in one lobby and two more seats in a second,
-both hosted by the server at the same time, both replays matching
-from their own directories, the page saying both are hosting; also
-through the introducer alone. Step 8 is built; what is left of it is
-the two-router run.
-
-**Change.** `treadcore-server --listen`: hosts match after match,
-accepts joins from any lobby that elected it (a peer can be told to
-prefer a listed address as host), writes traces and replays per match
-to a directory, serves a small HTTP status page. This is the "someone
-runs one for the group" option without making it the only option.
-The introducer (step 7) is the natural place for the listing: a
-`--listen` server registers as hosting under a lobby name, and the
-"prefer a listed address" is a weight in the election for the peer
-that registered so.
-
-**Proof.** `make lobby-test` against a running `--listen` server
-elects it when it has the best links and ignores it when it does not.
-
-## 9. Sound, art, and a release profile
-
-Last, on purpose. The overlay is the look; sound is the one thing the
-HUD cannot convey (a shell launch you cannot see). `dist` profile with
-thin LTO for binaries; `cargo dist` or a plain tarball per platform.
-
-**Done, 13 October 2026 (journal 0023).** The art came first, as the
-playtest asked for it (journals 0014 to 0017: the frame, the bezel,
-cubes); the `dist` profile and the packages per platform came with the
-release pipeline (journals 0018 to 0021: .deb, .rpm, MSI, zips, the
-Nix flake). Sound is `treadcore-client/src/sound.rs`: eighteen cues,
-synthesised at start-up from swept sines, filtered noise and
-inharmonic partials (no sound files in the tree), each made in five
-pan positions as WAV in memory and played through Bevy's audio (the
-`bevy_audio` and `wav` features; ALSA was already a dependency). A
-sound is placed at its event, heard from the view's centre: half
-strength at 25 tiles, silent past 120, panned fully at 50 tiles off
-centre; at most 20 at once, the loudest kept, one cue at most every
-60 ms. A hostile shell whistles at its impact point the first time a
-snapshot shows it: the launch a player cannot see. `M` mutes, `--mute`
-starts muted, `make sounds` writes every cue to `build/sounds/` to
-listen to. Proof: tests (every cue sounds, does not clip, does not
-click at the end; the WAV is well formed; distance and pan), a level
-check of every cue (blasts loudest, the interface at half), and a
-60-second solo match that played the swarm, the player's hits, a gun,
-its boom, a wreck and a refusal with no audio error. **Not proven:**
-that it sounds right. That takes an ear, and this machine has none.
-
-**Then FM and the whole map (journal 0024).** The weapons and metal
-are two-operator FM after Paul's notes (a gunshot, a cannon blast, a
-direct hit as struck armour, a missile; then the machine noises: the
-breech's doo-cha-klank, the loader, a clock, the out-of-ammunition
-beep, a beating alarm, the tracks' squeal), 32 cues in three takes
-each, synthesised at 88.2 kHz under Carson's bound and band-limited
-to 44.1 kHz.
-Every sound has a place: full strength anywhere on screen and panned
-across it, fading past the screen's edge to a floor of 6 % and never
-to silence, low-passed past fifteen tiles out; a sound whose place
-the fog hides plays as background from nowhere.
-
-## 10. The economy under drones
-
-Planned 13 October 2026, from Paul's notes and a talk he passed on
-(Peter Zeihan, October 2026, on the Houthi strike on Riyadh's airport
-and Ukraine's on Russian data centres). What the talk says, as a game
-designer reads it:
-
-1. **Infrastructure is the target now.** Not the army: the airport,
-   the refinery, the data centre. They are large, they cannot move,
-   and a hole in the roof stops them (a data centre without cooling is
-   a room of melting chips).
-2. **The drones that do it are cheap and dumb.** No jam-proof
-   guidance, no exotic parts: long range, one way, a fixed point. The
-   clever drones (memory navigation through jamming) are a later
-   generation and are coming anyway.
-3. **Electronic warfare protects a point, not an economy.** It
-   scrambles the link and the drone crashes, hovers or flies off; but
-   it scrambles everything, its owner's too (an airport under EW cannot
-   land planes), so it can ring a base and never a country.
-4. **So everything within range is either defended or written off.**
-   The economy is too big to protect; the defender chooses what to
-   lose.
-5. **Systems depend on systems.** Hit the power and the data centre
-   goes dark without being touched.
-
-treadcore already has the half of this that is about tanks: the
-bubble, the strike, the recon, the gun. What it has not got is
-anything worth defending that is not a tank, a depot or a pillbox. This
-step gives the map an economy, a cheap drone that crosses the map to
-hit it, the jammer that protects a point at a price, and the window a
-commander's picture of all of it. The game stays a tank fighter: the
-tank is still the one thing the player drives, the squad builds, and a
-structure is a reason to fight over ground, not a city builder.
-
-### The backlog of step 10
-
-Each is a proposal in waiting in the roadmap's form, in the order they
-depend on each other.
-
-10a. **Industrial ground and a second wall.** `Terrain::Pad` (`_`):
-     foundations, passable as a road; the only ground a structure goes
-     on, so the map decides where an economy can be. `Terrain::Concrete`
-     (`H`): a hardened wall, two material, impassable, blocks fire; a
-     splash cracks it to a plain wall instead of rubble, so it takes
-     two. *Must not change:* the generated island (no pads unless asked
-     for), so every proof so far reads the same. *Proof:* the map
-     format round-trips both glyphs; a splash takes concrete to wall to
-     rubble.
-
-10b. **Structures.** A `Structure` entity on a pad: kind, owner or
-     neutral, health (`STRUCTURE_HEALTH` 120, twice a pillbox: large,
-     hard to miss, slow to kill), capture and repair as a pillbox's (a
-     squad on a neutral or wrecked one for ten seconds; material to
-     mend). Built by the squad on a pad for material. Five kinds:
-
-     | kind | cost | what it gives its owner's side | needs power |
-     | --- | --- | --- | --- |
-     | power plant | 4 | powers every friendly structure within 18 tiles | no |
-     | refinery | 4 | allied tanks burn half the fuel; within 3 tiles, a fuel and shell stop | yes |
-     | data centre | 6 | fire control: a blind shell aimed inside 40 tiles of it scatters half as far; the air picture: hostile drones inside 30 tiles are seen | yes |
-     | workshop | 3 | within 3 tiles a tank is repaired at twice a depot's rate and its bay restocked; within 8, friendly pillboxes and structures mend slowly | yes |
-     | jammer | 5 | inside 7 tiles every linked drone, *its owner's too*, loses its link: recon and strikes turn for home, a strike's last dive excepted; a long-range drone's satellite fix drifts | yes |
-
-     A structure held scores `SCORE_HOLD` every ten seconds: holding
-     ground pays while it is held, not only when taken, which makes the
-     time-limit winner the side with the economy. *Must not change:*
-     the pillbox, the depot, the bubble's rules. *Proof:* a test per
-     row of the table; power cut, the benefit stops.
-
-10c. **The long-range drone.** `DroneKind::Longshot`: launched at a
-     point anywhere on the map, slow (3 tiles/s), a battery for 150 s,
-     autonomous from launch (no link, no recall, no retask: the
-     pre-programmed one-way drone of the talk). It dives at the point:
-     heavy damage to structures (80), light to tanks (25), because a
-     fixed point is where a structure is and a tank is not. Two in the
-     bay, restocked last at a depot, first at a workshop. Interceptors
-     on station and pillboxes engage it as a strike, so a ring of
-     pillboxes and a parked tank defend a refinery; nothing defends all
-     of them. *Must not change:* the strike, recon and interceptor.
-     *Proof:* a longshot crosses a 256-tile map and wrecks an
-     undefended refinery; one into a tank's bubble is intercepted; one
-     through a jammer lands off its point.
-
-10d. **The commander's picture.** The window: a minimap in the right
-     column (PLAYABILITY item 11): fog, depots, pillboxes, structures,
-     tanks seen, the player's own; a click moves the view there.
-     Alerts: a structure of my side hit, wrecked or taken goes on the
-     newswire in red with where, with the alarm cue, and blinks on the
-     minimap; `J` jumps the view to the newest. The ledger: my side's
-     structures as lamps with health, powered or dark. Orders: `0` arms
-     the works mode (a click on a pad builds the selected structure, on
-     a structure repairs or captures it), `B` cycles the kind,
-     Shift-click in wall mode pours concrete, `X` sends a longshot at
-     the cursor. *Proof:* the window driven by xdotool, frames read.
-
-10e. **Bots that know an economy.** The RuleBot sends its squad to a
-     neutral or wrecked structure in reach as it does to a pillbox, and
-     a longshot at the nearest hostile structure every half minute; the
-     Defender repairs its own. *Must not change:* a bot-only match on
-     the generated island: no structures there, so no new behaviour,
-     and the balance proofs read as they did. *Proof:* sixteen bots on
-     an industrial map, through the match report: structures taken,
-     longshots launched, intercepted and landed, structures wrecked.
-
-10f. **Industrial maps.** `structure x y kind [seat|neutral]` lines
-     in the map format; `Map::industrialise`, which lays a pad zone
-     between each start and the centre with a neutral power plant and
-     refinery on it and a data centre at the middle, behind
-     `--industry` and `INDUSTRY=1`; `maps/industry.map`.
-
-10g. **A world map.** `scripts/worldmap.py` draws a map from coarse
-     coastlines in longitude and latitude: `maps/world/atlantic.map`
-     (the Americas, the Atlantic, Europe, North Africa and Arabia,
-     512 x 256) with the Pan-American Highway as a road from Prudhoe
-     Bay to Ushuaia, broken at the Darién Gap as the real one is, and
-     Europe's trunk roads from Lisbon to Moscow; the Channel, the
-     Bosphorus and the Strait of Gibraltar crossed by bridges, the
-     Atlantic by nothing. Sixteen starts in sixteen cities, industry
-     where industry is (the Gulf Coast, the Ruhr, the North Sea,
-     Arabia's oilfields). `maps/world/europe.map` is the same script at
-     Europe's scale. *Proof:* the loader reads them; every start
-     reaches the others on its continent; sixteen bots play one.
-
-10i. **A bot that builds a jammer** (journal 0027's next step 2).
-     Once a structure of its side has been hit, the RuleBot builds a
-     jammer on a free pad within half a jammer's reach of a structure
-     of its own that no jammer of its side covers, powered, felling
-     forest for the material; it launches nothing inside its side's
-     jammer (the bubble counts: it flies that far out) and drives out
-     of one when nothing is in view. `Observation::pads`, the free pad
-     tiles near the tank, because a Brain has no map. *Must not
-     change:* the generated island (no pads, so `pads` is empty and
-     the rule never fires). *Proof:* `a_rulebot_jams_after_a_hit`, and
-     the Atlantic trace's jams, own against hostile.
-
-10j. **Bots that run an economy** (journal 0028's next step 2). The
-     squad's works, in order: a power plant beside a structure of the
-     bot's that stands dark with no plant of its side in reach; the
-     jammer of 10i; a workshop where none of the side covers the bot's
-     structures. Scrap felled for any of them, and for mending a wreck.
-     A working workshop of the side is a resupply stop while armour or
-     the bay is what is short (it has no shells). *Must not change:*
-     the generated island. *Proof:* `a_rulebot_powers_its_zone_then_
-     builds_a_workshop`, and the traces' structures built by kind.
-
-10k. **The works trip** (journal 0029's next step 2). A RuleBot with
-     the scrap for what a structure of its own within `WORKS_TRIP` (45
-     tiles) wants drives to it and holds there while the squad works;
-     a structure with no free pad beside it for that kind is
-     remembered and not visited again. *Proof:* `a_rulebot_drives_to_
-     its_zone_to_build`, and the traces.
-
-10h. **Not now.** Memory-guided drones that ignore jamming (the talk's
-     next generation): the longshot's drift is already the first half;
-     a second kind waits for a playtest of the first. Airports and
-     ports as structures. A strategic layer above the match.
-
-### Status
-
-Built 13 October 2026, the same evening (journal 0027): 10a to 10g
-as written, with the numbers in `rules.rs` beside their reasons. Wire
-version 13. Proof so far: seven sim tests, one a row of the table each
-and one per mechanism (`concrete_takes_two_splashes`,
-`structures_need_power_and_serve_their_side`,
-`squad_builds_takes_and_mends_structures`,
-`longshots_cross_the_map_and_bubbles_stop_them`,
-`a_jammer_jams_everyone_and_drifts_a_longshot`,
-`a_data_centre_computes_fire_and_sees_the_air`,
-`an_industrial_map_round_trips`), the world maps' connectivity test,
-an alert test in the window, and the brain's balance proofs reading
-the same to the digit as before the step (no structures on the
-generated island, so no new behaviour there). Sixteen bots, five
-minutes, through the match report: on the industrial island 13
-structures taken, 27 longshots, 21 landed, 9 structures wrecked; on
-the Atlantic map 36 taken, 78 longshots, 43 landed, 20 wrecked, and 5
-of the 12 kills by pillboxes at the chokepoints. The window was driven
-with xdotool on both. **Not proven:** that any of it is fun; the
-numbers are first guesses with reasons, and a playtest moves them.
-
-- [x] 10a industrial ground and concrete
-- [x] 10b structures
-- [x] 10c the longshot
-- [x] 10d the commander's picture. Finished 14 October 2026 (journal
-  0028): the first window run with a structure of the player's under
-  longshots showed no alert, because the wire shows its newest line and
-  a longshot's line overwrote the alert five ticks later, and no
-  ledger, which had not been built. The alert now holds the wire five
-  seconds in red; the WORKS row is the ledger; over eight seats the
-  right column folds the tank lamps away and sets the roster smaller,
-  where at sixteen it had pushed the depots off the bottom. Seen in
-  the window (`guide-alert.png`, `make shoot`).
-- [x] 10e bots
-- [x] 10f industrial maps
-- [x] 10g the world map
-- [x] 10k the works trip (14 October 2026, journal 0030): Atlantic,
-  sixteen bots, five minutes, 12 structures built (6 before: 1 power,
-  4 jammers, 7 workshops). The industrial island still none: probed,
-  the bots get there and the build is ordered, but a structure takes
-  twenty seconds and on 128 tiles a bot is under fire long before
-  that, and the squad comes home. The island is too hot to build on.
-- [x] 10j bots that run an economy (14 October 2026, journal 0029):
-  Atlantic, sixteen bots, five minutes: 2 power plants, 2 jammers, 2
-  workshops built; Europe 1 workshop; the industrial island none (its
-  numbers read as before: the bots are seldom settled at their zone
-  with scrap in reach). The balance proofs read the same to the digit.
-- [x] 10i a bot that builds a jammer (14 October 2026, journal 0028):
-  the first trace jammed 610 of the builder's side's drones to 21 of
-  the enemy's, because the bot launched into its own jammer; with the
-  rule against it, 29 to 71, and 14 hostile longshots pushed off their
-  point. Atlantic, sixteen bots, five minutes: 5 jammers built.
-
-## 11. Commanders: goal modes, fleets, and battle lines
-
-Planned 15 October 2026, from Paul's notes after playing: "I have not
-even been able to take out a pillbox." The numbers allow it (a
-pillbox is 60 health with an 8-tile reach; the direct gun does 45 at
-10), but nothing in the game shows how, and a commander who has to
-drive, aim, fly drones and run a squad at once does none of them well.
-This step makes the tank something a person can *command* as well as
-drive, makes allies a fleet, and moves the numbers toward real
-destructive capability, so that the map grows borders, battle lines,
-and walled bases with gated entrances under guard towers.
-
-What exists already: allies share their picture (`World::visible_to`,
-`spotted_by`: every allied tank and drone is everyone's eyes); the
-longshot crosses the map (10c); an external brain speaks JSON
-(`--brain`, `make schema`); the squad builds pillboxes, walls, roads
-and concrete. What does not: a goal for the tank, a ping, a fleet
-order, a transfer, a way for a pillbox to be fed.
-
-11a. **Goal modes: our own brain** (`treadcore-brain::Commander`).
-     A Brain that drives *the player's own seat* toward a goal, in the
-     window, through the same `step`/`observe` as any bot: no sim
-     change, so no wire change and nothing a replay cannot carry.
-     Modes: **hunt pillboxes** (pick the nearest hostile pillbox, stand
-     off between its reach and the direct gun's, 8.5 to 10 tiles, kill
-     it, send the squad to capture, on to the next); **defend pillbox**
-     (hold beside a chosen pillbox of ours, engage what enters its
-     ring, mend it, keep interceptors up); **defend depot** (the same
-     about a depot, and refuse to leave it to chase); **fortify** (11b
-     around the chosen point); **escort** (follow an ally at four
-     tiles, fight what fights it). Driving by hand takes the tank back
-     at once; `G` cycles the goal, a click chooses its object. *Must
-     not change:* the RuleBot and the Defender, so every balance proof
-     reads the same. *Proof:* `a_commander_takes_a_pillbox` (alone on
-     a map with one hostile pillbox: dead and ours inside 90 s, no
-     armour lost to it), one test per mode, and the window driven by
-     xdotool.
-
-11b. **Fortification patterns: castles.** The squad builds to a plan,
-     not a tile at a time: a pillbox ring (pillboxes 4 to 6 tiles
-     apart, inside each other's 8-tile reach, so each covers the
-     next); a curtain wall on the side facing the nearest enemy, with
-     one **gate**, a two-tile gap the router uses and a pillbox either
-     side of it (the choke point under guard towers); a road from the
-     gate home. A plan is a queue of `Deploy` orders the Commander
-     feeds one at a time, felling forest for the material. *Proof:*
-     a fortified depot after five minutes alone: N pillboxes, a wall
-     with one gap, the gap covered by two pillboxes; and a RuleBot
-     attacker routed through the gate.
-
-11c. **The coordination interface.** A second view of the window
-     (Tab to the map at full size, the frame's command form): allies'
-     tanks and goals, pings, fleet orders. Entering it puts the tank on
-     a defensive goal (defend depot when near one, defend pillbox when
-     near one, else hold and fight), and leaving it gives the wheel
-     back. *Proof:* frames, and a test that the goal switch is the
-     Commander's.
-
-11d. **Pings and fleet orders** (wire change). `Command::Ping { at,
-     kind }` (look here, attack here, defend here, gather here) to
-     allies, on their minimap and newswire with a cue. A fleet order
-     is a ping with a goal attached; an ally whose seat runs the
-     **fleet ally** goal (a Commander mode) answers it: comes to defend,
-     joins the attack, escorts the one who asked. *Proof:* two
-     Commanders, one pings attack on a pillbox, the other arrives and
-     the pillbox falls.
-
-11e. **Shared drones and transfers** (sim change). An ally who opts
-     in (`Command::Share`) lets allies task its drones within limits:
-     retask a recon, ask for an interceptor over a point. The squad
-     carries resources: `PillboyTask::Supply { to }` takes shells or
-     material to an allied tank's squad or to a pillbox (a pillbox
-     fed shells refills at once instead of one every ten seconds).
-     *Proof:* a sim test per transfer; a pillbox under siege fed by an
-     ally outlasts one that is not.
-
-11f. **Real numbers, then ranges.** Re-derive `rules.rs` from real
-     destructive capability at 25 m a tile: a tank gun's direct reach
-     and penetration, an indirect gun's range and splash, an FPV
-     strike's warhead, a loitering munition's range, a jammer's radius,
-     with the source of each beside it (as the step-10 numbers are).
-     Then the bubble and drone ranges tuned by sweep, not by guess:
-     eight seeds a setting through the match report. Real numbers will
-     make the gun outrange a pillbox by far; the pillbox's reach and
-     health move with them so that a walled gate still holds. Longer
-     matches (30 minutes and more) follow from a front that holds.
-     *Must not change:* determinism. *Proof:* the traces, and a
-     playtest. **Open:** whether the real numbers replace the game's or
-     ship beside it as a game type (`--game-type real`).
-
-11g. **Upgrades for commanders.** **Open:** in-match (score buys
-     reach, armour, a bigger bay) or carried between matches. Not
-     designed until Paul says which.
-
-11h. **Pillboxes move; turrets; the ladder** (sim change, wire
-     version 14). Paul, 15 October: "eventually we want to create a
-     turret position with walls by collecting pillboxes, but that only
-     occurs after a base is developed and not under attack. We also
-     have a defend the base, it's under imminent threat, bot." The
-     prior art's builder carried pillboxes; so does the squad now:
-     `PillboyTask::Lift` on a pillbox of the side's own, five seconds;
-     `Pillboys::carrying` holds its health; a Build of a pillbox while
-     carrying sets that one down in five seconds for no material; lost
-     with the squad or the tank, it falls there dead
-     (`PillboxLifted`, `PillboxDropped`). In the brain:
-     `Goal::DefendBase` (a hostile tank within 16 tiles of the base,
-     or a gun of the base hit or firing, is a threat; the tank fights
-     under the base's guns and the squad mends between shots), the
-     turrets (`Plan::add_turrets`: a bastion at each end of the curtain
-     wall, walled on the outside), and `Goal::Auto`, the ladder: defend
-     base, fortify, turrets, hunt, guard, each on or off.
-
-11i. **Build patterns over an area, declared by ping** (Paul, 15
-     October). Two corners of a rectangle and a pattern: clear the
-     area (fell, rubble away) and lay it out again. Patterns: a line
-     of pillboxes at spacing; a **checker** of road and farm tiles
-     with walls interleaved castle fashion, the pillboxes placed so
-     every farm tile is in two pillboxes' reach; the castle (11b) as
-     one pattern among them. A pattern is a *declaration*: pinged on
-     the map to the side (11d's `Ping`, kind `Build`, the rectangle and
-     the pattern), drawn as a ghost on every ally's map, and put in the
-     **fleet's build list**, a queue of declared works per side that
-     any ally's squad (or Commander) may take the next item of. The
-     plan code is brain only (`fortify.rs` generalised to
-     `Pattern::{Line, Checker, Castle}` over a `Rect`); the ping and
-     the shared list are wire. *Proof:* a checker over a 12 by 12
-     rectangle laid by two allied Commanders, every farm tile covered
-     twice; the list shown in the coordination screen.
-
-11j. **The flag: a town and its vision** (sim change). A new
-     emplacement, the **pedestal**, built inside a fort; a flag on
-     it. When the walled area round the pedestal meets the fort's
-     criteria (a closed wall ring but for gates, every gate flanked by
-     two pillboxes of the side, the pedestal inside), the flag flies
-     and the town sees: a vision radius about the pedestal for the
-     side and its allies. This answers a gap the ladder's proof found:
-     a tank sees seven tiles and a pillbox nothing, so a castle cannot
-     see a tank parked three tiles outside its own gate. **Open:** the
-     radius (a recon drone's 12 is the obvious first number), whether
-     the flag can be captured as a pillbox is, and whether the town
-     also restocks like a depot.
-
-Order: 11a first, because 11b, 11c and 11d's fleet ally are all modes
-of it; 11b; 11c; 11d; 11e; 11f last on the numbers, because the modes
-should be played against the numbers they will meet, and the sweep
-wants the modes in the bots too.
-
-- [x] 11a goal modes (the Commander brain), 15 October 2026 (journal
-  0034): `treadcore-brain::commander`, `G` in the window, and the
-  wingman from Paul's brainstorm (`--wingmen N`): the priority order
-  protect the leader, hit what is ahead of it, its pillbox, a depot by
-  it, another ally's fight, regroup; a three-second commitment that
-  only a threat to the leader breaks; a twenty-tile leash; alliances
-  run in the background (ask the leader in every thirty seconds,
-  answer yes to the leader's side and to anyone who has not shot at
-  it); leaving the side unlocked, never forced, by every pillbox and
-  depot held ten seconds. Proof: `a_commander_takes_a_pillbox` (26.9
-  s, two shells, no damage), `a_commander_walks_round_a_wall_to_a_
-  line`, `a_commander_takes_a_neutral_pillbox_without_a_shot`,
-  `a_commander_defends_its_depot`, `a_wingman_covers_its_leader`,
-  `a_wingman_takes_the_pillbox_by_its_leader`, `a_wingman_leaves_only_
-  at_one_hundred_percent`. Still open: the fortify mode (11b), and a
-  wingman in a headless server's seats.
-- [x] 11b fortification patterns, 15 October 2026 (journal 0035):
-  `treadcore-brain::fortify`, `Goal::Fortify`, fifth on `G`. The
-  castle: three pillboxes (two towers flanking the gate, one behind
-  the point, each in the others' reach), a 140-degree curtain wall
-  five tiles out facing the threat with a one- or two-tile gate, a
-  road out through it; learned from the world's answers, forest felled
-  for material. Proof: `the_castle_is_drawn_right` and
-  `a_commander_fortifies_its_depot` (alone on the island, five
-  minutes: 3 of 3 pillboxes, 10 of 10 wall, 4 of 5 road; the way in
-  from the front 12.0 tiles through the gate, 19.9 with it shut). The
-  first gate was three tiles wide and turned nobody (12.0 against
-  12.8). Not yet: concrete for the wall (it takes material twice), and
-  the RuleBot attacking one.
-- [~] 11c the coordination interface, first cut 15 October 2026
-  (journal 0036): Space opens the coordination screen over the map
-  and puts the tank on auto; Space again is the wheel (Stop moved to
-  H). The screen: the ladder's rungs with `[x]`, the one in use, and
-  each condition's word; you and the allies in sight. 1 to 5 turn
-  rungs off and on, G a single goal, a click holds there, Tab folds
-  it. Not yet: allies' goals (they are not in the Observation), pings
-  and fleet orders (11d).
-- [ ] 11d pings and fleet orders
-- [ ] 11e shared drones and transfers
-- [ ] 11f real numbers and tuned ranges; longer matches
-- [ ] 11g upgrades (open)
-- [x] 11h pillboxes move, turrets, defend base and the ladder, 15
-  October 2026 (journal 0036). Proof: `squad_lifts_and_sets_down_a_
-  pillbox` (lifted at 40 health, set down at 40 with no material, a
-  pillbox of theirs refused, one carried falls dead with the tank),
-  `the_castle_is_drawn_right` (the turrets spaced and each in two
-  guns' reach), `a_commander_defends_its_base` (a tank parked 12
-  tiles out is beyond DefendDepot's leash and inside the base's
-  alarm: five hits, killed, the hurt pillbox mended),
-  `a_commander_climbs_the_ladder` (alone: fortify to 338 s, then the
-  two outlying pillboxes lifted and set down in both turrets by 403
-  s, and an intruder in the gate puts it on defend base the same
-  tick). The finding on the way: an intruder three tiles outside the
-  gate was seen by nobody and shot by nobody (walls block both ways),
-  hence 11j. The same day, after Paul's "can we start a game with ...
-  3 teams of base building, 5 on each, and 1 random aggro bot":
-  `treadcore-brain::fleet` and `--fleets` (roles leader, builder,
-  guard, ranger, wing; the base shared through `Commander::
-  base_owner`), the fleet on the coordination screen through
-  `Brain::status`, and allied squads capturing together
-  (`allied_squads_do_not_contest`; before it two rangers of a team
-  stood on one pillbox for two minutes). `three_fleets_build`
-  (ignored, by hand): ten minutes, 16 seats, every team 3 to 6
-  pillboxes at its base. Also from the window: the plan lost Built
-  events when the window drew one frame for several ticks (the pilot
-  now hears every tick's, `View::unthought`, and an order out when
-  the squad is home counts as done); a turret on forest, a wall tile
-  that could not be felled with the material full, and a firing point
-  on water each stalled the ladder; the gun asked through its own wall
-  twenty times a second.
-  Then, simulating fleet matches to the end (Paul: "continue a
-  simulation"): with no time limit the survivors of three leaderless
-  teams stood guard for thirty minutes, and a side on auto held its
-  first three depots for good. The ladder gained **expand** (depots,
-  their guards first, then far pillboxes); allied tanks on a depot no
-  longer contest it (`allied_tanks_share_a_depot`; two on their own
-  depot had not even resupplied); a leaderless wingman or guard takes
-  command on Auto; a tank under unseen fire scoots, puts its recon on
-  the shells' origin (`Shell::from`) and fires back
-  (`a_commander_scoots_from_unseen_fire`: 3.0 tiles in two seconds,
-  the gun seen, two shells back). `a_fleet_match_plays_out`: decided
-  at 905 s. Seven seeds: every match decided, between 502 and 926 s;
-  seat 0's team (builder, guard, two wingmen) won five, team 1 two.
+# Roadmap
+
+Where treadcore is going, set out as goals. Each goal says what the
+game should be when it is met, what already meets it, and the steps
+still between here and there; each step says what it changes, what it
+must not change, and how it is proven. The constraint under all of it
+is unchanged: the simulation stays headless and deterministic, and
+every layer above it drives it through `step` and `observe`.
+
+Rewritten 18 October 2026. Steps 0 to 11 as they ran, with every proof
+and finding, are kept word for word in `ROADMAP-STEPS-0-11.md`; the
+journal and the changelog cite those step numbers, and they keep their
+meaning. The brain work of goal 4 is designed in `LAB-REPORT-BRAIN.md`,
+and in the shared document it was drafted in,
+[Treadcore: Status Update & Brain AI Lab Report](https://claude.ai/code/artifact/97f399bf-9abe-4094-a060-6a9666f273bd);
+section numbers below (LR 5, LR 6.2) are that report's.
+
+| Goal | What it means | State |
+| --- | --- | --- |
+| 1. One world, many machines | playable, editable, networked, programmable: the prior art's idea on today's network | met (steps 0 to 9) |
+| 2. The battlefield the war made | indirect fire, drones over every tank, industry under drones | met (step 10) |
+| 3. Command, not only driving | goal modes, fleets, castles, pillboxes that move, a coordination screen | half met (step 11) |
+| 4. Bots that think as a team | one tunable decision pattern on shared memory, cheap enough to run sixteen | planned (step 12) |
+| 5. Longer, truer matches | real numbers, upgrades, towns that see, matches past sixteen minutes | open (11f, 11g, 11j) |
+| 6. In players' hands | packages, a release, two real routers | waiting (Actions paused since 13 October) |
+
+
+## Goal 1. One world, many machines (met)
+
+A world that is at once playable, editable, networked and
+programmable, as the prior art's was, without its ring: a
+deterministic simulation (step 1, the replay; step 2, the world hash),
+sixteen seats (0b), the Pillboys (3) and what they build (6c), maps
+and their editor (5), teams, alliances and proposals (6, 6b), the
+defender brain (6d), prediction (4), play across the Internet (7), the
+headless server (8), sound, art and packages (9).
+
+Still open from it: 7's and 8's proof across two real routers and two
+machines, and a listening session for the sound.
+
+
+## Goal 2. The battlefield the war made (met)
+
+The tank as artillery with a drone crew: indirect fire, the bubble,
+recon, strike and longshot drones, jammers, the works and industry
+under drones (step 10, 10a to 10k). Met on 14 October; balance
+continues through goal 5.
+
+
+## Goal 3. Command, not only driving (half met)
+
+A person commands a tank as well as drives it, allies are a fleet, and
+the map grows walled bases with gates under guard towers.
+
+Met: 11a goal modes (the Commander), 11b castles, 11h pillboxes that
+move, turrets, defend base and the Auto ladder; and on 17 October,
+rotation, the yard, boats, bridges and island hops, fleet commanders
+with Lanchester odds, down and revived (wire version 16).
+
+Steps left:
+
+- [~] 11c the coordination screen. Not yet: allies' goals, which are
+  not in the Observation. Goal 4's team board (12e) gives them a home.
+- [~] 11d pings and fleet orders. Pings, dodging, kiting and the
+  leader's ping as the fleet's order shipped on 17 October
+  (CHANGELOG); left: orders from the coordination screen.
+- [ ] 11e shared drones and transfers; a starved plan asks its rangers
+  for material (journal 0036). 12f's job board carries the transfer.
 - [ ] 11i build patterns over an area, declared by ping; the fleet's
-  build list
-- [ ] 11j the flag and the town's vision
+  build list. 12f's base cycle is the bots' half of it.
+
+
+## Goal 4. Bots that think as a team (step 12, planned)
+
+Bots that decide together, on one picture of the map, by one weighted
+pattern a person can read, switch off in parts and tune with sliders;
+that hold to a decision until it is confirmed, except to dodge or
+retreat; that build economies, roads, forts and front lines; and that
+cost little enough for sixteen at 4x game speed. The case for it is
+`LAB-REPORT-BRAIN.md`. In short (LR 2): today's brain is a stack of
+first-match ladders with 22 weights, all in combat; each tank decides
+alone on a full copy of the world twenty times a second; the team
+shares nothing but one-tick events.
+
+Rules for every part of step 12:
+
+- Each part lands behind a bit of `Caps`, off until its census says
+  on, so the brain of 17 October stays the baseline and every balance
+  proof reads the same until a part is promoted.
+- *Must not change:* the sim's rules, the wire (version 16), the
+  replay. The brain is above `observe`; where 12b touches `observe`
+  itself, the world hash and every sim test must be unchanged.
+- A part becomes the default only by beating the baseline over the
+  fixed census (the ignored `quad_census`, `three_fleets_build`, the
+  fleet match over seven seeds), as rotation was promoted on kills 249
+  to 260, or by Paul's choice, as `castle_cap` was (18 October). The
+  census is read paired: the trial against a null run (the default on
+  every team) on the same seeds, because the trial team's seats are
+  not even (LR 12: the null run's trial team scored 12.66 against
+  6.44).
+- `make test` green at every commit.
+- Every either/or is a scalar (Paul, 18 October: "should it x or y, we
+  choose a scalar of how much x, and how much y is weighted"). Where a
+  design question asks "x or y", the answer is a weight in `Settings`
+  that blends them, its default the choice made today, and the ledger
+  and the tuner (12g) say where it should sit. A question that cannot
+  be blended (a count, a yes or no) is a weight rounded or thresholded,
+  said so in its doc line.
+
+### 12a. Measure (LR 5, "Measure first")
+
+*Change:* `treadcore-brain::meter`: per-layer counters (thinks, Moves
+issued, A* routes asked for, crossing searches, plan clones) gathered
+by every brain and printed by the census tests; a microseconds-per-bot
+figure from `std::time::Instant` in the ignored census only, never in
+a test that asserts. *Proof:* the baseline census written into the
+journal before 12b lands, and again after each part.
+
+### 12b. Memory (LR 5; findings L2, L3, L4, L6)
+
+*Change:*
+- `MapFacts`: islands labelled once per map (a flood fill, `u16` per
+  tile), area, forest count and shore length per island, refreshed
+  when trees fall; the crossing cache keyed by from-tile and to-tile,
+  failures included, so `Map::crossing` is asked once per pair a minute
+  instead of four times a second.
+- The plan answers `turret_slot` and `yard_left` without a clone.
+- Given-up lists (`given_up`, `depots_given_up`, `revive_failed`,
+  Hop's `bad_*` and `no_bridge`, the fleet's `fails`) expire, so a
+  target is retried after a while: `brain::memory::Forget<T>`, a small
+  ring with expiry ticks.
+- The Tactician's reasons and the ladder's `why` built only when the
+  screen asks (`Brain::status`), not every think.
+- Later in the step: the Observation shared per team per tick instead
+  of copied per bot (the one change that touches the sim; the hash
+  must not move).
+
+*Proof:* the counters of 12a fall (crossing searches per minute, plan
+clones to zero); every existing brain test passes unchanged; the
+census reads the same within noise.
+
+### 12c. Weights and Caps (LR 4)
+
+*Change:* `brain::weights`: `Weights`, a flat `[f32; N]` named by a
+`W` enum, with defaults equal to today's constants; `Caps`, a `u64` of
+capability bits; response curves (linear, quadratic, logistic) with
+their parameters in `Weights`; the geometric-mean scorer with the
+commitment bonus. `Tactics` reads its 22 weights from `Weights`.
+Loaded from a TOML file (`--weights FILE`), shown and set from the
+coordination screen. *Must not change:* behaviour, at the defaults.
+*Proof:* `default_weights_are_todays_constants`; the census at the
+defaults equal to 12b's.
+
+### 12d. Intent and smoothing (LR 7)
+
+*Change:* `brain::intent`: the held intent replayed between thinks;
+desire vectors for the move and the advance (alpha 0.4, beta 0.3);
+confirmation with hysteresis (beat by h = 0.15 for n = 2 thinks, 3 for
+a turret target; commitment m = 0.1); the survival bypass for dodge
+and retreat; one resupply threshold for the Commander and its
+doctrine. *Proof:* `a_challenger_needs_two_thinks`,
+`a_dodge_skips_confirmation`, `the_turret_holds_between_equal_targets`;
+Moves issued per minute down in the census, kills not down.
+
+### 12e. The team board and the team brain (LR 5, LR 9)
+
+*Change:* `brain::board::TeamBoard`, one per team, rebuilt at 1 Hz:
+16 x 16 sector grids (influence, territory, forest left, supply
+distance), a job board of persistent jobs (replacing the one-tick
+`Requested` as the record; the event stays as the signal), the
+defence-point roster, allies' goals for 11c. Postures (Economy,
+Fortify, Connect, Expand, Defend) scored at the team level; rotation
+across the team (swap a hurt tank at a hot point for a fresh one at a
+cold point when the gap is over 0.3). *Proof:* `the_front_is_where_
+influence_crosses_zero`, `a_hurt_tank_swaps_out`, a missed `Requested`
+event no longer loses its job.
+
+### 12f. Behaviours (LR 6)
+
+*Change:*
+- 12f1 the base cycle: fill, one item, one improvement, connect by
+  road, escort a pillbox home along it (LR 6.1).
+- 12f2 islands: a small island's base site penalised by its forest
+  and area; crossings priced, `C_bridge(L) = L (1 + s) + k (L - 6)^2`
+  against `C_boat = 5 (1 + s) + 3`; bridges of 6 or fewer preferred,
+  20 the cap; part-laid bridges finished as board jobs (LR 6.2).
+- 12f3 column on a bridge: the leader straight at full speed, slots in
+  file two tiles apart, the wedge back two tiles past the end (LR 6.3).
+
+*Proof:* `a_small_island_takes_a_boat`, `a_short_gap_takes_a_bridge`,
+`a_fleet_crosses_a_bridge_in_file`, `a_full_tank_gives_the_base_an_
+item`, `a_road_reaches_the_next_base`; the census: bridges finished
+over started up, starved-seconds down.
+
+### 12g. The ledger and the tuner (LR 8)
+
+*Change:* every match writes one JSON line per seat to
+`reports/ledger/`: the genome (weights, caps, seed, role, parent) and
+the result (won, kills, deaths, revives, territory-seconds, items
+built, road tiles, bridges finished and started, pillboxes hauled,
+time to the first castle, starved-seconds). `scripts/tune.sh`: a
+(1 + lambda) evolution strategy over the census on fixed seeds, a
+hall of fame of 16 per role rated by TrueSkill's mu - 3 sigma, the
+promotion rule above. Role sets are genomes too, so the fair fleet
+start (seat 0's team won five of seven, journal 0036) is measured.
+*Proof:* a ledger line reproduces its match from the replay; one
+tuning generation runs by hand.
+
+### 12h. The answers as scalars, and pillboxes that connect (LR 10)
+
+Paul's answers of 18 October to the report's open questions, each a
+weight (the defaults are his answers):
+
+| Question | Weight | Default | 0 means | 1 (or more) means |
+| --- | --- | --- | --- | --- |
+| The improvement slot before 11g: mend, mines or works? | `w_mend`, `w_mine`, `w_works`; `upgrade_vs_mend` | 1, 0.5, 0.5; 0.5 | that kind never | that kind as often as the others; `upgrade_vs_mend` 1 spends the slot on 11g's upgrades once they exist |
+| A hauled pillbox: the castle or the road? | `castle_inside`, `castle_road` (counts); `post_spacing`, `posts_max` | 2, 1; 10 tiles, 4 | no pillbox inside / on the road | the castle holds this many inside and this many outside on its road, then pillboxes go to posts along the roads between bases |
+| Posts at junctions? | `junction_clear` | 3 tiles | posts may sit on a junction | no post this near a road junction; posts sit beside the road, never on it |
+| Road out to a pillbox or to a base? | `connect_bases` | 0.75 | the nearest of either | a base or castle preferred, its distance counted at a quarter |
+| The score: elimination or holding ground? | `long_game` | 0.5 | the win and kills (short matches) | holdings over time (long matches) |
+| The same roles for every team? | `assist` | 1 | a person's team dealt as a bots' team | a person's team gets a builder (thresholded at 0.5) |
+| Sliders for players or the host? | (not a blend) | | | the host's `--weights` file is every bot's default; a player's sliders on the coordination screen change only their own team's bots |
+
+The castle rule (Paul: "we in general want to move the pillboxes near
+the castle, but we also stop filling the castle once it has ... 2 on
+the inside, 1 on the outside along the road. They need to not stick at
+junctions but connect bases and castles"), capability `castle_cap`:
+the castle is drawn with `castle_inside` pillboxes inside its wall (the
+gate's two towers first, then the rear) and `castle_road` slots outside
+along its road; no bastions. Once those stand, the turrets rung carries
+outlying pillboxes to road posts: every `post_spacing` tiles on the line
+from the base to each other friendly base or castle, beside the road,
+`junction_clear` tiles from any junction, at most `posts_max`, so the
+roads between bases are covered end to end and no pillbox stands where
+roads meet. *Proof:* `the_capped_castle_has_two_inside_one_on_the_road`,
+`posts_line_the_road_and_keep_off_junctions`.
+
+Order: 12a, 12b, 12c, then 12d and 12e (independent), then 12f, then
+12g. 12a to 12d are one journal entry's work or two; 12e and 12f
+two or three each.
+
+Status, 18 October 2026 (journal 0037). Every part is built, tested and
+off by default; none is promoted, because three seeds of the census
+cannot yet tell a part from the dice (baseline against baseline: 13.95
+to 8.93 a seat).
+
+- [x] 12a measure: `meter`, printed by `brain_census` and `quad_census`;
+  28 us a seat-tick on naval.map.
+- [~] 12b memory: the plan copy gone (`Plan::turret_preview`), crossings
+  cached with their failures (`facts::MapFacts`), reasons built for the
+  winner only, given-up lists that can expire (`memory::Forget`,
+  `forget`). Not yet: the Observation shared per team (the sim change),
+  the `why` and `doing` strings as codes.
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h),
+  `--weights FILE` in the window, `default_weights_are_todays_constants`.
+  Not yet: sliders on the coordination screen.
+- [~] 12d intent and smoothing (`smooth`): the desire vector in `go`,
+  the turret's confirmation, one resupply threshold;
+  `a_challenger_needs_two_thinks`, `a_dodge_skips_confirmation`. Not
+  yet: confirmation for the ladder's rungs and the wingman's tasks, a
+  dodge for direct fire.
+- [x] 12e the team board (`board`, `team_rotate`):
+  `the_front_is_where_influence_crosses_zero`, `a_hurt_tank_swaps_out`,
+  `a_missed_job_is_still_on_the_board`. Not yet: allies' goals shown on
+  the coordination screen.
+- [~] 12f behaviours: the base cycle (`cycle`,
+  `a_full_tank_gives_the_base_an_item`), priced crossings and the island
+  site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`),
+  the column (`column`, `a_fleet_crosses_a_bridge_in_file`). Not yet:
+  the escort that brings a pillbox home along the new road (the crews'
+  `Haul` carries pillboxes, but not yet along the road), bridge jobs on
+  the board.
+- [x] 12g the ledger and the tuner: `brain_census`, `ledger_ratings`,
+  `make tune`. Not yet: a tuning run long enough to promote anything.
+- [x] 12h the answers as scalars, the same day: the weights of the
+  table above, `castle_cap` (`Plan::castle_capped`, road slots in place
+  of bastions, `Plan::add_posts`, `Cycle::road_posts`), the improvement
+  by weight (`Cycle::improvement`: mend, a mine on the approach, works),
+  `connect_bases` in the road out, `assist` in the roles,
+  `ScoreWeights::from_long_game`. Proof:
+  `the_capped_castle_has_two_inside_one_on_the_road`,
+  `posts_line_the_road_and_keep_off_junctions`,
+  `the_improvement_goes_by_its_weights`,
+  `a_capped_castle_fills_then_lines_the_road` (alone: the castle up with
+  two inside, the road slot and a post toward the second depot filled
+  by 371 s). Not yet: `upgrade_vs_mend` has no upgrades to weigh until
+  11g; the sliders.
+- [x] `castle_cap` the default, 18 October (Paul's choice; LR 12): the
+  old castle one bit away (`-castle_cap`), its two proofs kept with the
+  bit off. Paired against the null run, the old castle scored 0.96 a
+  seat less over six naval seeds, inside the noise.
+
+Next: the census at twelve seeds or more for each capability alone,
+then `make tune` on the ones that pay.
+
+
+## Goal 5. Longer, truer matches (open)
+
+Matches end today in eight to sixteen minutes by elimination; Paul
+asked for longer ones. Steps:
+
+- [ ] 11f real numbers and tuned ranges. Open: replace the game's
+  numbers, or ship them as `--game-type real`.
+- [ ] 11g upgrades, designed 18 October (Paul: "think of more base
+  upgrades and ways for users to purchase them"). In-match, bought for
+  **supply**, a new count a side earns from what it holds (each
+  pillbox and depot a little a minute, the ledger's `held_s` made a
+  currency) and from kills, and installed by the squad at the base
+  for material, as a structure is. A rules and wire change, so a
+  proposal first (GOVERNANCE.md section 5), then a sim step of its
+  own. The proposal is written: `PROPOSAL-UPGRADES.md` (18 October:
+  supply's earning rates, sixteen upgrades with prices, `Command::Buy`
+  and `PillboyTask::Install`, wire version 17, the proofs and the
+  traces it needs); next, posted for its seven days, and the two traces
+  of its section 6.
+
+  | Upgrade | Levels | What it does | Bought |
+  | --- | --- | --- | --- |
+  | Hardened walls | 1 | the castle's wall tiles become concrete | supply + 1 material a tile |
+  | Pillbox calibre | 2 | the base's pillboxes reach 9, then 10 tiles | supply |
+  | Pillbox plating | 2 | the base's pillboxes 75, then 90 health | supply |
+  | Watchtower | 1 | 11j's flag: the town sees 12 tiles round the pedestal | supply + material |
+  | Radar mast | 1 | the base's alarm at 24 tiles, not 16; incoming shells shown | supply |
+  | Gatehouse | 1 | the gate opens for the side and shuts for the rest | supply + material |
+  | Depot stores | 2 | the depot refills faster and holds more material | supply |
+  | Yard workshop | 1 | pillboxes and walls inside the wall mend slowly | supply + material (a workshop on the yard) |
+  | Minefield | 1 | the squad lays the moat's mines for half price | supply |
+  | Dock | 1 | boats at the base cost 3 material, not 5; a launch site by the wall | supply + material |
+  | Bridge works | 1 | bridge tiles next to the side's roads cost half | supply |
+  | Supply road | 1 | the side's tanks drive faster on its own roads | supply |
+  | Tank: plating, bay, squad, hopper | 2 each | armour 100 to 120; one more drone of each; a fifth Pillboy; material 8 to 12 | supply, at a depot |
+
+  Ways to buy: at any depot of the side, from the coordination screen's
+  works tab (`Command::Buy`, validated by the world: cost, place, the
+  level before); a fleet commander's bot buys for its team by the
+  improvement slot (`upgrade_vs_mend`), by utility, the team's posture
+  leaning it (Defend: plating and calibre; Connect: roads, bridge
+  works, the dock; Economy: stores); a person's ally can pool supply
+  with them (11e's transfers). Not carried between matches; a veteran's
+  list across matches is a later question.
+- [ ] 11j the flag and the town's vision (a pedestal that gives a
+  walled town sight; the radius open).
+- [ ] The match score of 12g weighted toward territory held over time,
+  if longer matches are the goal.
+
+
+## Goal 6. In players' hands (waiting)
+
+0.1.0-rc.6 is the last candidate; it speaks wire version 12 and cannot
+meet today's builds. GitHub Actions are paused since 13 October: no
+`v*` tag and no workflow run until Paul lifts the pause. Then: rc.7 on
+wire 16, tagged on day 0 and published on day 1 or later (`DEPLOY.md`);
+PROTOCOL.md brought to wire version 16 first.
+
+
+## Backlog
+
+Proposals in waiting, each with the goal it serves. New items go at
+the end with a date.
+
+1. Fair fleet start: deal every team the same roles (journal 0036,
+   seat 0's team won five of seven). Goal 4, measured by 12g.
+2. A boat on naval.map at (61,102) keeps choosing (60,102) and sails
+   in place (CHANGELOG, Unreleased). Goal 4, 12f2.
+3. Most bridges left part-laid; the road on from a bridge about a tile
+   a match. Goal 4, 12f2.
+4. Revives fell from 113 to 63 over a census (CHANGELOG). Goal 4.
+5. Kiting even at best; plain RuleBot kiting tried and off. Goal 4,
+   12c then 12g.
+6. The RuleBot attacking a castle, unproved (journal 0036). Goal 3.
+7. A wingman in a headless server's seats (journal 0034). Goal 3.
+8. Direct fire is never dodged before it lands (LR 2). Goal 4, 12d.
+9. A Hunt target given up after twelve bearings is given up for good
+   (LR 2). Goal 4, 12b.
+10. `partial_cmp().unwrap()` in the brain panics on a NaN (LR 2).
+    Goal 4, 12b.
+11. PROTOCOL.md says wire version 14; the source is at 16. Goal 6.
+12. `make test` not recorded since 17 October's commits (journal 0036
+    has the last). Goal 4, 12a. Recorded again 18 October: brain 34
+    passed, 6 ignored before step 12; journal 0037 has the run after.
+13. The open questions of LR 10, answered 18 October as scalars (12h):
+    the improvement slot (`w_mend`, `w_mine`, `w_works`,
+    `upgrade_vs_mend`); the castle holds 2 inside and 1 on its road,
+    then pillboxes go to posts along the roads between bases, never at
+    junctions (`castle_cap`, `castle_inside`, `castle_road`,
+    `post_spacing`, `posts_max`, `junction_clear`); road toward bases
+    first (`connect_bases`); the score between elimination and holdings
+    (`long_game`); the builder for a person's team (`assist`); sliders
+    for the host's file and each player's own team.
+14. Upgrades and the ways to buy them (11g), designed 18 October; the
+    proposal written the same evening (`PROPOSAL-UPGRADES.md`). Left:
+    post it for the seven days, run its two traces, then the sim step.
+    Goal 5.
+15. The sliders on the coordination screen, one per weight, for the
+    player's own team (12c, 12h). Goal 4.
+16. The census's trial team draws better seats than the rest on the
+    fixed seeds (LR 12: 12.66 against 6.44 with every team the same).
+    Read it paired against a null run; better, deal the trial team
+    every start on every seed (three times the matches). Goal 4, 12g.
+    Added 18 October.
+
 
 ## Sequencing
 
 ```
-0 prove ── 0b sixteen ─┬─ 1 replay ── 2 hash ─┬─ 4 prediction
-                       │                      └─ 7 internet ── 8 service
-                       └─ 3 pillboys ── 6c material ── 5 maps ── 6 teams ── 6b proposals ── 6d defender
-                                                                                              └─ 9 sound/art/dist
-
-Done through 6b on 12 October 2026 (journals 0002 to 0008); the backlog
-worked through, 6d and 4 done on 13 October (journals 0009 to 0011);
-7 built and proven on one machine the same day (journal 0012); 8
-likewise (journal 0022); 9 the same evening (journal 0023); 10,
-the economy under drones, that night (journal 0027); 10i and
-PLAYABILITY item 9 the next day (journal 0028). Next: 7's
-and 8's proof across two routers when a second machine is on the
-table, and a listening session for the sound.
-
+goal 1 (0 to 9) ── goal 2 (10) ── goal 3 (11a 11b 11h; 11c 11d 11e 11i left)
+                                      │
+                                      └── goal 4: 12a ── 12b ── 12c ─┬─ 12d ─┬─ 12f ── 12g ── 12h
+                                                                     └─ 12e ─┘
+goal 5 (11f 11g 11j) after 12c, so the numbers are tuned with the weights
+goal 6 when the Actions pause lifts
 ```
-
-Two tracks after step 0, independent until step 6, which wants both
-the hash (for team-shared prediction) and the maps (for a balanced
-layout of sixteen). The defender brain comes last on its track because
-it needs everything it defends with. Each step is one journal entry's
-work, or two.
-

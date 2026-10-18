@@ -1,0 +1,89 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 18 Oct 2026 21:00:00 -0700
+Subject: [JOURNAL 0038] The capped castle by default, and a biased census
+Message-ID: <0038.20261018@treadcore.org>
+In-Reply-To: <0037.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: castle, fortify, capabilities, census, null run, roadmap 12h
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair, working one step at a time. Paul: "make
+           castle_cap the default and write the upgrades proposal.
+           keep the backlog and roadmap updated. each step write a lab
+           report and document this transition."
+X-Commits: none yet; the work is in the tree
+
+           THE CAPPED CASTLE BY DEFAULT, AND A BIASED CENSUS
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    The castle of roadmap 12h (two pillboxes inside the wall, one
+    outside beside its road, then posts along the roads to the side's
+    other bases) is now every Commander's castle; the castle of 11b and
+    11h is one capability bit away. Its two proofs were kept with the
+    bit off; brain tests 55 passed. Measuring the change found a flaw
+    in the census: with every team on the same settings, the team in
+    the trial seat scored 12.66 a seat against 6.44, because the fixed
+    seeds deal it the better starts. Read paired against that null
+    run, the old castle scored 0.96 a seat less than the capped one:
+    no measurable cost.
+
+INDEX TERMS
+
+    capability flags, paired comparison, null run, fortification.
+
+
+I. INTRODUCTION
+
+    Journal 0037 built the capped castle behind `castle_cap`, off by
+    default under the rule that a census promotes a part. Paul chose to
+    make it the default. This entry is that transition and what the
+    measurement of it showed.
+
+II. METHOD
+
+    1. `CASTLE_CAP` on in `Caps::BASELINE` (weights.rs).
+    2. The two proofs of the old castle, `a_commander_fortifies_its_depot`
+       (three towers) and `a_commander_climbs_the_ladder` (two bastions),
+       given the old castle explicitly (`bastions()`: the default less
+       the bit).
+    3. The census learned `-name` in `CENSUS_CAPS`. Two runs on
+       naval.map, six seeds of 900 s, respawns 3: the old castle as the
+       trial, and the default against itself (the null run).
+
+III. RESULTS
+
+        run                     trial team   baseline teams
+        null (default x 3)         12.66          6.44
+        old castle, trial          11.70          7.67
+
+    Trial a seat by seed, null: 6.39, 13.35, 12.51, 21.01, 11.54,
+    11.15; old castle: 6.96, 11.84, 10.48, 14.87, 21.58, 4.45.
+
+IV. DISCUSSION
+
+    The null run should have read even and read six points apart: the
+    trial team's starts are better on these seeds. Every earlier census
+    figure of the form "trial against baseline" carries that bias; the
+    tuner's fitness does too, but evenly across its children, so its
+    ranking holds. The rule in ROADMAP goal 4 now reads the census
+    paired, and backlog item 16 asks for the cure: every team in the
+    trial seat on every seed.
+
+V. OPEN PROBLEMS
+
+    1. Deal the trial team every start on every seed (backlog 16).
+    2. The first seed's castles finish after 900 s under either rule:
+       longer matches (goal 5) will show the cap's effect better.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

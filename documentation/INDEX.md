@@ -492,11 +492,14 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/CONCEPT.md | the brief, line by line; the prior art as the base; what the war changed |
 | documentation/DESIGN.md | the rules and the numbers, and why; "what is not here yet" |
 | documentation/PROTOCOL.md | the wire protocol, the election, the relay, prediction |
-| documentation/ROADMAP.md | the steps in dependency order with Change / Must not change / Proof; the backlog |
+| documentation/ROADMAP.md | the goals, the steps under each with Change / Must not change / Proof, and the backlog |
+| documentation/ROADMAP-STEPS-0-11.md | the roadmap as it ran to 18 October 2026: steps 0 to 11 in full, the record the journal cites |
 | documentation/RESEARCH.md | what the game is modelled on, with sources |
 | documentation/BUILD.md | the build on a small machine; `make warm` |
 | documentation/MAPS.md | the map file format; converting prior-art maps |
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
+| documentation/LAB-REPORT-BRAIN.md | the bot AI as of 18 October 2026, the research it was reviewed against, and the step 12 design |
+| documentation/PROPOSAL-UPGRADES.md | the proposal for roadmap 11g: supply, sixteen upgrades and how they are bought (18 October 2026) |
 | documentation/LAB-REPORT-PILLBOYS.md | the Pillboy requirement audited against the prior art's builder |
 | documentation/LAB-REPORT-PLAYTEST.md | the first playtest build, 13 October 2026: the driver and the stack, a solo and a three-client match with frames, the multiclient end to end, nine findings |
 | documentation/INTERFACE.md | the interface study: Bolo, a garage screen, the HUD graphics; treadcore's layout drawn from them, built the same day |

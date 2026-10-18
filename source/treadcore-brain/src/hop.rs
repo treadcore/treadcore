@@ -103,15 +103,15 @@ pub struct Hop {
     last_order: Tick,
     /// Targets given up on, and launch sites the world refused.
     tried: Vec<((i32, i32), Tick)>,
-    bad_launch: Vec<(i32, i32)>,
+    bad_launch: crate::memory::Forget<(i32, i32)>,
     /// The depot driven to for material, and depots the world refused
     /// a drive to (over the water).
     restock: Option<V2>,
     /// The moored boat walked to, since when; and boats given up on
     /// (refused, over the water, or not reached in `BOAT_FOR`).
     boarding: Option<(EntityId, V2, Tick)>,
-    bad_boat: Vec<EntityId>,
-    bad_depot: Vec<(i32, i32)>,
+    bad_boat: crate::memory::Forget<EntityId>,
+    bad_depot: crate::memory::Forget<(i32, i32)>,
     /// The world refused a launch from here: the squad builds instead
     /// until then.
     no_embark_until: Tick,
@@ -132,7 +132,7 @@ pub struct Hop {
     /// The bridge being laid; targets whose bridge was given up (by boat
     /// for those); the road on from a bridge, being laid.
     bridge: Option<Bridge>,
-    no_bridge: Vec<(i32, i32)>,
+    no_bridge: crate::memory::Forget<(i32, i32)>,
     road: Option<Vec<V2>>,
     /// The road on's tiles left, and since when (`ROAD_STALL`).
     road_progress: Option<(usize, Tick)>,
@@ -146,6 +146,12 @@ pub struct Hop {
     pub helpers: usize,
     /// What it is doing, for `status`.
     pub doing: String,
+    /// Crossings asked of the map, kept, failures too (facts.rs,
+    /// roadmap 12b); the islands, for pricing a crossing.
+    pub facts: crate::facts::MapFacts,
+    /// Price a crossing, boat against bridge (roadmap 12f2); None
+    /// bridges every gap of `BRIDGE_MAX` or less, as before.
+    pub pricing: Option<crate::weights::Settings>,
 }
 
 impl Hop {
@@ -196,6 +202,14 @@ impl Hop {
     /// Given up on lately (`TRIED_FOR`).
     pub fn given_up(&self, at: V2) -> bool {
         self.tried.iter().any(|(t, _)| *t == at.tile())
+    }
+
+    /// How long what it gave up on stays given up (memory.rs).
+    pub fn set_forget(&mut self, keep: Tick) {
+        self.bad_launch.keep = keep;
+        self.bad_boat.keep = keep;
+        self.bad_depot.keep = keep;
+        self.no_bridge.keep = keep;
     }
 
     pub fn sent(&self) -> bool {
@@ -250,7 +264,7 @@ impl Hop {
         // wait counted as progress. Fetching material takes longer.
         let limit = if me.pillboys.material < ROAD_COST { BRIDGE_STALL * 2.0 } else { BRIDGE_STALL };
         if obs.tick.saturating_sub(b.progress) as f32 * DT > limit || b.fails >= 3 {
-            self.no_bridge.push(target.tile());
+            self.no_bridge.put(target.tile(), obs.tick);
             self.bridge = None;
             self.doing = format!("bridge to ({:.0},{:.0}) given up: by boat", target.x, target.y);
             return None;
@@ -263,7 +277,7 @@ impl Hop {
             return Some(cmds);
         }
         if squad.strength == 0 {
-            self.no_bridge.push(target.tile());
+            self.no_bridge.put(target.tile(), obs.tick);
             self.bridge = None;
             return None;
         }
@@ -283,7 +297,7 @@ impl Hop {
                     (None, Some(d)) if me.pos.dist(d) > DEPOT_RADIUS * 0.5 => cmds.push(Command::Move { to: d }),
                     (None, Some(_)) => {}
                     (None, None) => {
-                        self.no_bridge.push(target.tile());
+                        self.no_bridge.put(target.tile(), obs.tick);
                         self.bridge = None;
                         return None;
                     }
@@ -476,16 +490,18 @@ impl Hop {
                         self.by_sea = true;
                     }
                 }
-                Event::Rejected { player, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Boat, at } }, .. } if *player == obs.player => self.bad_launch.push(at.tile()),
+                Event::Rejected { player, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Boat, at } }, .. } if *player == obs.player => self.bad_launch.put(at.tile(), obs.tick),
                 Event::Rejected { player, cmd: Command::Move { to }, .. } if *player == obs.player && self.restock.map(|d| d.tile() == to.tile()).unwrap_or(false) => {
-                    self.bad_depot.push(to.tile());
+                    self.bad_depot.put(to.tile(), obs.tick);
                     self.restock = None;
                 }
                 Event::Rejected { player, cmd: Command::Move { to }, .. } if *player == obs.player && self.banking.map(|(_, b, _)| b.tile() == to.tile()).unwrap_or(false) => {
                     self.bad_bank.extend(self.banking.take().map(|(s, _, _)| s.tile()));
                 }
                 Event::Rejected { player, cmd: Command::Move { to }, .. } if *player == obs.player && self.boarding.map(|(_, at, _)| at.tile() == to.tile()).unwrap_or(false) => {
-                    self.bad_boat.extend(self.boarding.take().map(|(id, _, _)| id));
+                    if let Some((id, _, _)) = self.boarding.take() {
+                        self.bad_boat.put(id, obs.tick);
+                    }
                 }
                 Event::Boarded { owner, .. } if *owner == obs.player => {
                     self.boats += 1;
@@ -604,10 +620,27 @@ impl Hop {
         // the map, a crossing of `BRIDGE_MAX` water tiles or fewer is
         // bridged by the squad, a tile at a time from the bank.
         if let Some(map) = map {
-            if self.bridge.is_none() && !self.no_bridges && !self.no_bridge.contains(&target.tile()) {
+            if self.bridge.is_none() && !self.no_bridges && !self.no_bridge.has(&target.tile(), obs.tick) {
                 // Nothing is built beside a depot: no bridge through there.
                 let by_depot = |p: V2| obs.depots.iter().any(|d| d.pos.dist(p) <= DEPOT_RADIUS + 0.5);
-                if let Some(tiles) = map.crossing(me.pos, target, BRIDGE_MAX, by_depot).filter(|t| !t.is_empty()) {
+                let tiles = self.facts.crossing(map, me.pos, target, BRIDGE_MAX, by_depot, obs.tick).filter(|t| !t.is_empty());
+                // Priced (LR 6.2): a long bridge, or one from an island
+                // short of trees, loses to a boat.
+                let tiles = match (&self.pricing, tiles) {
+                    (Some(s), Some(t)) => {
+                        self.facts.refresh(map, obs.tick);
+                        let scarce = self.facts.scarcity(s, me.pos);
+                        if crate::facts::bridge_it(s, t.len(), scarce) {
+                            Some(t)
+                        } else {
+                            self.doing = format!("{} tiles of water: cheaper by boat", t.len());
+                            self.no_bridge.put(target.tile(), obs.tick);
+                            None
+                        }
+                    }
+                    (_, t) => t,
+                };
+                if let Some(tiles) = tiles {
                     self.bridge = Some(Bridge { tiles, progress: obs.tick, fails: 0 });
                     self.road = None;
                 }
@@ -637,7 +670,7 @@ impl Hop {
         // Over the water: a boat to hand, or one to build.
         if let Some((id, _, since)) = self.boarding {
             if (obs.tick.saturating_sub(since) as f32 * DT) > BOAT_FOR {
-                self.bad_boat.push(id);
+                self.bad_boat.put(id, obs.tick);
                 self.boarding = None;
             }
         }
@@ -646,7 +679,7 @@ impl Hop {
         // their time) with a launch in hand.
         let can_launch = me.pillboys.aboard && me.pillboys.strength > 0 && obs.tick >= self.no_embark_until && !obs.launch.is_empty();
         let walk = if can_launch { BOAT_NEAR } else { BOAT_WALK };
-        if let Some(b) = obs.boats.iter().filter(|b| b.pos.dist(me.pos) <= walk && !self.bad_boat.contains(&b.id)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
+        if let Some(b) = obs.boats.iter().filter(|b| b.pos.dist(me.pos) <= walk && !self.bad_boat.has(&b.id, obs.tick)).min_by(|a, b| a.pos.dist(me.pos).partial_cmp(&b.pos.dist(me.pos)).unwrap()) {
             if self.boarding.map(|(id, _, _)| id != b.id).unwrap_or(true) {
                 self.boarding = Some((b.id, b.pos, obs.tick));
             }
@@ -672,7 +705,7 @@ impl Hop {
             order(Command::Embark, &mut cmds, &mut self.last_order);
             return Some(cmds);
         }
-        let site = obs.launch.iter().filter(|s| !self.bad_launch.contains(&s.tile())).min_by(|a, b| (a.dist(target) + 0.5 * a.dist(me.pos)).partial_cmp(&(b.dist(target) + 0.5 * b.dist(me.pos))).unwrap()).copied();
+        let site = obs.launch.iter().filter(|s| !self.bad_launch.has(&s.tile(), obs.tick)).min_by(|a, b| (a.dist(target) + 0.5 * a.dist(me.pos)).partial_cmp(&(b.dist(target) + 0.5 * b.dist(me.pos))).unwrap()).copied();
         // The bank already on the way to stays the one.
         let site = self.banking.map(|(s, _, _)| s).filter(|s| !self.bad_bank.contains(&s.tile())).or(site);
         // The tank drives to the bank and launches itself (the quad's
@@ -724,7 +757,7 @@ impl Hop {
         let depot = obs
             .depots
             .iter()
-            .filter(|d| ours(d.owner) && !self.bad_depot.contains(&d.pos.tile()) && d.pos.dist(me.pos) <= RESTOCK_WALK)
+            .filter(|d| ours(d.owner) && !self.bad_depot.has(&d.pos.tile(), obs.tick) && d.pos.dist(me.pos) <= RESTOCK_WALK)
             .map(|d| d.pos)
             .min_by(|a, b| a.dist(me.pos).partial_cmp(&b.dist(me.pos)).unwrap())
             .filter(|d| forest.map(|f| f.dist(me.pos) + FOREST_NEARER > d.dist(me.pos)).unwrap_or(true));

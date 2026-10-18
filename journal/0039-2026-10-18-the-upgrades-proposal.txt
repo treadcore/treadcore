@@ -1,0 +1,89 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 18 Oct 2026 22:00:00 -0700
+Subject: [JOURNAL 0039] The upgrades proposal: supply, sixteen upgrades, the works tab
+Message-ID: <0039.20261018@treadcore.org>
+In-Reply-To: <0038.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: upgrades, supply, proposal, economy, roadmap 11g
+X-Session: the same 8 GB Alpine guest; Claude Code (Claude Opus 5.5)
+           as the pair. Paul: "write the upgrades proposal. keep the
+           backlog and roadmap updated. each step write a lab report
+           and document this transition."
+X-Commits: none yet; the work is in the tree
+
+     THE UPGRADES PROPOSAL: SUPPLY, SIXTEEN UPGRADES, THE WORKS TAB
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    Roadmap 11g waited since 15 October on one question, in-match or
+    carried between matches. It is answered in-match and written up
+    as a proposal, documentation/PROPOSAL-UPGRADES.md, in the form
+    GOVERNANCE.md section 5 asks for. A side earns supply from what it
+    holds (6 a minute a pillbox, 12 a depot) and from kills and
+    captures, and spends it on twelve upgrades for a base or the side
+    and four for the tank. It buys them at a depot from a works tab on
+    the coordination screen; the squad installs those that need
+    building. Bots buy through the base cycle's improvement slot. The
+    proposal changes the rules and the wire (version 17), so nothing
+    of it is built yet. It waits on its seven days of discussion and
+    on the two traces its section 6 names.
+
+I. INTRODUCTION
+
+    Paul asked for "more base upgrades and ways for users to purchase
+    them", then for the proposal itself. The brain already has a place
+    to spend: the improvement slot and the weight `upgrade_vs_mend`
+    (journal 0037). The game had nothing to sell.
+
+II. METHOD
+
+    The numbers were taken from the rules as they stand (PILLBOX_RANGE
+    8, PILLBOX_HEALTH 60, TANK_ARMOR 100, PILLBOY_MAX 4,
+    PILLBOY_MATERIAL_MAX 8, BOAT_COST 5, the base alarm at 16 tiles).
+    The earning rate was set from the census of journal 0038, where a
+    team held 2 to 6 pillboxes and depots on average, so that the first
+    upgrade (60 supply) comes in reach between the second and the fifth
+    minute. Every price is marked as a first guess for the traces.
+
+III. RESULTS
+
+    The proposal: supply's sources and rates; sixteen upgrades with
+    levels, effects, supply and material prices and how each is
+    installed; `Command::Buy`, `PillboyTask::Install`, `Event::Bought`,
+    `Event::Installed`; the change crate by crate; what must not change
+    (determinism, old replays under `Scenario::upgrades` false, a match
+    without purchases unchanged, nothing carried between matches); nine
+    named proofs and a playtest; four questions for the discussion.
+    The roadmap (11g, backlog 14), the index, the lab report (section
+    13) and the changelog carry it.
+
+IV. DISCUSSION
+
+    Supply is the ledger's `held_s` made a currency. The census already
+    measures what the economy would pay. Holding ground becomes what
+    the bots are scored on (`long_game`) and what buys them their next
+    advantage, which is how a long match is meant to work.
+
+V. OPEN PROBLEMS
+
+    1. Post the proposal for its seven days (Discussions, under
+       Proposals). That is outward-facing, and Paul's to do or to ask
+       for.
+    2. The two traces of its section 6, which need the earning in the
+       sim with buying switched off: a small first sim step that
+       changes no rule.
+    3. The gatehouse needs a tile the side's tanks can cross. It may
+       want its own step first.
+
+ACKNOWLEDGMENTS
+
+    Claude Code (Claude Opus 5.5) as the pair.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

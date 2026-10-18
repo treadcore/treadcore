@@ -210,6 +210,9 @@ pub struct Crew {
     last_ready: Tick,
     last_move: Tick,
     pub doing: String,
+    /// The newest job taken, by the tick it was given: the board does
+    /// not hand back one already had.
+    adopted: Option<Tick>,
 }
 
 impl Crew {
@@ -271,12 +274,25 @@ impl Crew {
     /// jobs given it. A job is an event of one tick, and a wingman busy
     /// with something else that tick (a dodge, a rally, a crossing) lost
     /// its leader's bridge tiles.
+    /// A job the team board kept for this crew (board.rs, roadmap 12e):
+    /// taken if the crew has none and has not had this one.
+    pub fn adopt(&mut self, job: Job, at: Tick) {
+        if !self.on || self.job.is_some() || self.adopted >= Some(at) {
+            return;
+        }
+        self.adopted = Some(at);
+        self.job = Some((job, at));
+        self.sent = None;
+        self.fell_first = false;
+    }
+
     pub fn take_jobs(&mut self, obs: &Observation) {
         for e in &obs.events {
             if let Event::Requested { from, to: Some(to), job } = e {
                 if *to == obs.player && (Some(*from) == self.commander || Some(*from) == self.leader) && self.on {
                     match job {
                         Job::Build { .. } | Job::Fetch { .. } | Job::Haul { .. } => {
+                            self.adopted = Some(obs.tick);
                             self.job = Some((job.clone(), obs.tick));
                             self.sent = None;
                             self.fell_first = false;

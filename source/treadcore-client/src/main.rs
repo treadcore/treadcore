@@ -95,6 +95,10 @@ pub struct Args {
     /// bot alone (`--fleets`; `treadcore-brain::fleet`): the player
     /// leads team 0, assisted by a builder, a guard and two wingmen.
     pub fleets: bool,
+    /// The bots' weights and capabilities, from a file (`--weights FILE`;
+    /// `treadcore-brain::weights`, roadmap 12c): every Commander the
+    /// window deals plays by them.
+    pub weights: Option<String>,
     /// My side's chassis (`--style bulwark|strider|rattler`; T in play):
     /// how this window draws its own side's tanks (battlefield.rs).
     pub style: voxel::TankStyle,
@@ -136,6 +140,7 @@ fn parse_args() -> Args {
         rookies: 0,
         wingmen: 0,
         fleets: false,
+        weights: None,
         keys: None,
         style: voxel::TankStyle::default(),
         autopilot: false,
@@ -175,6 +180,7 @@ fn parse_args() -> Args {
             "--rookies" => a.rookies = val().parse().unwrap_or(0),
             "--wingmen" => a.wingmen = val().parse().unwrap_or(0),
             "--fleets" => a.fleets = true,
+            "--weights" => a.weights = Some(val()),
             "--autopilot" => a.autopilot = true,
             "--plain-bots" => a.plain_bots = true,
             "--speed" => a.speed = val().trim_end_matches('x').parse().unwrap_or(1.0),
@@ -224,7 +230,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--fleets] [--style bulwark|strider|rattler] [--autopilot] [--plain-bots] [--speed 1|2|4] [--keys FILE] [--map FILE|island] [--industry] [--respawns N|unlimited] [--mute] [--write-sounds DIR]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--fleets] [--weights FILE] [--style bulwark|strider|rattler] [--autopilot] [--plain-bots] [--speed 1|2|4] [--keys FILE] [--map FILE|island] [--industry] [--respawns N|unlimited] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);
@@ -247,6 +253,15 @@ fn parse_args() -> Args {
 
 fn main() {
     let args = parse_args();
+    if let Some(path) = &args.weights {
+        match std::fs::read_to_string(path).map_err(|e| e.to_string()).and_then(|t| treadcore_brain::weights::Settings::parse(&t).map_err(|e| e.to_string())) {
+            Ok(s) => treadcore_brain::fleet::set_settings(s),
+            Err(e) => {
+                eprintln!("{}", treadcore_sim::chair::usage("treadcore", &format!("--weights {}: {}", path, e)));
+                std::process::exit(2)
+            }
+        }
+    }
     // `name` is the Wayland app_id and the X11 WM_CLASS: it must match the
     // desktop entry make install writes (org.treadcore.treadcore.desktop)
     // for launchers and taskbars to give the window its name and icon.

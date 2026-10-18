@@ -263,6 +263,8 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
     // The first `--wingmen` bots fly on the player's wing (step 11a);
     // the `--rookies` after them play badly, for a newcomer
     // (PLAYABILITY item 9).
+    // A new match: each team a new board (treadcore-brain fleet.rs).
+    treadcore_brain::fleet::new_match();
     let bots: Vec<(PlayerId, Box<dyn Brain>)> = (first_bot..seats as PlayerId)
         .map(|i| {
             let seed = args.seed.wrapping_mul(31) ^ (i as u64 + 1) ^ round.wrapping_mul(0x9E37_79B9_7F4A_7C15);

@@ -6,6 +6,75 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the brain's step 12 groundwork (Paul, 18 October: "a
+  flowchart logic system with weights that can be adjusted and
+  componentized ... first step is memory and passing of parameters";
+  `documentation/LAB-REPORT-BRAIN.md`, ROADMAP goal 4). Every new part
+  is behind a capability bit and off by default, so the bots play as
+  they did on 17 October until a census promotes a part.
+  - Measure (12a): `treadcore-brain::meter` counts seat-ticks, thinks,
+    Moves, crossing searches (and those the cache answered), plan
+    copies and time in `run_bots`; the census tests print it.
+  - Memory (12b): the Auto ladder no longer copies the whole castle
+    plan every tick to ask whether a turret slot is left
+    (`Plan::turret_preview`: 2 to 5 copies a 900 s match, where it
+    was one per Auto tank per tick); failed and found crossings are
+    kept a minute (`facts::MapFacts`: 1,368 answered from the cache
+    against 207 searched over three naval matches); the target
+    picker builds its reasons for the winner only; given-up lists are
+    `memory::Forget`, which can run out (`forget`).
+  - Weights and capabilities (12c): `weights::Settings`, one flat
+    array of 56 named weights (the 22 of `Tactics` and its other
+    settings at their old values, and the new parts' numbers) and a
+    `Caps` bit per part; a `name = value` file, `--weights FILE` in
+    the window. The geometric-mean utility and response curves for
+    the components to come.
+  - Intent and smoothing (12d, `smooth`): a moving goal followed by a
+    desire vector, the turret holding its target until a challenger
+    has won three picks by 15%, one resupply threshold for the
+    Commander and its doctrine.
+  - The team board (12e, `board`, `team_rotate`): one shared picture
+    per team, rebuilt at 1 Hz: influence (ours less theirs) on 16 x 16
+    sectors, the front, defence points, the jobs given out (a crew
+    that missed its `Requested` finds it there), a posture; a hurt
+    tank at the hottest point swapped for a fresh one, confirmed over
+    two rebuilds.
+  - Behaviours (12f): the base cycle after a fill (`cycle`: one plan
+    item, a mend, road toward the next friendly pillbox or depot);
+    crossings priced boat against bridge, a bridge past 6 tiles
+    costing the square of the extra and every tile dearer on an
+    island short of trees (`priced_crossing`); a small bare island a
+    poor base (`island_site`); a fleet in file on a bridge, the leader
+    not stopping to gather on one (`column`).
+  - The ledger and the tuner (12g): `brain_census` (one team on the
+    trial settings, two on the baseline, rotated over the seeds)
+    writes a JSON line per seat to `reports/ledger/ledger.jsonl`;
+    `ledger_ratings` prints the genomes by Elo; `make tune` runs a
+    (1 + lambda) evolution strategy over it.
+  - Measured on naval.map, three seeds of 900 s: baseline against
+    baseline scored 13.95 to 8.93 a seat, so three seeds cannot tell
+    a part from the dice; every new part on scored 10.29 against
+    11.53. Nothing is promoted; the census needs more seeds first.
+    Bots cost 28 us a seat-tick.
+  - Paul's answers as scalars (12h; "should it x or y, we choose a
+    scalar of how much x, and how much y"): `w_mend`, `w_mine`,
+    `w_works` and `upgrade_vs_mend` for the base's improvement;
+    `connect_bases` for the road out; `long_game` for the score;
+    `assist` for a person's team's builder. And his castle,
+    `castle_cap`: two pillboxes inside the wall and one outside beside
+    its road, then road posts every 10 tiles toward the side's other
+    bases, beside the road and never within 3 tiles of a junction.
+  - Changed: the capped castle is the default (Paul, 18 October:
+    "make castle_cap the default"). The castle of 11b and 11h is
+    `-castle_cap`. Over six naval seeds it scored 0.96 a seat less
+    than the capped one, read against a null run on the same seeds;
+    the null run itself showed the census's trial team draws better
+    seats (12.66 against 6.44 with every team the same).
+  - Upgrades and the ways to buy them designed (ROADMAP 11g): supply
+    earned from what a side holds, twelve base upgrades and four for
+    the tank, bought at a depot. The proposal is written
+    (`documentation/PROPOSAL-UPGRADES.md`); it waits on its seven days
+    and two traces before the sim step (wire version 17).
 - Added: game speed (Paul, 17 October: "a 4x speed adjuster. it will
   speed up (the server and all clients), if we skip frames then reduce
   speed"; client `speed.rs`). **`** (Key Setup: game-speed) steps the

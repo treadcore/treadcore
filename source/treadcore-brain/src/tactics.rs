@@ -232,6 +232,11 @@ pub struct Tactician {
     pub score: f32,
     /// When massing began for the fight now, so it ends.
     massing_since: Option<Tick>,
+    /// Confirmation before the turret changes target (roadmap 12d):
+    /// picks in a row and the margin a challenger needs; None changes at
+    /// once, as before.
+    pub confirm: Option<(u8, f32)>,
+    challenger: Option<(EntityId, u8)>,
 }
 
 /// A tank's worth in a fight: armour, and none without shells.
@@ -263,47 +268,64 @@ impl Tactician {
 
     /// A target's score and the reasons that made it.
     pub fn score(&self, obs: &Observation, me: &Tank, t: &Tank) -> (f32, Vec<String>) {
+        let mut why = Some(Vec::new());
+        let s = self.rate(obs, me, t, &mut why);
+        (s, why.unwrap_or_default())
+    }
+
+    /// The score alone: what `pick` asks of every candidate, with no
+    /// words built for the ones that lose (roadmap 12b).
+    pub fn value(&self, obs: &Observation, me: &Tank, t: &Tank) -> f32 {
+        self.rate(obs, me, t, &mut None)
+    }
+
+    fn rate(&self, obs: &Observation, me: &Tank, t: &Tank, why: &mut Option<Vec<String>>) -> f32 {
+        let mut say = |f: &dyn Fn() -> String| {
+            if let Some(w) = why.as_mut() {
+                w.push(f());
+            }
+        };
         let w = &self.w;
         let d = me.pos.dist(t.pos);
         let mut s = w.w_near / (1.0 + d / w.near_scale);
-        let mut why = vec![format!("{:.0} out", d)];
+        say(&|| format!("{:.0} out", d));
         let hurt = 1.0 - (t.armor / TANK_ARMOR).clamp(0.0, 1.0);
         if hurt > 0.05 {
             s += w.w_wounded * hurt;
-            why.push(format!("armour {:.0}", t.armor));
+            say(&|| format!("armour {:.0}", t.armor));
         }
         if t.armor <= DIRECT_DAMAGE {
             s += w.w_finish;
-            why.push("one shot".into());
+            say(&|| "one shot".into());
         }
         if t.boat {
             s += w.w_boat;
-            why.push("afloat".into());
+            say(&|| "afloat".into());
         }
         if self.called.iter().any(|(at, _)| at.dist(t.pos) <= 8.0) {
             s += w.w_called;
-            why.push("called".into());
+            say(&|| "called".into());
         }
         let on_it = obs.allied_tanks().filter(|a| a.alive && a.owner != obs.player && a.pos.dist(t.pos) <= DIRECT_RANGE).count();
         if on_it > 0 {
             let focus = on_it.min(w.focus_cap) as f32 * w.w_focus;
             let over = on_it.saturating_sub(w.focus_cap) as f32 * w.w_overkill;
             s += focus - over;
-            why.push(if on_it > w.focus_cap { format!("{} on it: enough", on_it) } else { format!("{} on it", on_it) });
+            say(&|| if on_it > w.focus_cap { format!("{} on it: enough", on_it) } else { format!("{} on it", on_it) });
         }
         if d <= DIRECT_RANGE {
             s += w.w_in_range;
-            why.push("in range".into());
+            say(&|| "in range".into());
         }
         let menaces = obs.allied_tanks().any(|a| a.alive && a.owner != obs.player && a.pos.dist(t.pos) <= DIRECT_RANGE) || self.base.map(|b| b.dist(t.pos) <= w.base_r).unwrap_or(false);
         if menaces {
             s += w.w_threat;
-            why.push("a threat".into());
+            say(&|| "a threat".into());
         }
         if self.target == Some(t.id) {
             s += w.w_stick;
         }
-        (s, why)
+        s
     }
 
     /// The hostile tank to shoot, of those `fair` allows; the reason kept.
@@ -311,16 +333,41 @@ impl Tactician {
         let best = obs
             .hostile_tanks()
             .filter(|t| t.alive && fair(t))
-            .map(|t| {
-                let (s, why) = self.score(obs, me, t);
-                (t, s, why)
-            })
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap().then(b.0.id.cmp(&a.0.id)));
-        let Some((t, s, why)) = best else {
+            .map(|t| (t, self.value(obs, me, t)))
+            .max_by(|a, b| a.1.total_cmp(&b.1).then(b.0.id.cmp(&a.0.id)));
+        let Some((t, s)) = best else {
             self.switched = false;
             self.target = None;
+            self.challenger = None;
             return None;
         };
+        // Smoothing (roadmap 12d): a live, fair target is not dropped for
+        // a challenger until the challenger has won `confirm` picks in a
+        // row by the margin; the turret holds between near-equal targets.
+        let t = match (self.confirm, self.target) {
+            (Some((n, h)), Some(cur)) if cur != t.id => match obs.hostile_tanks().find(|x| x.id == cur && x.alive && fair(x)) {
+                Some(held) => {
+                    let held_s = self.value(obs, me, held);
+                    let streak = match self.challenger {
+                        Some((id, k)) if id == t.id => k.saturating_add(1),
+                        _ => 1,
+                    };
+                    if s > held_s * (1.0 + h) && streak >= n {
+                        self.challenger = None;
+                        t
+                    } else {
+                        self.challenger = if s > held_s * (1.0 + h) { Some((t.id, streak)) } else { None };
+                        held
+                    }
+                }
+                None => t,
+            },
+            _ => t,
+        };
+        if self.target == Some(t.id) && self.challenger.map(|(id, _)| id == t.id).unwrap_or(false) {
+            self.challenger = None;
+        }
+        let (s, why) = self.score(obs, me, t);
         self.switched = self.target != Some(t.id);
         if self.switched {
             self.since = obs.tick;
