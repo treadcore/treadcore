@@ -92,7 +92,7 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
     let started = std::time::Instant::now();
     let mut out = Vec::new();
     for (p, b) in bots.iter_mut() {
-        meter::seat();
+        meter::seat(*p);
         let obs = world.observe(*p);
         if obs.me.as_ref().map(|t| !t.alive).unwrap_or(true) {
             b.dead(&obs);
@@ -292,8 +292,12 @@ pub struct Dodge {
     /// seeds) and off the wrecks they were reviving.
     pub until: Tick,
     /// The shell dodge under way, for the meter (backlog 28, LR 27):
-    /// when it began, when its shell lands, and whether afloat.
-    watch: Option<(Tick, Tick, bool)>,
+    /// when it began, when its shell lands, whether afloat, and whether
+    /// dropped.
+    watch: Option<(Tick, Tick, bool, bool)>,
+    /// The brain drops the dodge's moves (the dodge off): the meter
+    /// counts it as would-be (backlog 31).
+    pub dropped: bool,
     /// Counted by the meter: the Commander's dodge, the one that acts.
     /// The RuleBot under a Commander dodges too, but its moves are
     /// dropped (`keep_inner`).
@@ -310,9 +314,9 @@ impl Dodge {
     /// between its start and its shell's landing, or clear of it. Any
     /// hit in that window counts, the dodged shell's or another's.
     pub fn watch(&mut self, me: &Tank, now: Tick) {
-        let Some((start, until, afloat)) = self.watch else { return };
+        let Some((start, until, afloat, dropped)) = self.watch else { return };
         if me.last_hit_tick >= start && me.last_hit_tick <= until {
-            crate::meter::dodge_hit(afloat, !me.alive, me.last_hit_tick + 2 == until);
+            crate::meter::dodge_hit(afloat, dropped, !me.alive, me.last_hit_tick + 2 == until);
             self.watch = None;
         } else if now > until {
             self.watch = None;
@@ -349,8 +353,8 @@ impl Dodge {
             }
             self.until = s.impact_tick + 2;
             if self.metered && self.watch.is_none() {
-                self.watch = Some((obs.tick, self.until, me.boat));
-                crate::meter::dodge(me.boat);
+                self.watch = Some((obs.tick, self.until, me.boat, self.dropped));
+                crate::meter::dodge(me.boat, self.dropped);
             }
             let line = (s.impact - s.from).norm();
             let across = V2::new(-line.y, line.x);

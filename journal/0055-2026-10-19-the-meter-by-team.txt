@@ -1,0 +1,65 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 12:50:00 -0700
+Subject: [JOURNAL 0055] The meter by team, and LR 29 corrected
+Message-ID: <0055.20261019@treadcore.org>
+In-Reply-To: <0054.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: dodge, meter, correction, backlog 31
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 6ea10a5 (journal 0054, pushed); this entry's commit follows
+
+                 THE METER BY TEAM, AND LR 29 CORRECTED
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 31 began with the meter, so the dodge could be read
+    without an estimate. The meter now counts dodges by the seat's
+    group (the census's trial team or the rest) and taken or dropped.
+    Over 16 seeds of the dodge off, the same per-seed scores as LR 29:
+    ashore the dodge halves the kills (15.0% to 6.6%); afloat it cuts
+    them by a fifth (18.2% to 14.7%). LR 29's "nothing afloat" came
+    from assuming equal shares of shells, and is withdrawn.
+
+III. METHOD
+
+    `meter::trial`, `meter::seat(p)`, `Dodge::dropped`, the nested
+    `Dodges` counts; a test of the buckets; `-dodge` over seeds 0 to
+    15 in three ranges side by side.
+
+IV. CHRONOLOGY
+
+    1. The meter split; one test; brain 70 passed, 8 ignored.
+    2. The run: per-seed differences equal to LR 29's first range.
+    3. The rates: afloat, dropped 18.2% killed against 14.7% taken.
+       The trial team without the dodge drew 1,899 ashore dodges
+       against about 2,500 a team: LR 29's equal-shares assumption
+       was false.
+    4. LR 29 marked; backlog 31 weakened and moved after 30.
+
+VI. DISCUSSION
+
+    The estimate in 0054 was labelled a direction, and the direction
+    was wrong for boats. An instrument that needs an assumption to be
+    read should be fixed before its reading drives a backlog item;
+    here it was fixed one step later, before any code followed from
+    it.
+
+VIII. NEXT STEPS
+
+    1. Backlog 30: the run for the beach under direct fire.
+    2. Backlog 31 after it, as a trade for the tuner.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md sections 29 (marked) and 30;
+    documentation/checkins/CI-007-2026-10-19-the-meter-by-team.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

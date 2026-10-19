@@ -1543,8 +1543,10 @@ the run's rate less twice the null's:
 | Afloat, killed | 16.6% | 15.9% | about 14.5% |
 
 The estimate leans on equal shares and should be read as a direction.
-Ashore, the dodge nearly halves the dodged shell's hits. **Afloat it
-does nothing**: a boat is slow to turn, its dodge point is often water
+(LR 30 measured it by team: the shares were not equal, and afloat the
+dodge cuts the kills by a fifth. The afloat reading below is
+withdrawn.) Ashore, the dodge nearly halves the dodged shell's hits.
+**Afloat it does nothing**: a boat is slow to turn, its dodge point is often water
 it cannot reach in time, and it is hit at the same rate dodging or not.
 What it gives up afloat is its crossing.
 
@@ -1555,3 +1557,56 @@ either/or this table names: dodge afloat or keep sailing. A weight,
 taken one, per team, so the next reading needs no estimate.
 
 Proof: no code changed.
+
+## 30. The meter by team, and LR 29 corrected, 19 October
+
+Backlog 31's first part. LR 29 estimated the undodged rates from a
+meter that mixed the teams, on the assumption that each team draws a
+third of the shells. The meter now counts by the seat's group and
+whether the dodge was taken.
+
+**The instrument** (no change to play):
+- `meter::trial(mask)`: the census marks the trial team's seats; the
+  meter keeps them apart from the rest. `meter::seat(p)`, called by
+  `run_bots` for each seat, names the seat the counts after it belong
+  to.
+- `Dodge::dropped`: set by the Commander from `dodges` before each
+  `order_with`. A dodge the brain drops (the dodge off) counts as
+  would-be.
+- `Meter::dodges` is `[group][taken or dropped][ashore or afloat]` of
+  `Dodges { begun, hit, shell, killed }`; `Meter::add_dodges` sums it
+  for the census total. Proof:
+  `a_dodge_counts_by_its_seat_and_whether_taken`.
+
+**The reading**: `-dodge`, seeds 0 to 15 (LR 29's first range). The 16
+per-seed differences are LR 29's to the hundredth, so play did not
+change. In the same matches, the trial team's would-be dodges against
+the other two teams' taken ones:
+
+| | Taken (the rest) | Dropped (the trial team) |
+| --- | --- | --- |
+| Ashore, begun | 4,982 | 1,899 |
+| Ashore, hit by the shell | 15.5% | 34.0% |
+| Ashore, killed | 6.6% | 15.0% |
+| Afloat, begun | 2,148 | 1,029 |
+| Afloat, hit by the shell | 6.9% | 10.1% |
+| Afloat, killed | 14.7% | 18.2% |
+
+Ashore, the dodge more than halves the dodged shell's hits and the
+kills, as LR 29 estimated. **Afloat it is not nothing**: it cuts the
+shell's hits by a third and the kills by a fifth. LR 29's estimate was
+wrong because its assumption was: the trial team without the dodge
+drew fewer dodgeable shells (1,899 ashore against about 2,500 for each
+other team), being dead more often. Taking the shares as equal hid the
+effect afloat.
+
+What this changes. LR 29's "afloat it changes nothing" is withdrawn.
+Backlog 31's hypothesis is weakened: a boat's dodge saves a fifth of
+the boats it is taken for. `dodge_afloat` can still be worth less than
+1 if the crossing time it costs is worth more, but the case is now a
+trade for the tuner, not a free gain. Backlog 31 stays, its expected
+gain smaller, below 30 (the landfall).
+
+Proof: play unchanged (the per-seed differences). `make test`: brain
+70 passed and 8 ignored; client 31; net 14; proto 3; sim 50. No
+warnings.

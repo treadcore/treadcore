@@ -34,17 +34,52 @@ pub struct Meter {
     /// The picks the posture changed, by the rung that held first (row)
     /// and the rung taken (column), in `Rung::ALL`'s order (LR 26).
     pub moved: [[u64; 6]; 6],
-    /// Shell dodges begun, ashore and afloat, and those hit, and
-    /// killed, before the shell landed (backlog 28, LR 27).
-    pub dodges: [u64; 2],
-    pub dodge_hits: [u64; 2],
-    pub dodge_kills: [u64; 2],
-    /// Of the hits, those on the tick the dodged shell landed.
-    pub dodge_shell: [u64; 2],
+    /// Shell dodges (backlog 28, LR 27; by team and taken, backlog
+    /// 31): by the seat's group (0 the rest, 1 the seats `trial`
+    /// marks), then taken (0) or dropped by the brain (1, a would-be
+    /// dodge, the dodge off), then ashore (0) or afloat (1).
+    pub dodges: [[[Dodges; 2]; 2]; 2],
+}
+
+/// One kind of shell dodge's count: begun, and of those hit before the
+/// shell landed, hit by the dodged shell itself (on its landing tick),
+/// and killed.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Dodges {
+    pub begun: u64,
+    pub hit: u64,
+    pub shell: u64,
+    pub killed: u64,
+}
+
+impl Dodges {
+    /// Another count added to this one.
+    fn add(&mut self, o: Dodges) {
+        self.begun += o.begun;
+        self.hit += o.hit;
+        self.shell += o.shell;
+        self.killed += o.killed;
+    }
 }
 
 thread_local! {
     static METER: Cell<Meter> = Cell::new(Meter::default());
+    /// The seats a census marks as its trial (a bit a player), and the
+    /// seat `run_bots` is running: a count's group.
+    static SEATS: Cell<(u32, crate::PlayerId)> = const { Cell::new((0, 0)) };
+}
+
+/// The trial seats, a bit a player; the rest are group 0. Kept across
+/// `reset`.
+pub fn trial(mask: u32) {
+    SEATS.with(|s| s.set((mask, s.get().1)));
+}
+/// The group of the seat being run: 1 if `trial` marks it, else 0.
+fn group() -> usize {
+    SEATS.with(|s| {
+        let (mask, p) = s.get();
+        (mask >> (p as u32 & 31) & 1) as usize
+    })
 }
 
 fn bump(f: impl FnOnce(&mut Meter)) {
@@ -55,7 +90,9 @@ fn bump(f: impl FnOnce(&mut Meter)) {
     });
 }
 
-pub fn seat() {
+/// A seat run, the player's: the counts after it are its group's.
+pub fn seat(p: crate::PlayerId) {
+    SEATS.with(|s| s.set((s.get().0, p)));
     bump(|m| m.seats += 1);
 }
 pub fn think() {
@@ -82,17 +119,20 @@ pub fn posture(p: crate::board::Posture, first: usize, taken: usize) {
         }
     });
 }
-/// A shell dodge begun, ashore or afloat (LR 27).
-pub fn dodge(afloat: bool) {
-    bump(|m| m.dodges[afloat as usize] += 1);
+/// A shell dodge begun, ashore or afloat, taken or dropped (LR 27).
+pub fn dodge(afloat: bool, dropped: bool) {
+    let g = group();
+    bump(|m| m.dodges[g][dropped as usize][afloat as usize].begun += 1);
 }
 /// A dodge hit before its shell landed: killed by it, and by the
 /// dodged shell itself (the hit on its landing tick).
-pub fn dodge_hit(afloat: bool, killed: bool, shell: bool) {
+pub fn dodge_hit(afloat: bool, dropped: bool, killed: bool, shell: bool) {
+    let g = group();
     bump(|m| {
-        m.dodge_hits[afloat as usize] += 1;
-        m.dodge_kills[afloat as usize] += killed as u64;
-        m.dodge_shell[afloat as usize] += shell as u64;
+        let d = &mut m.dodges[g][dropped as usize][afloat as usize];
+        d.hit += 1;
+        d.killed += killed as u64;
+        d.shell += shell as u64;
     });
 }
 pub fn spent(d: Duration) {
@@ -110,6 +150,36 @@ pub fn reset() {
 }
 
 impl Meter {
+    /// Adds another count's dodges to this one's (a census's total).
+    pub fn add_dodges(&mut self, o: &Meter) {
+        for (g, og) in self.dodges.iter_mut().zip(o.dodges) {
+            for (t, ot) in g.iter_mut().zip(og) {
+                for (d, od) in t.iter_mut().zip(ot) {
+                    d.add(od);
+                }
+            }
+        }
+    }
+
+    /// The dodges for the meter's line, each kind that happened.
+    fn dodge_line(&self) -> String {
+        let mut out = String::new();
+        for (g, group) in self.dodges.iter().enumerate() {
+            for (t, taken) in group.iter().enumerate() {
+                for (a, d) in taken.iter().enumerate().filter(|(_, d)| d.begun > 0) {
+                    out += &format!(
+                        ", dodges{} {} {} {} ({} hit, {} by the shell, {} killed)",
+                        if g == 1 { " (trial)" } else { "" },
+                        if t == 1 { "dropped" } else { "taken" },
+                        if a == 1 { "afloat" } else { "ashore" },
+                        d.begun, d.hit, d.shell, d.killed
+                    );
+                }
+            }
+        }
+        out
+    }
+
     /// Microseconds per seat-tick: what one bot costs a tick, on average.
     pub fn micros_per_seat(&self) -> f64 {
         if self.seats == 0 {
@@ -130,14 +200,8 @@ impl Meter {
             self.crossings_cached,
             self.plan_clones,
             self.micros_per_seat()
-        ) + &if self.dodges.iter().sum::<u64>() > 0 {
-            format!(
-                ", dodges {} ashore ({} hit, {} by the shell, {} killed), {} afloat ({} hit, {} by the shell, {} killed)",
-                self.dodges[0], self.dodge_hits[0], self.dodge_shell[0], self.dodge_kills[0], self.dodges[1], self.dodge_hits[1], self.dodge_shell[1], self.dodge_kills[1]
-            )
-        } else {
-            String::new()
-        } + &if self.postures.iter().sum::<u64>() > 0 {
+        ) + &self.dodge_line()
+            + &if self.postures.iter().sum::<u64>() > 0 {
             let names = ["defend base", "fortify", "turrets", "hunt", "expand", "guard"];
             let mut moves: Vec<(u64, String)> = Vec::new();
             for (i, row) in self.moved.iter().enumerate() {
@@ -160,8 +224,8 @@ mod tests {
     #[test]
     fn the_meter_counts_and_resets() {
         reset();
-        seat();
-        seat();
+        seat(0);
+        seat(1);
         moves(3);
         crossing();
         spent(Duration::from_micros(10));
@@ -170,5 +234,28 @@ mod tests {
         assert!((m.micros_per_seat() - 5.0).abs() < 1e-9);
         reset();
         assert_eq!(read(), Meter::default());
+    }
+
+    /// A dodge counts under the seat that made it (the trial's or the
+    /// rest), taken or dropped, ashore or afloat (backlog 31).
+    #[test]
+    fn a_dodge_counts_by_its_seat_and_whether_taken() {
+        reset();
+        trial(1 << 3);
+        seat(3);
+        dodge(true, true);
+        dodge_hit(true, true, true, false);
+        seat(2);
+        dodge(false, false);
+        let m = read();
+        assert_eq!(m.dodges[1][1][1], Dodges { begun: 1, hit: 1, shell: 0, killed: 1 });
+        assert_eq!(m.dodges[0][0][0].begun, 1);
+        let mut total = Meter::default();
+        total.add_dodges(&m);
+        total.add_dodges(&m);
+        assert_eq!(total.dodges[1][1][1].killed, 2);
+        assert!(m.line().contains("dodges (trial) dropped afloat 1 (1 hit, 0 by the shell, 1 killed)"), "{}", m.line());
+        trial(0);
+        reset();
     }
 }

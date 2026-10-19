@@ -873,6 +873,7 @@ mod tests {
                 .collect();
             let mut tally = Tally::new(&w);
             crate::meter::reset();
+            crate::meter::trial((0..SEATS).filter(|i| teams()[*i] == lucky).fold(0, |m, i| m | 1 << i));
             // Seat-seconds in each new part, the trial team's, by code
             // (status.rs): a rewording of a status cannot move a count.
             use crate::status::{Act, CycleAct, HopAct};
@@ -956,12 +957,7 @@ mod tests {
                 *t += n;
             }
             total.leaned += m.leaned;
-            for i in 0..2 {
-                total.dodges[i] += m.dodges[i];
-                total.dodge_hits[i] += m.dodge_hits[i];
-                total.dodge_kills[i] += m.dodge_kills[i];
-                total.dodge_shell[i] += m.dodge_shell[i];
-            }
+            total.add_dodges(&m);
             for (t, r) in total.moved.iter_mut().zip(m.moved) {
                 for (t, n) in t.iter_mut().zip(r) {
                     *t += n;

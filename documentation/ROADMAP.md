@@ -350,8 +350,9 @@ never acted. The posture as scores (backlog 21, LR 25), no better. Which rungs t
 lean moves (27, LR 26): the ladder decides 5.6% of the time, and half
 of it is dead. What kills (28, LR 27): the dodge, 43% of deaths, and
 the run for the beach, 20%. The dodge off reads -2.45 a seat (LR 29):
-it pays ashore, not afloat. Next, one at a time: the dodge afloat (31),
-the landfall (30), a census that
+it pays ashore and, by the meter by team (LR 30), afloat a fifth of
+the boats. Next, one at a time: the landfall (30), the dodge afloat
+(31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -586,7 +587,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     landfall and 65 sailing deaths back as time ashore. First the meter
     counts would-be dodges apart from taken ones, by team. Proof: a
     test that a boat at 0 holds its course under a shell; 48 seeds.
-    Cost: a step. State: idea.
+    Cost: a step. State: the meter by team done 19 October (LR 30);
+    measured exactly, a boat's dodge cuts its kills by a fifth (18.2%
+    to 14.7%), so LR 29's premise is withdrawn and the gain, if any, is
+    the crossing time traded for that fifth: after 30.
 
 
 ## Sequencing

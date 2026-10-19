@@ -2387,6 +2387,7 @@ impl Commander {
         // it lands (lib.rs `Dodge::until`); the guns stay free; a revive
         // or a hop picks up again after.
         let mending = self.reviving.is_some() && matches!(me.pillboys.task, Some(PillboyTask::Repair { .. }));
+        self.dodge.dropped = !self.dodges;
         let dodge = self.dodge.order_with(obs, &me, !mending).filter(|_| self.dodges);
         if dodge.is_some() || (self.dodges && self.dodge.holding(obs, &me)) {
             cmds.extend(dodge);
