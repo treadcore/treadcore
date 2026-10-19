@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `landfall_wait` (0, as before): the seconds of a crossing a
+  boat stands off a beach a seen hostile tank covers, out of its reach,
+  before it lands anyway; a new status code, `stand_off`. At 10, over
+  48 seeds, -0.51 a seat with an error of 0.63: the stand-off fired
+  under 0.07% of the time, since the guns that sink boats are rarely at
+  the beach (LAB-REPORT-BRAIN.md section 33). Off by default.
 - Added: with `CENSUS_ACTS=1` the census says, of each landfall death,
   whether the boat or a teammate had seen its killer in the 10 s
   before. The boat had, 78% of the time; a teammate alone, once in 164

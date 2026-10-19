@@ -1,0 +1,67 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 14:50:00 -0700
+Subject: [JOURNAL 0058] Standing off a covered beach
+Message-ID: <0058.20261019@treadcore.org>
+In-Reply-To: <0057.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, boats, weights, backlog 33, backlog 34
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "yes 0. commit. push. continue backlog" and "commit.
+           push. continue backlog"
+X-Commits: c5eaf12 (journal 0057, pushed); this entry's commit follows
+
+                      STANDING OFF A COVERED BEACH
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 33. A boat whose chosen beach a seen hostile tank covers
+    now stands off out of its reach for up to `landfall_wait` seconds
+    of the crossing (0 by Paul's choice), with a status code,
+    `stand_off`. At 10 over 48 seeds: -0.51 a seat, error 0.63; the
+    landfall deaths did not fall, and the stand-off fired under 0.07%
+    of the time. The guns that sink boats are rarely at the beach.
+    Three landfall parts have each assumed where the gun is; backlog
+    34 reads it.
+
+III. METHOD
+
+    LR 33: the part in `landfall_order`, its test, the census at
+    `landfall_wait = 10` with `CENSUS_ACTS`.
+
+IV. CHRONOLOGY
+
+    1. Paul set the default: "yes 0".
+    2. The part, the code, the test; the weight placed after
+       `landfall_shy`.
+    3. The census: -0.85, -0.53, -0.15 by range; -0.51 +/- 0.63.
+       Landfall deaths 573 of 2,460; stand-off below the 40 commonest
+       codes.
+    4. Paul: "commit. push. continue backlog" while the census ran;
+       the code waited for its measurement, three minutes.
+    5. `make brainmap` showed `standing_off` taking `landfall_order`'s
+       doc comment: placed between them. Moved.
+
+VI. DISCUSSION
+
+    A part that never fires cannot be measured by its score. The
+    status code made that visible in one table. Each new part should
+    be read for how often it acts before its score is read.
+
+VIII. NEXT STEPS
+
+    1. Backlog 34: the killer's distance to the boat and its beach,
+       ashore or afloat.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 33;
+    documentation/checkins/CI-010-2026-10-19-standing-off-a-covered-beach.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

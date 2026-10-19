@@ -246,6 +246,14 @@ pub struct RuleBot {
     /// more to sail. 0 prices only the beach and the run's heading, as
     /// before.
     pub landfall_shy: f32,
+    /// `landfall_wait` (backlog 33, LR 33): the seconds of a crossing a
+    /// boat will stand off a beach a seen hostile tank covers; 0 lands
+    /// anyway, as before.
+    pub landfall_wait: f32,
+    /// When this crossing's stand-off began (its wait is spent from
+    /// then, gun or no gun), and whether the last order was one.
+    standoff: Option<Tick>,
+    standing: bool,
     /// Out of a shell's way (`Dodge`); not a rookie's.
     dodge: Dodge,
     /// Island hopping, when nothing is left in reach by land (hop.rs).
@@ -508,7 +516,12 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, landfall_wait: 0.0, standoff: None, standing: false, dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
+    }
+
+    /// Afloat and standing off a covered beach (`landfall_wait`).
+    pub fn standing_off(&self) -> bool {
+        self.standing
     }
 
     /// Afloat (SPEC TNK-08): run for land. One hit sinks a boat, so the
@@ -566,6 +579,28 @@ impl RuleBot {
             let away = threats.iter().min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos))).map(|t| (me.pos - *t).norm().scale(20.0)).unwrap_or(V2::new(0.0, 0.0));
             return Some(Command::Move { to: obs.clamp(obs.centre().lerp(me.pos, 0.5) + away) });
         };
+        // Standing off a covered beach (backlog 33): a seen hostile tank
+        // within its direct range of the beach, with a margin, and the
+        // boat waits out of that gun's reach until the crossing's
+        // `landfall_wait` is spent, then lands.
+        self.standing = false;
+        if self.landfall_wait > 0.0 {
+            let cover = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(best) < DIRECT_RANGE + 4.0).map(|t| t.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)));
+            if let Some(gun) = cover {
+                let began = *self.standoff.get_or_insert(obs.tick);
+                if (obs.tick.saturating_sub(began) as f32 * DT) < self.landfall_wait {
+                    self.standing = true;
+                    self.landfall = None;
+                    let off = DIRECT_RANGE + 6.0;
+                    let to = if me.pos.dist(gun) >= off - 1.0 { me.pos } else { obs.clamp(gun + (me.pos - gun).norm().scale(off)) };
+                    return match going {
+                        Some(g) if g.dist(to) < 2.0 => None,
+                        None if to == me.pos => None,
+                        _ => Some(Command::Move { to }),
+                    };
+                }
+            }
+        }
         let since = self.landfall.map(|(_, t)| obs.tick.saturating_sub(t) as f32 * DT).unwrap_or(f32::INFINITY);
         let change = match (self.landfall, going) {
             (Some((chosen, _)), Some(_)) => since >= 2.0 && score(best) + 6.0 < score(chosen),
@@ -720,6 +755,7 @@ impl RuleBot {
                 self.resupplying = false;
                 self.storm = None;
                 self.landfall = None;
+                self.standoff = None;
                 self.settled_at = None;
                 self.scoot_until = 0;
                 self.hop.reset();
@@ -840,6 +876,7 @@ impl RuleBot {
         if me.boat {
             if let Some(hop) = self.hop.think(obs, me, false, map).filter(|_| self.hops) {
                 self.landfall = None;
+                self.standing = false;
                 cmds.extend(hop);
                 return cmds;
             }
@@ -849,6 +886,8 @@ impl RuleBot {
             return cmds;
         }
         self.landfall = None;
+        self.standoff = None;
+        self.standing = false;
         if self.form.update(obs, me, self.last_contact) {
             log::debug!("{} form {:+.2}: {}", self.name, self.form.mood, self.form.note);
         }
@@ -1792,6 +1831,33 @@ mod tests {
             b.landfall_shy = shy;
             assert_eq!(b.landfall_order(&obs, &me), Some(Command::Move { to: want }), "shy {}", shy);
         }
+    }
+
+    /// `landfall_wait` (backlog 33, LR 33): the only beach covered by a
+    /// seen gun 8 tiles off, at 0 the boat lands; at 10 it backs off
+    /// out of the gun's reach, and lands once the 10 s are spent.
+    #[test]
+    fn a_boat_stands_off_a_covered_beach_for_its_wait() {
+        let w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let mut obs = w.observe(0);
+        let mut me = obs.me.clone().unwrap();
+        me.route.clear();
+        me.goal = None;
+        let p = me.pos;
+        let (beach, gun) = (p + V2::new(10.0, 0.0), p + V2::new(8.0, 0.0));
+        obs.tanks = vec![me.clone(), Tank { owner: 1, pos: gun, alive: true, ..w.tanks[1].clone() }];
+        obs.pillboxes.clear();
+        obs.shore = vec![beach];
+        let mut b = RuleBot::new(1, "boat");
+        assert_eq!(b.landfall_order(&obs, &me), Some(Command::Move { to: beach }), "wait 0 lands");
+        let mut b = RuleBot::new(1, "boat");
+        b.landfall_wait = 10.0;
+        let off = obs.clamp(gun + V2::new(-(DIRECT_RANGE + 6.0), 0.0));
+        assert_eq!(b.landfall_order(&obs, &me), Some(Command::Move { to: off }));
+        assert!(b.standing_off());
+        obs.tick += 11 * TICK_HZ as Tick;
+        assert_eq!(b.landfall_order(&obs, &me), Some(Command::Move { to: beach }), "the wait spent, it lands");
+        assert!(!b.standing_off());
     }
 
     /// RuleBots win more than twice as often, kill more and outlive

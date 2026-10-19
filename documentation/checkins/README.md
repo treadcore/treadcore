@@ -23,3 +23,4 @@ report is what ties a conversation to them. Named
 | [007](CI-007-2026-10-19-the-meter-by-team.md) | 19 October 2026 | The meter by team, and LR 29 corrected | 0055 | LAB-REPORT-BRAIN.md sections 29 and 30 |
 | [008](CI-008-2026-10-19-the-run-for-the-beach.md) | 19 October 2026 | The run for the beach | 0056 | LAB-REPORT-BRAIN.md section 31 |
 | [009](CI-009-2026-10-19-who-saw-the-gun.md) | 19 October 2026 | Who saw the gun that sank the boat | 0057 | LAB-REPORT-BRAIN.md sections 31 and 32 |
+| [010](CI-010-2026-10-19-standing-off-a-covered-beach.md) | 19 October 2026 | Standing off a covered beach | 0058 | LAB-REPORT-BRAIN.md section 33 |

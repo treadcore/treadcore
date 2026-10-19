@@ -353,8 +353,9 @@ the run for the beach, 20%. The dodge off reads -2.45 a seat (LR 29):
 it pays ashore and, by the meter by team (LR 30), afloat a fifth of
 the boats. The run for the beach priced by the guns in sight (30, LR
 31): no change; and the boat saw its killer in 78% of those deaths
-(32, LR 32). Next, one at a time: standing off a covered beach (33),
-the dodge afloat (31), a census that
+(32, LR 32). Standing off a covered beach (33, LR 33): it hardly fires.
+Next, one at a time: where the gun stands (34), the dodge afloat (31),
+a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -615,7 +616,20 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     (`landfall_wait`, the seconds it will wait; 0 is today's, land
     anyway), and lands when the gun has gone or the wait is spent.
     Paul's default to ask. Proof: a test of the stand-off; landfall
-    deaths and the score at 48 seeds. Cost: a step. State: idea.
+    deaths and the score at 48 seeds. Cost: a step. State: done 19
+    October (LR 33), not confirmed: `landfall_wait` (0, Paul's
+    default) built and tested; at 10, -0.51 +/- 0.63, landfall deaths
+    184 against 165; the stand-off fired under 0.07% of the time. The
+    gun is rarely at the beach.
+34. Where the gun that sinks the boat stands. (19 October; cause: LR
+    31 to 33, three parts on the landfall that each assumed where the
+    gun is, none moved the deaths.) Goal 4. Hypothesis: the killers of
+    boats on landfall stand ashore along the boat's run, nearer the
+    boat than its beach, so the choice that matters is the crossing's
+    route or the beach's coast, not the beach. Proof: at each landfall
+    death, the killer's distance to the boat and to its chosen beach,
+    and whether the killer is ashore or afloat. Cost: a read, 16 seeds.
+    State: idea.
 
 
 ## Sequencing

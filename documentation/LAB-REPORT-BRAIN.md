@@ -1696,3 +1696,50 @@ That is an either/or, so a weight: backlog 33.
 
 Proof: play unchanged (0.00 on every seed). `make test`: brain 71
 passed and 8 ignored; client 31; net 14; proto 3; sim 50.
+
+## 33. Standing off a covered beach, 19 October
+
+Backlog 33, from LR 32: boats on landfall die to guns they have seen.
+The hypothesis: the gun covers the beach, and a boat that waits out of
+its reach until it leaves lives.
+
+**The part**: `landfall_wait` (weights.rs; 0 by Paul's choice, so play
+is unchanged; `RuleBot::landfall_wait`, set by the Commander). In
+`landfall_order`, once the beach is chosen: if a seen hostile tank is
+within its direct range plus 4 of that beach, the boat moves to 16
+tiles from the gun, on the line from the gun through the boat, or holds
+where it is if already that far. It does so until `landfall_wait`
+seconds of the crossing are spent, counted from the first stand-off and
+not restarted (a gun flickering in and out of sight cannot hold a boat
+off for ever), then lands. The wait resets ashore, at a respawn, and
+under a hop. `RuleBot::standing_off` and a new code, `stand_off`
+(status.rs), let the census count it. Proof:
+`a_boat_stands_off_a_covered_beach_for_its_wait` (at 0 the boat lands;
+at 10 it backs off to 16 tiles and lands once the 10 s are spent).
+
+**The reading**: `landfall_wait = 10` for the trial team, 48 seeds,
+`CENSUS_ACTS` on.
+
+| | d a seat | Deaths (seeds 0 to 15) | On landfall | Stand-off time |
+| --- | --- | --- | --- | --- |
+| Null (LR 27) | 0 | 819 | 165 | |
+| `landfall_wait` 10 | -0.51 +/- 0.63 | 798 | 184 | under 0.07% |
+
+**Not confirmed.** The score is inside the noise, and the landfall
+deaths did not fall (573 of 2,460 over 48 seeds, 23.3%). The stand-off
+hardly ever fired: under 0.07% of the trial team's seat-seconds (below
+the 40 commonest codes in every range), and it was the code held last
+at about 13 deaths. A gun the boat sees is rarely within reach of the
+beach it chose. **The guns that sink boats on landfall are not at the
+landing.** They are near the boat somewhere along its run.
+
+Three parts on the landfall (LR 31 to 33) have now found nothing to
+price. Each assumed where the gun is. The next step reads it: at each
+landfall death, the killer's distance to the chosen beach and to the
+boat, and whether the killer is ashore (backlog 34).
+
+`landfall_wait` stays 0.
+
+Proof: play unchanged at 0 by construction (`landfall_wait` 0 skips the
+block). `make test`: brain 72 passed and 8 ignored; client 31; net 14;
+proto 3; sim 50. No warnings.

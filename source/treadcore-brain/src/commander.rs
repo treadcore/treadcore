@@ -471,6 +471,7 @@ impl Commander {
         self.inner.hop.set_forget(keep);
         self.inner.hop.pricing = s.caps.has(Caps::PRICED_CROSSING).then(|| s.clone());
         self.inner.landfall_shy = s.w[W::LandfallShy];
+        self.inner.landfall_wait = s.w[W::LandfallWait];
         self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.
@@ -2467,6 +2468,7 @@ impl Commander {
         if me.boat || (self.inner.hops && self.inner.hop.active()) {
             let act = match () {
                 _ if self.inner.hop.adopted() => Act::TeamBridge,
+                _ if !(self.inner.hops && self.inner.hop.active()) && self.inner.standing_off() => Act::StandOff,
                 _ if !(self.inner.hops && self.inner.hop.active()) => Act::Landfall,
                 _ => Act::Hop(self.inner.hop.act),
             };
