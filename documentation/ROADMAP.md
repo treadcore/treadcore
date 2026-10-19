@@ -355,8 +355,9 @@ the boats. The run for the beach priced by the guns in sight (30, LR
 31): no change; and the boat saw its killer in 78% of those deaths
 (32, LR 32). Standing off a covered beach (33, LR 33): it hardly fires.
 Where the gun stands (34, LR 34): at the beach or along the run, seen
-only in range. Next, one at a time: the landfall priced by the board
-(35), the dodge afloat (31), a census that
+only in range. The board forgets each second (35, LR 35), but 46% of
+those killers were seen near there earlier. Next, one at a time: guns
+remembered for the landfall (36), the dodge afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -644,7 +645,19 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     to ask), needs `board`. Proof: first a read, the board's hostile
     influence at the killer's position at each landfall death against
     the coast's; then the part, its test, 48 seeds. Cost: a read and a
-    step. State: idea.
+    step. State: read 19 October (LR 35), closed: the board clears
+    itself each second and cannot know a gun out of sight. But the
+    team had seen the killer 10 to 60 s before, near where the boat
+    died, in 76 of 164 landfall deaths (46%).
+36. Guns remembered for the landfall. (19 October; cause: LR 35, 46%
+    of landfall killers seen near there earlier, then lost.) Goal 4.
+    Hypothesis: the landfall's guns include each hostile tank where it
+    was last seen, for `landfall_memory` seconds (a weight, Paul's
+    default to ask; 0 is today's), and with `landfall_shy` and
+    `landfall_wait` reading them the landfall deaths fall. Proof: a
+    test that a gun seen and lost still prices a beach; the landfall
+    deaths and the score at 48 seeds, the three weights on together.
+    Cost: a step. State: idea.
 
 
 ## Sequencing

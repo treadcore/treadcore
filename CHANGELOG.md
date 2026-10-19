@@ -6,6 +6,10 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: with `CENSUS_ACTS=1` the census says whether the team had seen
+  each landfall killer 10 to 60 s before. In 46% of those deaths it
+  had, near where the boat died, and lost it: nothing in the brain
+  remembers a hostile tank for long (LAB-REPORT-BRAIN.md section 35).
 - Added: `Brain::beach`, the beach a boat is running for; with
   `CENSUS_ACTS=1` the census says where the gun that sank each boat on
   landfall stood. A median 8 tiles from the boat, inside its range and
