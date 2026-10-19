@@ -67,6 +67,9 @@ pub trait Brain: Send + Sync {
     fn rung(&self) -> Option<commander::Rung> {
         None
     }
+    /// Each tick the seat is dead, in place of a think: what a brain
+    /// counts of its fall (the dodge's meter, LR 27).
+    fn dead(&mut self, _obs: &Observation) {}
     /// New weights mid-match (the coordination screen's sliders,
     /// backlog 15); a brain without them ignores it.
     fn set_settings(&mut self, s: weights::Settings) {
@@ -92,6 +95,7 @@ pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<O
         meter::seat();
         let obs = world.observe(*p);
         if obs.me.as_ref().map(|t| !t.alive).unwrap_or(true) {
+            b.dead(&obs);
             // A bot comes back as soon as the world lets it.
             if obs.respawn_in == Some(0) {
                 out.push(Order { player: *p, cmd: Command::Respawn });
@@ -287,9 +291,34 @@ pub struct Dodge {
     /// of their own bubble (strike deaths 46 to 100 over eight quad
     /// seeds) and off the wrecks they were reviving.
     pub until: Tick,
+    /// The shell dodge under way, for the meter (backlog 28, LR 27):
+    /// when it began, when its shell lands, and whether afloat.
+    watch: Option<(Tick, Tick, bool)>,
+    /// Counted by the meter: the Commander's dodge, the one that acts.
+    /// The RuleBot under a Commander dodges too, but its moves are
+    /// dropped (`keep_inner`).
+    pub metered: bool,
+    /// The weights' numbers (horizon s, margin, clear, hold; LR 27);
+    /// None is the constants, the RuleBot's.
+    pub tune: Option<[f32; 4]>,
+    /// When the shell dodge under way began, for `dodge_hold`.
+    began: Tick,
 }
 
 impl Dodge {
+    /// The meter's reading of the dodge under way: hit (or killed)
+    /// between its start and its shell's landing, or clear of it. Any
+    /// hit in that window counts, the dodged shell's or another's.
+    pub fn watch(&mut self, me: &Tank, now: Tick) {
+        let Some((start, until, afloat)) = self.watch else { return };
+        if me.last_hit_tick >= start && me.last_hit_tick <= until {
+            crate::meter::dodge_hit(afloat, !me.alive, me.last_hit_tick + 2 == until);
+            self.watch = None;
+        } else if now > until {
+            self.watch = None;
+        }
+    }
+
     pub fn order(&mut self, obs: &Observation, me: &Tank) -> Option<Command> {
         self.order_with(obs, me, true)
     }
@@ -298,27 +327,36 @@ impl Dodge {
     /// mending a wreck beside it dodges a shell it sees but takes a hit
     /// where it stands: a jink pulled revivers off and the wreck died.
     pub fn order_with(&mut self, obs: &Observation, me: &Tank, jink: bool) -> Option<Command> {
+        self.watch(me, obs.tick);
         self.dodged.retain(|id| obs.shells.iter().any(|s| s.id == *id));
         let hostile = |o: PlayerId| o != obs.player && !obs.allied(o);
         for s in obs.shells.iter().filter(|s| s.kind == ShellKind::Indirect && hostile(s.owner)) {
             if self.dodged.contains(&s.id) {
                 continue;
             }
+            let [horizon, margin, clear, _] = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0]);
             let eta = s.impact_tick.saturating_sub(obs.tick);
-            if eta < 2 || eta as f32 * DT > 4.0 {
+            if eta < 2 || eta as f32 * DT > horizon {
                 continue;
             }
             let ahead = me.pos + V2::from_heading(me.heading).scale(me.speed * eta as f32 * DT);
-            if s.impact.dist(me.pos).min(s.impact.dist(ahead)) > SPLASH_RADIUS + 0.8 {
+            if s.impact.dist(me.pos).min(s.impact.dist(ahead)) > SPLASH_RADIUS + margin {
                 continue;
             }
             self.dodged.push(s.id);
+            if obs.tick >= self.until {
+                self.began = obs.tick;
+            }
             self.until = s.impact_tick + 2;
+            if self.metered && self.watch.is_none() {
+                self.watch = Some((obs.tick, self.until, me.boat));
+                crate::meter::dodge(me.boat);
+            }
             let line = (s.impact - s.from).norm();
             let across = V2::new(-line.y, line.x);
             let off = me.pos - s.impact;
             let side = if off.x * across.x + off.y * across.y >= 0.0 { 1.0 } else { -1.0 };
-            return Some(Command::Move { to: obs.clamp(s.impact + across.scale(side * (SPLASH_RADIUS + 2.5))) });
+            return Some(Command::Move { to: obs.clamp(s.impact + across.scale(side * (SPLASH_RADIUS + clear))) });
         }
         if jink && me.last_hit_tick > self.jinked && obs.tick.saturating_sub(me.last_hit_tick) <= TICK_HZ as Tick / 2 {
             self.jinked = me.last_hit_tick;
@@ -329,9 +367,14 @@ impl Dodge {
         None
     }
 
-    /// A dodge under way: hold it.
+    /// A dodge under way: hold it while the tank drives to its point,
+    /// and, by `dodge_hold`, that share of the shell's flight once
+    /// there (standing out of the splash rather than back to its
+    /// errand under the shell).
     pub fn holding(&self, obs: &Observation, me: &Tank) -> bool {
-        obs.tick < self.until && me.goal.is_some()
+        let hold = self.tune.map(|t| t[3]).unwrap_or(0.0).clamp(0.0, 1.0);
+        let held = self.began as f32 + hold * self.until.saturating_sub(self.began) as f32;
+        obs.tick < self.until && (me.goal.is_some() || (obs.tick as f32) < held)
     }
 }
 
@@ -1670,6 +1713,35 @@ mod tests {
         eprintln!("a_bot_drives_out_from_under_a_shell: {:.1} tiles from the impact", now.dist(me));
         assert!(!hurt, "the shell hurt it");
         assert!(now.dist(me) > SPLASH_RADIUS);
+    }
+
+    /// `dodge_hold` (LR 27): a tank at its dodge point before the
+    /// shell lands stays there at 1, and is free to its errand at 0
+    /// (the dodge before LR 27). The default numbers pick the same
+    /// point as the constants.
+    #[test]
+    fn a_dodge_holds_out_of_the_splash_by_its_weight() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        let me = w.tanks[0].pos;
+        let id = w.next_id;
+        w.next_id += 1;
+        let tick = w.tick;
+        w.shells.push(Shell { id, owner: 1, kind: ShellKind::Indirect, from: me + V2::new(30.0, 0.0), aim: me, impact: me, launch_tick: tick, impact_tick: tick + 3 * TICK_HZ as Tick, spotted: true });
+        let obs = w.observe(0);
+        let tank = obs.me.clone().unwrap();
+        let mut old = Dodge::default();
+        let first = old.order(&obs, &tank);
+        for hold in [0.0, 1.0] {
+            let mut d = Dodge { tune: Some([4.0, 0.8, 2.5, hold]), ..Default::default() };
+            assert_eq!(d.order(&obs, &tank), first, "the default numbers move as the constants do");
+            let mut arrived = tank.clone();
+            arrived.goal = None;
+            let mut driving = tank.clone();
+            driving.goal = Some(me + V2::new(0.0, 5.0));
+            assert!(d.holding(&obs, &driving), "held while it drives, hold {}", hold);
+            assert_eq!(d.holding(&obs, &arrived), hold > 0.5, "arrived, hold {}", hold);
+        }
     }
 
     /// RuleBots win more than twice as often, kill more and outlive

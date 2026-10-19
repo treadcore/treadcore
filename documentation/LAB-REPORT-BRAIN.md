@@ -842,7 +842,7 @@ are built, proven and measured but wait for a census to promote them.
 
 | Level | Code | Rate | Output |
 | --- | --- | --- | --- |
-| Settings | `weights.rs`: 83 weights, 18 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
+| Settings | `weights.rs`: 87 weights (the dodge's four since LR 27), 18 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
 | Team board (off) | `board.rs`, one per team, shared | rebuilt 1 Hz by the first member due | influence, front, defence points, posture (five scores, LR 25), kept jobs, swaps, part-laid bridges |
 | Fleet commander | `crew::FleetCommand` | 20 Hz; musters every 30 s | jobs, as before |
 | Commander, one per tank | `commander.rs` | 20 Hz | `Vec<Command>` |
@@ -854,14 +854,15 @@ are built, proven and measured but wait for a census to promote them.
 | Ledger and meter | `ledger.rs`, `meter.rs`, `brain_census`, `make tune` | per match | a line per tank: genome, seed, score; the cost a seat-tick |
 
 ```
-Settings (weights.rs: 83 weights, 18 switches)  <-- --weights FILE, weights page (U)
+Settings (weights.rs: 87 weights, 18 switches)  <-- --weights FILE, weights page (U)
    |
 Team board, one per team, 1 Hz (board)                         (L5)
    |  influence, front, points, posture, jobs kept,
    |  swaps (team_rotate), part-laid bridges (bridge_jobs)
    v
 Commander, each tank, 20 Hz, first match wins                  (L1)
-   +-- survival: downed, dodge (indirect shells), duck (direct
+   +-- survival: downed, dodge (indirect shells; its numbers
+   |      weights and `dodge_hold`, LR 27), duck (direct
    |      fire denied before it is fired: duck, LR 21), revive, home
    +-- bridges: help the leader's; take a part-laid one (bridge_jobs)
    +-- afloat, shore gather, column on a bridge (column)
@@ -906,6 +907,11 @@ The numbers, 18 October evening:
   `smooth` -1.92; `escort` even (never reached); `bridge_jobs` -0.70
   with `board` on for every team; `duck` -0.51 (LR 21). At twelve seeds
   each, with the error (LR 24): none outside two errors.
+- 19 October (LR 27): 13,193 lines; 349 functions, 122 undocumented;
+  brain tests 69 passed, 8 ignored; 87 weights; 24.8 us a seat-tick.
+  Where it dies: the dodge (43% of deaths in 4.5% of the time) and the
+  run for the beach, `landfall` (20% in 3.2%); the ladder, rotation and
+  the fleet a small share.
 
 What the prototype has not shown yet: that any of its new parts makes
 the bots win more. The fair census can now tell a real difference from
@@ -1386,3 +1392,84 @@ Proof: no behaviour changed. The lean run of LR 25 run again gives the
 same per-seed differences to the hundredth, and the null run reads 0 on
 every seed. `make test`: brain 68 passed and 8 ignored; client 31; net 14; proto 3; sim 50. No
 warnings.
+
+## 27. What kills half the team, 19 October
+
+Backlog 28, from LR 26: 46.7% of the trial team's seat-seconds are
+dead. The hypothesis: what a seat was doing when it went down, read by
+code, names the two or three situations that kill most.
+
+**The instruments** (no change to play):
+- `CENSUS_ACTS` now also keeps each trial seat's last five codes, one a
+  second, and at each `TankDestroyed` counts the code held last, every
+  code held in the 5 s before (once a death), and what took the tank
+  (`killed_by`: the weapon whose hit names it on that tick, whether it
+  sank, and whether the shooter was the lone RuleBot or no one).
+- The meter counts the Commander's shell dodges, ashore and afloat
+  (`Dodge::metered`), and those hit, those hit by the dodged shell
+  itself (on its landing tick), and those killed, between the dodge's
+  start and its shell's landing (`Dodge::watch`, `meter::dodge`,
+  `meter::dodge_hit`). A dead seat still reads its dodge
+  (`Brain::dead`, called each tick in place of a think).
+- `Act::Landfall`: afloat with no hop under way, the doctrine's run for
+  the beach (`RuleBot::landfall_order`). It read `hop.idle` before.
+- The dodge's four constants are weights (`dodge_horizon` 4 s,
+  `dodge_margin` 0.8, `dodge_clear` 2.5 tiles) and one new one,
+  `dodge_hold` (0): the share of the shell's flight a tank stays at its
+  dodge point once there. At 0 it goes back to its errand on arrival,
+  as before; at 1 it stays out until the shell lands. The default
+  numbers pick the same point as the constants
+  (`a_dodge_holds_out_of_the_splash_by_its_weight`).
+
+**The reading** (16 seeds, null run, naval.map, 900 s, respawns 3; the
+trial team's 819 deaths, 17.1 a match):
+
+| Code held last | Deaths | Share of deaths | Share of time | Held in the 5 s before |
+| --- | --- | --- | --- | --- |
+| dodge | 354 | 43.2% | 4.5% | 67.3% |
+| landfall | 165 | 20.1% | 3.2% | 30.2% |
+| hop.sailing | 65 | 7.9% | 4.7% | 15.4% |
+| resupply | 32 | 3.9% | 0.9% | 6.3% |
+| hop.holding_launch | 28 | 3.4% | 1.1% | 8.1% |
+| hop.bridging | 24 | 2.9% | 4.3% | 4.3% |
+| hop.by_sea | 22 | 2.7% | 2.0% | 4.9% |
+| everything else living | 129 | 15.8% | 32.9% | |
+
+What took them (the twelve commonest causes, 791 of the 819): direct
+fire 253, indirect 275, strikes 246, pillboxes 17; 399 of the 791 sank
+in a boat. The commonest pairs: direct fire on a boat at landfall 132
+(16.1%), indirect fire on a boat in a dodge 91, indirect fire ashore in
+a dodge 87, a strike in a dodge 78.
+
+The dodge's own meter (the same run):
+
+| | Dodges | Hit before the shell landed | By the dodged shell | Killed |
+| --- | --- | --- | --- | --- |
+| Ashore | 7,911 | 2,691 (34.0%) | 1,314 (16.6%) | 582 (7.4%) |
+| Afloat | 3,408 | 621 (18.2%) | 258 (7.6%) | 567 (16.6%) |
+
+Three things follow:
+1. **Two situations make 63% of the deaths**: the dodge and the run
+   for the beach, in 7.7% of the time. A seat dies once every 26 s it
+   is dodging and once every 40 s on landfall, against once every 135
+   s of living time overall. The hypothesis is confirmed in its form:
+   two situations, not ten.
+2. **A dodge is a symptom before it is a cause.** A tank dodges because
+   a shell is on it; under fire is where tanks die. That a dodge
+   precedes most deaths does not say the dodge kills. Ashore, a sixth
+   of dodges are still hit by the shell they dodged, and a third by
+   something. Afloat, a hit is a kill 91% of the time: a boat sinks.
+   The test is causal: the dodge off (`-dodge`) and `dodge_hold` 1,
+   each at 48 seeds against the null run (next step).
+3. **Landfall is the second killer, and it is not a dodge.** 132 deaths
+   are a boat sunk by direct fire while running for a beach, though
+   `landfall_order` prices each beach by the threats near it. A boat
+   in range of a tank's gun is under fire it cannot answer.
+
+What this changes. Backlog 28's look is done; its part is the dodge,
+measured causally first, then the landfall (backlog 30). The ladder,
+rotation and the fleet are a small share of deaths.
+
+Proof: no behaviour changed. The null run reads 0 on every seed (trial
+8.38, baseline 8.38). `make test`: brain 69 passed and 8 ignored;
+client 31; net 14; proto 3; sim 50. No warnings.

@@ -348,7 +348,9 @@ Done 18 October (LR 24, CI-001): every capability alone at twelve
 seeds; none outside two errors; `board`, `island_site` and `escort`
 never acted. The posture as scores (backlog 21, LR 25), no better. Which rungs the
 lean moves (27, LR 26): the ladder decides 5.6% of the time, and half
-of it is dead. Next, one at a time: survival (28) and a census that
+of it is dead. What kills (28, LR 27): the dodge, 43% of deaths, and
+the run for the beach, 20%. Next, one at a time: the dodge measured
+causally (28), the landfall (30), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -550,7 +552,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     kill most, and a fix there moves the score more than any part so
     far. Proof: a census histogram of the code a seat held in the 5 s
     before each death (`CENSUS_ACTS`); then the part, with its test and
-    48 seeds. Cost: one 16-seed census to look, 5 min. State: idea.
+    48 seeds. Cost: one 16-seed census to look, 5 min. State: looked
+    19 October (LR 27): the dodge is the code held last at 43% of
+    deaths (4.5% of the time) and `landfall` at 20% (3.2%); afloat, a
+    dodge ends in a kill one time in six. Next: the dodge measured
+    causally, `-dodge` and `dodge_hold` 1 at 48 seeds each; then its
+    weights to the tuner.
 29. A census in which late parts act. (18 October; cause: LR 26, the
     census measures attrition; the escort, the cycle, bridge jobs and
     the turrets pay late.) Goal 4, 12g; goal 5. Hypothesis: with
@@ -558,6 +565,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     from LR 24. Proof: `CENSUS_RESPAWNS=254` (or `CENSUS_SECS=1800`)
     on `make switches`, beside LR 24's table. Cost: 396 matches, 25
     min (twice that at 1,800 s). State: idea.
+30. The run for the beach. (19 October; cause: LR 27, 165 deaths of
+    819 on `landfall`, 132 of them a boat sunk by direct fire.) Goal 4.
+    Hypothesis: `landfall_order` prices a beach by the threats near it
+    but not the boat's run past a gun in range; a boat in a tank's
+    direct range turns away from it (a weight, `landfall_shy`, blending
+    the nearest beach and the safest) and the deaths there fall by a
+    third. Proof: a test of the turn; the landfall deaths and the score
+    at 48 seeds. Cost: a step. State: idea.
 
 
 ## Sequencing

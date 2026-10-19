@@ -6,6 +6,18 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the census shows what kills. With `CENSUS_ACTS=1` it counts,
+  for each of the trial team's deaths, the status code held last, every
+  code held in the 5 s before, and what took the tank (direct fire,
+  indirect, a strike, a mine, a pillbox; sunk or not). The meter counts
+  shell dodges ashore and afloat and those hit before the shell landed.
+  On naval.map the dodge is the code held last at 43% of deaths and the
+  run for the beach (a new code, `landfall`, read `hop.idle` before) at
+  20%, in 7.7% of the time (LAB-REPORT-BRAIN.md section 27).
+- Added: the dodge's numbers are weights (`dodge_horizon`,
+  `dodge_margin`, `dodge_clear`), and a new one, `dodge_hold` (0, as
+  before): the share of the shell's flight a tank stays at its dodge
+  point once there. Default play is unchanged.
 - Added: the census shows where the trial team's time goes. Seat-seconds
   on each Auto rung (`Brain::rung`), the posture's changed picks by
   rung (`Meter::moved`), and with `CENSUS_ACTS=1` every seat-second by

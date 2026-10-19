@@ -747,6 +747,36 @@ mod tests {
         crate::commander::Rung::ALL.iter().zip(n).map(|(r, n)| format!("{} {}", r.label(), n)).collect::<Vec<_>>().join(", ")
     }
 
+    /// What took a tank, read from the events of the tick it died in
+    /// (backlog 28): the weapon whose hit names it, whether it sank in
+    /// a boat, and whether the shooter was the lone RuleBot.
+    fn killed_by(events: &[treadcore_sim::Event], tank: treadcore_sim::EntityId, by: Option<PlayerId>) -> String {
+        use treadcore_sim::{Event, ShellKind};
+        let (mut what, mut sunk) = ("other", false);
+        for e in events {
+            let w = match e {
+                Event::Sunk { tank: t, .. } if *t == tank => {
+                    sunk = true;
+                    continue;
+                }
+                Event::PillboxFired { tank: t, .. } if *t == tank => "pillbox",
+                Event::MineExploded { hits, .. } if hits.contains(&tank) => "mine",
+                Event::StrikeHit { tank: t, .. } if *t == tank => "strike",
+                Event::LongshotHit { hits, .. } if hits.contains(&tank) => "longshot",
+                Event::ShellImpact { kind: ShellKind::Direct, hits, .. } if hits.contains(&tank) => "direct",
+                Event::ShellImpact { kind: ShellKind::Indirect, hits, .. } if hits.contains(&tank) => "indirect",
+                _ => continue,
+            };
+            what = w;
+        }
+        let who = match by {
+            None => " (none)",
+            Some(b) if b as usize == AGGRO => " (aggro)",
+            _ => "",
+        };
+        format!("{}{}{}", what, if sunk { ", sunk" } else { "" }, who)
+    }
+
     /// The brain census (roadmap 12a and 12g): sixteen seats dealt as
     /// `--fleets` deals them, one team on the trial settings and the
     /// other two on the baseline, the trial team turned round the three
@@ -807,6 +837,15 @@ mod tests {
         // (`CENSUS_ACTS=1`, LR 26): every seat-second, dead ones apart.
         let acts_on = std::env::var("CENSUS_ACTS").map(|v| v != "0").unwrap_or(false);
         let mut acts: std::collections::BTreeMap<String, u32> = Default::default();
+        // What a trial seat was doing when it went down, and what took
+        // it (backlog 28, LR 27): the code it held last, every code it
+        // held in the 5 s before, and the weapon, read from the tick's
+        // events. Counted under `CENSUS_ACTS` too.
+        let mut deaths = 0u32;
+        let mut died_last: std::collections::BTreeMap<String, u32> = Default::default();
+        let mut died_window: std::collections::BTreeMap<String, u32> = Default::default();
+        let mut died_by: std::collections::BTreeMap<String, u32> = Default::default();
+        let mut died_both: std::collections::BTreeMap<String, u32> = Default::default();
         let mut total = crate::meter::Meter::default();
         // Fair (backlog 16, journal 0038): every team takes the trial seat
         // on every seed, three matches a seed, so the starts' unevenness
@@ -854,10 +893,32 @@ mod tests {
             };
             let mut words = [0u32; 10];
             let mut rungs = [0u32; 6];
+            let mut window: std::collections::HashMap<PlayerId, std::collections::VecDeque<String>> = Default::default();
             while !w.over && w.tick < secs * TICK_HZ as Tick {
                 let orders = crate::run_bots(&w, &mut bots);
                 w.step(&orders);
                 tally.hear(&w);
+                if acts_on {
+                    for e in &w.events {
+                        let Event::TankDestroyed { tank, owner, by } = e else { continue };
+                        if teams()[*owner as usize] != lucky {
+                            continue;
+                        }
+                        let by_kind = killed_by(&w.events, *tank, *by);
+                        let codes = window.remove(owner).unwrap_or_default();
+                        let last = codes.back().cloned().unwrap_or_else(|| "(none)".into());
+                        deaths += 1;
+                        *died_by.entry(by_kind.clone()).or_insert(0) += 1;
+                        *died_both.entry(format!("{:<18} {}", by_kind, last)).or_insert(0) += 1;
+                        *died_last.entry(last).or_insert(0) += 1;
+                        let mut seen: Vec<&String> = codes.iter().collect();
+                        seen.sort();
+                        seen.dedup();
+                        for c in seen {
+                            *died_window.entry(c.clone()).or_insert(0) += 1;
+                        }
+                    }
+                }
                 if w.tick % TICK_HZ as Tick == 0 {
                     for (p, b) in &bots {
                         if teams()[*p as usize] == lucky {
@@ -870,6 +931,13 @@ mod tests {
                             if acts_on {
                                 let alive = w.tanks.iter().any(|t| t.owner == *p && t.alive);
                                 let code = if !alive { "(dead)".to_string() } else if b.rung().is_some() { format!("[ladder] {}", b.act().code()) } else { b.act().code() };
+                                if alive {
+                                    let q = window.entry(*p).or_default();
+                                    q.push_back(code.clone());
+                                    if q.len() > 5 {
+                                        q.pop_front();
+                                    }
+                                }
                                 *acts.entry(code).or_insert(0) += 1;
                             }
                         }
@@ -888,6 +956,12 @@ mod tests {
                 *t += n;
             }
             total.leaned += m.leaned;
+            for i in 0..2 {
+                total.dodges[i] += m.dodges[i];
+                total.dodge_hits[i] += m.dodge_hits[i];
+                total.dodge_kills[i] += m.dodge_kills[i];
+                total.dodge_shell[i] += m.dodge_shell[i];
+            }
             for (t, r) in total.moved.iter_mut().zip(m.moved) {
                 for (t, n) in t.iter_mut().zip(r) {
                     *t += n;
@@ -947,6 +1021,18 @@ mod tests {
             for (k, n) in v.iter().take(40) {
                 eprintln!("  {:>6.2}%  {:>7}  {}", 100.0 * **n as f32 / all.max(1) as f32, n, k);
             }
+            let table = |title: &str, m: &std::collections::BTreeMap<String, u32>, top: usize| {
+                let mut v: Vec<(&String, &u32)> = m.iter().collect();
+                v.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
+                eprintln!("brain_census: trial team's {} deaths, {}:", deaths, title);
+                for (k, n) in v.iter().take(top) {
+                    eprintln!("  {:>6.2}%  {:>6}  {}", 100.0 * **n as f32 / deaths.max(1) as f32, n, k);
+                }
+            };
+            table("by what", &died_by, 12);
+            table("the code held last", &died_last, 30);
+            table("held in the 5 s before (a death counts once a code)", &died_window, 30);
+            table("by what and the code held last", &died_both, 30);
         }
         // The seeds are the samples: a seed's matches share its starts,
         // so its difference is one paired reading. Within two standard

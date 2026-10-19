@@ -217,6 +217,9 @@ pub enum Act {
     TeamBridge,
     Cycle(CycleAct),
     NoBoat,
+    /// Afloat with no hop under way: the doctrine's run for the beach
+    /// (`RuleBot::landfall_order`). Read as `hop.idle` before LR 27.
+    Landfall,
 }
 
 impl Act {
@@ -277,6 +280,7 @@ impl Act {
             Act::Crew => "crew",
             Act::TeamBridge => "team_bridge",
             Act::NoBoat => "no_boat",
+            Act::Landfall => "landfall",
             Act::WingKite(_) | Act::Kite(_) | Act::RallyKite(_) | Act::Hop(_) | Act::Cycle(_) => unreachable!(),
         }
     }
@@ -333,7 +337,7 @@ mod tests {
         let mut codes: Vec<String> = KiteStep::ALL.iter().map(|k| Act::Kite(*k).code()).collect();
         codes.extend(KiteStep::ALL.iter().map(|k| Act::WingKite(*k).code()));
         codes.extend(KiteStep::ALL.iter().map(|k| Act::RallyKite(*k).code()));
-        codes.extend([Act::Duck, Act::Revive, Act::OnGuard, Act::ToPost, Act::TeamBridge, Act::Hop(HopAct::Bridging), Act::Cycle(CycleAct::Mine)].iter().map(|a| a.code()));
+        codes.extend([Act::Duck, Act::Revive, Act::OnGuard, Act::ToPost, Act::TeamBridge, Act::Hop(HopAct::Bridging), Act::Cycle(CycleAct::Mine), Act::Landfall, Act::Hop(HopAct::Idle)].iter().map(|a| a.code()));
         let n = codes.len();
         codes.sort();
         codes.dedup();

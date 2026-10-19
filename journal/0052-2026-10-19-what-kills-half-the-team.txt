@@ -1,0 +1,107 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 11:00:00 -0700
+Subject: [JOURNAL 0052] What kills half the team
+Message-ID: <0052.20261019@treadcore.org>
+In-Reply-To: <0051.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: survival, attrition, dodge, landfall, backlog 28
+X-Session: the same 8 GB Alpine guest, 4 cores; Claude Code (Claude
+           Opus 5.5) as the pair. Paul: "we are working on the backlog
+           and the roadmap and writing lab reports and researching and
+           implimenting best ai structured brain. look about brain
+           overview in this latest rewrite. finish. commit continue."
+           and "commit. push. continue backlog"
+X-Commits: a7a6f16 (journal 0051); this entry's commit follows it
+
+                       WHAT KILLS HALF THE TEAM
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 28's look. The session finished instruments left in the
+    tree: a death census by status code and by weapon, a meter on
+    the dodge, a code for the run for the beach, and the dodge's
+    constants as weights with one new one, `dodge_hold`. Over 16
+    seeds, 819 deaths: the dodge is the code held last at 43% and
+    `landfall` at 20%, in 7.7% of the time. Afloat, one dodge in six
+    ends in a kill. The dodge precedes deaths because it answers fire,
+    so the causal test, the dodge off and `dodge_hold` 1 at 48 seeds,
+    is the next step.
+
+INDEX TERMS
+
+    attrition, instrumentation, reflexes, survival, census.
+
+
+I. INTRODUCTION
+
+    Journal 0051 found half the team's seat-time dead and named
+    backlog 28: what was a seat doing when it went down.
+
+II. BACKGROUND
+
+    The tree held uncommitted work from the end of 0051: the death
+    tables in `brain_census`, `Dodge::watch` and its meter,
+    `Brain::dead`, `Act::Landfall`, four dodge weights. Not yet built
+    or measured. Environment as before.
+
+III. METHOD
+
+    Build and test what was in the tree; regenerate the brain map;
+    one 16-seed null census with `CENSUS_ACTS=1`; then the causal
+    pair at 48 seeds (running at commit). The brain overview (LR 20)
+    brought up to date.
+
+IV. CHRONOLOGY
+
+    1. `cargo test -p treadcore-brain --release`: 69 passed, 8
+       ignored, including the new dodge-hold test.
+    2. `make brainmap`: 124 undocumented; the two new meter functions
+       given doc lines, 122.
+    3. The 16-seed null census, 372 s: trial 8.38, baseline 8.38, 0 on
+       every seed. 819 deaths.
+    4. The tables read: dodge 43.2% of deaths last held, 67.3% in the
+       5 s before; landfall 20.1%; direct fire on a boat at landfall
+       the commonest single pair, 132.
+    5. The causal runs launched: `dodge_hold` 1 (a weights file), then
+       `-dodge`, 48 seeds each in three ranges of 16.
+    6. Paul: "commit. push. continue backlog". The look committed on
+       its own; the causal runs are the next entry's.
+
+V. RESULTS
+
+    LR 27. Dodges: ashore 7,911, a third hit, a sixth by the shell
+    dodged, 7.4% killed; afloat 3,408, 18% hit, 16.6% killed. Tests:
+    brain 69 passed and 8 ignored; client 31; net 14; proto 3; sim 50.
+
+VI. DISCUSSION
+
+    A reflex is where a tank is when it is in danger, so a death
+    census by code overstates it. The share of time against the share
+    of deaths is the lead (9.6 times for the dodge, 6.3 for landfall),
+    and only the switch off can say whether the reflex helps.
+
+VII. OPEN PROBLEMS
+
+    1. Does the dodge save tanks or lose them (backlog 28)?
+    2. The run for the beach under direct fire (backlog 30).
+    3. A census where late parts act (backlog 29).
+
+VIII. NEXT STEPS
+
+    1. Read the `dodge_hold` 1 and `-dodge` censuses against the null.
+    2. Backlog 30, the landfall.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md sections 20 and 27;
+    documentation/checkins/CI-004-2026-10-19-what-kills-half-the-team.md;
+    build/lr27/null-acts.log (not in the tree).
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

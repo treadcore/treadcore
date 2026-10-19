@@ -451,7 +451,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None }
+        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None }
     }
 
     /// The weights for its fights (tactics.rs); None shoots the nearest
@@ -470,6 +470,7 @@ impl Commander {
         self.revive_failed.keep = keep;
         self.inner.hop.set_forget(keep);
         self.inner.hop.pricing = s.caps.has(Caps::PRICED_CROSSING).then(|| s.clone());
+        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.
         if let Some(t) = self.inner.tactics.as_mut() {
@@ -2196,6 +2197,11 @@ impl Brain for Commander {
     fn rung(&self) -> Option<Rung> {
         self.rung_now
     }
+    fn dead(&mut self, obs: &Observation) {
+        if let Some(me) = &obs.me {
+            self.dodge.watch(me, obs.tick);
+        }
+    }
     fn act(&self) -> Act {
         self.act
     }
@@ -2457,7 +2463,12 @@ impl Commander {
             }
         }
         if me.boat || (self.inner.hops && self.inner.hop.active()) {
-            self.set_doing(if self.inner.hop.adopted() { Act::TeamBridge } else { Act::Hop(self.inner.hop.act) }, self.inner.status());
+            let act = match () {
+                _ if self.inner.hop.adopted() => Act::TeamBridge,
+                _ if !(self.inner.hops && self.inner.hop.active()) => Act::Landfall,
+                _ => Act::Hop(self.inner.hop.act),
+            };
+            self.set_doing(act, self.inner.status());
             return doctrine;
         }
         // A teammate on a chain alone: help haul it.

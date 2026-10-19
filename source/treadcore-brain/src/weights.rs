@@ -135,6 +135,11 @@ weights! {
     PostureFortify "w_pos_fortify" 1.0, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
     PostureExpand "w_pos_expand" 1.0, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
+    // The dodge (lib.rs `Dodge`, LR 27): its numbers, once constants.
+    DodgeHorizon "dodge_horizon" 4.0, "dodge: seconds before a shell lands that the tank starts out from under it";
+    DodgeMargin "dodge_margin" 0.8, "dodge: tiles past the splash a shell's landing still counts as on the tank";
+    DodgeClear "dodge_clear" 2.5, "dodge: tiles past the splash the tank drives to, across the shell's line";
+    DodgeHold "dodge_hold" 0.0, "dodge: the share of the shell's flight the tank stays out, arrived or not (1), against only while it drives (0, before LR 27)";
     // The base cycle (LR 6.1).
     GiveItem "w_give_item" 1.0, "cycle: one plan item for the base on each fill";
     GiveUpgrade "w_give_upgrade" 1.0, "cycle: one improvement for the base on each fill";

@@ -34,6 +34,13 @@ pub struct Meter {
     /// The picks the posture changed, by the rung that held first (row)
     /// and the rung taken (column), in `Rung::ALL`'s order (LR 26).
     pub moved: [[u64; 6]; 6],
+    /// Shell dodges begun, ashore and afloat, and those hit, and
+    /// killed, before the shell landed (backlog 28, LR 27).
+    pub dodges: [u64; 2],
+    pub dodge_hits: [u64; 2],
+    pub dodge_kills: [u64; 2],
+    /// Of the hits, those on the tick the dodged shell landed.
+    pub dodge_shell: [u64; 2],
 }
 
 thread_local! {
@@ -75,6 +82,19 @@ pub fn posture(p: crate::board::Posture, first: usize, taken: usize) {
         }
     });
 }
+/// A shell dodge begun, ashore or afloat (LR 27).
+pub fn dodge(afloat: bool) {
+    bump(|m| m.dodges[afloat as usize] += 1);
+}
+/// A dodge hit before its shell landed: killed by it, and by the
+/// dodged shell itself (the hit on its landing tick).
+pub fn dodge_hit(afloat: bool, killed: bool, shell: bool) {
+    bump(|m| {
+        m.dodge_hits[afloat as usize] += 1;
+        m.dodge_kills[afloat as usize] += killed as u64;
+        m.dodge_shell[afloat as usize] += shell as u64;
+    });
+}
 pub fn spent(d: Duration) {
     bump(|m| m.nanos += d.as_nanos() as u64);
 }
@@ -110,7 +130,14 @@ impl Meter {
             self.crossings_cached,
             self.plan_clones,
             self.micros_per_seat()
-        ) + &if self.postures.iter().sum::<u64>() > 0 {
+        ) + &if self.dodges.iter().sum::<u64>() > 0 {
+            format!(
+                ", dodges {} ashore ({} hit, {} by the shell, {} killed), {} afloat ({} hit, {} by the shell, {} killed)",
+                self.dodges[0], self.dodge_hits[0], self.dodge_shell[0], self.dodge_kills[0], self.dodges[1], self.dodge_hits[1], self.dodge_shell[1], self.dodge_kills[1]
+            )
+        } else {
+            String::new()
+        } + &if self.postures.iter().sum::<u64>() > 0 {
             let names = ["defend base", "fortify", "turrets", "hunt", "expand", "guard"];
             let mut moves: Vec<(u64, String)> = Vec::new();
             for (i, row) in self.moved.iter().enumerate() {
