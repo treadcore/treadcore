@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `Brain::beach`, the beach a boat is running for; with
+  `CENSUS_ACTS=1` the census says where the gun that sank each boat on
+  landfall stood. A median 8 tiles from the boat, inside its range and
+  at the edge of sight; two in five at the beach, three in five along
+  the run (LAB-REPORT-BRAIN.md section 34).
 - Added: `landfall_wait` (0, as before): the seconds of a crossing a
   boat stands off a beach a seen hostile tank covers, out of its reach,
   before it lands anyway; a new status code, `stand_off`. At 10, over

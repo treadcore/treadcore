@@ -2199,6 +2199,10 @@ impl Brain for Commander {
     fn rung(&self) -> Option<Rung> {
         self.rung_now
     }
+    /// The inner RuleBot's: the doctrine runs the landfall.
+    fn beach(&self) -> Option<V2> {
+        self.inner.beach()
+    }
     fn dead(&mut self, obs: &Observation) {
         if let Some(me) = &obs.me {
             self.dodge.watch(me, obs.tick);

@@ -1,0 +1,65 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 15:20:00 -0700
+Subject: [JOURNAL 0059] Where the gun that sinks the boat stands
+Message-ID: <0059.20261019@treadcore.org>
+In-Reply-To: <0058.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, sight, team board, backlog 34, backlog 35
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 57382d4 (journal 0058, pushed); this entry's commit follows
+
+                  WHERE THE GUN THAT SINKS THE BOAT STANDS
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 34's read. At each landfall death the census now knows the
+    boat's chosen beach (`Brain::beach`) and measures the killer's
+    place. Over 164 deaths: the killer stood a median 8 tiles from the
+    boat, inside its 10-tile range and at the edge of sight; 38% stood
+    within reach of the beach, 60% nearer the boat than the beach, 9%
+    afloat. A boat sees its killer only once it can fire. That
+    explains LR 31 to 33's three nulls, and corrects LR 32's "not
+    blind". Backlog 35: price the landfall by the team board's
+    hostile influence, which nothing reads.
+
+III. METHOD
+
+    LR 34: `Brain::beach`; at each landfall death with a killer, four
+    numbers; quartiles by range. Null run, 16 seeds in three ranges.
+
+IV. CHRONOLOGY
+
+    1. `Brain::beach` (default None); RuleBot's `landfall`, the
+       Commander's inner's.
+    2. The read: killer to boat 8, to beach 29, boat to beach 20, by
+       median; at the beach 38%, nearer the boat 60%, afloat 9%.
+    3. LR 32 marked; backlog 34 closed; 35 written.
+
+VI. DISCUSSION
+
+    LR 32 counted a sighting in the last 10 s as "seen" without asking
+    from how far. The distance was the question. A sighting is useful
+    only beyond the gun's range, and with sight equal to range there is
+    none. The team board's influence is the one store of knowledge
+    beyond sight the bots already build.
+
+VIII. NEXT STEPS
+
+    1. Paul: the default for `landfall_board` (backlog 35).
+    2. Backlog 35's read: the board's hostile influence where the
+       killers stood.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md sections 32 (marked) and 34;
+    documentation/checkins/CI-011-2026-10-19-where-the-gun-stands.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

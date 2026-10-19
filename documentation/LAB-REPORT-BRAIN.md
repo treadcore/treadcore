@@ -1679,6 +1679,10 @@ every seed):
 | the boat only | 0 | 0 |
 | All with a killer | 164 | |
 
+(LR 34: the killer stood a median 8 tiles from the boat at its death,
+inside its 10-tile range, so "seen" here means seen once the gun could
+already fire. The conclusion that boats are not blind is withdrawn.)
+
 **LR 31's explanation is withdrawn.** The boat had seen the gun that
 sank it in nearly four landfall deaths of five, and a teammate had seen
 it too: they cross together. A teammate's sighting adds a gun the boat
@@ -1743,3 +1747,59 @@ boat, and whether the killer is ashore (backlog 34).
 Proof: play unchanged at 0 by construction (`landfall_wait` 0 skips the
 block). `make test`: brain 72 passed and 8 ignored; client 31; net 14;
 proto 3; sim 50. No warnings.
+
+## 34. Where the gun that sinks the boat stands, 19 October
+
+Backlog 34, from LR 31 to 33: three landfall parts each assumed where
+the gun is, and none moved the deaths.
+
+**The instrument** (no change to play): `Brain::beach`, the beach a
+boat is running for (`RuleBot::landfall`; the Commander's inner
+RuleBot's). Under `CENSUS_ACTS`, at each trial death on `landfall` with
+a killer, the census records the killer's distance to the boat and to
+that beach, the boat's distance to its beach, and whether the killer
+was afloat.
+
+**The reading** (16 seeds, null run, in ranges of 6, 5 and 5; 0.00 on
+every seed; 164 landfall deaths with a killer, every one with a beach
+chosen):
+
+| | Range 0 to 5 | Range 6 to 10 | Range 11 to 15 | All |
+| --- | --- | --- | --- | --- |
+| Killer to boat, median (quartiles) | 8.1 (7.4, 8.7) | 8.0 (7.5, 9.6) | 8.0 (7.0, 9.4) | about 8 |
+| Killer to beach, median (quartiles) | 28.6 (4.1, 33.6) | 28.6 (5.0, 36.8) | 31.8 (6.8, 34.9) | about 29 |
+| Boat to beach, median (quartiles) | 24.1 (7.3, 28.4) | 18.3 (6.9, 32.8) | 17.6 (8.1, 30.7) | about 20 |
+| Killer within its range + 4 of the beach | 34.0% | 43.3% | 34.1% | 62 of 164, 37.8% |
+| Killer nearer the boat than the beach | 60.4% | 53.7% | 68.2% | 98 of 164, 59.8% |
+| Killer afloat | 9.4% | 11.9% | 4.5% | 15 of 164, 9.1% |
+
+Three things follow:
+1. **The gun is seen when it can already fire.** The killer stood a
+   median 8 tiles from the boat, inside its 10-tile direct range, and
+   sight is also 10 tiles. LR 32's "the boat had seen its killer in
+   the 10 s before" is true, but the sighting came at or inside the
+   gun's range, too late to act on. LR 32's reading stands; its
+   conclusion that the boats are not blind is withdrawn in this sense:
+   they are blind until it is too late.
+2. **Two kinds of death.** About two in five killers stood at the beach
+   (within 14 tiles of it, the first quartile 4 to 7 tiles), a beach
+   chosen a median 20 tiles off and so out of sight. That is why the
+   stand-off (LR 33) found nothing to see. About three in five stood
+   along the run, nearer the boat than its beach: guns on the coast
+   the boat sailed past. Under one in ten were afloat.
+3. **The limit is knowledge, not choice.** A boat's own sight cannot
+   price either kind in time, and teammates crossing together see the
+   same. What the team does not use is what it knows of the coast: the
+   team board's hostile influence (`board.rs`, built under `board`,
+   read by nothing since LR 24). A beach and a run priced by that
+   field could see a held coast before the boat is in range.
+
+What this changes. Backlog 34 closes: the gun stands either at the
+beach or along the coast of the run, out of sight until in range.
+Backlog 35: price the landfall by the team board's hostile influence,
+at the beach and along the run (needs `board`). The parts of LR 31 and
+33 (`landfall_shy`, `landfall_wait`) stay at 0; either can be fed the
+board's knowledge instead of the boat's sight.
+
+Proof: play unchanged (0.00 on every seed). `make test`: brain 72
+passed and 8 ignored; client 31; net 14; proto 3; sim 50. No warnings.

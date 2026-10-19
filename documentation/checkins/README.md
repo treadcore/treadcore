@@ -24,3 +24,4 @@ report is what ties a conversation to them. Named
 | [008](CI-008-2026-10-19-the-run-for-the-beach.md) | 19 October 2026 | The run for the beach | 0056 | LAB-REPORT-BRAIN.md section 31 |
 | [009](CI-009-2026-10-19-who-saw-the-gun.md) | 19 October 2026 | Who saw the gun that sank the boat | 0057 | LAB-REPORT-BRAIN.md sections 31 and 32 |
 | [010](CI-010-2026-10-19-standing-off-a-covered-beach.md) | 19 October 2026 | Standing off a covered beach | 0058 | LAB-REPORT-BRAIN.md section 33 |
+| [011](CI-011-2026-10-19-where-the-gun-stands.md) | 19 October 2026 | Where the gun that sinks the boat stands | 0059 | LAB-REPORT-BRAIN.md sections 32 and 34 |

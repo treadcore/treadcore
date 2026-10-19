@@ -850,6 +850,11 @@ mod tests {
         // 10 s before (backlog 32): the boat, a teammate, both, neither.
         // Sight sampled once a second.
         let mut landfall_seen: std::collections::BTreeMap<&str, u32> = Default::default();
+        // Where the gun stood (backlog 34): for each landfall death with
+        // a killer, the killer's distance to the boat and to its beach,
+        // the boat's to its beach (NaN if it had none), and whether the
+        // killer was afloat.
+        let mut gun_at: Vec<(f32, f32, f32, bool)> = Vec::new();
         let mut total = crate::meter::Meter::default();
         // Fair (backlog 16, journal 0038): every team takes the trial seat
         // on every seed, three matches a seed, so the starts' unevenness
@@ -917,6 +922,13 @@ mod tests {
                             let recent = |q: PlayerId| seen.get(&(q, *k)).map(|t| w.tick.saturating_sub(*t) <= 10 * TICK_HZ as Tick).unwrap_or(false);
                             let me = recent(*owner);
                             let mate = (0..SEATS).any(|q| q as PlayerId != *owner && teams()[q] == lucky && recent(q as PlayerId));
+                            let boat = w.tanks.iter().find(|t| t.id == *tank).map(|t| t.pos);
+                            let gun = w.tanks.iter().find(|t| t.owner == *k);
+                            let beach = bots.iter().find(|(q, _)| q == owner).and_then(|(_, b)| b.beach());
+                            if let (Some(boat), Some(gun)) = (boat, gun) {
+                                let nan = f32::NAN;
+                                gun_at.push((gun.pos.dist(boat), beach.map(|b| gun.pos.dist(b)).unwrap_or(nan), beach.map(|b| boat.dist(b)).unwrap_or(nan), gun.boat));
+                            }
                             *landfall_seen.entry(match (me, mate) { (true, true) => "both", (true, false) => "the boat only", (false, true) => "a teammate only", _ => "neither" }).or_insert(0) += 1;
                         }
                         deaths += 1;
@@ -1044,6 +1056,32 @@ mod tests {
             table("held in the 5 s before (a death counts once a code)", &died_window, 30);
             table("by what and the code held last", &died_both, 30);
             let n: u32 = landfall_seen.values().sum();
+            if !gun_at.is_empty() {
+                let q = |mut v: Vec<f32>| -> String {
+                    v.retain(|x| x.is_finite());
+                    v.sort_by(|a, b| a.total_cmp(b));
+                    if v.is_empty() {
+                        return "none".into();
+                    }
+                    let at = |p: f32| v[((v.len() - 1) as f32 * p).round() as usize];
+                    format!("{:.1} / {:.1} / {:.1} (quartiles, {})", at(0.25), at(0.5), at(0.75), v.len())
+                };
+                let n = gun_at.len() as f32;
+                let with_beach: Vec<&(f32, f32, f32, bool)> = gun_at.iter().filter(|g| g.1.is_finite()).collect();
+                let covers = with_beach.iter().filter(|g| g.1 < DIRECT_RANGE + 4.0).count();
+                let nearer_boat = with_beach.iter().filter(|g| g.0 < g.1).count();
+                eprintln!(
+                    "brain_census: where the gun stood, {} landfall deaths: killer afloat {:.1}%; a beach chosen {:.1}%; of those, the killer within its range + 4 of the beach {:.1}%, nearer the boat than the beach {:.1}%; killer to boat {}; killer to beach {}; boat to beach {}",
+                    gun_at.len(),
+                    100.0 * gun_at.iter().filter(|g| g.3).count() as f32 / n,
+                    100.0 * with_beach.len() as f32 / n,
+                    100.0 * covers as f32 / with_beach.len().max(1) as f32,
+                    100.0 * nearer_boat as f32 / with_beach.len().max(1) as f32,
+                    q(gun_at.iter().map(|g| g.0).collect()),
+                    q(gun_at.iter().map(|g| g.1).collect()),
+                    q(gun_at.iter().map(|g| g.2).collect())
+                );
+            }
             eprintln!("brain_census: trial team's {} landfall deaths with a killer, the killer seen in the 10 s before by: {}", n, landfall_seen.iter().map(|(k, v)| format!("{} {} ({:.1}%)", k, v, 100.0 * *v as f32 / n.max(1) as f32)).collect::<Vec<_>>().join(", "));
         }
         // The seeds are the samples: a seed's matches share its starts,

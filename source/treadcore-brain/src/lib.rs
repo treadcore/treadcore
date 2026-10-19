@@ -67,6 +67,11 @@ pub trait Brain: Send + Sync {
     fn rung(&self) -> Option<commander::Rung> {
         None
     }
+    /// Afloat: the beach it is running for, if any (the census's read
+    /// of where the gun stands, backlog 34).
+    fn beach(&self) -> Option<V2> {
+        None
+    }
     /// Each tick the seat is dead, in place of a think: what a brain
     /// counts of its fall (the dodge's meter, LR 27).
     fn dead(&mut self, _obs: &Observation) {}
@@ -706,6 +711,11 @@ impl RuleBot {
 impl Brain for RuleBot {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    /// The beach `landfall_order` chose, while afloat.
+    fn beach(&self) -> Option<V2> {
+        self.landfall.map(|(b, _)| b)
     }
 
     fn status(&self) -> String {

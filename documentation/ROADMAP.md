@@ -354,8 +354,9 @@ it pays ashore and, by the meter by team (LR 30), afloat a fifth of
 the boats. The run for the beach priced by the guns in sight (30, LR
 31): no change; and the boat saw its killer in 78% of those deaths
 (32, LR 32). Standing off a covered beach (33, LR 33): it hardly fires.
-Next, one at a time: where the gun stands (34), the dodge afloat (31),
-a census that
+Where the gun stands (34, LR 34): at the beach or along the run, seen
+only in range. Next, one at a time: the landfall priced by the board
+(35), the dodge afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -629,7 +630,21 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     route or the beach's coast, not the beach. Proof: at each landfall
     death, the killer's distance to the boat and to its chosen beach,
     and whether the killer is ashore or afloat. Cost: a read, 16 seeds.
-    State: idea.
+    State: read 19 October (LR 34), closed. The killer stood a median
+    8 tiles from the boat (inside its range; sight is 10), 38% within
+    reach of the beach, 60% nearer the boat than the beach, 9%
+    afloat: out of sight until in range, at the beach or along the
+    run. LR 32's "not blind" withdrawn.
+35. The landfall priced by what the team knows of the coast. (19
+    October; cause: LR 34, a boat sees its killer only once in range.)
+    Goal 4, 12e. Hypothesis: the team board's hostile influence
+    (`board.rs`, read by nothing since LR 24), at the beach and along
+    the run, prices the coast before the boat is in range, and the
+    landfall deaths fall. A weight (`landfall_board`, Paul's default
+    to ask), needs `board`. Proof: first a read, the board's hostile
+    influence at the killer's position at each landfall death against
+    the coast's; then the part, its test, 48 seeds. Cost: a read and a
+    step. State: idea.
 
 
 ## Sequencing
