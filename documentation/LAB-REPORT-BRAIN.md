@@ -2065,3 +2065,50 @@ held last. LR 29 showed the dodge pays; its numbers (`dodge_horizon`,
 tuner (backlog 23) is the way to tune them.
 
 Proof: no code changed. `make test` as in LR 38.
+
+## 40. SPSA on the paired census, 19 October
+
+Backlog 23, from CI-001 VI: the (1 + lambda) tuner selects noise. The
+recommended replacement is SPSA (Spall 1992), because the fair census
+already measures a paired difference.
+
+**The parts**:
+- `CENSUS_BASE_WEIGHTS` (fleet.rs `brain_census`): a weights file for
+  the two baseline teams, as `CENSUS_WEIGHTS` is for the trial. The
+  header line prints both sides' changed weights. With it, one census
+  plays theta + c delta against theta - c delta, and every team on
+  some old defaults against the new is one run (LR 39 needed two).
+- `scripts/spsa.sh` (`make spsa`): SPSA in log space over the weights
+  named in `TUNE`, each positive. Each step k draws a sign delta_i for
+  every tuned weight and plays one fair census on `SEEDS` fresh seeds
+  (`SEED0 + (k - 1) SEEDS`), the trial team on theta_i exp(+c_k
+  delta_i), the baselines on theta_i exp(-c_k delta_i). The census's
+  difference a seat d is f(+) - f(-); each log theta_i moves by a_k d
+  / (2 c_k delta_i), capped at `MAXSTEP` (0.5). The gains follow
+  Spall: a_k = A / (k + 1)^0.602, c_k = C / k^0.101 (A 0.6, C 0.4).
+  `SET` plants values on the start; `steps.tsv` keeps every step with
+  its difference and standard error. A result is promoted only after
+  beating the defaults on 48 seeds the search did not use.
+
+**The planted test** (CI-001 VI.D): a weight with a known large effect,
+detuned, which a working tuner must move back. `w_wounded`, named in
+CI-001, has never been measured, so a failure there would say nothing.
+`landfall_memory` has: removing it cost about 3.4 a seat (LR 37). It
+is set to 5 s (default 30) and tuned alone: 8 steps of 12 seeds.
+Running at this writing; the first four steps:
+
+| k | d a seat | Its error | landfall_memory after |
+| --- | --- | --- | --- |
+| 1 | -0.13 | 1.80 | 4.69 |
+| 2 | -0.87 | 1.24 | 3.27 |
+| 3 | +0.55 | 1.33 | 3.99 |
+| 4 | +1.21 | 1.43 | 2.68 |
+
+Every step's difference is inside its error: at 12 seeds a step reads
+to about 1.4 a seat, and between memory of 2 s and 5 s the true
+difference is likely far smaller. The walk so far is noise. LR 41
+gives the whole run.
+
+Proof: `make test`: brain 73 passed and 8 ignored. A plumbing run (1
+step, 3 seeds of 120 s) wrote both sides' files, and the header shows
+the trial on 4.48 s and the baselines on 2.01 s.

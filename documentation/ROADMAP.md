@@ -527,7 +527,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     census, finds weights that hold on new seeds. Proof: the planted
     test (CI-001 VI.D): from `w_wounded` 0 the tuner returns toward
     1.2; a found genome confirmed on 48 unused seeds and a second map.
-    Cost: about 600 matches a generation, 35 min. State: designed.
+    Cost: about 600 matches a generation, 35 min. State: SPSA built
+    19 October (LR 40): `CENSUS_BASE_WEIGHTS`, `scripts/spsa.sh`
+    (`make spsa`); the planted test on `landfall_memory` (from 5 s)
+    running.
 24. Scenario files: a playtest described in text and run headless at
     85x. (18 October; cause: Paul, "is there a way to create description
     and try to attempt these via playtests faster".) Goal 4; goal 1.

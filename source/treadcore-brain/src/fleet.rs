@@ -788,7 +788,8 @@ mod tests {
     /// for one match a seed, the trial team rotated). The trial is
     /// `CENSUS_WEIGHTS` (a weights file, weights.rs) or `CENSUS_CAPS`
     /// (capabilities added to the baseline, comma-separated), against
-    /// `CENSUS_BASE_CAPS` (the baseline teams', the same form); seeds
+    /// `CENSUS_BASE_CAPS` (the baseline teams', the same form) on
+    /// `CENSUS_BASE_WEIGHTS` (a weights file; the defaults if unset); seeds
     /// `CENSUS_SEEDS` (3) from `CENSUS_SEED0` (0), seconds `CENSUS_SECS`
     /// (900). `cargo test -p
     /// treadcore-brain --release -- --ignored brain_census --nocapture`.
@@ -810,7 +811,12 @@ mod tests {
         };
         // The baseline teams' (`CENSUS_BASE_CAPS`): a part that needs
         // another (bridge_jobs needs board) is tried against that one on.
-        let base = caps("CENSUS_BASE_CAPS", Settings::default());
+        // Or a whole weights file (`CENSUS_BASE_WEIGHTS`, backlog 23):
+        // SPSA's minus side, or every team but one on old defaults.
+        let base = match std::env::var("CENSUS_BASE_WEIGHTS") {
+            Ok(path) => caps("CENSUS_BASE_CAPS", Settings::parse(&std::fs::read_to_string(&path).expect("CENSUS_BASE_WEIGHTS")).unwrap_or_else(|e| panic!("{}: {}", path, e))),
+            Err(_) => caps("CENSUS_BASE_CAPS", Settings::default()),
+        };
         let trial = match std::env::var("CENSUS_WEIGHTS") {
             Ok(path) => Settings::parse(&std::fs::read_to_string(&path).expect("CENSUS_WEIGHTS")).unwrap_or_else(|e| panic!("{}: {}", path, e)),
             Err(_) => caps("CENSUS_CAPS", base.clone()),
@@ -826,7 +832,7 @@ mod tests {
         let ledger = std::env::var("CENSUS_LEDGER").map(|v| v != "0").unwrap_or(true);
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../reports/ledger");
         let k = ScoreWeights::from_long_game(std::env::var("CENSUS_LONG_GAME").ok().and_then(|v| v.parse().ok()).unwrap_or(crate::weights::W::LongGame.default_value()));
-        eprintln!("brain_census: trial caps [{}], {} weights changed {:?}; baseline caps [{}]", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>(), base.caps.names());
+        eprintln!("brain_census: trial caps [{}], {} weights changed {:?}; baseline caps [{}], {} weights changed {:?}", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>(), base.caps.names(), base.diff().len(), base.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>());
         let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
         // A seed's sums, trial and baseline, for the difference a seed
         // and its standard error (LR 24): the noise given as a number.

@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `make spsa` (`scripts/spsa.sh`), a tuner by simultaneous
+  perturbation (SPSA) over named weights: each step one fair census
+  with the trial team on the weights nudged up and the baseline teams
+  nudged down, on fresh seeds, and the weights moved along the
+  difference. The census takes `CENSUS_BASE_WEIGHTS`, a weights file
+  for the baseline teams (LAB-REPORT-BRAIN.md section 40).
 - Changed: the landfall's three weights are on by default
   (`landfall_memory` 30, `landfall_shy` 1, `landfall_wait` 10; Paul's
   choice). Bots remember hostile tanks for 30 s when choosing a beach,

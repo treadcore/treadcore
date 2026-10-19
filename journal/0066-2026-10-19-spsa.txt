@@ -1,0 +1,53 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 19:40:00 -0700
+Subject: [JOURNAL 0066] SPSA on the paired census
+Message-ID: <0066.20261019@treadcore.org>
+In-Reply-To: <0065.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: tuner, SPSA, planted test, backlog 23
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog", "i want to see it
+           run. how much backlog  items before this is testable."
+X-Commits: c636da9 (journal 0065, pushed); this entry's commit follows
+
+                         SPSA ON THE PAIRED CENSUS
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 23 begun. The census takes a weights file for its baseline
+    teams, and a new script tunes named weights by SPSA: one paired
+    census a step, plus side against minus side, on fresh seeds. The
+    planted test detunes `landfall_memory` to 5 s (a weight with a
+    measured effect) and asks SPSA to bring it back. Four of eight
+    steps in: every reading inside its error, the walk noise.
+
+IV. CHRONOLOGY
+
+    1. CI-001 VI read: noise-aware ES or SPSA; SPSA recommended.
+    2. `CENSUS_BASE_WEIGHTS`; the census header now prints the
+       baseline's weights too (the first plumbing run showed only the
+       trial's).
+    3. `scripts/spsa.sh`, `make spsa`; a 1-step plumbing run.
+    4. The planted weight changed from `w_wounded` (never measured)
+       to `landfall_memory` (measured, LR 37).
+    5. Paul asked to see it run: nothing on the backlog stands between
+       him and the new defaults; `make quad` or `FLEETS=1 make run`.
+    6. Committed with four steps in, on Paul's prompt.
+
+VIII. NEXT STEPS
+
+    1. The planted test's last four steps; LR 41.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 40; scripts/spsa.sh;
+    build/lr27/planted.log and build/spsa/ (not in the tree).
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
