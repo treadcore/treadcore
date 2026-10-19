@@ -1,0 +1,53 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 18:50:00 -0700
+Subject: [JOURNAL 0065] The landfall's three when every team has them
+Message-ID: <0065.20261019@treadcore.org>
+In-Reply-To: <0064.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, absolute reading, attrition, backlog 38
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "yes all three on. commit. push. continue backlog"
+X-Commits: 8144f5e (journal 0064, pushed); this entry's commit follows
+
+               THE LANDFALL'S THREE WHEN EVERY TEAM HAS THEM
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 38. A null run now is every team on the new defaults; LR
+    27's null on the same seeds is every team on the old. Landfall
+    deaths 165 to 89, dodge deaths 354 to 434, the death rate the
+    same, the matches 4.5% longer, living time 13% more. The deaths
+    move ashore. That explains LR 38's asymmetry. The next lever is
+    the dodge's untuned numbers.
+
+IV. CHRONOLOGY
+
+    1. The method: no new code; LR 27's null as the all-old reading.
+    2. The all-new null, 16 seeds in three ranges: 848 deaths, 89 on
+       landfall, 434 in a dodge, dead share 41.9%.
+    3. The asymmetry explained; backlog 38 closed; the tuner named.
+
+VI. DISCUSSION
+
+    A part that saves tanks in one place hands them to the next danger.
+    In a census of relative scores that shows as a gain only while the
+    opponents lack it. Absolute readings (deaths, living time, match
+    length) belong beside the relative score for any default.
+
+VIII. NEXT STEPS
+
+    1. Backlog 23, an honest tuner, on the dodge's numbers first.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 39;
+    documentation/checkins/CI-016-2026-10-19-when-every-team-has-them.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

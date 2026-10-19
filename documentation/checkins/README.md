@@ -29,3 +29,4 @@ report is what ties a conversation to them. Named
 | [013](CI-013-2026-10-19-guns-remembered.md) | 19 October 2026 | Guns remembered for the landfall | 0061 | LAB-REPORT-BRAIN.md section 36 |
 | [014](CI-014-2026-10-19-which-weight-carries-it.md) | 19 October 2026 | Which landfall weight carries the gain | 0062, 0063 | LAB-REPORT-BRAIN.md section 37 |
 | [015](CI-015-2026-10-19-on-by-default.md) | 19 October 2026 | The landfall's three on by default, and the reverse reading | 0064 | LAB-REPORT-BRAIN.md sections 20 and 38 |
+| [016](CI-016-2026-10-19-when-every-team-has-them.md) | 19 October 2026 | The landfall's three when every team has them | 0065 | LAB-REPORT-BRAIN.md section 39 |

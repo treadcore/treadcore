@@ -359,9 +359,10 @@ only in range. The board forgets each second (35, LR 35), but 46% of
 those killers were seen near there earlier. Guns remembered (36, LR
 36), with `landfall_shy` and `landfall_wait`: +2.31 +/- 0.58, landfall
 deaths halved. The memory carries it, and each of the other two adds
-(37, LR 37). On by default (LR 38); the reverse census reads even.
-Next, one at a time: the three when every team has them (38), the
-dodge afloat (31), a census that
+(37, LR 37). On by default (LR 38); the reverse census reads even;
+with every team on them the deaths move ashore, into the dodge, and
+the matches run longer (38, LR 39). Next, one at a time: the dodge's
+numbers to an honest tuner (23), the dodge afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -684,7 +685,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     absolute reading, the landfall deaths a seat and the dead share,
     with all teams on the old defaults against all on the new, the
     same 48 seeds. Cost: two censuses with `CENSUS_ACTS`, 25 min.
-    State: idea.
+    State: read 19 October (LR 39), on 16 seeds against LR 27's null:
+    landfall deaths 165 to 89, dodge deaths 354 to 434, the death rate
+    the same, matches 4.5% longer, living time +13%. The deaths move
+    ashore. Next: the dodge's numbers to the tuner (23).
 
 
 ## Sequencing

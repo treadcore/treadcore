@@ -13,7 +13,10 @@ fixed form (`journal/TEMPLATE.txt`).
   A team with them beat teams without them by 2.31 a seat over 48
   seeds; a team without them among teams with them read even (-0.08,
   error 0.45), so what they do when every team has them is still to be
-  measured (LAB-REPORT-BRAIN.md section 38).
+  measured (LAB-REPORT-BRAIN.md section 38). With every team on them
+  (section 39), boats lost on the run for the beach nearly halve, the
+  tanks that land die ashore instead, and matches run 4.5% longer with
+  13% more time alive.
 - Added: `landfall_memory` (0, as before): the seconds a hostile tank
   out of sight is kept where it was last seen, for a boat's choice of
   beach, its run, and its stand-off. With `landfall_memory` 30,

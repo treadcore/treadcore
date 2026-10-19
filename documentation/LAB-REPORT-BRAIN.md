@@ -2014,3 +2014,54 @@ finished).
 
 Proof: `make test`: brain 73 passed and 8 ignored; client 31; net 14;
 proto 3; sim 50. No warnings. 360 functions, 121 undocumented.
+
+## 39. The landfall's three when every team has them, 19 October
+
+Backlog 38, from LR 38: the relative census reads +2.31 forward and
+-0.08 in reverse. What do the three do to the game when every team has
+them?
+
+**The method.** The census sets only the trial team's weights, but a
+null run is every team on the defaults. LR 27's null run (seeds 0 to
+15) was every team on the old defaults, and play at the old defaults
+has not changed since (each new weight at 0 adds nothing). A null run
+now, on the same seeds, is every team on the new. Both with
+`CENSUS_ACTS`. These are absolute readings, not paired by seed, so they
+carry no standard error.
+
+| Seeds 0 to 15, every team | Old defaults (LR 27) | New defaults |
+| --- | --- | --- |
+| Trial team's deaths | 819 | 848 |
+| On landfall (code held last) | 165 | 89 |
+| In a dodge (code held last) | 354 | 434 |
+| Seat-seconds (the matches' length) | 206,685 | 216,000 (+4.5%) |
+| Deaths per 1,000 seat-seconds | 3.96 | 3.93 |
+| Dead share | 46.5% | 41.9% |
+| Living seat-seconds | 110,615 | 125,471 (+13%) |
+| Mean score a seat | 8.38 | 7.95 |
+
+**The deaths move; they do not fall.** With every team on the new
+defaults, the boats lost on the run for the beach nearly halve (165 to
+89), but the deaths in a dodge rise by about as many (354 to 434), and
+the death rate is the same. The tanks that used to sink on the way in
+now land, and die ashore under indirect fire. The matches run 4.5%
+longer and the team spends 13% more time alive, which is what goal 5
+asks for. The mean score a seat falls (8.38 to 7.95). It is a weighted
+sum that counts kills and holdings, and it is relative to how the
+other teams play, so without per-seed pairing this change cannot be
+told from noise.
+
+This explains LR 38's asymmetry. A team with the memory, among teams
+without it, saves its boats while its opponents' boats still sink: it
+gains. A team without it, among teams with it, still loses boats, but
+its opponents' saved tanks die ashore instead, so the relative score
+evens out.
+
+What this changes. The defaults stay as Paul chose: the game is longer
+and as deadly, with the deaths moved off the water. The next lever is
+where the deaths moved to: the dodge ashore, now 51% of the deaths
+held last. LR 29 showed the dodge pays; its numbers (`dodge_horizon`,
+`dodge_clear`) have never been tuned (backlog 28's close), and the
+tuner (backlog 23) is the way to tune them.
+
+Proof: no code changed. `make test` as in LR 38.
