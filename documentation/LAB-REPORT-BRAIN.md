@@ -1913,3 +1913,29 @@ Paul's: all three stay 0 until he moves them.
 Proof: play unchanged at 0 (`known_guns` is the seen tanks in order;
 `remember_guns` keeps nothing). `make test`: brain 73 passed and 8
 ignored; client 31; net 14; proto 3; sim 50. No warnings.
+
+## 37. Which landfall weight carries the gain, 19 October
+
+Backlog 37, from LR 36: `landfall_memory` 30, `landfall_shy` 1 and
+`landfall_wait` 10 together read +2.31 +/- 0.58. Each is taken back to
+0 in turn, 48 seeds each, against the null run (the defaults for all),
+`CENSUS_ACTS` on. This section is filled as the runs land.
+
+**Memory off** (`landfall_shy` 1, `landfall_wait` 10,
+`landfall_memory` 0):
+
+| | d a seat (48 seeds) | Landfall deaths, seeds 0 to 15 | Killer seen near there earlier |
+| --- | --- | --- | --- |
+| Null (LR 27, 35) | 0 | 165 | 76 |
+| All three (LR 36) | +2.31 +/- 0.58 | 82 | 16 |
+| Memory off | **-1.08 +/- 0.53** | 164 | 72 |
+
+By range: -0.82 +/- 0.86, -0.71 +/- 1.06, -1.70 +/- 0.82.
+
+**The memory carries the gain.** Without it, the two weights over the
+guns a boat sees cost about a point, just outside two errors, and the
+landfall deaths are the null's. That matches LR 31 and 33, each alone,
+with the same sign. The difference between this run and LR 36, about
+3.4 a seat, is what remembering the guns is worth to the other two.
+Whether the memory alone does as well, through the beach's `danger`
+and the run's heading, is what the next two runs say.

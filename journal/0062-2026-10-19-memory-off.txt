@@ -1,0 +1,46 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 17:20:00 -0700
+Subject: [JOURNAL 0062] The landfall without memory
+Message-ID: <0062.20261019@treadcore.org>
+In-Reply-To: <0061.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, memory, ablation, backlog 37
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 1aa76c1 (journal 0061, pushed); this entry's commit follows
+
+                       THE LANDFALL WITHOUT MEMORY
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    The first of backlog 37's three ablations. With `landfall_shy` 1
+    and `landfall_wait` 10 but no memory, over 48 seeds: -1.08 a seat,
+    error 0.53, and the landfall deaths the null's (164 against 165).
+    Against LR 36's +2.31, the memory is worth about 3.4 a seat to the
+    other two. Recorded alone because Paul asked to commit while the
+    other two runs went on.
+
+IV. CHRONOLOGY
+
+    1. Three weights files, one weight back at 0 in each; three
+       48-seed runs in turn.
+    2. Memory off ended: -0.82, -0.71, -1.70 by range.
+    3. Paul: "commit. push. continue backlog". Shy off half done.
+
+VIII. NEXT STEPS
+
+    1. Shy off and wait off; then the table whole, and Paul's
+       defaults.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 37.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

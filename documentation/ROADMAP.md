@@ -668,7 +668,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     carries it, through the beach's danger and the run's heading, and
     `landfall_shy` and `landfall_wait` add little. Proof: three 48-seed
     runs, each with one of the three back at 0. Then Paul chooses the
-    defaults. Cost: three censuses, 40 min. State: idea.
+    defaults. Cost: three censuses, 40 min. State: memory off read 19
+    October (LR 37): -1.08 +/- 0.53, landfall deaths those of the
+    null; the memory carries the gain. Shy off and wait off running.
 
 
 ## Sequencing
