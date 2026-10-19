@@ -358,8 +358,9 @@ Where the gun stands (34, LR 34): at the beach or along the run, seen
 only in range. The board forgets each second (35, LR 35), but 46% of
 those killers were seen near there earlier. Guns remembered (36, LR
 36), with `landfall_shy` and `landfall_wait`: +2.31 +/- 0.58, landfall
-deaths halved. Next, one at a time: which of the three carries it (37),
-the defaults (Paul's), the dodge afloat (31), a census that
+deaths halved. The memory carries it, and each of the other two adds
+(37, LR 37). Next, one at a time: the defaults (Paul's), the dodge
+afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -670,7 +671,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     runs, each with one of the three back at 0. Then Paul chooses the
     defaults. Cost: three censuses, 40 min. State: memory off read 19
     October (LR 37): -1.08 +/- 0.53, landfall deaths those of the
-    null; the memory carries the gain. Shy off and wait off running.
+    null; the memory carries the gain. Done 19 October: shy off +1.50
+    +/- 0.67, wait off +0.69 +/- 0.64; all three together best. Next:
+    Paul's defaults; then the three to the tuner (23).
 
 
 ## Sequencing

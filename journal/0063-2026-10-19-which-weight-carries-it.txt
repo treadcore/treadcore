@@ -1,0 +1,56 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 17:50:00 -0700
+Subject: [JOURNAL 0063] Which landfall weight carries the gain
+Message-ID: <0063.20261019@treadcore.org>
+In-Reply-To: <0062.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, memory, ablation, defaults, backlog 37
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 6e86ffb (journal 0062, pushed); this entry's commit follows
+
+                  WHICH LANDFALL WEIGHT CARRIES THE GAIN
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 37 complete. Each of LR 36's three weights back at 0 in
+    turn, 48 seeds each: memory off -1.08 +/- 0.53, shy off +1.50
+    +/- 0.67, wait off +0.69 +/- 0.64, against all three +2.31 +/-
+    0.58. The memory is the base; given it, the stand-off adds about
+    1.6 a seat and the run's price about 0.8. All three together are
+    best. The defaults are Paul's to move.
+
+IV. CHRONOLOGY
+
+    1. Memory off recorded on its own (journal 0062).
+    2. Shy off: +1.55, +1.62, +1.33 by range. Wait off: +0.26, +1.23,
+       +0.59.
+    3. LR 37 completed; CI-014 written.
+
+VI. DISCUSSION
+
+    The two weights that read null or worse alone are, with the
+    memory, worth more together than the memory with either. The
+    parts are complementary: the memory knows where the gun is, the
+    exposure keeps the run off it, the stand-off keeps the boat off
+    the beach it covers.
+
+VIII. NEXT STEPS
+
+    1. Paul: the three defaults.
+    2. Then their values to the tuner (backlog 23); the dodge afloat
+       (31).
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 37;
+    documentation/checkins/CI-014-2026-10-19-which-weight-carries-it.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

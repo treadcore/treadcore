@@ -1919,7 +1919,7 @@ ignored; client 31; net 14; proto 3; sim 50. No warnings.
 Backlog 37, from LR 36: `landfall_memory` 30, `landfall_shy` 1 and
 `landfall_wait` 10 together read +2.31 +/- 0.58. Each is taken back to
 0 in turn, 48 seeds each, against the null run (the defaults for all),
-`CENSUS_ACTS` on. This section is filled as the runs land.
+`CENSUS_ACTS` on.
 
 **Memory off** (`landfall_shy` 1, `landfall_wait` 10,
 `landfall_memory` 0):
@@ -1937,5 +1937,30 @@ guns a boat sees cost about a point, just outside two errors, and the
 landfall deaths are the null's. That matches LR 31 and 33, each alone,
 with the same sign. The difference between this run and LR 36, about
 3.4 a seat, is what remembering the guns is worth to the other two.
-Whether the memory alone does as well, through the beach's `danger`
-and the run's heading, is what the next two runs say.
+
+**Shy off and wait off** (each with the memory on):
+
+| Trial | d a seat (48 seeds) | Landfall deaths, seeds 0 to 15 | All 48 seeds | Killer seen near there earlier (0 to 15) |
+| --- | --- | --- | --- | --- |
+| Null | 0 | 165 | | 76 |
+| All three (LR 36) | **+2.31 +/- 0.58** | 82 | 281 | 16 |
+| Memory off | -1.08 +/- 0.53 | 164 | 542 | 72 |
+| Shy off (memory, wait) | +1.50 +/- 0.67 | 103 | 341 | 16 |
+| Wait off (memory, shy) | +0.69 +/- 0.64 | 113 | 369 | 25 |
+
+By range, shy off: +1.55 +/- 1.04, +1.62 +/- 1.35, +1.33 +/- 1.16;
+wait off: +0.26 +/- 1.11, +1.23 +/- 1.07, +0.59 +/- 1.20.
+
+**All three carry part of it, and the memory is the base.** Without the
+memory the other two cost a point. With it, the stand-off is worth
+about 1.6 a seat (all three against wait off) and the run's exposure
+about 0.8 (all three against shy off). Each of those differences is
+read across two runs against the null, not paired with each other, so
+they are rougher than the table's errors. Shy off alone is outside two
+errors (+1.50 +/- 0.67, 2.2 errors); wait off is not (1.1). The
+landfall deaths order the runs the same way as the score: all three
+fewest, then shy off, wait off, and memory off with the null.
+
+The best measured setting is all three at once. Its numbers (30 s,
+1, 10 s) were picked by hand and are not tuned. Moving any default is
+Paul's choice.

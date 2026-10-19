@@ -12,7 +12,9 @@ fixed form (`journal/TEMPLATE.txt`).
   `landfall_shy` 1 and `landfall_wait` 10 together, over 48 seeds, the
   trial team scored 2.31 a seat more (error 0.58) and lost half as many
   boats on the run for the beach (LAB-REPORT-BRAIN.md section 36). Off
-  by default until the defaults are chosen.
+  by default until the defaults are chosen. Each taken away in turn
+  (section 37): without the memory, -1.08; without the stand-off,
+  +0.69; without the run's price, +1.50. All three together are best.
 - Added: with `CENSUS_ACTS=1` the census says whether the team had seen
   each landfall killer 10 to 60 s before. In 46% of those deaths it
   had, near where the boat died, and lost it: nothing in the brain

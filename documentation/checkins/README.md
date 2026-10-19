@@ -27,3 +27,4 @@ report is what ties a conversation to them. Named
 | [011](CI-011-2026-10-19-where-the-gun-stands.md) | 19 October 2026 | Where the gun that sinks the boat stands | 0059 | LAB-REPORT-BRAIN.md sections 32 and 34 |
 | [012](CI-012-2026-10-19-known-earlier-and-lost.md) | 19 October 2026 | Known earlier, and lost | 0060 | LAB-REPORT-BRAIN.md sections 32 and 35 |
 | [013](CI-013-2026-10-19-guns-remembered.md) | 19 October 2026 | Guns remembered for the landfall | 0061 | LAB-REPORT-BRAIN.md section 36 |
+| [014](CI-014-2026-10-19-which-weight-carries-it.md) | 19 October 2026 | Which landfall weight carries the gain | 0062, 0063 | LAB-REPORT-BRAIN.md section 37 |
