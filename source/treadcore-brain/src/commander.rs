@@ -470,6 +470,7 @@ impl Commander {
         self.revive_failed.keep = keep;
         self.inner.hop.set_forget(keep);
         self.inner.hop.pricing = s.caps.has(Caps::PRICED_CROSSING).then(|| s.clone());
+        self.inner.landfall_shy = s.w[W::LandfallShy];
         self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.

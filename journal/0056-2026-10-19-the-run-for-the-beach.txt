@@ -1,0 +1,74 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 13:40:00 -0700
+Subject: [JOURNAL 0056] The run for the beach
+Message-ID: <0056.20261019@treadcore.org>
+In-Reply-To: <0055.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, boats, sight, weights, backlog 30, backlog 32
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "yes 0. commit. push. continue backlog"
+X-Commits: 60ef375 (journal 0055, pushed); this entry's commit follows
+
+                          THE RUN FOR THE BEACH
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 30. A boat running for a beach now prices the tiles of
+    its run inside a seen hostile gun's reach, by a weight,
+    `landfall_shy`, 0 by Paul's choice. At 1 over 48 seeds: +0.65 a
+    seat, error 0.69, and the landfall deaths unchanged (169 against
+    165 on the null's seeds). Not confirmed. A boat sees a gun at 10
+    tiles, the gun's own range, so there is nothing seen in time to
+    price. Backlog 32: price the guns the team has seen.
+
+I. INTRODUCTION
+
+    Journal 0055 named backlog 30 next. Paul set the weight's default
+    to 0 when asked ("yes 0").
+
+III. METHOD
+
+    LR 31: the exposure of the straight run, step by tile; a test of
+    two beaches; `landfall_shy = 1` as the trial weights, 48 seeds,
+    `CENSUS_ACTS` on, compared with LR 27's null on seeds 0 to 15.
+
+IV. CHRONOLOGY
+
+    1. Read `landfall_order`: the beach's danger and the run's heading
+       (`toward`) already steer a boat off a gun it sees; hand-worked
+       cases chose the safe beach before any change. A warning sign,
+       noted and tested anyway, since Paul had approved the part.
+    2. The weight placed among the dodge's by mistake, moved after
+       them; its doc line reworded.
+    3. The test: at 0 the near beach (66 against 82), at 1 the far
+       (126 against 82).
+    4. The census: +0.50, -0.05, +1.49 by range; +0.65 +/- 0.69.
+       Landfall deaths 548 of 2,522, 21.7%.
+    5. The duck's weight note: sight and direct range are both 10
+       tiles. The cause named; backlog 32 written.
+
+VI. DISCUSSION
+
+    Step 1 was the answer before the census: the existing score
+    already did what the hypothesis said it lacked, for every gun it
+    could see. The look at what the code already does should come
+    before the hypothesis is written, not after.
+
+VIII. NEXT STEPS
+
+    1. Backlog 32's read: of the landfall deaths, the share whose
+       killer a teammate saw in the 10 s before.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 31;
+    documentation/checkins/CI-008-2026-10-19-the-run-for-the-beach.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

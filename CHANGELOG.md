@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `landfall_shy` (0, as before): a boat running for a beach
+  prices the tiles of its run in a seen hostile gun's reach. At 1, over
+  48 seeds, +0.65 a seat with an error of 0.69 and no fewer landfall
+  deaths: a boat sees a gun only once in its reach (LAB-REPORT-BRAIN.md
+  section 31). Off by default.
 - Added: the census shows what kills. With `CENSUS_ACTS=1` it counts,
   for each of the trial team's deaths, the status code held last, every
   code held in the 5 s before, and what took the tank (direct fire,

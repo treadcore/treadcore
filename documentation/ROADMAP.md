@@ -351,8 +351,9 @@ lean moves (27, LR 26): the ladder decides 5.6% of the time, and half
 of it is dead. What kills (28, LR 27): the dodge, 43% of deaths, and
 the run for the beach, 20%. The dodge off reads -2.45 a seat (LR 29):
 it pays ashore and, by the meter by team (LR 30), afloat a fifth of
-the boats. Next, one at a time: the landfall (30), the dodge afloat
-(31), a census that
+the boats. The run for the beach priced by the guns in sight (30, LR
+31): no change, the guns are unseen. Next, one at a time: the beach a
+teammate saw covered (32), the dodge afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -577,7 +578,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     direct range turns away from it (a weight, `landfall_shy`, blending
     the nearest beach and the safest) and the deaths there fall by a
     third. Proof: a test of the turn; the landfall deaths and the score
-    at 48 seeds. Cost: a step. State: idea.
+    at 48 seeds. Cost: a step. State: done 19 October (LR 31), not
+    confirmed: `landfall_shy` (0, Paul's default) built and tested; at
+    1, +0.65 +/- 0.69 and landfall deaths 169 against 165. The boat
+    cannot price a gun it does not see (sight = direct range = 10).
 31. The dodge afloat. (19 October; cause: LR 29, with the dodge off an
     undodged boat is hit by the shell about as often as a dodging one,
     8% against 7.6%, and killed no more often.) Goal 4. Hypothesis: a
@@ -591,6 +595,16 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     measured exactly, a boat's dodge cuts its kills by a fifth (18.2%
     to 14.7%), so LR 29's premise is withdrawn and the gain, if any, is
     the crossing time traded for that fifth: after 30.
+32. The beach a teammate saw covered. (19 October; cause: LR 31,
+    pricing the guns a boat sees saves none: sight and direct range are
+    both 10 tiles.) Goal 4. Hypothesis: `landfall_order` priced by the
+    guns the team has seen in the last `duck_memory` seconds (the
+    duck's remembered guns, or the board's sightings) moves the 548
+    landfall deaths of LR 31's 48 seeds. First, read it: of the
+    landfall deaths, the share whose killer a teammate had seen within
+    10 s before. Proof: that share; then `landfall_shy` over the
+    remembered guns, 48 seeds. Cost: a step to read, a step to build.
+    State: idea.
 
 
 ## Sequencing

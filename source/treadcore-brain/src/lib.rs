@@ -241,6 +241,11 @@ pub struct RuleBot {
     pub form: Form,
     /// Afloat: the beach it is making for, and when it chose it.
     landfall: Option<(V2, Tick)>,
+    /// `landfall_shy` (backlog 30, LR 31): at 1, each tile of the run
+    /// for a beach in a hostile gun's reach costs as much as 4 tiles
+    /// more to sail. 0 prices only the beach and the run's heading, as
+    /// before.
+    pub landfall_shy: f32,
     /// Out of a shell's way (`Dodge`); not a rookie's.
     dodge: Dodge,
     /// Island hopping, when nothing is left in reach by land (hop.rs).
@@ -503,7 +508,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
     }
 
     /// Afloat (SPEC TNK-08): run for land. One hit sinks a boat, so the
@@ -534,7 +539,24 @@ impl RuleBot {
         // A beach the way an enemy is costs more: the run is the
         // dangerous part, not only the landing.
         let toward = |b: V2| threats.iter().filter(|t| t.dist(me.pos) < INDIRECT_MAX_RANGE).map(|t| ((b - me.pos).norm().x * (*t - me.pos).norm().x + (b - me.pos).norm().y * (*t - me.pos).norm().y).max(0.0) * 15.0).sum::<f32>();
-        let score = |b: V2| b.dist(me.pos) + danger(b) + toward(b);
+        // The run in a gun's reach (backlog 30): the tiles of the straight
+        // line to the beach within a hostile tank's direct range, or a
+        // pillbox's, with a margin. A boat sinks at one hit.
+        let guns: Vec<(V2, f32)> = obs
+            .hostile_tanks()
+            .filter(|t| t.alive)
+            .map(|t| (t.pos, DIRECT_RANGE + 4.0))
+            .chain(obs.pillboxes.iter().filter(|p| p.alive() && !p.owner.map(|o| obs.allied(o)).unwrap_or(false)).map(|p| (p.pos, PILLBOX_RANGE + 2.0)))
+            .collect();
+        let shy = self.landfall_shy.max(0.0);
+        let exposed = |b: V2| {
+            if shy == 0.0 || guns.is_empty() {
+                return 0.0;
+            }
+            let steps = b.dist(me.pos).ceil().max(1.0) as usize;
+            (1..=steps).filter(|i| guns.iter().any(|(g, r)| me.pos.lerp(b, *i as f32 / steps as f32).dist(*g) < *r)).count() as f32 * b.dist(me.pos) / steps as f32
+        };
+        let score = |b: V2| b.dist(me.pos) + danger(b) + toward(b) + 4.0 * shy * exposed(b);
         let best = obs.shore.iter().filter(|b| !self.unreachable_tiles.contains(&b.tile())).min_by(|a, b| score(**a).total_cmp(&score(**b))).copied();
         let going = me.route.last().copied().or(me.goal);
         let Some(best) = best else {
@@ -1745,6 +1767,30 @@ mod tests {
             driving.goal = Some(me + V2::new(0.0, 5.0));
             assert!(d.holding(&obs, &driving), "held while it drives, hold {}", hold);
             assert_eq!(d.holding(&obs, &arrived), hold > 0.5, "arrived, hold {}", hold);
+        }
+    }
+
+    /// `landfall_shy` (backlog 30, LR 31): of two beaches, the nearer
+    /// one's run passing a hostile gun in reach, at 0 the boat takes it
+    /// (its price is the beach and the heading only), at 1 the farther
+    /// one clear of the guns.
+    #[test]
+    fn a_shy_boat_runs_for_the_beach_clear_of_the_guns() {
+        let w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(3) });
+        let mut obs = w.observe(0);
+        let mut me = obs.me.clone().unwrap();
+        me.route.clear();
+        me.goal = None;
+        let p = me.pos;
+        let (near, far) = (p + V2::new(30.0, 0.0), p + V2::new(0.0, -40.0));
+        let gun = |owner: PlayerId, at: V2| Tank { owner, pos: at, alive: true, ..w.tanks[owner as usize].clone() };
+        obs.tanks = vec![me.clone(), gun(1, p + V2::new(15.0, 12.0)), gun(2, p + V2::new(0.0, -55.0))];
+        obs.pillboxes.clear();
+        obs.shore = vec![near, far];
+        for (shy, want) in [(0.0, near), (1.0, far)] {
+            let mut b = RuleBot::new(1, "boat");
+            b.landfall_shy = shy;
+            assert_eq!(b.landfall_order(&obs, &me), Some(Command::Move { to: want }), "shy {}", shy);
         }
     }
 

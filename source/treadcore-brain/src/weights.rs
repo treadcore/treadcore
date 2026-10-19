@@ -140,6 +140,8 @@ weights! {
     DodgeMargin "dodge_margin" 0.8, "dodge: tiles past the splash a shell's landing still counts as on the tank";
     DodgeClear "dodge_clear" 2.5, "dodge: tiles past the splash the tank drives to, across the shell's line";
     DodgeHold "dodge_hold" 0.0, "dodge: the share of the shell's flight the tank stays out, arrived or not (1), against only while it drives (0, before LR 27)";
+    // The run for the beach (lib.rs `RuleBot::landfall_order`, LR 31).
+    LandfallShy "landfall_shy" 0.0, "landfall: at 1, each tile of a boat's run in a hostile gun's reach costs as much as 4 tiles more to sail; 0 (before LR 31) prices only the beach and the heading";
     // The base cycle (LR 6.1).
     GiveItem "w_give_item" 1.0, "cycle: one plan item for the base on each fill";
     GiveUpgrade "w_give_upgrade" 1.0, "cycle: one improvement for the base on each fill";

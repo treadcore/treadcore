@@ -1610,3 +1610,47 @@ gain smaller, below 30 (the landfall).
 Proof: play unchanged (the per-seed differences). `make test`: brain
 70 passed and 8 ignored; client 31; net 14; proto 3; sim 50. No
 warnings.
+
+## 31. The run for the beach, 19 October
+
+Backlog 30, from LR 27: 165 of 819 deaths on `landfall`, 132 of them a
+boat sunk by direct fire. The hypothesis: `landfall_order` prices a
+beach by the threats near it and the run's heading, not the run's
+passage through a gun's reach, so boats sail past guns.
+
+**The part**: `landfall_shy` (weights.rs, 0 by Paul's choice, so play
+is unchanged; `RuleBot::landfall_shy`, set by the Commander). The run
+to each beach is cut into tile steps; each step within a hostile
+tank's direct range plus 4, or a pillbox's range plus 2, is exposed.
+The beach's score adds `4 x landfall_shy x` the exposed tiles: at 1, a
+tile in a gun's reach costs as much as four tiles more sailing. Proof:
+`a_shy_boat_runs_for_the_beach_clear_of_the_guns` (a near beach whose
+run passes a gun, and a farther one clear: at 0 the near, at 1 the
+far).
+
+**The reading**: `landfall_shy = 1` for the trial team, 48 seeds,
+`CENSUS_ACTS` on.
+
+| | d a seat | Deaths (seeds 0 to 15) | On landfall | Direct fire, sunk, on landfall |
+| --- | --- | --- | --- | --- |
+| Null (LR 27) | 0 | 819 | 165 | 132 |
+| `landfall_shy` 1 | +0.65 +/- 0.69 | 821 | 169 | 133 |
+
+**Not confirmed.** The score is inside the noise and the deaths it was
+aimed at did not move. Over all 48 seeds the landfall deaths were 548
+of 2,522 (21.7%), as in the null's 20.1%. Choosing a beach clear of
+the guns the boat sees does not save it. The cause has to be the guns
+it does not see: sight and direct range are both 10 tiles (the duck's
+note in weights.rs), so a gun the boat could choose around is seen
+only once the boat is already in its reach. A price on what is seen
+cannot help against what is not.
+
+What this changes. `landfall_shy` stays 0. Backlog 30 closes, not
+confirmed. Backlog 32: the run for the beach priced by the guns the
+team has seen (the duck's remembered guns, `duck_memory`, or the
+board's sightings), so a boat knows the beach a teammate saw covered.
+
+Proof: play unchanged at 0 by construction (the exposure returns 0
+before any work, and a score plus 0.0 is the same float; no null run
+was repeated). `make test`: brain 71
+passed and 8 ignored; client 31; net 14; proto 3; sim 50. No warnings.
