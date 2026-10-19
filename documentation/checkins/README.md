@@ -18,3 +18,4 @@ report is what ties a conversation to them. Named
 | [002](CI-002-2026-10-18-the-posture-as-scores.md) | 18 October 2026 | The posture as scores | 0050 | LAB-REPORT-BRAIN.md section 25 |
 | [003](CI-003-2026-10-18-where-the-time-goes.md) | 18 October 2026 | Which rungs the lean moves, and where the time goes | 0051 | LAB-REPORT-BRAIN.md section 26 |
 | [004](CI-004-2026-10-19-what-kills-half-the-team.md) | 19 October 2026 | What kills half the team | 0052 | LAB-REPORT-BRAIN.md sections 20 and 27 |
+| [005](CI-005-2026-10-19-holding-out-of-the-splash.md) | 19 October 2026 | Holding out of the splash | 0053 | LAB-REPORT-BRAIN.md section 28 |

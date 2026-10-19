@@ -17,7 +17,10 @@ fixed form (`journal/TEMPLATE.txt`).
 - Added: the dodge's numbers are weights (`dodge_horizon`,
   `dodge_margin`, `dodge_clear`), and a new one, `dodge_hold` (0, as
   before): the share of the shell's flight a tank stays at its dodge
-  point once there. Default play is unchanged.
+  point once there. Default play is unchanged. At 1, over 48 seeds,
+  the trial team scored 1.18 a seat less (error 0.55), with no fewer
+  hits from the dodged shell, so it stays 0 (LAB-REPORT-BRAIN.md
+  section 28).
 - Added: the census shows where the trial team's time goes. Seat-seconds
   on each Auto rung (`Brain::rung`), the posture's changed picks by
   rung (`Meter::moved`), and with `CENSUS_ACTS=1` every seat-second by

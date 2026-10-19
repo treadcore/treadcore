@@ -1473,3 +1473,42 @@ rotation and the fleet are a small share of deaths.
 Proof: no behaviour changed. The null run reads 0 on every seed (trial
 8.38, baseline 8.38). `make test`: brain 69 passed and 8 ignored;
 client 31; net 14; proto 3; sim 50. No warnings.
+
+## 28. Holding out of the splash, 19 October
+
+Backlog 28, the first causal reading after LR 27. A sixth of ashore
+dodges are caught by the shell they dodged. One reading: the tank
+reaches its dodge point early, drops the dodge (`Dodge::holding` holds
+only while it drives) and goes back to its errand under the shell. If
+so, `dodge_hold` 1, which keeps the tank at its point until the shell
+lands, should cut the hits by the dodged shell and save tanks.
+
+**The run**: the defaults dumped (`CENSUS_DUMP`) with `dodge_hold = 1`,
+as the trial team's weights; 48 seeds in three ranges of 16
+(`CENSUS_SEED0` 0, 16, 32), naval.map, 900 s, respawns 3, the fair
+census, the ledger off. Against the null run (the defaults for all).
+
+| | d a seat | Ashore: hit, by the shell, killed | Afloat: hit, by the shell, killed |
+| --- | --- | --- | --- |
+| Null (LR 27, 16 seeds) | 0 | 34.0%, 16.6%, 7.4% of 7,911 | 18.2%, 7.6%, 16.6% of 3,408 |
+| `dodge_hold` 1 (48 seeds) | **-1.18 +/- 0.55** | 34.2%, 16.7%, 7.3% of 23,099 | 15.5%, 6.0%, 13.9% of 10,002 |
+
+The meter counts every Commander's dodges, the two baseline teams' as
+well as the trial team's, so its rates move a third as far as the trial
+team's own.
+
+**Not confirmed, and worse.** Holding at the dodge point does not cut
+the hits by the dodged shell ashore (16.7% against 16.6%). The tank
+that is caught is caught before it gets there, not after. The trial
+team loses 1.18 a seat, just outside two errors (1.10): a tank that
+stands out the whole flight leaves its errand for nothing. Afloat the
+rates fall a little, but that difference is diluted by the baseline
+teams and the score says the trade is a loss. `dodge_hold` stays 0.
+
+What it says about the dodge: the hits come in the drive, so the
+levers are when it starts (`dodge_horizon`) and where it goes
+(`dodge_clear`), and whether to dodge at all, which the switch off
+(`-dodge`, running) answers next.
+
+Proof: no code changed. The weights file differs from the defaults in
+the one line.

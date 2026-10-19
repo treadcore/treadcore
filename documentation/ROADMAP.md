@@ -555,9 +555,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     48 seeds. Cost: one 16-seed census to look, 5 min. State: looked
     19 October (LR 27): the dodge is the code held last at 43% of
     deaths (4.5% of the time) and `landfall` at 20% (3.2%); afloat, a
-    dodge ends in a kill one time in six. Next: the dodge measured
-    causally, `-dodge` and `dodge_hold` 1 at 48 seeds each; then its
-    weights to the tuner.
+    dodge ends in a kill one time in six. `dodge_hold` 1 (LR 28):
+    -1.18 +/- 0.55 at 48 seeds, the dodged shell's hits unchanged; it
+    stays 0. Next: `-dodge` at 48 seeds; then `dodge_horizon` and
+    `dodge_clear` to the tuner.
 29. A census in which late parts act. (18 October; cause: LR 26, the
     census measures attrition; the escort, the cycle, bridge jobs and
     the turrets pay late.) Goal 4, 12g; goal 5. Hypothesis: with

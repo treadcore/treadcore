@@ -1,0 +1,70 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 11:40:00 -0700
+Subject: [JOURNAL 0053] Holding out of the splash
+Message-ID: <0053.20261019@treadcore.org>
+In-Reply-To: <0052.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: dodge, causal test, weights, backlog 28
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 89090bf (journal 0052, pushed); this entry's commit follows
+
+                       HOLDING OUT OF THE SPLASH
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    The first causal test of the dodge. If tanks were caught after
+    reaching their dodge point, holding there until the shell lands
+    (`dodge_hold` 1) would save them. Over 48 seeds it costs 1.18 a
+    seat (error 0.55, just outside two) and leaves the dodged shell's
+    hits where they were, 16.7% of ashore dodges against 16.6%. The
+    hits come during the drive. `dodge_hold` stays 0.
+
+I. INTRODUCTION
+
+    Journal 0052 found the dodge last held at 43% of deaths and named
+    two causal runs. This entry is the first; the second, the dodge
+    off, is still running.
+
+III. METHOD
+
+    LR 28: a defaults dump with `dodge_hold = 1` as the trial team's
+    weights, 48 seeds in three ranges side by side, the null as
+    reference.
+
+IV. CHRONOLOGY
+
+    1. The hold run ended: -2.02, -0.38 and -1.14 by range; combined,
+       -1.18 +/- 0.55 over 48 seeds.
+    2. The meter, all Commanders: ashore by the shell 16.7%, as the
+       null; afloat killed 13.9% against 16.6%, diluted by the
+       baseline teams.
+    3. Paul: "commit. push. continue backlog". Recorded as its own
+       step while the dodge-off run goes on.
+
+VI. DISCUSSION
+
+    The hypothesis named where in the dodge the hits fall and was
+    wrong about it; the meter's by-the-shell count was the test, and
+    it did not move. A weight that holds the tank still has a cost
+    the meter does not show and the score does.
+
+VIII. NEXT STEPS
+
+    1. `-dodge` at 48 seeds against the null.
+    2. `dodge_horizon` and `dodge_clear` to the tuner (backlog 23).
+    3. Backlog 30, the landfall.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 28;
+    documentation/checkins/CI-005-2026-10-19-holding-out-of-the-splash.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
