@@ -1,0 +1,60 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 15:50:00 -0700
+Subject: [JOURNAL 0060] Known earlier, and lost
+Message-ID: <0060.20261019@treadcore.org>
+In-Reply-To: <0059.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, memory, team board, backlog 35, backlog 36
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: efe24d6 (journal 0059, pushed); this entry's commit follows
+
+                        KNOWN EARLIER, AND LOST
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 35's read. Reading the code first: sight is shared by the
+    team, and the board clears itself each second, so the board cannot
+    know a gun out of sight, and LR 32's boat-or-teammate split was
+    vacuous. Measured instead: had the team seen the killer earlier?
+    In 76 of 164 landfall deaths (46%) it had, 10 to 60 s before,
+    within reach of where the boat died. Backlog 36: guns remembered
+    for the landfall, a weight whose default is Paul's.
+
+IV. CHRONOLOGY
+
+    1. `board.rs` and `World::visible_to` read: shared sight, no
+       memory. Backlog 35 cannot work as written.
+    2. The read: team sightings by position, 1 Hz; each landfall
+       killer classed. Known near the spot 46%, elsewhere 16%, not
+       seen 38%.
+    3. A shadowed total in the census print, caught by the compiler's
+       warning, fixed (the numbers printed were the same).
+    4. LR 32 marked; backlog 35 closed; 36 written.
+
+VI. DISCUSSION
+
+    Two minutes of reading `visible_to` and `rebuild` would have
+    spared journal 0057 its teammate split and 0059 its board item.
+    The order that works: what the code knows, then what the census
+    shows, then the part.
+
+VIII. NEXT STEPS
+
+    1. Paul: the default for `landfall_memory` (backlog 36).
+    2. Backlog 36 built and measured with `landfall_shy` and
+       `landfall_wait`.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md sections 32 (marked) and 35;
+    documentation/checkins/CI-012-2026-10-19-known-earlier-and-lost.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -855,6 +855,11 @@ mod tests {
         // the boat's to its beach (NaN if it had none), and whether the
         // killer was afloat.
         let mut gun_at: Vec<(f32, f32, f32, bool)> = Vec::new();
+        // Known earlier (backlog 35): of the landfall deaths with a
+        // killer, whether the team saw the killer 10 to 60 s before, and
+        // if so whether it stood then within its range + 4 of where the
+        // boat died. Team sight, sampled once a second.
+        let mut known: std::collections::BTreeMap<&str, u32> = Default::default();
         let mut total = crate::meter::Meter::default();
         // Fair (backlog 16, journal 0038): every team takes the trial seat
         // on every seed, three matches a seed, so the starts' unevenness
@@ -905,6 +910,7 @@ mod tests {
             let mut rungs = [0u32; 6];
             let mut window: std::collections::HashMap<PlayerId, std::collections::VecDeque<String>> = Default::default();
             let mut seen: std::collections::HashMap<(PlayerId, PlayerId), Tick> = Default::default();
+            let mut sightings: std::collections::HashMap<PlayerId, Vec<(Tick, V2)>> = Default::default();
             while !w.over && w.tick < secs * TICK_HZ as Tick {
                 let orders = crate::run_bots(&w, &mut bots);
                 w.step(&orders);
@@ -925,6 +931,14 @@ mod tests {
                             let boat = w.tanks.iter().find(|t| t.id == *tank).map(|t| t.pos);
                             let gun = w.tanks.iter().find(|t| t.owner == *k);
                             let beach = bots.iter().find(|(q, _)| q == owner).and_then(|(_, b)| b.beach());
+                            if let Some(boat) = boat {
+                                let early: Vec<V2> = sightings.get(k).map(|v| v.iter().filter(|(t, _)| (10 * TICK_HZ as Tick..=60 * TICK_HZ as Tick).contains(&w.tick.saturating_sub(*t))).map(|(_, p)| *p).collect()).unwrap_or_default();
+                                *known.entry(match () {
+                                    _ if early.is_empty() => "not seen 10 to 60 s before",
+                                    _ if early.iter().any(|p| p.dist(boat) < DIRECT_RANGE + 4.0) => "seen 10 to 60 s before, then within reach of where the boat died",
+                                    _ => "seen 10 to 60 s before, elsewhere",
+                                }).or_insert(0) += 1;
+                            }
                             if let (Some(boat), Some(gun)) = (boat, gun) {
                                 let nan = f32::NAN;
                                 gun_at.push((gun.pos.dist(boat), beach.map(|b| gun.pos.dist(b)).unwrap_or(nan), beach.map(|b| boat.dist(b)).unwrap_or(nan), gun.boat));
@@ -958,6 +972,10 @@ mod tests {
                                 if alive {
                                     for t in w.observe(*p).hostile_tanks() {
                                         seen.insert((*p, t.owner), w.tick);
+                                        let v = sightings.entry(t.owner).or_default();
+                                        if v.last().map(|(at, _)| *at) != Some(w.tick) {
+                                            v.push((w.tick, t.pos));
+                                        }
                                     }
                                     let q = window.entry(*p).or_default();
                                     q.push_back(code.clone());
@@ -1055,6 +1073,8 @@ mod tests {
             table("the code held last", &died_last, 30);
             table("held in the 5 s before (a death counts once a code)", &died_window, 30);
             table("by what and the code held last", &died_both, 30);
+            let k: u32 = known.values().sum();
+            eprintln!("brain_census: trial team's {} landfall deaths with a killer, known earlier: {}", k, known.iter().map(|(c, v)| format!("{} {} ({:.1}%)", c, v, 100.0 * *v as f32 / k.max(1) as f32)).collect::<Vec<_>>().join(", "));
             let n: u32 = landfall_seen.values().sum();
             if !gun_at.is_empty() {
                 let q = |mut v: Vec<f32>| -> String {

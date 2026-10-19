@@ -1679,6 +1679,10 @@ every seed):
 | the boat only | 0 | 0 |
 | All with a killer | 164 | |
 
+(LR 35: sight is shared by the whole team, so the split between the
+boat and a teammate below differs only by when each was sampled, and
+says nothing.)
+
 (LR 34: the killer stood a median 8 tiles from the boat at its death,
 inside its 10-tile range, so "seen" here means seen once the gun could
 already fire. The conclusion that boats are not blind is withdrawn.)
@@ -1800,6 +1804,59 @@ Backlog 35: price the landfall by the team board's hostile influence,
 at the beach and along the run (needs `board`). The parts of LR 31 and
 33 (`landfall_shy`, `landfall_wait`) stay at 0; either can be fed the
 board's knowledge instead of the boat's sight.
+
+Proof: play unchanged (0.00 on every seed). `make test`: brain 72
+passed and 8 ignored; client 31; net 14; proto 3; sim 50. No warnings.
+
+## 35. Known earlier, and lost, 19 October
+
+Backlog 35's read, from LR 34: a boat sees its killer only once it is
+in range, so could the team board's hostile influence price the coast
+before then?
+
+**What the code says first.** Two facts, read before measuring:
+- Sight is shared by the whole team (`World::visible_to`: any allied
+  tank or drone within its vision). A seat's observation is the team's.
+  LR 32's split between "the boat" and "a teammate" could only differ
+  by when each was sampled; that split is vacuous and is marked so.
+- The board keeps no memory (`TeamBoard::rebuild` clears its influence
+  and threat each second and fills them from what the team sees now).
+  It cannot know a gun the team does not see at that moment, which is
+  the case LR 34 found. Backlog 35, as written, cannot work.
+
+The question that remains: had the team seen the killer earlier, and
+lost it?
+
+**The instrument** (no change to play): under `CENSUS_ACTS`, each
+hostile tank in the trial team's sight is logged with its position
+once a second. At each landfall death with a killer, the killer is
+classed: seen 10 to 60 s before, then within its direct range plus 4
+of where the boat died; seen 10 to 60 s before, elsewhere; or not seen
+then.
+
+**The reading** (16 seeds, null run; 0.00 on every seed):
+
+| The killer | Deaths | Share |
+| --- | --- | --- |
+| seen 10 to 60 s before, within reach of where the boat died | 76 | 46.3% |
+| seen 10 to 60 s before, elsewhere | 26 | 15.9% |
+| not seen 10 to 60 s before | 62 | 37.8% |
+| All | 164 | |
+
+**Nearly half the landfall deaths were known earlier.** The team had
+seen the gun standing near the place the boat would die, 10 s to a
+minute before, then lost sight of it (it moved behind the sight line,
+or the team's eyes moved on), and the boat sailed into it. Nothing in
+the brain keeps a hostile tank's last position for long. The duck
+keeps a seen gun for `duck_memory` (5 s) and only for ducking; the
+board for 1 s.
+
+What this changes. Backlog 35 closes: the board forgets. Backlog 36:
+the landfall's guns (its `danger`, `toward`, and the `landfall_shy`
+and `landfall_wait` checks) include each hostile tank where it was
+last seen, for `landfall_memory` seconds (a weight, Paul's default to
+ask; 0 is today's). It reaches up to the 46% of landfall deaths whose
+killer was seen near there earlier.
 
 Proof: play unchanged (0.00 on every seed). `make test`: brain 72
 passed and 8 ignored; client 31; net 14; proto 3; sim 50. No warnings.
