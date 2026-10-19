@@ -269,7 +269,7 @@ to 8.93 a seat).
   people; measured, the strings cost nothing, and a census match is
   identical before and after. Not yet: the Observation shared per
   team (the sim change).
-- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture),
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture, 83 with its scores),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
   The sliders, 18 October (LR 17): the coordination screen's weights
   page (`U`) for the player's own team, saved to
@@ -297,9 +297,13 @@ to 8.93 a seat).
   (`Rung::pick`, `the_posture_leans_the_ladder`); its first match found
   Defend in 94% of picks, a long-tailed threat field, fixed
   (`the_team_defends_a_threat_at_the_base_not_far_off`); measured at 48
-  seeds, -0.81 a seat with an error of 0.65, so it stays off. Not yet:
-  the posture as scores (backlog 21); influence, the front and
-  territory read by nothing.
+  seeds, -0.81 a seat with an error of 0.65, so it stays off. The
+  posture as scores, the same day (LR 25; `posture_scored`, the five
+  `w_pos_*`): `each_posture_scores_its_own_case`; 48 seeds, -1.04 with
+  an error of 0.58, no different from the ladder's (-0.23 +/- 0.74
+  apart); the two together -0.93 +/- 0.49, so the lean, not the
+  posture, is the suspect (backlog 27). Not yet: influence, the front
+  and territory read by nothing.
 - [~] 12f behaviours: the base cycle (`cycle`,
   `a_full_tank_gives_the_base_an_item`), priced crossings and the island
   site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`),
@@ -339,8 +343,9 @@ to 8.93 a seat).
 
 Done 18 October (LR 24, CI-001): every capability alone at twelve
 seeds; none outside two errors; `board`, `island_site` and `escort`
-never acted. Next, one at a time: the posture as scores (backlog 21);
-an honest tuner (23); `island_site` where a naval start chooses (20).
+never acted. The posture as scores (backlog 21, LR 25), no better.
+Next, one at a time: which rungs the lean moves (27); an honest tuner
+(23); `island_site` where a naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -488,7 +493,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     designed (each posture a 0..1 score, the blend picks), reads the
     match better and lets `posture` pay. Proof: a test per posture's
     score; the census of `posture` at 48 seeds against LR 24's -0.81 +/-
-    0.65. Cost: 144 matches, 8 min. State: designed (LR 9).
+    0.65. Cost: 144 matches, 8 min. State: done 18 October (LR 25):
+    scored, the ladder kept at `posture_scored` 0; -1.04 +/- 0.58,
+    no different from the ladder's; see 27.
 22. 18 October: the switch census at 200 seeds a switch, one night,
     so a half point a seat is outside two errors for every part (CI-001
     IV.A). Goal 4, 12g. Proof: `SEEDS=200 JOBS=3 make switches`. Cost:
@@ -520,6 +527,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Goal 4. Proof: `make brainmap` reading fewer; a test each for the
     crew's job hand-out and a hop's bridge choice. Cost: a step. State:
     idea.
+27. Which rungs the posture's lean moves. (18 October; cause: LR 25,
+    leaning the ladder reads -0.93 +/- 0.49 in both forms of the
+    posture.) Goal 4, 12e. Hypothesis: Economy, read 37% of the time
+    from material spent, leans tanks from Fortify and Turrets to
+    Expand, and that costs the point. Proof: the census counts the
+    trial team's seat-seconds on each rung, with the lean and without;
+    then the leanings as weights (a 5 x 6 table, 0 or 1 today) for the
+    tuner. Cost: one 48-seed census, 10 min. State: idea.
 
 
 ## Sequencing

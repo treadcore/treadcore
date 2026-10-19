@@ -2249,7 +2249,12 @@ impl Commander {
                 if let Ok(mut b) = b.lock() {
                     b.post(obs, me, &self.doing);
                     if b.due(obs.tick) {
-                        b.rebuild(obs, self.base, &self.settings, self.starved, obs.tick);
+                        let home = crate::board::Home {
+                            starved: self.starved,
+                            castle_left: self.plan.as_ref().map(|p| p.castle_left()).unwrap_or(if self.base.is_some() { 1.0 } else { 0.0 }),
+                            slots_left: self.plan.as_ref().map(|p| p.slots_left()).unwrap_or(0.0),
+                        };
+                        b.rebuild(obs, self.base, &self.settings, home, obs.tick);
                     }
                     if let Some((job, at)) = b.job_for(obs.player) {
                         self.crew.adopt(job, at);

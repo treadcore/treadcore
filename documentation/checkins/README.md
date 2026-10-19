@@ -15,3 +15,4 @@ report is what ties a conversation to them. Named
 | No. | Date | Title | Journal | Lab report |
 | --- | --- | --- | --- | --- |
 | [001](CI-001-2026-10-18-each-switch-alone.md) | 18 October 2026 | Each switch alone; the posture read; a review of the brain | 0049 | LAB-REPORT-BRAIN.md section 24 |
+| [002](CI-002-2026-10-18-the-posture-as-scores.md) | 18 October 2026 | The posture as scores | 0050 | LAB-REPORT-BRAIN.md section 25 |

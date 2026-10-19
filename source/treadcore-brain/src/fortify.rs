@@ -428,6 +428,26 @@ impl Plan {
         self.centre + self.facing.scale(WALL_R)
     }
 
+    /// The share of the castle (gate, walls, towers) not yet built or
+    /// given up: 1 just planned, 0 standing (the posture's Fortify, LR 25).
+    pub fn castle_left(&self) -> f32 {
+        let castle = &self.items[..self.castle_len];
+        if castle.is_empty() {
+            return 0.0;
+        }
+        castle.iter().filter(|i| !matches!(i.state, State::Done | State::Skipped)).count() as f32 / castle.len() as f32
+    }
+
+    /// The share of pillbox slots (turrets, the road slot, road posts)
+    /// still waiting for a pillbox: the posture's Connect (LR 25).
+    pub fn slots_left(&self) -> f32 {
+        let slots: Vec<&Item> = self.items.iter().filter(|i| i.lifted && i.state != State::Skipped).collect();
+        if slots.is_empty() {
+            return 0.0;
+        }
+        slots.iter().filter(|i| i.state != State::Done).count() as f32 / slots.len() as f32
+    }
+
     pub fn done(&self) -> usize {
         self.items.iter().filter(|i| i.state == State::Done).count()
     }

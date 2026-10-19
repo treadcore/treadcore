@@ -842,8 +842,8 @@ are built, proven and measured but wait for a census to promote them.
 
 | Level | Code | Rate | Output |
 | --- | --- | --- | --- |
-| Settings | `weights.rs`: 77 weights, 18 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
-| Team board (off) | `board.rs`, one per team, shared | rebuilt 1 Hz by the first member due | influence, front, defence points, posture, kept jobs, swaps, part-laid bridges |
+| Settings | `weights.rs`: 83 weights, 18 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
+| Team board (off) | `board.rs`, one per team, shared | rebuilt 1 Hz by the first member due | influence, front, defence points, posture (five scores, LR 25), kept jobs, swaps, part-laid bridges |
 | Fleet commander | `crew::FleetCommand` | 20 Hz; musters every 30 s | jobs, as before |
 | Commander, one per tank | `commander.rs` | 20 Hz | `Vec<Command>` |
 | Auto ladder | DefendBase > Fortify > Turrets > Hunt > Expand > Guard, the rung confirmed over two thinks under `smooth` (off), leaned by the team's posture under `posture` (off, LR 24) | 20 Hz | a goal |
@@ -854,7 +854,7 @@ are built, proven and measured but wait for a census to promote them.
 | Ledger and meter | `ledger.rs`, `meter.rs`, `brain_census`, `make tune` | per match | a line per tank: genome, seed, score; the cost a seat-tick |
 
 ```
-Settings (weights.rs: 77 weights, 18 switches)  <-- --weights FILE, weights page (U)
+Settings (weights.rs: 83 weights, 18 switches)  <-- --weights FILE, weights page (U)
    |
 Team board, one per team, 1 Hz (board)                         (L5)
    |  influence, front, points, posture, jobs kept,
@@ -898,7 +898,7 @@ The numbers, 18 October evening:
 - 12,566 lines in 17 files (8,458 in 8 on 18 October morning).
 - Brain tests: 64 passed, 8 ignored; client: 31; sim: 50.
 - 76 weights and 17 switches, with the duck (LR 21); 77 and 18 with
-  the posture (LR 24).
+  the posture (LR 24); 83 with its scores (LR 25).
 - 23 to 33 us a seat-tick in the census.
 - On by default: kite, pings, dodge, bridges, rotate, and since 18
   October `castle_cap`.
@@ -1226,4 +1226,80 @@ Proof:
   old rule.
 - `the_standard_error_of_a_sample`.
 - `make test`: brain 67 passed and 8 ignored; client 31; net 14; proto 3;
+  sim 50. No warnings.
+
+## 25. The posture as scores, 18 October
+
+Backlog 21, from LR 24 and CI-001 finding A3: the board's posture was
+itself a first-match ladder on thresholds, where LR 9 designed five
+scores ("when it scores high"). By Paul's rule, every either/or is a
+scalar.
+
+**The change** (`board.rs`, `fortify.rs`, `weights.rs`). Each posture
+has a score from 0 to 1, from what the board and the rebuilding member
+know (`Home`: the plan starved, `Plan::castle_left`,
+`Plan::slots_left`; each member now posts its squad's material):
+
+| Posture | Score | LR 9's "when it scores high" |
+| --- | --- | --- |
+| Defend | hostile worth within the base's alarm, half a tank full | threat in our territory |
+| Economy | 1 if the plan is starved, else the share of the team's material spent | low material, a starved plan |
+| Fortify | the share of the castle not yet built | an unfinished fort |
+| Connect | the share of pillbox slots and road posts still empty | road gaps between forts or to pillboxes |
+| Expand | the team's odds against the hostiles it sees: 0 at even, 1 at `press_odds`; none seen is no front, even | front odds at least `press_odds` |
+
+Each score has its weight (`w_pos_defend`, `w_pos_economy`,
+`w_pos_fortify`, `w_pos_connect`, `w_pos_expand`, all 1). The ladder of
+12e is kept, and the posture is the blend:
+
+```
+value(p) = (1 - k) [p is the ladder's pick] + k w_p score_p
+```
+
+The highest value wins; ties go in the ladder's order (Defend, Economy,
+Expand, Connect, Fortify); if nothing scores, Fortify, as the ladder
+had it. `k` is `posture_scored`, 1 by default: at 0 the posture is the
+ladder's, exactly. The board keeps both picks and the scores, for the
+screen and the tests. The weights now number 83.
+
+Proof: `each_posture_scores_its_own_case` builds the five cases. A
+castle just planned at even odds is Fortify; the castle up with half
+its slots empty is Connect; the squads spent is Economy; a starved plan
+is Economy; eight of ours against two of theirs in sight is Expand; a
+hostile at the gate is Defend over a planned castle. At
+`posture_scored` 0 the pick is the ladder's in every case. The ladder
+alone would have said Fortify in three of the cases, since it has no
+term for empty slots, spent material or odds.
+
+**The measurement** (the fair census as in LR 24, `posture` at
+`w_posture` 0.5, `board` on for every team, 48 seeds in three ranges of
+16, the same seeds as LR 24's):
+
+| Posture | d a seat | Error | Postures read (econ / fort / conn / exp / def) | Picks changed |
+| --- | --- | --- | --- | --- |
+| the ladder's (LR 24) | -0.81 | 0.65 | 16% / 47% / 19% / 18% / 0.4% | 164,606 |
+| scored (`posture_scored` 1) | -1.04 | 0.58 | 37% / 43% / 6% / 15% / 0.5% | 131,278 |
+| scored less the ladder's, seed by seed | -0.23 | 0.74 | | |
+| the two averaged, seed by seed | -0.93 | 0.49 | | |
+
+The ranges read +0.40, -1.46 and -2.07. The last 16 seeds alone were
+outside two errors, and the 48 are not. That is one more case of a
+range reading its own luck.
+
+**What it shows.** How the posture is worked out makes no measurable
+difference: scored and ladder's are -0.23 ± 0.74 apart. What both have
+in common is that they override the ladder's own order, and together
+they read about a point a seat behind (-0.93 ± 0.49, 1.9 errors). The
+lean is the suspect, not the posture. The likely mechanism is in the
+leanings. Economy is now read 37% of the time, from material spent on
+building, and it leans to Expand, so tanks leave Fortify and Turrets
+for depots. That is a hypothesis; the census does not yet count which
+rungs gained. Backlog 27 adds that count, and the leanings themselves
+are weights for the tuner once it can see a point (backlog 23).
+
+`posture` stays off. The scored posture is the board's default, since
+it is LR 9's design and measures no worse; the ladder is
+`posture_scored = 0`.
+
+- `make test`: brain 68 passed and 8 ignored; client 31; net 14; proto 3;
   sim 50. No warnings.

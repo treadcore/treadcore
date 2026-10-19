@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the team board's posture is five scores, as LR 9 designed:
+  Defend from a threat at the base, Economy from the material spent or
+  a starved plan, Fortify from the castle left to build, Connect from
+  the pillbox slots left, Expand from the odds against what the team
+  sees, each with its weight (`w_pos_*`). `posture_scored` blends them
+  with the old threshold ladder (0 is the ladder). Under `posture`, 48
+  seeds read -1.04 a seat with an error of 0.58, no different from the
+  ladder's posture; `posture` stays off and default play is unchanged.
 - Added: the census gives its noise as a number. It prints the
   difference a seat seed by seed and its standard error over the seeds;
   a part is outside the noise only past two errors (`ledger::mean_se`).

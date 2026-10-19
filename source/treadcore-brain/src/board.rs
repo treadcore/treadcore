@@ -80,6 +80,9 @@ pub enum Posture {
 }
 
 impl Posture {
+    /// In the threshold ladder's order (12e), which is also the order
+    /// ties between scores go by.
+    pub const ALL: [Posture; 5] = [Posture::Defend, Posture::Economy, Posture::Expand, Posture::Connect, Posture::Fortify];
     pub fn word(self) -> &'static str {
         match self {
             Posture::Economy => "economy",
@@ -91,6 +94,41 @@ impl Posture {
     }
 }
 
+/// What the member rebuilding the board knows of the base it shares
+/// with its team: the posture's inputs that are not on the map (LR 25).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Home {
+    /// The castle plan is short of material.
+    pub starved: bool,
+    /// `Plan::castle_left`: 1 when there is a base and no castle yet.
+    pub castle_left: f32,
+    /// `Plan::slots_left`.
+    pub slots_left: f32,
+}
+
+/// The five postures' scores, each 0..1 (LR 25).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PostureScores {
+    pub defend: f32,
+    pub economy: f32,
+    pub fortify: f32,
+    pub connect: f32,
+    pub expand: f32,
+}
+
+impl PostureScores {
+    /// The score of one posture.
+    pub fn of(&self, p: Posture) -> f32 {
+        match p {
+            Posture::Defend => self.defend,
+            Posture::Economy => self.economy,
+            Posture::Fortify => self.fortify,
+            Posture::Connect => self.connect,
+            Posture::Expand => self.expand,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Member {
     pub player: PlayerId,
@@ -98,6 +136,8 @@ pub struct Member {
     /// Armour times shells, each as a share of full: 0..1.
     pub ready: f32,
     pub alive: bool,
+    /// The squad's material, as a share of full: 0..1.
+    pub material: f32,
     /// What it says it is doing.
     pub doing: String,
     pub tick: Tick,
@@ -122,6 +162,10 @@ pub struct TeamBoard {
     pub members: Vec<Member>,
     pub points: Vec<V2>,
     pub posture: Posture,
+    /// The scores the posture was picked by, and the threshold ladder's
+    /// own pick, for the screen, the census and the tests.
+    pub scores: PostureScores,
+    pub ladder: Posture,
     /// Jobs given out: to whom, what, when.
     pub jobs: Vec<(PlayerId, Job, Tick)>,
     /// Part-laid bridges (`BRIDGE_JOBS`).
@@ -163,7 +207,7 @@ impl TeamBoard {
     /// Every think of a member: where it is and what it is doing, and the
     /// jobs it heard given out.
     pub fn post(&mut self, obs: &Observation, me: &Tank, doing: &str) {
-        let m = Member { player: obs.player, pos: me.pos, ready: readiness(me), alive: me.alive, doing: doing.to_string(), tick: obs.tick };
+        let m = Member { player: obs.player, pos: me.pos, ready: readiness(me), alive: me.alive, material: me.pillboys.material as f32 / PILLBOY_MATERIAL_MAX as f32, doing: doing.to_string(), tick: obs.tick };
         match self.members.iter_mut().find(|x| x.player == obs.player) {
             Some(x) => *x = m,
             None => self.members.push(m),
@@ -282,7 +326,7 @@ impl TeamBoard {
     }
 
     /// Once a second: the maps, the points, the posture, the swaps.
-    pub fn rebuild(&mut self, obs: &Observation, base: Option<V2>, s: &Settings, starved: bool, now: Tick) {
+    pub fn rebuild(&mut self, obs: &Observation, base: Option<V2>, s: &Settings, home: Home, now: Tick) {
         self.built = Some(now);
         let n = SECTORS * SECTORS;
         self.influence.clear();
@@ -332,9 +376,10 @@ impl TeamBoard {
             .map(|b| obs.tanks.iter().filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(b) <= crate::commander::BASE_ALARM).map(worth).sum())
             .unwrap_or(0.0);
         let ours = self.influence.iter().filter(|v| **v > 0.0).count();
-        self.posture = if base_threat > 0.5 {
+        // The threshold ladder of 12e (Defend fixed in LR 24).
+        let ladder = if base_threat > 0.5 {
             Posture::Defend
-        } else if starved {
+        } else if home.starved {
             Posture::Economy
         } else if ours * 4 < n {
             Posture::Expand
@@ -343,6 +388,38 @@ impl TeamBoard {
         } else {
             Posture::Fortify
         };
+        // The scores (LR 9's table, LR 25), each 0..1.
+        let alive: Vec<&Member> = self.members.iter().filter(|m| m.alive).collect();
+        let material = if alive.is_empty() { 1.0 } else { alive.iter().map(|m| m.material).sum::<f32>() / alive.len() as f32 };
+        let mine: f32 = obs.tanks.iter().filter(|t| t.alive && obs.allied(t.owner)).map(worth).sum();
+        let theirs: f32 = obs.tanks.iter().filter(|t| t.alive && !obs.allied(t.owner)).map(worth).sum();
+        let press = s.w[W::PressOdds].max(1.01);
+        // No hostile seen is no front: even odds, nothing to press.
+        let odds = if theirs > 0.0 { mine / theirs } else { 1.0 };
+        self.scores = PostureScores {
+            defend: (base_threat / 0.5).clamp(0.0, 1.0),
+            economy: if home.starved { 1.0 } else { (1.0 - material).clamp(0.0, 1.0) },
+            fortify: home.castle_left.clamp(0.0, 1.0),
+            connect: home.slots_left.clamp(0.0, 1.0),
+            expand: ((odds - 1.0) / (press - 1.0)).clamp(0.0, 1.0),
+        };
+        // Each posture's worth: the blend of the ladder's pick (1 for it,
+        // 0 for the rest) and its weighted score; the best, ties in the
+        // ladder's order; nothing pressing, Fortify as the ladder had it.
+        let k = s.w[W::PostureScored].clamp(0.0, 1.0);
+        let pw = |p: Posture| match p {
+            Posture::Defend => s.w[W::PostureDefend],
+            Posture::Economy => s.w[W::PostureEconomy],
+            Posture::Fortify => s.w[W::PostureFortify],
+            Posture::Connect => s.w[W::PostureConnect],
+            Posture::Expand => s.w[W::PostureExpand],
+        };
+        self.ladder = ladder;
+        let value = |p: Posture| (1.0 - k) * (p == ladder) as u8 as f32 + k * pw(p).max(0.0) * self.scores.of(p);
+        self.posture = Posture::ALL.iter().copied().fold(None, |best: Option<Posture>, p| match best {
+            Some(b) if value(b) >= value(p) => Some(b),
+            _ => Some(p),
+        }).filter(|p| value(*p) > 0.0).unwrap_or(Posture::Fortify);
         self.members.retain(|m| now < m.tick + 10 * TICK_HZ as Tick);
         self.orders.retain(|(_, _, t)| now < t + ORDER_FOR);
         if s.caps.has(crate::weights::Caps::TEAM_ROTATE) {
@@ -418,20 +495,72 @@ mod tests {
             t.pos = if t.owner % 2 == 0 { V2::new(20.5 + k / 4.0, 60.5) } else { V2::new(100.5, 40.5 + 2.0 * k) };
         }
         let mut b = TeamBoard::default();
-        b.rebuild(&w.observe(0), Some(base), &Settings::default(), false, 0);
+        b.rebuild(&w.observe(0), Some(base), &Settings::default(), Home::default(), 0);
         assert!(b.threat_at(base) > 0.5, "the sector threat has its long tail: {}", b.threat_at(base));
         assert_ne!(b.posture, Posture::Defend, "eight hostile tanks 80 tiles off");
         let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
         t.pos = base + V2::new(6.0, 0.0);
-        b.rebuild(&w.observe(0), Some(base), &Settings::default(), false, REBUILD);
+        b.rebuild(&w.observe(0), Some(base), &Settings::default(), Home::default(), REBUILD);
         assert_eq!(b.posture, Posture::Defend, "one at the gate");
+    }
+
+    /// Each posture wins on its own case (LR 25), and `posture_scored`
+    /// 0 is the threshold ladder in every case.
+    #[test]
+    fn each_posture_scores_its_own_case() {
+        let mut sc = Scenario::bots(16).with_teams(2);
+        sc.advantage = true;
+        let mut w = World::new(sc);
+        let base = V2::new(20.5, 64.5);
+        // Ours by the base, theirs 80 tiles off; two of theirs moved in
+        // sight-range of nobody but counted (advantage) for the odds case.
+        for t in w.tanks.iter_mut() {
+            let k = t.owner as f32;
+            t.pos = if t.owner % 2 == 0 { V2::new(20.5 + k / 4.0, 60.5) } else { V2::new(100.5, 40.5 + 2.0 * k) };
+        }
+        let full = |b: &mut TeamBoard, share: f32| {
+            b.members = (0..16u8).filter(|p| p % 2 == 0).map(|p| Member { player: p, pos: base, ready: 1.0, alive: true, material: share, doing: String::new(), tick: 0 }).collect();
+        };
+        let run = |obs: &Observation, home: Home, share: f32, scored: f32| {
+            let mut s = Settings::default();
+            s.w[W::PostureScored] = scored;
+            let mut b = TeamBoard::default();
+            full(&mut b, share);
+            b.rebuild(obs, Some(base), &s, home, 0);
+            (b.posture, b.ladder, b.scores)
+        };
+        let obs = w.observe(0);
+        let planned = Home { starved: false, castle_left: 1.0, slots_left: 0.0 };
+        let standing = Home { starved: false, castle_left: 0.0, slots_left: 0.0 };
+        let cases: Vec<(&str, Observation, Home, f32, Posture)> = vec![
+            ("a castle just planned, even odds", obs.clone(), planned, 1.0, Posture::Fortify),
+            ("the castle up, its slots half empty", obs.clone(), Home { slots_left: 0.5, ..standing }, 1.0, Posture::Connect),
+            ("the castle up, the squads spent", obs.clone(), standing, 0.2, Posture::Economy),
+            ("a starved plan", obs.clone(), Home { starved: true, ..planned }, 1.0, Posture::Economy),
+            ("eight of ours against two of theirs in sight", {
+                let mut o = obs.clone();
+                let mut n = 0;
+                o.tanks.retain(|t| obs.allied(t.owner) || { n += 1; n <= 2 });
+                o
+            }, standing, 1.0, Posture::Expand),
+        ];
+        for (what, o, home, share, want) in &cases {
+            let (got, ladder, scores) = run(o, *home, *share, 1.0);
+            eprintln!("each_posture_scores_its_own_case: {}: {:?} (the ladder: {:?}) {:?}", what, got, ladder, scores);
+            assert_eq!(got, *want, "{}: {:?}", what, scores);
+            assert_eq!(run(o, *home, *share, 0.0).0, ladder, "{}: posture_scored 0 is the ladder", what);
+        }
+        // A hostile tank at the gate: Defend over a castle just planned.
+        let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
+        t.pos = base + V2::new(6.0, 0.0);
+        assert_eq!(run(&w.observe(0), planned, 1.0, 1.0).0, Posture::Defend);
     }
 
     #[test]
     fn the_front_is_where_influence_crosses_zero() {
         let obs = placed([V2::new(20.0, 64.0), V2::new(100.0, 64.0), V2::new(24.0, 64.0), V2::new(104.0, 64.0)]);
         let mut b = TeamBoard::default();
-        b.rebuild(&obs, None, &Settings::default(), false, 0);
+        b.rebuild(&obs, None, &Settings::default(), Home::default(), 0);
         assert!(b.influence_at(V2::new(20.0, 64.0)) > 0.0);
         assert!(b.influence_at(V2::new(104.0, 64.0)) < 0.0);
         let front = b.front();
@@ -450,8 +579,8 @@ mod tests {
         let point = V2::new(60.0, 60.0);
         let mut b = TeamBoard { points: vec![point], ..TeamBoard::default() };
         b.members = vec![
-            Member { player: 0, pos: V2::new(61.0, 60.0), ready: 0.2, alive: true, doing: String::new(), tick: 0 },
-            Member { player: 1, pos: V2::new(20.0, 20.0), ready: 0.95, alive: true, doing: String::new(), tick: 0 },
+            Member { player: 0, pos: V2::new(61.0, 60.0), ready: 0.2, alive: true, material: 1.0, doing: String::new(), tick: 0 },
+            Member { player: 1, pos: V2::new(20.0, 20.0), ready: 0.95, alive: true, material: 1.0, doing: String::new(), tick: 0 },
         ];
         b.threat = vec![0.0; SECTORS * SECTORS];
         b.threat[sector_of(point)] = 1.0;

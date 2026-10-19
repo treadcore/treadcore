@@ -24,7 +24,7 @@ Section numbers are the lab report's (LR); dates are 2026.
 
 | Old method | Replaced by | When | The old one now | Evidence |
 | --- | --- | --- | --- | --- |
-| Constants written into `Tactics` and through the brain | `weights::Settings`: a flat `Weights` array of named weights (77 now) and `Caps` bits (18), defaults equal to the old constants | 18 Oct, LR 11 | the defaults themselves | `default_weights_are_todays_constants` |
+| Constants written into `Tactics` and through the brain | `weights::Settings`: a flat `Weights` array of named weights (83 now) and `Caps` bits (18), defaults equal to the old constants | 18 Oct, LR 11 | the defaults themselves | `default_weights_are_todays_constants` |
 | The castle of steps 11b and 11h: three towers and two bastions, filled with every pillbox carried in | the capped castle: two pillboxes inside, one on its road, the rest to posts on the roads between bases, kept off junctions (`castle_cap`, default on) | 18 Oct, LR 12 | `caps = baseline, -castle_cap`; proofs `a_commander_fortifies_its_depot`, `a_commander_climbs_the_ladder` run it | fair census: old castle 8.36 a seat, capped 9.08 (LR 14) |
 | The census's one match a seed, the trial team turned round | the fair census: every team in the trial seat on every seed (`CENSUS_FAIR`, default on) | 18 Oct, LR 14 | `CENSUS_FAIR=0` | a null run read 12.66 against 6.44 before, 13.93 against 13.93 after |
 | The census's baseline teams always on the defaults | `CENSUS_BASE_CAPS`: the baseline teams' switches, for a part that needs another on | 18 Oct, LR 18 | leave it unset | used for `bridge_jobs` against `board` |
@@ -36,6 +36,7 @@ Section numbers are the lab report's (LR); dates are 2026.
 | Floats compared with `partial_cmp().unwrap()`, a panic on any NaN (74 in the brain, 19 in the window and the sim) | `total_cmp`, which orders every float and cannot fail | 18 Oct, LR 23 | removed | `a_nan_does_not_panic_the_brain` panics on the old code and passes on the new; a census match identical before and after |
 | The posture's Defend on the sector threat at the base over 0.5, or a readiness spread over 0.6: Defend in 94% of picks | hostile worth within the base's alarm (16 tiles) over 0.5; the spread left to `team_rotate` | 18 Oct, LR 24 | removed | `the_team_defends_a_threat_at_the_base_not_far_off` fails on the old rule |
 | A census judged "inside the noise" by eye | the difference a seed and its standard error, outside past two errors (`ledger::mean_se`) | 18 Oct, LR 24 | the means are still printed | a null run 0 with an error of 0; `the_standard_error_of_a_sample` |
+| The board's posture as a threshold ladder (Defend > Economy > Expand > Connect > Fortify) | five scores, each weighted, blended with the ladder's pick by `posture_scored` (1) | 18 Oct, LR 25 | `posture_scored = 0` | `each_posture_scores_its_own_case`; 48 seeds under `posture`: -0.23 +/- 0.74 against the ladder's |
 | The window's pilot playing on no settings at all | the pilot on the weights page's settings, which start from the team file or `--weights` | 18 Oct, LR 17 | removed | `client::tune` |
 
 ## Current, challenger off
@@ -53,7 +54,7 @@ Section numbers are the lab report's (LR); dates are 2026.
 | A leader fetching a far pillbox alone | the fleet gathered first, escorting it home along the road | `escort` | 7.70 against 7.70: never reached in 900 s; 12 seeds: +0.01 | 16, 24 |
 | A bridge given up left half laid; a leader asking one wingman for its next tile | part-laid bridges on the team board, taken by the next teammate with material | `bridge_jobs` (needs `board`) | 7.31 against 8.01, inside the noise; 12 seeds: +0.44, error 0.91 | 18, 24 |
 | Direct fire taken where it falls (only kiting, against the one enemy a tank fights, keeps out of reach) | the duck: out of a hostile gun's range or line, seen or remembered, when it is ready before one's own | `duck` | 7.01 against 7.52, inside the noise; 12 seeds: +0.39, error 1.04 | 21, 24 |
-| The Auto ladder's first rung that holds (L1) | the team's posture leaning the pick, `(1 - w) order + w lean` | `posture` (needs `board`), `w_posture` | 48 seeds: -0.81, error 0.65 | 24 |
+| The Auto ladder's first rung that holds (L1) | the team's posture leaning the pick, `(1 - w) order + w lean` | `posture` (needs `board`), `w_posture` | 48 seeds: -0.81, error 0.65; scored (LR 25) -1.04, error 0.58 | 24, 25 |
 
 ## Shown impossible
 
@@ -67,5 +68,6 @@ Not every finding of LR 2 has an answer yet: the observation is still
 a full copy of the world per bot per tick (L2); the `doing` words are
 still written every think, beside their codes, measured as costing
 nothing (L3, LR 22); and the Commander's chain of branches, the
-wingman's priorities and the board's posture are still first-match
-orders (L1; the Auto ladder has a blend under `posture`, LR 24).
+wingman's priorities are still first-match orders (L1; the Auto
+ladder has a blend under `posture`, LR 24, and the board's posture is
+scored, LR 25).

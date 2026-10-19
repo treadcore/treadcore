@@ -129,6 +129,12 @@ weights! {
     // The team (LR 9).
     SwapGap "swap_gap" 0.3, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
     Posture "w_posture" 0.5, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";
+    PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
+    PostureDefend "w_pos_defend" 1.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
+    PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
+    PostureFortify "w_pos_fortify" 1.0, "posture: worth of Fortify's score, the share of the castle not yet built";
+    PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
+    PostureExpand "w_pos_expand" 1.0, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
     // The base cycle (LR 6.1).
     GiveItem "w_give_item" 1.0, "cycle: one plan item for the base on each fill";
     GiveUpgrade "w_give_upgrade" 1.0, "cycle: one improvement for the base on each fill";
