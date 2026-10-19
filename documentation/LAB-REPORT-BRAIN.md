@@ -2189,7 +2189,7 @@ Proof: no code changed.
 
 LR 42's long run: `dodge_horizon`, `dodge_margin` and `dodge_clear`
 from their defaults (4 s, 0.8, 2.5 tiles), 16 steps of 24 fresh seeds
-(2,000 on, used by no earlier run), A 1.0, C 0.5. Seven steps in:
+(2,000 on, used by no earlier run), A 1.0, C 0.5. Eight steps in:
 
 | k | Plus side (horizon, margin, clear) | Minus side | d a seat | Its error | After |
 | --- | --- | --- | --- | --- | --- |
@@ -2200,12 +2200,14 @@ from their defaults (4 s, 0.8, 2.5 tiles), 16 steps of 24 fresh seeds
 | 5 | 5.77, 1.15, 1.54 | 2.47, 0.49, 3.61 | -0.99 | 0.76 | 2.54, 0.50, 3.51 |
 | 6 | 1.67, 0.77, 5.32 | 3.85, 0.33, 2.31 | +1.72 | 1.18 | 1.54, 0.83, 5.78 |
 | 7 | 2.32, 1.26, 8.72 | 1.02, 0.55, 3.83 | +0.66 | 0.74 | 1.94, 1.05, 7.28 |
+| 8 | 1.29, 0.70, 4.86 | 2.91, 1.57, 10.92 | +0.66 | 1.10 | 1.56, 0.84, 5.87 |
 
 No step is outside its error. The gain is too high for this noise: at
 A 1.0, readings inside their errors move every weight by up to the cap
 (steps 5 and 6 hit it). `dodge_clear` is the most consistent mover.
-Signed toward the side with the larger clearance, the seven readings
-average +0.49 +/- 0.29 a seat (1.7 errors), though each also carries
+Signed toward the side with the larger clearance, the first seven
+readings average +0.49 +/- 0.28 a seat (1.7 errors); with step 8,
+which read the smaller clearance better, +0.35 +/- 0.28 (1.3 errors), though each also carries
 the other two weights' perturbations. The run goes on; if it ends far
 from the defaults on noise-sized readings, it runs again at A 0.3, and
 any end point is confirmed against the defaults on 48 unused seeds

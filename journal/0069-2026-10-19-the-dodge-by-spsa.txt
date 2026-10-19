@@ -22,7 +22,7 @@ ABSTRACT
     sixteen in, recorded on Paul's prompt. No reading is outside its
     error; the gain (A 1.0) lets noise move the weights to the step
     cap. `dodge_clear` has risen from 2.5 to 7.3 tiles, its signed
-    readings +0.49 +/- 0.29. The run continues; nothing is promoted
+    readings +0.49 +/- 0.28. The run continues; nothing is promoted
     without the 48-seed confirmation.
 
 VIII. NEXT STEPS
