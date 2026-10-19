@@ -349,8 +349,9 @@ seeds; none outside two errors; `board`, `island_site` and `escort`
 never acted. The posture as scores (backlog 21, LR 25), no better. Which rungs the
 lean moves (27, LR 26): the ladder decides 5.6% of the time, and half
 of it is dead. What kills (28, LR 27): the dodge, 43% of deaths, and
-the run for the beach, 20%. Next, one at a time: the dodge measured
-causally (28), the landfall (30), a census that
+the run for the beach, 20%. The dodge off reads -2.45 a seat (LR 29):
+it pays ashore, not afloat. Next, one at a time: the dodge afloat (31),
+the landfall (30), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -557,8 +558,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     deaths (4.5% of the time) and `landfall` at 20% (3.2%); afloat, a
     dodge ends in a kill one time in six. `dodge_hold` 1 (LR 28):
     -1.18 +/- 0.55 at 48 seeds, the dodged shell's hits unchanged; it
-    stays 0. Next: `-dodge` at 48 seeds; then `dodge_horizon` and
-    `dodge_clear` to the tuner.
+    stays 0. `-dodge` (LR 29): -2.45 +/- 0.67, so the dodge pays and
+    stays on; ashore it nearly halves the dodged shell's hits, afloat
+    it changes nothing. State: done; the dodge afloat is 31,
+    `dodge_horizon` and `dodge_clear` go to the tuner (23).
 29. A census in which late parts act. (18 October; cause: LR 26, the
     census measures attrition; the escort, the cycle, bridge jobs and
     the turrets pay late.) Goal 4, 12g; goal 5. Hypothesis: with
@@ -574,6 +577,16 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     the nearest beach and the safest) and the deaths there fall by a
     third. Proof: a test of the turn; the landfall deaths and the score
     at 48 seeds. Cost: a step. State: idea.
+31. The dodge afloat. (19 October; cause: LR 29, with the dodge off an
+    undodged boat is hit by the shell about as often as a dodging one,
+    8% against 7.6%, and killed no more often.) Goal 4. Hypothesis: a
+    boat's dodge costs its crossing and saves nothing; a weight,
+    `dodge_afloat` (1, today's), the share of a boat's shell dodges
+    taken, at 0 keeps the boat sailing and gains a share of LR 27's 165
+    landfall and 65 sailing deaths back as time ashore. First the meter
+    counts would-be dodges apart from taken ones, by team. Proof: a
+    test that a boat at 0 holds its course under a shell; 48 seeds.
+    Cost: a step. State: idea.
 
 
 ## Sequencing

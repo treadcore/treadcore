@@ -1512,3 +1512,46 @@ levers are when it starts (`dodge_horizon`) and where it goes
 
 Proof: no code changed. The weights file differs from the defaults in
 the one line.
+
+## 29. The dodge off, 19 October
+
+Backlog 28, the second causal reading. LR 27 found the dodge last held
+at 43% of deaths; LR 28 that holding it longer costs. Does the dodge
+save tanks at all, or does it walk them into fire?
+
+**The run**: `CENSUS_CAPS=-dodge` for the trial team, the default for
+the others; 48 seeds as in LR 28.
+
+**The dodge pays: -2.45 +/- 0.67 a seat** with it off, outside the
+noise at 3.7 errors (by range: -4.11 +/- 1.10, -1.39 +/- 1.14, -1.84
++/- 1.19). It is the largest single part measured since the capped
+castle, and it was on all along. The 43% of deaths it precedes are
+where the fire is, as LR 27 suspected; without it there would be more.
+
+**Ashore and afloat apart.** With the dodge off, `order_with` still runs
+and still meters (`commander.rs`, the order is dropped by `dodges`
+after it), so the meter counts the shells the trial team would have
+dodged and did not, mixed with the baseline teams' dodges. Taking each
+team to draw a third of the shells, the undodged rate is three times
+the run's rate less twice the null's:
+
+| | Null (dodged) | `-dodge` run (mixed) | Undodged, estimated |
+| --- | --- | --- | --- |
+| Ashore, hit by the shell | 16.6% | 21.1% of 20,783 | about 30% |
+| Ashore, killed | 7.4% | 8.6% | about 11% |
+| Afloat, hit by the shell | 7.6% | 7.8% of 9,109 | about 8% |
+| Afloat, killed | 16.6% | 15.9% | about 14.5% |
+
+The estimate leans on equal shares and should be read as a direction.
+Ashore, the dodge nearly halves the dodged shell's hits. **Afloat it
+does nothing**: a boat is slow to turn, its dodge point is often water
+it cannot reach in time, and it is hit at the same rate dodging or not.
+What it gives up afloat is its crossing.
+
+What this changes. The dodge stays on. The next dodge part is the
+either/or this table names: dodge afloat or keep sailing. A weight,
+`dodge_afloat` (1, today's), the share of a boat's dodges taken
+(backlog 31). The meter should count a would-be dodge apart from a
+taken one, per team, so the next reading needs no estimate.
+
+Proof: no code changed.

@@ -20,7 +20,9 @@ fixed form (`journal/TEMPLATE.txt`).
   point once there. Default play is unchanged. At 1, over 48 seeds,
   the trial team scored 1.18 a seat less (error 0.55), with no fewer
   hits from the dodged shell, so it stays 0 (LAB-REPORT-BRAIN.md
-  section 28).
+  section 28). The dodge itself, off over 48 seeds, reads 2.45 a seat
+  less (error 0.67): it pays ashore, and afloat changes nothing
+  (section 29).
 - Added: the census shows where the trial team's time goes. Seat-seconds
   on each Auto rung (`Brain::rung`), the posture's changed picks by
   rung (`Meter::moved`), and with `CENSUS_ACTS=1` every seat-second by

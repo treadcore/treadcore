@@ -1,0 +1,82 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 12:10:00 -0700
+Subject: [JOURNAL 0054] The dodge off
+Message-ID: <0054.20261019@treadcore.org>
+In-Reply-To: <0053.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: dodge, causal test, counterfactual, backlog 28, backlog 31
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 6b132f1 (journal 0053, pushed); this entry's commit follows
+
+                             THE DODGE OFF
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    The second causal test of the dodge. With it off for the trial
+    team, 48 seeds read -2.45 a seat (error 0.67), outside the noise
+    at 3.7 errors: the dodge pays, and the 43% of deaths it precedes
+    are where the fire is. The meter, which still counts a dodge the
+    switch drops, gives a rough counterfactual: ashore the dodge
+    nearly halves the dodged shell's hits (about 30% to 16.6%);
+    afloat it changes nothing. Backlog 28 closes; the dodge afloat is
+    backlog 31.
+
+I. INTRODUCTION
+
+    Journal 0053 left this run going. It answers whether the reflex
+    most deaths pass through saves tanks.
+
+III. METHOD
+
+    LR 29: `CENSUS_CAPS=-dodge`, 48 seeds in three ranges. The
+    undodged rates estimated as three times the run's less twice the
+    null's, on the assumption that each team draws a third of the
+    shells.
+
+IV. CHRONOLOGY
+
+    1. The run ended: -4.11, -1.39, -1.84 by range; -2.45 +/- 0.67.
+    2. The meter still counted dodges near the null's number. Read
+       `commander.rs`: `order_with` runs and meters, `dodges` drops
+       the move after it. Not a fault in the reading: it makes the
+       meter count would-be dodges, so the trial team's undodged
+       shells are in the run's totals.
+    3. Ashore: by the shell 21.1% mixed, about 30% undodged. Afloat:
+       7.8% mixed, about 8% undodged, against 7.6% dodged.
+    4. Backlog 31 written, after Paul's rule that an either/or is a
+       weight: `dodge_afloat`.
+
+VI. DISCUSSION
+
+    Three readings of one reflex: the death census said it was where
+    tanks died, the hold said its timing was not the fault, the
+    switch said it saves 2.45 a seat. Only the switch is causal, and
+    the death census alone would have pointed the wrong way. A
+    switch-off run should come before reading any reflex's death
+    share.
+
+VII. OPEN PROBLEMS
+
+    1. The meter mixes teams and would-be with taken dodges.
+    2. The dodge afloat (31); the landfall (30); the late parts (29).
+
+VIII. NEXT STEPS
+
+    1. Backlog 31: the meter by team and by taken; then
+       `dodge_afloat`.
+    2. Backlog 30.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 29;
+    documentation/checkins/CI-006-2026-10-19-the-dodge-off.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
