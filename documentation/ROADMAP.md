@@ -352,8 +352,9 @@ of it is dead. What kills (28, LR 27): the dodge, 43% of deaths, and
 the run for the beach, 20%. The dodge off reads -2.45 a seat (LR 29):
 it pays ashore and, by the meter by team (LR 30), afloat a fifth of
 the boats. The run for the beach priced by the guns in sight (30, LR
-31): no change, the guns are unseen. Next, one at a time: the beach a
-teammate saw covered (32), the dodge afloat (31), a census that
+31): no change; and the boat saw its killer in 78% of those deaths
+(32, LR 32). Next, one at a time: standing off a covered beach (33),
+the dodge afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -604,7 +605,17 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     landfall deaths, the share whose killer a teammate had seen within
     10 s before. Proof: that share; then `landfall_shy` over the
     remembered guns, 48 seeds. Cost: a step to read, a step to build.
-    State: idea.
+    State: read 19 October (LR 32), closed: the boat itself saw its
+    killer in the 10 s before in 128 of 164 landfall deaths, a teammate
+    only in 1. LR 31's "unseen" explanation withdrawn.
+33. Standing off a covered beach. (19 October; cause: LR 32, boats on
+    landfall die to guns they have seen.) Goal 4. Hypothesis: a boat
+    with a hostile gun in sight within its direct range plus a margin
+    of its chosen beach stands off out of that range, by a weight
+    (`landfall_wait`, the seconds it will wait; 0 is today's, land
+    anyway), and lands when the gun has gone or the wait is spent.
+    Paul's default to ask. Proof: a test of the stand-off; landfall
+    deaths and the score at 48 seeds. Cost: a step. State: idea.
 
 
 ## Sequencing

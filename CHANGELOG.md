@@ -6,6 +6,10 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: with `CENSUS_ACTS=1` the census says, of each landfall death,
+  whether the boat or a teammate had seen its killer in the 10 s
+  before. The boat had, 78% of the time; a teammate alone, once in 164
+  (LAB-REPORT-BRAIN.md section 32).
 - Added: `landfall_shy` (0, as before): a boat running for a beach
   prices the tiles of its run in a seen hostile gun's reach. At 1, over
   48 seeds, +0.65 a seat with an error of 0.69 and no fewer landfall

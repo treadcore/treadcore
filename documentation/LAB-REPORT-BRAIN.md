@@ -1637,7 +1637,9 @@ far).
 | `landfall_shy` 1 | +0.65 +/- 0.69 | 821 | 169 | 133 |
 
 **Not confirmed.** The score is inside the noise and the deaths it was
-aimed at did not move. Over all 48 seeds the landfall deaths were 548
+aimed at did not move. (LR 32 measured the explanation below and
+withdrew it: the boat had seen its killer in the 10 s before in 78% of
+landfall deaths.) Over all 48 seeds the landfall deaths were 548
 of 2,522 (21.7%), as in the null's 20.1%. Choosing a beach clear of
 the guns the boat sees does not save it. The cause has to be the guns
 it does not see: sight and direct range are both 10 tiles (the duck's
@@ -1654,3 +1656,43 @@ Proof: play unchanged at 0 by construction (the exposure returns 0
 before any work, and a score plus 0.0 is the same float; no null run
 was repeated). `make test`: brain 71
 passed and 8 ignored; client 31; net 14; proto 3; sim 50. No warnings.
+
+## 32. Who saw the gun that sank the boat, 19 October
+
+Backlog 32's read, from LR 31: if the boats on landfall die to guns
+they never saw, the guns a teammate saw would help.
+
+**The instrument** (no change to play): under `CENSUS_ACTS`, once a
+second, each living trial seat's observation records the hostile tanks
+it sees. At each trial death whose code held last was `landfall` and
+whose killer is named, the killer is classed as seen in the 10 s
+before by the boat, by a teammate, by both, or by neither.
+
+**The reading** (16 seeds, null run, in ranges of 6, 5 and 5; 0.00 on
+every seed):
+
+| Seen in the 10 s before by | Landfall deaths | Share |
+| --- | --- | --- |
+| both the boat and a teammate | 128 | 78.0% |
+| neither | 35 | 21.3% |
+| a teammate only | 1 | 0.6% |
+| the boat only | 0 | 0 |
+| All with a killer | 164 | |
+
+**LR 31's explanation is withdrawn.** The boat had seen the gun that
+sank it in nearly four landfall deaths of five, and a teammate had seen
+it too: they cross together. A teammate's sighting adds a gun the boat
+had not seen once in 164. Backlog 32's part, pricing the guns the team
+has seen, has nothing to work with. The "neither" fifth is an upper
+bound, since sight is sampled once a second.
+
+What, then? The boat sees the gun, prices the beaches (with or without
+`landfall_shy`), and dies anyway. It sinks at one hit and cannot fire
+back. A beach is chosen once; a change waits 2 s and needs 6 better
+(`landfall_order`'s `change`). Once a gun is in sight, the boat's
+choice is not which beach but whether to land at all, against standing
+off out of the gun's range until the beach is clear or the gun moves.
+That is an either/or, so a weight: backlog 33.
+
+Proof: play unchanged (0.00 on every seed). `make test`: brain 71
+passed and 8 ignored; client 31; net 14; proto 3; sim 50.

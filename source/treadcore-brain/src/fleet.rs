@@ -846,6 +846,10 @@ mod tests {
         let mut died_window: std::collections::BTreeMap<String, u32> = Default::default();
         let mut died_by: std::collections::BTreeMap<String, u32> = Default::default();
         let mut died_both: std::collections::BTreeMap<String, u32> = Default::default();
+        // Of the landfall deaths with a killer, who had seen it in the
+        // 10 s before (backlog 32): the boat, a teammate, both, neither.
+        // Sight sampled once a second.
+        let mut landfall_seen: std::collections::BTreeMap<&str, u32> = Default::default();
         let mut total = crate::meter::Meter::default();
         // Fair (backlog 16, journal 0038): every team takes the trial seat
         // on every seed, three matches a seed, so the starts' unevenness
@@ -895,6 +899,7 @@ mod tests {
             let mut words = [0u32; 10];
             let mut rungs = [0u32; 6];
             let mut window: std::collections::HashMap<PlayerId, std::collections::VecDeque<String>> = Default::default();
+            let mut seen: std::collections::HashMap<(PlayerId, PlayerId), Tick> = Default::default();
             while !w.over && w.tick < secs * TICK_HZ as Tick {
                 let orders = crate::run_bots(&w, &mut bots);
                 w.step(&orders);
@@ -908,6 +913,12 @@ mod tests {
                         let by_kind = killed_by(&w.events, *tank, *by);
                         let codes = window.remove(owner).unwrap_or_default();
                         let last = codes.back().cloned().unwrap_or_else(|| "(none)".into());
+                        if let (Some(k), true) = (by, last == "landfall") {
+                            let recent = |q: PlayerId| seen.get(&(q, *k)).map(|t| w.tick.saturating_sub(*t) <= 10 * TICK_HZ as Tick).unwrap_or(false);
+                            let me = recent(*owner);
+                            let mate = (0..SEATS).any(|q| q as PlayerId != *owner && teams()[q] == lucky && recent(q as PlayerId));
+                            *landfall_seen.entry(match (me, mate) { (true, true) => "both", (true, false) => "the boat only", (false, true) => "a teammate only", _ => "neither" }).or_insert(0) += 1;
+                        }
                         deaths += 1;
                         *died_by.entry(by_kind.clone()).or_insert(0) += 1;
                         *died_both.entry(format!("{:<18} {}", by_kind, last)).or_insert(0) += 1;
@@ -933,6 +944,9 @@ mod tests {
                                 let alive = w.tanks.iter().any(|t| t.owner == *p && t.alive);
                                 let code = if !alive { "(dead)".to_string() } else if b.rung().is_some() { format!("[ladder] {}", b.act().code()) } else { b.act().code() };
                                 if alive {
+                                    for t in w.observe(*p).hostile_tanks() {
+                                        seen.insert((*p, t.owner), w.tick);
+                                    }
                                     let q = window.entry(*p).or_default();
                                     q.push_back(code.clone());
                                     if q.len() > 5 {
@@ -1029,6 +1043,8 @@ mod tests {
             table("the code held last", &died_last, 30);
             table("held in the 5 s before (a death counts once a code)", &died_window, 30);
             table("by what and the code held last", &died_both, 30);
+            let n: u32 = landfall_seen.values().sum();
+            eprintln!("brain_census: trial team's {} landfall deaths with a killer, the killer seen in the 10 s before by: {}", n, landfall_seen.iter().map(|(k, v)| format!("{} {} ({:.1}%)", k, v, 100.0 * *v as f32 / n.max(1) as f32)).collect::<Vec<_>>().join(", "));
         }
         // The seeds are the samples: a seed's matches share its starts,
         // so its difference is one paired reading. Within two standard
