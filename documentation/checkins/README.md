@@ -31,3 +31,4 @@ report is what ties a conversation to them. Named
 | [015](CI-015-2026-10-19-on-by-default.md) | 19 October 2026 | The landfall's three on by default, and the reverse reading | 0064 | LAB-REPORT-BRAIN.md sections 20 and 38 |
 | [016](CI-016-2026-10-19-when-every-team-has-them.md) | 19 October 2026 | The landfall's three when every team has them | 0065 | LAB-REPORT-BRAIN.md section 39 |
 | [017](CI-017-2026-10-19-spsa-planted.md) | 19 October 2026 | SPSA on the paired census, and its first planted test | 0066, 0067 | LAB-REPORT-BRAIN.md sections 40 and 41 |
+| [018](CI-018-2026-10-19-it-climbs.md) | 19 October 2026 | The planted test, second run: it climbs, slowly | 0068 | LAB-REPORT-BRAIN.md section 42 |

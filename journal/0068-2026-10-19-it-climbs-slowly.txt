@@ -1,0 +1,47 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 21:00:00 -0700
+Subject: [JOURNAL 0068] The planted test, second run: it climbs, slowly
+Message-ID: <0068.20261019@treadcore.org>
+In-Reply-To: <0067.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: tuner, SPSA, planted test, backlog 23
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 70b5a63 (journal 0067, pushed); this entry's commit follows
+
+               THE PLANTED TEST, SECOND RUN: IT CLIMBS, SLOWLY
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    SPSA's planted test at C 1.0: `landfall_memory` from 5 s to 11.8
+    s in 8 steps of 12 seeds, six steps of eight reading the longer
+    memory better (+0.92 +/- 0.62). Partly passed: the right way,
+    slowly. The dodge's numbers, a smaller effect, need a long run.
+
+IV. CHRONOLOGY
+
+    1. The run at C 1.0 started in the background, on the same seeds.
+    2. Memory 3.4, 5.3, 6.5, 6.8, 8.2, 9.4, 13.0, 11.8 s.
+    3. Each step signed toward the longer side: +0.92 +/- 0.62.
+    4. Paul's prompts came three times during the run; the tree was
+       clean each time, and no brain source was touched while
+       `spsa.sh` rebuilt at each step.
+
+VIII. NEXT STEPS
+
+    1. The dodge's numbers by SPSA, 24 seeds a step, 16 steps, about
+       2.5 h; then confirmation on 48 unused seeds.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 42;
+    documentation/checkins/CI-018-2026-10-19-it-climbs.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

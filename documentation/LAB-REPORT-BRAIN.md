@@ -2149,3 +2149,38 @@ is visible. If it does not, 12 seeds a step is too few for this
 effect, and the next try is 24.
 
 Proof: no code changed.
+
+## 42. The planted test, second run: it climbs, slowly, 19 October
+
+LR 41's planted test again with C 1.0, so each step's two sides
+straddle the range where memory acts. `landfall_memory` from 5 s,
+tuned alone, 8 steps of 12 fresh seeds (the same seeds, 1,000 to
+1,095), A 0.6.
+
+| k | Plus side (s) | Minus side (s) | d a seat | Its error | The longer side better by | Memory after |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 1.8 | 13.6 | +1.98 | 1.52 | -1.98 | 3.38 |
+| 2 | 8.6 | 1.3 | +2.75 | 1.99 | +2.75 | 5.34 |
+| 3 | 13.1 | 2.2 | +1.33 | 1.56 | +1.33 | 6.48 |
+| 4 | 2.7 | 15.5 | -0.33 | 1.64 | +0.33 | 6.76 |
+| 5 | 2.9 | 15.8 | -1.62 | 0.93 | +1.62 | 8.21 |
+| 6 | 18.9 | 3.6 | +1.18 | 1.63 | +1.18 | 9.37 |
+| 7 | 4.1 | 21.3 | -3.13 | 0.79 | +3.13 | 12.99 |
+| 8 | 29.2 | 5.8 | -0.99 | 1.19 | -0.99 | 11.79 |
+
+**Partly passed.** The weight climbed from 5 to 11.8 s, toward the
+known better value. Six steps of eight read the longer memory better,
+by +0.92 +/- 0.62 a seat on average (1.5 errors), and step 7 alone was
+outside its error. With the slope in view, SPSA moves the right way.
+It is slow: after 96 seeds it is less than halfway to 30 s in log
+terms (ln 11.8 - ln 5 = 0.86 of 1.79). With Spall's decaying gains it
+would take about as many steps again.
+
+What it says for the dodge. The planted effect was about 3.4 a seat
+between 0 and 30 s (LR 37), the largest part measured, and SPSA at 12
+seeds a step only crawls toward it. The dodge's numbers act on
+something smaller. Tuning them is a long run: 24 seeds a step (errors
+about 0.8), A 1.0, and 16 or more steps, about 2.5 hours. The result
+then has to beat the defaults on 48 seeds the search did not use.
+
+Proof: no code changed.
