@@ -1,0 +1,44 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 00:50:00 -0700
+Subject: [JOURNAL 0071] The dodge's numbers: the second batch
+Message-ID: <0071.20261020@treadcore.org>
+In-Reply-To: <0070.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: tuner, SPSA, dodge, confirmation, backlog 23
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: b7a86c2 (journal 0070, pushed); this entry's commit follows
+
+                  THE DODGE'S NUMBERS: THE SECOND BATCH
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    The second fixed batch, seeds 48 to 95: +0.53 +/- 0.69. Pooled
+    with the first, 96 seeds: +0.88 +/- 0.51, 1.74 errors. By the rule
+    set before it ran, not promoted; the defaults stay. Backlog 23
+    closes: SPSA built, a lead found, the lead did not hold.
+
+VI. DISCUSSION
+
+    The first batch read +1.24 and the second +0.53: the first
+    reading of a tuner's best point regresses toward the mean. The
+    rule stated in advance is what kept a 1.74-error result from
+    becoming a default.
+
+VIII. NEXT STEPS
+
+    1. Backlog 31, the dodge afloat; or 29, a census where late parts
+       act.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 43.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

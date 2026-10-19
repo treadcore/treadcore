@@ -2265,3 +2265,23 @@ On the tuner. SPSA moved three noisy weights to a point that reads
 their errors. With A 1.0 the walk was rough, and steps 5, 6 and 11 hit
 the cap. The next run should use A 0.3 and, for three weights, 32
 seeds a step.
+
+**The second batch** (seeds 48 to 95, the rule above set before it
+ran):
+
+| | d a seat | Errors from zero |
+| --- | --- | --- |
+| Seeds 0 to 47 | +1.24 +/- 0.75 | 1.65 |
+| Seeds 48 to 95 | +0.53 +/- 0.69 | 0.76 |
+| **All 96, pooled** | **+0.88 +/- 0.51** | **1.74** |
+
+By range, second batch: +0.30 +/- 1.30, +1.89 +/- 1.18, -0.62 +/- 1.07.
+
+**Not promoted.** By the rule set before it ran, the pooled 96 seeds
+had to pass two errors, and they read 1.74. The defaults stay (4, 0.8,
+2.5), and this end point gets no more seeds. If the dodge's numbers
+are worth something, it is under a point a seat, smaller than the
+census resolves at 96 seeds. A new search, at A 0.3 and 32 seeds a
+step, would start a new hypothesis with its own confirmation. Backlog
+23 closes: the tool is built, it found a lead, and the lead did not
+hold.

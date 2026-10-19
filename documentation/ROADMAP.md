@@ -361,8 +361,9 @@ those killers were seen near there earlier. Guns remembered (36, LR
 deaths halved. The memory carries it, and each of the other two adds
 (37, LR 37). On by default (LR 38); the reverse census reads even;
 with every team on them the deaths move ashore, into the dodge, and
-the matches run longer (38, LR 39). Next, one at a time: the dodge's
-numbers to an honest tuner (23), the dodge afloat (31), a census that
+the matches run longer (38, LR 39). The dodge's numbers by SPSA (23,
+LR 43): +0.88 +/- 0.51 over 96 unseen seeds, not promoted. Next, one
+at a time: the dodge afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -536,8 +537,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     a long run (24 seeds, 16 steps, about 2.5 h), confirmed on 48
     unused seeds. Done 19 October (LR 43): the end point horizon 2.05,
     margin 1.52, clear 3.73 reads +1.24 +/- 0.75 on 48 unused seeds,
-    promising, not confirmed. A second fixed batch of 48 (seeds 48 to
-    95) decides: promoted only if the 96 pooled pass two errors.
+    promising, not confirmed. The second fixed batch (seeds 48 to 95):
+    +0.53 +/- 0.69; the 96 pooled +0.88 +/- 0.51, 1.74 errors. Not
+    promoted; the defaults stay. Done: SPSA built and tried.
 24. Scenario files: a playtest described in text and run headless at
     85x. (18 October; cause: Paul, "is there a way to create description
     and try to attempt these via playtests faster".) Goal 4; goal 1.

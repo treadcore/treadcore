@@ -95,3 +95,11 @@ larger margin won.
    second batch is fixed in size and rule before it runs.
 
 **Next:** seeds 48 to 95.
+
+---
+
+## Addendum: the second batch
+
+Seeds 48 to 95: +0.53 ± 0.69. The 96 pooled: +0.88 ± 0.51, 1.74
+errors. By the rule in D5, not promoted; the defaults stay, and the end
+point gets no more seeds. Journal 0071.
