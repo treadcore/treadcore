@@ -248,8 +248,9 @@ pub struct RuleBot {
     landfall: Option<(V2, Tick)>,
     /// `landfall_shy` (backlog 30, LR 31): at 1, each tile of the run
     /// for a beach in a hostile gun's reach costs as much as 4 tiles
-    /// more to sail. 0 prices only the beach and the run's heading, as
-    /// before.
+    /// more to sail. 0 prices only the beach and the run's heading. The
+    /// three landfall weights are 0 in a plain RuleBot; a Commander's
+    /// come from its Settings (on by default since LR 38).
     pub landfall_shy: f32,
     /// `landfall_wait` (backlog 33, LR 33): the seconds of a crossing a
     /// boat will stand off a beach a seen hostile tank covers; 0 lands

@@ -842,7 +842,7 @@ are built, proven and measured but wait for a census to promote them.
 
 | Level | Code | Rate | Output |
 | --- | --- | --- | --- |
-| Settings | `weights.rs`: 87 weights (the dodge's four since LR 27), 18 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
+| Settings | `weights.rs`: 90 weights (the dodge's four since LR 27, the landfall's three since LR 31 to 36), 18 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
 | Team board (off) | `board.rs`, one per team, shared | rebuilt 1 Hz by the first member due | influence, front, defence points, posture (five scores, LR 25), kept jobs, swaps, part-laid bridges |
 | Fleet commander | `crew::FleetCommand` | 20 Hz; musters every 30 s | jobs, as before |
 | Commander, one per tank | `commander.rs` | 20 Hz | `Vec<Command>` |
@@ -854,7 +854,7 @@ are built, proven and measured but wait for a census to promote them.
 | Ledger and meter | `ledger.rs`, `meter.rs`, `brain_census`, `make tune` | per match | a line per tank: genome, seed, score; the cost a seat-tick |
 
 ```
-Settings (weights.rs: 87 weights, 18 switches)  <-- --weights FILE, weights page (U)
+Settings (weights.rs: 90 weights, 18 switches)  <-- --weights FILE, weights page (U)
    |
 Team board, one per team, 1 Hz (board)                         (L5)
    |  influence, front, points, posture, jobs kept,
@@ -865,7 +865,10 @@ Commander, each tank, 20 Hz, first match wins                  (L1)
    |      weights and `dodge_hold`, LR 27), duck (direct
    |      fire denied before it is fired: duck, LR 21), revive, home
    +-- bridges: help the leader's; take a part-laid one (bridge_jobs)
-   +-- afloat, shore gather, column on a bridge (column)
+   +-- afloat: the landfall, over the guns seen and remembered
+   |      (landfall_memory 30 s), pricing the run (landfall_shy)
+   |      and standing off a covered beach (landfall_wait); on
+   |      since LR 38. Shore gather, column on a bridge (column)
    +-- board: post, rebuild, adopt a missed job, relieve or fall back
    +-- road posts once the capped castle stands (castle_cap, on)
    +-- pings, rally, fleet, crew job
@@ -902,7 +905,8 @@ The numbers, 18 October evening:
   the posture (LR 24); 83 with its scores (LR 25).
 - 23 to 33 us a seat-tick in the census.
 - On by default: kite, pings, dodge, bridges, rotate, and since 18
-  October `castle_cap`.
+  October `castle_cap`; since 19 October the landfall's three weights
+  (`landfall_memory` 30, `landfall_shy` 1, `landfall_wait` 10, LR 38).
 - Measured fairly: the capped castle against the old, +0.72 a seat;
   `smooth` -1.92; `escort` even (never reached); `bridge_jobs` -0.70
   with `board` on for every team; `duck` -0.51 (LR 21). At twelve seeds
@@ -912,6 +916,12 @@ The numbers, 18 October evening:
   Where it dies: the dodge (43% of deaths in 4.5% of the time) and the
   run for the beach, `landfall` (20% in 3.2%); the ladder, rotation and
   the fleet a small share.
+- 19 October evening (LR 38): 13,566 lines; 360 functions, 121
+  undocumented; brain tests 73 passed, 8 ignored; 90 weights. The
+  first part since the dodge measured outside the noise: guns
+  remembered for the landfall, +2.31 +/- 0.58 a seat over 48 seeds
+  with its two companions, landfall deaths halved; on by default.
+  The dodge itself measured: off, -2.45 +/- 0.67 (LR 29).
 
 What the prototype has not shown yet: that any of its new parts makes
 the bots win more. The fair census can now tell a real difference from
@@ -1964,3 +1974,43 @@ fewest, then shy off, wait off, and memory off with the null.
 The best measured setting is all three at once. Its numbers (30 s,
 1, 10 s) were picked by hand and are not tuned. Moving any default is
 Paul's choice.
+
+## 38. The landfall's three on by default, and the reverse reading, 19 October
+
+Paul, after LR 37: "yes all three on". `landfall_memory` 30,
+`landfall_shy` 1 and `landfall_wait` 10 are the defaults (weights.rs).
+A Commander takes them from its Settings; a plain RuleBot (the lone
+aggro bot, and any RuleBot seat) keeps 0, as it keeps the dodge's
+constants. Every test passes with the new defaults.
+
+**The reverse reading.** As proof of the switch, the census was run
+the other way round: the old defaults (all three 0) as the trial team,
+against two teams on the new, 48 seeds.
+
+| | Trial | Baselines | d a seat (48 seeds) |
+| --- | --- | --- | --- |
+| LR 36 (forward) | all three on | the old defaults | **+2.31 +/- 0.58** |
+| Reverse | the old defaults | all three on | **-0.08 +/- 0.45** |
+
+By range, reverse: -0.35 +/- 0.82, -0.77 +/- 0.62, +0.86 +/- 0.86.
+
+**The two do not mirror.** A team with the memory beats teams without
+it by 2.3 a seat; a team without it among teams with it loses nothing
+that 48 seeds can see. The gain is real against opponents that play
+the old way and not shown against opponents that play the new. One
+reading, untested: the stand-off and the run's price change where
+boats land and which coasts are contested for every team. A memory
+team's edge then depends on its opponents landing where the guns are,
+and a no-memory team among memory teams finds the coasts less
+contested. What the switch does to play when every team has it is
+measured by neither census: the census reads a team against others,
+not a team against itself.
+
+The defaults stay as Paul chose. Backlog 38: what all three do when
+every team has them. That needs a fixed reference the census does not
+have: a team of the old defaults kept for comparison, or a score that
+is not relative (survival time, landfall deaths a seat, matches
+finished).
+
+Proof: `make test`: brain 73 passed and 8 ignored; client 31; net 14;
+proto 3; sim 50. No warnings. 360 functions, 121 undocumented.

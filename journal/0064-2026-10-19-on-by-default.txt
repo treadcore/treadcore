@@ -1,0 +1,58 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 18:30:00 -0700
+Subject: [JOURNAL 0064] The landfall's three on by default
+Message-ID: <0064.20261019@treadcore.org>
+In-Reply-To: <0063.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, defaults, relative score, backlog 38
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "yes all three on. commit. push. continue backlog"
+X-Commits: 374f9f2 (journal 0063, pushed); this entry's commit follows
+
+                    THE LANDFALL'S THREE ON BY DEFAULT
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Paul turned the three landfall weights on. As proof, the census
+    ran the other way round: the old defaults as the trial against two
+    teams on the new. It read -0.08 +/- 0.45, not the -2.3 the forward
+    +2.31 would mirror. The memory beats teams without it; a team
+    without it does not lose to teams with it. The defaults stay as
+    Paul chose; backlog 38 measures them when every team has them,
+    which the relative census cannot.
+
+IV. CHRONOLOGY
+
+    1. The defaults set; a plain RuleBot keeps 0. Tests pass.
+    2. LR 20, the brain overview, brought up to date: 90 weights, the
+       landfall in the diagram, the new defaults.
+    3. The reverse census: -0.35, -0.77, +0.86 by range; -0.08 +/-
+       0.45.
+    4. Committed as asked, the reverse reading reported to Paul with
+       it.
+
+VI. DISCUSSION
+
+    The census measures a team against the others. A part that changes
+    the game for everyone can win against old opponents and be neutral
+    among new ones. Every promotion so far was read in one direction
+    only; the reverse should be part of any promotion's proof.
+
+VIII. NEXT STEPS
+
+    1. Backlog 38: absolute readings, every team old against every
+       team new.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md sections 20 and 38;
+    documentation/checkins/CI-015-2026-10-19-on-by-default.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
