@@ -2184,3 +2184,29 @@ about 0.8), A 1.0, and 16 or more steps, about 2.5 hours. The result
 then has to beat the defaults on 48 seeds the search did not use.
 
 Proof: no code changed.
+
+## 43. The dodge's numbers by SPSA, 19 October (in progress)
+
+LR 42's long run: `dodge_horizon`, `dodge_margin` and `dodge_clear`
+from their defaults (4 s, 0.8, 2.5 tiles), 16 steps of 24 fresh seeds
+(2,000 on, used by no earlier run), A 1.0, C 0.5. Seven steps in:
+
+| k | Plus side (horizon, margin, clear) | Minus side | d a seat | Its error | After |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 2.43, 1.32, 1.52 | 6.59, 0.49, 4.12 | +0.24 | 0.77 | 3.41, 0.94, 2.13 |
+| 2 | 5.43, 1.50, 3.39 | 2.14, 0.59, 1.34 | -0.48 | 0.86 | 2.61, 0.72, 1.63 |
+| 3 | 1.67, 1.13, 1.04 | 4.08, 0.46, 2.55 | -0.34 | 0.74 | 3.07, 0.61, 1.92 |
+| 4 | 4.74, 0.94, 2.97 | 1.99, 0.40, 1.24 | +0.47 | 0.94 | 3.77, 0.75, 2.36 |
+| 5 | 5.77, 1.15, 1.54 | 2.47, 0.49, 3.61 | -0.99 | 0.76 | 2.54, 0.50, 3.51 |
+| 6 | 1.67, 0.77, 5.32 | 3.85, 0.33, 2.31 | +1.72 | 1.18 | 1.54, 0.83, 5.78 |
+| 7 | 2.32, 1.26, 8.72 | 1.02, 0.55, 3.83 | +0.66 | 0.74 | 1.94, 1.05, 7.28 |
+
+No step is outside its error. The gain is too high for this noise: at
+A 1.0, readings inside their errors move every weight by up to the cap
+(steps 5 and 6 hit it). `dodge_clear` is the most consistent mover.
+Signed toward the side with the larger clearance, the seven readings
+average +0.49 +/- 0.29 a seat (1.7 errors), though each also carries
+the other two weights' perturbations. The run goes on; if it ends far
+from the defaults on noise-sized readings, it runs again at A 0.3, and
+any end point is confirmed against the defaults on 48 unused seeds
+before it can be a default.
