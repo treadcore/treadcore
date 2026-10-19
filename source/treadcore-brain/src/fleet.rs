@@ -754,7 +754,8 @@ mod tests {
     /// `CENSUS_WEIGHTS` (a weights file, weights.rs) or `CENSUS_CAPS`
     /// (capabilities added to the baseline, comma-separated), against
     /// `CENSUS_BASE_CAPS` (the baseline teams', the same form); seeds
-    /// `CENSUS_SEEDS` (3), seconds `CENSUS_SECS` (900). `cargo test -p
+    /// `CENSUS_SEEDS` (3) from `CENSUS_SEED0` (0), seconds `CENSUS_SECS`
+    /// (900). `cargo test -p
     /// treadcore-brain --release -- --ignored brain_census --nocapture`.
     #[test]
     #[ignore]
@@ -783,12 +784,18 @@ mod tests {
             std::fs::write(&path, trial.to_text()).expect("CENSUS_DUMP");
         }
         let seeds: u64 = std::env::var("CENSUS_SEEDS").ok().and_then(|s| s.parse().ok()).unwrap_or(3);
+        // The first seed's index (`CENSUS_SEED0`, 0): a long census split
+        // over the cores, each run its own range of the same seeds.
+        let seed0: u64 = std::env::var("CENSUS_SEED0").ok().and_then(|s| s.parse().ok()).unwrap_or(0);
         let secs: Tick = std::env::var("CENSUS_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(900);
         let ledger = std::env::var("CENSUS_LEDGER").map(|v| v != "0").unwrap_or(true);
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../reports/ledger");
         let k = ScoreWeights::from_long_game(std::env::var("CENSUS_LONG_GAME").ok().and_then(|v| v.parse().ok()).unwrap_or(crate::weights::W::LongGame.default_value()));
         eprintln!("brain_census: trial caps [{}], {} weights changed {:?}; baseline caps [{}]", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>(), base.caps.names());
         let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
+        // A seed's sums, trial and baseline, for the difference a seed
+        // and its standard error (LR 24): the noise given as a number.
+        let mut by_seed = vec![(0f32, 0u32, 0f32, 0u32); seeds as usize];
         let mut total = crate::meter::Meter::default();
         // Fair (backlog 16, journal 0038): every team takes the trial seat
         // on every seed, three matches a seed, so the starts' unevenness
@@ -797,7 +804,7 @@ mod tests {
         // matches: the census before 18 October, archived
         // (documentation/archive/BRAIN-METHODS.md).
         let fair = std::env::var("CENSUS_FAIR").map(|v| v != "0").unwrap_or(true);
-        let plays: Vec<(u64, TeamId)> = (0..seeds).flat_map(|n| if fair { (0..3).map(|t| (n, t as TeamId)).collect::<Vec<_>>() } else { vec![(n, (n % 3) as TeamId)] }).collect();
+        let plays: Vec<(u64, TeamId)> = (seed0..seed0 + seeds).flat_map(|n| if fair { (0..3).map(|t| (n, t as TeamId)).collect::<Vec<_>>() } else { vec![(n, (n % 3) as TeamId)] }).collect();
         for (n, lucky) in plays {
             let seed = 0x7EAD_C0DE_u64 ^ (n * 0x9E37_79B9);
             let names: Vec<(String, bool)> = (0..SEATS).map(|i| (name(i), true)).collect();
@@ -857,6 +864,10 @@ mod tests {
             total.crossings_cached += m.crossings_cached;
             total.plan_clones += m.plan_clones;
             total.nanos += m.nanos;
+            for (t, n) in total.postures.iter_mut().zip(m.postures) {
+                *t += n;
+            }
+            total.leaned += m.leaned;
             let genomes: Vec<(PlayerId, Genome)> = bots.iter().map(|(p, b)| (*p, Genome::of(&b.settings().cloned().unwrap_or_default(), seed ^ *p as u64, &name(*p as usize), None))).collect();
             let records = tally.records(&w, "default", &genomes, &k);
             if ledger {
@@ -880,18 +891,29 @@ mod tests {
                     sum(&|o| o.bridge_tiles),
                     rs.first().map(|r| r.outcome.held_s as f32 / r.seconds.max(1) as f32).unwrap_or(0.0)
                 );
+                let e = &mut by_seed[(n - seed0) as usize];
                 if t == lucky {
                     trial_score += score;
                     trial_n += 1;
+                    e.0 += score;
+                    e.1 += 1;
                 } else {
                     base_score += score;
                     base_n += 1;
+                    e.2 += score;
+                    e.3 += 1;
                 }
             }
             eprintln!("  trial team, seat-seconds: {}", WORDS.iter().zip(words.iter()).map(|(k, n)| format!("{} {}", k, n)).collect::<Vec<_>>().join(", "));
             eprintln!("  {}", m.line());
         }
         eprintln!("brain_census: trial {:.2}, baseline {:.2} (mean score a seat, {} seeds, {}); {}", trial_score / trial_n.max(1) as f32, base_score / base_n.max(1) as f32, seeds, if fair { "every team in the trial seat" } else { "the trial seat rotated" }, total.line());
+        // The seeds are the samples: a seed's matches share its starts,
+        // so its difference is one paired reading. Within two standard
+        // errors of zero is "inside the noise".
+        let d: Vec<f32> = by_seed.iter().map(|&(t, tn, b, bn)| t / tn.max(1) as f32 - b / bn.max(1) as f32).collect();
+        let (mean, se) = crate::ledger::mean_se(&d);
+        eprintln!("brain_census: difference {:+.2} a seat, standard error {:.2} over {} seeds ({}); a seed: {}", mean, se, d.len(), if se > 0.0 && mean.abs() > 2.0 * se { "outside the noise" } else { "inside the noise" }, d.iter().map(|x| format!("{:+.2}", x)).collect::<Vec<_>>().join(" "));
     }
 
     /// Sixteen seats as the window deals them with `--fleets`, seat 0 on

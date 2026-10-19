@@ -507,7 +507,9 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/BUILD.md | the build on a small machine; `make warm` |
 | documentation/MAPS.md | the map file format; converting prior-art maps |
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
-| documentation/LAB-REPORT-BRAIN.md | the bot AI: the baseline of 17 October (section 2, archived), the research, the step 12 design, the record of building it (sections 11 to 19) and the brain now (section 20) |
+| documentation/LAB-REPORT-BRAIN.md | the bot AI: the baseline of 17 October (section 2, archived), the research, the step 12 design, the record of building it (sections 11 to 19, 21 to 24) and the brain now (section 20) |
+| documentation/BRAIN-MAP.md | every brain file and function with its doc comment's first sentence, written by `make brainmap` |
+| documentation/checkins/ | check-in reports in IEEE form: the prompts, the decisions they caused, methods, results (CI-001: each switch alone, the posture, a review of the brain) |
 | documentation/PROPOSAL-UPGRADES.md | the proposal for roadmap 11g: supply, sixteen upgrades and how they are bought (18 October 2026) |
 | documentation/LAB-REPORT-PILLBOYS.md | the Pillboy requirement audited against the prior art's builder |
 | documentation/LAB-REPORT-PLAYTEST.md | the first playtest build, 13 October 2026: the driver and the stack, a solo and a three-client match with frames, the multiclient end to end, nine findings |
@@ -613,6 +615,8 @@ counts of 18 October evening.
 | treadcore-brain/src/rotation.rs | 271 | push and defence points |
 | treadcore-client/src/tune.rs | 311 | the weights page on the coordination screen (`U`) and the team file |
 | scripts/tune.sh | 82 | `make tune`: a (1 + lambda) evolution strategy over the census |
+| scripts/switches.sh | 70 | `make switches`: each switch that is off, alone, over the fair census, with its standard error |
+| scripts/brainmap.py | 106 | `make brainmap`: documentation/BRAIN-MAP.md from the brain's doc comments |
 
 New words:
 

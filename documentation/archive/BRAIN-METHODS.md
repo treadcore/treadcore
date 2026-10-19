@@ -24,7 +24,7 @@ Section numbers are the lab report's (LR); dates are 2026.
 
 | Old method | Replaced by | When | The old one now | Evidence |
 | --- | --- | --- | --- | --- |
-| Constants written into `Tactics` and through the brain | `weights::Settings`: a flat `Weights` array of named weights (76 now) and `Caps` bits (17), defaults equal to the old constants | 18 Oct, LR 11 | the defaults themselves | `default_weights_are_todays_constants` |
+| Constants written into `Tactics` and through the brain | `weights::Settings`: a flat `Weights` array of named weights (77 now) and `Caps` bits (18), defaults equal to the old constants | 18 Oct, LR 11 | the defaults themselves | `default_weights_are_todays_constants` |
 | The castle of steps 11b and 11h: three towers and two bastions, filled with every pillbox carried in | the capped castle: two pillboxes inside, one on its road, the rest to posts on the roads between bases, kept off junctions (`castle_cap`, default on) | 18 Oct, LR 12 | `caps = baseline, -castle_cap`; proofs `a_commander_fortifies_its_depot`, `a_commander_climbs_the_ladder` run it | fair census: old castle 8.36 a seat, capped 9.08 (LR 14) |
 | The census's one match a seed, the trial team turned round | the fair census: every team in the trial seat on every seed (`CENSUS_FAIR`, default on) | 18 Oct, LR 14 | `CENSUS_FAIR=0` | a null run read 12.66 against 6.44 before, 13.93 against 13.93 after |
 | The census's baseline teams always on the defaults | `CENSUS_BASE_CAPS`: the baseline teams' switches, for a part that needs another on | 18 Oct, LR 18 | leave it unset | used for `bridge_jobs` against `board` |
@@ -34,23 +34,26 @@ Section numbers are the lab report's (LR); dates are 2026.
 | `Commander::set_settings` rebuilding the tactician, and able only to turn four switches off | the tactician updated in place; a switch off and on again gives back the role's own setting (`CapHeld`) | 18 Oct, LR 17 | removed | `a_switch_comes_back_and_a_slider_keeps_the_target` |
 | Logic and the census reading the status sentences back ("on guard", "called", "ducking" by substring) | codes beside the words (`status.rs`: `Act`, `HopAct`, `CycleAct`, `KiteStep`, `Why`, the tactician's `Tags`); the words kept for people | 18 Oct, LR 22 | removed | a census match identical before and after; `every_code_is_its_own` |
 | Floats compared with `partial_cmp().unwrap()`, a panic on any NaN (74 in the brain, 19 in the window and the sim) | `total_cmp`, which orders every float and cannot fail | 18 Oct, LR 23 | removed | `a_nan_does_not_panic_the_brain` panics on the old code and passes on the new; a census match identical before and after |
+| The posture's Defend on the sector threat at the base over 0.5, or a readiness spread over 0.6: Defend in 94% of picks | hostile worth within the base's alarm (16 tiles) over 0.5; the spread left to `team_rotate` | 18 Oct, LR 24 | removed | `the_team_defends_a_threat_at_the_base_not_far_off` fails on the old rule |
+| A census judged "inside the noise" by eye | the difference a seed and its standard error, outside past two errors (`ledger::mean_se`) | 18 Oct, LR 24 | the means are still printed | a null run 0 with an error of 0; `the_standard_error_of_a_sample` |
 | The window's pilot playing on no settings at all | the pilot on the weights page's settings, which start from the team file or `--weights` | 18 Oct, LR 17 | removed | `client::tune` |
 
 ## Current, challenger off
 
 | Current method (the default) | Challenger | Switch | Measured | LR |
 | --- | --- | --- | --- | --- |
-| Given-up targets remembered for the match (L6) | memories that run out after `forget_for` | `forget` | not yet alone | 11 |
-| Each decision taken at once, every think (L7) | desire vectors, a turret held until a challenger wins three picks, the Auto rung confirmed over two thinks, the stance from smoothed odds | `smooth` | 7.55 a seat against 9.47, worse | 11, 15 |
-| Each tank on its own picture of the map (L5) | the team board: influence, front, defence points, jobs kept, posture | `board` | not yet alone | 11 |
-| Each tank balancing only itself | a hurt tank at the hottest point swapped for a fresh one | `team_rotate` | not yet alone | 11 |
-| Every gap of 20 water tiles or fewer bridged | boat or bridge by price: long bridges and scarce trees cost more | `priced_crossing` | not yet alone | 11 |
-| The wedge kept on a bridge | the fleet in file on a bridge | `column` | not yet alone | 11 |
-| Trees felled only when a build is short (L8) | after filling up: an item and an improvement for the base, then a road out | `cycle` | not yet alone | 11 |
-| Any island a base | a small island with few trees a poor site | `island_site` | not yet alone | 11 |
-| A leader fetching a far pillbox alone | the fleet gathered first, escorting it home along the road | `escort` | 7.70 against 7.70: never reached in 900 s | 16 |
-| A bridge given up left half laid; a leader asking one wingman for its next tile | part-laid bridges on the team board, taken by the next teammate with material | `bridge_jobs` (needs `board`) | 7.31 against 8.01, inside the noise | 18 |
-| Direct fire taken where it falls (only kiting, against the one enemy a tank fights, keeps out of reach) | the duck: out of a hostile gun's range or line, seen or remembered, when it is ready before one's own | `duck` | 7.01 against 7.52, inside the noise | 21 |
+| Given-up targets remembered for the match (L6) | memories that run out after `forget_for` | `forget` | alone, 12 seeds: -0.36, error 0.23 (LR 24) | 11, 24 |
+| Each decision taken at once, every think (L7) | desire vectors, a turret held until a challenger wins three picks, the Auto rung confirmed over two thinks, the stance from smoothed odds | `smooth` | 7.55 a seat against 9.47, worse; 12 seeds: -1.98, error 1.25 | 11, 15, 24 |
+| Each tank on its own picture of the map (L5) | the team board: influence, front, defence points, jobs kept, posture | `board` | 12 seeds: identical matches, it changes no decision alone | 11, 24 |
+| Each tank balancing only itself | a hurt tank at the hottest point swapped for a fresh one | `team_rotate` | 12 seeds: -0.83, error 0.87 | 11, 24 |
+| Every gap of 20 water tiles or fewer bridged | boat or bridge by price: long bridges and scarce trees cost more | `priced_crossing` | 12 seeds: +0.11, error 0.56 | 11, 24 |
+| The wedge kept on a bridge | the fleet in file on a bridge | `column` | 12 seeds: -0.06, error 0.41 | 11, 24 |
+| Trees felled only when a build is short (L8) | after filling up: an item and an improvement for the base, then a road out | `cycle` | 12 seeds: +0.31, error 0.43 | 11, 24 |
+| Any island a base | a small island with few trees a poor site | `island_site` | 12 seeds: identical matches; never asked in a fleet (backlog 20) | 11, 24 |
+| A leader fetching a far pillbox alone | the fleet gathered first, escorting it home along the road | `escort` | 7.70 against 7.70: never reached in 900 s; 12 seeds: +0.01 | 16, 24 |
+| A bridge given up left half laid; a leader asking one wingman for its next tile | part-laid bridges on the team board, taken by the next teammate with material | `bridge_jobs` (needs `board`) | 7.31 against 8.01, inside the noise; 12 seeds: +0.44, error 0.91 | 18, 24 |
+| Direct fire taken where it falls (only kiting, against the one enemy a tank fights, keeps out of reach) | the duck: out of a hostile gun's range or line, seen or remembered, when it is ready before one's own | `duck` | 7.01 against 7.52, inside the noise; 12 seeds: +0.39, error 1.04 | 21, 24 |
+| The Auto ladder's first rung that holds (L1) | the team's posture leaning the pick, `(1 - w) order + w lean` | `posture` (needs `board`), `w_posture` | 48 seeds: -0.81, error 0.65 | 24 |
 
 ## Shown impossible
 
@@ -63,5 +66,6 @@ Section numbers are the lab report's (LR); dates are 2026.
 Not every finding of LR 2 has an answer yet: the observation is still
 a full copy of the world per bot per tick (L2); the `doing` words are
 still written every think, beside their codes, measured as costing
-nothing (L3, LR 22); and the Auto ladder and the
-wingman's priorities are still first-match orders (L1).
+nothing (L3, LR 22); and the Commander's chain of branches, the
+wingman's priorities and the board's posture are still first-match
+orders (L1; the Auto ladder has a blend under `posture`, LR 24).

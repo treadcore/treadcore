@@ -137,6 +137,37 @@ impl Rung {
     pub fn index(self) -> usize {
         Rung::ALL.iter().position(|r| *r == self).unwrap()
     }
+
+    /// The rungs a team posture leans toward (LR 24). Defend keeps the
+    /// tank home; Fortify builds and fills the castle; Connect fills the
+    /// castle and lines the roads (Turrets) and takes the depots between
+    /// (Expand); Expand takes ground; Economy, short of material, takes
+    /// depots. DefendBase is never leaned: it is first whenever it holds.
+    pub fn leaned(self, p: crate::board::Posture) -> bool {
+        use crate::board::Posture as P;
+        matches!(
+            (p, self),
+            (P::Defend, Rung::Guard) | (P::Fortify, Rung::Fortify | Rung::Turrets) | (P::Connect, Rung::Turrets | Rung::Expand) | (P::Expand, Rung::Expand | Rung::Hunt) | (P::Economy, Rung::Expand)
+        )
+    }
+
+    /// The rung to take: of those switched on that hold, the best by
+    /// `(1 - w) order + w lean`, where order runs from 1 for the first
+    /// rung down to 0 for the last and lean is 1 for a rung the posture
+    /// leans toward. With no posture, or `w` 0, the first that holds, as
+    /// the ladder always was; DefendBase, holding, always.
+    pub fn pick(on: &[bool; 6], holds: &[bool; 6], posture: Option<crate::board::Posture>, w: f32) -> Rung {
+        let first = Rung::ALL.iter().copied().find(|r| on[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
+        let w = w.clamp(0.0, 1.0);
+        let Some(p) = posture.filter(|_| w > 0.0 && first != Rung::DefendBase) else { return first };
+        let last = (Rung::ALL.len() - 1) as f32;
+        let score = |r: Rung| (1.0 - w) * (1.0 - r.index() as f32 / last) + w * r.leaned(p) as u8 as f32;
+        // Ties go to the higher rung, as the order would have it.
+        Rung::ALL.iter().copied().filter(|r| on[r.index()] && holds[r.index()]).fold(None, |best: Option<Rung>, r| match best {
+            Some(b) if score(b) >= score(r) => Some(b),
+            _ => Some(r),
+        }).unwrap_or(first)
+    }
 }
 
 /// Below these the Commander goes home to a depot before anything else.
@@ -1372,7 +1403,16 @@ impl Commander {
             },
             Why::Always,
         ];
-        let mut rung = Rung::ALL.iter().copied().find(|r| self.ladder[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
+        // The team's posture leans the ladder (LR 24): off, or with no
+        // board, the first rung that holds, as before.
+        let posture = match (self.caps().has(crate::weights::Caps::POSTURE), &self.board) {
+            (true, Some(b)) => b.lock().ok().map(|b| b.posture),
+            _ => None,
+        };
+        let mut rung = Rung::pick(&self.ladder, &holds, posture, self.settings.w[crate::weights::W::Posture]);
+        if let Some(p) = posture {
+            crate::meter::posture(p, rung != Rung::pick(&self.ladder, &holds, None, 0.0));
+        }
         // Smoothed (roadmap 12d): a new rung must win `confirm` thinks in a
         // row (a think is a quarter second) while the old one still holds;
         // a threat to the base (DefendBase), or the old rung no longer
@@ -2924,6 +2964,44 @@ mod tests {
         assert!(gone, "a finished bridge stays on the board");
         let (took, left, _) = run(false);
         assert!(!took && left == 3, "off the capability, the bridge is left as it was");
+    }
+
+    /// The posture leans the ladder (LR 24): with no posture or a
+    /// weight of 0 the pick is the first rung that holds, for every one
+    /// of the 4096 combinations; at 0.25 a leaned rung climbs one rung,
+    /// at the default 0.5 every rung; DefendBase is never passed.
+    #[test]
+    fn the_posture_leans_the_ladder() {
+        use crate::board::Posture as P;
+        let bits = |n: u32, k: u32| -> [bool; 6] { std::array::from_fn(|i| (n >> (i as u32 + k)) & 1 == 1) };
+        for n in 0..4096u32 {
+            let (on, holds) = (bits(n, 0), bits(n, 6));
+            let first = Rung::ALL.iter().copied().find(|r| on[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
+            assert_eq!(Rung::pick(&on, &holds, None, 0.5), first);
+            for p in [P::Economy, P::Fortify, P::Connect, P::Expand, P::Defend] {
+                assert_eq!(Rung::pick(&on, &holds, Some(p), 0.0), first, "weight 0 is the old ladder");
+                if first == Rung::DefendBase {
+                    assert_eq!(Rung::pick(&on, &holds, Some(p), 1.0), Rung::DefendBase, "the base's defence is never passed");
+                }
+            }
+        }
+        let all = [true; 6];
+        let w = 0.25;
+        assert_eq!(crate::weights::W::Posture.default_value(), 0.5);
+        // Fortify, Hunt, Expand and Guard hold; the team would expand.
+        let holds = [false, true, false, true, true, true];
+        assert_eq!(Rung::pick(&all, &holds, Some(P::Expand), 0.0), Rung::Fortify);
+        assert_eq!(Rung::pick(&all, &holds, Some(P::Expand), w), Rung::Fortify, "Hunt is two rungs below Fortify: one is all 0.25 climbs");
+        assert_eq!(Rung::pick(&all, &holds, Some(P::Expand), 0.5), Rung::Hunt, "at 0.5 a lean passes every rung");
+        // Hunt, Expand and Guard hold; the team would defend.
+        let holds = [false, false, false, true, true, true];
+        assert_eq!(Rung::pick(&all, &holds, Some(P::Defend), w), Rung::Hunt, "Guard is two below Hunt");
+        let holds = [false, false, false, false, true, true];
+        assert_eq!(Rung::pick(&all, &holds, Some(P::Defend), w), Rung::Guard, "Guard climbs one past Expand");
+        // A switched-off rung is never picked, leaned or not.
+        let mut on = all;
+        on[Rung::Guard.index()] = false;
+        assert_eq!(Rung::pick(&on, &holds, Some(P::Defend), 1.0), Rung::Expand);
     }
 
     /// On a bridge a wingman's slot is in file straight behind the

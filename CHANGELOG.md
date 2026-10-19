@@ -6,6 +6,30 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the census gives its noise as a number. It prints the
+  difference a seat seed by seed and its standard error over the seeds;
+  a part is outside the noise only past two errors (`ledger::mean_se`).
+  `make switches` measures every switch that is off, alone, over the
+  fair census (`scripts/switches.sh`; `JOBS` runs several at once), and
+  `CENSUS_SEED0` splits one long census over the cores. At 12 seeds of
+  900 s (396 matches) none of the eleven was outside two errors; `board`,
+  `island_site` and `escort` never acted (LAB-REPORT-BRAIN.md section
+  24).
+- Added, off: the team's posture leans the Auto ladder (`posture`,
+  needs `board`; `w_posture`, 0.5: the posture decides among the rungs
+  that hold; 0 is the old ladder). Measured over 48 seeds: -0.81 a seat
+  with an error of 0.65, so it stays off.
+- Fixed: the team board's posture was Defend whenever a hostile tank
+  was anywhere on the map, since its threat field adds every tank's
+  pull to every sector, or whenever one teammate was low on shells.
+  Defend is now a threat within the base's alarm (16 tiles). The board
+  is off by default, so default play is unchanged.
+- Added: `make brainmap` writes `documentation/BRAIN-MAP.md`, every
+  brain file and function with its doc comment's first sentence (17
+  files, 337 functions, 120 undocumented). Check-in reports in IEEE form
+  start in `documentation/checkins/` (CI-001: the measurement, a review
+  of the brain's architecture, the tuner and its noise, faster
+  playtests, a form for backlog items).
 - Fixed: a NaN in a position can no longer panic the bots, the window
   or the simulation (backlog 10 and 19). All 93 float comparisons that
   unwrapped `partial_cmp` (74 in the brain, 6 in the window, 13 in the

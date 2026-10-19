@@ -26,6 +26,11 @@ pub struct Meter {
     pub plan_clones: u64,
     /// Nanoseconds inside `run_bots`.
     pub nanos: u64,
+    /// Ladder picks under a team posture (LR 24), by the posture read
+    /// (economy, fortify, connect, expand, defend), and those the
+    /// posture changed from the first rung that held.
+    pub postures: [u64; 5],
+    pub leaned: u64,
 }
 
 thread_local! {
@@ -57,6 +62,12 @@ pub fn crossing_cached() {
 }
 pub fn plan_clone() {
     bump(|m| m.plan_clones += 1);
+}
+pub fn posture(p: crate::board::Posture, changed: bool) {
+    bump(|m| {
+        m.postures[p as usize] += 1;
+        m.leaned += changed as u64;
+    });
 }
 pub fn spent(d: Duration) {
     bump(|m| m.nanos += d.as_nanos() as u64);
@@ -93,7 +104,11 @@ impl Meter {
             self.crossings_cached,
             self.plan_clones,
             self.micros_per_seat()
-        )
+        ) + &if self.postures.iter().sum::<u64>() > 0 {
+            format!(", postures {:?} (economy fortify connect expand defend), {} picks leaned", self.postures, self.leaned)
+        } else {
+            String::new()
+        }
     }
 }
 

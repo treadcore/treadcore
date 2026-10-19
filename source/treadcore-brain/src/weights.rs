@@ -128,6 +128,7 @@ weights! {
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";
     // The team (LR 9).
     SwapGap "swap_gap" 0.3, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
+    Posture "w_posture" 0.5, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";
     // The base cycle (LR 6.1).
     GiveItem "w_give_item" 1.0, "cycle: one plan item for the base on each fill";
     GiveUpgrade "w_give_upgrade" 1.0, "cycle: one improvement for the base on each fill";
@@ -217,6 +218,7 @@ caps! {
     ESCORT 17 "escort" false, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
     BRIDGE_JOBS 18 "bridge_jobs" false, "a part-laid bridge is a job on the team board, taken by the next teammate with material; needs board (12f)";
     DUCK 19 "duck" false, "out of a hostile gun's range or line when it is ready before mine: direct fire denied, since it cannot be dodged once fired (12d, LR 19)";
+    POSTURE 20 "posture" false, "the team board's posture leans the Auto ladder by w_posture; needs board (12e, LR 24)";
     CASTLE_CAP 16 "castle_cap" true, "the castle stops at castle_inside and castle_road pillboxes; the rest go to posts on the roads between bases (12h)";
 }
 

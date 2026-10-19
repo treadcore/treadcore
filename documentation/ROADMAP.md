@@ -15,6 +15,12 @@ and in the shared document it was drafted in,
 [Treadcore: Status Update & Brain AI Lab Report](https://claude.ai/code/artifact/97f399bf-9abe-4094-a060-6a9666f273bd);
 section numbers below (LR 5, LR 6.2) are that report's.
 
+Each check-in with Paul has an IEEE-form report in `checkins/`: the
+prompts word for word, the decisions they caused, the methods and the
+results (CI-001: each switch alone, the posture, a review of the
+brain). `BRAIN-MAP.md` indexes every function of the brain
+(`make brainmap`).
+
 What is archived and what is current: `archive/README.md`. The brain's
 methods, old and new, are registered in `archive/BRAIN-METHODS.md`:
 archived (replaced as the default, most still one switch away),
@@ -25,7 +31,7 @@ current with an improved challenger still off, and shown impossible.
 | 1. One world, many machines | playable, editable, networked, programmable: the prior art's idea on today's network | met (steps 0 to 9) |
 | 2. The battlefield the war made | indirect fire, drones over every tank, industry under drones | met (step 10) |
 | 3. Command, not only driving | goal modes, fleets, castles, pillboxes that move, a coordination screen | half met (step 11) |
-| 4. Bots that think as a team | one tunable decision pattern on shared memory, cheap enough to run sixteen | the prototype built (12a to 12h, LR 11 to 20); the census promotes parts |
+| 4. Bots that think as a team | one tunable decision pattern on shared memory, cheap enough to run sixteen | the prototype built (12a to 12h, LR 11 to 20); every switch measured alone at 12 seeds, none yet outside the noise (LR 24) |
 | 5. Longer, truer matches | real numbers, upgrades, towns that see, matches past sixteen minutes | open (11f, 11g, 11j) |
 | 6. In players' hands | packages, a release, two real routers | waiting (Actions paused since 13 October) |
 
@@ -263,7 +269,7 @@ to 8.93 a seat).
   people; measured, the strings cost nothing, and a census match is
   identical before and after. Not yet: the Observation shared per
   team (the sim change).
-- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck),
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
   The sliders, 18 October (LR 17): the coordination screen's weights
   page (`U`) for the player's own team, saved to
@@ -284,7 +290,16 @@ to 8.93 a seat).
 - [x] 12e the team board (`board`, `team_rotate`):
   `the_front_is_where_influence_crosses_zero`, `a_hurt_tank_swaps_out`,
   `a_missed_job_is_still_on_the_board`. Not yet: allies' goals shown on
-  the coordination screen.
+  the coordination screen. Measured alone (LR 24), the board changed
+  no decision: only `team_rotate` and `bridge_jobs` read it. The
+  posture read, 18 October (`posture`, `w_posture`; LR 24): the Auto
+  ladder leaned by the team's posture, `(1 - w) order + w lean`
+  (`Rung::pick`, `the_posture_leans_the_ladder`); its first match found
+  Defend in 94% of picks, a long-tailed threat field, fixed
+  (`the_team_defends_a_threat_at_the_base_not_far_off`); measured at 48
+  seeds, -0.81 a seat with an error of 0.65, so it stays off. Not yet:
+  the posture as scores (backlog 21); influence, the front and
+  territory read by nothing.
 - [~] 12f behaviours: the base cycle (`cycle`,
   `a_full_tank_gives_the_base_an_item`), priced crossings and the island
   site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`),
@@ -298,7 +313,12 @@ to 8.93 a seat).
   and laid; measured fairly at 7.31 a seat against 8.01 with `board`
   on for all, inside the noise, so it stays off).
 - [x] 12g the ledger and the tuner: `brain_census`, `ledger_ratings`,
-  `make tune`. Not yet: a tuning run long enough to promote anything.
+  `make tune`. The census's error (LR 24): the difference a seed, its
+  standard error, "outside the noise" past two errors
+  (`ledger::mean_se`); `make switches`, each switch alone;
+  `CENSUS_SEED0` to split a census over the cores. Not yet: a tuner
+  that can see what it selects (CI-001 VI: at two seeds it selects
+  noise; backlog 23).
 - [x] 12h the answers as scalars, the same day: the weights of the
   table above, `castle_cap` (`Plan::castle_capped`, road slots in place
   of bastions, `Plan::add_posts`, `Cycle::road_posts`), the improvement
@@ -317,8 +337,12 @@ to 8.93 a seat).
   bit off. Paired against the null run, the old castle scored 0.96 a
   seat less over six naval seeds, inside the noise.
 
-Next: the census at twelve seeds or more for each capability alone,
-then `make tune` on the ones that pay.
+Done 18 October (LR 24, CI-001): every capability alone at twelve
+seeds; none outside two errors; `board`, `island_site` and `escort`
+never acted. Next, one at a time: the posture as scores (backlog 21);
+an honest tuner (23); `island_site` where a naval start chooses (20).
+Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
+by the part (CI-001 IV.A), one night's census for all of them.
 
 
 ## Goal 5. Longer, truer matches (open)
@@ -432,7 +456,9 @@ the end with a date.
 17. Done 18 October (LR 19, LR 21): direct fire is denied, not
     dodged. Paul chose the duck: `duck`, with `w_duck`, `duck_ready`
     and `duck_memory`; off, measured inside the noise. Goal 4, 12d.
-18. 18 October: the census at twelve seeds or more for each switch
+18. Measured 18 October (LR 24): each switch alone at twelve seeds,
+    none outside two errors; see 22 for the seeds a half point needs.
+    As asked: the census at twelve seeds or more for each switch
     alone (`forget`, `board`, `team_rotate`, `priced_crossing`,
     `column`, `cycle`, `island_site`), none measured alone yet; and
     longer matches for the parts that pay late (`escort`,
@@ -443,6 +469,57 @@ the end with a date.
     `a_nan_does_not_panic_the_brain` fails on the old code and passes
     on the new, and a census match is identical before and after.
     Goal 4, 12b.
+
+From item 20 each item is written in the form of CI-001 section VIII:
+cause, goal and step, hypothesis, proof (with the seeds a census needs,
+(2 sigma / delta)^2), cost, state.
+
+20. `island_site` where a naval start chooses. (18 October; cause: LR
+    24, it never acted.) Goal 4, 12f2. Hypothesis: a fleet leader
+    choosing its first landing by site score (forest, island size)
+    builds more and starves less. Proof: a test where a small bare
+    islet is nearer than a large forested island and the leader lands
+    on the island; the census with `island_site` reading nonzero
+    seat-seconds, then d and its error at 36 seeds (sigma unknown until
+    it acts). Cost: 108 matches, 6 min. State: idea.
+21. The posture as scores. (18 October; cause: LR 24, CI-001 A3; Paul's
+    rule, every either/or a scalar.) Goal 4, 12e. Hypothesis: the
+    board's posture, a first-match ladder on thresholds, scored as LR 9
+    designed (each posture a 0..1 score, the blend picks), reads the
+    match better and lets `posture` pay. Proof: a test per posture's
+    score; the census of `posture` at 48 seeds against LR 24's -0.81 +/-
+    0.65. Cost: 144 matches, 8 min. State: designed (LR 9).
+22. 18 October: the switch census at 200 seeds a switch, one night,
+    so a half point a seat is outside two errors for every part (CI-001
+    IV.A). Goal 4, 12g. Proof: `SEEDS=200 JOBS=3 make switches`. Cost:
+    6,600 matches, about 6 h. State: idea; supersedes the seed count of
+    18.
+23. An honest tuner. (18 October; cause: CI-001 VI.B, the tuner selects
+    noise; Paul: "ways to test and grow these genetic algorithms".)
+    Goal 4, 12g. Hypothesis: re-evaluating the parent on fresh seeds and
+    accepting a child only past two errors, then SPSA on the paired
+    census, finds weights that hold on new seeds. Proof: the planted
+    test (CI-001 VI.D): from `w_wounded` 0 the tuner returns toward
+    1.2; a found genome confirmed on 48 unused seeds and a second map.
+    Cost: about 600 matches a generation, 35 min. State: designed.
+24. Scenario files: a playtest described in text and run headless at
+    85x. (18 October; cause: Paul, "is there a way to create description
+    and try to attempt these via playtests faster".) Goal 4; goal 1.
+    Hypothesis: a TOML file (map, tanks, terrain, board, caps,
+    weights, expectations; CI-001 VII.B) and `make scenario` replace a
+    hand-written Rust test for each new behaviour. Proof: three of
+    today's tests rewritten as scenarios pass and fail as they do.
+    Cost: a step. State: designed.
+25. The census on more than one map. (18 October; cause: CI-001 A8,
+    every census since LR 11 is naval.map.) Goal 4, 12g. Hypothesis: a
+    part's difference holds on a generated map as on naval.map.
+    Proof: `CENSUS_MAP` over a list; promotion asks two maps. Cost:
+    doubles a census. State: idea.
+26. 120 of 337 brain functions have no doc comment (`BRAIN-MAP.md`;
+    CI-001 A9); `crew.rs` and `hop.rs` have no tests of their own (A10).
+    Goal 4. Proof: `make brainmap` reading fewer; a test each for the
+    crew's job hand-out and a hop's bridge choice. Cost: a step. State:
+    idea.
 
 
 ## Sequencing

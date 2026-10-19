@@ -323,20 +323,16 @@ impl TeamBoard {
         if self.points.is_empty() {
             self.points.extend(base);
         }
-        // The posture.
-        let base_threat = base.map(|b| self.threat_at(b)).unwrap_or(0.0);
-        let spread = {
-            let r: Vec<f32> = self.members.iter().filter(|m| m.alive).map(|m| m.ready).collect();
-            let max = r.iter().cloned().fold(0.0, f32::max);
-            let min = r.iter().cloned().fold(1.0, f32::min);
-            if r.is_empty() {
-                0.0
-            } else {
-                max - min
-            }
-        };
+        // The posture. Defend is a threat at the base itself: hostile
+        // worth within the base's alarm, a full tank 1. The sector
+        // threat has a long tail (every hostile tank on the map adds to
+        // it), and a spread in readiness is rotation's business, not a
+        // reason for the team to go home (LR 24).
+        let base_threat: f32 = base
+            .map(|b| obs.tanks.iter().filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(b) <= crate::commander::BASE_ALARM).map(worth).sum())
+            .unwrap_or(0.0);
         let ours = self.influence.iter().filter(|v| **v > 0.0).count();
-        self.posture = if base_threat > 0.5 || spread > 0.6 {
+        self.posture = if base_threat > 0.5 {
             Posture::Defend
         } else if starved {
             Posture::Economy
@@ -404,6 +400,31 @@ mod tests {
             t.pos = *a;
         }
         w.observe(0)
+    }
+
+    /// Defend is a threat at the base, not the map's hostile tanks
+    /// summed (LR 24): eight of them 80 tiles off read 0.73 on the
+    /// sector threat, over its 0.5, and sent the team home in 94% of a
+    /// match's picks. Far, the team is not defending; one at the gate,
+    /// it is.
+    #[test]
+    fn the_team_defends_a_threat_at_the_base_not_far_off() {
+        let mut sc = Scenario::bots(16).with_teams(2);
+        sc.advantage = true;
+        let mut w = World::new(sc);
+        let base = V2::new(20.5, 64.5);
+        for t in w.tanks.iter_mut() {
+            let k = t.owner as f32;
+            t.pos = if t.owner % 2 == 0 { V2::new(20.5 + k / 4.0, 60.5) } else { V2::new(100.5, 40.5 + 2.0 * k) };
+        }
+        let mut b = TeamBoard::default();
+        b.rebuild(&w.observe(0), Some(base), &Settings::default(), false, 0);
+        assert!(b.threat_at(base) > 0.5, "the sector threat has its long tail: {}", b.threat_at(base));
+        assert_ne!(b.posture, Posture::Defend, "eight hostile tanks 80 tiles off");
+        let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
+        t.pos = base + V2::new(6.0, 0.0);
+        b.rebuild(&w.observe(0), Some(base), &Settings::default(), false, REBUILD);
+        assert_eq!(b.posture, Posture::Defend, "one at the gate");
     }
 
     #[test]

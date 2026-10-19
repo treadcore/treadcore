@@ -1,0 +1,145 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 18 Oct 2026 17:15:00 -0700
+Subject: [JOURNAL 0049] Each switch alone; the posture read
+Message-ID: <0049.20261018@treadcore.org>
+In-Reply-To: <0048.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: census, standard error, statistical power, team board,
+          posture, utility blend, tuner, check-in report
+X-Session: the same 8 GB Alpine guest, 4 cores; Claude Code (Claude
+           Opus 5.5) as the pair. Paul: "continue working on on the
+           roadmap ... testing this new brain structure, and keep
+           writing lab reports about what you change and why for what
+           goal."
+X-Commits: a352fb6 (journal 0048) at the start; this entry's work is
+           in the tree
+
+                  EACH SWITCH ALONE; THE POSTURE READ
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    The roadmap's next measurement was every switch of the step-12
+    brain alone at twelve seeds. The census now gives its noise as a
+    number, the standard error of the paired difference over seeds.
+    Eleven switches were measured, 396 matches in 22 minutes: none was
+    outside two errors, and three never acted. The team board, in
+    particular, changed no decision. The board's posture was made to
+    lean the Auto ladder through a blend. Its first match found the
+    posture broken (Defend 94% of the time), and that was fixed. Twelve
+    seeds then read +1.21 +/- 1.31 a seat, and 48 read -0.81 +/- 0.65.
+    It stays off. Lesson: a part never read is never tested, and a
+    reading inside its error is no reading.
+
+INDEX TERMS
+
+    paired census, standard error, power, influence map, posture,
+    utility blend, evolution strategy, SPSA.
+
+
+I. INTRODUCTION
+
+    Sixteen capabilities were built and off, none promoted, and every
+    "inside the noise" so far was judged by eye from two or three seeds.
+    The session set out to measure each alone, fairly and with a stated
+    error, and to act on what that showed.
+
+II. BACKGROUND
+
+    Open from 0048: the Observation shared per team (12b); backlog 18,
+    twelve seeds a switch. The environment as in 0048: Alpine guest,
+    rustc 1.98.1, release builds. Actions paused; no tags.
+
+III. METHOD
+
+    The fair census (LR 14) on naval.map, 900 s, respawns 3; the paired
+    difference a seed and its standard error over seeds, "outside" past
+    two errors (LR 24, CI-001 III). Three censuses side by side on the
+    four cores, the ledger off so their lines do not interleave. A
+    regression test is run on the old code and must fail there (0048's
+    practice).
+
+IV. CHRONOLOGY
+
+    1. `ledger::mean_se` and the census's per-seed line. A null run read
+       0 +/- 0 on both seeds, as it must.
+    2. `scripts/switches.sh`, `make switches`. The verdict column split
+       on spaces; fixed.
+    3. Eleven switches, twelve seeds each. `board` read 0.00 on every
+       seed, its matches identical to the baseline's number for number.
+       Traced: no decision outside board.rs reads influence, the front
+       or the posture. `island_site` read 0.00: a fleet tank always has
+       its leader's depot first. `escort` +0.01: one far fetch in 36
+       matches.
+    4. The posture made to lean the ladder: `Rung::pick`, `w_posture`,
+       `posture`, a meter counter for the picks.
+    5. The first match: 3.64 against 11.02. The meter: Defend 94% of
+       picks. The threat field's long tail: eight tanks 80 tiles off add
+       0.73 at the base. Also the readiness spread over 0.6. Fixed:
+       Defend within the base's alarm; the spread left to rotation. The
+       new test fails on the old rule.
+    6. At w 0.25 nothing changed (the leanings sit two rungs below); at
+       0.5 and 1 the matches are identical, as the formula says. Twelve
+       seeds: 0.35 +0.39 +/- 0.36; 0.5 +1.21 +/- 1.31.
+    7. `CENSUS_SEED0`; seeds 12 to 47 in three ranges side by side:
+       -1.30, -2.16, -1.01. All 48: -0.81 +/- 0.65. The first twelve
+       were the dice. Default 0.5 kept for the tuner; the switch off.
+    8. Paul at the check-in asked for an IEEE-form report each check-in:
+       the prompts, how they caused decisions, the methods in detail,
+       a review of the brain's architecture, the tuner and mutation,
+       faster playtests, and the backlog's form. CI-001 is that report;
+       `make brainmap` writes the function index from the code.
+    9. `make test`: green.
+
+V. RESULTS
+
+    Each switch alone, difference a seat (error): smooth -1.98 (1.25),
+    team_rotate -0.83 (0.87), forget -0.36 (0.23), column -0.06 (0.41),
+    board 0 (0), island_site 0 (0), escort +0.01 (0.01),
+    priced_crossing +0.11 (0.56), cycle +0.31 (0.43), duck +0.39
+    (1.04), bridge_jobs +0.44 (0.91). Posture at 0.5, 48 seeds: -0.81
+    (0.65). Throughput: about 1,080 matches an hour on three cores, a
+    900 s match in 10 to 11 s on one (85x). Tests: brain 67 passed and
+    8 ignored; client 31; net 14; proto 3; sim 50. New files:
+    scripts/switches.sh, scripts/brainmap.py, documentation/BRAIN-MAP.md,
+    documentation/checkins/.
+
+VI. DISCUSSION
+
+    The identical matches were the finding the scores could not give:
+    a part that never acts reads "even", and even is not good. The
+    board drawn and unread had a bug nobody could see until something
+    read it. The posture's twelve-seed reading looked like a result and
+    was not. Confirmation on fresh seeds is part of measuring. The same
+    arithmetic says the tuner, at two seeds, selects noise (CI-001 VI).
+
+VII. OPEN PROBLEMS
+
+    1. The posture is itself a first-match ladder on thresholds
+       (backlog 21).
+    2. The tuner cannot see what it selects (backlog 23).
+    3. island_site is asked where it cannot act (backlog 20).
+    4. Every census is one map (backlog 25).
+    5. The Observation shared per team (12b).
+
+VIII. NEXT STEPS
+
+    1. Backlog 21: the five postures as scores, LR 9's table; the census
+       of `posture` at 48 seeds against -0.81 +/- 0.65.
+    2. Backlog 23: re-evaluate the parent, accept past two errors; the
+       planted test from w_wounded 0.
+    3. Backlog 22: one night at 200 seeds a switch.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 24;
+    documentation/checkins/CI-001-2026-10-18-each-switch-alone.md;
+    documentation/BRAIN-MAP.md; build/switches/20261018-162835/table.txt.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

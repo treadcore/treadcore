@@ -201,6 +201,22 @@ pub fn read(path: &std::path::Path) -> Vec<Record> {
     std::fs::read_to_string(path).map(|t| t.lines().filter_map(|l| serde_json::from_str(l).ok()).collect()).unwrap_or_default()
 }
 
+/// The mean of a sample and its standard error (the sample's standard
+/// deviation over the root of its size); the error is 0 for fewer than
+/// two. The census's differences a seed are the sample (LR 24).
+pub fn mean_se(x: &[f32]) -> (f32, f32) {
+    let n = x.len() as f32;
+    if x.is_empty() {
+        return (0.0, 0.0);
+    }
+    let mean = x.iter().sum::<f32>() / n;
+    if x.len() < 2 {
+        return (mean, 0.0);
+    }
+    let var = x.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / (n - 1.0);
+    (mean, (var / n).sqrt())
+}
+
 /// Elo ratings by genome over the ledger's matches: within a match, each
 /// genome's best seat score against every other genome's, a win for the
 /// higher. Sorted best first.
@@ -265,6 +281,16 @@ mod tests {
             let changed: Vec<String> = crate::weights::W::ALL.iter().filter(|w| r.genome.weights.get(**w as usize).map(|v| *v != w.default_value()).unwrap_or(false)).map(|w| format!("{}={}", w.name(), r.genome.weights[*w as usize])).collect();
             eprintln!("{:>7.1}  {:>4} games  {}  caps [{}]  {}", elo, games, id, crate::weights::Caps(r.genome.caps).names(), changed.join(" "));
         }
+    }
+
+    #[test]
+    fn the_standard_error_of_a_sample() {
+        assert_eq!(mean_se(&[]), (0.0, 0.0));
+        assert_eq!(mean_se(&[2.0]), (2.0, 0.0), "one seed has no error");
+        assert_eq!(mean_se(&[0.0; 12]), (0.0, 0.0), "a null run reads exactly even");
+        // 1 and 3: mean 2, sample deviation sqrt(2), error sqrt(2)/sqrt(2) = 1.
+        let (m, se) = mean_se(&[1.0, 3.0]);
+        assert!((m - 2.0).abs() < 1e-6 && (se - 1.0).abs() < 1e-6);
     }
 
     #[test]

@@ -842,11 +842,11 @@ are built, proven and measured but wait for a census to promote them.
 
 | Level | Code | Rate | Output |
 | --- | --- | --- | --- |
-| Settings | `weights.rs`: 76 weights, 17 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
+| Settings | `weights.rs`: 77 weights, 18 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
 | Team board (off) | `board.rs`, one per team, shared | rebuilt 1 Hz by the first member due | influence, front, defence points, posture, kept jobs, swaps, part-laid bridges |
 | Fleet commander | `crew::FleetCommand` | 20 Hz; musters every 30 s | jobs, as before |
 | Commander, one per tank | `commander.rs` | 20 Hz | `Vec<Command>` |
-| Auto ladder | DefendBase > Fortify > Turrets > Hunt > Expand > Guard, the rung confirmed over two thinks under `smooth` (off) | 20 Hz | a goal |
+| Auto ladder | DefendBase > Fortify > Turrets > Hunt > Expand > Guard, the rung confirmed over two thinks under `smooth` (off), leaned by the team's posture under `posture` (off, LR 24) | 20 Hz | a goal |
 | Base cycle (off) | `cycle.rs` | after a fill | an item, an improvement by weight (mend, a mine, works), a road out |
 | Doctrine and tactician | `lib.rs`, `tactics.rs`, its weights from `Settings` | 4 Hz | guns, drones, target, odds, stance (smoothed under `smooth`) |
 | Hop | `hop.rs`, `facts.rs`: the crossing cache, priced crossings (off), adopted bridges (off) | each doctrine think | bridge, boat, landfall |
@@ -854,7 +854,7 @@ are built, proven and measured but wait for a census to promote them.
 | Ledger and meter | `ledger.rs`, `meter.rs`, `brain_census`, `make tune` | per match | a line per tank: genome, seed, score; the cost a seat-tick |
 
 ```
-Settings (weights.rs: 76 weights, 17 switches)  <-- --weights FILE, weights page (U)
+Settings (weights.rs: 77 weights, 18 switches)  <-- --weights FILE, weights page (U)
    |
 Team board, one per team, 1 Hz (board)                         (L5)
    |  influence, front, points, posture, jobs kept,
@@ -888,7 +888,7 @@ The findings of section 2, now:
 | L2 a full world copy per bot per tick | unchanged: the Observation shared per team is 12b's remainder |
 | L3 repeated work | the plan copy and the reasons per candidate gone; the status as codes (LR 22): the `why` column formatted only when the screen shows it, logic and census reading codes; the `doing` words still written, measured as costing nothing |
 | L4 failed searches not cached | answered: the crossing cache keeps failures 60 s |
-| L5 no shared team memory | the team board (off) |
+| L5 no shared team memory | the team board (off); read by `team_rotate`, `bridge_jobs` and, since LR 24, `posture`; its influence, front and territory still read by nothing (LR 24) |
 | L6 lists that never forget | `Forget` with `forget_for` (off) |
 | L7 uneven commitment | desire vectors and confirmation (`smooth`, off: measured worse) |
 | L8 a reactive economy | the base cycle (`cycle`, off) |
@@ -897,13 +897,15 @@ The findings of section 2, now:
 The numbers, 18 October evening:
 - 12,566 lines in 17 files (8,458 in 8 on 18 October morning).
 - Brain tests: 64 passed, 8 ignored; client: 31; sim: 50.
-- 76 weights and 17 switches, with the duck (LR 21).
+- 76 weights and 17 switches, with the duck (LR 21); 77 and 18 with
+  the posture (LR 24).
 - 23 to 33 us a seat-tick in the census.
 - On by default: kite, pings, dodge, bridges, rotate, and since 18
   October `castle_cap`.
 - Measured fairly: the capped castle against the old, +0.72 a seat;
   `smooth` -1.92; `escort` even (never reached); `bridge_jobs` -0.70
-  with `board` on for every team; `duck` -0.51 (LR 21).
+  with `board` on for every team; `duck` -0.51 (LR 21). At twelve seeds
+  each, with the error (LR 24): none outside two errors.
 
 What the prototype has not shown yet: that any of its new parts makes
 the bots win more. The fair census can now tell a real difference from
@@ -1080,3 +1082,148 @@ One wrong turn on the way. The first run of the new test sat for ten
 minutes and looked like a NaN driving something into a loop. It was
 the build: changing the sim rebuilds every crate above it. Run by
 itself under a hard timeout, the test passed in an instant.
+
+## 24. Each switch alone, twelve seeds; the posture read, 18 October
+
+Backlog 18 and the roadmap's "next": every capability that is off,
+measured alone over the fair census at twelve seeds. Until now a part
+was judged "inside the noise" by eye, from two or three seeds, with no
+number for the noise.
+
+**The noise as a number.** The census now prints the difference a
+seat seed by seed, and its standard error over the seeds
+(`ledger::mean_se`, `the_standard_error_of_a_sample`). A seed's three
+matches share its starts, so a seed is one paired reading; within two
+standard errors of zero is "inside the noise". A null run reads 0 with
+an error of 0 on every seed, as it must. `make switches`
+(`scripts/switches.sh`) runs the census once for each switch and prints
+the table below; a switch that needs the board is tried with the board
+on for every team.
+
+**The measurement** (naval.map, respawns 3, 900 s, 12 seeds, every team
+in the trial seat: 36 matches a switch, 396 in all; run three at a
+time, so the microseconds read high):
+
+| Switch | With | Trial | Baseline | Difference a seat | Error | Acted (trial team, seat-seconds) |
+| --- | --- | --- | --- | --- | --- | --- |
+| `smooth` | | 7.98 | 9.96 | -1.98 | 1.25 | always (it smooths every move) |
+| `team_rotate` | board | 8.25 | 9.09 | -0.83 | 0.87 | relieving 879 |
+| `forget` | | 8.54 | 8.90 | -0.36 | 0.23 | (retries are not counted) |
+| `column` | | 8.98 | 9.05 | -0.06 | 0.41 | on bridges |
+| `board` | | 8.75 | 8.75 | 0.00 | 0.00 | never: the same matches as the baseline |
+| `island_site` | | 8.75 | 8.75 | 0.00 | 0.00 | never |
+| `escort` | | 8.76 | 8.75 | +0.01 | 0.01 | far fetches, one seed |
+| `priced_crossing` | | 9.20 | 9.09 | +0.11 | 0.56 | cheaper by boat 0; road posts 92 against 30 |
+| `cycle` | | 9.08 | 8.77 | +0.31 | 0.43 | base cycle 243 |
+| `duck` | | 8.93 | 8.54 | +0.39 | 1.04 | ducking 911 |
+| `bridge_jobs` | board | 9.11 | 8.67 | +0.44 | 0.91 | for the team 4,438 |
+
+None is outside two standard errors. `smooth` comes nearest (1.6 errors
+below), where LR 15 put it with six matches (-1.92). `duck` and
+`bridge_jobs`, slightly behind at two seeds, are slightly ahead at
+twelve: the sign of a difference under one error is the dice's.
+
+What twelve seeds can and cannot tell. A seed's difference spreads by
+0.8 to 4.3 a seat (`smooth` 4.3, `duck` 3.6, `team_rotate` 3.0, `forget`
+0.8). To put a real half point a seat outside two errors takes (2 x
+spread / 0.5)^2 seeds: 10 for `forget`, 140 for `team_rotate`, 200 for
+`duck`; a whole point, a quarter of that. The 396 matches took 22
+minutes three at a time, about 1,000 an hour, so 200 seeds (600
+matches) is a 35-minute run: every switch at a half point is one
+night's census. The tuner's two seeds (`make tune`) can only move
+weights whose effect is several points.
+
+**Three switches never acted,** and the census could not have found
+that by score alone, only by the identical matches:
+- `island_site` chooses among the side's depots only when a tank has
+  no base yet. In a fleet every tank's base is its leader's depot,
+  found first, so the island rule is never asked. It needs to stand
+  where a naval start actually chooses: which neutral depot the leader
+  takes first.
+- `escort` acts on a far fetch, and a 900 s naval match has about one
+  (LR 16 said so).
+- `board` alone changes no decision. It draws influence, the front, the
+  defence points and a posture, and only `team_rotate` and
+  `bridge_jobs` read any of it; its own act, adopting a job a crew
+  missed, happened in none of 36 matches. The team's picture was drawn
+  and nobody looked at it.
+
+The last is the brain's structure, not a tuning: goal 4's team board
+was to be the one picture the team decides on (LR 5, LR 9). The step
+that follows makes the posture read.
+
+**The posture read** (`posture`, off; needs `board`). The board's
+posture is what the team should mostly be doing; the Auto ladder is
+what a tank does, six rungs taken first-match, each a yes or no (L1).
+The ladder now reads the posture by a blend, as every either/or is a
+scalar (`Rung::pick`):
+
+```
+score(rung) = (1 - w) order(rung) + w lean(rung, posture)
+order: 1 for DefendBase down to 0 for Guard, in steps of 0.2
+lean:  1 for a rung the posture leans toward, else 0
+```
+
+The rung taken is the best of those switched on that hold. `w` is
+`w_posture`; at 0 the pick is the first that holds, as the ladder
+always was, and a leaned rung climbs past fewer than 5 w / (1 - w)
+rungs above it, so from 0.5 the posture decides among the rungs that
+hold. DefendBase, holding, is never passed. The leanings
+(`Rung::leaned`): Defend to Guard; Fortify to Fortify and Turrets;
+Connect to Turrets and Expand; Expand to Expand and Hunt; Economy, short
+of material, to Expand (depots).
+
+**What the first match found.** On the first census match the trial
+team scored 3.64 against 11.02. The meter (new: the postures read and
+the picks they changed) said why: the posture was Defend in 94% of the
+picks, and the lean sent the tanks home to Guard. The posture had never
+been read, so it had never been checked. Two faults:
+- Defend's test was the sector threat at the base over 0.5. Each
+  hostile tank adds 1 / (1 + d / 8) to every sector of the map, so
+  eight tanks 80 tiles off add 0.73 between them. The base was always
+  under threat.
+- Defend was also taken when the members' readiness spread past 0.6:
+  any team with one tank low on shells.
+
+The fix: Defend is hostile worth within the base's alarm (`BASE_ALARM`,
+16 tiles), a full tank 1, over 0.5; the spread is left to rotation
+(`team_rotate`), which is where it belongs.
+`the_team_defends_a_threat_at_the_base_not_far_off` puts eight hostile
+tanks 80 tiles off and then one at the gate. On the old rule it fails;
+on the new it passes. After the fix, over 48 seeds, the posture read
+Fortify 47%, Connect 19%, Expand 18%, Economy 16% and Defend 0.4%.
+
+**The measurement** (as above, with `board` on for every team):
+
+| `w_posture` | Seeds | Picks changed | Difference a seat | Error |
+| --- | --- | --- | --- | --- |
+| 0.25 | 1 | 0 | +0.08 | (one seed) |
+| 0.35 | 12 | 5,122 | +0.39 | 0.36 |
+| 0.5 (= 1) | 12 | 50,677 | +1.21 | 1.31 |
+| 0.5 | 48 | 164,606 | -0.81 | 0.65 |
+
+At 0.25 a lean climbs one rung, and the posture's leanings sit two
+below the rung that holds, so nothing changed. At 0.5 and at 1 the
+matches are identical, as the formula says they must be. The first
+twelve seeds read +1.21, which is promising. Thirty-six more seeds, run
+three ranges at a time (`CENSUS_SEED0`), read -1.30, -2.16 and -1.01;
+over all 48 the difference is -0.81 with an error of 0.65, 21 seeds
+ahead and 27 behind. The twelve were the dice. `posture` stays off,
+and `w_posture`'s default is 0.5, the value measured.
+
+What the step shows about the method. A part that is never read is
+never tested; the first match it is read in finds what was wrong. A
+reading of +1.2 on twelve seeds with an error of 1.3 is no reading. A
+part is promising only outside two errors, and confirmed only on seeds
+it was not chosen on.
+
+Proof:
+- `the_posture_leans_the_ladder`: at weight 0 or with no posture, the
+  pick is the first rung that holds for all 4,096 combinations of rungs
+  on and holding; DefendBase is never passed; 0.25 climbs one rung and
+  0.5 every rung; a switched-off rung is never picked.
+- `the_team_defends_a_threat_at_the_base_not_far_off`, failing on the
+  old rule.
+- `the_standard_error_of_a_sample`.
+- `make test`: brain 67 passed and 8 ignored; client 31; net 14; proto 3;
+  sim 50. No warnings.
