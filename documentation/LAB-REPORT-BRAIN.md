@@ -2189,7 +2189,7 @@ Proof: no code changed.
 
 LR 42's long run: `dodge_horizon`, `dodge_margin` and `dodge_clear`
 from their defaults (4 s, 0.8, 2.5 tiles), 16 steps of 24 fresh seeds
-(2,000 on, used by no earlier run), A 1.0, C 0.5. Eight steps in:
+(2,000 on, used by no earlier run), A 1.0, C 0.5. Ten steps in:
 
 | k | Plus side (horizon, margin, clear) | Minus side | d a seat | Its error | After |
 | --- | --- | --- | --- | --- | --- |
@@ -2201,8 +2201,15 @@ from their defaults (4 s, 0.8, 2.5 tiles), 16 steps of 24 fresh seeds
 | 6 | 1.67, 0.77, 5.32 | 3.85, 0.33, 2.31 | +1.72 | 1.18 | 1.54, 0.83, 5.78 |
 | 7 | 2.32, 1.26, 8.72 | 1.02, 0.55, 3.83 | +0.66 | 0.74 | 1.94, 1.05, 7.28 |
 | 8 | 1.29, 0.70, 4.86 | 2.91, 1.57, 10.92 | +0.66 | 1.10 | 1.56, 0.84, 5.87 |
+| 9 | 1.05, 0.57, 8.76 | 2.33, 1.26, 3.93 | **-2.49** | 0.94 | 2.58, 1.39, 3.56 |
+| 10 | 1.73, 0.94, 5.29 | 3.83, 2.07, 2.39 | +0.24 | 0.88 | 2.40, 1.30, 3.82 |
 
-No step is outside its error. The gain is too high for this noise: at
+Step 9 is the first outside its error (2.7 errors): a horizon of about
+1 s, with the narrower margin and the wider clearance, lost by 2.5 a
+seat to one of about 2.3 s. The early noisy steps had walked the
+horizon down to where a tank starts too late to get out from under a
+shell, and SPSA walked it back. Before step 9, no step was outside
+its error. The gain is too high for this noise: at
 A 1.0, readings inside their errors move every weight by up to the cap
 (steps 5 and 6 hit it). `dodge_clear` is the most consistent mover.
 Signed toward the side with the larger clearance, the first seven
