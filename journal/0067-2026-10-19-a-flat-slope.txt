@@ -1,0 +1,45 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 20:20:00 -0700
+Subject: [JOURNAL 0067] The planted test, first run: a flat slope
+Message-ID: <0067.20261019@treadcore.org>
+In-Reply-To: <0066.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: tuner, SPSA, planted test, backlog 23
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 5664184 (journal 0066, pushed); this entry's commit follows
+
+                 THE PLANTED TEST, FIRST RUN: A FLAT SLOPE
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    SPSA's planted test, `landfall_memory` from 5 s, ended at 3.69 s
+    after eight steps whose differences were all inside their errors.
+    Not passed. Most likely the plant sat where memory does nothing:
+    the sightings that matter are 10 to 60 s old (LR 35), and the
+    perturbations reached only 3 to 7.5 s. The test runs again with
+    C 1.0, its two sides at about 14 s and 2 s.
+
+VI. DISCUSSION
+
+    The planted test was chosen for a weight with a known effect, but
+    the effect was known between 0 and 30 s, not between 3 and 7.
+    A planted value must sit on the slope as well as below the peak.
+
+VIII. NEXT STEPS
+
+    1. The planted test with C 1.0 (LR 42).
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 41;
+    documentation/checkins/CI-017-2026-10-19-spsa-planted.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

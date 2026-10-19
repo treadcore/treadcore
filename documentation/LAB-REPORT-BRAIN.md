@@ -2095,7 +2095,8 @@ detuned, which a working tuner must move back. `w_wounded`, named in
 CI-001, has never been measured, so a failure there would say nothing.
 `landfall_memory` has: removing it cost about 3.4 a seat (LR 37). It
 is set to 5 s (default 30) and tuned alone: 8 steps of 12 seeds.
-Running at this writing; the first four steps:
+The first four steps, as committed with LR 40 (the whole run in LR
+41):
 
 | k | d a seat | Its error | landfall_memory after |
 | --- | --- | --- | --- |
@@ -2112,3 +2113,39 @@ gives the whole run.
 Proof: `make test`: brain 73 passed and 8 ignored. A plumbing run (1
 step, 3 seeds of 120 s) wrote both sides' files, and the header shows
 the trial on 4.48 s and the baselines on 2.01 s.
+
+## 41. The planted test, first run: a flat slope, 19 October
+
+LR 40's planted test, whole: `landfall_memory` from 5 s, tuned alone,
+8 steps of 12 fresh seeds (1,000 to 1,095), A 0.6, C 0.4.
+
+| k | d a seat | Its error | landfall_memory after |
+| --- | --- | --- | --- |
+| 1 | -0.13 | 1.80 | 4.69 |
+| 2 | -0.87 | 1.24 | 3.27 |
+| 3 | +0.55 | 1.33 | 3.99 |
+| 4 | +1.21 | 1.43 | 2.68 |
+| 5 | -0.59 | 0.88 | 3.21 |
+| 6 | -0.84 | 1.09 | 4.05 |
+| 7 | +0.36 | 1.57 | 4.45 |
+| 8 | -0.77 | 1.14 | 3.69 |
+
+**Not passed.** The weight ended at 3.69 s, below where it started,
+after a walk in which no step's difference was outside its error. The
+mean of the eight differences, each signed by its draw, is no
+different from zero.
+
+**Why, most likely: the plant sat on a flat.** With C 0.4 the two
+sides played memories of about 3.4 and 7.5 s around 5 s. The deaths
+the memory prevents were sightings 10 to 60 s old (LR 35). Below
+about 10 s, memory barely acts, so the slope there is near zero and
+each step reads only noise. SPSA was not shown to fail; the test did
+not give it a slope. A planted test has to sit where the effect is.
+
+What this changes. The test runs again with C 1.0: the two sides then
+play about 13.6 s and 1.8 s, so every step straddles the range where
+memory acts. If SPSA climbs from there, the tool works when the slope
+is visible. If it does not, 12 seeds a step is too few for this
+effect, and the next try is 24.
+
+Proof: no code changed.
