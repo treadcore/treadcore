@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `landfall_memory` (0, as before): the seconds a hostile tank
+  out of sight is kept where it was last seen, for a boat's choice of
+  beach, its run, and its stand-off. With `landfall_memory` 30,
+  `landfall_shy` 1 and `landfall_wait` 10 together, over 48 seeds, the
+  trial team scored 2.31 a seat more (error 0.58) and lost half as many
+  boats on the run for the beach (LAB-REPORT-BRAIN.md section 36). Off
+  by default until the defaults are chosen.
 - Added: with `CENSUS_ACTS=1` the census says whether the team had seen
   each landfall killer 10 to 60 s before. In 46% of those deaths it
   had, near where the boat died, and lost it: nothing in the brain

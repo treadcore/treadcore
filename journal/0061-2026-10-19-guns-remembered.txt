@@ -1,0 +1,57 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 19 Oct 2026 16:40:00 -0700
+Subject: [JOURNAL 0061] Guns remembered for the landfall
+Message-ID: <0061.20261019@treadcore.org>
+In-Reply-To: <0060.20261019@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, memory, weights, confirmed, backlog 36, backlog 37
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "yes 0. commit. push. continue backlog"
+X-Commits: 9d61de5 (journal 0060, pushed); this entry's commit follows
+
+                     GUNS REMEMBERED FOR THE LANDFALL
+
+                     Paul Richeson, treadcore.org
+                           19 October 2026
+
+
+ABSTRACT
+
+    Backlog 36. A RuleBot now keeps each hostile tank where it was
+    last seen for `landfall_memory` seconds (0 by Paul's choice), and
+    the landfall prices the remembered with the seen. With memory 30,
+    `landfall_shy` 1 and `landfall_wait` 10 together, over 48 seeds:
+    +2.31 a seat, error 0.58, four errors out, every range positive.
+    Landfall deaths halved on the null's seeds (165 to 82). The first
+    landfall result outside the noise, after four that were not.
+
+IV. CHRONOLOGY
+
+    1. Paul set the default: "yes 0".
+    2. `remember_guns` each tick in `think_map`; `known_guns` in the
+       three places `landfall_order` read the seen tanks.
+    3. The test: near beach at 0, far at 30, near again after 31 s.
+    4. The census: +1.84, +3.07, +2.00 by range; +2.31 +/- 0.58.
+
+VI. DISCUSSION
+
+    Six steps on the landfall: two parts measured on a wrong premise,
+    three reads that found the premise, and the part that followed
+    from them. The parts of LR 31 and 33, null alone, are two of the
+    three weights on in this run. A part can be right and still read
+    null while the brain lacks the knowledge it needs.
+
+VIII. NEXT STEPS
+
+    1. Backlog 37: each of the three back at 0 in turn, 48 seeds each.
+    2. Paul chooses the defaults.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 36;
+    documentation/checkins/CI-013-2026-10-19-guns-remembered.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

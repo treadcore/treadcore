@@ -356,8 +356,10 @@ the boats. The run for the beach priced by the guns in sight (30, LR
 (32, LR 32). Standing off a covered beach (33, LR 33): it hardly fires.
 Where the gun stands (34, LR 34): at the beach or along the run, seen
 only in range. The board forgets each second (35, LR 35), but 46% of
-those killers were seen near there earlier. Next, one at a time: guns
-remembered for the landfall (36), the dodge afloat (31), a census that
+those killers were seen near there earlier. Guns remembered (36, LR
+36), with `landfall_shy` and `landfall_wait`: +2.31 +/- 0.58, landfall
+deaths halved. Next, one at a time: which of the three carries it (37),
+the defaults (Paul's), the dodge afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
@@ -657,7 +659,16 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     `landfall_wait` reading them the landfall deaths fall. Proof: a
     test that a gun seen and lost still prices a beach; the landfall
     deaths and the score at 48 seeds, the three weights on together.
-    Cost: a step. State: idea.
+    Cost: a step. State: done 19 October (LR 36), confirmed:
+    `landfall_memory` (0, Paul's default) built and tested; memory 30,
+    shy 1, wait 10 together read +2.31 +/- 0.58 a seat over 48 seeds,
+    landfall deaths 165 to 82 on the null's seeds.
+37. Which landfall weight carries the gain. (19 October; cause: LR 36,
+    +2.31 with three weights on together.) Goal 4. Hypothesis: memory
+    carries it, through the beach's danger and the run's heading, and
+    `landfall_shy` and `landfall_wait` add little. Proof: three 48-seed
+    runs, each with one of the three back at 0. Then Paul chooses the
+    defaults. Cost: three censuses, 40 min. State: idea.
 
 
 ## Sequencing

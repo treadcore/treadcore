@@ -1860,3 +1860,56 @@ killer was seen near there earlier.
 
 Proof: play unchanged (0.00 on every seed). `make test`: brain 72
 passed and 8 ignored; client 31; net 14; proto 3; sim 50. No warnings.
+
+## 36. Guns remembered for the landfall, 19 October
+
+Backlog 36, from LR 35: in 46% of landfall deaths the team had seen the
+killer near there 10 to 60 s before, and lost it.
+
+**The part**: `landfall_memory` (weights.rs; 0 by Paul's choice, so
+play is unchanged; `RuleBot::landfall_memory`, set by the Commander).
+`RuleBot::remember_guns`, each tick in `think_map`, keeps each hostile
+tank the team sees where it is, and a tank out of sight where it was
+last seen, until the memory's seconds are up, the tank is seen again,
+or its spot is in a teammate's sight (within 0.9 of `TANK_VISION`)
+with no tank there. `RuleBot::known_guns`, the seen and the
+remembered, is what `landfall_order` prices: the beach's `danger`, the
+run's heading (`toward`), its exposure (`landfall_shy`) and the
+stand-off's cover (`landfall_wait`). At 0 the list is the seen tanks in
+the same order as before. Proof:
+`a_gun_seen_and_lost_still_prices_the_run` (a gun beside the near
+beach's run, seen and then lost: at memory 0 the boat takes the near
+beach, at 30 the far one, and the near one again after 31 s).
+
+**The reading**: the three landfall weights on together for the trial
+team (`landfall_memory` 30, `landfall_shy` 1, `landfall_wait` 10), 48
+seeds, `CENSUS_ACTS` on.
+
+| | Null (LR 27, seeds 0 to 15) | All three (seeds 0 to 15) | All three (48 seeds) |
+| --- | --- | --- | --- |
+| d a seat | 0 | +1.84 +/- 1.13 | **+2.31 +/- 0.58** |
+| Deaths | 819 | 747 | 2,298 |
+| On landfall (code held last) | 165 | 82 | 281 |
+| Killer seen near there 10 to 60 s before | 76 | 16 | 59 |
+| Dead share of seat-seconds | 46.5% | 42.2% | |
+| Stand-off share of seat-seconds | under 0.07% (LR 33) | 0.17% | 0.16% |
+
+By range: +1.84 +/- 1.13, +3.07 +/- 0.91, +2.00 +/- 0.97.
+
+**Confirmed.** The trial team scores 2.31 a seat more, four standard
+errors out, and every range is positive. Landfall deaths halve (165 to
+82 on the same seeds), and the deaths the memory was aimed at, a gun
+seen near there earlier, fall from 76 to 16. The stand-off now acts,
+because remembered guns give it a cover to see. Of the earlier
+landfall parts, `landfall_shy` (LR 31) and `landfall_wait` (LR 33)
+read nothing useful on their own; with memory they have something to
+price.
+
+What is not yet known: which of the three carries the gain. Memory
+alone also feeds the beach's `danger` and the run's heading, which
+were already on. Backlog 37 takes each away in turn. The defaults are
+Paul's: all three stay 0 until he moves them.
+
+Proof: play unchanged at 0 (`known_guns` is the seen tanks in order;
+`remember_guns` keeps nothing). `make test`: brain 73 passed and 8
+ignored; client 31; net 14; proto 3; sim 50. No warnings.

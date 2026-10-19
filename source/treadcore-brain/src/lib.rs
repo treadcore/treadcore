@@ -259,6 +259,12 @@ pub struct RuleBot {
     /// then, gun or no gun), and whether the last order was one.
     standoff: Option<Tick>,
     standing: bool,
+    /// `landfall_memory` (backlog 36, LR 36): the seconds a hostile tank
+    /// out of sight is kept where it was last seen, for the landfall; 0
+    /// keeps none, as before.
+    pub landfall_memory: f32,
+    /// Hostile tanks out of sight: whose, where last seen, and when.
+    remembered: Vec<(PlayerId, V2, Tick)>,
     /// Out of a shell's way (`Dodge`); not a rookie's.
     dodge: Dodge,
     /// Island hopping, when nothing is left in reach by land (hop.rs).
@@ -521,7 +527,31 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, landfall_wait: 0.0, standoff: None, standing: false, dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, landfall_wait: 0.0, standoff: None, standing: false, landfall_memory: 0.0, remembered: Vec::new(), dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
+    }
+
+    /// Hostile tanks kept where last seen, for `landfall_memory` seconds
+    /// (backlog 36): one seen now is kept where it is; a memory goes when
+    /// its time is up, or when its spot is in the team's sight and the
+    /// tank is not there.
+    fn remember_guns(&mut self, obs: &Observation) {
+        if self.landfall_memory <= 0.0 {
+            self.remembered.clear();
+            return;
+        }
+        let keep = (self.landfall_memory / DT) as Tick;
+        let eyes: Vec<V2> = obs.tanks.iter().filter(|t| t.alive && (t.owner == obs.player || obs.allied(t.owner))).map(|t| t.pos).collect();
+        let seen: Vec<(PlayerId, V2)> = obs.hostile_tanks().map(|t| (t.owner, t.pos)).collect();
+        self.remembered.retain(|(o, at, t)| obs.tick.saturating_sub(*t) <= keep && !seen.iter().any(|(s, _)| s == o) && !eyes.iter().any(|e| e.dist(*at) < TANK_VISION * 0.9));
+        for (o, at) in seen {
+            self.remembered.push((o, at, obs.tick));
+        }
+    }
+
+    /// The hostile tanks the landfall prices: those seen now and those
+    /// remembered (`landfall_memory`).
+    fn known_guns(&self, obs: &Observation) -> Vec<V2> {
+        obs.hostile_tanks().filter(|t| t.alive).map(|t| t.pos).chain(self.remembered.iter().filter(|(o, _, _)| !obs.hostile_tanks().any(|t| t.owner == *o)).map(|(_, at, _)| *at)).collect()
     }
 
     /// Afloat and standing off a covered beach (`landfall_wait`).
@@ -536,10 +566,10 @@ impl RuleBot {
     /// threat comes near the one it chose. With no beach in sight it
     /// heads for the middle of the map, away from whoever is closest.
     fn landfall_order(&mut self, obs: &Observation, me: &Tank) -> Option<Command> {
-        let threats: Vec<V2> = obs
-            .hostile_tanks()
-            .filter(|t| t.alive)
-            .map(|t| t.pos)
+        let tanks = self.known_guns(obs);
+        let threats: Vec<V2> = tanks
+            .iter()
+            .copied()
             .chain(obs.pillboxes.iter().filter(|p| p.alive() && !p.owner.map(|o| obs.allied(o)).unwrap_or(false)).map(|p| p.pos))
             .collect();
         let danger = |b: V2| {
@@ -560,10 +590,9 @@ impl RuleBot {
         // The run in a gun's reach (backlog 30): the tiles of the straight
         // line to the beach within a hostile tank's direct range, or a
         // pillbox's, with a margin. A boat sinks at one hit.
-        let guns: Vec<(V2, f32)> = obs
-            .hostile_tanks()
-            .filter(|t| t.alive)
-            .map(|t| (t.pos, DIRECT_RANGE + 4.0))
+        let guns: Vec<(V2, f32)> = tanks
+            .iter()
+            .map(|t| (*t, DIRECT_RANGE + 4.0))
             .chain(obs.pillboxes.iter().filter(|p| p.alive() && !p.owner.map(|o| obs.allied(o)).unwrap_or(false)).map(|p| (p.pos, PILLBOX_RANGE + 2.0)))
             .collect();
         let shy = self.landfall_shy.max(0.0);
@@ -590,7 +619,7 @@ impl RuleBot {
         // `landfall_wait` is spent, then lands.
         self.standing = false;
         if self.landfall_wait > 0.0 {
-            let cover = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(best) < DIRECT_RANGE + 4.0).map(|t| t.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)));
+            let cover = tanks.iter().copied().filter(|t| t.dist(best) < DIRECT_RANGE + 4.0).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)));
             if let Some(gun) = cover {
                 let began = *self.standoff.get_or_insert(obs.tick);
                 if (obs.tick.saturating_sub(began) as f32 * DT) < self.landfall_wait {
@@ -748,6 +777,7 @@ impl RuleBot {
         if let Some(t) = self.tactics.as_mut() {
             t.hear(obs);
         }
+        self.remember_guns(obs);
         for e in &obs.events {
             if let Event::TankDamaged { tank, by: Some(b), .. } = e {
                 if *tank == me.id && !self.hurt_by.contains(b) {
@@ -1868,6 +1898,43 @@ mod tests {
         obs.tick += 11 * TICK_HZ as Tick;
         assert_eq!(b.landfall_order(&obs, &me), Some(Command::Move { to: beach }), "the wait spent, it lands");
         assert!(!b.standing_off());
+    }
+
+    /// `landfall_memory` (backlog 36, LR 36): a gun seen beside the near
+    /// beach's run and then lost from sight still prices that run for
+    /// its memory's seconds (here with `landfall_shy` 1), and not after.
+    #[test]
+    fn a_gun_seen_and_lost_still_prices_the_run() {
+        let w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(3) });
+        let mut obs = w.observe(0);
+        let mut me = obs.me.clone().unwrap();
+        me.route.clear();
+        me.goal = None;
+        let p = me.pos;
+        let (near, far) = (p + V2::new(30.0, 0.0), p + V2::new(0.0, -40.0));
+        let gun = |owner: PlayerId, at: V2| Tank { owner, pos: at, alive: true, ..w.tanks[owner as usize].clone() };
+        obs.pillboxes.clear();
+        obs.shore = vec![near, far];
+        let mut seen = obs.clone();
+        seen.tanks = vec![me.clone(), gun(1, p + V2::new(15.0, 12.0)), gun(2, p + V2::new(0.0, -55.0))];
+        let mut lost = obs.clone();
+        lost.tanks = vec![me.clone(), gun(2, p + V2::new(0.0, -55.0))];
+        lost.tick = seen.tick + 5 * TICK_HZ as Tick;
+        for (memory, want) in [(0.0, near), (30.0, far)] {
+            let mut b = RuleBot::new(1, "boat");
+            b.landfall_shy = 1.0;
+            b.landfall_memory = memory;
+            b.remember_guns(&seen);
+            b.remember_guns(&lost);
+            assert_eq!(b.landfall_order(&lost, &me), Some(Command::Move { to: want }), "memory {}", memory);
+        }
+        let mut b = RuleBot::new(1, "boat");
+        b.landfall_shy = 1.0;
+        b.landfall_memory = 30.0;
+        b.remember_guns(&seen);
+        lost.tick = seen.tick + 31 * TICK_HZ as Tick;
+        b.remember_guns(&lost);
+        assert_eq!(b.landfall_order(&lost, &me), Some(Command::Move { to: near }), "forgotten after 30 s");
     }
 
     /// RuleBots win more than twice as often, kill more and outlive

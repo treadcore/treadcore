@@ -472,6 +472,7 @@ impl Commander {
         self.inner.hop.pricing = s.caps.has(Caps::PRICED_CROSSING).then(|| s.clone());
         self.inner.landfall_shy = s.w[W::LandfallShy];
         self.inner.landfall_wait = s.w[W::LandfallWait];
+        self.inner.landfall_memory = s.w[W::LandfallMemory];
         self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.
