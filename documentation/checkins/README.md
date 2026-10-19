@@ -32,3 +32,4 @@ report is what ties a conversation to them. Named
 | [016](CI-016-2026-10-19-when-every-team-has-them.md) | 19 October 2026 | The landfall's three when every team has them | 0065 | LAB-REPORT-BRAIN.md section 39 |
 | [017](CI-017-2026-10-19-spsa-planted.md) | 19 October 2026 | SPSA on the paired census, and its first planted test | 0066, 0067 | LAB-REPORT-BRAIN.md sections 40 and 41 |
 | [018](CI-018-2026-10-19-it-climbs.md) | 19 October 2026 | The planted test, second run: it climbs, slowly | 0068 | LAB-REPORT-BRAIN.md section 42 |
+| [019](CI-019-2026-10-20-the-dodge-by-spsa.md) | 20 October 2026 | The dodge's numbers by SPSA: promising, not confirmed | 0069, 0070 | LAB-REPORT-BRAIN.md section 43 |

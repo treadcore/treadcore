@@ -2185,11 +2185,11 @@ then has to beat the defaults on 48 seeds the search did not use.
 
 Proof: no code changed.
 
-## 43. The dodge's numbers by SPSA, 19 October (in progress)
+## 43. The dodge's numbers by SPSA, 19 October
 
 LR 42's long run: `dodge_horizon`, `dodge_margin` and `dodge_clear`
 from their defaults (4 s, 0.8, 2.5 tiles), 16 steps of 24 fresh seeds
-(2,000 on, used by no earlier run), A 1.0, C 0.5. Ten steps in:
+(2,000 on, used by no earlier run), A 1.0, C 0.5. The sixteen steps:
 
 | k | Plus side (horizon, margin, clear) | Minus side | d a seat | Its error | After |
 | --- | --- | --- | --- | --- | --- |
@@ -2203,6 +2203,12 @@ from their defaults (4 s, 0.8, 2.5 tiles), 16 steps of 24 fresh seeds
 | 8 | 1.29, 0.70, 4.86 | 2.91, 1.57, 10.92 | +0.66 | 1.10 | 1.56, 0.84, 5.87 |
 | 9 | 1.05, 0.57, 8.76 | 2.33, 1.26, 3.93 | **-2.49** | 0.94 | 2.58, 1.39, 3.56 |
 | 10 | 1.73, 0.94, 5.29 | 3.83, 2.07, 2.39 | +0.24 | 0.88 | 2.40, 1.30, 3.82 |
+| 11 | 3.55, 0.88, 2.58 | 1.62, 1.92, 5.66 | **-2.35** | 0.72 | 1.46, 2.14, 6.30 |
+| 12 | 0.99, 3.16, 4.27 | 2.15, 1.45, 9.29 | +0.00 | 0.90 | 1.45, 2.14, 6.30 |
+| 13 | 0.99, 3.15, 9.26 | 2.14, 1.46, 4.28 | -1.64 | 1.12 | 2.24, 1.39, 4.08 |
+| 14 | 1.53, 2.03, 2.78 | 3.29, 0.95, 5.98 | +0.67 | 1.06 | 1.89, 1.65, 3.44 |
+| 15 | 2.77, 1.12, 5.03 | 1.29, 2.41, 2.35 | -0.38 | 0.89 | 1.72, 1.81, 3.13 |
+| 16 | 1.18, 2.64, 2.15 | 2.51, 1.24, 4.57 | -0.73 | 0.79 | 2.05, 1.52, 3.73 |
 
 Step 9 is the first outside its error (2.7 errors): a horizon of about
 1 s, with the narrower margin and the wider clearance, lost by 2.5 a
@@ -2219,3 +2225,43 @@ the other two weights' perturbations. The run goes on; if it ends far
 from the defaults on noise-sized readings, it runs again at A 0.3, and
 any end point is confirmed against the defaults on 48 unused seeds
 before it can be a default.
+
+**Two steps of sixteen** were outside their errors, 9 and 11. In both,
+the side with the larger margin won (1.26 over 0.57; 1.92 over 0.88).
+On the horizon they disagree (step 9: about 1 s lost to 2.3 s; step
+11: 3.6 s lost to 1.6 s), and step 13 (inside its error) had about 1
+s lose again. The end point: **`dodge_horizon` 2.05 s, `dodge_margin`
+1.52, `dodge_clear` 3.73 tiles**, against the defaults of 4, 0.8 and
+2.5. Start later, count more near misses, and clear further.
+
+**The confirmation**: the end point as the trial team's weights, the
+defaults for the baselines, the 48 standard seeds (0 to 47, which the
+search, on 2,000 to 2,383, never saw), `CENSUS_ACTS` on.
+
+| | d a seat (48 seeds) | By range |
+| --- | --- | --- |
+| End point against the defaults | **+1.24 +/- 0.75** | +0.36 +/- 1.59, +1.96 +/- 1.24, +1.39 +/- 1.06 |
+
+| Dodges taken ashore, 48 seeds | Begun | Hit before the shell landed | By the dodged shell | Killed |
+| --- | --- | --- | --- | --- |
+| The trial team (end point) | 8,730 | 29.0% | 20.2% | **6.4%** |
+| The two baseline teams (defaults) | 17,457 | 35.0% | 16.9% | 7.4% |
+
+**Promising, not confirmed.** +1.24 is 1.65 errors from zero, inside
+the two-error rule, though all three ranges are positive. The meter
+agrees in direction: with the end point a dodging tank is caught by
+its own shell more often (it starts later), but hit by anything less
+often and killed less often (6.4% against 7.4%). Starting a dodge 4 s
+out takes a tank off its errand and into other fire; starting at 2 s
+keeps it where it was until the shell is close.
+
+The defaults stay. The decision rule, set before the next reading: a
+second fixed batch of 48 seeds (48 to 95); the end point is promoted
+if, and only if, the 96 seeds pooled read past two errors. No further
+seeds are added after that.
+
+On the tuner. SPSA moved three noisy weights to a point that reads
++1.24 on unseen seeds, from readings of which only two were outside
+their errors. With A 1.0 the walk was rough, and steps 5, 6 and 11 hit
+the cap. The next run should use A 0.3 and, for three weights, 32
+seeds a step.

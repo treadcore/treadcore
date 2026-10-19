@@ -534,8 +534,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Again at C 1.0 (LR 42): partly passed, 5 to 11.8 s, six steps of
     eight the right way (+0.92 +/- 0.62). Next: the dodge's numbers,
     a long run (24 seeds, 16 steps, about 2.5 h), confirmed on 48
-    unused seeds: running (LR 43), seven steps in, all inside their
-    errors; `dodge_clear` the steadiest mover (2.5 to 7.3 tiles).
+    unused seeds. Done 19 October (LR 43): the end point horizon 2.05,
+    margin 1.52, clear 3.73 reads +1.24 +/- 0.75 on 48 unused seeds,
+    promising, not confirmed. A second fixed batch of 48 (seeds 48 to
+    95) decides: promoted only if the 96 pooled pass two errors.
 24. Scenario files: a playtest described in text and run headless at
     85x. (18 October; cause: Paul, "is there a way to create description
     and try to attempt these via playtests faster".) Goal 4; goal 1.
