@@ -302,7 +302,10 @@ to 8.93 a seat).
   `w_pos_*`): `each_posture_scores_its_own_case`; 48 seeds, -1.04 with
   an error of 0.58, no different from the ladder's (-0.23 +/- 0.74
   apart); the two together -0.93 +/- 0.49, so the lean, not the
-  posture, is the suspect (backlog 27). Not yet: influence, the front
+  posture, is the suspect (backlog 27). Which rungs it moves (LR 26):
+  Fortify to Expand, Turrets -88%; with Economy off Turrets recovers
+  half and the score does not move. The ladder decides 5.6% of a
+  team's seat-seconds; 46.7% are dead. Not yet: influence, the front
   and territory read by nothing.
 - [~] 12f behaviours: the base cycle (`cycle`,
   `a_full_tank_gives_the_base_an_item`), priced crossings and the island
@@ -343,9 +346,11 @@ to 8.93 a seat).
 
 Done 18 October (LR 24, CI-001): every capability alone at twelve
 seeds; none outside two errors; `board`, `island_site` and `escort`
-never acted. The posture as scores (backlog 21, LR 25), no better.
-Next, one at a time: which rungs the lean moves (27); an honest tuner
-(23); `island_site` where a naval start chooses (20).
+never acted. The posture as scores (backlog 21, LR 25), no better. Which rungs the
+lean moves (27, LR 26): the ladder decides 5.6% of the time, and half
+of it is dead. Next, one at a time: survival (28) and a census that
+lets late parts act (29); an honest tuner (23); `island_site` where a
+naval start chooses (20).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -534,7 +539,25 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Expand, and that costs the point. Proof: the census counts the
     trial team's seat-seconds on each rung, with the lean and without;
     then the leanings as weights (a 5 x 6 table, 0 or 1 today) for the
-    tuner. Cost: one 48-seed census, 10 min. State: idea.
+    tuner. Cost: one 48-seed census, 10 min. State: done 18 October
+    (LR 26): Fortify to Expand 84% of changed picks, Turrets -88%;
+    Economy off restores half of Turrets and none of the score (+0.13
+    +/- 0.47); not confirmed. The ladder is 5.6% of the time.
+28. Survival: half the team's time is dead. (18 October; cause: LR 26,
+    46.7% of the trial team's seat-seconds dead, 3.4 deaths a seat
+    against 3 respawns.) Goal 4. Hypothesis: what a seat was doing when
+    it went down, read by code, names the two or three situations that
+    kill most, and a fix there moves the score more than any part so
+    far. Proof: a census histogram of the code a seat held in the 5 s
+    before each death (`CENSUS_ACTS`); then the part, with its test and
+    48 seeds. Cost: one 16-seed census to look, 5 min. State: idea.
+29. A census in which late parts act. (18 October; cause: LR 26, the
+    census measures attrition; the escort, the cycle, bridge jobs and
+    the turrets pay late.) Goal 4, 12g; goal 5. Hypothesis: with
+    unlimited respawns (or 1,800 s), the late parts read differently
+    from LR 24. Proof: `CENSUS_RESPAWNS=254` (or `CENSUS_SECS=1800`)
+    on `make switches`, beside LR 24's table. Cost: 396 matches, 25
+    min (twice that at 1,800 s). State: idea.
 
 
 ## Sequencing

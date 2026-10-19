@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the census shows where the trial team's time goes. Seat-seconds
+  on each Auto rung (`Brain::rung`), the posture's changed picks by
+  rung (`Meter::moved`), and with `CENSUS_ACTS=1` every seat-second by
+  status code. On naval.map the ladder decides 5.6% of a team's time,
+  the island hop 19%, and 46.7% is spent dead (LAB-REPORT-BRAIN.md
+  section 26). The posture's lean moves tanks from Fortify to Expand;
+  turning Economy off restores half the turret time but none of the
+  score.
 - Changed: the team board's posture is five scores, as LR 9 designed:
   Defend from a threat at the base, Economy from the material spent or
   a starved plan, Fortify from the castle left to build, Connect from

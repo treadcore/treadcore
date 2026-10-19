@@ -31,6 +31,9 @@ pub struct Meter {
     /// posture changed from the first rung that held.
     pub postures: [u64; 5],
     pub leaned: u64,
+    /// The picks the posture changed, by the rung that held first (row)
+    /// and the rung taken (column), in `Rung::ALL`'s order (LR 26).
+    pub moved: [[u64; 6]; 6],
 }
 
 thread_local! {
@@ -63,10 +66,13 @@ pub fn crossing_cached() {
 pub fn plan_clone() {
     bump(|m| m.plan_clones += 1);
 }
-pub fn posture(p: crate::board::Posture, changed: bool) {
+pub fn posture(p: crate::board::Posture, first: usize, taken: usize) {
     bump(|m| {
         m.postures[p as usize] += 1;
-        m.leaned += changed as u64;
+        if first != taken {
+            m.leaned += 1;
+            m.moved[first][taken] += 1;
+        }
     });
 }
 pub fn spent(d: Duration) {
@@ -105,7 +111,15 @@ impl Meter {
             self.plan_clones,
             self.micros_per_seat()
         ) + &if self.postures.iter().sum::<u64>() > 0 {
-            format!(", postures {:?} (economy fortify connect expand defend), {} picks leaned", self.postures, self.leaned)
+            let names = ["defend base", "fortify", "turrets", "hunt", "expand", "guard"];
+            let mut moves: Vec<(u64, String)> = Vec::new();
+            for (i, row) in self.moved.iter().enumerate() {
+                for (j, n) in row.iter().enumerate().filter(|(_, n)| **n > 0) {
+                    moves.push((*n, format!("{} to {} {}", names[i], names[j], n)));
+                }
+            }
+            moves.sort_by(|a, b| b.0.cmp(&a.0));
+            format!(", postures {:?} (economy fortify connect expand defend), {} picks leaned: {}", self.postures, self.leaned, moves.into_iter().map(|(_, t)| t).collect::<Vec<_>>().join(", "))
         } else {
             String::new()
         }

@@ -742,6 +742,11 @@ mod tests {
         eprintln!("{}", crate::meter::read().line());
     }
 
+    /// Seat-seconds a rung, in the ladder's order, for a census line.
+    fn rung_line(n: &[u32; 6]) -> String {
+        crate::commander::Rung::ALL.iter().zip(n).map(|(r, n)| format!("{} {}", r.label(), n)).collect::<Vec<_>>().join(", ")
+    }
+
     /// The brain census (roadmap 12a and 12g): sixteen seats dealt as
     /// `--fleets` deals them, one team on the trial settings and the
     /// other two on the baseline, the trial team turned round the three
@@ -796,6 +801,12 @@ mod tests {
         // A seed's sums, trial and baseline, for the difference a seed
         // and its standard error (LR 24): the noise given as a number.
         let mut by_seed = vec![(0f32, 0u32, 0f32, 0u32); seeds as usize];
+        // The trial team's seat-seconds on each Auto rung (LR 26).
+        let mut rungs_total = [0u32; 6];
+        // Where the trial team's time goes, by status code
+        // (`CENSUS_ACTS=1`, LR 26): every seat-second, dead ones apart.
+        let acts_on = std::env::var("CENSUS_ACTS").map(|v| v != "0").unwrap_or(false);
+        let mut acts: std::collections::BTreeMap<String, u32> = Default::default();
         let mut total = crate::meter::Meter::default();
         // Fair (backlog 16, journal 0038): every team takes the trial seat
         // on every seed, three matches a seed, so the starts' unevenness
@@ -842,6 +853,7 @@ mod tests {
                 ]
             };
             let mut words = [0u32; 10];
+            let mut rungs = [0u32; 6];
             while !w.over && w.tick < secs * TICK_HZ as Tick {
                 let orders = crate::run_bots(&w, &mut bots);
                 w.step(&orders);
@@ -851,6 +863,14 @@ mod tests {
                         if teams()[*p as usize] == lucky {
                             for (i, on) in part(b.act()).into_iter().enumerate() {
                                 words[i] += on as u32;
+                            }
+                            if let Some(r) = b.rung() {
+                                rungs[r.index()] += 1;
+                            }
+                            if acts_on {
+                                let alive = w.tanks.iter().any(|t| t.owner == *p && t.alive);
+                                let code = if !alive { "(dead)".to_string() } else if b.rung().is_some() { format!("[ladder] {}", b.act().code()) } else { b.act().code() };
+                                *acts.entry(code).or_insert(0) += 1;
                             }
                         }
                     }
@@ -868,6 +888,11 @@ mod tests {
                 *t += n;
             }
             total.leaned += m.leaned;
+            for (t, r) in total.moved.iter_mut().zip(m.moved) {
+                for (t, n) in t.iter_mut().zip(r) {
+                    *t += n;
+                }
+            }
             let genomes: Vec<(PlayerId, Genome)> = bots.iter().map(|(p, b)| (*p, Genome::of(&b.settings().cloned().unwrap_or_default(), seed ^ *p as u64, &name(*p as usize), None))).collect();
             let records = tally.records(&w, "default", &genomes, &k);
             if ledger {
@@ -905,9 +930,24 @@ mod tests {
                 }
             }
             eprintln!("  trial team, seat-seconds: {}", WORDS.iter().zip(words.iter()).map(|(k, n)| format!("{} {}", k, n)).collect::<Vec<_>>().join(", "));
+            eprintln!("  trial team, seat-seconds a rung: {}", rung_line(&rungs));
+            for (t, n) in rungs_total.iter_mut().zip(rungs) {
+                *t += n;
+            }
             eprintln!("  {}", m.line());
         }
         eprintln!("brain_census: trial {:.2}, baseline {:.2} (mean score a seat, {} seeds, {}); {}", trial_score / trial_n.max(1) as f32, base_score / base_n.max(1) as f32, seeds, if fair { "every team in the trial seat" } else { "the trial seat rotated" }, total.line());
+        eprintln!("brain_census: trial team, seat-seconds a rung: {}", rung_line(&rungs_total));
+        if acts_on {
+            let all: u32 = acts.values().sum();
+            let mut v: Vec<(&String, &u32)> = acts.iter().collect();
+            v.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
+            let ladder: u32 = acts.iter().filter(|(k, _)| k.starts_with("[ladder]")).map(|(_, n)| n).sum();
+            eprintln!("brain_census: trial team's time, {} seat-seconds, {:.1}% on the ladder:", all, 100.0 * ladder as f32 / all.max(1) as f32);
+            for (k, n) in v.iter().take(40) {
+                eprintln!("  {:>6.2}%  {:>7}  {}", 100.0 * **n as f32 / all.max(1) as f32, n, k);
+            }
+        }
         // The seeds are the samples: a seed's matches share its starts,
         // so its difference is one paired reading. Within two standard
         // errors of zero is "inside the noise".

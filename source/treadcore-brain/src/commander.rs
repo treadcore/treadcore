@@ -265,6 +265,10 @@ pub struct Commander {
     /// screen by `why_text`.
     pub ladder: [bool; 6],
     pub rung: Option<Rung>,
+    /// The rung of this think, None if this think did not reach the
+    /// ladder (a reflex, a fleet slot, a job, another goal): the census
+    /// counts it (LR 26), where `rung` is the last one taken.
+    rung_now: Option<Rung>,
     pub why: [Why; 6],
     /// The base: set the first time a base goal needs one.
     pub base: Option<V2>,
@@ -447,7 +451,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new() }
+        Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge::default(), dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None }
     }
 
     /// The weights for its fights (tactics.rs); None shoots the nearest
@@ -1411,7 +1415,7 @@ impl Commander {
         };
         let mut rung = Rung::pick(&self.ladder, &holds, posture, self.settings.w[crate::weights::W::Posture]);
         if let Some(p) = posture {
-            crate::meter::posture(p, rung != Rung::pick(&self.ladder, &holds, None, 0.0));
+            crate::meter::posture(p, Rung::pick(&self.ladder, &holds, None, 0.0).index(), rung.index());
         }
         // Smoothed (roadmap 12d): a new rung must win `confirm` thinks in a
         // row (a think is a quarter second) while the old one still holds;
@@ -1438,6 +1442,7 @@ impl Commander {
             self.last_move = None;
             self.rung = Some(rung);
         }
+        self.rung_now = Some(rung);
         // A fleet's leader gathers it before it travels: the hunt and the
         // expand take it off, the fleet comes with it.
         if matches!(rung, Rung::Hunt | Rung::Expand) && self.gathering(obs, me, cmds) {
@@ -2188,6 +2193,9 @@ impl Brain for Commander {
         Commander::set_settings(self, s);
     }
 
+    fn rung(&self) -> Option<Rung> {
+        self.rung_now
+    }
     fn act(&self) -> Act {
         self.act
     }
@@ -2206,6 +2214,7 @@ impl Brain for Commander {
     }
 
     fn think_on(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
+        self.rung_now = None;
         self.think_map(obs, map)
     }
 }

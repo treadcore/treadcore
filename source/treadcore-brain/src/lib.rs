@@ -62,6 +62,11 @@ pub trait Brain: Send + Sync {
     fn act(&self) -> status::Act {
         status::Act::Idle
     }
+    /// The Auto rung this think took, if it reached the ladder (the
+    /// census, LR 26); None for a brain without one.
+    fn rung(&self) -> Option<commander::Rung> {
+        None
+    }
     /// New weights mid-match (the coordination screen's sliders,
     /// backlog 15); a brain without them ignores it.
     fn set_settings(&mut self, s: weights::Settings) {

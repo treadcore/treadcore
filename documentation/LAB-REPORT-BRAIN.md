@@ -1303,3 +1303,86 @@ it is LR 9's design and measures no worse; the ladder is
 
 - `make test`: brain 68 passed and 8 ignored; client 31; net 14; proto 3;
   sim 50. No warnings.
+
+## 26. Which rungs the lean moves, and where the time goes, 18 October
+
+Backlog 27, from LR 25: leaning the Auto ladder by the team's posture
+reads about a point a seat behind in both forms of the posture. The
+hypothesis: Economy, read 37% of the time from material spent, leans
+tanks off Fortify and Turrets.
+
+**The instruments** (no change to play):
+- `Brain::rung`: the Auto rung a think took, or None if the think did
+  not reach the ladder (a reflex, a fleet slot, a job, another goal).
+  The Commander keeps `rung_now`, cleared at each think.
+- The census counts the trial team's seat-seconds on each rung.
+- The meter counts each pick the posture changed, by the rung that held
+  first and the rung taken (`Meter::moved`, 6 x 6).
+- `CENSUS_ACTS=1`: the trial team's every seat-second by status code
+  (`Act::code`), dead seats apart, ladder thinks marked.
+
+**Which rungs** (48 seeds, the same as LR 24 and 25; trial team
+seat-seconds; "no lean" is the null run, `board` on for all):
+
+| Rung | No lean | Lean | Lean, Economy off (`w_pos_economy` 0) |
+| --- | --- | --- | --- |
+| DefendBase | 609 | 381 | 422 |
+| Fortify | 14,262 | 9,967 | 10,609 |
+| Turrets | 8,427 | 1,026 | 3,961 |
+| Hunt | 14 | 245 | 151 |
+| Expand | 9,197 | 11,034 | 8,928 |
+| Guard | 0 | 31 | 34 |
+| Picks changed | 0 | 131,278 | 44,975 |
+| d a seat | 0 | -1.04 +/- 0.58 | -0.92 +/- 0.54 |
+
+With the lean, 84% of the changed picks were Fortify to Expand and 12%
+Turrets to Expand. The castle stands later, so the Turrets rung, which
+fills it with pillboxes, nearly vanishes (-88%). Economy caused two
+thirds of the changed picks: building spends material, spent material
+reads as Economy, and Economy leans away from building, a feedback.
+With Economy off, Turrets recovers about half. **The score does not
+move**: Economy off against Economy on, seed by seed, is +0.13 +/-
+0.47. The hypothesis is not confirmed. The lean does move tanks off the
+castle, but the census cannot see that cost, if it is one.
+
+**Where the time goes** (`CENSUS_ACTS`, 16 seeds, null run, the trial
+team's 205,537 seat-seconds, the 40 commonest codes):
+
+| Share | What |
+| --- | --- |
+| 46.7% | dead (waiting to respawn, or out of respawns) |
+| 18.9% | the island hop: sailing 5.5%, bridging 4.4%, by sea 2.1%, idle 1.5%, to the boat 1.5%, holding the launch 1.2%, and the rest |
+| 7.3% | rotation (push and defence points) |
+| 5.6% | the Auto ladder: fortify 2.1%, turrets 1.2%, take a depot 0.9%, no way to the post 0.7%, gather 0.6% |
+| 4.5% | dodging |
+| 4.2% | the fleet: wing 2.7%, wing at sea 1.5% |
+| 3.9% | rallies and kiting toward a ping |
+| 2.4% | taking depots and pillboxes outside the ladder |
+| 1.7% | crew jobs |
+| 0.7% to 1.9% each | gather 1.9%, revive 1.0%, resupply 0.9%, escort 0.7% |
+
+Three things follow:
+1. **The ladder is a small lever.** It decides 5.6% of a team's
+   seat-seconds, about 11% of its living time. A change to the
+   ladder's pick can only move that share. The posture's lean changed
+   most ladder picks and moved the score by a point at most.
+2. **Half the time is dead.** A seat dies 3.4 times a match on average
+   with 3 respawns; a respawn waits 20 s, so most of the dead time is
+   seats out of respawns. The census, as set, measures attrition. A
+   part that pays late (the castle's turrets, the escort, bridge jobs,
+   the cycle) is cut off before it can.
+3. **The island hop is the largest living share** (about 36% of living
+   time), on naval.map. Speeding a crossing is worth more than any
+   rung.
+
+What this changes. Backlog 28: survival, since what kills half the
+team is the largest lever there is. The quad census's "what a seat was
+doing when it went down" can now be read by code. Backlog 29: a census
+with unlimited respawns, or longer matches (goal 5), so the late parts
+are measured at all. The leanings (a 5 x 6 table of 0s and 1s) stay as
+they are until the census can see a point.
+
+Proof: no behaviour changed. The lean run of LR 25 run again gives the
+same per-seed differences to the hundredth, and the null run reads 0 on
+every seed. `make test`: brain 68 passed and 8 ignored; client 31; net 14; proto 3; sim 50. No
+warnings.

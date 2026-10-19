@@ -1,0 +1,99 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 18 Oct 2026 19:30:00 -0700
+Subject: [JOURNAL 0051] Which rungs the lean moves, and where the time goes
+Message-ID: <0051.20261018@treadcore.org>
+In-Reply-To: <0050.20261018@treadcore.org>
+Organization: treadcore.org
+Keywords: instrumentation, time budget, posture, attrition, backlog 27
+X-Session: the same 8 GB Alpine guest, 4 cores; Claude Code (Claude
+           Opus 5.5) as the pair. Paul: "yes. commit. push. start
+           backlog"
+X-Commits: 61d0c41 (journal 0050, pushed); this entry's work is in the
+           tree
+
+          WHICH RUNGS THE LEAN MOVES, AND WHERE THE TIME GOES
+
+                     Paul Richeson, treadcore.org
+                           18 October 2026
+
+
+ABSTRACT
+
+    New instruments, with no change to play: the rung each think took,
+    each changed pick by rung, and every seat-second by status code.
+    The posture's lean moves tanks from Fortify to Expand, and turret
+    time falls 88%. Economy feeds back on building, but turning it off
+    restores half the turret time and none of the score (+0.13 +/-
+    0.47), so the hypothesis is not confirmed. The larger finding: the
+    Auto ladder decides 5.6% of a team's seat-seconds, the island hop
+    19%, and 46.7% is spent dead. The census measures attrition.
+
+I. INTRODUCTION
+
+    Backlog 27, set by journal 0050: which rungs the lean moves, and
+    whether Economy's lean costs the point.
+
+II. BACKGROUND
+
+    Leaning the ladder reads about a point behind in both forms of the
+    posture (0050). The environment as before.
+
+III. METHOD
+
+    `Brain::rung`, `Meter::moved`, `CENSUS_ACTS`. Three 48-seed runs on
+    the same seeds: no lean, lean, lean with `w_pos_economy` 0. One
+    16-seed null run for the time budget.
+
+IV. CHRONOLOGY
+
+    1. The instruments. A 300 s trial match: the trial team's five
+       tanks on the ladder 22 seat-seconds of 1,500.
+    2. The first launch passed its label to env as a command and ran
+       nothing; a script fixed it.
+    3. Lean and null at 48 seeds. The lean's per-seed differences were
+       those of 0050 to the hundredth. Fortify to Expand 84% of changed
+       picks; Turrets 8,427 to 1,026 seat-seconds. The summary line
+       printed no moves: the total did not add the new matrix; fixed,
+       and this run's per-match lines summed.
+    4. Economy off: 44,975 changed picks, Turrets 3,961, -0.92 +/- 0.54;
+       against Economy on, +0.13 +/- 0.47. Not confirmed.
+    5. The ladder held about 5% of the trial seat-seconds, so every one
+       was counted by code: dead 46.7%, hop 18.9%, rotation 7.3%,
+       ladder 5.6%, dodge 4.5%.
+    6. `make test`: green (results in V).
+
+V. RESULTS
+
+    See CI-003 section IV and LR 26. Deaths: 3.4 a seat a match against
+    3 respawns. Tests: brain 68 passed and 8 ignored; client 31; net 14;
+    proto 3; sim 50.
+
+VI. DISCUSSION
+
+    Three steps of work went into a part that holds 5.6% of the time.
+    The time budget should come first: it is now one switch. Half the
+    team dead means every census so far has measured who dies first,
+    and the parts that pay late never got to.
+
+VII. OPEN PROBLEMS
+
+    1. What kills half the team (backlog 28).
+    2. A census in which late parts act (backlog 29).
+    3. The honest tuner (backlog 23).
+
+VIII. NEXT STEPS
+
+    1. Backlog 28: the code each seat held in the 5 s before each
+       death, over 16 seeds.
+    2. Backlog 29: `make switches` with unlimited respawns, beside LR
+       24's table.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 26;
+    documentation/checkins/CI-003-2026-10-18-where-the-time-goes.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -16,3 +16,4 @@ report is what ties a conversation to them. Named
 | --- | --- | --- | --- | --- |
 | [001](CI-001-2026-10-18-each-switch-alone.md) | 18 October 2026 | Each switch alone; the posture read; a review of the brain | 0049 | LAB-REPORT-BRAIN.md section 24 |
 | [002](CI-002-2026-10-18-the-posture-as-scores.md) | 18 October 2026 | The posture as scores | 0050 | LAB-REPORT-BRAIN.md section 25 |
+| [003](CI-003-2026-10-18-where-the-time-goes.md) | 18 October 2026 | Which rungs the lean moves, and where the time goes | 0051 | LAB-REPORT-BRAIN.md section 26 |
