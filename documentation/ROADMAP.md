@@ -591,7 +591,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     unlimited respawns (or 1,800 s), the late parts read differently
     from LR 24. Proof: `CENSUS_RESPAWNS=254` (or `CENSUS_SECS=1800`)
     on `make switches`, beside LR 24's table. Cost: 396 matches, 25
-    min (twice that at 1,800 s). State: idea.
+    min (twice that at 1,800 s). State: unlimited (255) read 20
+    October (LR 44): the late parts inside the noise, `smooth` -3.32
+    +/- 1.47 outside; the 3-respawn pass under today's defaults
+    running.
 30. The run for the beach. (19 October; cause: LR 27, 165 deaths of
     819 on `landfall`, 132 of them a boat sunk by direct fire.) Goal 4.
     Hypothesis: `landfall_order` prices a beach by the threats near it

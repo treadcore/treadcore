@@ -2285,3 +2285,46 @@ census resolves at 96 seeds. A new search, at A 0.3 and 32 seeds a
 step, would start a new hypothesis with its own confirmation. Backlog
 23 closes: the tool is built, it found a lead, and the lead did not
 hold.
+
+## 44. Each switch alone, without running out of tanks, 20 October
+
+Backlog 29, from LR 26: with 3 respawns, 46.7% of seat-time is dead,
+and a part that pays late (the base cycle, the escort, bridge jobs,
+the turrets) is cut off before it can. The census as set measures
+attrition. The hypothesis: with unlimited respawns the late parts read
+differently from LR 24.
+
+**The run**: `RESPAWNS=255 JOBS=3 make switches`. That is every
+capability off by default, alone, against today's defaults (the
+landfall's three on, LR 38), 12 seeds of 900 s on naval.map,
+`RESPAWNS_UNLIMITED` (255; the roadmap's 254 was a slip). Every match
+runs the full 900 s. `team_rotate`, `bridge_jobs` and `posture` are
+tried with `board` on for every team.
+
+| Switch | Unlimited respawns: d a seat | Its error | Verdict | LR 24 (3 respawns, old defaults) |
+| --- | --- | --- | --- | --- |
+| `smooth` | **-3.32** | 1.47 | **outside: worse** | inside |
+| `posture` (board) | -1.67 | 1.24 | inside | -0.81 +/- 0.65 (48 seeds) |
+| `priced_crossing` | +1.37 | 1.23 | inside | inside |
+| `team_rotate` (board) | +1.09 | 1.20 | inside | inside |
+| `bridge_jobs` (board) | +1.06 | 0.91 | inside | inside |
+| `forget` | +0.60 | 0.33 | inside (1.8) | inside |
+| `cycle` | -0.60 | 0.46 | inside | inside |
+| `duck` | -0.51 | 1.59 | inside | inside |
+| `escort` | -0.34 | 0.34 | inside | never acted |
+| `column` | +0.11 | 1.31 | inside | inside |
+| `board` | 0.00 | 0.00 | never acts alone | never acted |
+| `island_site` | 0.00 | 0.00 | never acts | never acted |
+
+What it shows so far:
+1. **The late parts are no better with time.** The base cycle reads
+   -0.60, the escort -0.34, bridge jobs +1.06, all inside the noise.
+   The escort now acts (LR 24: never), and does not pay.
+2. **`smooth` is worse, outside the noise** (2.3 errors). It was off
+   already; this is the first clear reading of its cost.
+3. **Two parts still never act**: `board` alone (nothing reads it
+   unless a part that uses it is on) and `island_site`.
+
+The 3-respawn pass under today's defaults is running, for a
+side-by-side on the same seeds and code. The comparison with LR 24 is
+loose until then, since the defaults have changed.
