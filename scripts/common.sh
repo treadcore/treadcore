@@ -26,3 +26,20 @@ need_config() {
 
 # The newest log of a kind, for the "see ..." line at the end.
 latest() { ls -t "$LOGDIR"/"$1"-*.log 2>/dev/null | head -1; }
+
+# census_bin DIR: build the brain's tests once and copy the test binary
+# into DIR; print the copy's path. A census run from the copy is the code
+# as it was when the run began, so the tree can change while it plays
+# (roadmap backlog 41). Run it as: "$BIN" --ignored brain_census --nocapture
+census_bin() {
+    local exe
+    exe="$(cd "$ROOT" && cargo test -q -p treadcore-brain --release --no-run --message-format=json 2>/dev/null \
+        | python3 -I -c 'import json, sys
+for line in sys.stdin:
+    m = json.loads(line)
+    if m.get("reason") == "compiler-artifact" and m["target"]["name"] == "treadcore_brain" and m["profile"]["test"] and m.get("executable"):
+        print(m["executable"])' | head -1)"
+    [ -n "$exe" ] && [ -x "$exe" ] || die "the brain does not build"
+    cp "$exe" "$1/census-bin"
+    echo "$1/census-bin"
+}

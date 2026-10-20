@@ -6,6 +6,10 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: `make switches`, `make spsa` and `make tune` build the
+  brain's census once and run a copy of the binary, kept with the
+  run's logs. The source can change while a census runs
+  (LAB-REPORT-BRAIN.md section 45).
 - Added: `make spsa` (`scripts/spsa.sh`), a tuner by simultaneous
   perturbation (SPSA) over named weights: each step one fair census
   with the trial team on the weights nudged up and the baseline teams

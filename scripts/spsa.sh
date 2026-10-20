@@ -38,12 +38,12 @@ OUT="$BUILDDIR/spsa/$STAMP"
 mkdir -p "$OUT"
 MAPFILE_="$(cd "$(dirname "$MAP")" && pwd)/$(basename "$MAP")"
 
-cargo test -q -p treadcore-brain --release --no-run >/dev/null 2>&1 || die "the brain does not build"
+BIN="$(census_bin "$OUT")"
 THETA="$OUT/theta.toml"
 if [ -n "${START:-}" ]; then
     cp "$START" "$THETA"
 else
-    CENSUS_DUMP="$THETA" CENSUS_SEEDS=0 cargo test -q -p treadcore-brain --release -- --ignored brain_census >/dev/null 2>&1 || die "could not write the default weights"
+    CENSUS_DUMP="$THETA" CENSUS_SEEDS=0 "$BIN" --ignored brain_census >/dev/null 2>&1 || die "could not write the default weights"
 fi
 for kv in ${SET:-}; do
     sed -i "s/^${kv%%=*} = [^ ]*/${kv%%=*} = ${kv#*=}/" "$THETA"
@@ -70,7 +70,7 @@ census() { # census PLUS MINUS FIRST LOGPREFIX
         n=$(( SEEDS - i * per < per ? SEEDS - i * per : per ))
         env CENSUS_MAP="$MAPFILE_" CENSUS_RESPAWNS="$RESPAWNS" CENSUS_SECS="$SECS" CENSUS_LEDGER=0 \
             CENSUS_SEEDS="$n" CENSUS_SEED0="$s0" CENSUS_WEIGHTS="$1" CENSUS_BASE_WEIGHTS="$2" \
-            cargo test -q -p treadcore-brain --release -- --ignored brain_census --nocapture >"$4-$i.log" 2>&1 &
+            "$BIN" --ignored brain_census --nocapture >"$4-$i.log" 2>&1 &
         i=$((i + 1))
     done
     wait

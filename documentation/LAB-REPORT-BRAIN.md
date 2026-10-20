@@ -2364,3 +2364,30 @@ uncover them either.
 `smooth`: Paul, on reading the first pass, "smooth sounds like we
 should remove it", then "maybe not remove it. give it an insignificant
 coefficient". It becomes a weight (LR 45).
+
+## 45. A frozen census binary, 20 October
+
+Backlog 41, from Paul: "is there an improved and faster way for you to
+test ?" Every census ran `cargo test`, which rebuilds the brain if the
+source has changed. So no brain code could be edited while a census
+ran, and every long run was idle time for the work.
+
+**The part**: `census_bin DIR` (scripts/common.sh) builds the brain's
+tests once, finds the test binary in cargo's JSON output, copies it to
+`DIR/census-bin`, and prints the path. `switches.sh`, `spsa.sh` and
+`tune.sh` run the copy (`"$BIN" --ignored brain_census --nocapture`).
+A run then plays the code as it was when it began. The copy sits with
+the run's logs, so the binary behind any result is kept beside it.
+
+**The proof**: a 1-step SPSA plumbing run (`SET="landfall_memory=3"`,
+3 seeds of 120 s) started, and 20 s in, a line that is not Rust was
+appended to `fleet.rs`. The run finished. Its reading, d -0.4567 +/-
+0.4054 with memory moved to 2.3940, is identical to the first plumbing
+run of LR 40, which drew the same sign on the same seeds and code.
+`fleet.rs` was then restored from a copy; `git diff` shows the tree
+clean.
+
+The other ways to test faster (LR 44's companion, CI-020 V.3) stay on
+the list: metrics of the part's own counts, scenario files (backlog
+24), more cores, a cheaper match (finding L2), sequential rules set in
+advance.

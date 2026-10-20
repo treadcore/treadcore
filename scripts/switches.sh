@@ -39,12 +39,12 @@ needs() {
 }
 
 say "each switch alone: $SWITCHES; $SEEDS seeds of $SECS s on $MAP, respawns $RESPAWNS, $JOBS at once -> $OUT"
-cargo test -q -p treadcore-brain --release --no-run >/dev/null 2>&1 || die "the brain does not build"
+BIN="$(census_bin "$OUT")"
 
 census() { # census SWITCH
     env CENSUS_MAP="$MAPFILE_" CENSUS_RESPAWNS="$RESPAWNS" CENSUS_SEEDS="$SEEDS" CENSUS_SECS="$SECS" \
         CENSUS_LEDGER=0 CENSUS_CAPS="$1" CENSUS_BASE_CAPS="$(needs "$1")" \
-        cargo test -q -p treadcore-brain --release -- --ignored brain_census --nocapture >"$OUT/$1.log" 2>&1 \
+        "$BIN" --ignored brain_census --nocapture >"$OUT/$1.log" 2>&1 \
         || warn "the census of $1 failed: see $OUT/$1.log"
     echo "  $1 done"
 }

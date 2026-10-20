@@ -1,0 +1,52 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 03:40:00 -0700
+Subject: [JOURNAL 0073] A frozen census binary
+Message-ID: <0073.20261020@treadcore.org>
+In-Reply-To: <0072.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: tooling, census, backlog 41
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "is there an improved and faster way for you to test ?"
+X-Commits: 8045517 (pushed); this entry's commit follows
+
+                         A FROZEN CENSUS BINARY
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    The census scripts now build once and run a copy of the test
+    binary, so brain code can change while a census runs. Proved by
+    breaking `fleet.rs` mid-run: the run finished with a reading
+    identical to an earlier run on the same draw.
+
+IV. CHRONOLOGY
+
+    1. `census_bin` in common.sh, read from cargo's JSON with python3
+       (no new dependency); switches, spsa and tune use it.
+    2. The proof. A false start: the wait loop matched its own shell
+       with `pgrep -f spsa.sh` and never ended, leaving `fleet.rs`
+       broken until it was noticed; restored from the copy taken
+       before, the tree checked clean, the loop stopped.
+    3. The frozen run's reading equal to LR 40's first plumbing run.
+
+VI. DISCUSSION
+
+    A test that edits the tree must restore it on every path, and its
+    wait must not be able to match itself.
+
+VIII. NEXT STEPS
+
+    1. Backlog 40, `w_smooth`, with a census able to run beside it.
+
+APPENDIX B. ARTIFACTS
+
+    scripts/common.sh `census_bin`; documentation/LAB-REPORT-BRAIN.md
+    section 45.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

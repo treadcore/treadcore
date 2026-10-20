@@ -726,7 +726,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     improved and faster way for you to test"; every census rebuilds
     the brain, so no code can change while one runs.) Each script
     copies the built test binary and runs the copy. Proof: a census
-    unchanged while the tree is edited. Cost: small. State: idea.
+    unchanged while the tree is edited. Cost: small. State: done 20
+    October (LR 45): `census_bin` in common.sh; switches, spsa and tune
+    run the copy; a run finished identically with the source broken.
 
 
 ## Sequencing

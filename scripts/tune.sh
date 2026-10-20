@@ -36,12 +36,13 @@ SECS="${SECS:-900}"
 TUNE="${TUNE:-w_near w_wounded w_finish w_focus w_overkill w_in_range w_threat w_stick engage_odds press_odds w_exposure w_flank k_long c_boat swap_gap}"
 OUT="$BUILDDIR/tune/$STAMP"
 mkdir -p "$OUT"
+BIN="$(census_bin "$OUT")"
 MAPARG=()
 [ -n "${MAP:-}" ] && MAPARG=(CENSUS_MAP="$(cd "$(dirname "$MAP")" && pwd)/$(basename "$MAP")" CENSUS_RESPAWNS="${RESPAWNS:-3}")
 
 census() { # census FILE LOG -> prints the fitness
     env "${MAPARG[@]}" CENSUS_WEIGHTS="$1" CENSUS_SEEDS="$SEEDS" CENSUS_SECS="$SECS" \
-        cargo test -q -p treadcore-brain --release -- --ignored brain_census --nocapture >"$2" 2>&1 || die "the census failed: see $2"
+        "$BIN" --ignored brain_census --nocapture >"$2" 2>&1 || die "the census failed: see $2"
     sed -n 's/^brain_census: trial \(-\{0,1\}[0-9.]*\), baseline \(-\{0,1\}[0-9.]*\).*/\1 \2/p' "$2" | awk '{ printf "%.4f\n", $1 - $2 }'
 }
 
@@ -51,7 +52,7 @@ BEST="$OUT/best.toml"
 if [ -n "${START:-}" ]; then
     cp "$START" "$BEST"
 else
-    CENSUS_DUMP="$BEST" CENSUS_SEEDS=0 cargo test -q -p treadcore-brain --release -- --ignored brain_census --nocapture >/dev/null 2>&1 || die "could not write the default weights"
+    CENSUS_DUMP="$BEST" CENSUS_SEEDS=0 "$BIN" --ignored brain_census --nocapture >/dev/null 2>&1 || die "could not write the default weights"
 fi
 [ -n "${CAPS:-}" ] && sed -i "s/^caps = .*/caps = baseline, ${CAPS}/" "$BEST"
 say "tuning: $GENERATIONS generations of $LAMBDA, sigma $SIGMA, $SEEDS seeds of $SECS s -> $OUT"
@@ -79,4 +80,4 @@ for g in $(seq 1 "$GENERATIONS"); do
     done
 done
 say "best fitness $BESTFIT: $BEST"
-grep -vE '^#' "$BEST" | diff <(CENSUS_DUMP=/dev/stdout CENSUS_SEEDS=0 cargo test -q -p treadcore-brain --release -- --ignored brain_census --nocapture 2>/dev/null | grep -E '^[a-z_]+ = ') - | grep '^>' || echo "  (the defaults won)"
+grep -vE '^#' "$BEST" | diff <(CENSUS_DUMP=/dev/stdout CENSUS_SEEDS=0 "$BIN" --ignored brain_census --nocapture 2>/dev/null | grep -E '^[a-z_]+ = ') - | grep '^>' || echo "  (the defaults won)"
