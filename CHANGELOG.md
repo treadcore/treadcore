@@ -6,6 +6,27 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the dodge plans by the tank's own motion by default
+  (`dodge_plan` 1, `dodge_release` 1; Paul's choice, LAB-REPORT-BRAIN.md
+  section 54). New behaviours now land on, with starting numbers, and
+  the census guards that the brain still works.
+- Added: the dodge planned by the tank's own motion, two weights
+  (`dodge_plan`, `dodge_release`; LAB-REPORT-BRAIN.md section 53).
+  `drive_to` foresees where a tank will be, by the world's route and
+  the sim's rules of motion, exactly (96 drives, worst 0.000 tiles).
+  With `dodge_plan` the dodge takes a point the tank will have reached
+  clear of the splash when the shell lands; with `dodge_release` an
+  errand that would drive it back into the splash before then waits.
+  Together they take two scenario families of 1,000 seeds from 89.6%
+  (rolling) and 96.2% (standing) to 100%; in the census, own-shell
+  catches ashore 10.1% to 5.7%, and +0.81 a seat with an error of 0.40
+  over 96 naval seeds, not confirmed on 48 fresh seeds alone.
+- Added: scenario `[[tank]]` takes `speed`, `heading` (or `"any"`) and
+  `drive`, so a tank starts rolling; `[[shell]]` takes `offset`,
+  `scatter`, `from_any` and `lands_in = [lo, hi]`, drawn from the run's
+  seed, so one file is a family of situations; `seed = n` pins a file
+  to one of them. Traces show where each route ends and where each
+  shell lands.
 - Fixed: a dodge whose point was water (or a wall) was refused, and the
   tank sat under the shell. The dodge now takes the first reachable
   point: the near side, the far side, back and forward along the

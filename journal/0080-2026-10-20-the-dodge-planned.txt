@@ -1,0 +1,97 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 14:00:00 -0700
+Subject: [JOURNAL 0080] The dodge planned by the tank's own motion
+Message-ID: <0080.20261020@treadcore.org>
+In-Reply-To: <0079.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: dodge, kinematics, foresight, scenario families, census
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "we are working on AI Brins. Read Roadmap and Backlog.
+           Read the code section of AI and the newest labreport
+           declarations. Continue. Improve. Impliment. Plan. Backlog."
+X-Commits: this entry's commit
+
+                  THE DODGE PLANNED BY THE TANK'S OWN MOTION
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    LR 52 left a tenth of ashore dodges caught by their own shell. A
+    scenario family, one file whose geometry is drawn from the seed,
+    put today's dodge at 89.6% for a rolling tank and 96.2% standing
+    over 1,000 seeds each. Traced, the failures were two: a point
+    behind a rolling tank, two legs of the world's route away, and a
+    tank that arrived early sent back under the shell by its errand.
+    `drive_to` foresees the world exactly; `dodge_plan` and
+    `dodge_release`, both off, take both families to 100%. The census:
+    +0.92 +/- 0.47 (naval), +1.20 +/- 0.60 (generated), +0.70 +/- 0.66
+    on fresh seeds, not confirmed alone; own-shell catches ashore cut
+    by 40% in every run.
+
+INDEX TERMS
+
+    dodge, motion model, route, scenario family, fresh-seed rule.
+
+
+I. INTRODUCTION
+
+    The open lead of LR 52: ashore, 10.4% of dodges caught by their own
+    shell. The dodge reads the shell's line and not the tank's motion,
+    though the impact is exact once fired.
+
+IV. CHRONOLOGY
+
+    1. `[[tank]]` speed and heading; `[[shell]]` offset, scatter,
+       from_any, a lands_in range; the trace shows routes and shells.
+    2. A fixed case (rolling east, a shell 1.5 tiles ahead in 2 s) on
+       `manual` held: a Commander on manual runs no brain. On auto it
+       turned back and arrived at 1.9 s of 2.0. One case says little.
+    3. The families, 1,000 seeds: 89.6% rolling, 96.2% standing.
+    4. Traces: F1 the turnaround, F2 the release.
+    5. `dodge_plan` driving a straight line: 89.7%. The world routes by
+       tiles in eight directions; the plan foresaw the wrong drive.
+    6. `drive_to` with `route_by` and corner braking: 94.5%. Its test
+       read 0.000 at first because the check of "it drove" was wrong;
+       mended, then broken two ways, it fails by 1.7 and 4.7 tiles.
+    7. `dodge_release`: 95.0% and 99.2% alone; with the plan 99.9% and
+       100%. The last failure: straight on ran 14 tiles into a neutral
+       pillbox. Straight on now stops at the 5-tile circle: 100%, 100%.
+    8. `seed = n` in a file; two families' cases kept as tests, each
+       failing with its weight at 0. A first form of the pin worked in
+       `cargo test` but not in `make scenario`; moved into run_seeded.
+    9. The census first ran without CENSUS_MAP and CENSUS_RESPAWNS, on a
+       generated map: +1.20 +/- 0.60, kept as a second map. Then
+       naval.map, 3 respawns: +0.92 +/- 0.47. The meter's plain count
+       is the rest of the seats, not all of them; a first pooling read
+       it wrong.
+   10. Fresh seeds 240 to 287: +0.70 +/- 0.66. Not confirmed; the
+       mechanism repeated to the tenth.
+
+VI. DISCUSSION
+
+    The census needed three runs and an hour to bring the score near
+    two errors; the families settled the mechanism in three seconds
+    each and pointed at both causes. Four of the five false starts in
+    this entry were checks that could not fail, or read the wrong
+    thing: the manual goal, the "it drove" assertion, the pin that
+    `make scenario` skipped, the meter's groups. Each was caught by
+    running the check broken, or by a number that did not fit.
+
+VIII. NEXT STEPS
+
+    1. Paul: `dodge_plan` and `dodge_release` on by default, or not.
+    2. Backlog 45 (two shells), 46 (the duck by `drive_to`), 47
+       (families kept with floors), 42 (`duck`).
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 53; build/lr53 (the
+    families, the weights files, the census logs, pool.py).
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -1,0 +1,24 @@
+# LAB-REPORT-BRAIN.md section 53: a family, its situation drawn from the
+# seed. A Commander on Auto at rest, facing any way; a shell from any
+# side lands within 2.5 tiles of it in 1.5 to 3.5 s. Run over many
+# seeds: make scenario S=this RUNS=1000 SET="dodge_release=1".
+name = "a standing tank under a shell, any geometry"
+players = 2
+seconds = 4.5
+[[tank]]
+seat = 0
+heading = "any"
+speed = 0
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+[[shell]]
+owner = 1
+at = "seat:0"
+scatter = 2.5
+from = [30, 0]
+from_any = true
+lands_in = [1.5, 3.5]
+[expect]
+hits_on = { seat = 0, max = 0 }

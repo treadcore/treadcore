@@ -478,7 +478,7 @@ impl Commander {
         self.inner.landfall_shy = s.w[W::LandfallShy];
         self.inner.landfall_wait = s.w[W::LandfallWait];
         self.inner.landfall_memory = s.w[W::LandfallMemory];
-        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold]]);
+        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold], s.w[W::DodgePlan], s.w[W::DodgeRelease]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.
         if let Some(t) = self.inner.tactics.as_mut() {
@@ -2235,12 +2235,29 @@ impl Brain for Commander {
     }
 
     fn think(&mut self, obs: &Observation) -> Vec<Command> {
-        self.think_map(obs, None)
+        self.think_released(obs, None)
     }
 
     fn think_on(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
         self.rung_now = None;
-        self.think_map(obs, map)
+        self.think_released(obs, map)
+    }
+}
+
+impl Commander {
+    /// The think, then `dodge_release` (lib.rs `Dodge::release`, LR 53):
+    /// an errand that would drive back under a dodged shell before it
+    /// lands waits, and is asked for again (`last_move` cleared).
+    fn think_released(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
+        let mut cmds = self.think_map(obs, map);
+        if self.act != Act::Dodge {
+            if let Some(me) = obs.me.as_ref().filter(|m| m.alive) {
+                if self.dodge.release(obs, me, &mut cmds, map) {
+                    self.last_move = None;
+                }
+            }
+        }
+        cmds
     }
 }
 

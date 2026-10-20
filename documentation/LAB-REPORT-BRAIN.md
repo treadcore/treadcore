@@ -2732,3 +2732,164 @@ before-and-after nulls on the same seeds, with absolute counts.
 
 Proof: `make test`: brain 77 passed and 10 ignored; client 31; net 14;
 proto 3; sim 50. No warnings. 378 functions, 121 undocumented.
+
+## 53. The dodge planned by the tank's own motion, and a hold that lets go, 20 October
+
+LR 52 left ashore dodges caught by their own shell at 10.4% after the
+water fix. The dodge picks its point from the shell's line alone: 5
+tiles from the impact, across the line, on the side the tank is on. It
+reads neither the tank's heading nor its speed. Since the scatter is
+drawn at launch (treadcore-sim `impact: *at + scatter`), the impact a
+bot reads is exactly where the shell lands, and the line it came in on
+says nothing once it is fired.
+
+**The instrument.** Two scenario families, each one file that draws
+its situation from the run's seed (`scenario.rs`): `[[tank]]` gains
+`speed`, `heading` (degrees, or `"any"`) and a goal `drive` tiles on,
+so it starts rolling; `[[shell]]` gains `offset`, `scatter` (up to that
+many tiles off, by the dice), `from_any` (the direction by the dice)
+and `lands_in = [lo, hi]`. A Commander on Auto, a shell from 30 tiles
+landing within 2.5 tiles of its tank in 1.5 to 3.5 s, rolling at full
+speed on any heading or standing (`scenarios/families/`). The
+trace now shows where each tank's route ends and where each shell lands.
+
+| 1,000 seeds each | Rolling | Standing |
+| --- | --- | --- |
+| Today's dodge | 89.6% +/- 1.0% | 96.2% +/- 0.6% |
+
+**Two failures, traced at a quarter second.**
+- **F1, the turnaround** (rolling, seed 2): the point across the line
+  was behind a tank rolling the other way. The world routes a Move by
+  tiles in eight directions with a waypoint at each turn (`Map::route_by`),
+  so the point was two legs off, the first beside the tank; it looped
+  round it and was 0.9 tiles from the impact when the shell landed.
+- **F2, the release** (standing, seed 5): the tank reached its point at
+  1.7 s with 1.65 s of flight left. At `dodge_hold` 0 the hold ends on
+  arrival; the Auto ladder's fortify errand was routed back across the
+  impact, and the shell landed on it. LR 28's blunt answer, holding for
+  the whole flight (`dodge_hold` 1), cost 1.18 a seat.
+
+**The parts.**
+- `drive_to` (lib.rs): where a tank will be after n ticks sent to a
+  point, by the sim's rules of motion: the route the world will plan
+  (`route_by`, without the pillbox and mine prices the brain cannot
+  read), then turn rate, easing for a corner and braking before the
+  next, the pivot past 2 rad, momentum, the ground's cost, stopping
+  where the way is shut. `drive_to_foresees_the_world`: 96 drives (at
+  rest and rolling, four headings, twelve points 5 tiles round) end
+  exactly where the world puts them, worst 0.000 tiles; broken two
+  ways it fails (no corner braking: 1.7 tiles off; a straight line in
+  place of the route: 4.7).
+- `dodge_plan` (weights.rs, thresholded at 0.5, default 0): the dodge's
+  candidates (today's four, then straight on to where the heading
+  leaves the 5-tile circle, then twelve round the impact) are each
+  driven by `drive_to` for the shell's flight; the first that ends past
+  the splash and the margin is taken, so today's point stands wherever
+  it works; failing all, the one ending farthest off.
+- `dodge_release` (default 0): after the Commander's think, while a
+  dodged shell is in flight and this tick was not the dodge's own
+  order, a Move that `drive_to` says has the tank inside the splash and
+  the margin at the landing is struck, and asked for again next think
+  (`Commander::think_released`, `Dodge::release`). An errand that keeps
+  clear goes at once, unlike `dodge_hold`.
+
+Two false starts, each a finding. `dodge_plan` driving a straight line
+moved nothing (89.6% to 89.7%): the plan kept today's point because it
+foresaw a straight drive, and the world drove a route. And the first
+"straight on" point, the tank's speed times the flight plus 5 tiles,
+ran one tank 14 tiles out into a neutral pillbox's reach (the family's
+one failure left with both parts on); straight on now stops at the
+5-tile circle.
+
+| 1,000 seeds each | Rolling | Standing |
+| --- | --- | --- |
+| Today's dodge | 89.6% +/- 1.0% | 96.2% +/- 0.6% |
+| `dodge_plan` 1 | 94.5% +/- 0.7% | 97.0% +/- 0.5% |
+| `dodge_release` 1 | 95.0% +/- 0.7% | 99.2% +/- 0.3% |
+| both | **100.0%** (1,000) | **100.0%** (1,000) |
+
+Each part mends about half the failures, and together they mend all of
+them. The traced case of F2 with both on: the tank waits at its point
+from 1.2 s, the errand is let go at 2.2 s when `drive_to` finds it
+still short of the splash at the landing, and the shell lands 3.4 tiles
+off.
+
+**The tests.** `seed = n` in a scenario file pins it to one of
+`many`'s seeds, so a family's case is kept as a test.
+`a-dodge-does-not-turn-back-under-its-shell.toml` (rolling, seed 2,
+`dodge_plan` 1) and `a-dodge-waits-out-its-shell.toml` (standing, seed
+5, `dodge_release` 1) each hold, and fail with their weight at 0.
+
+**The census.** The trial team on `dodge_plan` 1 and `dodge_release` 1
+against today's defaults, the fair census from a frozen binary,
+`CENSUS_ACTS` on. The first run left out `CENSUS_MAP` and
+`CENSUS_RESPAWNS` and so played the census's own defaults, a generated
+map without respawns; it is kept as a reading on a second map (backlog
+25), and the standard run followed. The meter's dodge counts are the
+trial team's against the rest of the seats (disjoint groups, `meter.rs`).
+
+| 48 seeds | naval.map, 900 s, 3 respawns (0 to 47) | generated map, no respawns (0 to 47) |
+| --- | --- | --- |
+| Difference a seat | **+0.92 +/- 0.47** (1.94 errors) | **+1.20 +/- 0.60** (2.00 errors) |
+| Ashore, caught by its own shell: trial / rest | 5.7% / 10.1% | 6.2% / 10.6% |
+| Ashore, killed: trial / rest | 3.8% / 4.9% | 4.2% / 4.8% |
+| Afloat, caught by its own shell: trial / rest | 4.2% / 6.9% | (9 dodges in all) |
+| Afloat, killed: trial / rest | 11.6% / 14.7% | |
+
+**Fresh seeds.** The rule, set before the run (LR 47): confirmed only
+past two errors, the same way, on 48 seeds not used before (240 to
+287; 144 to 239 are kept for `duck`, backlog 42), alone.
+
+| naval.map | Seeds | Difference a seat | Ashore, own shell: trial / rest | Afloat, killed: trial / rest |
+| --- | --- | --- | --- | --- |
+| First | 0 to 47 | +0.92 +/- 0.47 | 5.7% / 10.1% | 11.6% / 14.7% |
+| Fresh | 240 to 287 | +0.70 +/- 0.66 (1.06 errors) | 6.3% / 10.2% | 11.7% / 14.4% |
+| Pooled | 96 | +0.81 +/- 0.40 (2.00 errors) | | |
+
+**On the score, not confirmed.** The mechanism repeats to the tenth on
+the fresh seeds: own-shell catches ashore cut by 40%, boats killed in
+a dodge by a fifth. All three score readings are positive (+0.92,
++0.70, +1.20), and pooled they reach two errors, but alone the fresh
+seeds do not. A seed's spread is 3.9 a seat, so an effect of 0.8 needs
+about 95 fresh seeds, (2 x 3.9 / 0.8)^2, to pass two errors by itself.
+Both weights stay 0, today's. Whether to turn them on, as the
+landfall's three were (LR 38), is Paul's choice; what argues for it is
+that the dodge is a reflex every team has, measured here by its own
+counts as well as the score, and that the scenarios show no case it
+makes worse.
+
+What this changes. The dodge's last two failures in the scenarios have
+a cause and a mend, each proved in seconds, and the census shows them
+acting in matches as the scenarios predicted. `drive_to` gives the
+brain a way to ask where a tank will be, exactly, which the duck and
+the landfall choose points without (backlog 46). A scenario family, a
+situation drawn from the seed, measured a part to a tenth of a percent
+in three seconds.
+
+Proof: `make test`: brain 78 passed and 10 ignored; client 31; net 14;
+proto 3; sim 50. No warnings. 382 functions, 121 undocumented, 88
+tests.
+
+## 54. The planned dodge on by default, and a new rule, 20 October
+
+Paul, on LR 53's question: "yes. keep all the new behavior. keep
+adding. we need to finish writing the brain. but ofcourse it still must
+work. even if slightly less. We will continue to adjsut scalars after
+all features are added. but we need to add them wile finding a sensible
+starting numbers."
+
+`dodge_plan` and `dodge_release` default to 1. The old dodge is one
+weight away (`dodge_plan = 0`, `dodge_release = 0`). With the defaults,
+both scenario families of LR 53 hold on 1,000 of 1,000 seeds.
+
+**The rule changes.** Since LR 11 a part landed off and waited for a
+census to promote it; of the eighteen parts built that way, three were
+promoted (`castle_cap`, the landfall's three, now the dodge's two) and
+the rest wait at the noise floor that 48 seeds cannot see past (LR 24,
+47, 53). From here a part lands on, with numbers started where a
+scenario family or a short sweep puts them; the census guards that the
+brain still works, at a small cost at most; the tuner follows once the
+brain is written. The parts already built and off are next (LR 55).
+
+Proof: `make test`: brain 78 passed and 10 ignored; client 31; net 14;
+proto 3; sim 50. No warnings.

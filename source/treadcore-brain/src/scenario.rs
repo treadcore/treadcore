@@ -199,8 +199,10 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
 /// As `run`, on a seed: the world's (`Scenario::seed`, so its map
 /// outside what the file carves) and every brain's (theirs xor it), so
 /// a run over many seeds samples the scenario's chances (`many`). None
-/// is the file's own world, as `run`.
+/// is the file's own world, as `run`: its `seed = n` if it has one, so a
+/// family's case found by `many` is kept as a test (LR 53).
 pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>), String> {
+    let seed = seed.or(doc.top.get("seed").and_then(Value::num).map(|s| s as u64));
     let num = |t: &BTreeMap<String, Value>, k: &str, d: f64| t.get(k).and_then(Value::num).unwrap_or(d);
     let players = num(&doc.top, "players", 2.0) as usize;
     let seconds = num(&doc.top, "seconds", 60.0);
@@ -257,8 +259,15 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
             }
         }
     }
+    // The dice of a run (`[[tank]] heading = "any"`, a `[[shell]]`'s
+    // `scatter`, `from_any` and a `lands_in` range), from its seed, so a
+    // run over many seeds samples the situations as well as the maps.
+    let mut dice = Rng::new(seed.unwrap_or(0) ^ 0x5ce4_a210);
     // `[[tank]]`: a seat's tank put at an anchor and offset at the
-    // start, afloat with `boat = true`.
+    // start, afloat with `boat = true`; rolling with `speed` (tiles a
+    // second) on `heading` (degrees, 0 east, 90 south; "any" drawn by
+    // the dice) toward a goal `drive` tiles on, so it keeps rolling
+    // until its brain orders otherwise.
     for t in list("tank") {
         let seat = num(t, "seat", 0.0) as PlayerId;
         let to = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("seat:0"), t.get("offset"))?;
@@ -267,6 +276,15 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         tank.boat = t.get("boat") == Some(&Value::Bool(true));
         tank.goal = None;
         tank.route.clear();
+        tank.heading = match t.get("heading") {
+            Some(Value::Str(s)) if s == "any" => dice.range(-std::f32::consts::PI, std::f32::consts::PI),
+            Some(v) => (v.num().ok_or("heading: degrees or \"any\"")? as f32).to_radians(),
+            None => tank.heading,
+        };
+        tank.speed = num(t, "speed", 0.0) as f32;
+        if tank.speed > 0.0 {
+            tank.goal = Some(tank.pos + V2::from_heading(tank.heading).scale(num(t, "drive", 20.0) as f32));
+        }
     }
     for d in list("depot") {
         let near = place(&w, &depots, &pillboxes, d.get("near").and_then(Value::str).unwrap_or("seat:0"), None)?;
@@ -295,13 +313,26 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         w.pillboxes.push(Pillbox { id, pos: at, owner, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
         pillboxes.push(id);
     }
+    // `[[shell]]`: lands at an anchor and `offset`, plus up to `scatter`
+    // tiles drawn by the dice; fired from `from` tiles off it, turned to
+    // a direction drawn by the dice with `from_any = true`; in
+    // `lands_in` seconds, or a time drawn from `[lo, hi]`.
     for s in list("shell") {
-        let at = place(&w, &depots, &pillboxes, s.get("at").and_then(Value::str).unwrap_or("seat:0"), None)?;
-        let from = at + offset(s.get("from"))?;
+        let at = place(&w, &depots, &pillboxes, s.get("at").and_then(Value::str).unwrap_or("seat:0"), s.get("offset"))?;
+        let at = at + dice.disc().scale(num(s, "scatter", 0.0) as f32);
+        let mut from = offset(s.get("from"))?;
+        if s.get("from_any") == Some(&Value::Bool(true)) {
+            from = V2::from_heading(dice.range(-std::f32::consts::PI, std::f32::consts::PI)).scale(from.len());
+        }
+        let from = at + from;
         let id = w.next_id;
         w.next_id += 1;
         let tick = w.tick;
-        let lands = (num(s, "lands_in", 3.0) * TICK_HZ as f64) as Tick;
+        let lands_in = match s.get("lands_in") {
+            Some(Value::List(v)) if v.len() == 2 => dice.range(v[0].num().unwrap_or(3.0) as f32, v[1].num().unwrap_or(3.0) as f32) as f64,
+            _ => num(s, "lands_in", 3.0),
+        };
+        let lands = (lands_in * TICK_HZ as f64) as Tick;
         w.shells.push(Shell { id, owner: num(s, "owner", 1.0) as PlayerId, kind: ShellKind::Indirect, from, aim: at, impact: at, launch_tick: tick, impact_tick: tick + lands, spotted: true });
     }
     let mut brains: Vec<(PlayerId, Box<dyn Brain>)> = Vec::new();
@@ -435,8 +466,19 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
             break;
         }
         if w.tick % every == 0 {
-            let at = |s: PlayerId| w.tanks.iter().find(|t| t.owner == s).map(|t| format!("({:.1},{:.1}){}", t.pos.x, t.pos.y, if t.boat { " afloat" } else { "" })).unwrap_or_default();
-            out.trace.push(format!("{:>5.1} s  {}", now, brains.iter().map(|(s, b)| format!("seat {} at {} {} ({})", s, at(*s), b.act().code(), b.status())).collect::<Vec<_>>().join(", ")));
+            // Where each tank is, and where its route ends (`> (x,y)`).
+            let at = |s: PlayerId| {
+                w.tanks
+                    .iter()
+                    .find(|t| t.owner == s)
+                    .map(|t| {
+                        let dest = t.route.last().copied().or(t.goal).map(|g| format!(" > ({:.1},{:.1}) {} legs", g.x, g.y, t.route.len() + 1)).unwrap_or_default();
+                        format!("({:.1},{:.1}){}{}", t.pos.x, t.pos.y, if t.boat { " afloat" } else { "" }, dest)
+                    })
+                    .unwrap_or_default()
+            };
+            let shells: String = w.shells.iter().filter(|s| s.kind == ShellKind::Indirect).map(|s| format!("; a shell lands at ({:.1},{:.1}) in {:.2} s", s.impact.x, s.impact.y, s.impact_tick.saturating_sub(w.tick) as f32 * DT)).collect();
+            out.trace.push(format!("{:>5.1} s  {}{}", now, brains.iter().map(|(s, b)| format!("seat {} at {} {} ({})", s, at(*s), b.act().code(), b.status())).collect::<Vec<_>>().join(", "), shells));
         }
     }
     for t in &w.tanks {

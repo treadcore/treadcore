@@ -328,11 +328,13 @@ pub struct Dodge {
     /// The RuleBot under a Commander dodges too, but its moves are
     /// dropped (`keep_inner`).
     pub metered: bool,
-    /// The weights' numbers (horizon s, margin, clear, hold; LR 27);
-    /// None is the constants, the RuleBot's.
-    pub tune: Option<[f32; 4]>,
+    /// The weights' numbers (horizon s, margin, clear, hold; LR 27;
+    /// plan and release, LR 53); None is the constants, the RuleBot's.
+    pub tune: Option<[f32; 6]>,
     /// When the shell dodge under way began, for `dodge_hold`.
     began: Tick,
+    /// Where and when the shell dodged last lands, for `dodge_release`.
+    landing: Option<(V2, Tick)>,
 }
 
 impl Dodge {
@@ -374,7 +376,7 @@ impl Dodge {
             if self.dodged.contains(&s.id) {
                 continue;
             }
-            let [horizon, margin, clear, _] = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0]);
+            let [horizon, margin, clear, _, _, _] = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0]);
             let eta = s.impact_tick.saturating_sub(obs.tick);
             if eta < 2 || eta as f32 * DT > horizon {
                 continue;
@@ -388,6 +390,7 @@ impl Dodge {
                 self.began = obs.tick;
             }
             self.until = s.impact_tick + 2;
+            self.landing = Some((s.impact, s.impact_tick));
             if self.metered && self.watch.is_none() {
                 self.watch = Some((obs.tick, self.until, me.boat, self.dropped));
                 crate::meter::dodge(me.boat, self.dropped);
@@ -405,7 +408,11 @@ impl Dodge {
                 Some(m) => m.at(p).passable(),
                 None => true,
             };
-            let to = points.iter().copied().find(|p| fits(*p)).unwrap_or(points[0]);
+            let to = if self.tune.map(|t| t[4]).unwrap_or(0.0) >= 0.5 {
+                Self::planned(obs, me, s, &points, reach, margin, map, &fits)
+            } else {
+                points.iter().copied().find(|p| fits(*p)).unwrap_or(points[0])
+            };
             return Some(Command::Move { to });
         }
         if jink && me.last_hit_tick > self.jinked && obs.tick.saturating_sub(me.last_hit_tick) <= TICK_HZ as Tick / 2 {
@@ -415,6 +422,59 @@ impl Dodge {
             return Some(Command::Move { to: obs.clamp(me.pos + V2::new(-f.y, f.x).scale(3.0 * self.side) + f.scale(2.0)) });
         }
         None
+    }
+
+    /// `dodge_plan` (LR 53): the dodge point by where the tank will be
+    /// when the shell lands. The point across the shell's line can be
+    /// behind a rolling tank, which then brakes, pivots and drives back
+    /// through the splash; the line itself says nothing, since the
+    /// impact is known exactly. Each candidate (today's four, then
+    /// straight on, then twelve round the impact) is driven to by
+    /// `drive_to` for the shell's flight; the first that ends past the
+    /// splash and the margin is taken, in that order, so today's point
+    /// stands wherever it works; if none does, the one ending farthest
+    /// from the impact.
+    #[allow(clippy::too_many_arguments)]
+    fn planned(obs: &Observation, me: &Tank, s: &Shell, points: &[V2; 4], reach: f32, margin: f32, map: Option<&Map>, fits: &dyn Fn(V2) -> bool) -> V2 {
+        let ticks = s.impact_tick.saturating_sub(obs.tick) as u32;
+        // Straight on: where the heading leaves the circle of `reach`
+        // round the impact, no farther (none if it never meets it).
+        let f = V2::from_heading(me.heading);
+        let o = me.pos - s.impact;
+        let b = o.x * f.x + o.y * f.y;
+        let disc = b * b - (o.x * o.x + o.y * o.y - reach * reach);
+        let on = (disc >= 0.0 && -b + disc.sqrt() > 0.0).then(|| obs.clamp(me.pos + f.scale(-b + disc.sqrt())));
+        let ring = (0..12).map(|k| obs.clamp(s.impact + V2::from_heading(k as f32 * std::f32::consts::TAU / 12.0).scale(reach)));
+        let mut best: Option<(V2, f32)> = None;
+        for p in points.iter().copied().chain(on).chain(ring).filter(|p| fits(*p)) {
+            let Some(end) = drive_to(me, p, ticks, map) else { continue };
+            let clear = end.dist(s.impact);
+            if clear >= SPLASH_RADIUS + margin {
+                return p;
+            }
+            if best.map(|(_, c)| clear > c).unwrap_or(true) {
+                best = Some((p, clear));
+            }
+        }
+        best.map(|(p, _)| p).unwrap_or(points[0])
+    }
+
+    /// `dodge_release` (LR 53): a tank at its dodge point before the
+    /// shell lands is let go to its errand at once (`dodge_hold` 0), and
+    /// errands often drove it straight back under the shell. At 1 a
+    /// Move that `drive_to` says has the tank inside the splash and the
+    /// margin when the shell lands is struck from `cmds`, and it waits
+    /// where it is; one that keeps clear goes, unlike `dodge_hold`,
+    /// which holds every errand. True when one was struck.
+    pub fn release(&self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>, map: Option<&Map>) -> bool {
+        let Some(t) = self.tune.filter(|t| t[5] >= 0.5) else { return false };
+        let Some((at, lands)) = self.landing.filter(|(_, lands)| obs.tick < *lands) else { return false };
+        let before = cmds.len();
+        cmds.retain(|c| match c {
+            Command::Move { to } => drive_to(me, *to, (lands - obs.tick) as u32, map).map(|p| p.dist(at) >= SPLASH_RADIUS + t[1]).unwrap_or(true),
+            _ => true,
+        });
+        cmds.len() < before
     }
 
     /// A dodge under way: hold it while the tank drives to its point,
@@ -440,6 +500,74 @@ pub fn lead(me: &Tank, e: &Tank) -> V2 {
     } else {
         e.pos
     }
+}
+
+/// Where a tank will be after `ticks` sent to `to`, by the sim's own
+/// rules of motion (treadcore-sim `drive_tank`): the route the world
+/// will plan (`Map::route_by`: eight ways from tile to tile, a waypoint
+/// at each turn, so a point off those eight lines is two legs or more,
+/// and the first can be behind a rolling tank), then the hull's turn,
+/// easing off for a corner and braking before the next, the pivot when
+/// the way is behind it, momentum up and down, the ground's cost. The
+/// route leaves out the world's price on pillboxes' reach and known
+/// mines, which the brain cannot read. None when there is no way there.
+/// Without the map, straight across open grass. For `dodge_plan` (LR 53).
+pub fn drive_to(me: &Tank, to: V2, ticks: u32, map: Option<&Map>) -> Option<V2> {
+    let mut route = match map {
+        Some(m) => m.route_by(me.pos, to, me.boat, |_| 0.0),
+        None => vec![to],
+    };
+    if route.is_empty() {
+        return None;
+    }
+    route.reverse();
+    let (mut pos, mut heading, mut speed) = (me.pos, me.heading, me.speed);
+    for _ in 0..ticks {
+        let Some(&goal) = route.last() else { return Some(pos) };
+        let d = goal - pos;
+        let dist = d.len();
+        if dist < 0.15 {
+            pos = goal;
+            route.pop();
+            if route.is_empty() {
+                return Some(pos);
+            }
+            continue;
+        }
+        let here = map.map(|m| m.at(pos)).unwrap_or(Terrain::Grass);
+        let cost = if me.boat && here == Terrain::Water { BOAT_MOVE_COST } else { here.move_cost() };
+        let turn = wrap_angle(d.heading() - heading);
+        let mut max = if turn.abs() > TURN_BRAKE_ANGLE {
+            let over = ((turn.abs() - TURN_BRAKE_ANGLE) / (std::f32::consts::PI - TURN_BRAKE_ANGLE)).clamp(0.0, 1.0);
+            let ease = TANK_SPEED * (1.0 - over * (1.0 - TURN_CRAWL)) / cost;
+            if turn.abs() > TURN_PIVOT { 0.0 } else { ease.min((dist * TANK_TURN * 0.6).max(TANK_SPEED * 0.15)) }
+        } else {
+            TANK_SPEED / cost
+        };
+        // The corner at this waypoint, braked for before it.
+        if let (false, Some(&after)) = (me.boat, route.len().checked_sub(2).map(|k| &route[k])) {
+            let corner = wrap_angle((after - goal).heading() - d.heading()).abs();
+            if corner > TURN_BRAKE_ANGLE {
+                let over = ((corner - TURN_BRAKE_ANGLE) / (std::f32::consts::PI - TURN_BRAKE_ANGLE)).clamp(0.0, 1.0);
+                let at_corner = TANK_SPEED * (1.0 - over * (1.0 - TURN_CRAWL)) * 0.6 / cost;
+                max = max.min((at_corner * at_corner + 2.0 * TANK_BRAKE * dist).sqrt());
+            }
+        }
+        if me.boat && turn.abs() > TURN_BRAKE_ANGLE {
+            max = max.min(dist * TANK_TURN * 0.4);
+        }
+        speed = if speed < max { (speed + TANK_ACCEL * DT).min(max) } else { (speed - TANK_BRAKE * DT).max(max) };
+        heading += turn.clamp(-TANK_TURN * DT, TANK_TURN * DT);
+        let next = if dist < speed * DT { goal } else { pos + V2::from_heading(heading).scale(speed * DT) };
+        if let Some(m) = map {
+            let open = if me.boat { Map::afloat_step(here, m.at(next)) } else { m.at(next).passable() };
+            if !open || !m.in_bounds(next) {
+                return Some(pos);
+            }
+        }
+        pos = next;
+    }
+    Some(pos)
 }
 
 /// Seconds between a bot's looks at its own progress.
@@ -1860,7 +1988,7 @@ mod tests {
         let mut old = Dodge::default();
         let first = old.order(&obs, &tank);
         for hold in [0.0, 1.0] {
-            let mut d = Dodge { tune: Some([4.0, 0.8, 2.5, hold]), ..Default::default() };
+            let mut d = Dodge { tune: Some([4.0, 0.8, 2.5, hold, 0.0, 0.0]), ..Default::default() };
             assert_eq!(d.order(&obs, &tank), first, "the default numbers move as the constants do");
             let mut arrived = tank.clone();
             arrived.goal = None;
@@ -1869,6 +1997,42 @@ mod tests {
             assert!(d.holding(&obs, &driving), "held while it drives, hold {}", hold);
             assert_eq!(d.holding(&obs, &arrived), hold > 0.5, "arrived, hold {}", hold);
         }
+    }
+
+    /// `drive_to` (LR 53) foresees the world: a tank at rest or rolling,
+    /// on four headings, sent to twelve points round it 5 tiles off, is
+    /// where `drive_to` said after 2 s, within a tenth of a tile.
+    #[test]
+    fn drive_to_foresees_the_world() {
+        let mut base = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        base.pillboxes.clear();
+        let (mut worst, mut n, mut driven) = (0.0f32, 0, 0.0);
+        for speed in [0.0, TANK_SPEED] {
+            for h in 0..4 {
+                for k in 0..12 {
+                    let mut w = base.clone();
+                    let t = &mut w.tanks[0];
+                    t.heading = h as f32 * std::f32::consts::FRAC_PI_2 + 0.3;
+                    t.speed = speed;
+                    t.goal = (speed > 0.0).then(|| t.pos + V2::from_heading(t.heading).scale(20.0));
+                    let to = t.pos + V2::from_heading(k as f32 * std::f32::consts::TAU / 12.0).scale(5.0);
+                    let (start, said) = (w.tanks[0].pos, drive_to(&w.tanks[0].clone(), to, 40, Some(&w.map)).expect("a way there"));
+                    w.step(&[Order { player: 0, cmd: Command::Move { to } }]);
+                    for _ in 1..40 {
+                        w.step(&[]);
+                    }
+                    worst = worst.max(said.dist(w.tanks[0].pos));
+                    let moved = w.tanks[0].pos.dist(start);
+                    driven += moved;
+                    n += 1;
+                }
+            }
+        }
+        eprintln!("drive_to_foresees_the_world: {} drives of {:.1} tiles on average, worst {:.3} tiles off", n, driven / n as f32, worst);
+        // Not each drive: a rolling tank sent back behind itself brakes,
+        // pivots and returns, and can end where it began.
+        assert!(driven / n as f32 > 1.5, "the tanks drove");
+        assert!(worst < 0.1, "drive_to was {:.2} tiles off", worst);
     }
 
     /// `landfall_shy` (backlog 30, LR 31): of two beaches, the nearer

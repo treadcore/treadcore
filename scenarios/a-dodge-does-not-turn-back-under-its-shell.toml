@@ -1,0 +1,33 @@
+# LAB-REPORT-BRAIN.md section 53, `dodge_plan`: seed 2 of the rolling
+# family. A Commander's tank rolling at full speed; a shell lands 1 tile
+# off it in 2 s. The point across the shell's line is two legs of the
+# world's route away, the first behind the tank: at `dodge_plan` 0 it
+# brakes, turns and loops back into the splash. At 1 the dodge drives
+# each candidate by `drive_to` and takes one clear when the shell lands.
+name = "a dodge does not turn back under its shell"
+players = 2
+seconds = 4.5
+seed = 2
+trace_every = 0.25
+
+[[tank]]
+seat = 0
+heading = "any"
+speed = 4
+
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+weights = { dodge_plan = 1 }
+
+[[shell]]
+owner = 1
+at = "seat:0"
+scatter = 2.5
+from = [30, 0]
+from_any = true
+lands_in = [1.5, 3.5]
+
+[expect]
+hits_on = { seat = 0, max = 0 }

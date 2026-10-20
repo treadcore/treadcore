@@ -1,0 +1,33 @@
+# LAB-REPORT-BRAIN.md section 53, `dodge_release`: seed 5 of the standing
+# family. A Commander's tank at rest reaches its dodge point at 1.7 s; its
+# shell lands at 3.3 s. At `dodge_release` 0 the hold ends on arrival and
+# the fortify errand routes it back across the impact. At 1 an errand
+# that `drive_to` says is in the splash when the shell lands waits, and
+# goes when it would not be.
+name = "a dodge waits out its shell"
+players = 2
+seconds = 4.5
+seed = 5
+trace_every = 0.25
+
+[[tank]]
+seat = 0
+heading = "any"
+speed = 0
+
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+weights = { dodge_release = 1 }
+
+[[shell]]
+owner = 1
+at = "seat:0"
+scatter = 2.5
+from = [30, 0]
+from_any = true
+lands_in = [1.5, 3.5]
+
+[expect]
+hits_on = { seat = 0, max = 0 }

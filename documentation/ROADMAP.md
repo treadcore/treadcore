@@ -100,9 +100,17 @@ them.
 
 Rules for every part of step 12:
 
-- Each part lands behind a bit of `Caps`, off until its census says
-  on, so the brain of 17 October stays the baseline and every balance
-  proof reads the same until a part is promoted.
+- Each part lands behind a bit of `Caps` or a weight, so it can be
+  blended or switched off. Until 20 October a part stayed off until its
+  census said on. Since then (Paul, 20 October: "keep all the new
+  behavior. keep adding. we need to finish writing the brain. but
+  ofcourse it still must work. even if slightly less. We will continue
+  to adjsut scalars after all features are added. but we need to add
+  them wile finding a sensible starting numbers") a part lands **on**,
+  its numbers started where a scenario family or a short sweep puts
+  them, and the census is the guard that the whole brain still works,
+  at a small cost at most. Tuning the scalars follows once the
+  features are in. The old method stays one switch away.
 - *Must not change:* the sim's rules, the wire (version 16), the
   replay. The brain is above `observe`; where 12b touches `observe`
   itself, the world hash and every sim test must be unchanged.
@@ -269,7 +277,7 @@ to 8.93 a seat).
   people; measured, the strings cost nothing, and a census match is
   identical before and after. Not yet: the Observation shared per
   team (the sim change).
-- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture, 83 with its scores),
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture, 83 with its scores; 93 and 17 by LR 53, `smooth` a weight since LR 46),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
   The sliders, 18 October (LR 17): the coordination screen's weights
   page (`U`) for the player's own team, saved to
@@ -286,7 +294,11 @@ to 8.93 a seat).
   place the duck (`duck`, LR 21; `a_tank_ducks_a_gun_ready_before_its_own`):
   out of a gun's range or line before it is ready, seen or remembered;
   measured fairly at 7.01 a seat against 7.52, inside the noise, so it
-  stays off.
+  stays off. The dodge planned by the tank's own motion (LR 53):
+  `drive_to`, the sim's motion foreseen exactly; `dodge_plan` (the point
+  clear when the shell lands) and `dodge_release` (an errand back into
+  the splash waits); +0.81 +/- 0.40 over 96 naval seeds, not
+  confirmed on the fresh 48 alone; on by default, Paul's choice (LR 54).
 - [x] 12e the team board (`board`, `team_rotate`):
   `the_front_is_where_influence_crosses_zero`, `a_hurt_tank_swaps_out`,
   `a_missed_job_is_still_on_the_board`. Not yet: allies' goals shown on
@@ -362,7 +374,15 @@ deaths halved. The memory carries it, and each of the other two adds
 (37, LR 37). On by default (LR 38); the reverse census reads even;
 with every team on them the deaths move ashore, into the dodge, and
 the matches run longer (38, LR 39). The dodge's numbers by SPSA (23,
-LR 43): +0.88 +/- 0.51 over 96 unseen seeds, not promoted. Next, one
+LR 43): +0.88 +/- 0.51 over 96 unseen seeds, not promoted. Scenarios
+(24, LR 48 to 52) test a behaviour in seconds; over many seeds they
+found the circle at the edge of sight (LR 50) and a dodge into water
+(LR 52). The dodge planned by the tank's own motion (44, LR 53):
+`drive_to` foresees the world exactly; `dodge_plan` and `dodge_release`
+take two scenario families from 89.6% and 96.2% to 100%, and the
+census reads +0.92 +/- 0.47 (naval) and +1.20 +/- 0.60 (generated).
+On 48 fresh seeds +0.70 +/- 0.66, not confirmed;
+on by default, Paul's choice (LR 54). Next, one
 at a time: the dodge afloat (31), a census that
 lets late parts act (29); an honest tuner (23); `island_site` where a
 naval start chooses (20).
@@ -749,6 +769,52 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     under 5 s. Found instead: `Commander::new` left the landfall's
     weights at 0 (fixed), and without memory a boat circles at the
     edge of sight (LR 50).
+
+44. The dodge planned by the tank's own motion. (20 October; cause: LR
+    52, a tenth of ashore dodges still caught by their own shell after
+    the water fix.) Goal 4, 12d. Hypothesis: the point across the
+    shell's line ignores the tank's heading, speed and the world's
+    route, so a rolling tank turns back into the splash; and at
+    `dodge_hold` 0 a tank arrived early is sent straight back under the
+    shell by its errand. A dodge that foresees where the tank will be
+    (`drive_to`) mends both. Proof: two scenario families over 1,000
+    seeds each, then the census at 48 seeds and on 48 fresh ones. Cost:
+    a step. State: done 20 October (LR 53): `drive_to` exact over 96
+    drives; `dodge_plan` and `dodge_release` (both 0, today's); the
+    families from 89.6% and 96.2% to 100% and 100%; the census
+    +0.92 +/- 0.47 on naval.map and +1.20 +/- 0.60 on a generated map,
+    own-shell catches ashore 10.1% to 5.7%. On 48
+    fresh seeds (240 to 287) +0.70 +/- 0.66, not confirmed on the
+    score; the mechanism repeated (6.3% against 10.2%); the 96 naval
+    seeds pooled +0.81 +/- 0.40. On by default 20 October, Paul's
+    choice (LR 54).
+45. Two shells at once. (20 October; cause: LR 53, the plan scores the
+    one shell it dodges; a salvo or two guns on one tank are common in
+    the quad.) Goal 4, 12d. Hypothesis: a candidate scored against every
+    hostile shell in flight (clear of each at its own landing), and the
+    release checking all of them, holds a family of two to three shells
+    where the one-shell plan does not. Proof: a family with
+    `[[shell]]` twice, `scatter` 3, over 1,000 seeds, at the plan of LR
+    53 and the plan over all shells. Cost: a step. State: idea.
+46. The duck by `drive_to`. (20 October; cause: LR 53, the dodge's two
+    failures were the point chosen without the tank's motion and an
+    errand let go too soon; the duck (LR 21) picks its point the same
+    way and reads either sign, LR 47.) Goal 4, 12d. Hypothesis: the
+    duck's point foreseen by `drive_to` (out of the gun's reach before
+    it is ready, not merely aimed there) makes `duck` pay. Proof: a
+    scenario family of a tank and a hostile gun about to be ready, the
+    duck at today's point and at the foreseen one; then backlog 42's
+    96 fresh seeds. Cost: a step. State: idea.
+47. Scenario families kept and run. (20 October; cause: LR 53, two
+    families measured a part in seconds that the census needed 25
+    minutes to read near two errors.) Goal 4; goal 1. Hypothesis: a
+    `scenarios/families/` directory, each file with a `floor` (the
+    share it must hold over `runs` seeds) and `make families`, keeps
+    every behaviour's rate under watch as the brain changes. Proof:
+    the two dodge families with floors at today's defaults, failing
+    when the dodge is broken. Cost: small. State: begun 20 October (LR
+    53): the directory holds the two dodge families, run by hand
+    (`make scenario S=... RUNS=1000`); floors and `make families` left.
 
 
 ## Sequencing
