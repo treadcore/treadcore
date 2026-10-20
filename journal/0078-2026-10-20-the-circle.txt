@@ -1,0 +1,52 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 09:20:00 -0700
+Subject: [JOURNAL 0078] The circle at the edge of sight
+Message-ID: <0078.20261020@treadcore.org>
+In-Reply-To: <0077.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: landfall, memory, trace, correction, backlog 43
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 5065122 (journal 0077, pushed); this entry's commit follows
+
+                     THE CIRCLE AT THE EDGE OF SIGHT
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    Backlog 43's premise, from LR 49, was wrong: a trace every 5 s
+    missed a boat that landed in under 5. A trace every second found
+    two real things: `Commander::new` did not apply its own default
+    Settings (fixed), and without memory a boat circles at the edge of
+    sight, ashore at 40 s beside the gun rather than at 6 s on the safe
+    coast. That is the mechanism of the memory's gain.
+
+IV. CHRONOLOGY
+
+    1. `trace_every` and positions in the trace.
+    2. The Commander at sea: `landfall` from 1.9 s; LR 49's finding 1
+       withdrawn.
+    3. Two runs identical again: neither called `set_settings`.
+       `Commander::new` fixed; tests pass.
+    4. The circle seen; the scenario written; it fails at memory 0.
+    5. A census re-run of LR 46's first range started, to check dealt
+       play unchanged; committed before it ended, on Paul's prompt.
+
+VI. DISCUSSION
+
+    A trace sampled slower than the event it watches will report the
+    state after the event, every time. The 5 s default hid a 5 s
+    crossing.
+
+APPENDIX B. ARTIFACTS
+
+    scenarios/a-commander-boat-does-not-circle.toml;
+    documentation/LAB-REPORT-BRAIN.md sections 49 (marked) and 50.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Fixed: a Commander built directly (`Commander::new`: tests,
+  scenarios, tools) applies the default Settings, not only holds them;
+  it played the landfall's weights at 0. Dealt bots were not affected.
+- Added: a scenario of a Commander's boat that, without the landfall's
+  memory, circles at the edge of a gun's sight for 39 s before landing
+  beside it; with the memory it lands on the safe coast at 6 s
+  (LAB-REPORT-BRAIN.md section 50). Scenario traces show positions and
+  take `trace_every`.
 - Added: scenario files. A playtest written as a small TOML file
   (`scenarios/*.toml`): the seats that think and how, pillboxes,
   depots, shells and timed moves placed by anchor, and checks at the

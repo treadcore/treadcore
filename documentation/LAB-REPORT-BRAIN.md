@@ -2565,11 +2565,12 @@ defaults it must come ashore within 10 tiles of the far coast.
 
 **Three false starts, each a finding.** The first two versions held
 with and without memory, so they tested nothing:
-1. **A Commander on Auto that starts at sea never prices a beach.** It
-   takes the Fortify rung and sails for its fortify site; the afloat
-   branch that runs the landfall is not reached. In matches tanks
-   start ashore and come to the water through the hop, so this path is
-   rare, but it is a gap (backlog 43).
+1. ~~A Commander on Auto that starts at sea never prices a beach.~~
+   **Withdrawn (LR 50):** it does. The trace sampled every 5 s, and the
+   boat had landed before the first sample, so every sample read the
+   rung it took ashore. What was true: a Commander built by
+   `Commander::new` ran the landfall's weights at 0 while its Settings
+   said the defaults (LR 50).
 2. **The first choice binds.** With the gun seen at t = 0 through a
    teammate, the boat chose the far coast at once. The landfall changes
    beach only after 2 s and for one 6 tiles better, and by then the
@@ -2585,6 +2586,60 @@ and later turned east. The landing separates the two cases cleanly.
 What this changes. The landfall's memory now has a test that runs in a
 second and fails when the memory is off, beside its census result
 (LR 36). The three false starts are why a scenario must be run broken
-before it is trusted.
+before it is trusted, and the first of them (withdrawn in LR 50) is
+why a trace must sample faster than the thing it watches.
+
+Proof: `make test`: brain 76 passed and 9 ignored. No warnings.
+
+## 50. The circle at the edge of sight, 20 October
+
+Backlog 43, from LR 49: "a Commander on Auto at sea never prices a
+beach". The scenario runner gained `trace_every` (seconds between trace
+lines) and each seat's position in the trace. At one line a second the
+claim fell at once: the Commander's afloat branch runs before the
+ladder, and the boat had landed in under 5 s, before the first 5 s
+sample. LR 49's finding 1 and backlog 43 are withdrawn.
+
+**What the fine trace found instead.**
+
+1. **`Commander::new` held the default Settings but did not apply
+   them.** Its inner RuleBot kept the landfall's weights at 0 while
+   `settings` said the defaults. Dealt bots were not affected: `equip`
+   (fleet.rs) and the window's tuning page (`tune.rs`) call
+   `set_settings`. Tests, scenarios and any Commander built directly
+   were. Fixed: `Commander::new` ends with
+   `set_settings(Settings::default())`. The brain's tests all pass. A
+   census re-run of LR 46's first range checks dealt play is unchanged.
+
+2. **Without memory, a boat circles at the edge of sight.** A
+   Commander on Auto at sea between a coast 12 tiles east, by a
+   hostile tank it saw and lost, and one 22 tiles west, traced every
+   second at `landfall_memory` 0:
+
+   | s | Boat at | Making for |
+   | --- | --- | --- |
+   | 1.9 | (68.5, 63.9) | the near beach (76, 64) |
+   | 3.0 | (74.2, 64.3) | (76, 64) |
+   | 4.0 | (73.8, 67.1) | the far beach (42, 64): the gun seen at about 8 tiles |
+   | 5.0 | (68.1, 66.7) | (42, 64) |
+   | 6.0 | (68.6, 63.9) | (76, 66): the gun out of sight, forgotten |
+   | 8.0 | (72.7, 68.5) | (42, 66) |
+   | ... | ... | the same, every 4 s, drifting south |
+
+   It sails toward the near beach, sees the gun, turns away, loses it
+   at 10 tiles, forgets it, and turns back. It is ashore at **40 s**,
+   beside the gun. With the default memory the same boat keeps the gun
+   in mind, sails straight for the far coast, and is ashore at **6 s**.
+   This is the mechanism behind LR 36's gain and LR 35's finding that
+   the killer had been seen near there earlier: without memory, boats
+   circled where the guns could reach them.
+
+**The test**: `a-commander-boat-does-not-circle.toml`, the Commander
+form of LR 49's scenario. It holds at the defaults, and with
+`landfall_memory = 0` it fails ("came ashore 35.8 tiles from the
+point").
+
+The check of dealt play (LR 46's seeds 0 to 15, the same weights, the
+new binary) is running at this writing; LR 51 gives it.
 
 Proof: `make test`: brain 76 passed and 9 ignored. No warnings.

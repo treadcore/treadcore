@@ -317,15 +317,16 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
             }
             "commander" => {
                 let mut c = Commander::new(seed, "scenario");
-                // `weights = { name = value }`: the defaults, these changed.
+                // The default Settings, as a dealt bot has them (fleet.rs
+                // `equip`); `weights = { name = value }` changes some.
+                let mut s = crate::weights::Settings::default();
                 if let Some(t) = b.get("weights") {
-                    let mut s = crate::weights::Settings::default();
                     for (k, v) in t.table().ok_or("weights: an inline table")? {
                         let w = crate::weights::W::by_name(k).ok_or(format!("no weight {}", k))?;
                         s.w[w] = v.num().ok_or(format!("weight {}: a number", k))? as f32;
                     }
-                    c.set_settings(s);
                 }
+                c.set_settings(s);
                 let goal = b.get("goal").and_then(Value::str).unwrap_or("auto");
                 c.set_goal(match goal.split_once(':').map(|(g, k)| (g, k.parse::<usize>().ok())).unwrap_or((goal, None)) {
                     ("auto", _) => Goal::Auto,
@@ -354,6 +355,8 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
     }
     let mut afloat: BTreeMap<PlayerId, bool> = w.tanks.iter().map(|t| (t.owner, t.boat)).collect();
     let events = list("event");
+    // `trace_every`: seconds between trace lines (5).
+    let every = ((num(&doc.top, "trace_every", 5.0) * TICK_HZ as f64) as Tick).max(1);
     for _ in 0..(seconds * TICK_HZ as f64) as u64 {
         let now = w.tick as f64 / TICK_HZ as f64;
         for e in events.iter().filter(|e| (num(e, "at", -1.0) * TICK_HZ as f64) as Tick == w.tick) {
@@ -419,8 +422,9 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
             out.trace.push(format!("{:>5.1} s  the match is over", w.tick as f64 / TICK_HZ as f64));
             break;
         }
-        if w.tick % (5 * TICK_HZ as Tick) == 0 {
-            out.trace.push(format!("{:>5.1} s  {}", now, brains.iter().map(|(s, b)| format!("seat {} {} ({})", s, b.act().code(), b.status())).collect::<Vec<_>>().join(", ")));
+        if w.tick % every == 0 {
+            let at = |s: PlayerId| w.tanks.iter().find(|t| t.owner == s).map(|t| format!("({:.1},{:.1}){}", t.pos.x, t.pos.y, if t.boat { " afloat" } else { "" })).unwrap_or_default();
+            out.trace.push(format!("{:>5.1} s  {}", now, brains.iter().map(|(s, b)| format!("seat {} at {} {} ({})", s, at(*s), b.act().code(), b.status())).collect::<Vec<_>>().join(", ")));
         }
     }
     for t in &w.tanks {

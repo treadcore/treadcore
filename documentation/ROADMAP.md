@@ -744,13 +744,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     it. Cost: four censuses, 50 min. State: idea.
 
 43. A Commander at sea that never prices a beach. (20 October; cause:
-    LR 49, a Commander on Auto starting afloat sailed for its fortify
-    site, its afloat branch never reached.) Goal 4. Hypothesis: the
-    ladder's rungs run before the afloat branch in `think_on`, so a
-    boat with a rung in hand ignores the landfall. Proof: a scenario,
-    a Commander on Auto at sea between a covered and a clear coast,
-    landing on the clear one; then the census's landfall deaths.
-    Cost: a step. State: idea.
+    LR 49.) State: withdrawn 20 October (LR 50). The afloat branch
+    runs before the ladder; the 5 s trace missed a boat that landed in
+    under 5 s. Found instead: `Commander::new` left the landfall's
+    weights at 0 (fixed), and without memory a boat circles at the
+    edge of sight (LR 50).
 
 
 ## Sequencing

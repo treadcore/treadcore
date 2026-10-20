@@ -1,0 +1,56 @@
+# The circle at the edge of sight (LAB-REPORT-BRAIN.md section 50). A
+# Commander on Auto ashore beside a hostile tank sees it; at 1 s it is
+# put to sea between a near coast (12 tiles east, by the gun, now out of
+# sight) and a far one (22 west). With the defaults it remembers the gun
+# and is ashore on the far coast at 6 s. With `landfall_memory = 0` it
+# sails east, sees the gun at about 8 tiles, turns west, loses it at 10,
+# turns east again, round and round for 39 s, and lands at 40 s beside
+# the gun: this file then fails.
+name = "a commander's boat does not circle at the edge of sight"
+players = 2
+seconds = 45
+pillboxes = false
+
+[[terrain]]
+near = "centre:0"
+kind = "water"
+x = [-34, 34]
+y = [-30, 30]
+
+[[terrain]]
+near = "centre:0"
+kind = "grass"
+x = [12, 34]
+y = [-30, 30]
+
+[[terrain]]
+near = "centre:0"
+kind = "grass"
+x = [-34, -22]
+y = [-30, 30]
+
+[[tank]]
+seat = 0
+at = "centre:0"
+offset = [14, -2]
+
+[[tank]]
+seat = 1
+at = "centre:0"
+offset = [17, 2]
+
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+seed = 5
+
+[[event]]
+at = 1
+move = 0
+to = "centre:0"
+boat = true
+drones = "recall"
+
+[expect]
+lands_near = { seat = 0, at = "centre:0", offset = [-22, 0], within = 10 }
