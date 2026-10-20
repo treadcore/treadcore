@@ -33,3 +33,4 @@ report is what ties a conversation to them. Named
 | [017](CI-017-2026-10-19-spsa-planted.md) | 19 October 2026 | SPSA on the paired census, and its first planted test | 0066, 0067 | LAB-REPORT-BRAIN.md sections 40 and 41 |
 | [018](CI-018-2026-10-19-it-climbs.md) | 19 October 2026 | The planted test, second run: it climbs, slowly | 0068 | LAB-REPORT-BRAIN.md section 42 |
 | [019](CI-019-2026-10-20-the-dodge-by-spsa.md) | 20 October 2026 | The dodge's numbers by SPSA: promising, not confirmed | 0069, 0070 | LAB-REPORT-BRAIN.md section 43 |
+| [020](CI-020-2026-10-20-without-running-out.md) | 20 October 2026 | Each switch alone, without running out of tanks | 0072 | LAB-REPORT-BRAIN.md section 44 |

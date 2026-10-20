@@ -2325,6 +2325,42 @@ What it shows so far:
 3. **Two parts still never act**: `board` alone (nothing reads it
    unless a part that uses it is on) and `island_site`.
 
-The 3-respawn pass under today's defaults is running, for a
-side-by-side on the same seeds and code. The comparison with LR 24 is
-loose until then, since the defaults have changed.
+**The side-by-side**: the same run at 3 respawns under today's
+defaults (`RESPAWNS=3 JOBS=3 make switches`), and LR 24's figures (3
+respawns, the defaults before the landfall's three), all 12 seeds.
+
+| Switch | LR 24 | 3 respawns, today | Unlimited, today |
+| --- | --- | --- | --- |
+| `bridge_jobs` (board) | +0.44 +/- 0.91 | **+1.68 +/- 0.70** | +1.06 +/- 0.91 |
+| `duck` | +0.39 +/- 1.04 | **-2.26 +/- 1.05** | -0.51 +/- 1.59 |
+| `smooth` | -1.98 +/- 1.25 | -1.14 +/- 0.93 | **-3.32 +/- 1.47** |
+| `team_rotate` (board) | -0.83 +/- 0.87 | +0.91 +/- 0.92 | +1.09 +/- 1.20 |
+| `posture` (board) | (-0.81 +/- 0.65, 48 seeds) | -0.76 +/- 1.37 | -1.67 +/- 1.24 |
+| `column` | -0.06 +/- 0.41 | +0.63 +/- 0.61 | +0.11 +/- 1.31 |
+| `priced_crossing` | +0.11 +/- 0.56 | +0.36 +/- 0.67 | +1.37 +/- 1.23 |
+| `cycle` | +0.31 +/- 0.43 | +0.02 +/- 0.19 | -0.60 +/- 0.46 |
+| `escort` | +0.01 +/- 0.01 | +0.02 +/- 0.05 | -0.34 +/- 0.34 |
+| `forget` | -0.36 +/- 0.23 | -0.00 +/- 0.15 | +0.60 +/- 0.33 |
+| `board`, `island_site` | 0 | 0 | 0 |
+
+Bold is outside two errors.
+
+**Many tests, few findings.** Two passes of twelve are 24 tests at
+the two-error line, where about one reading in twenty falls outside by
+chance: about one false finding is expected, and three appeared.
+Only `smooth` has the consistency to stand on: it is negative in all
+five readings ever taken (LR 11, LR 24, 48 seeds in LR 12's era, and
+both passes here). `bridge_jobs` (+1.68) and `duck` (-2.26) are each
+outside in one pass and inside in the other. They are leads, to be
+confirmed on 48 fresh seeds before anything changes (backlog 39).
+
+**Backlog 29 answered.** The late parts do not read differently given
+time: the base cycle +0.02 and -0.60, the escort +0.02 and -0.34, all
+inside the noise. The hypothesis that the census hid them by
+attrition is not confirmed. With today's landfall defaults the dead
+share is already lower (LR 39), and unlimited respawns did not
+uncover them either.
+
+`smooth`: Paul, on reading the first pass, "smooth sounds like we
+should remove it", then "maybe not remove it. give it an insignificant
+coefficient". It becomes a weight (LR 45).

@@ -593,8 +593,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     on `make switches`, beside LR 24's table. Cost: 396 matches, 25
     min (twice that at 1,800 s). State: unlimited (255) read 20
     October (LR 44): the late parts inside the noise, `smooth` -3.32
-    +/- 1.47 outside; the 3-respawn pass under today's defaults
-    running.
+    +/- 1.47 outside; at 3 respawns under today's defaults the late
+    parts inside too. Done: not confirmed. Three of 24 readings
+    outside two errors (about one expected by chance): `smooth`,
+    negative in all five readings ever; `bridge_jobs` +1.68 +/- 0.70
+    and `duck` -2.26 +/- 1.05, one pass each.
 30. The run for the beach. (19 October; cause: LR 27, 165 deaths of
     819 on `landfall`, 132 of them a boat sunk by direct fire.) Goal 4.
     Hypothesis: `landfall_order` prices a beach by the threats near it
@@ -704,6 +707,26 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     landfall deaths 165 to 89, dodge deaths 354 to 434, the death rate
     the same, matches 4.5% longer, living time +13%. The deaths move
     ashore. Next: the dodge's numbers to the tuner (23).
+
+39. Confirm `bridge_jobs` and `duck`. (20 October; cause: LR 44, each
+    outside two errors in one pass of 24 tests and inside in the
+    other.) Goal 4. Hypothesis: `bridge_jobs` (with `board`) helps and
+    `duck` hurts, under today's defaults. Proof: 48 fresh seeds each
+    (96 to 143), the rule set first: past two errors on those seeds
+    alone. Cost: two censuses, 25 min. State: idea.
+40. `smooth` as a weight. (20 October; cause: Paul, "give it an
+    insignificant coefficient".) Goal 4. `w_smooth` 0 to 1, default
+    0.05: the blendable parts (the desire vector, the retreat
+    thresholds, the stance) scale by it; the yes-or-no parts (the
+    rung's and the turret's confirmation, the own resupply off) act
+    above 0.5. The capability goes; a file naming it parses as
+    `w_smooth` 1. Proof: a test of the blend; the null against today
+    within the noise. Cost: a step. State: idea.
+41. A frozen census binary. (20 October; cause: Paul, "is there an
+    improved and faster way for you to test"; every census rebuilds
+    the brain, so no code can change while one runs.) Each script
+    copies the built test binary and runs the copy. Proof: a census
+    unchanged while the tree is edited. Cost: small. State: idea.
 
 
 ## Sequencing

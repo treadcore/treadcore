@@ -1,0 +1,65 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 03:00:00 -0700
+Subject: [JOURNAL 0072] Each switch alone, without running out of tanks
+Message-ID: <0072.20261020@treadcore.org>
+In-Reply-To: <0071.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: census, respawns, multiple comparisons, smooth, backlog 29
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog. i love your
+           analysis", "smooth sounds like we should remove it.", "ok.
+           maybe not remove it. give it an insignificant coefficient",
+           "is there an improved and faster way for you to test ?"
+X-Commits: a1e8d33 (the first pass, pushed); this entry's commit
+           follows
+
+            EACH SWITCH ALONE, WITHOUT RUNNING OUT OF TANKS
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    Backlog 29: every switch alone at unlimited respawns, then at 3
+    under today's defaults, 12 seeds each. The late parts (the base
+    cycle, the escort) read inside the noise both ways: not confirmed.
+    Three of 24 readings fell outside two errors, against about one
+    expected by chance. `smooth` is negative in all five readings ever;
+    Paul chose to keep it as a weight with an insignificant default.
+    `bridge_jobs` and `duck` are leads for 48 fresh seeds.
+
+IV. CHRONOLOGY
+
+    1. Unlimited respawns (255): smooth -3.32 outside; the rest inside.
+       Committed (a1e8d33).
+    2. Paul suggested removing smooth; `smooth` is six behaviours
+       under one switch, so splitting was offered. Paul: a weight with
+       an insignificant coefficient (backlog 40).
+    3. Paul asked for a faster way to test; six ways listed, a frozen
+       census binary first (backlog 41).
+    4. The 3-respawn pass: bridge_jobs +1.68 and duck -2.26 outside;
+       both inside at unlimited.
+
+VI. DISCUSSION
+
+    A table of 24 tests at two errors will show about one finding by
+    chance. A result that holds across passes is a finding; a result
+    in one pass is a lead.
+
+VIII. NEXT STEPS
+
+    1. Backlog 41, the frozen binary.
+    2. Backlog 40, `w_smooth`.
+    3. Backlog 39, the two leads on 48 fresh seeds.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 44;
+    documentation/checkins/CI-020-2026-10-20-without-running-out.md;
+    build/switches/20261019-161719 and 20261019-170046.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
