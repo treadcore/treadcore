@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: `smooth` is a weight, `w_smooth` (0 to 1, default 0.05;
+  Paul's choice), no longer a capability. The move's desire vector and
+  the retreat thresholds blend by it; the rung's and the turret's
+  confirmation, the stance's advance scalar and resupply by the
+  doctrine alone act above 0.5. A weights file naming the old
+  capability still loads (as 1). At 0.05 play is within the noise of
+  before (LAB-REPORT-BRAIN.md section 46).
 - Changed: `make switches`, `make spsa` and `make tune` build the
   brain's census once and run a copy of the binary, kept with the
   run's logs. The source can change while a census runs

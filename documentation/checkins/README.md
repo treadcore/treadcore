@@ -34,3 +34,4 @@ report is what ties a conversation to them. Named
 | [018](CI-018-2026-10-19-it-climbs.md) | 19 October 2026 | The planted test, second run: it climbs, slowly | 0068 | LAB-REPORT-BRAIN.md section 42 |
 | [019](CI-019-2026-10-20-the-dodge-by-spsa.md) | 20 October 2026 | The dodge's numbers by SPSA: promising, not confirmed | 0069, 0070 | LAB-REPORT-BRAIN.md section 43 |
 | [020](CI-020-2026-10-20-without-running-out.md) | 20 October 2026 | Each switch alone, without running out of tanks | 0072 | LAB-REPORT-BRAIN.md section 44 |
+| [021](CI-021-2026-10-20-smooth-as-a-weight.md) | 20 October 2026 | The census binary frozen, and `smooth` as a weight | 0073, 0074 | LAB-REPORT-BRAIN.md sections 45 and 46 |

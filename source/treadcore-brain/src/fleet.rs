@@ -802,6 +802,11 @@ mod tests {
         // A name adds it to the default; `-name` takes it off.
         let caps = |var: &str, mut s: Settings| {
             for c in std::env::var(var).unwrap_or_default().split(',').map(str::trim).filter(|c| !c.is_empty()) {
+                // `smooth`, a capability before LR 46, is the weight.
+                if c == "smooth" || c == "-smooth" {
+                    s.w[crate::weights::W::SmoothShare] = if c == "smooth" { 1.0 } else { 0.0 };
+                    continue;
+                }
                 s.caps = match c.strip_prefix('-') {
                     Some(off) => s.caps.without(Caps::by_name(off).unwrap_or_else(|| panic!("no capability {}", off))),
                     None => s.caps.with(if c == "all" { Caps::all() } else { Caps::by_name(c).unwrap_or_else(|| panic!("no capability {}", c)) }),

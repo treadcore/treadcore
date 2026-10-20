@@ -721,7 +721,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     rung's and the turret's confirmation, the own resupply off) act
     above 0.5. The capability goes; a file naming it parses as
     `w_smooth` 1. Proof: a test of the blend; the null against today
-    within the noise. Cost: a step. State: idea.
+    within the noise. Cost: a step. State: done 20 October (LR 46):
+    the old play against the default 0.05, +0.47 +/- 0.60 at 48
+    seeds.
 41. A frozen census binary. (20 October; cause: Paul, "is there an
     improved and faster way for you to test"; every census rebuilds
     the brain, so no code can change while one runs.) Each script

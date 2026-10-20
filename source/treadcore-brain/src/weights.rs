@@ -101,6 +101,9 @@ weights! {
     KiteTurn "kite_turn" 0.8, "kite: seconds a step in takes beyond the drive";
     KiteSpare "kite_spare" 0.4, "kite: seconds of the target's reload to spare";
     // Smoothing (LR 7).
+    // `smooth` as a weight (LR 46; Paul, 20 October: "give it an
+    // insignificant coefficient"), once the capability `smooth`.
+    SmoothShare "w_smooth" 0.05, "smooth: how much the bot smooths, 0 to 1. The move's desire vector and the retreat thresholds blend by it; the rung's and the turret's confirmation, the stance's advance scalar and resupply by the doctrine alone act above 0.5 (yes or no). 0 is the capability off, 1 on";
     Alpha "alpha" 0.4, "smooth: the move's desire vector, share of the new pull a think";
     Beta "beta" 0.3, "smooth: the advance scalar, share of the new pull a think";
     Margin "margin" 0.15, "smooth: a challenger must beat the intent by this share";
@@ -225,7 +228,6 @@ caps! {
     BRIDGES 3 "bridges" true, "lay bridges (hop.rs)";
     ROTATE 4 "rotate" true, "rotate between the push and defence points";
     FORGET 8 "forget" false, "given-up targets are tried again after forget_for (12b)";
-    SMOOTH 9 "smooth" false, "desire vectors and confirmation before a change (12d)";
     BOARD 10 "board" false, "the team board: one picture of the map per team (12e)";
     TEAM_ROTATE 11 "team_rotate" false, "swap a hurt tank at a hot point for a fresh one at a cold point (12e)";
     PRICED_CROSSING 12 "priced_crossing" false, "boat or bridge by price, long bridges and scarce trees costing more (12f2)";
@@ -305,6 +307,12 @@ impl Settings {
             if name == "caps" {
                 let mut caps = Caps(0);
                 for c in value.split(',').map(str::trim).filter(|c| !c.is_empty()) {
+                    // `smooth` was a capability before LR 46: now the
+                    // weight at 1 (on) or 0 (off).
+                    if c == "smooth" || c == "-smooth" {
+                        s.w[W::SmoothShare] = if c == "smooth" { 1.0 } else { 0.0 };
+                        continue;
+                    }
                     caps = match c {
                         "baseline" => caps.with(Caps::BASELINE),
                         "all" => caps.with(Caps::all()),
@@ -323,6 +331,22 @@ impl Settings {
             s.w[w] = v;
         }
         Ok(s)
+    }
+
+    /// How much the bot smooths (`w_smooth`), 0 to 1.
+    pub fn smooth(&self) -> f32 {
+        self.w[W::SmoothShare].clamp(0.0, 1.0)
+    }
+
+    /// The share of a move's new pull taken a think: all of it at
+    /// `w_smooth` 0, `alpha` at 1, in a line between.
+    pub fn smooth_alpha(&self) -> f32 {
+        1.0 - self.smooth() * (1.0 - self.w[W::Alpha])
+    }
+
+    /// The yes-or-no parts of smoothing: on above 0.5.
+    pub fn smooth_on(&self) -> bool {
+        self.smooth() > 0.5
     }
 
     /// The file form: every weight, and the capabilities.
@@ -451,7 +475,7 @@ mod tests {
         let d = Tactics::default();
         assert_eq!(format!("{:?}", t), format!("{:?}", d), "the weights at their defaults are the Tactics of 17 October");
         assert_eq!(s.caps, Caps::BASELINE);
-        assert!(s.caps.has(Caps::KITE) && !s.caps.has(Caps::SMOOTH));
+        assert!(s.caps.has(Caps::KITE) && !s.smooth_on());
         assert!(s.caps.has(Caps::CASTLE_CAP), "Paul's castle is the default (18 October)");
     }
 
@@ -459,14 +483,36 @@ mod tests {
     fn a_weights_file_round_trips_and_names_its_mistakes() {
         let mut s = Settings::default();
         s.w[W::Wounded] = 1.5;
-        s.caps = s.caps.with(Caps::SMOOTH).without(Caps::KITE);
+        s.w[W::SmoothShare] = 1.0;
+        s.caps = s.caps.without(Caps::KITE);
         let back = Settings::parse(&s.to_text()).unwrap();
         assert_eq!(back, s);
-        assert_eq!(back.diff(), vec![(W::Wounded, 1.5)]);
+        assert_eq!(back.diff(), vec![(W::Wounded, 1.5), (W::SmoothShare, 1.0)]);
         let e = Settings::parse("w_near = 1\nw_nope = 2\n").unwrap_err();
         assert_eq!(e.line, 2);
-        assert!(Settings::parse("caps = baseline, -kite, smooth").unwrap().caps == Caps::BASELINE.without(Caps::KITE).with(Caps::SMOOTH));
+        // `smooth`, a capability before LR 46, reads as the weight.
+        let old = Settings::parse("caps = baseline, -kite, smooth").unwrap();
+        assert!(old.caps == Caps::BASELINE.without(Caps::KITE) && old.smooth_on());
+        assert_eq!(Settings::parse("caps = baseline, -smooth").unwrap().smooth(), 0.0);
         assert!(Settings::parse("press_odds = nan").is_err());
+    }
+
+    /// `w_smooth` (LR 46): the default is near off, the desire vector
+    /// blends in a line, and the yes-or-no parts turn on above 0.5.
+    #[test]
+    fn smooth_is_a_weight_that_blends_and_thresholds() {
+        let mut s = Settings::default();
+        assert!((s.smooth() - 0.05).abs() < 1e-6 && !s.smooth_on());
+        assert!((s.smooth_alpha() - 0.97).abs() < 1e-6, "0.05 of the way from 1 to alpha 0.4");
+        s.w[W::SmoothShare] = 0.0;
+        assert_eq!(s.smooth_alpha(), 1.0);
+        s.w[W::SmoothShare] = 0.5;
+        assert!(!s.smooth_on(), "0.5 itself is off");
+        s.w[W::SmoothShare] = 0.51;
+        assert!(s.smooth_on());
+        s.w[W::SmoothShare] = 3.0;
+        assert_eq!(s.smooth(), 1.0, "clamped to 1");
+        assert!((s.smooth_alpha() - s.w[W::Alpha]).abs() < 1e-6);
     }
 
     #[test]

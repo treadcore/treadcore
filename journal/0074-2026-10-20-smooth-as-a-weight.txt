@@ -1,0 +1,51 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 04:40:00 -0700
+Subject: [JOURNAL 0074] smooth as a weight
+Message-ID: <0074.20261020@treadcore.org>
+In-Reply-To: <0073.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: smooth, weights, either-or, backlog 40
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "ok. maybe not remove it. give it an insignificant
+           coefficient"; "commit. push. continue backlog"
+X-Commits: 20f48bb (journal 0073, pushed); this entry's commit follows
+
+                           SMOOTH AS A WEIGHT
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    The capability `smooth` becomes the weight `w_smooth`, 0.05 by
+    default. Its two numeric parts blend; its four yes-or-no parts act
+    above 0.5. Old files still load. The old play against the new
+    default reads +0.47 +/- 0.60 over 48 seeds: insignificant, as Paul
+    asked.
+
+IV. CHRONOLOGY
+
+    1. The six places read. The stance's smoothing at a small share is
+       a different rule, not a softer one, so it joined the yes-or-no
+       parts; the retreat thresholds equal the constants today.
+    2. The weight, the helpers, the old name kept as a reading of the
+       weight in the parser and the census.
+    3. A test caught a float: 1 - (1 - 0.4) is 0.39999998. The test
+       was made to allow it.
+    4. The null from a frozen binary, the docs written while it ran:
+       the first run to use LR 45 that way.
+
+VIII. NEXT STEPS
+
+    1. Backlog 39: `bridge_jobs` and `duck` on 48 fresh seeds.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md sections 20 and 46;
+    documentation/checkins/CI-021-2026-10-20-smooth-as-a-weight.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

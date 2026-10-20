@@ -479,10 +479,10 @@ impl Commander {
         if let Some(t) = self.inner.tactics.as_mut() {
             t.w = crate::tactics::Tactics::from_weights(&s);
             t.base = self.base;
-            t.confirm = s.caps.has(Caps::SMOOTH).then(|| (s.w[W::ConfirmTurret].round().clamp(1.0, 255.0) as u8, s.w[W::Margin]));
-            t.smooth = s.caps.has(Caps::SMOOTH).then(|| (s.w[W::Beta], s.w[W::AdvanceBand]));
+            t.confirm = s.smooth_on().then(|| (s.w[W::ConfirmTurret].round().clamp(1.0, 255.0) as u8, s.w[W::Margin]));
+            t.smooth = s.smooth_on().then(|| (s.w[W::Beta], s.w[W::AdvanceBand]));
         }
-        self.inner.own_resupply = !s.caps.has(Caps::SMOOTH);
+        self.inner.own_resupply = !s.smooth_on();
         // A switch turned off puts away what the role gave the bot; on
         // again, it gets it back.
         let was = self.settings.caps;
@@ -557,9 +557,12 @@ impl Commander {
         // followed by its desire vector, not re-routed at every shift; a
         // jump, a fresh order (no last move) or the way home is taken as
         // it is.
-        let to = if self.caps().has(crate::weights::Caps::SMOOTH) && self.last_move.is_some() && !self.resupplying {
+        // By `w_smooth` (LR 46): the share of the new pull taken blends
+        // from all of it (0) to `alpha` (1).
+        let share = self.settings.smooth();
+        let to = if share > 0.0 && self.last_move.is_some() && !self.resupplying {
             use crate::weights::W;
-            self.desire.toward(to, self.settings.w[W::Alpha], self.settings.w[W::Jitter])
+            self.desire.toward(to, self.settings.smooth_alpha(), self.settings.w[W::Jitter])
         } else {
             self.desire.reset();
             to
@@ -702,9 +705,13 @@ impl Commander {
     }
 
     fn needs_home(&mut self, me: &Tank) -> bool {
-        let (low_shells, low_armor) = if self.caps().has(crate::weights::Caps::SMOOTH) {
+        // The retreat thresholds blend from the constants (0) to the
+        // weights (1) by `w_smooth` (LR 46).
+        let share = self.settings.smooth();
+        let (low_shells, low_armor) = if share > 0.0 {
             use crate::weights::W;
-            (self.settings.w[W::RetreatShells].max(0.0) as u16, self.settings.w[W::RetreatArmor])
+            let shells = LOW_SHELLS as f32 + share * (self.settings.w[W::RetreatShells].max(0.0) - LOW_SHELLS as f32);
+            (shells.round() as u16, LOW_ARMOR + share * (self.settings.w[W::RetreatArmor] - LOW_ARMOR))
         } else {
             (LOW_SHELLS, LOW_ARMOR)
         };
@@ -1425,7 +1432,7 @@ impl Commander {
         // row (a think is a quarter second) while the old one still holds;
         // a threat to the base (DefendBase), or the old rung no longer
         // holding, changes it at once.
-        if self.caps().has(crate::weights::Caps::SMOOTH) {
+        if self.settings.smooth_on() {
             if let Some(cur) = self.rung.filter(|c| *c != rung && rung != Rung::DefendBase && self.ladder[c.index()] && holds[c.index()]) {
                 let need = (self.settings.w[crate::weights::W::Confirm].round().max(1.0) as Tick) * (TICK_HZ as Tick / 4);
                 let since = match self.rung_challenger {

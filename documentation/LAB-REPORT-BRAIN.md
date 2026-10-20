@@ -842,19 +842,19 @@ are built, proven and measured but wait for a census to promote them.
 
 | Level | Code | Rate | Output |
 | --- | --- | --- | --- |
-| Settings | `weights.rs`: 90 weights (the dodge's four since LR 27, the landfall's three since LR 31 to 36), 18 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
+| Settings | `weights.rs`: 91 weights (the dodge's four since LR 27, the landfall's three since LR 31 to 36, `w_smooth` since LR 46), 17 capabilities; `--weights FILE` for every bot, the weights page (`U`) for a player's team | read at the deal and on a change | the numbers every part below reads |
 | Team board (off) | `board.rs`, one per team, shared | rebuilt 1 Hz by the first member due | influence, front, defence points, posture (five scores, LR 25), kept jobs, swaps, part-laid bridges |
 | Fleet commander | `crew::FleetCommand` | 20 Hz; musters every 30 s | jobs, as before |
 | Commander, one per tank | `commander.rs` | 20 Hz | `Vec<Command>` |
-| Auto ladder | DefendBase > Fortify > Turrets > Hunt > Expand > Guard, the rung confirmed over two thinks under `smooth` (off), leaned by the team's posture under `posture` (off, LR 24) | 20 Hz | a goal |
+| Auto ladder | DefendBase > Fortify > Turrets > Hunt > Expand > Guard, the rung confirmed over two thinks above `w_smooth` 0.5 (0.05 by default, LR 46), leaned by the team's posture under `posture` (off, LR 24) | 20 Hz | a goal |
 | Base cycle (off) | `cycle.rs` | after a fill | an item, an improvement by weight (mend, a mine, works), a road out |
-| Doctrine and tactician | `lib.rs`, `tactics.rs`, its weights from `Settings` | 4 Hz | guns, drones, target, odds, stance (smoothed under `smooth`) |
+| Doctrine and tactician | `lib.rs`, `tactics.rs`, its weights from `Settings` | 4 Hz | guns, drones, target, odds, stance (smoothed above `w_smooth` 0.5) |
 | Hop | `hop.rs`, `facts.rs`: the crossing cache, priced crossings (off), adopted bridges (off) | each doctrine think | bridge, boat, landfall |
 | Memory | `memory.rs` `Forget` (expiry off by default), `intent.rs` | per use | what was given up, smoothed goals |
 | Ledger and meter | `ledger.rs`, `meter.rs`, `brain_census`, `make tune` | per match | a line per tank: genome, seed, score; the cost a seat-tick |
 
 ```
-Settings (weights.rs: 90 weights, 18 switches)  <-- --weights FILE, weights page (U)
+Settings (weights.rs: 91 weights, 17 switches)  <-- --weights FILE, weights page (U)
    |
 Team board, one per team, 1 Hz (board)                         (L5)
    |  influence, front, points, posture, jobs kept,
@@ -872,14 +872,14 @@ Commander, each tank, 20 Hz, first match wins                  (L1)
    +-- board: post, rebuild, adopt a missed job, relieve or fall back
    +-- road posts once the capped castle stands (castle_cap, on)
    +-- pings, rally, fleet, crew job
-   +-- Auto ladder (6 rungs; confirmed under smooth)
+   +-- Auto ladder (6 rungs; confirmed above w_smooth 0.5)
    |      Fortify: the capped castle; Turrets: the fetch, gathered
    |      first when far (escort)
    +-- base cycle after a fill (cycle)
-   +-- go(): desire vector under smooth                        (L7)
+   +-- go(): desire vector, by w_smooth (0.05)                 (L7)
    +-- Doctrine, 4 Hz
           +-- Tactician (its 22 weights from Settings; smoothed
-          |   stance under smooth)
+          |   stance above w_smooth 0.5)
           +-- Hop (crossing cache with failures; priced under
               priced_crossing; island sites under island_site)  (L4)
 ```
@@ -894,7 +894,7 @@ The findings of section 2, now:
 | L4 failed searches not cached | answered: the crossing cache keeps failures 60 s |
 | L5 no shared team memory | the team board (off); read by `team_rotate`, `bridge_jobs` and, since LR 24, `posture`; its influence, front and territory still read by nothing (LR 24) |
 | L6 lists that never forget | `Forget` with `forget_for` (off) |
-| L7 uneven commitment | desire vectors and confirmation (`smooth`, off: measured worse) |
+| L7 uneven commitment | desire vectors and confirmation, as `smooth` measured worse in four readings, and since LR 46 a weight, `w_smooth`, 0.05 by default |
 | L8 a reactive economy | the base cycle (`cycle`, off) |
 | `partial_cmp().unwrap()` on a NaN | answered (LR 23): every float comparison a `total_cmp`, in the brain, the client and the sim |
 
@@ -2391,3 +2391,47 @@ The other ways to test faster (LR 44's companion, CI-020 V.3) stay on
 the list: metrics of the part's own counts, scenario files (backlog
 24), more cores, a cheaper match (finding L2), sequential rules set in
 advance.
+
+## 46. `smooth` as a weight, 20 October
+
+Backlog 40, from Paul on LR 44's table: "smooth sounds like we should
+remove it.", then "ok. maybe not remove it. give it an insignificant
+coefficient". `smooth` was one switch over six behaviours, and it read
+negative in all four readings on record.
+
+**The part**: the capability `smooth` is gone (its bit, 9, retired),
+and a weight, `w_smooth`, 0 to 1, default **0.05**, takes its place.
+Read through `Settings::smooth` (clamped) and `Settings::smooth_on`
+(above 0.5).
+
+| Behaviour | Where | How `w_smooth` acts |
+| --- | --- | --- |
+| The move's desire vector | `Commander::go` | the share of the new pull taken blends from 1 (at 0) to `alpha` (at 1): `smooth_alpha`; 0.97 at the default |
+| The retreat thresholds | `Commander::needs_home` | blend from the constants (4 shells, 35 armour) to `retreat_shells` and `retreat_armor`; equal today, so no change until those are tuned |
+| The rung's confirmation | `Commander::auto` | above 0.5 (a count) |
+| The turret's confirmation | `Tactician.confirm` | above 0.5 (a count) |
+| The stance's advance scalar | `Tactician.smooth` | above 0.5: at any share above 0 it is a different rule (press above the band's middle), not a softer one, so it is yes or no |
+| Resupply by the doctrine alone | `RuleBot.own_resupply` | above 0.5 (yes or no) |
+
+A file or census that names `smooth` as a capability reads it as
+`w_smooth` 1, and `-smooth` as 0, so old weights files and `make
+switches` still work. Proof: `smooth_is_a_weight_that_blends_and_thresholds`
+(0.05 near off, the alpha blend in a line, the threshold strictly
+above 0.5, clamped at 1); `a_weights_file_round_trips_and_names_its_mistakes`
+(the old `caps = ..., smooth` reads as the weight).
+
+**The reading**: today's play before the change was `smooth` off,
+`w_smooth` 0. As the trial team, against two teams on the new default
+0.05, 48 seeds, from a frozen binary (LR 45):
+
+| Trial | Baselines | d a seat (48 seeds) | By range |
+| --- | --- | --- | --- |
+| `w_smooth` 0 (the old play) | 0.05 (the default) | +0.47 +/- 0.60 | -0.96 +/- 1.21, +0.46 +/- 0.89, +1.91 +/- 0.92 |
+
+**Insignificant, as asked.** At 0.05 only the desire vector acts, a
+move taking 97% of each new pull rather than all of it, and the census
+cannot tell it from the old play. The behaviours stay in the brain,
+reachable by one number, for the tuner or a slider.
+
+Proof: `make test`: brain 74 passed and 8 ignored; client 31; net 14;
+proto 3; sim 50. No warnings. 363 functions, 121 undocumented.
