@@ -24,7 +24,7 @@ structure as built is `checkins/`.
 | [`memory.rs`](#memoryrs) | 96 | 10 | 6 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
 | [`meter.rs`](#meterrs) | 261 | 20 | 8 | 2 | What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure first"). |
 | [`rotation.rs`](#rotationrs) | 271 | 7 | 0 | 2 | Rotation (Paul, 17 October: "every bot should have a push point, and a defense point. |
-| [`scenario.rs`](#scenariors) | 472 | 11 | 0 | 3 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
+| [`scenario.rs`](#scenariors) | 590 | 11 | 0 | 3 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
 | [`status.rs`](#statusrs) | 352 | 9 | 5 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
 | [`tactics.rs`](#tacticsrs) | 676 | 16 | 3 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
 | [`weights.rs`](#weightsrs) | 543 | 28 | 14 | 5 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
@@ -558,17 +558,17 @@ Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48
 | 72 | `parse` |  | yes | Read the TOML subset; an error names its line. |
 | 110 | `strip_comment` |  |  | A line without its `#` comment (a `#` inside a string stays). |
 | 123 | `value_of` |  |  | One value from the front of `s`, and what is left after it. |
-| 188 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
-| 339 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
-| 348 | `check` |  |  | Every expectation that failed, in words. |
-| 413 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
-| 423 | `dir` |  |  | The scenarios, at the top of the tree. |
+| 195 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
+| 437 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
+| 446 | `check` |  |  | Every expectation that failed, in words. |
+| 528 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
+| 538 | `dir` |  |  | The scenarios, at the top of the tree. |
 
 Tests (3):
 
-- `the_subset_reads_values_tables_and_lists` (line 430): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
-- `every_scenario_holds` (line 442): Every file under `scenarios/` holds.
-- `scenario_one` (line 462): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
+- `the_subset_reads_values_tables_and_lists` (line 545): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
+- `every_scenario_holds` (line 557): Every file under `scenarios/` holds.
+- `scenario_one` (line 577): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
 
 ## status.rs
 

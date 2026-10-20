@@ -2529,3 +2529,62 @@ error.
 Proof: `make test`: brain 76 passed and 9 ignored; client 31; net 14;
 proto 3; sim 50. No warnings. 18 files, 374 functions, 121
 undocumented.
+
+## 49. The landfall as a scenario, 20 October
+
+LR 48's next step: scenario placements for the landfall, so its
+situations can be tested in seconds rather than by census.
+
+**The form grows** (`scenario.rs`):
+- `teams = [0, 1, 0]`: a team for each seat.
+- `[[terrain]]`: a rectangle of tiles around an anchor, `x` and `y` in
+  tiles from it, set to water or grass. A sea and its coasts are carved
+  this way.
+- `[[tank]]`: a seat's tank put at an anchor and offset at the start,
+  afloat with `boat = true`.
+- `"centre:0"`: the map's centre, as an anchor.
+- `[[brain]] weights = { name = value }`: a Commander's Settings with
+  those changed; on a RuleBot, which reads no Settings, the landfall's
+  three, its only weights held as fields.
+- `[[event]]` gains `boat = true` (put to sea) and `drones = "recall"`.
+- `[expect]` gains `ends_near` (where a seat finishes) and
+  `lands_near` (where it first comes ashore).
+- The outcome keeps every order the world refused a thinking seat, and
+  the trace shows a RuleBot's status text beside its code.
+
+**The scenario**, `a-boat-remembers-the-gun-on-the-near-beach.toml`: a
+RuleBot ashore beside a hostile tank sees it; at 1 s it is put to sea
+between a near coast (12 tiles east, by the gun, now out of sight) and
+a far one (22 west); its drones are recalled. With the landfall's
+defaults it must come ashore within 10 tiles of the far coast.
+
+| `landfall_memory` | Came ashore at | Verdict |
+| --- | --- | --- |
+| 30 (the default) | (42.8, 64.5), the far coast | holds |
+| 0 | (76.2, 56.3), the near coast by the gun | fails: 35.1 tiles from the point |
+
+**Three false starts, each a finding.** The first two versions held
+with and without memory, so they tested nothing:
+1. **A Commander on Auto that starts at sea never prices a beach.** It
+   takes the Fortify rung and sails for its fortify site; the afloat
+   branch that runs the landfall is not reached. In matches tanks
+   start ashore and come to the water through the hop, so this path is
+   rare, but it is a gap (backlog 43).
+2. **The first choice binds.** With the gun seen at t = 0 through a
+   teammate, the boat chose the far coast at once. The landfall changes
+   beach only after 2 s and for one 6 tiles better, and by then the
+   distances had closed. Memory can only matter when the gun is seen
+   and lost before the boat chooses.
+3. **A drone sees for its tank.** A tank moved to sea by hand left its
+   recon drone ashore, still seeing the gun, so even at memory 0 the
+   boat knew it. Recalling the drones made the test honest.
+
+One oddity is kept, not chased: at memory 0 the boat first headed west
+and later turned east. The landing separates the two cases cleanly.
+
+What this changes. The landfall's memory now has a test that runs in a
+second and fails when the memory is off, beside its census result
+(LR 36). The three false starts are why a scenario must be run broken
+before it is trusted.
+
+Proof: `make test`: brain 76 passed and 9 ignored. No warnings.

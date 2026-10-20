@@ -181,6 +181,13 @@ pub struct Outcome {
     /// When the match ended (a side gone, with no respawns), if it did:
     /// the world stops there.
     pub over: Option<f64>,
+    /// The points `ends_near` and `lands_near` name, resolved at the
+    /// start.
+    pub points: BTreeMap<String, V2>,
+    /// Where each seat's tank first came ashore from a boat.
+    pub landed: BTreeMap<PlayerId, V2>,
+    /// Orders the world refused a thinking seat: when, whose, and why.
+    pub refused: Vec<(f64, PlayerId, String)>,
 }
 
 /// Run a scenario: the outcome, and every expectation that failed (none
@@ -189,7 +196,13 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
     let num = |t: &BTreeMap<String, Value>, k: &str, d: f64| t.get(k).and_then(Value::num).unwrap_or(d);
     let players = num(&doc.top, "players", 2.0) as usize;
     let seconds = num(&doc.top, "seconds", 60.0);
-    let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(players) };
+    // `teams = [0, 1, 0]`: a team for each seat (none is each alone).
+    let teams = match doc.top.get("teams") {
+        Some(Value::List(v)) => Some(v.iter().map(|t| t.num().map(|n| n as TeamId).ok_or("teams: numbers")).collect::<Result<Vec<_>, _>>()?),
+        None => None,
+        Some(_) => return Err("teams: a list".into()),
+    };
+    let sc = Scenario { swarm_interval: 0, time_limit: 0, teams, ..Scenario::bots(players) };
     let mut w = World::new(sc);
     if doc.top.get("pillboxes") == Some(&Value::Bool(false)) {
         w.pillboxes.clear();
@@ -205,12 +218,45 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
         let k: usize = k.parse().map_err(|_| format!("not an anchor: {}", anchor))?;
         let base = match kind {
             "seat" => seat_pos(w, k as PlayerId)?,
+            "centre" => w.map.center(),
             "depot" => depots.get(k).map(|d| d.1).ok_or(format!("no {}", anchor))?,
             "pillbox" => pillboxes.get(k).and_then(|id| w.pillboxes.iter().find(|p| p.id == *id)).map(|p| p.pos).ok_or(format!("no {}", anchor))?,
             _ => return Err(format!("not an anchor: {}", anchor)),
         };
         Ok(base + offset(off)?)
     };
+    // `[[terrain]]`: a rectangle of tiles, `x` and `y` in tiles from the
+    // anchor's tile, both ends in, set to water or grass.
+    for t in list("terrain") {
+        let near = place(&w, &depots, &pillboxes, t.get("near").and_then(Value::str).unwrap_or("seat:0"), None)?;
+        let kind = match t.get("kind").and_then(Value::str).unwrap_or("water") {
+            "water" => Terrain::Water,
+            "grass" => Terrain::Grass,
+            k => return Err(format!("terrain: no kind {}", k)),
+        };
+        let span = |k: &str| match t.get(k) {
+            Some(Value::List(v)) if v.len() == 2 => Ok((v[0].num().unwrap_or(0.0) as i32, v[1].num().unwrap_or(0.0) as i32)),
+            _ => Err(format!("terrain: {} = [from, to]", k)),
+        };
+        let ((x0, x1), (y0, y1)) = (span("x")?, span("y")?);
+        let c = near.tile();
+        for dy in y0..=y1 {
+            for dx in x0..=x1 {
+                w.map.set(V2::new((c.0 + dx) as f32 + 0.5, (c.1 + dy) as f32 + 0.5), kind);
+            }
+        }
+    }
+    // `[[tank]]`: a seat's tank put at an anchor and offset at the
+    // start, afloat with `boat = true`.
+    for t in list("tank") {
+        let seat = num(t, "seat", 0.0) as PlayerId;
+        let to = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("seat:0"), t.get("offset"))?;
+        let tank = w.tanks.iter_mut().find(|x| x.owner == seat).ok_or(format!("no seat {}", seat))?;
+        tank.pos = Map::tile_centre(to);
+        tank.boat = t.get("boat") == Some(&Value::Bool(true));
+        tank.goal = None;
+        tank.route.clear();
+    }
     for d in list("depot") {
         let near = place(&w, &depots, &pillboxes, d.get("near").and_then(Value::str).unwrap_or("seat:0"), None)?;
         let dep = w.depots.iter().filter(|x| !depots.iter().any(|(id, _)| *id == x.id)).min_by(|a, b| a.pos.dist(near).total_cmp(&b.pos.dist(near))).ok_or("no depot left")?;
@@ -252,9 +298,34 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
         let seat = num(b, "seat", 0.0) as PlayerId;
         let seed = num(b, "seed", 5.0) as u64;
         let brain: Box<dyn Brain> = match b.get("kind").and_then(Value::str).unwrap_or("commander") {
-            "rulebot" => Box::new(RuleBot::new(seed, "scenario")),
+            "rulebot" => {
+                // A plain RuleBot reads no Settings; `weights` here sets
+                // the landfall's three, the only ones it has as fields.
+                let mut r = RuleBot::new(seed, "scenario");
+                if let Some(t) = b.get("weights") {
+                    for (k, v) in t.table().ok_or("weights: an inline table")? {
+                        let v = v.num().ok_or(format!("weight {}: a number", k))? as f32;
+                        match k.as_str() {
+                            "landfall_shy" => r.landfall_shy = v,
+                            "landfall_wait" => r.landfall_wait = v,
+                            "landfall_memory" => r.landfall_memory = v,
+                            _ => return Err(format!("a rulebot has no weight {}", k)),
+                        }
+                    }
+                }
+                Box::new(r)
+            }
             "commander" => {
                 let mut c = Commander::new(seed, "scenario");
+                // `weights = { name = value }`: the defaults, these changed.
+                if let Some(t) = b.get("weights") {
+                    let mut s = crate::weights::Settings::default();
+                    for (k, v) in t.table().ok_or("weights: an inline table")? {
+                        let w = crate::weights::W::by_name(k).ok_or(format!("no weight {}", k))?;
+                        s.w[w] = v.num().ok_or(format!("weight {}: a number", k))? as f32;
+                    }
+                    c.set_settings(s);
+                }
                 let goal = b.get("goal").and_then(Value::str).unwrap_or("auto");
                 c.set_goal(match goal.split_once(':').map(|(g, k)| (g, k.parse::<usize>().ok())).unwrap_or((goal, None)) {
                     ("auto", _) => Goal::Auto,
@@ -275,10 +346,23 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
     for t in &w.tanks {
         out.start.insert(t.owner, (t.pos, t.shells));
     }
+    for key in ["ends_near", "lands_near"] {
+        if let Some(Value::Table(t)) = doc.expect.get(key) {
+            let at = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("seat:0"), t.get("offset"))?;
+            out.points.insert(key.into(), at);
+        }
+    }
+    let mut afloat: BTreeMap<PlayerId, bool> = w.tanks.iter().map(|t| (t.owner, t.boat)).collect();
     let events = list("event");
     for _ in 0..(seconds * TICK_HZ as f64) as u64 {
         let now = w.tick as f64 / TICK_HZ as f64;
         for e in events.iter().filter(|e| (num(e, "at", -1.0) * TICK_HZ as f64) as Tick == w.tick) {
+            // `drones = "recall"`: every drone gone (a tank moved by
+            // hand leaves its drone behind, seeing for it).
+            if e.get("drones").and_then(Value::str) == Some("recall") {
+                out.trace.push(format!("{:>5.1} s  {} drones recalled", now, w.drones.len()));
+                w.drones.clear();
+            }
             let seat = num(e, "move", -1.0);
             if seat >= 0.0 {
                 let to = place(&w, &depots, &pillboxes, e.get("to").and_then(Value::str).unwrap_or("seat:0"), e.get("offset"))?;
@@ -286,6 +370,11 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
                 t.pos = to;
                 t.goal = None;
                 t.route.clear();
+                // `boat = true`: put to sea (the place must be water).
+                if e.get("boat") == Some(&Value::Bool(true)) {
+                    t.boat = true;
+                    t.pos = Map::tile_centre(to);
+                }
             }
         }
         let mut orders = Vec::new();
@@ -303,6 +392,9 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
                         out.hits.push((*by, t.owner));
                     }
                 }
+                Event::Rejected { player, why, .. } if brains.iter().any(|(s, _)| s == player) => {
+                    out.refused.push((w.tick as f64 / TICK_HZ as f64, *player, why.to_string()));
+                }
                 Event::PillboxFired { pillbox, damage, .. } => {
                     if let Some(k) = pillboxes.iter().position(|p| p == pillbox) {
                         out.pillbox_damage[k] += damage;
@@ -310,6 +402,12 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
                 }
                 _ => {}
             }
+        }
+        for t in &w.tanks {
+            if afloat.get(&t.owner) == Some(&true) && !t.boat && t.alive {
+                out.landed.entry(t.owner).or_insert(t.pos);
+            }
+            afloat.insert(t.owner, t.boat);
         }
         for (k, id) in pillboxes.iter().enumerate() {
             if let Some(o) = w.pillboxes.iter().find(|p| p.id == *id).and_then(|p| p.owner) {
@@ -322,7 +420,7 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
             break;
         }
         if w.tick % (5 * TICK_HZ as Tick) == 0 {
-            out.trace.push(format!("{:>5.1} s  {}", now, brains.iter().map(|(s, b)| format!("seat {} {}", s, b.act().code())).collect::<Vec<_>>().join(", ")));
+            out.trace.push(format!("{:>5.1} s  {}", now, brains.iter().map(|(s, b)| format!("seat {} {} ({})", s, b.act().code(), b.status())).collect::<Vec<_>>().join(", ")));
         }
     }
     for t in &w.tanks {
@@ -387,6 +485,23 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                     Some(at) if by.map(|b| *at <= b).unwrap_or(true) => {}
                     Some(at) => failed.push(format!("pillbox {} became seat {}'s at {:.1} s, by {} s expected", k, s, *at as f64 / TICK_HZ as f64, field(t, "by").unwrap_or(0.0))),
                     None => failed.push(format!("pillbox {} never became seat {}'s", k, s)),
+                }
+            }
+            "ends_near" => {
+                let s = seat.ok_or("ends_near: a seat")?;
+                let at = out.points.get("ends_near").copied().ok_or("ends_near: no point")?;
+                let d = out.end.get(&s).map(|e| e.0.dist(at) as f64).unwrap_or(f64::INFINITY);
+                if let Some(m) = field(t, "within").filter(|m| d > *m) {
+                    failed.push(format!("seat {} ended {:.1} tiles from the point, within {} expected", s, d, m));
+                }
+            }
+            "lands_near" => {
+                let s = seat.ok_or("lands_near: a seat")?;
+                let at = out.points.get("lands_near").copied().ok_or("lands_near: no point")?;
+                match out.landed.get(&s) {
+                    Some(l) if field(t, "within").map(|m| l.dist(at) as f64 <= m).unwrap_or(true) => {}
+                    Some(l) => failed.push(format!("seat {} came ashore {:.1} tiles from the point, within {} expected", s, l.dist(at), field(t, "within").unwrap_or(0.0))),
+                    None => failed.push(format!("seat {} never came ashore", s)),
                 }
             }
             "pillbox_damage" => {
@@ -465,7 +580,10 @@ mod tests {
         for line in &out.trace {
             eprintln!("  {}", line);
         }
-        eprintln!("  hits {:?}; pillbox damage {:?}; start {:?}; end {:?}", out.hits, out.pillbox_damage, out.start, out.end);
+        for (at, seat, why) in out.refused.iter().take(10) {
+            eprintln!("  {:>5.1} s  seat {} refused: {}", at, seat, why);
+        }
+        eprintln!("  hits {:?}; pillbox damage {:?}; start {:?}; end {:?}; landed {:?}", out.hits, out.pillbox_damage, out.start, out.end, out.landed);
         assert!(failed.is_empty(), "{}: {}", path, failed.join("; "));
         eprintln!("scenario {}: holds", path);
     }

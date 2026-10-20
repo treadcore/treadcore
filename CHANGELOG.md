@@ -12,7 +12,10 @@ fixed form (`journal/TEMPLATE.txt`).
   end. Every file is a test; `make scenario S=file` runs one and prints
   its status codes over time. Three hand-written tests have scenario
   forms that pass and fail as they do (LAB-REPORT-BRAIN.md section
-  48).
+  48). Scenarios can carve sea and coast, put a tank afloat, set teams
+  and weights, recall drones, and check where a boat came ashore; the
+  landfall's memory has one that fails with the memory off (section
+  49).
 - Changed: `smooth` is a weight, `w_smooth` (0 to 1, default 0.05;
   Paul's choice), no longer a capability. The move's desire vector and
   the retreat thresholds blend by it; the rung's and the turret's

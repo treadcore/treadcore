@@ -1,0 +1,58 @@
+# The landfall's memory (LAB-REPORT-BRAIN.md sections 36 and 49). A
+# RuleBot ashore by a hostile tank sees it; at 1 s it is put to sea,
+# between a near coast (12 tiles east, by the gun, which is now out of
+# its sight) and a far one (22 west), and only then picks a beach. With
+# the landfall's defaults (`landfall_memory` 30 s) it keeps the gun in
+# mind and comes ashore on the far coast. With `landfall_memory = 0`
+# it forgets the gun and makes for the near one, and this file fails.
+# (A Commander on Auto at sea sails for its fortify site instead and
+# never prices a beach: so a RuleBot, whose afloat branch is the
+# landfall, given the defaults it does not read by itself.)
+name = "a boat remembers the gun on the near beach"
+players = 2
+seconds = 45
+pillboxes = false
+
+[[terrain]]
+near = "centre:0"
+kind = "water"
+x = [-34, 34]
+y = [-30, 30]
+
+[[terrain]]
+near = "centre:0"
+kind = "grass"
+x = [12, 34]
+y = [-30, 30]
+
+[[terrain]]
+near = "centre:0"
+kind = "grass"
+x = [-34, -22]
+y = [-30, 30]
+
+[[tank]]
+seat = 0
+at = "centre:0"
+offset = [14, -2]
+
+[[tank]]
+seat = 1
+at = "centre:0"
+offset = [17, 2]
+
+[[brain]]
+seat = 0
+kind = "rulebot"
+seed = 5
+weights = { landfall_memory = 30, landfall_shy = 1, landfall_wait = 10 }   # the defaults (LR 38)
+
+[[event]]
+at = 1
+move = 0
+to = "centre:0"
+boat = true
+drones = "recall"   # its drone would stay ashore, seeing the gun for it
+
+[expect]
+lands_near = { seat = 0, at = "centre:0", offset = [-22, 0], within = 10 }

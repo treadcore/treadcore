@@ -1,0 +1,56 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 08:10:00 -0700
+Subject: [JOURNAL 0077] The landfall as a scenario
+Message-ID: <0077.20261020@treadcore.org>
+In-Reply-To: <0076.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: scenarios, landfall, memory, drones, backlog 43
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 0069b5f (journal 0076, pushed); this entry's commit follows
+
+                        THE LANDFALL AS A SCENARIO
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    Scenarios can now carve a sea, put a tank afloat, set teams and
+    weights, recall drones, and check where a boat came ashore. The
+    landfall's memory has a scenario that holds at the default and
+    fails with the memory off. Three versions before it tested
+    nothing; each found something: a Commander at sea skips the
+    landfall (backlog 43), the first choice binds, and a drone sees
+    for its tank.
+
+IV. CHRONOLOGY
+
+    1. teams, terrain, tank, centre, weights, lands_near.
+    2. A Commander at sea: `fortify` throughout; memory on and off
+       alike. The afloat branch never ran.
+    3. A RuleBot, weights as fields: west both times. The choice made
+       at t = 0, with the gun seen.
+    4. Seen ashore, then put to sea: west both times. The status text
+       added to the trace; refusals recorded (none).
+    5. The drone: two recalled at the move; memory on west, off east.
+
+VI. DISCUSSION
+
+    A scenario that cannot fail tests nothing. Running it broken first
+    is what found the gap, the binding choice and the drone.
+
+VIII. NEXT STEPS
+
+    1. Backlog 43, the Commander at sea, as a scenario first.
+
+APPENDIX B. ARTIFACTS
+
+    scenarios/a-boat-remembers-the-gun-on-the-near-beach.toml;
+    documentation/LAB-REPORT-BRAIN.md section 49.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
