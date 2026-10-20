@@ -478,7 +478,7 @@ impl Commander {
         self.inner.landfall_shy = s.w[W::LandfallShy];
         self.inner.landfall_wait = s.w[W::LandfallWait];
         self.inner.landfall_memory = s.w[W::LandfallMemory];
-        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold], s.w[W::DodgePlan], s.w[W::DodgeRelease]]);
+        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold], s.w[W::DodgePlan], s.w[W::DodgeRelease], s.w[W::DodgeEvery]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.
         if let Some(t) = self.inner.tactics.as_mut() {
@@ -2935,7 +2935,7 @@ mod tests {
         let mut c = commander(on, 0.0);
         c.think_on(&w.observe(0), Some(&w.map));
         assert_ne!(c.act, Act::Duck, "w_duck 0 never ducks");
-        let mut c = commander(Caps::BASELINE, 1.0);
+        let mut c = commander(Caps::BASELINE.without(Caps::DUCK), 1.0);
         c.think_on(&w.observe(0), Some(&w.map));
         assert_ne!(c.act, Act::Duck, "off, no duck");
         // The duel: the gunner stands and fires a led shot whenever it
@@ -2965,7 +2965,7 @@ mod tests {
         };
         // Kiting off in both: it already holds a fighting tank past the
         // gun's reach; the duck is for the tank that does not kite.
-        let (ducking, standing) = (duel(on.without(Caps::KITE)), duel(Caps::BASELINE.without(Caps::KITE)));
+        let (ducking, standing) = (duel(on.without(Caps::KITE)), duel(Caps::BASELINE.without(Caps::KITE).without(Caps::DUCK)));
         eprintln!("a_tank_ducks_a_gun_ready_before_its_own: (hits taken, gunner's shots, down at s) in 40 s, ducking {:?}, standing {:?}", ducking, standing);
         assert!(ducking.0 < standing.0, "ducking {:?} against standing {:?}", ducking, standing);
     }
@@ -2995,9 +2995,7 @@ mod tests {
             w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
             let mut s = crate::weights::Settings::default();
             s.caps = s.caps.with(crate::weights::Caps::BOARD);
-            if on {
-                s.caps = s.caps.with(crate::weights::Caps::BRIDGE_JOBS);
-            }
+            s.caps = if on { s.caps.with(crate::weights::Caps::BRIDGE_JOBS) } else { s.caps.without(crate::weights::Caps::BRIDGE_JOBS) };
             let board = crate::board::shared();
             board.lock().unwrap().post_bridge(1, &tiles, target, 0);
             let mut c = Commander::new(29, "builder");

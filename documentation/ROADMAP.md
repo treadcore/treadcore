@@ -31,7 +31,7 @@ current with an improved challenger still off, and shown impossible.
 | 1. One world, many machines | playable, editable, networked, programmable: the prior art's idea on today's network | met (steps 0 to 9) |
 | 2. The battlefield the war made | indirect fire, drones over every tank, industry under drones | met (step 10) |
 | 3. Command, not only driving | goal modes, fleets, castles, pillboxes that move, a coordination screen | half met (step 11) |
-| 4. Bots that think as a team | one tunable decision pattern on shared memory, cheap enough to run sixteen | the prototype built (12a to 12h, LR 11 to 20); every switch measured alone at 12 seeds, none yet outside the noise (LR 24) |
+| 4. Bots that think as a team | one tunable decision pattern on shared memory, cheap enough to run sixteen | being finished: every part on by default since 20 October (LR 55, Paul's rule of LR 54), -0.85 +/- 0.59 against the parts off; new parts land on; tuning once the features are in |
 | 5. Longer, truer matches | real numbers, upgrades, towns that see, matches past sixteen minutes | open (11f, 11g, 11j) |
 | 6. In players' hands | packages, a release, two real routers | waiting (Actions paused since 13 October) |
 
@@ -795,7 +795,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     release checking all of them, holds a family of two to three shells
     where the one-shell plan does not. Proof: a family with
     `[[shell]]` twice, `scatter` 3, over 1,000 seeds, at the plan of LR
-    53 and the plan over all shells. Cost: a step. State: idea.
+    53 and the plan over all shells. Cost: a step. State: done 20
+    October (LR 56): `dodge_every` (on), `drive_path`; two shells 76.5%
+    and 79.9% to 100%, three 67.7% to 100%, four 56.6% to 99.7%.
 46. The duck by `drive_to`. (20 October; cause: LR 53, the dodge's two
     failures were the point chosen without the tank's motion and an
     errand let go too soon; the duck (LR 21) picks its point the same
@@ -816,6 +818,15 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     53): the directory holds the two dodge families, run by hand
     (`make scenario S=... RUNS=1000`); floors and `make families` left.
 
+48. Starting numbers for the brain with every part on. (20 October;
+    cause: LR 55, every part on reads -0.85 +/- 0.59 against LR 54's
+    defaults.) Goal 4, the tuning phase. Hypothesis: one or two parts
+    carry the cost (by history the posture's lean and `team_rotate`),
+    and their weight halved (`w_posture` 0.25; `swap_gap` 0.6) gives it
+    back. Proof: each part off from the all-on brain at 12 seeds (the
+    reverse of `make switches`), then the halved weights at 48. Cost:
+    about 80 min, then 30. State: idea, after the features are in
+    (Paul, 20 October).
 
 ## Sequencing
 

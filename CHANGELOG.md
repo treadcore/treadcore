@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the dodge plans against every hostile shell landing within its
+  horizon, each at its own landing (`dodge_every`, on): two shells 76.5%
+  to 100%, four 56.6% to 99.7% over 1,000 seeds (LAB-REPORT-BRAIN.md
+  section 56).
+- Changed: every part of the brain is on by default: `forget`, `board`,
+  `team_rotate`, `priced_crossing`, `column`, `cycle`, `island_site`,
+  `escort`, `bridge_jobs`, `duck`, `posture`. Against the parts off,
+  -0.85 a seat with an error of 0.59 over 48 seeds, about 30% more
+  brain time (section 55). Each old method is `caps = baseline, -name`.
 - Changed: the dodge plans by the tank's own motion by default
   (`dodge_plan` 1, `dodge_release` 1; Paul's choice, LAB-REPORT-BRAIN.md
   section 54). New behaviours now land on, with starting numbers, and

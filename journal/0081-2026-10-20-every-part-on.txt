@@ -1,0 +1,63 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 17:00:00 -0700
+Subject: [JOURNAL 0081] Every part on, and a dodge against every shell
+Message-ID: <0081.20261020@treadcore.org>
+In-Reply-To: <0080.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: defaults, guard census, dodge, salvos, rule change
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "yes. keep all the new behavior. keep adding. we need
+           to finish writing the brain. but ofcourse it still must
+           work. even if slightly less. We will continue to adjsut
+           scalars after all features are added. but we need to add
+           them wile finding a sensible starting numbers."
+X-Commits: 61c368b (pushed); this entry's commit follows
+
+               EVERY PART ON, AND A DODGE AGAINST EVERY SHELL
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    The rule of goal 4 changed: a part lands on, with starting numbers,
+    and the census guards that the brain still works. The planned dodge
+    went on (LR 54); then the eleven parts built and off (LR 55): -0.85
+    +/- 0.59 a seat against them off, inside the noise, about 30% more
+    brain time. The dodge then planned against every shell in flight
+    (LR 56): two shells 76.5% to 100%, four 56.6% to 99.7%.
+
+IV. CHRONOLOGY
+
+    1. `dodge_plan` and `dodge_release` default 1; tests green;
+       committed and pushed (61c368b).
+    2. Every Caps bit on. Two tests read `Caps::BASELINE` as "off";
+       their off cases now name the part.
+    3. The guard census, every part on against LR 54's defaults, 48
+       seeds: -0.85 +/- 0.59; 38 us a seat-tick.
+    4. Two-shell families: 76.5% and 79.9% with LR 53's plan.
+       `drive_path`, `Dodge::threats`, `Dodge::clearance`; `dodge_every`:
+       100% and 100%; three shells 100%, four 99.7%.
+
+VI. DISCUSSION
+
+    Eighteen parts were built off since LR 11; three were promoted by
+    census, because 48 seeds resolve about a point a seat and most
+    parts move less. Turned on together they cost less than a point,
+    and the brain plays every part it has. The census now guards and
+    the tuner will set the numbers.
+
+VIII. NEXT STEPS
+
+    1. Backlog 46, the duck foreseen by `drive_path`.
+    2. Backlog 48, the starting numbers, after the features.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md sections 54 to 56; build/lr55.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

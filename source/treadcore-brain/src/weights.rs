@@ -144,6 +144,7 @@ weights! {
     DodgeClear "dodge_clear" 2.5, "dodge: tiles past the splash the tank drives to, across the shell's line";
     DodgeHold "dodge_hold" 0.0, "dodge: the share of the shell's flight the tank stays out, arrived or not (1), against only while it drives (0, before LR 27)";
     DodgeRelease "dodge_release" 1.0, "dodge: once at its point before the shell lands, an errand that would drive the tank back into the splash waits (1, the default since LR 54, Paul's choice), against every errand at once (0, before LR 53); thresholded at 0.5";
+    DodgeEvery "dodge_every" 1.0, "dodge: the plan and the release against every hostile shell landing within the horizon, each at its own landing (1, LR 56), against the one shell dodged (0, LR 53); thresholded at 0.5";
     DodgePlan "dodge_plan" 1.0, "dodge: the point by where the tank's own turn and speed will have it when the shell lands (1, the default since LR 54, Paul's choice), against across the shell's line always (0, before LR 53); thresholded at 0.5";
     // The run for the beach (lib.rs `RuleBot::landfall_order`, LR 31).
     // On by default since LR 38 (Paul, 19 October: "yes all three on"):
@@ -229,17 +230,17 @@ caps! {
     DODGE 2 "dodge" true, "step out from under a shell";
     BRIDGES 3 "bridges" true, "lay bridges (hop.rs)";
     ROTATE 4 "rotate" true, "rotate between the push and defence points";
-    FORGET 8 "forget" false, "given-up targets are tried again after forget_for (12b)";
-    BOARD 10 "board" false, "the team board: one picture of the map per team (12e)";
-    TEAM_ROTATE 11 "team_rotate" false, "swap a hurt tank at a hot point for a fresh one at a cold point (12e)";
-    PRICED_CROSSING 12 "priced_crossing" false, "boat or bridge by price, long bridges and scarce trees costing more (12f2)";
-    COLUMN 13 "column" false, "a fleet crosses a bridge in file (12f3)";
-    CYCLE 14 "cycle" false, "after filling up, give the base an item and an improvement and road out (12f1)";
-    ISLAND_SITE 15 "island_site" false, "a small island with few trees is a poor base (12f2)";
-    ESCORT 17 "escort" false, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
-    BRIDGE_JOBS 18 "bridge_jobs" false, "a part-laid bridge is a job on the team board, taken by the next teammate with material; needs board (12f)";
-    DUCK 19 "duck" false, "out of a hostile gun's range or line when it is ready before mine: direct fire denied, since it cannot be dodged once fired (12d, LR 19)";
-    POSTURE 20 "posture" false, "the team board's posture leans the Auto ladder by w_posture; needs board (12e, LR 24)";
+    FORGET 8 "forget" true, "given-up targets are tried again after forget_for (12b)";
+    BOARD 10 "board" true, "the team board: one picture of the map per team (12e)";
+    TEAM_ROTATE 11 "team_rotate" true, "swap a hurt tank at a hot point for a fresh one at a cold point (12e)";
+    PRICED_CROSSING 12 "priced_crossing" true, "boat or bridge by price, long bridges and scarce trees costing more (12f2)";
+    COLUMN 13 "column" true, "a fleet crosses a bridge in file (12f3)";
+    CYCLE 14 "cycle" true, "after filling up, give the base an item and an improvement and road out (12f1)";
+    ISLAND_SITE 15 "island_site" true, "a small island with few trees is a poor base (12f2)";
+    ESCORT 17 "escort" true, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
+    BRIDGE_JOBS 18 "bridge_jobs" true, "a part-laid bridge is a job on the team board, taken by the next teammate with material; needs board (12f)";
+    DUCK 19 "duck" true, "out of a hostile gun's range or line when it is ready before mine: direct fire denied, since it cannot be dodged once fired (12d, LR 19)";
+    POSTURE 20 "posture" true, "the team board's posture leans the Auto ladder by w_posture; needs board (12e, LR 24)";
     CASTLE_CAP 16 "castle_cap" true, "the castle stops at castle_inside and castle_road pillboxes; the rest go to posts on the roads between bases (12h)";
 }
 

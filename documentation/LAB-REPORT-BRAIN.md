@@ -2893,3 +2893,67 @@ brain is written. The parts already built and off are next (LR 55).
 
 Proof: `make test`: brain 78 passed and 10 ignored; client 31; net 14;
 proto 3; sim 50. No warnings.
+
+## 55. Every part on, and the guard, 20 October
+
+By LR 54's rule the eleven parts built and still off go on: `forget`,
+`board`, `team_rotate`, `priced_crossing`, `column`, `cycle`,
+`island_site`, `escort`, `bridge_jobs`, `duck`, `posture`. Every bit of
+`Caps` is now on by default; each old method is one switch away
+(`caps = baseline, -name`).
+
+Two tests compared a part on against `Caps::BASELINE` as the part off
+(`a_tank_ducks_a_gun_ready_before_its_own`, its duel too, and
+`a_teammate_finishes_a_part_laid_bridge`); their off cases now name the
+part off. No other test moved.
+
+**The guard.** The trial team on the new defaults against the defaults
+of LR 54 (`caps = baseline` minus the eleven), the fair census on
+naval.map, 900 s, 3 respawns, seeds 0 to 47, a frozen binary.
+
+| 48 seeds | Every part on, against LR 54's defaults |
+| --- | --- |
+| Difference a seat | -0.85 +/- 0.59 (1.44 errors, inside the noise) |
+| The three jobs' means, trial / baseline | 7.33 / 9.26, 7.30 / 9.11, 9.32 / 8.12 |
+| Brain time | 37.8 to 38.9 us a seat-tick (26.5 to 29.6 in LR 47) |
+| The trial team's rung seat-seconds | fortify 3,780 / 3,630 / 3,694; expand 4,241 / 3,262 / 2,861; turrets 455 / 820 / 444 |
+
+It still works, a little less on the score, inside the noise; by
+history the posture's lean (LR 24 to 26: -0.81, -1.04) and
+`team_rotate` (LR 24: -0.83) are the likely costs, and the tuner's
+phase will set their numbers (backlog 48). The brain costs about 30%
+more time; sixteen seats at 4x speed would take about 5% of a core.
+
+## 56. A dodge against every shell in flight, 20 October
+
+Backlog 45. LR 53's plan drove each candidate against the one shell it
+dodged, and the release checked only the last shell dodged. Two guns
+on one tank, or one gun's salvo, are common in the quad.
+
+**The families**: `scenarios/families/a-rolling-tank-under-two-shells.toml`
+and `a-standing-tank-under-two-shells.toml`, two shells from any sides,
+each landing within 3 tiles of a Commander's tank in 1.5 to 3.5 s.
+
+**The part**: `dodge_every` (weights.rs, thresholded at 0.5, on by the
+rule of LR 54). `Dodge::threats`: every hostile indirect shell in
+flight landing within `dodge_horizon`, beside the one dodged.
+`drive_path`: `drive_to`'s positions after every tick (`drive_to` is
+now its last; `drive_to_foresees_the_world` still reads 0.000).
+`Dodge::clearance`: the least, over the landings, of the tank's
+distance from each impact at its own landing tick, less the splash and
+the margin. `planned` takes the first candidate clear of all of them;
+`release` strikes an errand foreseen inside any of them, dodged or not.
+
+| 1,000 seeds each | Plan and release on the one shell (LR 53) | On every shell |
+| --- | --- | --- |
+| Rolling, two shells within 3 tiles | 76.5% +/- 1.3% | **100.0%** |
+| Standing, two shells within 3 tiles | 79.9% +/- 1.3% | **100.0%** |
+| Rolling, three within 2.5 tiles | 67.7% +/- 1.5% | **100.0%** |
+| Rolling, four within 2.5 tiles | 56.6% +/- 1.6% | **99.7% +/- 0.2%** |
+| One shell, rolling and standing (LR 53) | 100.0% | 100.0% |
+
+(Without LR 53's two parts the two-shell families read 67.0% rolling and
+75.9% standing.)
+
+**The test**: `a-dodge-clears-two-shells.toml`, seed 2 of the rolling
+family; it holds, and with `dodge_every` 0 the tank is hit.

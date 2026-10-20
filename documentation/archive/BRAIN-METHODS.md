@@ -39,24 +39,24 @@ Section numbers are the lab report's (LR); dates are 2026.
 | The board's posture as a threshold ladder (Defend > Economy > Expand > Connect > Fortify) | five scores, each weighted, blended with the ladder's pick by `posture_scored` (1) | 18 Oct, LR 25 | `posture_scored = 0` | `each_posture_scores_its_own_case`; 48 seeds under `posture`: -0.23 +/- 0.74 against the ladder's |
 | The dodge's point across the shell's line, on the tank's side (the first reachable since LR 52) | the point `drive_to` foresees clear of the splash at the landing (`dodge_plan` 1) | 20 Oct, LR 54 (Paul's choice) | `dodge_plan = 0` | families 89.6% to 100% with the release; 96 naval seeds +0.81, error 0.40 (LR 53) |
 | At its point before the shell lands, the tank free to any errand | an errand foreseen in the splash at the landing waits (`dodge_release` 1) | 20 Oct, LR 54 (Paul's choice) | `dodge_release = 0` | families 96.2% to 100% with the plan (LR 53) |
+| Given-up targets remembered for the match (L6) | memories that run out after `forget_for` | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -forget` | alone, 12 seeds: -0.36, error 0.23 (LR 24) (LR 11, 24); every part on together -0.85, error 0.59 (LR 55) |
+| Each decision taken at once, every think (L7) | desire vectors, a turret held until a challenger wins three picks, the Auto rung confirmed over two thinks, the stance from smoothed odds | 20 Oct, LR 46 (`smooth` a weight) | `w_smooth = 0` (its default 0.05 blends the parts that blend) | 7.55 a seat against 9.47, worse; 12 seeds: -1.98, error 1.25 (LR 11, 15, 24); the old play against 0.05, +0.47, error 0.60 (LR 46) |
+| Each tank on its own picture of the map (L5) | the team board: influence, front, defence points, jobs kept, posture | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -board` | 12 seeds: identical matches, it changes no decision alone (LR 11, 24); every part on together -0.85, error 0.59 (LR 55) |
+| Each tank balancing only itself | a hurt tank at the hottest point swapped for a fresh one | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -team_rotate` | 12 seeds: -0.83, error 0.87 (LR 11, 24); every part on together -0.85, error 0.59 (LR 55) |
+| Every gap of 20 water tiles or fewer bridged | boat or bridge by price: long bridges and scarce trees cost more | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -priced_crossing` | 12 seeds: +0.11, error 0.56 (LR 11, 24); every part on together -0.85, error 0.59 (LR 55) |
+| The wedge kept on a bridge | the fleet in file on a bridge | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -column` | 12 seeds: -0.06, error 0.41 (LR 11, 24); every part on together -0.85, error 0.59 (LR 55) |
+| Trees felled only when a build is short (L8) | after filling up: an item and an improvement for the base, then a road out | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -cycle` | 12 seeds: +0.31, error 0.43 (LR 11, 24); every part on together -0.85, error 0.59 (LR 55) |
+| Any island a base | a small island with few trees a poor site | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -island_site` | 12 seeds: identical matches; never asked in a fleet (backlog 20) (LR 11, 24); every part on together -0.85, error 0.59 (LR 55) |
+| A leader fetching a far pillbox alone | the fleet gathered first, escorting it home along the road | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -escort` | 7.70 against 7.70: never reached in 900 s; 12 seeds: +0.01 (LR 16, 24); every part on together -0.85, error 0.59 (LR 55) |
+| A bridge given up left half laid; a leader asking one wingman for its next tile | part-laid bridges on the team board, taken by the next teammate with material | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -bridge_jobs` | 7.31 against 8.01, inside the noise; 12 seeds: +0.44, error 0.91 (LR 18, 24); every part on together -0.85, error 0.59 (LR 55) |
+| Direct fire taken where it falls (only kiting, against the one enemy a tank fights, keeps out of reach) | the duck: out of a hostile gun's range or line, seen or remembered, when it is ready before one's own | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -duck` | 7.01 against 7.52, inside the noise; 12 seeds: +0.39, error 1.04 (LR 21, 24); every part on together -0.85, error 0.59 (LR 55) |
+| The Auto ladder's first rung that holds (L1) | the team's posture leaning the pick, `(1 - w) order + w lean` | 20 Oct, LR 55 (every part on, Paul's rule of LR 54) | `caps = baseline, -posture` | 48 seeds: -0.81, error 0.65; scored (LR 25) -1.04, error 0.58 (LR 24, 25); every part on together -0.85, error 0.59 (LR 55) |
 | The window's pilot playing on no settings at all | the pilot on the weights page's settings, which start from the team file or `--weights` | 18 Oct, LR 17 | removed | `client::tune` |
 
 ## Current, challenger off
 
-| Current method (the default) | Challenger | Switch | Measured | LR |
-| --- | --- | --- | --- | --- |
-| Given-up targets remembered for the match (L6) | memories that run out after `forget_for` | `forget` | alone, 12 seeds: -0.36, error 0.23 (LR 24) | 11, 24 |
-| Each decision taken at once, every think (L7) | desire vectors, a turret held until a challenger wins three picks, the Auto rung confirmed over two thinks, the stance from smoothed odds | `smooth` | 7.55 a seat against 9.47, worse; 12 seeds: -1.98, error 1.25 | 11, 15, 24 |
-| Each tank on its own picture of the map (L5) | the team board: influence, front, defence points, jobs kept, posture | `board` | 12 seeds: identical matches, it changes no decision alone | 11, 24 |
-| Each tank balancing only itself | a hurt tank at the hottest point swapped for a fresh one | `team_rotate` | 12 seeds: -0.83, error 0.87 | 11, 24 |
-| Every gap of 20 water tiles or fewer bridged | boat or bridge by price: long bridges and scarce trees cost more | `priced_crossing` | 12 seeds: +0.11, error 0.56 | 11, 24 |
-| The wedge kept on a bridge | the fleet in file on a bridge | `column` | 12 seeds: -0.06, error 0.41 | 11, 24 |
-| Trees felled only when a build is short (L8) | after filling up: an item and an improvement for the base, then a road out | `cycle` | 12 seeds: +0.31, error 0.43 | 11, 24 |
-| Any island a base | a small island with few trees a poor site | `island_site` | 12 seeds: identical matches; never asked in a fleet (backlog 20) | 11, 24 |
-| A leader fetching a far pillbox alone | the fleet gathered first, escorting it home along the road | `escort` | 7.70 against 7.70: never reached in 900 s; 12 seeds: +0.01 | 16, 24 |
-| A bridge given up left half laid; a leader asking one wingman for its next tile | part-laid bridges on the team board, taken by the next teammate with material | `bridge_jobs` (needs `board`) | 7.31 against 8.01, inside the noise; 12 seeds: +0.44, error 0.91 | 18, 24 |
-| Direct fire taken where it falls (only kiting, against the one enemy a tank fights, keeps out of reach) | the duck: out of a hostile gun's range or line, seen or remembered, when it is ready before one's own | `duck` | 7.01 against 7.52, inside the noise; 12 seeds: +0.39, error 1.04 | 21, 24 |
-| The Auto ladder's first rung that holds (L1) | the team's posture leaning the pick, `(1 - w) order + w lean` | `posture` (needs `board`), `w_posture` | 48 seeds: -0.81, error 0.65; scored (LR 25) -1.04, error 0.58 | 24, 25 |
+None since 20 October: by Paul's rule (LR 54) a part lands on, and the
+parts built off went on together in LR 55 (archived above).
 
 ## Shown impossible
 

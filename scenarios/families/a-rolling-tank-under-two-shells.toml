@@ -1,0 +1,31 @@
+# LAB-REPORT-BRAIN.md section 56: a family, its situation drawn from the
+# seed. A Commander on Auto, rolling, any heading; two shells from any
+# sides land within 3 tiles of it, each in 1.5 to 3.5 s. Run over many
+# seeds: make scenario S=this RUNS=1000.
+name = "a rolling tank under two shells, any geometry"
+players = 2
+seconds = 4.5
+[[tank]]
+seat = 0
+heading = "any"
+speed = 4
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+[[shell]]
+owner = 1
+at = "seat:0"
+scatter = 3
+from = [30, 0]
+from_any = true
+lands_in = [1.5, 3.5]
+[[shell]]
+owner = 1
+at = "seat:0"
+scatter = 3
+from = [30, 0]
+from_any = true
+lands_in = [1.5, 3.5]
+[expect]
+hits_on = { seat = 0, max = 0 }

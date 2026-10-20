@@ -1,0 +1,34 @@
+# LAB-REPORT-BRAIN.md section 56, `dodge_every`: seed 2 of the rolling
+# two-shell family. Two shells land near a Commander's rolling tank.
+# At `dodge_every` 0 the dodge plans against the first alone and runs
+# into the second's splash; at 1 every candidate is driven against both
+# landings, each at its own tick.
+name = "a dodge clears two shells"
+seed = 2
+players = 2
+seconds = 4.5
+[[tank]]
+seat = 0
+heading = "any"
+speed = 4
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+weights = { dodge_every = 1 }
+[[shell]]
+owner = 1
+at = "seat:0"
+scatter = 3
+from = [30, 0]
+from_any = true
+lands_in = [1.5, 3.5]
+[[shell]]
+owner = 1
+at = "seat:0"
+scatter = 3
+from = [30, 0]
+from_any = true
+lands_in = [1.5, 3.5]
+[expect]
+hits_on = { seat = 0, max = 0 }
