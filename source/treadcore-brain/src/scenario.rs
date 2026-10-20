@@ -193,6 +193,14 @@ pub struct Outcome {
 /// Run a scenario: the outcome, and every expectation that failed (none
 /// is a pass). A file that cannot be read or set up is an error.
 pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
+    run_seeded(doc, None)
+}
+
+/// As `run`, on a seed: the world's (`Scenario::seed`, so its map
+/// outside what the file carves) and every brain's (theirs xor it), so
+/// a run over many seeds samples the scenario's chances (`many`). None
+/// is the file's own world, as `run`.
+pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>), String> {
     let num = |t: &BTreeMap<String, Value>, k: &str, d: f64| t.get(k).and_then(Value::num).unwrap_or(d);
     let players = num(&doc.top, "players", 2.0) as usize;
     let seconds = num(&doc.top, "seconds", 60.0);
@@ -202,7 +210,10 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
         None => None,
         Some(_) => return Err("teams: a list".into()),
     };
-    let sc = Scenario { swarm_interval: 0, time_limit: 0, teams, ..Scenario::bots(players) };
+    let mut sc = Scenario { swarm_interval: 0, time_limit: 0, teams, ..Scenario::bots(players) };
+    if let Some(s) = seed {
+        sc.seed = s;
+    }
     let mut w = World::new(sc);
     if doc.top.get("pillboxes") == Some(&Value::Bool(false)) {
         w.pillboxes.clear();
@@ -296,7 +307,7 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
     let mut brains: Vec<(PlayerId, Box<dyn Brain>)> = Vec::new();
     for b in list("brain") {
         let seat = num(b, "seat", 0.0) as PlayerId;
-        let seed = num(b, "seed", 5.0) as u64;
+        let seed = num(b, "seed", 5.0) as u64 ^ seed.unwrap_or(0);
         let brain: Box<dyn Brain> = match b.get("kind").and_then(Value::str).unwrap_or("commander") {
             "rulebot" => {
                 // A plain RuleBot reads no Settings; `weights` here sets
@@ -383,8 +394,9 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
         let mut orders = Vec::new();
         for (seat, b) in brains.iter_mut() {
             let obs = w.observe(*seat);
+            // With the map, as `run_bots` gives it in a match.
             if obs.me.as_ref().map(|t| t.alive).unwrap_or(false) {
-                orders.extend(b.think(&obs).into_iter().map(|cmd| Order { player: *seat, cmd }));
+                orders.extend(b.think_on(&obs, Some(&w.map)).into_iter().map(|cmd| Order { player: *seat, cmd }));
             }
         }
         w.step(&orders);
@@ -528,6 +540,40 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
     Ok(failed)
 }
 
+/// A scenario over `runs` seeds (`first`, `first + 1`, ...): how many
+/// held, the share, and its standard error, sqrt(p (1 - p) / n). The
+/// failures are kept, the first few for the report.
+pub fn many(doc: &Doc, first: u64, runs: u64) -> Result<(u64, f64, f64, Vec<String>), String> {
+    let (mut held, mut why) = (0u64, Vec::new());
+    for k in 0..runs {
+        let (_, failed) = run_seeded(doc, Some(first + k))?;
+        if failed.is_empty() {
+            held += 1;
+        } else if why.len() < 5 {
+            why.push(format!("seed {}: {}", first + k, failed.join("; ")));
+        }
+    }
+    let p = held as f64 / runs.max(1) as f64;
+    Ok((held, p, (p * (1.0 - p) / runs.max(1) as f64).sqrt(), why))
+}
+
+/// `SCENARIO_SET="name=value ..."`: those weights set on every brain in
+/// the file (added to its `weights`, or a new one), so two settings run
+/// on the same seeds.
+pub fn set_weights(doc: &mut Doc, set: &str) -> Result<(), String> {
+    for kv in set.split_whitespace() {
+        let (k, v) = kv.split_once('=').ok_or(format!("not name=value: {}", kv))?;
+        let v: f64 = v.parse().map_err(|_| format!("not a number: {}", v))?;
+        for b in doc.lists.get_mut("brain").into_iter().flatten() {
+            let w = b.entry("weights".into()).or_insert_with(|| Value::Table(BTreeMap::new()));
+            if let Value::Table(t) = w {
+                t.insert(k.to_string(), Value::Num(v));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Read and run a file: its failures, or the error that stopped it.
 pub fn run_file(path: &std::path::Path) -> Result<(Outcome, Vec<String>), String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {}", path.display(), e))?;
@@ -545,6 +591,19 @@ mod tests {
 
     /// The TOML subset: strings with a `#`, numbers, lists, inline
     /// tables, `[[tables]]`, `[expect]`, and errors that name the line.
+    /// `set_weights` adds a weight to every brain, creating `weights`
+    /// where a brain has none.
+    #[test]
+    fn a_weight_is_set_on_every_brain() {
+        let mut d = parse("[[brain]]\nseat = 0\n[[brain]]\nseat = 1\nweights = { landfall_shy = 1 }\n").unwrap();
+        set_weights(&mut d, "landfall_memory=0").unwrap();
+        for b in &d.lists["brain"] {
+            assert_eq!(b["weights"].table().unwrap()["landfall_memory"], Value::Num(0.0));
+        }
+        assert_eq!(d.lists["brain"][1]["weights"].table().unwrap()["landfall_shy"], Value::Num(1.0));
+        assert!(set_weights(&mut d, "nope").is_err());
+    }
+
     #[test]
     fn the_subset_reads_values_tables_and_lists() {
         let d = parse("name = \"a # b\"  # a comment\nn = 3\n[[brain]]\nseat = 0\n[[brain]]\nseat = 1\nat = [30, -2.5]\n[expect]\nmoved = { seat = 0, more_than = 2.5 }\n").unwrap();
@@ -573,6 +632,26 @@ mod tests {
         assert!(bad.is_empty(), "{}", bad.join("\n"));
     }
 
+    /// One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with
+    /// `SCENARIO_SET` applied: how often it holds. `make scenario
+    /// S=path RUNS=100 SET="landfall_memory=0"`.
+    #[test]
+    #[ignore]
+    fn scenario_many() {
+        let path = std::env::var("SCENARIO").expect("SCENARIO=path");
+        let runs: u64 = std::env::var("RUNS").ok().and_then(|s| s.parse().ok()).unwrap_or(100);
+        let first: u64 = std::env::var("SEED0").ok().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let mut doc = parse(&std::fs::read_to_string(&path).expect("the file")).unwrap_or_else(|e| panic!("{}", e));
+        let set = std::env::var("SCENARIO_SET").unwrap_or_default();
+        set_weights(&mut doc, &set).unwrap_or_else(|e| panic!("{}", e));
+        let started = std::time::Instant::now();
+        let (held, p, se, why) = many(&doc, first, runs).unwrap_or_else(|e| panic!("{}", e));
+        for w in &why {
+            eprintln!("  {}", w);
+        }
+        eprintln!("scenario {} [{}]: held {} of {}, {:.1}% +/- {:.1}%, seeds {} to {}, {:.1} s", path, set, held, runs, 100.0 * p, 100.0 * se, first, first + runs - 1, started.elapsed().as_secs_f32());
+    }
+
     /// One file, with its trace: `SCENARIO=path cargo test -p
     /// treadcore-brain --release -- --ignored scenario_one --nocapture`
     /// (`make scenario S=path`).
@@ -580,7 +659,11 @@ mod tests {
     #[ignore]
     fn scenario_one() {
         let path = std::env::var("SCENARIO").expect("SCENARIO=path");
-        let (out, failed) = run_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{}", e));
+        // `SEED`: one of `scenario_many`'s seeds, to trace a failure.
+        let seed = std::env::var("SEED").ok().and_then(|s| s.parse().ok());
+        let mut doc = parse(&std::fs::read_to_string(&path).expect("the file")).unwrap_or_else(|e| panic!("{}", e));
+        set_weights(&mut doc, &std::env::var("SCENARIO_SET").unwrap_or_default()).unwrap_or_else(|e| panic!("{}", e));
+        let (out, failed) = run_seeded(&doc, seed).unwrap_or_else(|e| panic!("{}", e));
         for line in &out.trace {
             eprintln!("  {}", line);
         }

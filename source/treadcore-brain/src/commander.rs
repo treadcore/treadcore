@@ -2407,7 +2407,7 @@ impl Commander {
         // or a hop picks up again after.
         let mending = self.reviving.is_some() && matches!(me.pillboys.task, Some(PillboyTask::Repair { .. }));
         self.dodge.dropped = !self.dodges;
-        let dodge = self.dodge.order_with(obs, &me, !mending).filter(|_| self.dodges);
+        let dodge = self.dodge.order_on(obs, &me, !mending, map).filter(|_| self.dodges);
         if dodge.is_some() || (self.dodges && self.dodge.holding(obs, &me)) {
             cmds.extend(dodge);
             self.last_move = None;

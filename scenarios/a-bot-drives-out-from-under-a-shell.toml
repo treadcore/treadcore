@@ -4,6 +4,7 @@
 name = "a bot drives out from under a shell"
 players = 2
 seconds = 4
+trace_every = 0.25
 
 [[brain]]
 seat = 0

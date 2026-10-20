@@ -36,3 +36,4 @@ report is what ties a conversation to them. Named
 | [020](CI-020-2026-10-20-without-running-out.md) | 20 October 2026 | Each switch alone, without running out of tanks | 0072 | LAB-REPORT-BRAIN.md section 44 |
 | [021](CI-021-2026-10-20-smooth-as-a-weight.md) | 20 October 2026 | The census binary frozen, and `smooth` as a weight | 0073, 0074 | LAB-REPORT-BRAIN.md sections 45 and 46 |
 | [022](CI-022-2026-10-20-scenario-files.md) | 20 October 2026 | The two leads, and scenario files | 0075, 0076 | LAB-REPORT-BRAIN.md sections 47 and 48 |
+| [023](CI-023-2026-10-20-a-dodge-into-water.md) | 20 October 2026 | The circle at the edge of sight, and a dodge into water | 0077 to 0079 | LAB-REPORT-BRAIN.md sections 49 to 52 |

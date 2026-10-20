@@ -357,6 +357,16 @@ impl Dodge {
     /// mending a wreck beside it dodges a shell it sees but takes a hit
     /// where it stands: a jink pulled revivers off and the wreck died.
     pub fn order_with(&mut self, obs: &Observation, me: &Tank, jink: bool) -> Option<Command> {
+        self.order_on(obs, me, jink, None)
+    }
+
+    /// As `order_with`, with the map: the dodge point is one the tank can
+    /// reach (passable ground; afloat, water or a beach). Across the shell's line
+    /// on the near side first, then the far side, then back along the
+    /// line and forward; without the map, the near side, as before
+    /// (LR 52: a dodge into water was refused and the tank sat under the
+    /// shell).
+    pub fn order_on(&mut self, obs: &Observation, me: &Tank, jink: bool, map: Option<&Map>) -> Option<Command> {
         self.watch(me, obs.tick);
         self.dodged.retain(|id| obs.shells.iter().any(|s| s.id == *id));
         let hostile = |o: PlayerId| o != obs.player && !obs.allied(o);
@@ -386,7 +396,17 @@ impl Dodge {
             let across = V2::new(-line.y, line.x);
             let off = me.pos - s.impact;
             let side = if off.x * across.x + off.y * across.y >= 0.0 { 1.0 } else { -1.0 };
-            return Some(Command::Move { to: obs.clamp(s.impact + across.scale(side * (SPLASH_RADIUS + clear))) });
+            let reach = SPLASH_RADIUS + clear;
+            let points = [across.scale(side * reach), across.scale(-side * reach), line.scale(-reach), line.scale(reach)].map(|d| obs.clamp(s.impact + d));
+            // Afloat, water or a beach (a boat that runs ashore lands,
+            // often the best way out); ashore, passable ground.
+            let fits = |p: V2| match map {
+                Some(m) if me.boat => m.at(p) == Terrain::Water || m.at(p).passable(),
+                Some(m) => m.at(p).passable(),
+                None => true,
+            };
+            let to = points.iter().copied().find(|p| fits(*p)).unwrap_or(points[0]);
+            return Some(Command::Move { to });
         }
         if jink && me.last_hit_tick > self.jinked && obs.tick.saturating_sub(me.last_hit_tick) <= TICK_HZ as Tick / 2 {
             self.jinked = me.last_hit_tick;
@@ -904,7 +924,7 @@ impl RuleBot {
         // Out of the way of a shell coming down on us, or a jink when
         // hit; the rest of the think waits for the next.
         if !self.rookie {
-            if let Some(d) = self.dodge.order(obs, me) {
+            if let Some(d) = self.dodge.order_on(obs, me, true, map) {
                 cmds.push(d);
                 self.settled_at = None;
                 return cmds;

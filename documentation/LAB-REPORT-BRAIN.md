@@ -2660,3 +2660,75 @@ built after the fix.
 Identical to the hundredth: the census, and every measurement in this
 report, played Commanders with their Settings applied all along. Only
 Commanders built outside a deal were affected.
+
+## 52. Scenarios over many seeds, and a dodge into water, 20 October
+
+**The mode.** `scenario::many` runs a scenario over many seeds: the
+world's seed (`Scenario::seed`, so the map outside what the file
+carves) and every brain's (its seed xor the run's). It reports how
+often it held and the binomial error, sqrt(p (1 - p) / n).
+`SCENARIO_SET="name=value"` sets a weight on every brain
+(`set_weights`), so two settings run on the same seeds. `make scenario
+S=file RUNS=100 SET=...`; `SEED=n` traces one seed. Proof:
+`a_weight_is_set_on_every_brain`. Brains in a scenario now think with
+the map (`think_on`), as `run_bots` gives it in a match. That changed
+no result.
+
+**Every scenario over 100 seeds** (each takes 0.2 to 2.5 s):
+
+| Scenario | Held |
+| --- | --- |
+| a boat remembers the gun on the near beach | 100 |
+| a bot drives out from under a shell | 97 (before the fix below) |
+| a commander's boat does not circle | 100; with `landfall_memory` 0, **0** |
+| a commander defends its depot | 99 |
+| a commander takes a neutral pillbox | 100 |
+
+**The memory's curve**, the circling scenario at each memory, 100 seeds:
+0 s holds 0 times; 2, 4, 6, 8, 10, 15, 20, 30 and 60 s each hold 100
+times. In this geometry it is a step, not a slope: any memory longer
+than the landfall's two-second commitment breaks the circle. That is
+also why LR 41's planted test found nothing to climb between 3 and 7
+s. The census's view (LR 35: killers seen 10 to 60 s before) still
+argues for a long memory in matches, where guns move and boats cross
+far.
+
+**The dodge into water.** On 3 of 100 seeds the shell scenario failed.
+`SEED=8` traced at a quarter second: the dodge's point, across the
+shell's line on the near side, was water. The world refused the move
+("refused: water"), the shell was already marked dodged, and the tank
+sat under it for 3 s. `Dodge::order_on` (lib.rs) now takes the map,
+which both callers hold. It tries the near side, the far side, back
+along the line, and forward, and takes the first point the tank can
+reach: passable ground ashore; afloat, water or a beach (a boat that
+runs ashore lands). Without a map it acts as before (`order_with`).
+The shell scenario then held on **1,000 of 1,000** seeds.
+
+**Its effect in matches.** A change to a reflex every team has cannot
+be paired against itself in the census, so the same 48 seeds were run
+as a null before and after, from two frozen binaries (the tree without
+the fix by `git stash`, then with it), `CENSUS_ACTS` on. The first
+version required water afloat; it made boats worse, so it was
+corrected to water or a beach.
+
+| Same 48 seeds, every team | Before | Water only afloat | Water or a beach afloat |
+| --- | --- | --- | --- |
+| Deaths (the trial seat's team) | 2,472 | 2,390 | **2,297 (-7.1%)** |
+| Dead share of seat-time | 42.5% | 40.9% | **40.6%** |
+| Ashore dodges: hit / by the dodged shell / killed | 32.3% / 15.7% / 6.5% | 24.0% / 10.6% / 4.1% | **25.5% / 10.4% / 5.1%** |
+| Afloat dodges: hit / by the dodged shell / killed | 16.3% / 7.1% / 14.8% | 17.4% / 7.9% / 16.6% | **15.4% / 6.6% / 14.0%** |
+
+Ashore, a third fewer dodges are caught by their own shell. Afloat,
+the beach restores and slightly betters the old rate. 175 fewer deaths
+on the same seeds. These are absolute counts from two unpaired runs:
+no error is given, and the mean score a seat (8.70, 8.81) is relative
+to how every team plays, so it says nothing here.
+
+What this changes. The census needed an hour to show the memory's
+gain; a scenario over 100 seeds shows its mechanism in under two
+seconds, and its first use found a bug that had been in the dodge
+since it was written. A fix to a reflex every team shares is read by
+before-and-after nulls on the same seeds, with absolute counts.
+
+Proof: `make test`: brain 77 passed and 10 ignored; client 31; net 14;
+proto 3; sim 50. No warnings. 378 functions, 121 undocumented.

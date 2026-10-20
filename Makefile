@@ -60,7 +60,9 @@
 #   make test        cargo test, every crate
 #   make tune        evolve the bots' weights over the brain census (scripts/tune.sh)
 #   make scenario    run a scenario file (S=scenarios/x.toml) and print its
-#                    trace; every file in scenarios/ is also a test
+#                    trace; every file in scenarios/ is also a test.
+#                    RUNS=n runs it over n seeds and gives how often it
+#                    holds; SET="name=value" sets a weight on every brain
 #   make spsa        tune named weights by SPSA over the paired census
 #                    (scripts/spsa.sh; TUNE, STEPS, SEEDS, SET, START)
 #   make brainmap    write documentation/BRAIN-MAP.md: every brain file and
@@ -266,7 +268,11 @@ spsa:
 
 scenario:
 	@test -n "$(S)" || { echo "make scenario S=scenarios/name.toml"; exit 1; }
-	@SCENARIO="$(abspath $(S))" cargo test -q -p treadcore-brain --release -- --ignored scenario_one --nocapture
+	@if [ -n "$(RUNS)" ]; then \
+		SCENARIO="$(abspath $(S))" RUNS="$(RUNS)" SEED0="$(SEED0)" SCENARIO_SET="$(SET)" cargo test -q -p treadcore-brain --release -- --ignored scenario_many --nocapture; \
+	else \
+		SCENARIO="$(abspath $(S))" SEED="$(SEED)" SCENARIO_SET="$(SET)" cargo test -q -p treadcore-brain --release -- --ignored scenario_one --nocapture; \
+	fi
 
 brainmap:
 	@python3 -I scripts/brainmap.py documentation/BRAIN-MAP.md

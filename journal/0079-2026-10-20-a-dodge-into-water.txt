@@ -1,0 +1,59 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 11:00:00 -0700
+Subject: [JOURNAL 0079] Scenarios over many seeds, and a dodge into water
+Message-ID: <0079.20261020@treadcore.org>
+In-Reply-To: <0078.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: scenarios, dodge, bug, before and after, memory curve
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 409c9ae (pushed); this entry's commit follows
+
+               SCENARIOS OVER MANY SEEDS, AND A DODGE INTO WATER
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    Scenarios now run over many seeds and report how often they hold.
+    The circling scenario holds 100 of 100 with memory and 0 without,
+    in under two seconds; any memory of 2 s or more breaks the circle.
+    The shell scenario held 97 of 100: on the three, the dodge chose a
+    point in the water, was refused, and sat under the shell. The fix
+    takes the first reachable point. 1,000 of 1,000 then; in the
+    census, the same 48 seeds before and after, 7.1% fewer deaths.
+
+IV. CHRONOLOGY
+
+    1. `run_seeded`, `many`, `set_weights`, `scenario_many`; brains
+       given the map.
+    2. Every scenario over 100 seeds; the memory's curve, a step at 2 s.
+    3. The shell's three failures; `SEED=8` at a quarter second:
+       "refused: water".
+    4. `Dodge::order_on` with the map; 1,000 of 1,000.
+    5. Before and after, two frozen binaries, the same 48 seeds. The
+       first fix (water only afloat) made boats worse; a boat may now
+       run onto a beach. 2,472 deaths, 2,390, then 2,297.
+
+VI. DISCUSSION
+
+    The dodge has been measured four ways since LR 27 (the death
+    census, the hold, the switch off, SPSA), and each read it as a
+    whole. A scenario run on a hundred grounds found the case where it
+    did nothing at all.
+
+VIII. NEXT STEPS
+
+    1. Backlog 42, `duck`; or the boat's dodge (31), now with a
+       scenario to test it.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 52; build/lr52.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

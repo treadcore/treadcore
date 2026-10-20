@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Fixed: a dodge whose point was water (or a wall) was refused, and the
+  tank sat under the shell. The dodge now takes the first reachable
+  point: the near side, the far side, back and forward along the
+  shell's line; a boat may run onto a beach. Over the same 48 seeds,
+  7.1% fewer deaths and a third fewer dodges caught by their own shell
+  ashore (LAB-REPORT-BRAIN.md section 52).
+- Added: `make scenario S=file RUNS=n` runs a scenario over n seeds and
+  gives how often it holds; `SET="name=value"` sets a weight on every
+  brain; `SEED=n` traces one seed.
 - Fixed: a Commander built directly (`Commander::new`: tests,
   scenarios, tools) applies the default Settings, not only holds them;
   it played the landfall's weights at 0. Dealt bots were not affected.
