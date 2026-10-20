@@ -2466,3 +2466,66 @@ this way since LR 36, one held (the landfall's memory, consistent in
 every run), and three did not.
 
 Proof: no code changed.
+
+## 48. Scenario files, 20 October
+
+Backlog 24, from Paul (18 October): "is there a way to create
+description and try to attempt these via playtests faster", and his
+question of 20 October, "is there an improved and faster way for you
+to test ?". A census answers "does it win?" in 25 minutes. A single
+behaviour, such as "does the boat steer clear?", should be answerable in
+seconds, written as text rather than as a Rust test.
+
+**The part**: `scenario.rs`, and `scenarios/*.toml`.
+- **The form**, a part of TOML read in the brain (no new crate):
+  `key = value`, numbers, "strings", true and false, `[lists]`,
+  `{ inline = tables }`, `[expect]`, and `[[brain]]`, `[[pillbox]]`,
+  `[[depot]]`, `[[shell]]`, `[[event]]`. Positions are anchors with
+  offsets: `"seat:0"`, `"depot:0"`, `"pillbox:0"`.
+- **The setup**: `players`, `seconds`, `pillboxes = false`. A
+  `[[brain]]` is a `rulebot` or a `commander` with a goal
+  (`hunt_pillboxes`, `defend_depot:0`, `auto`, ...); a seat without
+  one sits still, as in the Rust tests. A `[[pillbox]]` is placed as
+  `one_pillbox` places it; a `[[depot]]` is the nearest, given an
+  owner; a `[[shell]]` lands on an anchor after `lands_in` seconds; an
+  `[[event]]` moves a seat's tank at a second.
+- **The checks** (`[expect]`): `hits_on`, `hits`, `moved`,
+  `shells_spent`, `pillbox_owned_by` (with `by`), `pillbox_damage`,
+  `pillbox_alive`. A run reports every failed check in words, not the
+  first.
+- **The runners**: `every_scenario_holds` runs every file under
+  `scenarios/` in `cargo test`; `make scenario S=file` runs one and
+  prints each thinking seat's status code every 5 s, and when the
+  match ends (the world stops then, as in the Rust tests; the trace now
+  says so).
+
+**The proof** (backlog 24: "three of today's tests rewritten as
+scenarios pass and fail as they do"). Three tests rewritten:
+`a_bot_drives_out_from_under_a_shell` (lib.rs),
+`a_commander_takes_a_neutral_pillbox_without_a_shot` and
+`a_commander_defends_its_depot` (commander.rs). Each Rust test and its
+scenario was run unchanged, then under two deliberate breaks of the
+code, the files restored by a trap on every path:
+
+| | Rust test | Scenario |
+| --- | --- | --- |
+| Unmutated: the three | pass | pass |
+| A, the dodge never acts: shell | FAIL | FAIL |
+| B, the Commander never moves: neutral pillbox | FAIL | FAIL |
+| B, the Commander never moves: depot | pass | pass |
+
+They agree in every case. (Under B the defender still hits an intruder
+placed 5 tiles from its depot without moving, in both.) The three run
+in 0.02 s together: two tanks a world, so a step costs microseconds.
+
+What this changes. A new behaviour can be specified as a scenario
+before it is built, run in a second, and kept as a test, and the
+census kept for whether it wins. The Rust tests stay for now; whether
+to retire the ported three is Paul's call. Next for the form: a
+`[[gun]]` or `[[tank]]` placement for the landfall's situations, and
+a census-sized mode, a scenario over many seeds with its rate and
+error.
+
+Proof: `make test`: brain 76 passed and 9 ignored; client 31; net 14;
+proto 3; sim 50. No warnings. 18 files, 374 functions, 121
+undocumented.

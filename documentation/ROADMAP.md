@@ -547,7 +547,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     weights, expectations; CI-001 VII.B) and `make scenario` replace a
     hand-written Rust test for each new behaviour. Proof: three of
     today's tests rewritten as scenarios pass and fail as they do.
-    Cost: a step. State: designed.
+    Cost: a step. State: done 20 October (LR 48): `scenario.rs`,
+    `scenarios/`, `make scenario`; three tests ported, agreeing with
+    their Rust forms unmutated and under two deliberate breaks.
 25. The census on more than one map. (18 October; cause: CI-001 A8,
     every census since LR 11 is naval.map.) Goal 4, 12g. Hypothesis: a
     part's difference holds on a generated map as on naval.map.

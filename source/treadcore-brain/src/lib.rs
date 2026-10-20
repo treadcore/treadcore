@@ -31,6 +31,7 @@ pub mod ledger;
 pub mod memory;
 pub mod meter;
 pub mod rotation;
+pub mod scenario;
 pub mod status;
 pub mod tactics;
 pub mod weights;

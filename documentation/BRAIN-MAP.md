@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-17 files, 363 functions (121 with no doc comment), 82 tests.
+18 files, 374 functions (121 with no doc comment), 85 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -20,10 +20,11 @@ structure as built is `checkins/`.
 | [`hop.rs`](#hoprs) | 873 | 24 | 4 | 0 | Island hopping: a bot that has taken everything it can reach goes for what it cannot, across the water. |
 | [`intent.rs`](#intentrs) | 181 | 9 | 5 | 3 | Holding a decision (roadmap step 12d, LAB-REPORT-BRAIN.md section 7). |
 | [`ledger.rs`](#ledgerrs) | 322 | 11 | 4 | 3 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
-| [`lib.rs`](#librs) | 2535 | 55 | 21 | 17 | treadcore-brain -- the controller interface, and one controller. |
+| [`lib.rs`](#librs) | 2536 | 55 | 21 | 17 | treadcore-brain -- the controller interface, and one controller. |
 | [`memory.rs`](#memoryrs) | 96 | 10 | 6 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
 | [`meter.rs`](#meterrs) | 261 | 20 | 8 | 2 | What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure first"). |
 | [`rotation.rs`](#rotationrs) | 271 | 7 | 0 | 2 | Rotation (Paul, 17 October: "every bot should have a push point, and a defense point. |
+| [`scenario.rs`](#scenariors) | 472 | 11 | 0 | 3 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
 | [`status.rs`](#statusrs) | 352 | 9 | 5 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
 | [`tactics.rs`](#tacticsrs) | 676 | 16 | 3 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
 | [`weights.rs`](#weightsrs) | 543 | 28 | 14 | 5 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
@@ -397,81 +398,81 @@ treadcore-brain -- the controller interface, and one controller.  The prior art 
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 42 | `name` |  |  |  |
-| 43 | `think` |  |  |  |
-| 47 | `think_on` |  |  | `think` with the map (the host's world map, or a window's copy): public, as every window draws it, and what plans a bridge or a road needs (hop.rs). |
-| 52 | `status` |  |  | What it is doing, in a line, for a window that shows its fleet. |
-| 57 | `settings` |  |  | Its weights and capabilities, for the ledger (weights.rs); None for a brain without them. |
-| 62 | `act` |  |  | What it is doing, as a code (status.rs): for logic and the census, where `status` is for people. |
-| 67 | `rung` |  |  | The Auto rung this think took, if it reached the ladder (the census, LR 26); None for a brain without one. |
-| 72 | `beach` |  |  | Afloat: the beach it is running for, if any (the census's read of where the gun stands, backlog 34). |
-| 77 | `dead` |  |  | Each tick the seat is dead, in place of a think: what a brain counts of its fall (the dodge's meter, LR 27). |
-| 80 | `set_settings` |  |  | New weights mid-match (the coordination screen's sliders, backlog 15); a brain without them ignores it. |
-| 88 | `retire_taken` |  | yes | Run every bot seat for one tick. |
-| 96 | `run_bots` |  | yes |  |
-| 147 | `update` | Grace |  |  |
-| 160 | `fair` | Grace |  | A fair target: the first minute is over, or the tank has been seen to move or fire. |
-| 341 | `watch` | Dodge | yes | The meter's reading of the dodge under way: hit (or killed) between its start and its shell's landing, or clear of it. |
-| 351 | `order` | Dodge | yes |  |
-| 358 | `order_with` | Dodge | yes | `jink`: answer a hit with a jink too. |
-| 403 | `holding` | Dodge | yes | A dodge under way: hold it while the tank drives to its point, and, by `dodge_hold`, that share of the shell's flight once there (standing out of the splash rather than back to its errand under the shell). |
-| 414 | `lead` |  | yes | Where to aim a direct shot at a moving tank: where it will be when the shell lands (40 tiles a second, 0.8 tiles of hit radius; a tank at full speed moves a tile in the flight from 10 tiles off, so a shot at where it... |
-| 453 | `update` | Form |  | Look again if it is time. |
-| 482 | `patience` | Form | yes | The patience, scaled: bold waits less. |
-| 486 | `standoff` | Form | yes | The firing position's distance, scaled: careful stands further off. |
-| 490 | `home_armor` | Form | yes | The armour below which the bot goes home: careful goes sooner. |
-| 524 | `hurt_by_player` | RuleBot | yes | Has this player's fire hit the bot's tank this match? |
-| 528 | `new` | RuleBot | yes |  |
-| 538 | `remember_guns` | RuleBot |  | Hostile tanks kept where last seen, for `landfall_memory` seconds (backlog 36): one seen now is kept where it is; a memory goes when its time is up, or when its spot is in the team's sight and the tank is not there. |
-| 554 | `known_guns` | RuleBot |  | The hostile tanks the landfall prices: those seen now and those remembered (`landfall_memory`). |
-| 559 | `standing_off` | RuleBot | yes | Afloat and standing off a covered beach (`landfall_wait`). |
-| 569 | `landfall_order` | RuleBot |  | Afloat (SPEC TNK-08): run for land. |
-| 657 | `rookie` | RuleBot | yes | The same doctrine, badly (PLAYABILITY item 9): thinks half as often, launches nothing for `ROOKIE_LATE` seconds and then keeps one interceptor up, aims where the tank is with `ROOKIE_SCATTER` tiles of error and no lea... |
-| 662 | `without_pillboys` | RuleBot | yes | The same doctrine without the squad: the control group. |
-| 666 | `nearest_enemy` | RuleBot |  |  |
-| 679 | `works_order` | RuleBot |  | The squad's works (steps 10i and 10j), in this order: a power plant when a structure of this bot's stands dark with no plant of the side in reach (everything else of the economy is dead without one); a jammer once a s... |
-| 705 | `works_need` | RuleBot |  | What this bot's structures within `reach` want built beside them, first want first: a power plant for a dark one with no plant of the side in reach; a jammer, once the side has been hit, for one no jammer covers; a wo... |
-| 724 | `fell` | RuleBot |  | Scrap: the nearest forest in reach, if the squad has room for it. |
-| 733 | `nearest_depot` | RuleBot |  | The nearest depot of the side (or not), of those the world has not refused a drive to as over the water. |
-| 742 | `name` | RuleBot |  |  |
-| 747 | `beach` | RuleBot |  | The beach `landfall_order` chose, while afloat. |
-| 751 | `status` | RuleBot |  |  |
-| 759 | `think` | RuleBot |  |  |
-| 763 | `think_on` | RuleBot |  |  |
-| 769 | `think_map` | RuleBot | yes |  |
-| 1366 | `new` | Defender | yes |  |
-| 1394 | `ring` | Defender |  | The ring of tiles at `r` round `c`, in the order to lay them: the far side first. |
-| 1417 | `mouth_sites` | Defender |  | Candidate sites for the mouth pillbox: along the gate direction at `MOUTH`, then a little to either side, then further out. |
-| 1430 | `approach_sites` | Defender |  | The approach mines: three across the gate direction at `APPROACH`, the road's tile in the middle. |
-| 1437 | `name` | Defender |  |  |
-| 1440 | `think` | Defender |  |  |
-| 1720 | `spawn` | JsonBrain | yes |  |
-| 1744 | `name` | JsonBrain |  |  |
-| 1747 | `think` | JsonBrain |  |  |
-| 1764 | `drop` | JsonBrain |  |  |
-| 1770 | `schema_examples` |  | yes | Example documents for the JSON brain, printed by the server. |
-| 2243 | `name` |  |  |  |
-| 2246 | `think` |  |  |  |
+| 43 | `name` |  |  |  |
+| 44 | `think` |  |  |  |
+| 48 | `think_on` |  |  | `think` with the map (the host's world map, or a window's copy): public, as every window draws it, and what plans a bridge or a road needs (hop.rs). |
+| 53 | `status` |  |  | What it is doing, in a line, for a window that shows its fleet. |
+| 58 | `settings` |  |  | Its weights and capabilities, for the ledger (weights.rs); None for a brain without them. |
+| 63 | `act` |  |  | What it is doing, as a code (status.rs): for logic and the census, where `status` is for people. |
+| 68 | `rung` |  |  | The Auto rung this think took, if it reached the ladder (the census, LR 26); None for a brain without one. |
+| 73 | `beach` |  |  | Afloat: the beach it is running for, if any (the census's read of where the gun stands, backlog 34). |
+| 78 | `dead` |  |  | Each tick the seat is dead, in place of a think: what a brain counts of its fall (the dodge's meter, LR 27). |
+| 81 | `set_settings` |  |  | New weights mid-match (the coordination screen's sliders, backlog 15); a brain without them ignores it. |
+| 89 | `retire_taken` |  | yes | Run every bot seat for one tick. |
+| 97 | `run_bots` |  | yes |  |
+| 148 | `update` | Grace |  |  |
+| 161 | `fair` | Grace |  | A fair target: the first minute is over, or the tank has been seen to move or fire. |
+| 342 | `watch` | Dodge | yes | The meter's reading of the dodge under way: hit (or killed) between its start and its shell's landing, or clear of it. |
+| 352 | `order` | Dodge | yes |  |
+| 359 | `order_with` | Dodge | yes | `jink`: answer a hit with a jink too. |
+| 404 | `holding` | Dodge | yes | A dodge under way: hold it while the tank drives to its point, and, by `dodge_hold`, that share of the shell's flight once there (standing out of the splash rather than back to its errand under the shell). |
+| 415 | `lead` |  | yes | Where to aim a direct shot at a moving tank: where it will be when the shell lands (40 tiles a second, 0.8 tiles of hit radius; a tank at full speed moves a tile in the flight from 10 tiles off, so a shot at where it... |
+| 454 | `update` | Form |  | Look again if it is time. |
+| 483 | `patience` | Form | yes | The patience, scaled: bold waits less. |
+| 487 | `standoff` | Form | yes | The firing position's distance, scaled: careful stands further off. |
+| 491 | `home_armor` | Form | yes | The armour below which the bot goes home: careful goes sooner. |
+| 525 | `hurt_by_player` | RuleBot | yes | Has this player's fire hit the bot's tank this match? |
+| 529 | `new` | RuleBot | yes |  |
+| 539 | `remember_guns` | RuleBot |  | Hostile tanks kept where last seen, for `landfall_memory` seconds (backlog 36): one seen now is kept where it is; a memory goes when its time is up, or when its spot is in the team's sight and the tank is not there. |
+| 555 | `known_guns` | RuleBot |  | The hostile tanks the landfall prices: those seen now and those remembered (`landfall_memory`). |
+| 560 | `standing_off` | RuleBot | yes | Afloat and standing off a covered beach (`landfall_wait`). |
+| 570 | `landfall_order` | RuleBot |  | Afloat (SPEC TNK-08): run for land. |
+| 658 | `rookie` | RuleBot | yes | The same doctrine, badly (PLAYABILITY item 9): thinks half as often, launches nothing for `ROOKIE_LATE` seconds and then keeps one interceptor up, aims where the tank is with `ROOKIE_SCATTER` tiles of error and no lea... |
+| 663 | `without_pillboys` | RuleBot | yes | The same doctrine without the squad: the control group. |
+| 667 | `nearest_enemy` | RuleBot |  |  |
+| 680 | `works_order` | RuleBot |  | The squad's works (steps 10i and 10j), in this order: a power plant when a structure of this bot's stands dark with no plant of the side in reach (everything else of the economy is dead without one); a jammer once a s... |
+| 706 | `works_need` | RuleBot |  | What this bot's structures within `reach` want built beside them, first want first: a power plant for a dark one with no plant of the side in reach; a jammer, once the side has been hit, for one no jammer covers; a wo... |
+| 725 | `fell` | RuleBot |  | Scrap: the nearest forest in reach, if the squad has room for it. |
+| 734 | `nearest_depot` | RuleBot |  | The nearest depot of the side (or not), of those the world has not refused a drive to as over the water. |
+| 743 | `name` | RuleBot |  |  |
+| 748 | `beach` | RuleBot |  | The beach `landfall_order` chose, while afloat. |
+| 752 | `status` | RuleBot |  |  |
+| 760 | `think` | RuleBot |  |  |
+| 764 | `think_on` | RuleBot |  |  |
+| 770 | `think_map` | RuleBot | yes |  |
+| 1367 | `new` | Defender | yes |  |
+| 1395 | `ring` | Defender |  | The ring of tiles at `r` round `c`, in the order to lay them: the far side first. |
+| 1418 | `mouth_sites` | Defender |  | Candidate sites for the mouth pillbox: along the gate direction at `MOUTH`, then a little to either side, then further out. |
+| 1431 | `approach_sites` | Defender |  | The approach mines: three across the gate direction at `APPROACH`, the road's tile in the middle. |
+| 1438 | `name` | Defender |  |  |
+| 1441 | `think` | Defender |  |  |
+| 1721 | `spawn` | JsonBrain | yes |  |
+| 1745 | `name` | JsonBrain |  |  |
+| 1748 | `think` | JsonBrain |  |  |
+| 1765 | `drop` | JsonBrain |  |  |
+| 1771 | `schema_examples` |  | yes | Example documents for the JSON brain, printed by the server. |
+| 2244 | `name` |  |  |  |
+| 2247 | `think` |  |  |  |
 
 Tests (17):
 
-- `a_bot_drives_out_from_under_a_shell` (line 1802): PLAYABILITY item 9: a rookie is beatable.
-- `a_dodge_holds_out_of_the_splash_by_its_weight` (line 1829): `dodge_hold` (LR 27): a tank at its dodge point before the shell lands stays there at 1, and is free to its errand at 0 (the dodge before LR 27).
-- `a_shy_boat_runs_for_the_beach_clear_of_the_guns` (line 1858): `landfall_shy` (backlog 30, LR 31): of two beaches, the nearer one's run passing a hostile gun in reach, at 0 the boat takes it (its price is the beach and the heading only), at 1 the farther one clear of the guns.
-- `a_boat_stands_off_a_covered_beach_for_its_wait` (line 1881): `landfall_wait` (backlog 33, LR 33): the only beach covered by a seen gun 8 tiles off, at 0 the boat lands; at 10 it backs off out of the gun's reach, and lands once the 10 s are spent.
-- `a_gun_seen_and_lost_still_prices_the_run` (line 1908): `landfall_memory` (backlog 36, LR 36): a gun seen beside the near beach's run and then lost from sight still prices that run for its memory's seconds (here with `landfall_shy` 1), and not after.
-- `rulebot_kiting_pays` (line 1950): RuleBots win more than twice as often, kill more and outlive them, and the rookies still kill something.
-- `rookies_are_beatable` (line 1995)
-- `a_rulebot_drives_to_its_zone_to_build` (line 2035): Step 10k: a RuleBot with the scrap drives to a dark refinery of its own thirty tiles off, out of the squad's reach, and powers it.
-- `a_rulebot_powers_its_zone_then_builds_a_workshop` (line 2071): Step 10j: a RuleBot holding a dark refinery builds a power plant beside it first, then a workshop; no jammer, because nothing of its side has been hit.
-- `a_rulebot_jams_after_a_hit` (line 2106): Step 10i: a RuleBot holding a powered zone builds no jammer until a structure of its side is hit; then it builds one on a free pad, launches nothing inside it, and drives out of it.
-- `a_rulebot_answers_a_person` (line 2162): A RuleBot answers a person's proposal: yes, unless that person has hurt it.
-- `pillboys_pay` (line 2196): Sixteen bots, six minutes: the rules get exercised.
-- `fortification_pays` (line 2236): Roadmap step 6c's proof: a fortified depot survives a scripted attack longer than a bare one, over twenty seeds.
-- `a_newcomer_gets_a_first_minute` (line 2319): PLAYABILITY.md item 1, the first minute: a newcomer who sits at the start reading the help is not shelled by the bots for the first minute.
-- `defenders_hold` (line 2361): Roadmap step 6d's proof, as it came out: sixteen bots, four attacking, over ten seeds of five minutes.
-- `bots_fight_to_a_result` (line 2442)
-- `a_led_direct_shot_cannot_be_dodged` (line 2473): Roadmap 12d, backlog 8 (LR 19): a direct shell flies five ticks at most (10 tiles at 40 a second), and a tank at full speed turning as hard as it can moves about 0.4 tiles off the gunner's lead in that time, inside th...
+- `a_bot_drives_out_from_under_a_shell` (line 1803): PLAYABILITY item 9: a rookie is beatable.
+- `a_dodge_holds_out_of_the_splash_by_its_weight` (line 1830): `dodge_hold` (LR 27): a tank at its dodge point before the shell lands stays there at 1, and is free to its errand at 0 (the dodge before LR 27).
+- `a_shy_boat_runs_for_the_beach_clear_of_the_guns` (line 1859): `landfall_shy` (backlog 30, LR 31): of two beaches, the nearer one's run passing a hostile gun in reach, at 0 the boat takes it (its price is the beach and the heading only), at 1 the farther one clear of the guns.
+- `a_boat_stands_off_a_covered_beach_for_its_wait` (line 1882): `landfall_wait` (backlog 33, LR 33): the only beach covered by a seen gun 8 tiles off, at 0 the boat lands; at 10 it backs off out of the gun's reach, and lands once the 10 s are spent.
+- `a_gun_seen_and_lost_still_prices_the_run` (line 1909): `landfall_memory` (backlog 36, LR 36): a gun seen beside the near beach's run and then lost from sight still prices that run for its memory's seconds (here with `landfall_shy` 1), and not after.
+- `rulebot_kiting_pays` (line 1951): RuleBots win more than twice as often, kill more and outlive them, and the rookies still kill something.
+- `rookies_are_beatable` (line 1996)
+- `a_rulebot_drives_to_its_zone_to_build` (line 2036): Step 10k: a RuleBot with the scrap drives to a dark refinery of its own thirty tiles off, out of the squad's reach, and powers it.
+- `a_rulebot_powers_its_zone_then_builds_a_workshop` (line 2072): Step 10j: a RuleBot holding a dark refinery builds a power plant beside it first, then a workshop; no jammer, because nothing of its side has been hit.
+- `a_rulebot_jams_after_a_hit` (line 2107): Step 10i: a RuleBot holding a powered zone builds no jammer until a structure of its side is hit; then it builds one on a free pad, launches nothing inside it, and drives out of it.
+- `a_rulebot_answers_a_person` (line 2163): A RuleBot answers a person's proposal: yes, unless that person has hurt it.
+- `pillboys_pay` (line 2197): Sixteen bots, six minutes: the rules get exercised.
+- `fortification_pays` (line 2237): Roadmap step 6c's proof: a fortified depot survives a scripted attack longer than a bare one, over twenty seeds.
+- `a_newcomer_gets_a_first_minute` (line 2320): PLAYABILITY.md item 1, the first minute: a newcomer who sits at the start reading the help is not shelled by the bots for the first minute.
+- `defenders_hold` (line 2362): Roadmap step 6d's proof, as it came out: sixteen bots, four attacking, over ten seeds of five minutes.
+- `bots_fight_to_a_result` (line 2443)
+- `a_led_direct_shot_cannot_be_dodged` (line 2474): Roadmap 12d, backlog 8 (LR 19): a direct shell flies five ticks at most (10 tiles at 40 a second), and a tank at full speed turning as hard as it can moves about 0.4 tiles off the gunner's lead in that time, inside th...
 
 ## memory.rs
 
@@ -544,6 +545,30 @@ Tests (2):
 
 - `the_tank_rotates_between_its_points` (line 214): Out, a look, home, a look, out: the tank never stops for long.
 - `a_wingman_pushes_inside_the_ring` (line 258): A wingman's push point: toward the objective, inside the leader's gathering ring, and back toward the leader off the water.
+
+## scenario.rs
+
+Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). A playtest written as text and run headless: the world, the seats that think and how, what is placed and what happens when, and what must hold at the end. Every file under `scenarios/` is a test (`every_scenario_holds`); `make scenario S=file` runs one and prints its trace.  The form is a small part of TOML, read here so the brain takes no new crate: `key = value` lines, `[expect]`, and `[[brain]]`, `[[pillbox]]`, `[[depot]]`, `[[shell]]` and `[[event]]` tables; values are numbers, "strings", true or false, `[lists]` and `{ inline = tables }`. Positions are an anchor and an offset in tiles: `"seat:0"` (where a seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed).  ```toml name = "a bot drives out from under a shell" players = 2 seconds = 4 [[brain]] seat = 0 kind = "rulebot" [[shell]] owner = 1 at = "seat:0" from = [30, 0] lands_in = 3 [expect] hits_on = { seat = 0, max = 0 } moved = { seat = 0, more_than = 2.5 } ```
+
+| Line | Function | Of | Pub | What it does (its doc comment) |
+| --- | --- | --- | --- | --- |
+| 50 | `num` | Value |  | A number, or None. |
+| 54 | `str` | Value |  | A string, or None. |
+| 58 | `table` | Value |  | An inline table, or None. |
+| 72 | `parse` |  | yes | Read the TOML subset; an error names its line. |
+| 110 | `strip_comment` |  |  | A line without its `#` comment (a `#` inside a string stays). |
+| 123 | `value_of` |  |  | One value from the front of `s`, and what is left after it. |
+| 188 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
+| 339 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
+| 348 | `check` |  |  | Every expectation that failed, in words. |
+| 413 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
+| 423 | `dir` |  |  | The scenarios, at the top of the tree. |
+
+Tests (3):
+
+- `the_subset_reads_values_tables_and_lists` (line 430): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
+- `every_scenario_holds` (line 442): Every file under `scenarios/` holds.
+- `scenario_one` (line 462): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
 
 ## status.rs
 

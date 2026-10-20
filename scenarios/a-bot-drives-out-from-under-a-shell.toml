@@ -1,0 +1,21 @@
+# The scenario form of lib.rs `a_bot_drives_out_from_under_a_shell`
+# (LAB-REPORT-BRAIN.md section 48): an indirect shell from 30 tiles east
+# lands on a RuleBot in 3 s; it gets out from under it, unhurt.
+name = "a bot drives out from under a shell"
+players = 2
+seconds = 4
+
+[[brain]]
+seat = 0
+kind = "rulebot"
+seed = 5
+
+[[shell]]
+owner = 1
+at = "seat:0"
+from = [30, 0]
+lands_in = 3
+
+[expect]
+hits_on = { seat = 0, max = 0 }
+moved = { seat = 0, more_than = 2.5 }   # SPLASH_RADIUS

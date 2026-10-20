@@ -1,0 +1,56 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 07:00:00 -0700
+Subject: [JOURNAL 0076] Scenario files
+Message-ID: <0076.20261020@treadcore.org>
+In-Reply-To: <0075.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: testing, scenarios, mutation, backlog 24
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 983357b (journal 0075, pushed); this entry's commit follows
+
+                             SCENARIO FILES
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    Backlog 24. A playtest is now a small TOML file run headless: the
+    seats that think, what is placed, what happens when, and checks.
+    Three Rust tests have scenario forms that agree with them
+    unmutated and under two deliberate breaks of the code. All three
+    run in 0.02 s.
+
+IV. CHRONOLOGY
+
+    1. No TOML crate in the tree; the subset read in the brain, as the
+       weights files are.
+    2. `scenario.rs`: the reader, the setup, the run, the checks, and
+       two tests (the reader; every file holds) and a one-file runner.
+    3. The three ported. The depot's trace stopped at 60 s: the
+       intruder died and the two-seat match ended, as in the Rust
+       test, which never said so. The runner now records it.
+    4. The mutation proof, the files restored by a trap.
+
+VI. DISCUSSION
+
+    The trace showed something the Rust test hid. A test that prints
+    what each seat was doing is a test that can be read.
+
+VIII. NEXT STEPS
+
+    1. Placements for the landfall: guns, boats, beaches.
+    2. Backlog 42, or a census-sized scenario mode.
+
+APPENDIX B. ARTIFACTS
+
+    source/treadcore-brain/src/scenario.rs; scenarios/;
+    documentation/LAB-REPORT-BRAIN.md section 48;
+    documentation/checkins/CI-022-2026-10-20-scenario-files.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

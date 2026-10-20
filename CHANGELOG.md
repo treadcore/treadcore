@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: scenario files. A playtest written as a small TOML file
+  (`scenarios/*.toml`): the seats that think and how, pillboxes,
+  depots, shells and timed moves placed by anchor, and checks at the
+  end. Every file is a test; `make scenario S=file` runs one and prints
+  its status codes over time. Three hand-written tests have scenario
+  forms that pass and fail as they do (LAB-REPORT-BRAIN.md section
+  48).
 - Changed: `smooth` is a weight, `w_smooth` (0 to 1, default 0.05;
   Paul's choice), no longer a capability. The move's desire vector and
   the retreat thresholds blend by it; the rung's and the turret's

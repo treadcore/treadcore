@@ -1,0 +1,25 @@
+# The scenario form of commander.rs
+# `a_commander_takes_a_neutral_pillbox_without_a_shot` (LAB-REPORT-BRAIN.md
+# section 48): a neutral pillbox 20 tiles toward the centre is taken by
+# the squad, not shot: it stands, it never fired on the tank, and no
+# shell was spent.
+name = "a commander takes a neutral pillbox without a shot"
+players = 2
+seconds = 60
+pillboxes = false
+
+[[pillbox]]
+near = "seat:0"
+away = 20
+
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "hunt_pillboxes"
+seed = 5
+
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0, by = 60 }
+pillbox_damage = { pillbox = 0, max = 0 }
+pillbox_alive = { pillbox = 0, alive = true }
+shells_spent = { seat = 0, max = 0 }

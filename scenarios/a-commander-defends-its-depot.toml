@@ -1,0 +1,27 @@
+# The scenario form of commander.rs `a_commander_defends_its_depot`
+# (LAB-REPORT-BRAIN.md section 48): seat 0 guards the depot nearest it;
+# at 20 s seat 1's tank arrives 5 tiles from the depot, and is hit at
+# least twice in two minutes.
+name = "a commander defends its depot"
+players = 2
+seconds = 120
+pillboxes = false
+
+[[depot]]
+near = "seat:0"
+owner = 0
+
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "defend_depot:0"
+seed = 9
+
+[[event]]
+at = 20
+move = 1
+to = "depot:0"
+offset = [5, 0]
+
+[expect]
+hits = { by = 0, on = 1, at_least = 2 }
