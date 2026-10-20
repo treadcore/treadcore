@@ -1,0 +1,44 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 20 Oct 2026 05:20:00 -0700
+Subject: [JOURNAL 0075] The two leads on fresh seeds
+Message-ID: <0075.20261020@treadcore.org>
+In-Reply-To: <0074.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: confirmation, regression to the mean, duck, bridge jobs,
+          backlog 39
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul: "commit. push. continue backlog"
+X-Commits: 49841b9 (journal 0074, pushed); this entry's commit follows
+
+                       THE TWO LEADS ON FRESH SEEDS
+
+                     Paul Richeson, treadcore.org
+                           20 October 2026
+
+
+ABSTRACT
+
+    LR 44's two single-pass leads on 48 fresh seeds: `bridge_jobs`
+    +0.07 +/- 0.41, the lead gone; `duck` +1.25 +/- 0.52, past two
+    errors the opposite way from its lead. Neither confirmed; both
+    stay off. "Duck helps" is backlog 42.
+
+VI. DISCUSSION
+
+    Four leads have gone to fresh seeds since LR 36; one held. The
+    rule set in advance is the only reason none of the other three is
+    a default today.
+
+VIII. NEXT STEPS
+
+    1. Backlog 42, or scenario files (24), a faster way to test single
+       behaviours.
+
+APPENDIX B. ARTIFACTS
+
+    documentation/LAB-REPORT-BRAIN.md section 47; build/lr47.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

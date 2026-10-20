@@ -713,7 +713,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     other.) Goal 4. Hypothesis: `bridge_jobs` (with `board`) helps and
     `duck` hurts, under today's defaults. Proof: 48 fresh seeds each
     (96 to 143), the rule set first: past two errors on those seeds
-    alone. Cost: two censuses, 25 min. State: idea.
+    alone. Cost: two censuses, 25 min. State: done 20 October (LR
+    47), neither confirmed: `bridge_jobs` +0.07 +/- 0.41; `duck` +1.25
+    +/- 0.52, past two errors the other way.
 40. `smooth` as a weight. (20 October; cause: Paul, "give it an
     insignificant coefficient".) Goal 4. `w_smooth` 0 to 1, default
     0.05: the blendable parts (the desire vector, the retreat
@@ -731,6 +733,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     unchanged while the tree is edited. Cost: small. State: done 20
     October (LR 45): `census_bin` in common.sh; switches, spsa and tune
     run the copy; a run finished identically with the source broken.
+
+42. Does `duck` help? (20 October; cause: LR 47, +1.25 +/- 0.52 on
+    seeds 96 to 143, after four readings of either sign.) Goal 4.
+    Hypothesis: `duck` helps under today's defaults. Proof: 96 fresh
+    seeds (144 to 239), past two errors positive, the rule set first;
+    and the duck's own count (direct-fire deaths a seat) moving with
+    it. Cost: four censuses, 50 min. State: idea.
 
 
 ## Sequencing

@@ -2435,3 +2435,34 @@ reachable by one number, for the tuner or a slider.
 
 Proof: `make test`: brain 74 passed and 8 ignored; client 31; net 14;
 proto 3; sim 50. No warnings. 363 functions, 121 undocumented.
+
+## 47. The two leads on fresh seeds, 20 October
+
+Backlog 39, from LR 44: `bridge_jobs` (+1.68 +/- 0.70) and `duck`
+(-2.26 +/- 1.05) were each outside two errors in one pass of 24 tests.
+The rule, set before the run: each is confirmed only past two errors,
+in the same direction, on 48 fresh seeds (96 to 143) alone. Each was
+run as its trial team against today's defaults (`bridge_jobs` with
+`board` on for every team), from a frozen binary.
+
+| Lead | LR 44 (one pass) | Seeds 96 to 143 | Verdict |
+| --- | --- | --- | --- |
+| `bridge_jobs` helps | +1.68 +/- 0.70 | +0.07 +/- 0.41 | not confirmed |
+| `duck` hurts | -2.26 +/- 1.05 | **+1.25 +/- 0.52** | not confirmed: past two errors the other way |
+
+**Neither lead holds.** `bridge_jobs` reads nothing on fresh seeds: its
+LR 44 reading was the chance finding the table predicted. `duck` reads
+past two errors with the opposite sign. Its readings on record:
+-0.51 (LR 21), +0.39 (LR 24), -0.51 and -2.26 (LR 44), +1.25 here. A
+part whose sign changes with the seeds has an effect smaller than the
+census resolves at 12 seeds, and possibly one that depends on the
+map's starts. "`duck` helps" is a new hypothesis, set by this reading,
+and needs its own fresh seeds before `duck` could be turned on
+(backlog 42). Both stay off.
+
+The lesson repeats LR 43's: a reading from a table of tests, or a
+tuner's best point, regresses on fresh seeds. Of four leads confirmed
+this way since LR 36, one held (the landfall's memory, consistent in
+every run), and three did not.
+
+Proof: no code changed.
