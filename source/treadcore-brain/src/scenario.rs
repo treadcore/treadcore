@@ -267,10 +267,17 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
     // start, afloat with `boat = true`; rolling with `speed` (tiles a
     // second) on `heading` (degrees, 0 east, 90 south; "any" drawn by
     // the dice) toward a goal `drive` tiles on, so it keeps rolling
-    // until its brain orders otherwise.
+    // until its brain orders otherwise. `around = true` turns the offset
+    // round its anchor by an angle the dice draw; `reload` is seconds
+    // before its gun is ready, or a time drawn from `[lo, hi]` (LR 57).
     for t in list("tank") {
         let seat = num(t, "seat", 0.0) as PlayerId;
-        let to = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("seat:0"), t.get("offset"))?;
+        let anchor = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("seat:0"), None)?;
+        let mut off = offset(t.get("offset"))?;
+        if t.get("around") == Some(&Value::Bool(true)) {
+            off = V2::from_heading(dice.range(-std::f32::consts::PI, std::f32::consts::PI)).scale(off.len());
+        }
+        let to = anchor + off;
         let tank = w.tanks.iter_mut().find(|x| x.owner == seat).ok_or(format!("no seat {}", seat))?;
         tank.pos = Map::tile_centre(to);
         tank.boat = t.get("boat") == Some(&Value::Bool(true));
@@ -282,6 +289,11 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
             None => tank.heading,
         };
         tank.speed = num(t, "speed", 0.0) as f32;
+        let reload = match t.get("reload") {
+            Some(Value::List(v)) if v.len() == 2 => dice.range(v[0].num().unwrap_or(0.0) as f32, v[1].num().unwrap_or(0.0) as f32) as f64,
+            _ => num(t, "reload", 0.0),
+        };
+        tank.reload = (reload * TICK_HZ as f64) as u16;
         if tank.speed > 0.0 {
             tank.goal = Some(tank.pos + V2::from_heading(tank.heading).scale(num(t, "drive", 20.0) as f32));
         }
@@ -433,9 +445,11 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         w.step(&orders);
         for e in &w.events {
             match e {
-                Event::TankDamaged { tank, by, .. } => {
+                Event::TankDamaged { tank, by, damage, .. } => {
                     if let Some(t) = w.tanks.iter().find(|t| t.id == *tank) {
                         out.hits.push((*by, t.owner));
+                        let drones: Vec<String> = w.drones.iter().map(|d| format!("{:?} of {} at ({:.1},{:.1})", d.kind, d.owner, d.pos.x, d.pos.y)).collect();
+                        out.trace.push(format!("{:>5.2} s  seat {} hit by {:?} for {:.0}; drones: {}", w.tick as f64 / TICK_HZ as f64, t.owner, by, damage, drones.join(", ")));
                     }
                 }
                 Event::Rejected { player, why, .. } if brains.iter().any(|(s, _)| s == player) => {
@@ -473,7 +487,7 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
                     .find(|t| t.owner == s)
                     .map(|t| {
                         let dest = t.route.last().copied().or(t.goal).map(|g| format!(" > ({:.1},{:.1}) {} legs", g.x, g.y, t.route.len() + 1)).unwrap_or_default();
-                        format!("({:.1},{:.1}){}{}", t.pos.x, t.pos.y, if t.boat { " afloat" } else { "" }, dest)
+                        format!("({:.1},{:.1}) on {:?} at {:.1} heading {:.0}{}{}", t.pos.x, t.pos.y, w.map.at(t.pos), t.speed, t.heading.to_degrees().rem_euclid(360.0), if t.boat { " afloat" } else { "" }, dest)
                     })
                     .unwrap_or_default()
             };
@@ -600,13 +614,19 @@ pub fn many(doc: &Doc, first: u64, runs: u64) -> Result<(u64, f64, f64, Vec<Stri
 }
 
 /// `SCENARIO_SET="name=value ..."`: those weights set on every brain in
-/// the file (added to its `weights`, or a new one), so two settings run
-/// on the same seeds.
+/// the file that holds them (a RuleBot, only the landfall's three),
+/// added to its `weights` or a new one, so two settings run on the same
+/// seeds.
 pub fn set_weights(doc: &mut Doc, set: &str) -> Result<(), String> {
     for kv in set.split_whitespace() {
         let (k, v) = kv.split_once('=').ok_or(format!("not name=value: {}", kv))?;
         let v: f64 = v.parse().map_err(|_| format!("not a number: {}", v))?;
         for b in doc.lists.get_mut("brain").into_iter().flatten() {
+            // A RuleBot holds only the landfall's three; the rest are a
+            // Commander's.
+            if b.get("kind").and_then(Value::str) == Some("rulebot") && !k.starts_with("landfall_") {
+                continue;
+            }
             let w = b.entry("weights".into()).or_insert_with(|| Value::Table(BTreeMap::new()));
             if let Value::Table(t) = w {
                 t.insert(k.to_string(), Value::Num(v));

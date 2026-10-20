@@ -478,7 +478,7 @@ impl Commander {
         self.inner.landfall_shy = s.w[W::LandfallShy];
         self.inner.landfall_wait = s.w[W::LandfallWait];
         self.inner.landfall_memory = s.w[W::LandfallMemory];
-        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold], s.w[W::DodgePlan], s.w[W::DodgeRelease], s.w[W::DodgeEvery]]);
+        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold], s.w[W::DodgePlan], s.w[W::DodgeRelease], s.w[W::DodgeEvery], s.w[W::DodgeFire]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.
         if let Some(t) = self.inner.tactics.as_mut() {
@@ -1609,15 +1609,40 @@ impl Commander {
             .iter()
             .filter(|g| g.1.dist(me.pos) <= reach && reload(g) <= ready && (reload(g) < me.reload || me.shells == 0) && clear(g.1, me.pos))
             .min_by(|a, b| reload(a).cmp(&reload(b)).then(a.1.dist(me.pos).total_cmp(&b.1.dist(me.pos))))
-            .map(|g| g.1)?;
+            .map(|g| (g.1, reload(g)))?;
+        let (gun, gun_ready) = gun;
         let errand = self.last_move.map(|(at, _)| at).unwrap_or(me.pos);
         let safe = |p: V2| p.dist(gun) > safe_at || !clear(gun, p);
         let ok = |p: V2| map.map(|m| m.in_bounds(p) && m.at(p).passable()).unwrap_or(true);
         let r = (safe_at - gun.dist(me.pos) + 0.5).clamp(3.0, 8.0);
-        let best = (0..16)
-            .map(|k| me.pos + V2::from_heading(k as f32 * std::f32::consts::TAU / 16.0).scale(r))
-            .filter(|p| ok(*p) && safe(*p))
-            .min_by(|a, b| a.dist(errand).total_cmp(&b.dist(errand)));
+        let ring = (0..16).map(|k| me.pos + V2::from_heading(k as f32 * std::f32::consts::TAU / 16.0).scale(r));
+        // `duck_plan` (LR 57): the point held while it stays safe, so the
+        // tank does not pivot to a new one each think; else each point
+        // driven by `drive_path` to the tick the gun is ready, and the
+        // nearest to the errand of those out of its reach or line by
+        // then; failing that, the one farthest out of it then.
+        if w[W::DuckPlan] >= 0.5 {
+            if let Some((held, _)) = self.duck_to.filter(|(p, _)| ok(*p) && safe(*p) && p.dist(me.pos) <= 9.0) {
+                return Some((held, gun));
+            }
+            let ticks = (gun_ready as u32).max(1);
+            let hidden = |p: V2| p.dist(gun) > DIRECT_RANGE + 0.8 || !clear(gun, p);
+            let scored: Vec<(V2, bool, f32)> = ring
+                .clone()
+                .filter(|p| ok(*p))
+                .filter_map(|p| crate::drive_to(me, p, ticks, map).map(|at| (p, hidden(at), if clear(gun, at) { at.dist(gun) } else { f32::INFINITY })))
+                .collect();
+            let best = scored
+                .iter()
+                .filter(|(p, h, _)| *h && safe(*p))
+                .min_by(|a, b| a.0.dist(errand).total_cmp(&b.0.dist(errand)))
+                .or_else(|| scored.iter().filter(|(p, _, _)| safe(*p)).max_by(|a, b| a.2.total_cmp(&b.2)))
+                .map(|x| x.0);
+            if let Some(to) = best {
+                return Some((obs.clamp(to), gun));
+            }
+        }
+        let best = ring.filter(|p| ok(*p) && safe(*p)).min_by(|a, b| a.dist(errand).total_cmp(&b.dist(errand)));
         let to = best.unwrap_or_else(|| me.pos + (me.pos - gun).norm().scale(r));
         Some((obs.clamp(to), gun))
     }
@@ -2247,15 +2272,16 @@ impl Brain for Commander {
 impl Commander {
     /// The think, then `dodge_release` (lib.rs `Dodge::release`, LR 53):
     /// an errand that would drive back under a dodged shell before it
-    /// lands waits, and is asked for again (`last_move` cleared).
+    /// lands waits, and is asked for again (`last_move` cleared); and
+    /// `dodge_fire` (`Dodge::hold_fire`, LR 57), dodging or not: a shot
+    /// whose turn of the hull would carry the tank into a splash waits.
     fn think_released(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
         let mut cmds = self.think_map(obs, map);
-        if self.act != Act::Dodge {
-            if let Some(me) = obs.me.as_ref().filter(|m| m.alive) {
-                if self.dodge.release(obs, me, &mut cmds, map) {
-                    self.last_move = None;
-                }
+        if let Some(me) = obs.me.as_ref().filter(|m| m.alive) {
+            if self.act != Act::Dodge && self.dodge.release(obs, me, &mut cmds, map) {
+                self.last_move = None;
             }
+            self.dodge.hold_fire(obs, me, &mut cmds, map);
         }
         cmds
     }

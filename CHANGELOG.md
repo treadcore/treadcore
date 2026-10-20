@@ -6,6 +6,18 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the duck foreseen (`duck_plan`, on): the point is held while it
+  stays safe, else the one `drive_to` has out of the gun's reach or line
+  by the time it is ready; a family of a tank under a ready gun from
+  76.6% to 83.4% (LAB-REPORT-BRAIN.md section 57).
+- Added: a shot that would ruin a dodge waits (`dodge_fire`, on). A tank
+  has no turret; firing turns the hull, and a dodging tank that fired
+  back drove into the splash. With LR 56: dodges caught by their own
+  shell ashore 6.1% to 1.6%, afloat 4.0% to 0.5%; the score +0.21 a seat,
+  error 0.68.
+- Added: scenario `[[tank]]` takes `around` and `reload` (a time or a
+  range); traces show ground, speed, heading and each hit with its
+  damage; `SET` gives a RuleBot only the weights it holds.
 - Added: the dodge plans against every hostile shell landing within its
   horizon, each at its own landing (`dodge_every`, on): two shells 76.5%
   to 100%, four 56.6% to 99.7% over 1,000 seeds (LAB-REPORT-BRAIN.md

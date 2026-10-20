@@ -1,0 +1,29 @@
+# LAB-REPORT-BRAIN.md section 57: a family, its situation drawn from the
+# seed. A Commander on Auto, at rest or rolling, any heading, its gun
+# reloading for 2.5 s; a hostile RuleBot 9 tiles off in any
+# direction, its gun ready in 0.4 to 1.4 s. Held: never hit in 3 s, by
+# the direct shot or the shell it lobs past direct range. Run over many
+# seeds: make scenario S=this RUNS=1000.
+name = "a tank under a ready gun, any geometry"
+players = 2
+seconds = 3
+[[tank]]
+seat = 0
+heading = "any"
+speed = 0
+reload = 2.5
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [9, 0]
+around = true
+reload = [0.4, 1.4]
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+[[brain]]
+seat = 1
+kind = "rulebot"
+[expect]
+hits_on = { seat = 0, max = 0 }

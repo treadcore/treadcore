@@ -145,6 +145,7 @@ weights! {
     DodgeHold "dodge_hold" 0.0, "dodge: the share of the shell's flight the tank stays out, arrived or not (1), against only while it drives (0, before LR 27)";
     DodgeRelease "dodge_release" 1.0, "dodge: once at its point before the shell lands, an errand that would drive the tank back into the splash waits (1, the default since LR 54, Paul's choice), against every errand at once (0, before LR 53); thresholded at 0.5";
     DodgeEvery "dodge_every" 1.0, "dodge: the plan and the release against every hostile shell landing within the horizon, each at its own landing (1, LR 56), against the one shell dodged (0, LR 53); thresholded at 0.5";
+    DodgeFire "dodge_fire" 1.0, "dodge: with a hostile shell landing within the horizon, a shot whose turn of the hull (a tank has no turret) would carry the tank into the splash waits (1, LR 57), against the guns free (0); thresholded at 0.5";
     DodgePlan "dodge_plan" 1.0, "dodge: the point by where the tank's own turn and speed will have it when the shell lands (1, the default since LR 54, Paul's choice), against across the shell's line always (0, before LR 53); thresholded at 0.5";
     // The run for the beach (lib.rs `RuleBot::landfall_order`, LR 31).
     // On by default since LR 38 (Paul, 19 October: "yes all three on"):
@@ -173,6 +174,7 @@ weights! {
     BridgeWing "bridge_wing" 1.0, "bridge jobs: a wingman with material takes one too, leaving its leader's wedge (1), or only tanks on auto (0) (rounded)";
     Duck "w_duck" 1.0, "duck: safety against the errand; a tank ducks with its armour share at or under this, 1 always, 0 never";
     DuckMemory "duck_memory" 5.0, "duck: seconds a hostile gun seen is remembered where it was, its reload counted down (sight and direct range are both 10 tiles, so a gun at the edge is often unseen)";
+    DuckPlan "duck_plan" 1.0, "duck: the point held while it stays safe, else the one `drive_to` has out of the gun's reach or line by the tick it is ready (1, LR 57), against the nearest safe point to the errand, picked anew each think (0, LR 21); thresholded at 0.5";
     DuckReady "duck_ready" 1.5, "duck: a hostile gun ready within this many seconds threatens, if it fires before mine (a tank covers about five tiles in 1.5 s)";
     FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";

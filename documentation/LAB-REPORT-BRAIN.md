@@ -2957,3 +2957,87 @@ the margin. `planned` takes the first candidate clear of all of them;
 
 **The test**: `a-dodge-clears-two-shells.toml`, seed 2 of the rolling
 family; it holds, and with `dodge_every` 0 the tank is hit.
+
+## 57. The duck foreseen, and a shot that waits, 20 October
+
+Backlog 46. The duck (LR 21, on since LR 55) takes the nearest point to
+the errand among sixteen round the tank that are out of the gun's
+reach or line, and never asks whether the tank gets there before the
+gun is ready.
+
+**The family**: `scenarios/families/a-tank-under-a-ready-gun.toml`. A
+Commander on Auto at rest, any heading, its gun reloading for 2.5 s; a
+hostile RuleBot 9 tiles off in any direction (`[[tank]] around = true`),
+its gun ready in 0.4 to 1.4 s (`reload = [lo, hi]`). Held: never hit in
+3 s, by the direct shot or by the shell it lobs once the tank is past
+direct range. The trace now shows the ground, speed and heading of each
+tank, and every hit with its damage and the drones in the air; the
+RuleBot takes only the weights it holds from `SET`.
+
+**What the traces found.**
+1. **The duck jitters.** Each think it picks again round the tank's
+   new position; the order is re-sent when the point moves a tile, so
+   the tank pivots toward each new route and, on seed 9, sat a full
+   second at its start.
+2. **A tank has no turret.** On seed 4 the duck and then the dodge
+   worked until the tank's own gun came ready at 2.5 s; "the guns stay
+   free", so it lobbed a shell back. Firing turns the hull to the shot
+   (treadcore-sim `FireIndirect`: `t.heading = (at - pos).heading()`):
+   89 degrees to 212 in one tick, and at 3.9 tiles a second the tank ran
+   on that way, into the splash of the shell it was leaving.
+3. Of the first 21 failures in 150 seeds, 13 were a direct shot at 1.25
+   to 1.3 s: the gun ready at 0.9 s, the shell 0.3 s in flight. From
+   rest, 0.9 s carries a tank about 1.6 tiles: out of reach in time only
+   by the right way at once, or out of the gun's line.
+
+**The parts** (both on, LR 54's rule):
+- `duck_plan` (weights.rs, thresholded at 0.5): the point is held while
+  it stays safe; otherwise each of the sixteen is driven by `drive_to`
+  to the tick the gun is ready, and the nearest to the errand of those
+  out of reach (10.8 tiles, the range and the hit radius) or out of line
+  by then is taken; failing that, the one farthest out of reach then.
+- `dodge_fire`: with a hostile shell landing within the horizon, each
+  shot is foreseen by `drive_path` twice, the hull as it is and turned
+  to the shot, toward where the tank is going; a shot that takes a clear
+  drive into a splash is struck (`Dodge::hold_fire`, from
+  `Commander::think_released`, dodging or not).
+
+| Ready-gun family, 1,000 seeds | Held |
+| --- | --- |
+| `w_duck` 0 (no duck) | 63.7% +/- 1.5% |
+| the duck of LR 21 (`duck_plan` 0, `dodge_fire` 0) | 76.6% +/- 1.3% |
+| with `dodge_fire` | 76.7% +/- 1.3% |
+| with `duck_plan` too (the defaults) | **83.4% +/- 1.2%** |
+
+`duck_plan` takes 29% of the duck's failures; `dodge_fire` saves the
+tank alone on 2 seeds of 400 here (a tank in this family dodges with its
+gun ready only late), and seed 4 of the fixed-reload form. Every other
+family holds as before (100%).
+
+**The tests**: `a-tank-ducks-out-of-reach-in-time.toml` (seed 19,
+`duck_plan`) and `a-dodging-tank-holds-its-fire.toml` (seed 261,
+`dodge_fire`); each holds, and fails with its weight at 0. The first
+form of the second, seed 4 at a fixed reload, held with `dodge_fire` 0
+once `duck_plan` had changed the duck: a test kept only after it fails
+broken.
+
+**The guard** (LR 54's rule): the trial team on the new defaults against
+the same with `dodge_every`, `dodge_fire` and `duck_plan` at 0 (LR 56
+and 57 together), the fair census, naval.map, 900 s, 3 respawns, seeds
+0 to 47, a frozen binary.
+
+| 48 seeds | Trial (LR 56, 57 on) | The rest (off) |
+| --- | --- | --- |
+| Difference a seat | +0.21 +/- 0.68 (inside the noise) | |
+| Ashore dodges: hit / by their own shell / killed | 16.0% / **1.6%** / 4.0% | 20.7% / 6.1% / 4.3% |
+| Afloat dodges: hit / by their own shell / killed | 8.9% / **0.5%** / 8.0% | 12.4% / 4.0% / 11.4% |
+| Brain time | 40.2 to 42.2 us a seat-tick (both sides) | |
+
+The score does not move past the noise; the reflexes do what the
+families say: a dodge caught by its own shell is now rare ashore and
+afloat, and boats in a dodge die 30% less. Since LR 52 the own-shell
+share ashore has gone 15.7%, 10.4%, 5.7%, 1.6%.
+
+Proof: `make test`: brain 78 passed and 10 ignored; client 31; net 14;
+proto 3; sim 50. No warnings.
+

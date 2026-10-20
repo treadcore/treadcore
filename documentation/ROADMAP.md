@@ -277,7 +277,7 @@ to 8.93 a seat).
   people; measured, the strings cost nothing, and a census match is
   identical before and after. Not yet: the Observation shared per
   team (the sim change).
-- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture, 83 with its scores; 93 and 17 by LR 53, `smooth` a weight since LR 46),
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture, 83 with its scores; 93 and 17 by LR 53, 96 by LR 57, `smooth` a weight since LR 46),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
   The sliders, 18 October (LR 17): the coordination screen's weights
   page (`U`) for the player's own team, saved to
@@ -806,7 +806,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     it is ready, not merely aimed there) makes `duck` pay. Proof: a
     scenario family of a tank and a hostile gun about to be ready, the
     duck at today's point and at the foreseen one; then backlog 42's
-    96 fresh seeds. Cost: a step. State: idea.
+    96 fresh seeds. Cost: a step. State: done 20 October (LR 57):
+    `duck_plan` (on), the point held while safe, else foreseen out of
+    reach or line by the gun's ready tick: the ready-gun family 76.6%
+    to 83.4%; and `dodge_fire` (on), found on the way: a tank has no
+    turret, a shot turns the hull, and a dodging tank firing back ran
+    into the splash. The guard with LR 56: +0.21 +/- 0.68; own-shell
+    catches ashore 6.1% to 1.6%, afloat 4.0% to 0.5%.
 47. Scenario families kept and run. (20 October; cause: LR 53, two
     families measured a part in seconds that the census needed 25
     minutes to read near two errors.) Goal 4; goal 1. Hypothesis: a
@@ -827,6 +833,20 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     reverse of `make switches`), then the halved weights at 48. Cost:
     about 80 min, then 30. State: idea, after the features are in
     (Paul, 20 October).
+49. The front read. (20 October; cause: LR 24 and LR 55, the board's
+    influence, front and territory are built every second and read by
+    nothing.) Goal 4, 12e. Hypothesis: the Expand rung's target picked
+    toward the nearest front sector (our sector beside theirs) and the
+    guard post of Defend and Turrets at it, blended with today's pick by
+    a weight (`w_front`, a starting number from a family), puts tanks
+    where the map is contested rather than where the next pillbox is.
+    Proof: a family with a board and two teams' tanks, where today's
+    Expand drives past the front; the guard census. Cost: a step.
+    State: idea, next.
+50. Allies' goals on the coordination screen (11c). (20 October; cause:
+    roadmap goal 3, "not yet: allies' goals"; the board holds them.)
+    Goal 3, 11c. Proof: the screen's test shows a teammate's rung and
+    target. Cost: a step, the window. State: idea.
 
 ## Sequencing
 

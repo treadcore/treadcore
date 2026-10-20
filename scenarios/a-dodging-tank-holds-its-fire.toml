@@ -1,0 +1,30 @@
+# LAB-REPORT-BRAIN.md section 57, `dodge_fire`: seed 261 of the
+# ready-gun family. A tank has no turret; a shot turns the hull. With a
+# shell landing near it, at `dodge_fire` 0 the tank fires back, its hull
+# swings and it runs into the splash; at 1 the shot waits.
+name = "a dodging tank holds its fire"
+seed = 261
+players = 2
+seconds = 3
+trace_every = 0.25
+[[tank]]
+seat = 0
+heading = "any"
+speed = 0
+reload = 2.5
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [9, 0]
+around = true
+reload = [0.4, 1.4]
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+weights = { dodge_fire = 1 }
+[[brain]]
+seat = 1
+kind = "rulebot"
+[expect]
+hits_on = { seat = 0, max = 0 }

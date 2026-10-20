@@ -329,9 +329,9 @@ pub struct Dodge {
     /// dropped (`keep_inner`).
     pub metered: bool,
     /// The weights' numbers (horizon s, margin, clear, hold; LR 27;
-    /// plan and release, LR 53; every, LR 56); None is the constants,
-    /// the RuleBot's.
-    pub tune: Option<[f32; 7]>,
+    /// plan and release, LR 53; every, LR 56; fire, LR 57); None is the
+    /// constants, the RuleBot's.
+    pub tune: Option<[f32; 8]>,
     /// When the shell dodge under way began, for `dodge_hold`.
     began: Tick,
     /// Where and when the shell dodged last lands, for `dodge_release`.
@@ -377,7 +377,7 @@ impl Dodge {
             if self.dodged.contains(&s.id) {
                 continue;
             }
-            let [horizon, margin, clear, _, _, _, _] = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0, 0.0]);
+            let [horizon, margin, clear, _, _, _, _, _] = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0, 0.0, 0.0]);
             let eta = s.impact_tick.saturating_sub(obs.tick);
             if eta < 2 || eta as f32 * DT > horizon {
                 continue;
@@ -431,7 +431,7 @@ impl Dodge {
     /// flight landing within the horizon, else `dodged` alone (the one
     /// it dodges; for the release, the last dodged, while in flight).
     fn threats(&self, obs: &Observation, dodged: Option<(V2, Tick)>) -> Vec<(V2, u32)> {
-        let t = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0, 0.0]);
+        let t = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0, 0.0, 0.0]);
         let mut out: Vec<(V2, u32)> = dodged.filter(|(_, lands)| *lands > obs.tick).map(|(at, lands)| (at, (lands - obs.tick) as u32)).into_iter().collect();
         if t[6] >= 0.5 {
             let hostile = |o: PlayerId| o != obs.player && !obs.allied(o);
@@ -503,6 +503,35 @@ impl Dodge {
         let before = cmds.len();
         cmds.retain(|c| match c {
             Command::Move { to } => drive_path(me, *to, ticks, map).map(|p| Self::clearance(&p, &threats, t[1]) >= 0.0).unwrap_or(true),
+            _ => true,
+        });
+        cmds.len() < before
+    }
+
+    /// `dodge_fire` (LR 57): a tank has no turret; a shot turns the hull
+    /// to face it (treadcore-sim, `FireDirect` and `FireIndirect`), and
+    /// at speed the tank runs on that way. A dodging tank whose gun came
+    /// ready fired back, swung 123 degrees and drove into the splash it
+    /// was leaving. With a hostile shell landing within the horizon,
+    /// each shot is foreseen twice, the hull as it is and turned to the
+    /// shot, toward where the tank is going; a shot that takes a clear
+    /// drive into a splash is struck. True when one was.
+    pub fn hold_fire(&self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>, map: Option<&Map>) -> bool {
+        let Some(t) = self.tune.filter(|t| t[7] >= 0.5) else { return false };
+        let threats = self.threats(obs, self.landing);
+        let Some(ticks) = threats.iter().map(|(_, e)| *e).max() else { return false };
+        let to = cmds.iter().rev().find_map(|c| if let Command::Move { to } = c { Some(*to) } else { None }).or(me.route.last().copied()).or(me.goal).unwrap_or(me.pos);
+        let clear = |m: &Tank| drive_path(m, to, ticks, map).map(|p| Self::clearance(&p, &threats, t[1]) >= 0.0).unwrap_or(true);
+        if !clear(me) {
+            return false;
+        }
+        let before = cmds.len();
+        cmds.retain(|c| match c {
+            Command::FireDirect { at } | Command::FireIndirect { at } => {
+                let mut turned = me.clone();
+                turned.heading = (*at - me.pos).heading();
+                clear(&turned)
+            }
             _ => true,
         });
         cmds.len() < before
@@ -2032,7 +2061,7 @@ mod tests {
         let mut old = Dodge::default();
         let first = old.order(&obs, &tank);
         for hold in [0.0, 1.0] {
-            let mut d = Dodge { tune: Some([4.0, 0.8, 2.5, hold, 0.0, 0.0, 0.0]), ..Default::default() };
+            let mut d = Dodge { tune: Some([4.0, 0.8, 2.5, hold, 0.0, 0.0, 0.0, 0.0]), ..Default::default() };
             assert_eq!(d.order(&obs, &tank), first, "the default numbers move as the constants do");
             let mut arrived = tank.clone();
             arrived.goal = None;

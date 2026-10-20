@@ -1,0 +1,30 @@
+# LAB-REPORT-BRAIN.md section 57, `duck_plan`: seed 19 of the ready-gun
+# family. At `duck_plan` 0 the duck takes the nearest safe point to its
+# errand, anew each think, and is still in reach when the gun is ready;
+# at 1 it takes a point `drive_to` has out of reach or sight by then.
+name = "a tank ducks out of reach in time"
+seed = 19
+players = 2
+seconds = 3
+trace_every = 0.25
+[[tank]]
+seat = 0
+heading = "any"
+speed = 0
+reload = 2.5
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [9, 0]
+around = true
+reload = [0.4, 1.4]
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+weights = { duck_plan = 1 }
+[[brain]]
+seat = 1
+kind = "rulebot"
+[expect]
+hits_on = { seat = 0, max = 0 }
