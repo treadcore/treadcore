@@ -26,7 +26,7 @@ ABSTRACT
     under today's defaults, 12 seeds each. The late parts (the base
     cycle, the escort) read inside the noise both ways: not confirmed.
     Three of 24 readings fell outside two errors, against about one
-    expected by chance. `smooth` is negative in all five readings ever;
+    expected by chance. `smooth` is negative in all four readings on record;
     Paul chose to keep it as a weight with an insignificant default.
     `bridge_jobs` and `duck` are leads for 48 fresh seeds.
 

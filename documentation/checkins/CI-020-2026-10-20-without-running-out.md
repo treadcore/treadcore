@@ -15,7 +15,7 @@ measured alone, at unlimited respawns and at 3, under today's
 defaults, 12 seeds each. The base cycle and the escort read inside the
 noise both ways: not confirmed. Three of 24 readings fell outside two
 errors, where about one is expected by chance. Only `smooth`, negative
-in all five readings ever taken, stands as a finding. `bridge_jobs`
+in all four readings on record, stands as a finding. `bridge_jobs`
 (+1.68) and `duck` (-2.26) are leads for confirmation. On Paul's
 choice, `smooth` becomes a weight with an insignificant default.
 

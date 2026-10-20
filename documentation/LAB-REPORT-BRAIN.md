@@ -2349,7 +2349,7 @@ Bold is outside two errors.
 the two-error line, where about one reading in twenty falls outside by
 chance: about one false finding is expected, and three appeared.
 Only `smooth` has the consistency to stand on: it is negative in all
-five readings ever taken (LR 11, LR 24, 48 seeds in LR 12's era, and
+four readings on record (-1.92 in LR 20's list, -1.98 in LR 24, and
 both passes here). `bridge_jobs` (+1.68) and `duck` (-2.26) are each
 outside in one pass and inside in the other. They are leads, to be
 confirmed on 48 fresh seeds before anything changes (backlog 39).

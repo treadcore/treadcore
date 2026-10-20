@@ -596,7 +596,7 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     +/- 1.47 outside; at 3 respawns under today's defaults the late
     parts inside too. Done: not confirmed. Three of 24 readings
     outside two errors (about one expected by chance): `smooth`,
-    negative in all five readings ever; `bridge_jobs` +1.68 +/- 0.70
+    negative in all four readings on record; `bridge_jobs` +1.68 +/- 0.70
     and `duck` -2.26 +/- 1.05, one pass each.
 30. The run for the beach. (19 October; cause: LR 27, 165 deaths of
     819 on `landfall`, 132 of them a boat sunk by direct fire.) Goal 4.
