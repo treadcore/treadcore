@@ -2640,6 +2640,23 @@ form of LR 49's scenario. It holds at the defaults, and with
 point").
 
 The check of dealt play (LR 46's seeds 0 to 15, the same weights, the
-new binary) is running at this writing; LR 51 gives it.
+new binary) is LR 51.
 
 Proof: `make test`: brain 76 passed and 9 ignored. No warnings.
+
+## 51. Dealt play unchanged by the Settings fix, 20 October
+
+LR 50 changed `Commander::new` to apply its default Settings. A dealt
+bot already had them applied (`equip`), so the census should play
+exactly as before. The check: LR 46's first range (seeds 0 to 15,
+`w_smooth` 0 as the trial against the defaults) again, from a binary
+built after the fix.
+
+| Run | The 16 per-seed differences |
+| --- | --- |
+| LR 46, before the fix | -1.68 -0.58 -0.18 +1.76 -3.31 +1.45 -0.59 -5.96 -0.60 +2.52 -4.61 +4.94 +2.74 -0.95 +6.65 +5.81 |
+| After the fix | -1.68 -0.58 -0.18 +1.76 -3.31 +1.45 -0.59 -5.96 -0.60 +2.52 -4.61 +4.94 +2.74 -0.95 +6.65 +5.81 |
+
+Identical to the hundredth: the census, and every measurement in this
+report, played Commanders with their Settings applied all along. Only
+Commanders built outside a deal were affected.
