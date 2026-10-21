@@ -24,7 +24,7 @@ Section numbers are the lab report's (LR); dates are 2026.
 
 | Old method | Replaced by | When | The old one now | Evidence |
 | --- | --- | --- | --- | --- |
-| Constants written into `Tactics` and through the brain | `weights::Settings`: a flat `Weights` array of named weights (96 now) and `Caps` bits (17), defaults equal to the old constants | 18 Oct, LR 11 | the defaults themselves | `default_weights_are_todays_constants` |
+| Constants written into `Tactics` and through the brain | `weights::Settings`: a flat `Weights` array of named weights (98 now) and `Caps` bits (17), defaults equal to the old constants | 18 Oct, LR 11 | the defaults themselves | `default_weights_are_todays_constants` |
 | The castle of steps 11b and 11h: three towers and two bastions, filled with every pillbox carried in | the capped castle: two pillboxes inside, one on its road, the rest to posts on the roads between bases, kept off junctions (`castle_cap`, default on) | 18 Oct, LR 12 | `caps = baseline, -castle_cap`; proofs `a_commander_fortifies_its_depot`, `a_commander_climbs_the_ladder` run it | fair census: old castle 8.36 a seat, capped 9.08 (LR 14) |
 | The census's one match a seed, the trial team turned round | the fair census: every team in the trial seat on every seed (`CENSUS_FAIR`, default on) | 18 Oct, LR 14 | `CENSUS_FAIR=0` | a null run read 12.66 against 6.44 before, 13.93 against 13.93 after |
 | The census's baseline teams always on the defaults | `CENSUS_BASE_CAPS`: the baseline teams' switches, for a part that needs another on | 18 Oct, LR 18 | leave it unset | used for `bridge_jobs` against `board` |
@@ -54,6 +54,7 @@ Section numbers are the lab report's (LR); dates are 2026.
 | The dodge planned and released against the one shell dodged | every hostile shell landing within the horizon, each at its own landing (`dodge_every`) | 20 Oct, LR 56 | `dodge_every = 0` | two-shell families 76.5% and 79.9% to 100%; with LR 57, the guard +0.21, error 0.68 |
 | The guns free while a shell is in flight (a shot turns the hull) | a shot that would carry the tank into a splash waits (`dodge_fire`) | 20 Oct, LR 57 | `dodge_fire = 0` | `a-dodging-tank-holds-its-fire.toml`; the guard as above |
 | The duck's point picked anew each think, nearest the errand, reached or not | held while safe, else foreseen out of reach or line by the gun's ready tick (`duck_plan`) | 20 Oct, LR 57 | `duck_plan = 0` | ready-gun family 76.6% to 83.4%; the guard as above |
+| Expand's depot the nearest the base, picked anew each think | blended with its distance to the team board's front, the front kept on hostiles seen in the last 30 s, the pick kept until taken (`w_front`, `front_memory`) | 20 Oct, LR 58 | `w_front = 0` (the memory alone: `front_memory = 0`) | `an-expanding-tank-takes-the-depot-at-the-front.toml`, `a_front_seen_is_remembered`; the guard -0.14 +/- 0.42 a seat over 48 seeds |
 | The window's pilot playing on no settings at all | the pilot on the weights page's settings, which start from the team file or `--weights` | 18 Oct, LR 17 | removed | `client::tune` |
 
 ## Current, challenger off

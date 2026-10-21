@@ -176,6 +176,8 @@ weights! {
     DuckMemory "duck_memory" 5.0, "duck: seconds a hostile gun seen is remembered where it was, its reload counted down (sight and direct range are both 10 tiles, so a gun at the edge is often unseen)";
     DuckPlan "duck_plan" 1.0, "duck: the point held while it stays safe, else the one `drive_to` has out of the gun's reach or line by the tick it is ready (1, LR 57), against the nearest safe point to the errand, picked anew each think (0, LR 21); thresholded at 0.5";
     DuckReady "duck_ready" 1.5, "duck: a hostile gun ready within this many seconds threatens, if it fires before mine (a tank covers about five tiles in 1.5 s)";
+    Front "w_front" 0.5, "front: Expand's depot by its distance to the team board's front (1, LR 58) against its distance to the base (0, before LR 58), the cost the blend of the two; a depot so chosen is kept until taken or given up; needs board";
+    FrontMemory "front_memory" 30.0, "front: seconds a hostile tank out of sight still counts toward the board's front where it was last seen; 0 (before LR 58) counts only what is in sight";
     FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";

@@ -1692,12 +1692,41 @@ impl Commander {
                 }
             }
         }
-        let depot = obs
-            .depots
-            .iter()
-            .filter(|d| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.has(&d.id, obs.tick))
-            .min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)).then(a.id.cmp(&b.id)))
-            .cloned();
+        let open = |d: &&Depot| !Self::mine_or_allied(obs, d.owner) && !self.depots_given_up.has(&d.id, obs.tick);
+        let nearest = obs.depots.iter().filter(open).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)).then(a.id.cmp(&b.id))).cloned();
+        // The front read (backlog 49, LR 58): with the board's front known,
+        // each depot costs `(1 - w)` its distance to the base and `w` its
+        // distance to the front, so the team contests the ground where the
+        // two sides meet; a depot so chosen is kept until it is taken or
+        // given up, as the front moves each second.
+        let w = self.settings.w[crate::weights::W::Front].clamp(0.0, 1.0);
+        let board = w > 0.0 && self.caps().has(crate::weights::Caps::BOARD);
+        let front: Vec<V2> = self
+            .board
+            .as_ref()
+            .filter(|_| board)
+            .and_then(|b| b.lock().ok().map(|b| b.front().into_iter().map(crate::board::sector_centre).collect()))
+            .unwrap_or_default();
+        let kept = self.depot_target.filter(|_| board).and_then(|id| obs.depots.iter().filter(open).find(|d| d.id == id)).cloned();
+        let depot = if kept.is_some() {
+            kept
+        } else if !front.is_empty() {
+            let to_front = |p: V2| front.iter().map(|c| c.dist(p)).fold(f32::INFINITY, f32::min);
+            let picked = obs
+                .depots
+                .iter()
+                .filter(open)
+                .map(|d| (d, (1.0 - w) * d.pos.dist(base) + w * to_front(d.pos)))
+                .min_by(|a, b| a.1.total_cmp(&b.1).then(a.0.id.cmp(&b.0.id)))
+                .map(|(d, _)| d.clone());
+            crate::meter::front(true, picked.as_ref().map(|d| d.id) != nearest.as_ref().map(|d| d.id));
+            picked
+        } else {
+            if board {
+                crate::meter::front(false, false);
+            }
+            nearest
+        };
         let Some(d) = depot else {
             self.depot_target = None;
             self.gun_reserved = false;

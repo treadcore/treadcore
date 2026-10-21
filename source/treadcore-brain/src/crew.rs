@@ -42,6 +42,8 @@ pub const HAUL_FOR: Tick = 4 * 60 * TICK_HZ as Tick;
 /// An ally's pillbox this near the fort is hauled to a turret slot.
 pub const HAUL_REACH: f32 = 40.0;
 
+/// How long a job has before it is late: a haul `HAUL_FOR`, the rest
+/// `JOB_FOR`.
 fn job_for(job: &Job) -> Tick {
     if matches!(job, Job::Haul { .. }) {
         HAUL_FOR
@@ -54,6 +56,8 @@ pub const FAILS: u8 = 2;
 /// A crew's Ready again at most this often unprompted.
 const READY_EVERY: Tick = 10 * TICK_HZ as Tick;
 
+/// The tile a job works on, which no two crews are given at once; none
+/// for a job with no place (Ready, a muster).
 fn job_tile(job: &Job) -> Option<(i32, i32)> {
     match job {
         Job::Build { at, .. } => Some(at.tile()),
@@ -75,10 +79,13 @@ pub struct FleetCommand {
 }
 
 impl FleetCommand {
+    /// Crews that reported ready and are still alive.
     pub fn crews(&self) -> usize {
         self.crew.len()
     }
 
+    /// A job not done (late, or Ready again with the item still up):
+    /// one failure on its tile; `FAILS` and the plan does without it.
     fn failed(&mut self, plan: &mut Plan, job: &Job) {
         let Some(tile) = job_tile(job) else { return };
         let n = match self.fails.iter_mut().find(|(t, _)| *t == tile) {
@@ -224,6 +231,7 @@ impl Crew {
         self.fell_first = false;
     }
 
+    /// Where the last muster heard called the crews, if one was.
     pub fn muster_at(&self) -> Option<V2> {
         self.muster
     }
@@ -236,6 +244,7 @@ impl Crew {
         }
     }
 
+    /// The crew has a job (given out, or adopted from the board).
     pub fn working(&self) -> bool {
         self.job.is_some()
     }
@@ -245,6 +254,7 @@ impl Crew {
         matches!(self.job, Some((Job::Build { what: BuildKind::Road, .. }, _)))
     }
 
+    /// Report Ready to the fleet commander, if the crew has one.
     fn ready(&mut self, obs: &Observation, out: &mut Vec<Command>) {
         if let Some(c) = self.commander {
             self.last_ready = obs.tick;
@@ -252,6 +262,7 @@ impl Crew {
         }
     }
 
+    /// The job is over, done or not: Ready again at once if free.
     fn finish(&mut self, obs: &Observation, out: &mut Vec<Command>, free: bool) {
         self.job = None;
         self.sent = None;
@@ -261,6 +272,8 @@ impl Crew {
         }
     }
 
+    /// Drive to 3 tiles short of the site on the tank's side, once a
+    /// second at most and not again while already going there.
     fn walk(&mut self, obs: &Observation, me: &Tank, site: V2, out: &mut Vec<Command>) {
         let near = site + (me.pos - site).norm().scale(3.0);
         let going = me.route.last().copied().or(me.goal).map(|g| g.dist(near) < 2.0).unwrap_or(false);
@@ -270,10 +283,6 @@ impl Crew {
         }
     }
 
-    /// Every tick, before anything else of the bot's can return: the
-    /// jobs given it. A job is an event of one tick, and a wingman busy
-    /// with something else that tick (a dodge, a rally, a crossing) lost
-    /// its leader's bridge tiles.
     /// A job the team board kept for this crew (board.rs, roadmap 12e):
     /// taken if the crew has none and has not had this one.
     pub fn adopt(&mut self, job: Job, at: Tick) {
@@ -286,6 +295,10 @@ impl Crew {
         self.fell_first = false;
     }
 
+    /// Every tick, before anything else of the bot's can return: the
+    /// jobs given it. A job is an event of one tick, and a wingman busy
+    /// with something else that tick (a dodge, a rally, a crossing) lost
+    /// its leader's bridge tiles.
     pub fn take_jobs(&mut self, obs: &Observation) {
         for e in &obs.events {
             if let Event::Requested { from, to: Some(to), job } = e {
@@ -498,5 +511,74 @@ impl Crew {
             out.push(Command::Deploy { task: PillboyTask::Build { what, at } });
         }
         Some(out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fortify::State;
+
+    /// Two crews answer Ready on the commander's own observation.
+    fn ready(obs: &mut Observation, crews: &[PlayerId]) {
+        for c in crews {
+            obs.events.push(Event::Requested { from: *c, to: Some(obs.player), job: Job::Ready });
+        }
+    }
+
+    /// The Build jobs among the requests: to whom, and which tile.
+    fn builds(cmds: &[Command]) -> Vec<(PlayerId, (i32, i32))> {
+        cmds.iter()
+            .filter_map(|c| match c {
+                Command::Request { to: Some(p), job: Job::Build { at, .. } } => Some((*p, at.tile())),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// The hand-out (backlog 26; steps 1, 3 and 5 of the module's
+    /// list): a muster, then each ready crew its own item of the plan;
+    /// a busy crew nothing more; a job not done in `JOB_FOR` given out
+    /// again, and after `FAILS` such the plan does without the item.
+    #[test]
+    fn each_crew_gets_its_own_item_and_a_late_one_is_given_up() {
+        let w = World::new(Scenario { teams: Some(vec![0, 0, 0]), ..Scenario::bots(3) });
+        let base = Map::tile_centre(w.tanks[0].pos);
+        let mut plan = Plan::castle(base, base + V2::new(-30.0, 0.0));
+        let mut fc = FleetCommand { on: true, ..Default::default() };
+        let mut obs = w.observe(0);
+        obs.tick = 1;
+        ready(&mut obs, &[1, 2]);
+        let cmds = fc.think(&obs, base, Some(&mut plan));
+        assert!(cmds.iter().any(|c| matches!(c, Command::Request { to: None, job: Job::Muster { .. } })), "{:?}", cmds);
+        let first = builds(&cmds);
+        assert_eq!(first.iter().map(|b| b.0).collect::<Vec<_>>(), vec![1, 2], "each ready crew a job: {:?}", cmds);
+        assert_ne!(first[0].1, first[1].1, "never the same item twice");
+        assert_eq!(plan.skip.len(), 2, "the commander's own squad keeps off what is given out");
+        // A tick on: both busy, nothing new, no second muster.
+        obs.events.clear();
+        obs.tick = 2;
+        assert!(fc.think(&obs, base, Some(&mut plan)).is_empty());
+        // Late twice: the same two items given out again, then dropped.
+        let mut given = 1;
+        for round in 1..=FAILS {
+            let t = given + JOB_FOR;
+            obs.tick = t;
+            obs.events.clear();
+            fc.think(&obs, base, Some(&mut plan));
+            assert_eq!(fc.crews(), 0, "a crew late with its job is a crew no more");
+            given = t + 1;
+            obs.tick = given;
+            ready(&mut obs, &[1, 2]);
+            let again = builds(&fc.think(&obs, base, Some(&mut plan)));
+            let skipped = |tile: (i32, i32)| plan.items.iter().any(|i| i.at.tile() == tile && i.state == State::Skipped);
+            if round < FAILS {
+                assert_eq!(again, first, "once late, the items go out again");
+            } else {
+                assert!(first.iter().all(|b| skipped(b.1)), "late {} times, the plan does without them", FAILS);
+                assert!(again.iter().all(|b| !first.iter().any(|f| f.1 == b.1)), "and gives out others: {:?}", again);
+                assert_eq!(again.len(), 2);
+            }
+        }
     }
 }

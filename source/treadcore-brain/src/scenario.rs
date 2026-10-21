@@ -12,6 +12,11 @@
 //! "strings", true or false, `[lists]` and `{ inline = tables }`.
 //! Positions are an anchor and an offset in tiles: `"seat:0"` (where a
 //! seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed).
+//! `board = true` gives each team's Commanders one team board, a
+//! Commander's `rungs = [...]` the ladder's rungs on, and a `[[depot]]`'s
+//! `at` and `offset` move it there (LR 58). A family
+//! (`scenarios/families/`) has `runs` and the `floor` it must hold over
+//! them (`make families`, backlog 47).
 //!
 //! ```toml
 //! name = "a bot drives out from under a shell"
@@ -176,6 +181,8 @@ pub struct Outcome {
     pub pillbox_damage: Vec<f32>,
     pub pillbox_owned: Vec<BTreeMap<PlayerId, Tick>>,
     pub pillbox_alive: Vec<bool>,
+    /// Each placed depot: the tick each seat first owned it.
+    pub depot_owned: Vec<BTreeMap<PlayerId, Tick>>,
     /// Every 5 s: each thinking seat's status code.
     pub trace: Vec<String>,
     /// When the match ended (a side gone, with no respawns), if it did:
@@ -301,9 +308,19 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
     for d in list("depot") {
         let near = place(&w, &depots, &pillboxes, d.get("near").and_then(Value::str).unwrap_or("seat:0"), None)?;
         let dep = w.depots.iter().filter(|x| !depots.iter().any(|(id, _)| *id == x.id)).min_by(|a, b| a.pos.dist(near).total_cmp(&b.pos.dist(near))).ok_or("no depot left")?;
-        let (id, pos) = (dep.id, dep.pos);
+        let (id, mut pos) = (dep.id, dep.pos);
+        // `at` and `offset`: that depot moved to the tile there, which
+        // must be open ground.
+        if let Some(a) = d.get("at").and_then(Value::str) {
+            pos = Map::tile_centre(place(&w, &depots, &pillboxes, a, d.get("offset"))?);
+            if !w.map.at(pos).passable() {
+                return Err(format!("depot at ({:.0},{:.0}): not open ground", pos.x, pos.y));
+            }
+        }
         let owner = d.get("owner").and_then(Value::num).map(|o| o as PlayerId);
-        w.depots.iter_mut().find(|x| x.id == id).expect("the depot").owner = owner;
+        let dep = w.depots.iter_mut().find(|x| x.id == id).expect("the depot");
+        dep.owner = owner;
+        dep.pos = pos;
         depots.push((id, pos));
     }
     for (k, p) in list("pillbox").iter().enumerate() {
@@ -348,6 +365,10 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         w.shells.push(Shell { id, owner: num(s, "owner", 1.0) as PlayerId, kind: ShellKind::Indirect, from, aim: at, impact: at, launch_tick: tick, impact_tick: tick + lands, spotted: true });
     }
     let mut brains: Vec<(PlayerId, Box<dyn Brain>)> = Vec::new();
+    // `board = true`: each team's Commanders share one team board, as a
+    // dealt match gives them (fleet.rs `equip`); by its first seat.
+    let board = doc.top.get("board") == Some(&Value::Bool(true));
+    let mut boards: Vec<(TeamId, crate::board::Shared)> = Vec::new();
     for b in list("brain") {
         let seat = num(b, "seat", 0.0) as PlayerId;
         let seed = num(b, "seed", 5.0) as u64 ^ seed.unwrap_or(0);
@@ -380,6 +401,28 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
                         s.w[w] = v.num().ok_or(format!("weight {}: a number", k))? as f32;
                     }
                 }
+                if board {
+                    let team = w.players.iter().find(|p| p.id == seat).map(|p| p.team).ok_or(format!("no seat {}", seat))?;
+                    let shared = match boards.iter().find(|(t, _)| *t == team) {
+                        Some((_, b)) => b.clone(),
+                        None => {
+                            let b = crate::board::shared();
+                            boards.push((team, b.clone()));
+                            b
+                        }
+                    };
+                    c.board = Some(shared);
+                }
+                // `rungs = ["expand", "guard"]`: the Auto ladder's rungs on
+                // (all by default), by their labels.
+                if let Some(Value::List(v)) = b.get("rungs") {
+                    c.ladder = [false; 6];
+                    for r in v {
+                        let name = r.str().ok_or("rungs: labels")?;
+                        let k = crate::commander::Rung::ALL.iter().position(|x| x.label() == name).ok_or(format!("no rung {}", name))?;
+                        c.ladder[k] = true;
+                    }
+                }
                 c.set_settings(s);
                 let goal = b.get("goal").and_then(Value::str).unwrap_or("auto");
                 c.set_goal(match goal.split_once(':').map(|(g, k)| (g, k.parse::<usize>().ok())).unwrap_or((goal, None)) {
@@ -397,7 +440,7 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         };
         brains.push((seat, brain));
     }
-    let mut out = Outcome { pillbox_damage: vec![0.0; pillboxes.len()], pillbox_owned: vec![BTreeMap::new(); pillboxes.len()], ..Default::default() };
+    let mut out = Outcome { pillbox_damage: vec![0.0; pillboxes.len()], pillbox_owned: vec![BTreeMap::new(); pillboxes.len()], depot_owned: vec![BTreeMap::new(); depots.len()], ..Default::default() };
     for t in &w.tanks {
         out.start.insert(t.owner, (t.pos, t.shells));
     }
@@ -472,6 +515,11 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         for (k, id) in pillboxes.iter().enumerate() {
             if let Some(o) = w.pillboxes.iter().find(|p| p.id == *id).and_then(|p| p.owner) {
                 out.pillbox_owned[k].entry(o).or_insert(w.tick);
+            }
+        }
+        for (k, (id, _)) in depots.iter().enumerate() {
+            if let Some(o) = w.depots.iter().find(|d| d.id == *id).and_then(|d| d.owner) {
+                out.depot_owned[k].entry(o).or_insert(w.tick);
             }
         }
         if w.over {
@@ -557,6 +605,27 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                     Some(at) if by.map(|b| *at <= b).unwrap_or(true) => {}
                     Some(at) => failed.push(format!("pillbox {} became seat {}'s at {:.1} s, by {} s expected", k, s, *at as f64 / TICK_HZ as f64, field(t, "by").unwrap_or(0.0))),
                     None => failed.push(format!("pillbox {} never became seat {}'s", k, s)),
+                }
+            }
+            "depot_owned_by" => {
+                let (k, s) = (field(t, "depot").unwrap_or(0.0) as usize, seat.ok_or("depot_owned_by: a seat")?);
+                let by = field(t, "by").map(|b| (b * TICK_HZ as f64) as Tick);
+                match out.depot_owned.get(k).and_then(|o| o.get(&s)) {
+                    Some(at) if by.map(|b| *at <= b).unwrap_or(true) => {}
+                    Some(at) => failed.push(format!("depot {} became seat {}'s at {:.1} s, by {} s expected", k, s, *at as f64 / TICK_HZ as f64, field(t, "by").unwrap_or(0.0))),
+                    None => failed.push(format!("depot {} never became seat {}'s", k, s)),
+                }
+            }
+            // `depot_first = { seat = 0, depot = 1 }`: of the placed depots,
+            // the one the seat took first (one it started with is not
+            // taken).
+            "depot_first" => {
+                let (k, s) = (field(t, "depot").unwrap_or(0.0) as usize, seat.ok_or("depot_first: a seat")?);
+                let first = out.depot_owned.iter().enumerate().filter_map(|(i, o)| o.get(&s).filter(|at| **at > 1).map(|at| (*at, i))).min();
+                match first {
+                    Some((_, i)) if i == k => {}
+                    Some((at, i)) => failed.push(format!("seat {} took depot {} first, at {:.1} s, not depot {}", s, i, at as f64 / TICK_HZ as f64, k)),
+                    None => failed.push(format!("seat {} took none of the depots", s)),
                 }
             }
             "ends_near" => {
@@ -712,6 +781,38 @@ mod tests {
             eprintln!("  {}", w);
         }
         eprintln!("scenario {} [{}]: held {} of {}, {:.1}% +/- {:.1}%, seeds {} to {}, {:.1} s", path, set, held, runs, 100.0 * p, 100.0 * se, first, first + runs - 1, started.elapsed().as_secs_f32());
+    }
+
+    /// Every family (`scenarios/families/`, backlog 47) over its `runs`
+    /// seeds (200) from 1, with `SCENARIO_SET` applied: each must hold
+    /// at least its `floor` (a share, 0 to 1; none is only reported).
+    /// `make families`.
+    #[test]
+    #[ignore]
+    fn every_family_holds_its_floor() {
+        let mut files: Vec<_> = std::fs::read_dir(dir().join("families")).expect("scenarios/families/").filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
+        files.sort();
+        let set = std::env::var("SCENARIO_SET").unwrap_or_default();
+        let mut low = Vec::new();
+        for f in &files {
+            let mut doc = parse(&std::fs::read_to_string(f).expect("the file")).unwrap_or_else(|e| panic!("{}: {}", f.display(), e));
+            set_weights(&mut doc, &set).unwrap_or_else(|e| panic!("{}", e));
+            let runs = doc.top.get("runs").and_then(Value::num).unwrap_or(200.0) as u64;
+            let floor = doc.top.get("floor").and_then(Value::num);
+            let started = std::time::Instant::now();
+            let (held, p, se, why) = many(&doc, 1, runs).unwrap_or_else(|e| panic!("{}: {}", f.display(), e));
+            let name = f.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            let verdict = match floor {
+                Some(fl) if p < fl => {
+                    low.push(format!("{}: {:.1}% under its floor {:.1}% ({})", name, 100.0 * p, 100.0 * fl, why.first().cloned().unwrap_or_default()));
+                    "UNDER"
+                }
+                Some(_) => "holds",
+                None => "no floor",
+            };
+            eprintln!("family {} [{}]: held {} of {}, {:.1}% +/- {:.1}%, floor {}, {} ({:.1} s)", name, set, held, runs, 100.0 * p, 100.0 * se, floor.map(|f| format!("{:.1}%", 100.0 * f)).unwrap_or("none".into()), verdict, started.elapsed().as_secs_f32());
+        }
+        assert!(low.is_empty(), "{}", low.join("\n"));
     }
 
     /// One file, with its trace: `SCENARIO=path cargo test -p

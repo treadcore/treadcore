@@ -184,6 +184,7 @@ impl Hop {
         self.adopted
     }
 
+    /// A hop is under way: it has a target.
     pub fn active(&self) -> bool {
         self.target.is_some()
     }
@@ -262,10 +263,14 @@ impl Hop {
         self.no_bridge.keep = keep;
     }
 
+    /// The trip under way is an errand asked for (`send`), not a hop of
+    /// the bot's own.
     pub fn sent(&self) -> bool {
         self.sent && self.target.is_some()
     }
 
+    /// The target given up for `TRIED_FOR`, said why, and every part of
+    /// the trip (boat, bank, bridge, road) dropped.
     fn give_up(&mut self, why: &str) {
         if let Some(t) = self.target.take() {
             self.tried.push((t.tile(), self.now));
@@ -532,6 +537,8 @@ impl Hop {
         depots.chain(boxes).chain(works).filter(|p| p.dist(me.pos) > ARRIVED && !self.given_up(*p)).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)))
     }
 
+    /// A depot or live pillbox of the side stands at `at`: the hop's
+    /// target is taken.
     fn taken(obs: &Observation, at: V2) -> bool {
         let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
         obs.depots.iter().any(|d| d.pos.dist(at) < 0.5 && ours(d.owner)) || obs.pillboxes.iter().any(|p| p.pos.dist(at) < 0.5 && ours(p.owner) && p.alive())
@@ -869,5 +876,63 @@ impl Hop {
                 Some(cmds)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A hop sent across a channel `wide` tiles of water, the map grass
+    /// round it and 200 tiles of forest behind: its first think, and the
+    /// Hop after.
+    fn across(wide: i32, pricing: Option<crate::weights::Settings>) -> (Hop, Vec<Command>) {
+        let mut w = World::new(Scenario::bots(1));
+        w.depots.clear();
+        w.pillboxes.clear();
+        for y in 0..MAP_H as i32 {
+            for x in 0..MAP_W as i32 {
+                // Forest on the near island, away from the way across:
+                // trees plenty, so a bridge is priced at its length.
+                let t = if (60..60 + wide).contains(&x) {
+                    Terrain::Water
+                } else if (10..30).contains(&x) && (10..20).contains(&y) {
+                    Terrain::Forest
+                } else {
+                    Terrain::Grass
+                };
+                w.map.set(V2::new(x as f32 + 0.5, y as f32 + 0.5), t);
+            }
+        }
+        let start = V2::new(55.5, 64.5);
+        w.tanks[0].pos = start;
+        let target = V2::new((60 + wide + 6) as f32 + 0.5, 64.5);
+        let mut h = Hop { pricing, ..Hop::default() };
+        assert!(h.send(target));
+        let obs = w.observe(0);
+        let me = obs.me.clone().unwrap();
+        let cmds = h.think(&obs, &me, false, Some(&w.map)).expect("the hop has the tank");
+        (h, cmds)
+    }
+
+    /// The bridge choice (backlog 26; Paul, 17 October: "build roads
+    /// where it would drive"): a gap of `BRIDGE_MAX` tiles or fewer is
+    /// bridged from the near bank, a wider one sailed; priced (LR 6.2), a
+    /// bridge that costs more than a boat is sailed too, which at
+    /// today's weights and 200 trees is from 8 tiles of water (7.9
+    /// against a boat's 8.3 at 7; 10.5 at 8).
+    #[test]
+    fn a_hop_bridges_a_narrow_gap_and_sails_a_wide_one() {
+        let (h, _) = across(4, None);
+        assert_eq!(h.act, HopAct::Bridging, "{}", h.doing);
+        assert_eq!(h.bridge_front().map(|t| t.tile().0), Some(60), "laid from the near bank");
+        assert_eq!(h.bridge_job().map(|(t, _)| t.len()), Some(4));
+        let (h, _) = across(BRIDGE_MAX as i32 + 5, None);
+        assert!(h.bridge_front().is_none() && h.act != HopAct::Bridging, "too wide to bridge: {}", h.doing);
+        let s = crate::weights::Settings::default();
+        let (h, _) = across(7, Some(s.clone()));
+        assert_eq!(h.act, HopAct::Bridging, "7 tiles priced: a bridge ({})", h.doing);
+        let (h, _) = across(8, Some(s));
+        assert!(h.bridge_front().is_none(), "8 tiles priced: by boat ({})", h.doing);
     }
 }

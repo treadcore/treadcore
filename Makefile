@@ -63,6 +63,8 @@
 #                    trace; every file in scenarios/ is also a test.
 #                    RUNS=n runs it over n seeds and gives how often it
 #                    holds; SET="name=value" sets a weight on every brain
+#   make families    every family in scenarios/families/ over its seeds,
+#                    each held to its floor (SET="w=v" to break one).
 #   make spsa        tune named weights by SPSA over the paired census
 #                    (scripts/spsa.sh; TUNE, STEPS, SEEDS, SET, START)
 #   make brainmap    write documentation/BRAIN-MAP.md: every brain file and
@@ -116,7 +118,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario spsa switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families spsa switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -273,6 +275,9 @@ scenario:
 	else \
 		SCENARIO="$(abspath $(S))" SEED="$(SEED)" SCENARIO_SET="$(SET)" cargo test -q -p treadcore-brain --release -- --ignored scenario_one --nocapture; \
 	fi
+
+families:
+	@SCENARIO_SET="$(SET)" cargo test -q -p treadcore-brain --release -- --ignored every_family_holds_its_floor --nocapture
 
 brainmap:
 	@python3 -I scripts/brainmap.py documentation/BRAIN-MAP.md

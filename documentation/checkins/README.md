@@ -39,3 +39,4 @@ report is what ties a conversation to them. Named
 | [023](CI-023-2026-10-20-a-dodge-into-water.md) | 20 October 2026 | The circle at the edge of sight, and a dodge into water | 0077 to 0079 | LAB-REPORT-BRAIN.md sections 49 to 52 |
 | [024](CI-024-2026-10-20-the-dodge-planned.md) | 20 October 2026 | The dodge planned by the tank's own motion | 0080 | LAB-REPORT-BRAIN.md section 53 |
 | [025](CI-025-2026-10-20-every-part-on.md) | 20 October 2026 | Every part on, a dodge against every shell, and the duck foreseen | 0081, 0082 | LAB-REPORT-BRAIN.md sections 54 to 57 |
+| [026](CI-026-2026-10-20-the-front-read.md) | 20 October 2026 | The front read, the families held to floors, and the crews tested | 0083 | LAB-REPORT-BRAIN.md sections 58 to 60 |

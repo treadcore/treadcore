@@ -39,6 +39,10 @@ pub struct Meter {
     /// marks), then taken (0) or dropped by the brain (1, a would-be
     /// dodge, the dodge off), then ashore (0) or afloat (1).
     pub dodges: [[[Dodges; 2]; 2]; 2],
+    /// Expand's fresh picks with `w_front` on (LR 58), by the seat's
+    /// group: with the board's front known, of those the picks not the
+    /// depot nearest the base, and with no front known.
+    pub fronts: [[u64; 3]; 2],
 }
 
 /// One kind of shell dodge's count: begun, and of those hit before the
@@ -135,6 +139,19 @@ pub fn dodge_hit(afloat: bool, dropped: bool, killed: bool, shell: bool) {
         d.shell += shell as u64;
     });
 }
+/// An Expand pick with `w_front` on: the front known or not, and moved
+/// from the nearest depot or not.
+pub fn front(known: bool, moved: bool) {
+    let g = group();
+    bump(|m| {
+        if known {
+            m.fronts[g][0] += 1;
+            m.fronts[g][1] += moved as u64;
+        } else {
+            m.fronts[g][2] += 1;
+        }
+    });
+}
 pub fn spent(d: Duration) {
     bump(|m| m.nanos += d.as_nanos() as u64);
 }
@@ -157,6 +174,15 @@ impl Meter {
                 for (d, od) in t.iter_mut().zip(ot) {
                     d.add(od);
                 }
+            }
+        }
+    }
+
+    /// Adds another count's front picks to this one's.
+    pub fn add_fronts(&mut self, o: &Meter) {
+        for (g, og) in self.fronts.iter_mut().zip(o.fronts) {
+            for (a, b) in g.iter_mut().zip(og) {
+                *a += b;
             }
         }
     }
@@ -201,6 +227,7 @@ impl Meter {
             self.plan_clones,
             self.micros_per_seat()
         ) + &self.dodge_line()
+            + &self.fronts.iter().enumerate().filter(|(_, f)| f[0] + f[2] > 0).map(|(g, f)| format!(", front picks{} {} ({} moved off the nearest depot, {} with no front)", if g == 1 { " (trial)" } else { "" }, f[0], f[1], f[2])).collect::<String>()
             + &if self.postures.iter().sum::<u64>() > 0 {
             let names = ["defend base", "fortify", "turrets", "hunt", "expand", "guard"];
             let mut moves: Vec<(u64, String)> = Vec::new();

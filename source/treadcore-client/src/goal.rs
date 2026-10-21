@@ -209,3 +209,29 @@ fn rotation_marks(view: Res<View>, pilot: Res<Pilot>, mut gizmos: Gizmos) {
     gizmos.cross_2d(p, crate::TILE * 1.2, c);
     gizmos.line_2d(d, p, c.with_alpha(0.25));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Backlog 50 (roadmap 11c, "allies' goals"): hosting, the screen
+    /// shows each allied bot's rung and what it is going for, as the
+    /// session's FLEET lines carry them from the bots' own status.
+    #[test]
+    fn the_screen_shows_an_allys_rung_and_target() {
+        let sc = treadcore_sim::Scenario { teams: Some(vec![0, 0]), ..treadcore_sim::Scenario::bots(2) };
+        let mut w = treadcore_sim::World::new(sc);
+        let mut ally = Commander::new(7, "ally");
+        ally.set_goal(Goal::Auto);
+        for _ in 0..(3 * TICK_HZ) {
+            let obs = w.observe(1);
+            let cmds = ally.think_on(&obs, Some(&w.map));
+            w.step(&cmds.into_iter().map(|cmd| Order { player: 1, cmd }).collect::<Vec<_>>());
+        }
+        let line = format!("{:<12} {}", "ally", ally.status());
+        assert!(line.contains("auto > "), "the ally's status names its rung: {}", line);
+        let pilot = Pilot { brain: Commander::new(1, "me"), coord: true, folded: false, last: None };
+        let screen = pilot.screen(&w.observe(0), &[line.clone()]);
+        assert!(screen.contains("FLEET\n") && screen.contains(&line), "{}", screen);
+    }
+}

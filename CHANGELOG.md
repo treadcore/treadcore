@@ -6,6 +6,23 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the front read (`w_front` 0.5, on with `board`): Expand's depot
+  costs half its distance to the base and half its distance to the team
+  board's front, and is kept until taken; the front is kept on the
+  hostile tanks seen in the last `front_memory` (30) seconds, since with
+  only what was in sight it was known at 2.5 picks a match. The guard:
+  -0.14 +/- 0.42 a seat over 48 seeds (LAB-REPORT-BRAIN.md section 58).
+- Added: scenarios take `board = true`, a Commander's `rungs`, a
+  `[[depot]]` moved by `at` and `offset`, and `depot_owned_by` and
+  `depot_first`; the meter counts Expand's picks by the front.
+- Added: `make families`: every family in `scenarios/families/` over
+  its `runs` seeds, held to its `floor`; each falls under it with its
+  part broken (section 59).
+- Added: tests of their own for the crews' hand-out and the hop's
+  bridge choice; a client test that the coordination screen shows an
+  allied bot's rung and target; doc comments for crew.rs, hop.rs and
+  board.rs, 99 functions of 392 left without one (section 60).
+
 - Added: the duck foreseen (`duck_plan`, on): the point is held while it
   stays safe, else the one `drive_to` has out of the gun's reach or line
   by the time it is ready; a family of a tank under a ready gun from

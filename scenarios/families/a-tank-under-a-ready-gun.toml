@@ -5,6 +5,8 @@
 # the direct shot or the shell it lobs past direct range. Run over many
 # seeds: make scenario S=this RUNS=1000.
 name = "a tank under a ready gun, any geometry"
+runs = 1000
+floor = 0.80
 players = 2
 seconds = 3
 [[tank]]

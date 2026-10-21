@@ -33,6 +33,7 @@ use treadcore_sim::*;
 
 pub type Shared = Arc<Mutex<TeamBoard>>;
 
+/// A new, empty board for a team.
 pub fn shared() -> Shared {
     Arc::new(Mutex::new(TeamBoard::default()))
 }
@@ -83,6 +84,7 @@ impl Posture {
     /// In the threshold ladder's order (12e), which is also the order
     /// ties between scores go by.
     pub const ALL: [Posture; 5] = [Posture::Defend, Posture::Economy, Posture::Expand, Posture::Connect, Posture::Fortify];
+    /// The posture's name, for the screen and the census.
     pub fn word(self) -> &'static str {
         match self {
             Posture::Economy => "economy",
@@ -159,6 +161,11 @@ pub struct TeamBoard {
     pub influence: Vec<f32>,
     /// Hostile strength alone, per sector: the threat.
     pub threat: Vec<f32>,
+    /// Hostile tanks as last seen: id, where, worth, when (`front_memory`,
+    /// LR 58); and the influence with those out of sight still counted
+    /// where they were, which the front is read from.
+    pub seen: Vec<(EntityId, V2, f32, Tick)>,
+    pub known: Vec<f32>,
     pub members: Vec<Member>,
     pub points: Vec<V2>,
     pub posture: Posture,
@@ -176,6 +183,8 @@ pub struct TeamBoard {
     orders: Vec<(PlayerId, BoardOrder, Tick)>,
 }
 
+/// A tank's worth in a fight, for the influence: its armour share, at
+/// least a tenth; none dead or out of shells.
 fn worth(t: &Tank) -> f32 {
     if !t.alive || t.shells == 0 {
         0.0
@@ -193,12 +202,14 @@ pub fn readiness(t: &Tank) -> f32 {
     }
 }
 
+/// The sector a point is in, row-major; off the map, the nearest.
 pub fn sector_of(p: V2) -> usize {
     let x = (p.x.max(0.0) as usize / SECTOR).min(SECTORS - 1);
     let y = (p.y.max(0.0) as usize / SECTOR).min(SECTORS - 1);
     y * SECTORS + x
 }
 
+/// The middle of a sector.
 pub fn sector_centre(s: usize) -> V2 {
     V2::new(((s % SECTORS) * SECTOR) as f32 + SECTOR as f32 / 2.0, ((s / SECTORS) * SECTOR) as f32 + SECTOR as f32 / 2.0)
 }
@@ -274,6 +285,7 @@ impl TeamBoard {
         Some((j.tiles.clone(), j.target))
     }
 
+    /// A rebuild is due: never built, or `REBUILD` since the last.
     pub fn due(&self, now: Tick) -> bool {
         self.built.map(|t| now >= t + REBUILD).unwrap_or(true)
     }
@@ -293,28 +305,38 @@ impl TeamBoard {
         self.orders.retain(|(q, _, _)| *q != p);
     }
 
+    /// Ours minus theirs at a point's sector, as last seen.
     pub fn influence_at(&self, p: V2) -> f32 {
         self.influence.get(sector_of(p)).copied().unwrap_or(0.0)
     }
 
+    /// Hostile strength at a point's sector, as last seen.
     pub fn threat_at(&self, p: V2) -> f32 {
         self.threat.get(sector_of(p)).copied().unwrap_or(0.0)
     }
 
-    /// The front: our sectors with a neighbour that is theirs.
+    /// The front: our sectors with a neighbour that is theirs, on the
+    /// influence with the hostiles remembered (`known`), else as seen.
     pub fn front(&self) -> Vec<usize> {
+        let inf = if self.known.len() == self.influence.len() { &self.known } else { &self.influence };
         let mut out = Vec::new();
-        for s in 0..self.influence.len() {
-            if self.influence[s] <= 0.0 {
+        for s in 0..inf.len() {
+            if inf[s] <= 0.0 {
                 continue;
             }
             let (x, y) = (s % SECTORS, s / SECTORS);
-            let theirs = |nx: usize, ny: usize| nx < SECTORS && ny < SECTORS && self.influence[ny * SECTORS + nx] < 0.0;
+            let theirs = |nx: usize, ny: usize| nx < SECTORS && ny < SECTORS && inf[ny * SECTORS + nx] < 0.0;
             if theirs(x.wrapping_sub(1), y) || theirs(x + 1, y) || theirs(x, y.wrapping_sub(1)) || theirs(x, y + 1) {
                 out.push(s);
             }
         }
         out
+    }
+
+    /// Tiles from `p` to the nearest front sector's centre (LR 58); none
+    /// with no front (no hostile seen at the last rebuild).
+    pub fn front_dist(&self, p: V2) -> Option<f32> {
+        self.front().into_iter().map(|s| sector_centre(s).dist(p)).min_by(|a, b| a.total_cmp(b))
     }
 
     /// The share of the map that is ours.
@@ -351,6 +373,22 @@ impl TeamBoard {
         for p in obs.pillboxes.iter().filter(|p| p.alive()) {
             let Some(o) = p.owner else { continue };
             add(p.pos, pill, !obs.allied(o), &mut self.influence, &mut self.threat);
+        }
+        // The front's memory (LR 58): each hostile tank in sight is kept
+        // where it is; one seen dead, or not seen for `front_memory`
+        // seconds, is dropped; the rest still count where they were.
+        let keep = s.ticks(W::FrontMemory);
+        for t in obs.tanks.iter().filter(|t| !obs.allied(t.owner)) {
+            self.seen.retain(|x| x.0 != t.id);
+            if t.alive && keep > 0 {
+                self.seen.push((t.id, t.pos, worth(t), now));
+            }
+        }
+        self.seen.retain(|x| now < x.3 + keep);
+        self.known.clone_from(&self.influence);
+        let mut none = vec![0.0; n];
+        for x in self.seen.iter().filter(|x| x.3 < now) {
+            add(x.1, x.2, true, &mut self.known, &mut none);
         }
         // Defence points: the side's pillboxes and depots under the most
         // threat, up to four; none, the base.
@@ -570,6 +608,33 @@ mod tests {
             assert!((40.0..=72.0).contains(&x), "the front sits between the two sides, not at x {}", x);
         }
         assert!(b.territory() > 0.3 && b.territory() < 0.7);
+    }
+
+    /// The front's memory (LR 58): the hostiles seen at one rebuild and
+    /// out of sight at the next still make the front where they were,
+    /// for `front_memory` seconds; at 0 the front goes with the sighting.
+    #[test]
+    fn a_front_seen_is_remembered() {
+        let seen = placed([V2::new(20.0, 64.0), V2::new(100.0, 64.0), V2::new(24.0, 64.0), V2::new(104.0, 64.0)]);
+        let mut lost = seen.clone();
+        lost.tanks.retain(|t| seen.allied(t.owner));
+        for keep in [30.0, 0.0] {
+            let mut s = Settings::default();
+            s.w[W::FrontMemory] = keep;
+            let mut b = TeamBoard::default();
+            b.rebuild(&seen, None, &s, Home::default(), 0);
+            let front = b.front();
+            assert!(!front.is_empty());
+            b.rebuild(&lost, None, &s, Home::default(), REBUILD);
+            assert!(b.influence.iter().all(|v| *v >= 0.0), "out of sight, the hostiles are not in the influence");
+            if keep > 0.0 {
+                assert_eq!(b.front(), front, "remembered, the front stays where it was");
+                b.rebuild(&lost, None, &s, Home::default(), 31 * TICK_HZ as Tick);
+                assert!(b.front().is_empty(), "forgotten after front_memory");
+            } else {
+                assert!(b.front().is_empty(), "at 0 the front goes with the sighting");
+            }
+        }
     }
 
     #[test]

@@ -3,6 +3,8 @@
 # side lands within 2.5 tiles of it in 1.5 to 3.5 s. Run over many
 # seeds: make scenario S=this RUNS=1000 SET="dodge_release=1".
 name = "a standing tank under a shell, any geometry"
+runs = 1000
+floor = 0.99
 players = 2
 seconds = 4.5
 [[tank]]

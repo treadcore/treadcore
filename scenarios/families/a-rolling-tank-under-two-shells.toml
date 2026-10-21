@@ -3,6 +3,8 @@
 # sides land within 3 tiles of it, each in 1.5 to 3.5 s. Run over many
 # seeds: make scenario S=this RUNS=1000.
 name = "a rolling tank under two shells, any geometry"
+runs = 1000
+floor = 0.99
 players = 2
 seconds = 4.5
 [[tank]]

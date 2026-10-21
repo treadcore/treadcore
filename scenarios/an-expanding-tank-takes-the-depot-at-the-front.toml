@@ -1,0 +1,42 @@
+# LAB-REPORT-BRAIN.md section 58 (backlog 49, the front read): a
+# Commander on the Expand rung with the team board. A teammate stands
+# 30 tiles east and sees a hostile tank 8 tiles past it (a team shares
+# its sight), so the board's front runs between the two. Two neutral
+# depots: one 12 tiles south of the base (the nearest), one 18 tiles
+# east toward the front. With `w_front` the tank takes the depot toward
+# the front first; at 0 the nearest.
+name = "an expanding tank takes the depot at the front"
+players = 3
+teams = [0, 1, 0]
+seconds = 40
+board = true
+pillboxes = false
+[[terrain]]
+near = "seat:0"
+kind = "grass"
+x = [-3, 42]
+y = [-3, 15]
+[[tank]]
+seat = 2
+at = "seat:0"
+offset = [30, 0]
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [38, 0]
+[[depot]]
+at = "seat:0"
+owner = 0
+[[depot]]
+at = "seat:0"
+offset = [0, 12]
+[[depot]]
+at = "seat:0"
+offset = [18, 0]
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+rungs = ["expand", "guard"]
+[expect]
+depot_first = { seat = 0, depot = 2 }

@@ -3041,3 +3041,142 @@ share ashore has gone 15.7%, 10.4%, 5.7%, 1.6%.
 Proof: `make test`: brain 78 passed and 10 ignored; client 31; net 14;
 proto 3; sim 50. No warnings.
 
+## 58. The front read, and a front remembered, 20 October
+
+Backlog 49. Since LR 24 the board has built its influence, front and
+territory every second and nothing has read them. The Expand rung took
+the depot not of the side nearest the base, wherever the two sides
+met.
+
+**The part** (on, LR 54's rule): `w_front` (weights.rs, 0.5, needs
+`board`). With the board's front known, `Commander::expand` costs each
+open depot `(1 - w)` its distance to the base plus `w` its distance to
+the nearest front sector's centre (`TeamBoard::front`, our sectors
+beside theirs), and takes the cheapest. A depot so chosen is kept until
+it is taken or given up (`depot_target`): the front changes each
+second, and a tank whose own arrival tipped the balance found the front
+gone and turned back for the nearest (the scenario's first trace, 4% of
+the way into the capture). At 0, or with the board off, the nearest
+depot to the base as before.
+
+**The scenario**: `an-expanding-tank-takes-the-depot-at-the-front.toml`.
+A Commander with only the Expand and Guard rungs on and a team board
+(`board = true`, `rungs`, new); a teammate 30 tiles east sees a still
+hostile tank 8 tiles past it (a team shares its sight); two neutral
+depots placed by `[[depot]] at`, one 12 tiles south (the nearest), one
+18 tiles east toward the front. Expected `depot_first` (new, with
+`depot_owned_by`): the eastern one. It holds; at `w_front` 0 it fails
+("took depot 1 first, at 13.1 s").
+
+**First reading: the front is seldom known.** The meter (new: Expand's
+fresh picks with `w_front` on, by group, with and without a front, and
+those moved off the nearest depot) over the first 60 matches of the
+guard census: 151 fresh picks with a front known, 2.5 a trial match, 69
+of them moved (1.2 a match). The board reads one member's observation once a second,
+and a hostile tank counts only while in sight (LR 35's finding for the
+landfall, again). The census was stopped there: a part that acts once
+a match cannot be read by it.
+
+**The memory**: `front_memory` (30 s, as `landfall_memory`). Each
+hostile tank in sight at a rebuild is kept where it is
+(`TeamBoard::seen`); one seen dead, or out of sight for `front_memory`,
+is dropped; the rest still count where they were, in a second
+influence (`TeamBoard::known`) that the front is read from. The
+influence itself, the threat, the defence points, the posture and the
+rotation read only what is in sight, as before. Proof:
+`a_front_seen_is_remembered` (the front unchanged a rebuild after the
+hostiles leave sight, gone after 31 s, gone at once at 0).
+
+Expand picks few depots, about four a match, since each is kept until
+taken.
+
+**The guard**: the trial team on the defaults against the same with
+`w_front` and `front_memory` 0; the fair census, naval.map, 900 s, 3
+respawns, seeds 0 to 47, a frozen binary (`build/lr58`).
+
+| 48 seeds | Trial (`w_front` 0.5, `front_memory` 30) | The rest (both 0) |
+| --- | --- | --- |
+| Difference a seat | -0.14 +/- 0.42 (inside the noise) | |
+| Mean score a seat, by job of 16 seeds | 8.27, 8.57, 8.13 | 8.30, 8.47, 8.60 |
+| Expand's fresh picks with a front known, a trial match | 3.2 (459 of 536; 14% with none) | |
+| of those, off the nearest depot | 176, 1.2 a match | |
+| Ashore dodges: hit / by their own shell / killed | 16.5% / 1.7% / 4.3% | 15.9% / 1.6% / 4.0% |
+| Brain time | 67.7 to 69.3 us a seat-tick (both sides; the machine was building and testing beside it, LR 57 read 40 to 42 unloaded) | |
+
+The brain still works with the part: the score does not move past the
+noise, as a part that changes about one decision a match should not.
+The memory raised the picks with a front known from 2.5 to 3.2 a match
+and left the ones moved where they were (1.2 and 1.2): when the front
+is known, it is mostly known from what is in sight. The front read is
+in; whether it pays waits for the tuning phase (backlog 48), and its
+larger use, the guard posts (backlog 51).
+
+Proof: `make test`: brain 81 passed and 11 ignored; client 32; net 14;
+proto 3; sim 50.
+
+## 59. The families held to floors, and allies' goals on the screen, 20 October
+
+**Backlog 47, the floors.** A family (`scenarios/families/`) now says
+how many seeds it runs (`runs`, 200 if unset) and the share it must
+hold (`floor`); `make families` (scenario.rs
+`every_family_holds_its_floor`, ignored) runs every family from seed 1
+and fails if one is under its floor; `SET="name=value"` breaks a part
+on every family at once. A seed takes about 6 ms, so all five families
+at 1,000 seeds take 31 s on one core.
+
+The floors are set under today's rates, more than two errors below
+the ready gun's and at 99% for the four dodge families, which hold
+every seed:
+
+| Family, 1,000 seeds | Today | Floor | `dodge_plan` and `duck_plan` 0 | `dodge_release` 0 |
+| --- | --- | --- | --- | --- |
+| a rolling tank under a shell | 100.0% | 99% | **95.0%** | |
+| a rolling tank under two shells | 100.0% | 99% | **76.4%** | |
+| a standing tank under a shell | 100.0% | 99% | 99.2% | **97.0%** |
+| a standing tank under two shells | 100.0% | 99% | **84.2%** | |
+| a tank under a ready gun | 83.4% +/- 1.2% | 80% | **74.9%** | |
+
+Each family falls under its floor with the part it proves broken (in
+bold); the standing tank under one shell is the release's family (LR
+53), not the plan's, and falls with `dodge_release` 0.
+
+**Backlog 50, allies' goals (11c).** Read first: a window that hosts
+already lists every allied bot under FLEET on the coordination screen
+with the bot's own status, its rung and what it is going for ("auto >
+expand: to the depot at (82,10), 20 tiles"), since 15 October
+(session.rs `step_host`, b257eec). What is missing is the same for a
+window that joins over the network: the bots think on the host, and
+their goals are not in the Observation, so that half needs the wire
+(version 16, which goal 4 must not change) and waits on goal 6. The
+hosting half is now proven: client `the_screen_shows_an_allys_rung_and_target`
+runs an allied Commander on Auto for 3 s and finds its line, rung
+named, on the screen.
+
+## 60. The crews and the hop tested, and the map documented, 20 October
+
+Backlog 26 (CI-001 A9, A10). `crew.rs` and `hop.rs` had no tests of
+their own; 121 of the brain's functions had no doc comment.
+
+**`each_crew_gets_its_own_item_and_a_late_one_is_given_up`** (crew.rs).
+`FleetCommand::think` on a castle plan, with two crews answering Ready
+on the commander's observation: a muster and one Build each, never the
+same tile, both kept off the commander's own squad (`plan.skip`); the
+next tick, both busy, nothing. Late by `JOB_FOR`, each crew is dropped
+and its item counted failed; Ready again, the same two items go out;
+late a second time (`FAILS`), the plan skips them and the next two
+items go out instead. Broken (`n > FAILS` for `n >= FAILS`) it fails.
+
+**`a_hop_bridges_a_narrow_gap_and_sails_a_wide_one`** (hop.rs). A tank
+sent (`Hop::send`) across a channel on an all-grass map, 200 tiles of
+forest behind it: 4 tiles of water are bridged from the near bank, the
+whole crossing a job of 4 tiles; `BRIDGE_MAX` + 5 is not bridged.
+Priced (`priced_crossing`, LR 6.2), 7 tiles bridge (7.9 against a
+boat's 8.3) and 8 sail (10.5). The first form, with no forest, sailed
+at 7: scarcity is the trees of the tank's own island, 12 / (forest +
+1), and a bare island makes every bridge dear, which the test now says.
+Broken (the price's verdict inverted) it fails.
+
+**Doc comments** for the 21 undocumented functions of `crew.rs`,
+`hop.rs` and `board.rs`, and the new tests' helpers; `take_jobs`'s own comment had slipped above
+`adopt` and is back on it. `make brainmap`: 392 functions, 99 with no
+doc comment (121 before), 92 tests.

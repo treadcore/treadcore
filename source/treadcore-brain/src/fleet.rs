@@ -1013,6 +1013,7 @@ mod tests {
             }
             total.leaned += m.leaned;
             total.add_dodges(&m);
+            total.add_fronts(&m);
             for (t, r) in total.moved.iter_mut().zip(m.moved) {
                 for (t, n) in t.iter_mut().zip(r) {
                     *t += n;

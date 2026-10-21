@@ -277,7 +277,7 @@ to 8.93 a seat).
   people; measured, the strings cost nothing, and a census match is
   identical before and after. Not yet: the Observation shared per
   team (the sim change).
-- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture, 83 with its scores; 93 and 17 by LR 53, 96 by LR 57, `smooth` a weight since LR 46),
+- [x] 12c weights and caps: `weights::Settings` (56 weights and 13 bits, 68 and 14 after 12h, 70 and 15 by the sliders, 73 and 16 with the bridge jobs, 76 and 17 with the duck, 77 and 18 with the posture, 83 with its scores; 93 and 17 by LR 53, 96 by LR 57, 98 by LR 58, `smooth` a weight since LR 46),
   `--weights FILE` in the window, `default_weights_are_todays_constants`.
   The sliders, 18 October (LR 17): the coordination screen's weights
   page (`U`) for the player's own team, saved to
@@ -317,8 +317,13 @@ to 8.93 a seat).
   posture, is the suspect (backlog 27). Which rungs it moves (LR 26):
   Fortify to Expand, Turrets -88%; with Economy off Turrets recovers
   half and the score does not move. The ladder decides 5.6% of a
-  team's seat-seconds; 46.7% are dead. Not yet: influence, the front
-  and territory read by nothing.
+  team's seat-seconds; 46.7% are dead. The front read, 20 October (LR
+  58; `w_front`, `front_memory`): Expand's depot blended between the
+  nearest the base and the nearest the front, the front kept on the
+  hostiles seen in the last 30 s;
+  `an-expanding-tank-takes-the-depot-at-the-front.toml`,
+  `a_front_seen_is_remembered`. Not yet: territory read by nothing; the
+  guard posts at the front (backlog 51).
 - [~] 12f behaviours: the base cycle (`cycle`,
   `a_full_tank_gives_the_base_an_item`), priced crossings and the island
   site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`),
@@ -330,7 +335,10 @@ to 8.93 a seat).
   LR 18; `a_teammate_finishes_a_part_laid_bridge`: a part-laid bridge
   is posted, taken by the next teammate with material, wingmen too,
   and laid; measured fairly at 7.31 a seat against 8.01 with `board`
-  on for all, inside the noise, so it stays off).
+  on for all, inside the noise, so it stays off). The crews' hand-out
+  and the hop's bridge choice have tests of their own (LR 60:
+  `each_crew_gets_its_own_item_and_a_late_one_is_given_up`,
+  `a_hop_bridges_a_narrow_gap_and_sails_a_wide_one`).
 - [x] 12g the ledger and the tuner: `brain_census`, `ledger_ratings`,
   `make tune`. The census's error (LR 24): the difference a seed, its
   standard error, "outside the noise" past two errors
@@ -382,10 +390,14 @@ found the circle at the edge of sight (LR 50) and a dodge into water
 take two scenario families from 89.6% and 96.2% to 100%, and the
 census reads +0.92 +/- 0.47 (naval) and +1.20 +/- 0.60 (generated).
 On 48 fresh seeds +0.70 +/- 0.66, not confirmed;
-on by default, Paul's choice (LR 54). Next, one
-at a time: the dodge afloat (31), a census that
-lets late parts act (29); an honest tuner (23); `island_site` where a
-naval start chooses (20).
+on by default, Paul's choice (LR 54). Every part on (LR 55, -0.85 +/-
+0.59); the dodge against every shell and the duck foreseen (45, 46; LR
+56, 57). The front read (49, LR 58): Expand toward the front, the front
+remembered 30 s; -0.14 +/- 0.42, inside the noise. The families held to
+floors (47, LR 59); allies' goals shown when hosting (50); the crews
+and the hop tested (26, LR 60). Next, one at a time: the guard posts at
+the front (51); `island_site` where a naval start chooses (20); then
+the starting numbers (48) once the features are in.
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -579,7 +591,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     CI-001 A9); `crew.rs` and `hop.rs` have no tests of their own (A10).
     Goal 4. Proof: `make brainmap` reading fewer; a test each for the
     crew's job hand-out and a hop's bridge choice. Cost: a step. State:
-    idea.
+    the tests done 20 October (LR 60), each failing broken; crew.rs,
+    hop.rs and board.rs documented, 99 of 392 functions left without a
+    doc comment (`commander.rs` 23, `lib.rs` 21, `weights.rs` 14 the
+    most).
 27. Which rungs the posture's lean moves. (18 October; cause: LR 25,
     leaning the ladder reads -0.93 +/- 0.49 in both forms of the
     posture.) Goal 4, 12e. Hypothesis: Economy, read 37% of the time
@@ -820,9 +835,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     share it must hold over `runs` seeds) and `make families`, keeps
     every behaviour's rate under watch as the brain changes. Proof:
     the two dodge families with floors at today's defaults, failing
-    when the dodge is broken. Cost: small. State: begun 20 October (LR
-    53): the directory holds the two dodge families, run by hand
-    (`make scenario S=... RUNS=1000`); floors and `make families` left.
+    when the dodge is broken. Cost: small. State: done 20 October (LR
+    59): `runs` and `floor` in each family, `make families` (31 s for
+    five at 1,000 seeds); each falls under its floor with its part
+    broken.
 
 48. Starting numbers for the brain with every part on. (20 October;
     cause: LR 55, every part on reads -0.85 +/- 0.59 against LR 54's
@@ -842,11 +858,32 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     where the map is contested rather than where the next pillbox is.
     Proof: a family with a board and two teams' tanks, where today's
     Expand drives past the front; the guard census. Cost: a step.
-    State: idea, next.
+    State: Expand done 20 October (LR 58): `w_front` 0.5 and, since the
+    board knew a front at only 2.5 picks a match, `front_memory` 30 s;
+    a scenario that fails at 0; the guard -0.14 +/- 0.42 a seat over 48 seeds. The guard posts: 51.
 50. Allies' goals on the coordination screen (11c). (20 October; cause:
     roadmap goal 3, "not yet: allies' goals"; the board holds them.)
     Goal 3, 11c. Proof: the screen's test shows a teammate's rung and
-    target. Cost: a step, the window. State: idea.
+    target. Cost: a step, the window. State: read 20 October (LR 59): a
+    hosting window has shown every allied bot's status under FLEET
+    since 15 October; proven by
+    `the_screen_shows_an_allys_rung_and_target`. A joining window needs
+    the wire: 52.
+51. The guard posts at the front. (20 October; cause: LR 58, the rest
+    of 49's hypothesis.) Goal 4, 12e. Hypothesis: the Guard rung's post
+    (`Commander::post`, the base today) and the rotation's push point
+    blended toward the nearest front sector by a weight (`w_front_post`,
+    a starting number from a family) meet attacks before they reach the
+    base. Proof: a family of a raid on a base with the front known; the
+    guard census. Cost: a step. State: idea.
+52. Allies' goals in a joining window. (20 October; cause: LR 59, the
+    bots think on the host and their goals are not in the
+    Observation.) Goal 3, 11c; goal 6. Hypothesis: each bot's status
+    code (status.rs, an `Act` and a target) carried to its team in the
+    Observation lets every window show the FLEET lines. Needs the wire
+    (version 17), which goal 4 must not change: after goal 4, with
+    goal 6. Proof: a networked test where a client's screen shows a
+    host bot's rung. Cost: a step, the wire. State: idea.
 
 ## Sequencing
 
