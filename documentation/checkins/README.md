@@ -45,3 +45,4 @@ report is what ties a conversation to them. Named
 | [029](CI-029-2026-10-21-every-part-off.md) | 21 October 2026 | Every part off, one at a time | 0086 | LAB-REPORT-BRAIN.md section 63 |
 | [030](CI-030-2026-10-21-the-bottom-of-the-parts-table.md) | 21 October 2026 | The bottom of the parts table at 48 seeds | 0087 | LAB-REPORT-BRAIN.md section 64 |
 | [031](CI-031-2026-10-21-the-kite-counted.md) | 21 October 2026 | The kite counted | 0088 | LAB-REPORT-BRAIN.md section 65 |
+| [032](CI-032-2026-10-21-the-kites-hold-in-a-duel.md) | 21 October 2026 | The kite's hold in a duel | 0089 | LAB-REPORT-BRAIN.md section 66 |

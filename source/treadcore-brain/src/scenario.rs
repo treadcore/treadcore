@@ -20,7 +20,9 @@
 //! (`scenarios/families/`) has `runs` and the `floor` it must hold over
 //! them (`make families`, backlog 47). A `[[tank]]`'s `toward` heads it
 //! at a place, and `met_beyond` asks how far from a point a seat first
-//! hit another (LR 61).
+//! hit another (LR 61). A Commander's `pings = true` calls what it sees
+//! and answers calls (a rally), and `outscores` asks that a seat hit
+//! another more often than it was hit back (LR 66).
 //!
 //! ```toml
 //! name = "a bot drives out from under a shell"
@@ -444,6 +446,12 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
                     }
                 }
                 c.set_settings(s);
+                // `pings = true`: it calls what it sees and answers
+                // calls, a rally (as fleet.rs deals a leader).
+                if b.get("pings") == Some(&Value::Bool(true)) {
+                    c.pings = true;
+                    c.answers_pings = true;
+                }
                 let goal = b.get("goal").and_then(Value::str).unwrap_or("auto");
                 c.set_goal(match goal.split_once(':').map(|(g, k)| (g, k.parse::<usize>().ok())).unwrap_or((goal, None)) {
                     ("auto", _) => Goal::Auto,
@@ -603,6 +611,14 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                 let n = out.hits.iter().filter(|(b, o)| *b == Some(by) && *o == on).count() as f64;
                 if let Some(m) = field(t, "at_least").filter(|m| n < *m) {
                     failed.push(format!("seat {} hit seat {} {} times, at least {} expected", by, on, n, m));
+                }
+            }
+            "outscores" => {
+                let (by, on) = (field(t, "by").ok_or("outscores: by")? as PlayerId, field(t, "on").ok_or("outscores: on")? as PlayerId);
+                let given = out.hits.iter().filter(|(b, o)| *b == Some(by) && *o == on).count();
+                let taken = out.hits.iter().filter(|(b, o)| *b == Some(on) && *o == by).count();
+                if given <= taken {
+                    failed.push(format!("seat {} hit seat {} {} times and was hit {} times", by, on, given, taken));
                 }
             }
             "moved" => {

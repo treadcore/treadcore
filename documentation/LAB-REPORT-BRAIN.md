@@ -3512,3 +3512,53 @@ backlog 55.
 
 Proof: `make test`: brain 84 passed and 11 ignored; client 32; net 14;
 proto 3; sim 50.
+
+## 66. The kite's hold in a duel, 21 October
+
+Backlog 55. LR 65: the kite acts about 114 s a trial match, 62% of it
+holding past the target's reach. The hypothesis: the hold waits for a
+window that seldom opens, and a shorter wait (a smaller `kite_spare`,
+a nearer `kite_in`) scores more in a duel.
+
+**By whom** (the meter split, new: seconds kiting by an intruder's
+guard, a wingman, a rally), the trial seat over three seeds of the
+census (`build/lr66`): a rally 1,092, a wingman 68, an intruder 27.
+The kite is the rally's: a tank that called or answered a ping and
+fights what is there. A duel has to be a rally.
+
+**The scenario keys** (new): a Commander's `pings = true` calls what
+it sees and answers calls, as `fleet.rs` deals a leader (a scenario's
+Commander had neither, so it never rallied: in a first duel it went to
+Fortify and was shelled from out of sight). `outscores = { by, on }`
+holds when `by` hit `on` more often than it was hit back.
+
+**The family**: `scenarios/families/a-duel-in-the-open.toml`. Open
+grass, no pillboxes, no depots, drones recalled at 0.5 s; a Commander
+on Auto with pings against a RuleBot (which kites too, as a plain
+RuleBot does) 16 tiles off in any direction; 60 s. Held: the Commander
+outscores it. In seed 1 it rallies, steps in while the RuleBot's gun
+reloads, holds past its reach, and kills it at 28.6 s, 4 hits to 0.
+
+| 400 seeds | Held (outscored) |
+| --- | --- |
+| The defaults (`kite_spare` 0.4, `kite_in` 9, `kite_margin` 1.5) | 63.0% +/- 2.4% |
+| `kite` 0 | 51.5% +/- 2.5% |
+| `kite_spare` 0, 0.2, 0.8, 1.2 | 64.0, 63.2, 64.0, 61.0% |
+| `kite_in` 7, 8, 10, 11 | 63.0, 64.0, 57.2, 60.5% |
+| `kite_margin` 0.5, 1, 2.5, 3.5 | 64.8, 65.0, 63.0, 64.5% |
+
+The kite wins a duel 11.5 points more often than no kite (3.3 errors).
+Its numbers sit on a flat top: every one within an error or so of the
+default but `kite_in` 10, which is worse. The hypothesis is not
+supported: a shorter wait (`kite_spare` 0) scores the same. The hold
+is not waste in a duel; it is how the duel is won. **The defaults
+stand**; floor 0.55, above the kite off.
+
+The census's lean (-0.94 +/- 0.77 at 48 seeds, the kite off) is then
+not the duel's. If it is real it is in the team's fight, the 18% spent
+massing and the pressing that the fleet's order forces; nothing here
+says it is real.
+
+Proof: `make test`: brain 84 passed and 11 ignored; client 32; net 14;
+proto 3; sim 50. `make families`: eight families, each above its
+floor.

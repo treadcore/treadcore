@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: a scenario family of a duel in the open
+  (`a-duel-in-the-open.toml`, floor 0.55): a Commander that rallies on
+  a RuleBot 16 tiles off outscores it in 63.0% of 400 seeds with the
+  kite, 51.5% without. Scenarios take a Commander's `pings = true` and
+  the `outscores` expectation; the meter counts seconds kiting by
+  whom (an intruder's guard, a wingman, a rally) (LAB-REPORT-BRAIN.md
+  section 66).
+
 - Added: the meter counts seconds kiting by step (massing, closing,
   stepping in, stepping out, holding) out of seconds alive. The trial
   seat kites 4.7% of its seconds alive on naval.map, 62% of that

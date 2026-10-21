@@ -53,6 +53,9 @@ pub struct Meter {
     /// Seconds alive (LR 65), by the seat's group: kiting, by the step
     /// (`KiteStep::ALL`'s order), and in all (the last).
     pub kites: [[u64; 9]; 2],
+    /// Seconds kiting by whom (LR 66), by group: an intruder at the base
+    /// (`Act::Kite`), a wingman's (`WingKite`), a rally's (`RallyKite`).
+    pub kite_kinds: [[u64; 3]; 2],
 }
 
 /// One kind of shell dodge's count: begun, and of those hit before the
@@ -174,10 +177,20 @@ pub fn beach_site() {
     bump(|m| m.beach_sites[g] += 1);
 }
 /// A second alive: kiting at `step`, or not.
-pub fn kite(step: Option<crate::status::KiteStep>) {
+pub fn kite(act: crate::status::Act) {
+    use crate::status::Act;
     let g = group();
+    let kind = match act {
+        Act::Kite(_) => Some(0),
+        Act::WingKite(_) => Some(1),
+        Act::RallyKite(_) => Some(2),
+        _ => None,
+    };
     bump(|m| {
-        if let Some(k) = step {
+        if let Some(i) = kind {
+            m.kite_kinds[g][i] += 1;
+        }
+        if let Some(k) = act.kite() {
             m.kites[g][crate::status::KiteStep::ALL.iter().position(|s| *s == k).unwrap_or(0)] += 1;
         }
         m.kites[g][8] += 1;
@@ -218,6 +231,11 @@ impl Meter {
         }
         for (a, b) in self.beach_sites.iter_mut().zip(o.beach_sites) {
             *a += b;
+        }
+        for (g, og) in self.kite_kinds.iter_mut().zip(o.kite_kinds) {
+            for (a, b) in g.iter_mut().zip(og) {
+                *a += b;
+            }
         }
         for (g, og) in self.kites.iter_mut().zip(o.kites) {
             for (a, b) in g.iter_mut().zip(og) {
@@ -274,6 +292,7 @@ impl Meter {
             + &self.fronts.iter().enumerate().filter(|(_, f)| f[0] + f[2] > 0).map(|(g, f)| format!(", front picks{} {} ({} moved off the nearest depot, {} with no front)", if g == 1 { " (trial)" } else { "" }, f[0], f[1], f[2])).collect::<String>()
             + &self.beach_sites.iter().enumerate().filter(|(_, n)| **n > 0).map(|(g, n)| format!(", seconds afloat with beaches priced by island{}: {}", if g == 1 { " (trial)" } else { "" }, n)).collect::<String>()
             + &self.kites.iter().enumerate().filter(|(_, k)| k[8] > 0).map(|(g, k)| format!(", seconds kiting{}: {} of {} alive (massing {}, closing {}, stepping in {}, stepping out {}, holding {})", if g == 1 { " (trial)" } else { "" }, k[..8].iter().sum::<u64>(), k[8], k[0], k[1], k[2] + k[3], k[4], k[5] + k[6] + k[7])).collect::<String>()
+            + &self.kite_kinds.iter().enumerate().filter(|(_, k)| k.iter().sum::<u64>() > 0).map(|(g, k)| format!(", seconds kiting by whom{}: an intruder {}, a wingman {}, a rally {}", if g == 1 { " (trial)" } else { "" }, k[0], k[1], k[2])).collect::<String>()
             + &self.leans.iter().enumerate().filter(|(_, l)| l.iter().sum::<u64>() > 0).map(|(g, l)| format!(", seconds leaned to the front{}: push {} of {}, post {} of {}", if g == 1 { " (trial)" } else { "" }, l[0], l[0] + l[1], l[2], l[2] + l[3])).collect::<String>()
             + &if self.postures.iter().sum::<u64>() > 0 {
             let names = ["defend base", "fortify", "turrets", "hunt", "expand", "guard"];
@@ -334,21 +353,22 @@ mod tests {
     }
     #[test]
     fn a_second_alive_counts_its_kite_step() {
-        use crate::status::KiteStep;
+        use crate::status::{Act, KiteStep};
         reset();
         trial(1 << 1);
         seat(1);
-        kite(Some(KiteStep::HoldLoaded));
-        kite(Some(KiteStep::StepInBusy));
-        kite(None);
+        kite(Act::Kite(KiteStep::HoldLoaded));
+        kite(Act::WingKite(KiteStep::StepInBusy));
+        kite(Act::Idle);
         seat(0);
-        kite(None);
+        kite(Act::Idle);
         let m = read();
         assert_eq!(m.kites[1][7] + m.kites[1][3], 2);
         assert_eq!((m.kites[1][8], m.kites[0][8]), (3, 1));
         let mut total = Meter::default();
         total.add_fronts(&m);
         assert_eq!(total.kites, m.kites);
+        assert_eq!(m.kite_kinds[1], [1, 1, 0]);
         assert!(m.line().contains("seconds kiting (trial): 2 of 3 alive (massing 0, closing 0, stepping in 1, stepping out 0, holding 1)"), "{}", m.line());
         trial(0);
         reset();

@@ -22,9 +22,9 @@ structure as built is `checkins/`.
 | [`ledger.rs`](#ledgerrs) | 322 | 11 | 4 | 3 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
 | [`lib.rs`](#librs) | 2820 | 63 | 21 | 19 | treadcore-brain -- the controller interface, and one controller. |
 | [`memory.rs`](#memoryrs) | 96 | 10 | 6 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
-| [`meter.rs`](#meterrs) | 356 | 25 | 8 | 3 | What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure first"). |
+| [`meter.rs`](#meterrs) | 376 | 25 | 8 | 3 | What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure first"). |
 | [`rotation.rs`](#rotationrs) | 301 | 7 | 0 | 3 | Rotation (Paul, 17 October: "every bot should have a push point, and a defense point. |
-| [`scenario.rs`](#scenariors) | 874 | 14 | 0 | 6 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
+| [`scenario.rs`](#scenariors) | 890 | 14 | 0 | 6 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
 | [`status.rs`](#statusrs) | 352 | 9 | 5 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
 | [`tactics.rs`](#tacticsrs) | 676 | 16 | 3 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
 | [`weights.rs`](#weightsrs) | 553 | 28 | 14 | 5 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
@@ -528,37 +528,37 @@ What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 71 | `add` | Dodges |  | Another count added to this one. |
-| 88 | `trial` |  | yes | The trial seats, a bit a player; the rest are group 0. |
-| 92 | `group` |  |  | The group of the seat being run: 1 if `trial` marks it, else 0. |
-| 99 | `bump` |  |  |  |
-| 108 | `seat` |  | yes | A seat run, the player's: the counts after it are its group's. |
-| 112 | `think` |  | yes |  |
-| 115 | `moves` |  | yes |  |
-| 118 | `crossing` |  | yes |  |
-| 121 | `crossing_cached` |  | yes |  |
-| 124 | `plan_clone` |  | yes |  |
-| 127 | `posture` |  | yes |  |
-| 137 | `dodge` |  | yes | A shell dodge begun, ashore or afloat, taken or dropped (LR 27). |
-| 143 | `dodge_hit` |  | yes | A dodge hit before its shell landed: killed by it, and by the dodged shell itself (the hit on its landing tick). |
-| 154 | `front` |  | yes | An Expand pick with `w_front` on: the front known or not, and moved from the nearest depot or not. |
-| 167 | `lean` |  | yes | A second of the rotation's push point (`post` false) or the guard's post (`post` true) worked out: moved toward the front or not. |
-| 172 | `beach_site` |  | yes | A second afloat with the beaches priced by their islands. |
-| 177 | `kite` |  | yes | A second alive: kiting at `step`, or not. |
-| 186 | `spent` |  | yes |  |
-| 191 | `read` |  | yes | This thread's counts. |
-| 196 | `reset` |  | yes | Start counting again from zero. |
-| 202 | `add_dodges` | Meter | yes | Adds another count's dodges to this one's (a census's total). |
-| 213 | `add_fronts` | Meter | yes | Adds another count's front picks to this one's. |
-| 235 | `dodge_line` | Meter |  | The dodges for the meter's line, each kind that happened. |
-| 254 | `micros_per_seat` | Meter | yes | Microseconds per seat-tick: what one bot costs a tick, on average. |
-| 263 | `line` | Meter | yes | One line for a census: the counts and the cost. |
+| 74 | `add` | Dodges |  | Another count added to this one. |
+| 91 | `trial` |  | yes | The trial seats, a bit a player; the rest are group 0. |
+| 95 | `group` |  |  | The group of the seat being run: 1 if `trial` marks it, else 0. |
+| 102 | `bump` |  |  |  |
+| 111 | `seat` |  | yes | A seat run, the player's: the counts after it are its group's. |
+| 115 | `think` |  | yes |  |
+| 118 | `moves` |  | yes |  |
+| 121 | `crossing` |  | yes |  |
+| 124 | `crossing_cached` |  | yes |  |
+| 127 | `plan_clone` |  | yes |  |
+| 130 | `posture` |  | yes |  |
+| 140 | `dodge` |  | yes | A shell dodge begun, ashore or afloat, taken or dropped (LR 27). |
+| 146 | `dodge_hit` |  | yes | A dodge hit before its shell landed: killed by it, and by the dodged shell itself (the hit on its landing tick). |
+| 157 | `front` |  | yes | An Expand pick with `w_front` on: the front known or not, and moved from the nearest depot or not. |
+| 170 | `lean` |  | yes | A second of the rotation's push point (`post` false) or the guard's post (`post` true) worked out: moved toward the front or not. |
+| 175 | `beach_site` |  | yes | A second afloat with the beaches priced by their islands. |
+| 180 | `kite` |  | yes | A second alive: kiting at `step`, or not. |
+| 199 | `spent` |  | yes |  |
+| 204 | `read` |  | yes | This thread's counts. |
+| 209 | `reset` |  | yes | Start counting again from zero. |
+| 215 | `add_dodges` | Meter | yes | Adds another count's dodges to this one's (a census's total). |
+| 226 | `add_fronts` | Meter | yes | Adds another count's front picks to this one's. |
+| 253 | `dodge_line` | Meter |  | The dodges for the meter's line, each kind that happened. |
+| 272 | `micros_per_seat` | Meter | yes | Microseconds per seat-tick: what one bot costs a tick, on average. |
+| 281 | `line` | Meter | yes | One line for a census: the counts and the cost. |
 
 Tests (3):
 
-- `the_meter_counts_and_resets` (line 299)
-- `a_dodge_counts_by_its_seat_and_whether_taken` (line 316): A dodge counts under the seat that made it (the trial's or the rest), taken or dropped, ashore or afloat (backlog 31).
-- `a_second_alive_counts_its_kite_step` (line 336)
+- `the_meter_counts_and_resets` (line 318)
+- `a_dodge_counts_by_its_seat_and_whether_taken` (line 335): A dodge counts under the seat that made it (the trial's or the rest), taken or dropped, ashore or afloat (backlog 31).
+- `a_second_alive_counts_its_kite_step` (line 355)
 
 ## rotation.rs
 
@@ -582,33 +582,33 @@ Tests (3):
 
 ## scenario.rs
 
-Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). A playtest written as text and run headless: the world, the seats that think and how, what is placed and what happens when, and what must hold at the end. Every file under `scenarios/` is a test (`every_scenario_holds`); `make scenario S=file` runs one and prints its trace.  The form is a small part of TOML, read here so the brain takes no new crate: `key = value` lines, `[expect]`, and `[[brain]]`, `[[pillbox]]`, `[[depot]]`, `[[shell]]` and `[[event]]` tables; values are numbers, "strings", true or false, `[lists]` and `{ inline = tables }`. Positions are an anchor and an offset in tiles: `"seat:0"` (where a seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed), and `"centre"` (the map's middle). `depots = false` keeps only the depots placed (LR 62). `board = true` gives each team's Commanders one team board, a Commander's `rungs = [...]` the ladder's rungs on, and a `[[depot]]`'s `at` and `offset` move it there (LR 58). A family (`scenarios/families/`) has `runs` and the `floor` it must hold over them (`make families`, backlog 47). A `[[tank]]`'s `toward` heads it at a place, and `met_beyond` asks how far from a point a seat first hit another (LR 61).  ```toml name = "a bot drives out from under a shell" players = 2 seconds = 4 [[brain]] seat = 0 kind = "rulebot" [[shell]] owner = 1 at = "seat:0" from = [30, 0] lands_in = 3 [expect] hits_on = { seat = 0, max = 0 } moved = { seat = 0, more_than = 2.5 } ```
+Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). A playtest written as text and run headless: the world, the seats that think and how, what is placed and what happens when, and what must hold at the end. Every file under `scenarios/` is a test (`every_scenario_holds`); `make scenario S=file` runs one and prints its trace.  The form is a small part of TOML, read here so the brain takes no new crate: `key = value` lines, `[expect]`, and `[[brain]]`, `[[pillbox]]`, `[[depot]]`, `[[shell]]` and `[[event]]` tables; values are numbers, "strings", true or false, `[lists]` and `{ inline = tables }`. Positions are an anchor and an offset in tiles: `"seat:0"` (where a seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed), and `"centre"` (the map's middle). `depots = false` keeps only the depots placed (LR 62). `board = true` gives each team's Commanders one team board, a Commander's `rungs = [...]` the ladder's rungs on, and a `[[depot]]`'s `at` and `offset` move it there (LR 58). A family (`scenarios/families/`) has `runs` and the `floor` it must hold over them (`make families`, backlog 47). A `[[tank]]`'s `toward` heads it at a place, and `met_beyond` asks how far from a point a seat first hit another (LR 61). A Commander's `pings = true` calls what it sees and answers calls (a rally), and `outscores` asks that a seat hit another more often than it was hit back (LR 66).  ```toml name = "a bot drives out from under a shell" players = 2 seconds = 4 [[brain]] seat = 0 kind = "rulebot" [[shell]] owner = 1 at = "seat:0" from = [30, 0] lands_in = 3 [expect] hits_on = { seat = 0, max = 0 } moved = { seat = 0, more_than = 2.5 } ```
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 59 | `num` | Value |  | A number, or None. |
-| 63 | `str` | Value |  | A string, or None. |
-| 67 | `table` | Value |  | An inline table, or None. |
-| 81 | `parse` |  | yes | Read the TOML subset; an error names its line. |
-| 119 | `strip_comment` |  |  | A line without its `#` comment (a `#` inside a string stays). |
-| 132 | `value_of` |  |  | One value from the front of `s`, and what is left after it. |
-| 208 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
-| 217 | `run_seeded` |  | yes | As `run`, on a seed: the world's (`Scenario::seed`, so its map outside what the file carves) and every brain's (theirs xor it), so a run over many seeds samples the scenario's chances (`many`). |
-| 578 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
-| 587 | `check` |  |  | Every expectation that failed, in words. |
-| 705 | `many` |  | yes | A scenario over `runs` seeds (`first`, `first + 1`, ...): how many held, the share, and its standard error, sqrt(p (1 - p) / n). |
-| 723 | `set_weights` |  | yes | `SCENARIO_SET="name=value ..."`: those weights set on every brain in the file that holds them (a RuleBot, only the landfall's three), added to its `weights` or a new one, so two settings run on the same seeds. |
-| 743 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
-| 753 | `dir` |  |  | The scenarios, at the top of the tree. |
+| 61 | `num` | Value |  | A number, or None. |
+| 65 | `str` | Value |  | A string, or None. |
+| 69 | `table` | Value |  | An inline table, or None. |
+| 83 | `parse` |  | yes | Read the TOML subset; an error names its line. |
+| 121 | `strip_comment` |  |  | A line without its `#` comment (a `#` inside a string stays). |
+| 134 | `value_of` |  |  | One value from the front of `s`, and what is left after it. |
+| 210 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
+| 219 | `run_seeded` |  | yes | As `run`, on a seed: the world's (`Scenario::seed`, so its map outside what the file carves) and every brain's (theirs xor it), so a run over many seeds samples the scenario's chances (`many`). |
+| 586 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
+| 595 | `check` |  |  | Every expectation that failed, in words. |
+| 721 | `many` |  | yes | A scenario over `runs` seeds (`first`, `first + 1`, ...): how many held, the share, and its standard error, sqrt(p (1 - p) / n). |
+| 739 | `set_weights` |  | yes | `SCENARIO_SET="name=value ..."`: those weights set on every brain in the file that holds them (a RuleBot, only the landfall's three), added to its `weights` or a new one, so two settings run on the same seeds. |
+| 759 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
+| 769 | `dir` |  |  | The scenarios, at the top of the tree. |
 
 Tests (6):
 
-- `a_weight_is_set_on_every_brain` (line 762): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
-- `the_subset_reads_values_tables_and_lists` (line 773)
-- `every_scenario_holds` (line 785): Every file under `scenarios/` holds.
-- `scenario_many` (line 805): One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with `SCENARIO_SET` applied: how often it holds.
-- `every_family_holds_its_floor` (line 826): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
-- `scenario_one` (line 857): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
+- `a_weight_is_set_on_every_brain` (line 778): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
+- `the_subset_reads_values_tables_and_lists` (line 789)
+- `every_scenario_holds` (line 801): Every file under `scenarios/` holds.
+- `scenario_many` (line 821): One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with `SCENARIO_SET` applied: how often it holds.
+- `every_family_holds_its_floor` (line 842): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
+- `scenario_one` (line 873): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
 
 ## status.rs
 

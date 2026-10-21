@@ -1,0 +1,77 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 21 Oct 2026 23:30:00 -0700
+Subject: [JOURNAL 0089] The kite's hold in a duel
+Message-ID: <0089.20261021@treadcore.org>
+In-Reply-To: <0088.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: kite, rally, duel, scenario families
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "nice . continue. commit. push. and let me
+           see it run when you are ready to show me auto pilot"
+X-Commits: 0c7e72f (the last, pushed); this entry's commit follows
+
+                       THE KITE'S HOLD IN A DUEL
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    Backlog 55. The kite is the rally's. A family of a duel in the
+    open: won 63.0% of 400 seeds with the kite, 51.5% without; the
+    kite's numbers on a flat top. The defaults stand.
+
+INDEX TERMS
+
+    kite, rally, duel.
+
+I. INTRODUCTION
+
+    "nice . continue. commit. push. and let me see it run when you
+    are ready to show me auto pilot." Pushed first, six commits.
+
+II. BACKGROUND
+
+    LR 65: the kite holds 62% of its time.
+
+III. METHOD
+
+    Find where it acts; build the case; sweep.
+
+IV. CHRONOLOGY
+
+    1. Pushed 347b087..0c7e72f.
+    2. A first duel: the Commander fortified and a neutral pillbox
+       shelled it. Scenario Commanders never rallied (no pings).
+    3. The meter by whom: rally 1,092 of 1,187 s.
+    4. `pings = true`, `outscores`; the family; seed 1 won 4 to 0.
+    5. 63.0% on, 51.5% off; twelve settings flat. Floor 0.55.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 66. Tests: brain 84 passed, 11
+    ignored; client 32; net 14; proto 3; sim 50. Eight families.
+
+VI. DISCUSSION
+
+    The wait is the win. Tuning closed at every part on.
+
+VII. OPEN PROBLEMS
+
+    1. Backlog 52, allies' goals in a joining window (the wire).
+    2. Territory, built and read by nothing.
+
+VIII. NEXT STEPS
+
+    1. Show Paul the autopilot.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 66; CI-032; build/lr66;
+    scenarios/families/a-duel-in-the-open.toml.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

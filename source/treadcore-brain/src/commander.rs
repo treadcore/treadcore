@@ -2366,7 +2366,7 @@ impl Commander {
             }
             self.dodge.hold_fire(obs, me, &mut cmds, map);
             if obs.tick % TICK_HZ as Tick == 0 {
-                crate::meter::kite(self.act.kite());
+                crate::meter::kite(self.act);
             }
         }
         cmds

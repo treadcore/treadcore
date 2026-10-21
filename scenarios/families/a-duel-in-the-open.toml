@@ -1,0 +1,42 @@
+# LAB-REPORT-BRAIN.md section 66 (backlog 55, the kite's hold): a
+# family, the duel drawn from the seed. A Commander on Auto that calls
+# what it sees and rallies on it, against a RuleBot 16 tiles off in any
+# direction, on open grass, no pillboxes, no depots, drones recalled at
+# half a second. Held: the Commander hits the RuleBot more often than
+# it is hit in a minute: 63.0% over 400 seeds, 51.5% with the kite off
+# (`kite` 0); the kite's numbers on a flat top. Run over many seeds:
+# make scenario S=this RUNS=400.
+name = "a duel in the open, from any side"
+runs = 400
+floor = 0.55
+players = 2
+seconds = 60
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-42, 42]
+y = [-42, 42]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [16, 0]
+around = true
+[[event]]
+at = 0.5
+drones = "recall"
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+pings = true
+[[brain]]
+seat = 1
+kind = "rulebot"
+[expect]
+outscores = { by = 0, on = 1 }

@@ -409,7 +409,10 @@ each part off; only the dodge past two errors, and it pays; the halved
 posture and swap gap +0.61 +/- 0.60, the defaults kept. The bottom of
 the table at 48 seeds (53, LR 64): `kite`, `duck`, `dodge_fire`, none
 past two errors. The kite counted (54, LR 65): 4.7% of the seconds
-alive, mostly holding. Next: the kite's hold in a duel (55).
+alive, mostly holding, nearly all of it a rally's. The kite's hold in
+a duel (55, LR 66): won 63.0% with the kite, 51.5% without; its
+numbers on a flat top, the defaults kept. The tuning leads of the
+parts table are spent; every part on stands as the starting numbers.
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -944,7 +947,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     more in a duel without losing more tanks. Proof: a scenario family
     of one tank against one at its reach, scored by hits given and
     taken, swept over the kite's numbers; the census at 48 for a
-    number the family moves. Cost: a step. State: idea.
+    number the family moves. Cost: a step. State: done 21 October (LR
+    66), the hypothesis not supported, the defaults kept: the kite is
+    the rally's (1,092 of 1,187 s); a family of a duel in the open
+    (scenarios take `pings` and `outscores`) is won 63.0% with the
+    kite, 51.5% without; its numbers on a flat top, `kite_spare` 0
+    64.0%. Floor 0.55.
 
 ## Sequencing
 
