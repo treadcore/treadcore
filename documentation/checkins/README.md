@@ -40,3 +40,4 @@ report is what ties a conversation to them. Named
 | [024](CI-024-2026-10-20-the-dodge-planned.md) | 20 October 2026 | The dodge planned by the tank's own motion | 0080 | LAB-REPORT-BRAIN.md section 53 |
 | [025](CI-025-2026-10-20-every-part-on.md) | 20 October 2026 | Every part on, a dodge against every shell, and the duck foreseen | 0081, 0082 | LAB-REPORT-BRAIN.md sections 54 to 57 |
 | [026](CI-026-2026-10-20-the-front-read.md) | 20 October 2026 | The front read, the families held to floors, and the crews tested | 0083 | LAB-REPORT-BRAIN.md sections 58 to 60 |
+| [027](CI-027-2026-10-21-the-guard-posts-at-the-front.md) | 21 October 2026 | The guard posts at the front | 0084 | LAB-REPORT-BRAIN.md section 61 |

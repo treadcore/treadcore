@@ -3180,3 +3180,93 @@ Broken (the price's verdict inverted) it fails.
 `hop.rs` and `board.rs`, and the new tests' helpers; `take_jobs`'s own comment had slipped above
 `adopt` and is back on it. `make brainmap`: 392 functions, 99 with no
 doc comment (121 before), 92 tests.
+
+## 61. The guard posts at the front, 21 October
+
+Backlog 51, the rest of 49's hypothesis: the Guard rung's post and the
+rotation's push point, leaned toward the board's front, meet attacks
+before they reach the base. Before, the post was the base's (behind
+the castle's gate, else beside the depot) and the push point halfway
+from the base to the side's objective (the nearest depot not of the
+side, rotation.rs), wherever the two sides met.
+
+**The parts** (on, LR 54's rule; each needs `board`, and is off at 0):
+
+- `w_front_push` (0.75): `Rotation::fleet_push` moves the push point
+  that share of the way toward the front sector nearest it. The
+  Commander hands the rotation the front's sector centres each think
+  (`Rotation::front`, `front_w`), before the push point is fitted to
+  ground the tank can reach. Test: `the_push_point_leans_to_the_front`.
+- `w_front_post` (0.5): `Commander::guard_post` moves the base's post
+  that share of the way toward the nearest front sector, at most
+  `FRONT_POST_REACH` (`BASE_ALARM - BASE_R`, 6 tiles) so the base's
+  ring stays inside the guard's leash; back to the post if the world
+  has refused a drive there. Used by `defend_base` when the guard is
+  not on rotation.
+- `Commander::front_points`, the front's sector centres with the board
+  on, now shared with Expand's front read (LR 58).
+
+**The family**: `scenarios/families/a-raid-on-a-guarded-base.toml`. A
+Commander with only the Guard rung and a team board, its base in the
+map's centre (`"centre"`, an anchor that now takes no number). A
+brainless hostile tank 40 tiles off, any side, drives at the base
+(`toward`, new: a tank headed at a place). A teammate 8 tiles from the
+raider sees it for half a second and comes home, and the guard's
+drones are recalled then, so the front on the raid's side is only
+remembered (`front_memory`). Held: the guard's first hit on the raider
+falls more than 10 tiles from the base, the base's ring (`met_beyond`,
+new; the outcome now keeps where each hit tank was).
+
+The first form of the family, 30 tiles, the teammate staying and the
+drones flying, held at every bar with the parts on and at 0 alike: the
+guard's shells, spotted by the teammate and its recon drone, and a
+strike drone met the raider 20 to 23 tiles out before the guard had
+moved. A raid seen far out is met far out whatever the post. With the
+sight taken away:
+
+| 400 seeds, met beyond 10 tiles | held |
+| --- | --- |
+| both 0 (before) | 50.5% +/- 2.5% |
+| `w_front_push` 0.25 | 50.5% +/- 2.5% |
+| `w_front_push` 0.5, the post at 0 | 69.8% +/- 2.3% |
+| `w_front_push` 0.75 (the default) | 85.5% +/- 1.8% |
+| `w_front_push` 1 | 89.5% +/- 1.5% |
+| `w_front_post` 0.25, 0.75 or 1, the push at 0.5 | 68.2% +/- 2.3% |
+| `w_front_post` 1, the push at 0.25 | 50.5% +/- 2.5% |
+
+The push point does it all; the post nothing here. A guard with no
+raider in its leash is on rotation and goes where the rotation sends
+it, and once the raider is within 16 tiles it is met wherever the
+leash is centred. 0.75 was taken over 1: within two errors of it, and
+a push point on the front itself takes the tank farthest from its
+base. Floor 0.75; at `w_front_push` 0 the family reads 50.5%.
+
+**The meter** (new: a guard's seconds with the push point or the post
+worked out, and of those, moved toward the front), read before the
+census was let run (LR 58's lesson): in the first matches the push
+point leaned in 404 to 537 seconds a match.
+
+**The guard**: the trial team on the defaults against the same with
+both weights 0; the fair census, naval.map, 900 s, 3 respawns, seeds 0
+to 47, a frozen binary (`build/lr61`).
+
+| 48 seeds | Trial (`w_front_post` 0.5, `w_front_push` 0.75) | The rest (both 0) |
+| --- | --- | --- |
+| Difference a seat | -0.27 +/- 0.64 (inside the noise) | |
+| By job of 16 seeds | +1.79 +/- 1.26, -1.70 +/- 1.05, -0.89 +/- 0.88 | |
+| Mean score a seat, by job | 9.31, 7.34, 7.53 | 7.51, 9.05, 8.42 |
+| Push point worked out, moved toward the front | 23,950 of 30,216 s (79%) | |
+| Guard's post worked out (a raider at the base), moved | 1,039 of 1,130 s (92%) | |
+| Ashore dodges: hit | 15.7% (2,086 of 13,316) | 15.8% (3,931 of 24,846) |
+| Brain time | 58.7 to 60.7 us a seat-tick, both sides | |
+
+The brain still works with the parts: the score does not move past the
+noise. Unlike the front read, the push point acts most of the time a
+guard rotates, so the census reads a part that acts and finds no gain
+or loss a point wide. The push point is worked out about 210 s a trial
+match (144 of them), the post about 8: a raid on a guarded base is
+rare on naval.map. Both stay on with their
+starting numbers for the tuning phase (backlog 48).
+
+Proof: `make test`: brain 82 passed and 11 ignored; client 32; net 14;
+proto 3; sim 50. `make families`: six families, each above its floor.

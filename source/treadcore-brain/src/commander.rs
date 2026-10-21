@@ -97,6 +97,9 @@ enum Wing {
 /// a threat; a pillbox of it shot at raises the alarm for ALARM_HOLD.
 pub const BASE_R: f32 = 10.0;
 pub const BASE_ALARM: f32 = 16.0;
+/// The guard's post moves at most this far toward the front (LR 61):
+/// the base's ring stays inside its leash.
+pub const FRONT_POST_REACH: f32 = BASE_ALARM - BASE_R;
 const ALARM_HOLD: Tick = 6 * TICK_HZ as Tick;
 /// Turrets wait for this long without a threat.
 pub const QUIET: Tick = 20 * TICK_HZ as Tick;
@@ -600,6 +603,9 @@ impl Commander {
         }
         let defense = self.post(base);
         let push = self.rotation.push(obs, base);
+        if obs.tick % TICK_HZ as Tick == 0 && self.rotation.front_w > 0.0 {
+            crate::meter::lean(false, !self.rotation.front.is_empty());
+        }
         let leg = self.rotation.leg(obs, me, defense, push);
         // A point the world will not have us drive to (over the water,
         // no way across): turn back for the other end.
@@ -1196,6 +1202,40 @@ impl Commander {
         }
     }
 
+    /// The centres of the team board's front sectors (LR 58), with the
+    /// board on; none without a board or with no hostile known.
+    fn front_points(&self) -> Vec<V2> {
+        if !self.caps().has(crate::weights::Caps::BOARD) {
+            return Vec::new();
+        }
+        self.board.as_ref().and_then(|b| b.lock().ok().map(|b| b.front().into_iter().map(crate::board::sector_centre).collect())).unwrap_or_default()
+    }
+
+    /// The guard's post (backlog 51, LR 61): the post moved `w_front_post`
+    /// of the way toward the nearest front sector, `FRONT_POST_REACH` at
+    /// most, so an attack is met before it reaches the base and the base
+    /// stays inside the guard's leash.
+    fn guard_post(&self, base: V2) -> V2 {
+        let post = self.post(base);
+        let w = self.settings.w[crate::weights::W::FrontPost].clamp(0.0, 1.0);
+        if w <= 0.0 {
+            return post;
+        }
+        let Some(f) = self.front_points().into_iter().min_by(|a, b| a.dist(post).total_cmp(&b.dist(post))) else {
+            return post;
+        };
+        let d = f.dist(post);
+        if d < 0.5 {
+            return post;
+        }
+        let to = post + (f - post).norm().scale((w * d).min(FRONT_POST_REACH));
+        if self.over_water(to) {
+            post
+        } else {
+            to
+        }
+    }
+
     /// The threat to the base, if any: the hostile tank nearest it within
     /// BASE_ALARM, and the alarm a pillbox of the base shot at raises
     /// (by a gun it may not see: indirect fire, a longshot).
@@ -1243,8 +1283,11 @@ impl Commander {
         // Nothing in sight but a gun of the base at work: go and look.
         let post = match (&tank, alarm, self.alarm_at) {
             (None, true, Some(at)) => at,
-            _ => self.post(base),
+            _ => self.guard_post(base),
         };
+        if obs.tick % TICK_HZ as Tick == 0 && self.settings.w[crate::weights::W::FrontPost] > 0.0 && tank.is_some() {
+            crate::meter::lean(true, post != self.post(base));
+        }
         let mend = Self::neediest(obs, base);
         // Nothing at the base: out to the push point and back, not on
         // guard (rotation.rs). The guard answers what it meets where it
@@ -1701,12 +1744,7 @@ impl Commander {
         // given up, as the front moves each second.
         let w = self.settings.w[crate::weights::W::Front].clamp(0.0, 1.0);
         let board = w > 0.0 && self.caps().has(crate::weights::Caps::BOARD);
-        let front: Vec<V2> = self
-            .board
-            .as_ref()
-            .filter(|_| board)
-            .and_then(|b| b.lock().ok().map(|b| b.front().into_iter().map(crate::board::sector_centre).collect()))
-            .unwrap_or_default();
+        let front = if board { self.front_points() } else { Vec::new() };
         let kept = self.depot_target.filter(|_| board).and_then(|id| obs.depots.iter().filter(open).find(|d| d.id == id)).cloned();
         let depot = if kept.is_some() {
             kept
@@ -2328,6 +2366,9 @@ impl Commander {
         if let (Some(p), Some(m)) = (self.plan.as_mut(), map) {
             p.fit_post(m);
         }
+        // The push point leans toward the board's front (LR 61).
+        self.rotation.front_w = self.settings.w[crate::weights::W::FrontPush].clamp(0.0, 1.0);
+        self.rotation.front = if self.rotation.front_w > 0.0 && !self.rotation.off { self.front_points() } else { Vec::new() };
         if let (Some(b), Some(m)) = (self.base, map) {
             if !self.rotation.off {
                 self.rotation.fit(obs, m, b);

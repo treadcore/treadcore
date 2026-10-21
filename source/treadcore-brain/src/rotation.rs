@@ -62,6 +62,11 @@ pub struct Rotation {
     fitted: Option<((i32, i32), V2, Tick)>,
     /// A wingman's leader stood still since this tick (`wing_push`).
     pub parked: Option<Tick>,
+    /// The team board's front sectors' centres, and the share of the way
+    /// the push point moves toward the one nearest it (`w_front_push`,
+    /// LR 61); set by the Commander each think.
+    pub front: Vec<V2>,
+    pub front_w: f32,
 }
 
 /// Where the rotation sends the tank this tick, and what it says.
@@ -86,16 +91,21 @@ impl Rotation {
             .unwrap_or(V2::new(obs.map_w as f32 / 2.0, obs.map_h as f32 / 2.0))
     }
 
-    /// The fleet's push point: `PUSH_FRAC` of the way to the objective.
-    pub fn fleet_push(obs: &Observation, base: V2) -> V2 {
+    /// The fleet's push point: `PUSH_FRAC` of the way to the objective,
+    /// then `front_w` of the way toward the front sector nearest that.
+    pub fn fleet_push(&self, obs: &Observation, base: V2) -> V2 {
         let target = Self::objective(obs, base);
-        base + (target - base).scale(PUSH_FRAC)
+        let raw = base + (target - base).scale(PUSH_FRAC);
+        match self.front.iter().min_by(|a, b| a.dist(raw).total_cmp(&b.dist(raw))) {
+            Some(f) if self.front_w > 0.0 => raw + (*f - raw).scale(self.front_w),
+            _ => raw,
+        }
     }
 
     /// This tank's push point: its own, else the fleet's (on ground
     /// it can drive to, once `fit` has seen the map).
     pub fn push(&mut self, obs: &Observation, base: V2) -> V2 {
-        let raw = Self::fleet_push(obs, base);
+        let raw = self.fleet_push(obs, base);
         let fleet = match self.fitted {
             Some((t, p, _)) if t == raw.tile() => p,
             _ => raw,
@@ -107,7 +117,7 @@ impl Rotation {
     /// The push point as `push` would give it, without changing anything
     /// (for the window's coordination screen).
     pub fn peek(&self, obs: &Observation, base: V2) -> V2 {
-        let raw = Self::fleet_push(obs, base);
+        let raw = self.fleet_push(obs, base);
         let fleet = match self.fitted {
             Some((t, p, _)) if t == raw.tile() => p,
             _ => raw,
@@ -141,7 +151,7 @@ impl Rotation {
     /// is on the water, and a guard drove at it all match, refused.
     /// Again every `REFIT` (a bridge opens the way further).
     pub fn fit(&mut self, obs: &Observation, map: &Map, base: V2) {
-        let raw = Self::fleet_push(obs, base);
+        let raw = self.fleet_push(obs, base);
         if let Some((t, _, at)) = self.fitted {
             if t == raw.tile() && obs.tick < at + REFIT {
                 return;
@@ -250,6 +260,26 @@ mod tests {
         obs.tick += DWELL;
         r.leg(&obs, &empty, base, push);
         assert!(!r.out, "left home empty");
+    }
+
+    /// The push point leans `front_w` of the way toward the front sector
+    /// nearest it (LR 61); with no front, or at 0, it is as before.
+    #[test]
+    fn the_push_point_leans_to_the_front() {
+        let sc = Scenario { seed: 3, players: vec![("a".into(), true), ("b".into(), true)], ..Scenario::default() };
+        let w = World::new(sc);
+        let obs = w.observe(0);
+        let base = obs.tanks.iter().find(|t| t.owner == 0).unwrap().pos;
+        let mut r = Rotation::default();
+        let raw = r.fleet_push(&obs, base);
+        let (near, far) = (raw + V2::new(0.0, 8.0), raw + V2::new(30.0, 0.0));
+        r.front = vec![far, near];
+        assert_eq!(r.fleet_push(&obs, base), raw, "at 0, as before");
+        r.front_w = 0.75;
+        let p = r.fleet_push(&obs, base);
+        assert!(p.dist(raw + V2::new(0.0, 6.0)) < 0.01, "toward the nearest front sector: {:?} from {:?}", p, raw);
+        r.front.clear();
+        assert_eq!(r.fleet_push(&obs, base), raw, "no front, as before");
     }
 
     /// A wingman's push point: toward the objective, inside the leader's

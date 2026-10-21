@@ -6,6 +6,17 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the guard posts at the front (`w_front_push` 0.75,
+  `w_front_post` 0.5, on with `board`): the rotation's push point moves
+  that share of the way toward the board's front sector nearest it, and
+  a guard's post toward the nearest front sector, 6 tiles at most. A
+  family of a raid on a guarded base meets the raider beyond the base's
+  ring in 85.5% of 400 seeds, 50.5% at 0. The guard: -0.27 +/- 0.64 a
+  seat over 48 seeds (LAB-REPORT-BRAIN.md section 61).
+- Added: scenarios take the anchor `"centre"`, a `[[tank]]`'s `toward`,
+  and `met_beyond` (how far from a point a seat first hit another); the
+  meter counts a guard's seconds leaned toward the front.
+
 - Added: the front read (`w_front` 0.5, on with `board`): Expand's depot
   costs half its distance to the base and half its distance to the team
   board's front, and is kept until taken; the front is kept on the

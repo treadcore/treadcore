@@ -43,6 +43,10 @@ pub struct Meter {
     /// group: with the board's front known, of those the picks not the
     /// depot nearest the base, and with no front known.
     pub fronts: [[u64; 3]; 2],
+    /// Seconds of a guard's time leaned toward the front (LR 61), by the
+    /// seat's group: rotating with the push point moved toward it, and
+    /// at the guard's post moved toward it; the rest as before.
+    pub leans: [[u64; 4]; 2],
 }
 
 /// One kind of shell dodge's count: begun, and of those hit before the
@@ -152,6 +156,12 @@ pub fn front(known: bool, moved: bool) {
         }
     });
 }
+/// A second of the rotation's push point (`post` false) or the guard's
+/// post (`post` true) worked out: moved toward the front or not.
+pub fn lean(post: bool, moved: bool) {
+    let g = group();
+    bump(|m| m.leans[g][2 * post as usize + !moved as usize] += 1);
+}
 pub fn spent(d: Duration) {
     bump(|m| m.nanos += d.as_nanos() as u64);
 }
@@ -181,6 +191,11 @@ impl Meter {
     /// Adds another count's front picks to this one's.
     pub fn add_fronts(&mut self, o: &Meter) {
         for (g, og) in self.fronts.iter_mut().zip(o.fronts) {
+            for (a, b) in g.iter_mut().zip(og) {
+                *a += b;
+            }
+        }
+        for (g, og) in self.leans.iter_mut().zip(o.leans) {
             for (a, b) in g.iter_mut().zip(og) {
                 *a += b;
             }
@@ -228,6 +243,7 @@ impl Meter {
             self.micros_per_seat()
         ) + &self.dodge_line()
             + &self.fronts.iter().enumerate().filter(|(_, f)| f[0] + f[2] > 0).map(|(g, f)| format!(", front picks{} {} ({} moved off the nearest depot, {} with no front)", if g == 1 { " (trial)" } else { "" }, f[0], f[1], f[2])).collect::<String>()
+            + &self.leans.iter().enumerate().filter(|(_, l)| l.iter().sum::<u64>() > 0).map(|(g, l)| format!(", seconds leaned to the front{}: push {} of {}, post {} of {}", if g == 1 { " (trial)" } else { "" }, l[0], l[0] + l[1], l[2], l[2] + l[3])).collect::<String>()
             + &if self.postures.iter().sum::<u64>() > 0 {
             let names = ["defend base", "fortify", "turrets", "hunt", "expand", "guard"];
             let mut moves: Vec<(u64, String)> = Vec::new();

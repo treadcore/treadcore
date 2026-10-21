@@ -1,0 +1,94 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 21 Oct 2026 12:00:00 -0700
+Subject: [JOURNAL 0084] The guard posts at the front
+Message-ID: <0084.20261021@treadcore.org>
+In-Reply-To: <0083.20261020@treadcore.org>
+Organization: treadcore.org
+Keywords: team board, front, rotation, guard post, scenario families
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "resume."
+X-Commits: c61ea8a (0083's step); this entry's commit follows
+
+                     THE GUARD POSTS AT THE FRONT
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    0083's step was found whole and uncommitted; its tests run again,
+    it was committed (c61ea8a), not pushed. Then backlog 51: the
+    rotation's push point leans 0.75 of the way to the board's front
+    (`w_front_push`), the guard's post 0.5 of the way, 6 tiles at most
+    (`w_front_post`). A raid on a guarded base, any side, is met past
+    the base's ring in 85.5% of 400 seeds, 50.5% at 0, all of it the
+    push point's. The guard: -0.27 +/- 0.64 a seat over 48 seeds.
+
+INDEX TERMS
+
+    team board, influence front, rotation, guard post, scenario
+    families.
+
+I. INTRODUCTION
+
+    "resume." CI-026 named 51 next: the guard's post and push point
+    toward the front, to meet attacks before they reach the base.
+
+II. BACKGROUND
+
+    Every part on by default (LR 54's rule); 98 weights, 17 bits; five
+    families with floors; brain 81 tests.
+
+III. METHOD
+
+    A family that fails with the part at 0 before the census; a meter
+    read in the census's first matches before it was let run; the
+    census from a frozen binary in three jobs.
+
+IV. CHRONOLOGY
+
+    1. 0083's step: tests again, committed locally.
+    2. Two weights, not one: the post bounded by BASE_ALARM - BASE_R,
+       the push point not; the defence end left at the base.
+    3. The first raid: a RuleBot went for a far depot. A brainless
+       tank headed at the base (`toward`), from the map's centre
+       (`"centre"`) so no raid begins off the map.
+    4. On and off alike at every bar: shells and drones met the raid
+       20 tiles out. The teammate's sight and the drones taken away
+       after half a second, the raid from 40 tiles: 85.5% to 50.5%.
+    5. The sweep: the push point all of it; the post nothing.
+    6. The meter: 404 to 537 s a match leaned. The guard: -0.27 +/-
+       0.64.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 61. Tests: brain 82 passed, 11
+    ignored; client 32; net 14; proto 3; sim 50. 100 weights, 17
+    bits; six families with floors.
+
+VI. DISCUSSION
+
+    A guard that sees far fights far, wherever it is posted; the post
+    counts only when it is blind. And an idle guard is not at its
+    post at all but on rotation, so the lean that pays is the push
+    point's.
+
+VII. OPEN PROBLEMS
+
+    1. Backlog 52, allies' goals in a joining window (the wire).
+    2. Territory, built and read by nothing.
+
+VIII. NEXT STEPS
+
+    1. Backlog 20, `island_site` where a naval start chooses.
+    2. Backlog 48, the starting numbers, once the features are in.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 61; CI-027; build/lr61.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

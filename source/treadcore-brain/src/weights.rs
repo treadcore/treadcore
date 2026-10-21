@@ -177,6 +177,8 @@ weights! {
     DuckPlan "duck_plan" 1.0, "duck: the point held while it stays safe, else the one `drive_to` has out of the gun's reach or line by the tick it is ready (1, LR 57), against the nearest safe point to the errand, picked anew each think (0, LR 21); thresholded at 0.5";
     DuckReady "duck_ready" 1.5, "duck: a hostile gun ready within this many seconds threatens, if it fires before mine (a tank covers about five tiles in 1.5 s)";
     Front "w_front" 0.5, "front: Expand's depot by its distance to the team board's front (1, LR 58) against its distance to the base (0, before LR 58), the cost the blend of the two; a depot so chosen is kept until taken or given up; needs board";
+    FrontPost "w_front_post" 0.5, "front: the guard's post moved this share of the way toward the nearest front sector (1, LR 61), `FRONT_POST_REACH` tiles at most, against the post at the base (0, before LR 61); a guard on rotation leaves its post, so it acts only with a raider at the base; needs board";
+    FrontPush "w_front_push" 0.75, "front: the rotation's push point moved this share of the way toward the front sector nearest it (1, LR 61), against halfway to the side's objective (0, before LR 61); needs board";
     FrontMemory "front_memory" 30.0, "front: seconds a hostile tank out of sight still counts toward the board's front where it was last seen; 0 (before LR 58) counts only what is in sight";
     FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";

@@ -1,0 +1,60 @@
+# LAB-REPORT-BRAIN.md section 61 (backlog 51, the guard posts at the
+# front): a family, its raid drawn from the seed. A Commander on the
+# Guard rung alone, with the team board, at its base in the map's
+# centre. A hostile tank 40 tiles off in any direction drives at the
+# base; a teammate stands 8 tiles from the raider, any side, sees it for
+# the team for half a second and comes home, and the guard's drones are
+# recalled then, so the board's front on the raid's side is only
+# remembered (`front_memory`). Held: the guard first hits the raider
+# more than 10 tiles from the base (its ring, `BASE_R`), met before it
+# arrives. The rotation's push point toward the front does it: 85.5%
+# over 400 seeds, 50.5% with `w_front_push` at 0. With drones and the
+# teammate's sight the guard's gun meets a raid 20 tiles out whatever
+# the post. Run over many seeds: make scenario S=this RUNS=1000.
+name = "a raid on a guarded base, from any side"
+runs = 400
+floor = 0.75
+players = 3
+teams = [0, 1, 0]
+seconds = 50
+board = true
+pillboxes = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-42, 42]
+y = [-42, 42]
+[[tank]]
+seat = 0
+at = "centre"
+[[depot]]
+at = "seat:0"
+owner = 0
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [40, 0]
+around = true
+toward = "seat:0"
+speed = 2
+drive = 38
+[[tank]]
+seat = 2
+at = "seat:1"
+offset = [8, 0]
+around = true
+[[event]]
+at = 0.5
+drones = "recall"
+[[event]]
+at = 0.5
+move = 2
+to = "seat:0"
+offset = [0, 3]
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+rungs = ["guard"]
+[expect]
+met_beyond = { by = 0, on = 1, at = "seat:0", more_than = 10 }

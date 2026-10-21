@@ -11,12 +11,15 @@
 //! `[[depot]]`, `[[shell]]` and `[[event]]` tables; values are numbers,
 //! "strings", true or false, `[lists]` and `{ inline = tables }`.
 //! Positions are an anchor and an offset in tiles: `"seat:0"` (where a
-//! seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed).
+//! seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed),
+//! and `"centre"` (the map's middle).
 //! `board = true` gives each team's Commanders one team board, a
 //! Commander's `rungs = [...]` the ladder's rungs on, and a `[[depot]]`'s
 //! `at` and `offset` move it there (LR 58). A family
 //! (`scenarios/families/`) has `runs` and the `floor` it must hold over
-//! them (`make families`, backlog 47).
+//! them (`make families`, backlog 47). A `[[tank]]`'s `toward` heads it
+//! at a place, and `met_beyond` asks how far from a point a seat first
+//! hit another (LR 61).
 //!
 //! ```toml
 //! name = "a bot drives out from under a shell"
@@ -176,6 +179,8 @@ pub struct Outcome {
     pub start: BTreeMap<PlayerId, (V2, u16)>,
     pub end: BTreeMap<PlayerId, (V2, u16)>,
     pub hits: Vec<(Option<PlayerId>, PlayerId)>,
+    /// Where the tank hit was, for each of `hits`.
+    pub hit_at: Vec<V2>,
     /// Each placed pillbox: the damage it did, the tick each seat first
     /// owned it, and whether it stands at the end.
     pub pillbox_damage: Vec<f32>,
@@ -234,7 +239,8 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
     let list = |name: &str| doc.lists.get(name).unwrap_or(&empty);
     // Anchor and offset to a point.
     let place = |w: &World, depots: &[(EntityId, V2)], pillboxes: &[EntityId], anchor: &str, off: Option<&Value>| -> Result<V2, String> {
-        let (kind, k) = anchor.split_once(':').ok_or(format!("not an anchor: {}", anchor))?;
+        // `"centre"`, the map's middle, takes no number.
+        let (kind, k) = if anchor == "centre" { ("centre", "0") } else { anchor.split_once(':').ok_or(format!("not an anchor: {}", anchor))? };
         let k: usize = k.parse().map_err(|_| format!("not an anchor: {}", anchor))?;
         let base = match kind {
             "seat" => seat_pos(w, k as PlayerId)?,
@@ -277,6 +283,7 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
     // until its brain orders otherwise. `around = true` turns the offset
     // round its anchor by an angle the dice draw; `reload` is seconds
     // before its gun is ready, or a time drawn from `[lo, hi]` (LR 57).
+    // `toward = "seat:0"` heads it at that place instead (LR 61).
     for t in list("tank") {
         let seat = num(t, "seat", 0.0) as PlayerId;
         let anchor = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("seat:0"), None)?;
@@ -295,6 +302,12 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
             Some(v) => (v.num().ok_or("heading: degrees or \"any\"")? as f32).to_radians(),
             None => tank.heading,
         };
+        if let Some(a) = t.get("toward").and_then(Value::str) {
+            let at = place(&w, &depots, &pillboxes, a, None)?;
+            let tank = w.tanks.iter_mut().find(|x| x.owner == seat).expect("the tank");
+            tank.heading = (at - tank.pos).heading();
+        }
+        let tank = w.tanks.iter_mut().find(|x| x.owner == seat).expect("the tank");
         tank.speed = num(t, "speed", 0.0) as f32;
         let reload = match t.get("reload") {
             Some(Value::List(v)) if v.len() == 2 => dice.range(v[0].num().unwrap_or(0.0) as f32, v[1].num().unwrap_or(0.0) as f32) as f64,
@@ -444,7 +457,7 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
     for t in &w.tanks {
         out.start.insert(t.owner, (t.pos, t.shells));
     }
-    for key in ["ends_near", "lands_near"] {
+    for key in ["ends_near", "lands_near", "met_beyond"] {
         if let Some(Value::Table(t)) = doc.expect.get(key) {
             let at = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("seat:0"), t.get("offset"))?;
             out.points.insert(key.into(), at);
@@ -491,6 +504,7 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
                 Event::TankDamaged { tank, by, damage, .. } => {
                     if let Some(t) = w.tanks.iter().find(|t| t.id == *tank) {
                         out.hits.push((*by, t.owner));
+                        out.hit_at.push(t.pos);
                         let drones: Vec<String> = w.drones.iter().map(|d| format!("{:?} of {} at ({:.1},{:.1})", d.kind, d.owner, d.pos.x, d.pos.y)).collect();
                         out.trace.push(format!("{:>5.2} s  seat {} hit by {:?} for {:.0}; drones: {}", w.tick as f64 / TICK_HZ as f64, t.owner, by, damage, drones.join(", ")));
                     }
@@ -643,6 +657,19 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                     Some(l) if field(t, "within").map(|m| l.dist(at) as f64 <= m).unwrap_or(true) => {}
                     Some(l) => failed.push(format!("seat {} came ashore {:.1} tiles from the point, within {} expected", s, l.dist(at), field(t, "within").unwrap_or(0.0))),
                     None => failed.push(format!("seat {} never came ashore", s)),
+                }
+            }
+            // `met_beyond = { by = 0, on = 1, at = "seat:0", more_than = 12 }`:
+            // the first hit `by` took on `on` was that far from the point
+            // (LR 61, an attack met before it reaches the base).
+            "met_beyond" => {
+                let (by, on) = (field(t, "by").ok_or("met_beyond: by")? as PlayerId, field(t, "on").ok_or("met_beyond: on")? as PlayerId);
+                let at = out.points.get("met_beyond").copied().ok_or("met_beyond: no point")?;
+                let first = out.hits.iter().zip(&out.hit_at).find(|((b, o), _)| *b == Some(by) && *o == on).map(|(_, p)| p.dist(at) as f64);
+                match (first, field(t, "more_than")) {
+                    (Some(d), Some(m)) if d <= m => failed.push(format!("seat {} first hit seat {} {:.1} tiles from the point, more than {} expected", by, on, d, m)),
+                    (None, _) => failed.push(format!("seat {} never hit seat {}", by, on)),
+                    _ => {}
                 }
             }
             "pillbox_damage" => {

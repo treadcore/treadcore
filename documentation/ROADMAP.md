@@ -322,8 +322,11 @@ to 8.93 a seat).
   nearest the base and the nearest the front, the front kept on the
   hostiles seen in the last 30 s;
   `an-expanding-tank-takes-the-depot-at-the-front.toml`,
-  `a_front_seen_is_remembered`. Not yet: territory read by nothing; the
-  guard posts at the front (backlog 51).
+  `a_front_seen_is_remembered`. The guard posts at the front, 21
+  October (LR 61; `w_front_push`, `w_front_post`): the rotation's push
+  point and the guard's post leaned toward the front;
+  `a-raid-on-a-guarded-base.toml`, `the_push_point_leans_to_the_front`.
+  Not yet: territory read by nothing.
 - [~] 12f behaviours: the base cycle (`cycle`,
   `a_full_tank_gives_the_base_an_item`), priced crossings and the island
   site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`),
@@ -395,9 +398,11 @@ on by default, Paul's choice (LR 54). Every part on (LR 55, -0.85 +/-
 56, 57). The front read (49, LR 58): Expand toward the front, the front
 remembered 30 s; -0.14 +/- 0.42, inside the noise. The families held to
 floors (47, LR 59); allies' goals shown when hosting (50); the crews
-and the hop tested (26, LR 60). Next, one at a time: the guard posts at
-the front (51); `island_site` where a naval start chooses (20); then
-the starting numbers (48) once the features are in.
+and the hop tested (26, LR 60). The guard posts at the front (51, LR
+61): the push point leaned 0.75 of the way, the post 0.5; -0.27 +/-
+0.64, inside the noise. Next, one at a time: `island_site` where a
+naval start chooses (20); then the starting numbers (48) once the
+features are in.
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -875,7 +880,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     blended toward the nearest front sector by a weight (`w_front_post`,
     a starting number from a family) meet attacks before they reach the
     base. Proof: a family of a raid on a base with the front known; the
-    guard census. Cost: a step. State: idea.
+    guard census. Cost: a step. State: done 21 October (LR 61):
+    `w_front_push` 0.75 and `w_front_post` 0.5, two weights, not one
+    (the post moves 6 tiles at most). The family met the raid beyond
+    the base's ring at 85.5% against 50.5% at 0, all of it the push
+    point's; the post acts only with a raider at the base, about 8 s a
+    match. The guard -0.27 +/- 0.64 a seat over 48 seeds.
 52. Allies' goals in a joining window. (20 October; cause: LR 59, the
     bots think on the host and their goals are not in the
     Observation.) Goal 3, 11c; goal 6. Hypothesis: each bot's status
