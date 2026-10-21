@@ -3352,3 +3352,85 @@ makes is seldom a bad one avoided.
 Proof: `make test`: brain 83 passed and 11 ignored; client 32; net 14;
 proto 3; sim 50. `make families`: seven families, each above its
 floor.
+
+## 63. Every part off, one at a time, 21 October
+
+Backlog 48, the starting numbers for the brain with every part on.
+LR 55 read every part on at -0.85 +/- 0.59 against LR 54's defaults.
+The hypothesis: one or two parts carry that cost (by history the
+posture's lean and `team_rotate`), and their weight halved
+(`w_posture` 0.25, `swap_gap` 0.6) gives it back.
+
+**The tool**: `make parts` (`scripts/parts.sh`), the reverse of `make
+switches`. The fair census once for each part, the trial seat on the
+defaults (every part on), the baseline with that part off: a
+capability as `-name`, a weight at the value its doc line names as
+before it. The difference is what the part is worth; above zero it
+pays. 31 parts: 17 capabilities and 14 weights. Logs, weights files
+and the table under `build/parts/STAMP`.
+
+**Each part off**: naval.map, 900 s, 3 respawns, 12 seeds, a frozen
+binary, four at once (`JOBS=4 make parts`, about 1.5 h).
+
+| Part off | On | Off | Difference | Error |
+| --- | --- | --- | --- | --- |
+| `-dodge` | 12.04 | 6.84 | **+5.20** | 1.91 (outside) |
+| `landfall_memory=0` | 10.32 | 7.56 | +2.76 | 1.76 |
+| `-posture` | 9.77 | 7.96 | +1.82 | 0.94 |
+| `-rotate` | 9.71 | 8.11 | +1.60 | 1.27 |
+| `landfall_shy=0` | 9.60 | 8.15 | +1.45 | 1.27 |
+| `-cycle` | 9.49 | 8.05 | +1.44 | 0.90 |
+| `dodge_plan=0` | 9.33 | 7.93 | +1.40 | 1.54 |
+| `w_site_beach=0` | 8.92 | 7.54 | +1.38 | 1.45 |
+| `w_front_post=0` | 9.03 | 7.94 | +1.09 | 1.01 |
+| `-island_site` | 8.57 | 7.55 | +1.02 | 1.28 |
+| `front_memory=0` | 9.39 | 8.43 | +0.96 | 1.32 |
+| `-team_rotate` | 8.94 | 8.12 | +0.83 | 0.88 |
+| `-priced_crossing` | 8.60 | 7.76 | +0.83 | 1.09 |
+| `-board` | 9.57 | 9.01 | +0.56 | 1.20 |
+| `-bridges` | 8.90 | 8.40 | +0.50 | 0.91 |
+| `w_smooth=0` | 8.40 | 8.04 | +0.36 | 0.88 |
+| `duck_plan=0` | 8.67 | 8.49 | +0.18 | 1.26 |
+| `-bridge_jobs` | 8.66 | 8.50 | +0.16 | 0.52 |
+| `-escort` | 8.21 | 8.21 | 0.00 | 0.00 |
+| `-column` | 8.41 | 8.52 | -0.11 | 0.36 |
+| `-forget` | 8.11 | 8.31 | -0.19 | 0.49 |
+| `dodge_release=0` | 8.18 | 8.65 | -0.46 | 0.80 |
+| `w_front=0` | 7.80 | 8.56 | -0.76 | 0.82 |
+| `-castle_cap` | 8.28 | 9.09 | -0.81 | 0.62 |
+| `-pings` | 8.57 | 9.61 | -1.05 | 1.13 |
+| `dodge_every=0` | 7.88 | 9.06 | -1.18 | 1.36 |
+| `w_front_push=0` | 7.78 | 9.09 | -1.30 | 1.23 |
+| `dodge_fire=0` | 7.63 | 9.04 | -1.42 | 1.22 |
+| `-duck` | 7.33 | 8.89 | -1.57 | 0.96 |
+| `-kite` | 7.58 | 9.34 | -1.76 | 1.04 |
+| `landfall_wait=0` | 6.79 | 8.82 | -2.03 | 1.29 |
+
+One part is outside two errors, and it pays: the dodge. None costs
+past two errors. The two the hypothesis named read on the paying side,
+the posture +1.82 and `team_rotate` +0.83. Of 31 tests at two errors
+about 1.5 would cross by chance; 21 of 31 read above zero.
+`-escort` reads exactly 0: no escort job arose on naval.map in 12
+seeds.
+
+**The halved weights**, the plan's proof, and the worst row halved:
+the trial seat on each against the defaults; the fair census at 48
+seeds (0 to 47), three jobs of 16, frozen binaries (`build/lr63a`,
+`build/lr63b`).
+
+| 48 seeds | Difference a seat | By job of 16 |
+| --- | --- | --- |
+| a: `w_posture` 0.25, `swap_gap` 0.6 | +0.61 +/- 0.60 (1.0 errors) | -0.75 +/- 1.00, +1.64 +/- 1.24, +0.92 +/- 0.83 |
+| b: `landfall_wait` 5 | -0.09 +/- 0.46 (0.2 errors) | +0.25 +/- 0.93, -0.75 +/- 0.65, +0.22 +/- 0.83 |
+
+Neither is a gain. **The defaults stand.** The hypothesis is not
+supported: LR 55's cost is not one or two parts. Read with this table
+it is most likely the sum of many small effects of both signs, or no
+cost at all (LR 55 was 1.4 errors). A half point a seat, the size
+asked of it, takes the 48 seeds per part that one night of `make
+parts` cannot give; the table ranks where to look first (`kite`,
+`landfall_wait`, `duck` below; the dodge's three numbers among them).
+
+Proof: `make test`: brain 83 passed and 11 ignored; client 32; net 14;
+proto 3; sim 50. `make families`: seven families, each above its
+floor. No code in the brain changed.

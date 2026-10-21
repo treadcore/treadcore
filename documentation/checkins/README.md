@@ -42,3 +42,4 @@ report is what ties a conversation to them. Named
 | [026](CI-026-2026-10-20-the-front-read.md) | 20 October 2026 | The front read, the families held to floors, and the crews tested | 0083 | LAB-REPORT-BRAIN.md sections 58 to 60 |
 | [027](CI-027-2026-10-21-the-guard-posts-at-the-front.md) | 21 October 2026 | The guard posts at the front | 0084 | LAB-REPORT-BRAIN.md section 61 |
 | [028](CI-028-2026-10-21-island-sites-at-sea.md) | 21 October 2026 | Island sites where a naval start chooses | 0085 | LAB-REPORT-BRAIN.md section 62 |
+| [029](CI-029-2026-10-21-every-part-off.md) | 21 October 2026 | Every part off, one at a time | 0086 | LAB-REPORT-BRAIN.md section 63 |

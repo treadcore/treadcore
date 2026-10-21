@@ -1,0 +1,91 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 21 Oct 2026 20:00:00 -0700
+Subject: [JOURNAL 0086] Every part off, one at a time
+Message-ID: <0086.20261021@treadcore.org>
+In-Reply-To: <0085.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: tuning, every part on, census, make parts
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompts: "continue. also . good luck claude, you are
+           a force of good." and "continue"
+X-Commits: 45f68ce (the last); this entry's commit follows
+
+                     EVERY PART OFF, ONE AT A TIME
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    Backlog 48, the starting numbers. `make parts` turns each of 31
+    parts off from the brain with every part on, at 12 seeds. One
+    part reads past two errors, the dodge, and it pays (+5.20 +/-
+    1.91). The two parts the hypothesis blamed read as paying. Their
+    weights halved read +0.61 +/- 0.60 at 48 seeds; the lowest row,
+    `landfall_wait`, halved, -0.09 +/- 0.46. The defaults stand.
+
+INDEX TERMS
+
+    tuning, ablation, census guard.
+
+I. INTRODUCTION
+
+    "continue." The hypothesis: one or two parts (the posture's lean,
+    `team_rotate`) carry LR 55's -0.85 for every part on, and halving
+    their weight gives it back.
+
+II. BACKGROUND
+
+    `make switches` measures each part that is off, turned on. With
+    every part on since LR 55 there was no reverse. 101 weights, 17
+    bits; seven families with floors.
+
+III. METHOD
+
+    Each part off at 12 seeds from a frozen binary, four censuses at
+    once; then the candidates at 48 seeds, pooled over their per-seed
+    differences.
+
+IV. CHRONOLOGY
+
+    1. `scripts/parts.sh`, `make parts`: 17 capabilities as `-name`,
+       14 weights at their before-values. A smoke run of two parts at
+       one seed of 30 s.
+    2. The full run, 31 censuses, about 1.5 h. The dodge alone past
+       two errors, paying. The posture +1.82, `team_rotate` +0.83.
+       The lowest: `landfall_wait` -2.03, `kite` -1.76, `duck` -1.57.
+    3. The plan's proof anyway, `w_posture` 0.25 and `swap_gap` 0.6
+       at 48 seeds: +0.61 +/- 0.60. With it, the lowest row halved:
+       -0.09 +/- 0.46.
+    4. The defaults kept. The bottom of the table to backlog 53.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 63. Tests: brain 83 passed, 11
+    ignored; client 32; net 14; proto 3; sim 50. Seven families above
+    their floors. No brain code changed.
+
+VI. DISCUSSION
+
+    LR 55's cost is not a part. Twelve seeds rank; they do not
+    decide. The table says where to spend the 48-seed censuses.
+
+VII. OPEN PROBLEMS
+
+    1. Backlog 52, allies' goals in a joining window (the wire).
+    2. Territory, built and read by nothing.
+
+VIII. NEXT STEPS
+
+    1. Backlog 53, the bottom of the parts table at 48 seeds.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 63; CI-029; build/parts/20261021-085753;
+    build/lr63a; build/lr63b.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

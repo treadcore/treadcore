@@ -404,8 +404,10 @@ and the hop tested (26, LR 60). The guard posts at the front (51, LR
 61): the push point leaned 0.75 of the way, the post 0.5; -0.27 +/-
 0.64, inside the noise. `island_site` where a naval start chooses (20,
 LR 62): the beach priced by its island, `w_site_beach` 20; +0.82 +/-
-0.69, inside the noise. Next: the starting numbers (48) once the
-features are in.
+0.69, inside the noise. The starting numbers (48, LR 63): `make parts`,
+each part off; only the dodge past two errors, and it pays; the halved
+posture and swap gap +0.61 +/- 0.60, the defaults kept. Next: the
+bottom of the parts table at 48 seeds (53).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -862,8 +864,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     and their weight halved (`w_posture` 0.25; `swap_gap` 0.6) gives it
     back. Proof: each part off from the all-on brain at 12 seeds (the
     reverse of `make switches`), then the halved weights at 48. Cost:
-    about 80 min, then 30. State: idea, after the features are in
-    (Paul, 20 October).
+    about 80 min, then 30. State: done 21 October (LR 63), the
+    hypothesis not supported, the defaults kept: `make parts` (each
+    part off from the all-on brain, 31 parts at 12 seeds) finds one
+    part past two errors, the dodge, and it pays (+5.20 +/- 1.91); the
+    posture +1.82 and `team_rotate` +0.83 read as paying. The halved
+    weights read +0.61 +/- 0.60 at 48 seeds, `landfall_wait` 5 (the
+    lowest row) -0.09 +/- 0.46. The bottom of the table at 48: 53.
 49. The front read. (20 October; cause: LR 24 and LR 55, the board's
     influence, front and territory are built every second and read by
     nothing.) Goal 4, 12e. Hypothesis: the Expand rung's target picked
@@ -904,6 +911,15 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     (version 17), which goal 4 must not change: after goal 4, with
     goal 6. Proof: a networked test where a client's screen shows a
     host bot's rung. Cost: a step, the wire. State: idea.
+53. The bottom of the parts table. (21 October; cause: LR 63, `kite`
+    -1.76 +/- 1.04, `duck` -1.57 and the dodge's `dodge_fire` -1.42
+    read below zero at 12 seeds, none past two errors; `landfall_wait`
+    -2.03, but halved it read -0.09 +/- 0.46 at 48.) Goal 4, the
+    tuning phase. Hypothesis: one of them costs a half point a seat on
+    naval.map. Proof: each off at 48 seeds (`PARTS="-kite -duck
+    dodge_fire=0" SEEDS=48 JOBS=3 make parts`); a part past two errors
+    goes to its family, to find the case it loses. Cost: about 50 min
+    for the three. State: idea.
 
 ## Sequencing
 

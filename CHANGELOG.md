@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `make parts` (`scripts/parts.sh`), the reverse of `make
+  switches`: each part off from the brain with every part on, over the
+  fair census (`PARTS`, `SEEDS`, `SECS`, `MAP`, `RESPAWNS`, `JOBS`). Of
+  31 parts at 12 seeds only the dodge reads past two errors, and it
+  pays; the halved posture and swap gap read +0.61 +/- 0.60 at 48
+  seeds, so the defaults are kept (LAB-REPORT-BRAIN.md section 63).
+
 - Added: `island_site` where a naval start chooses (`w_site_beach` 20):
   afloat while the side holds no depot, each beach in sight costs 20
   tiles of the run less per point of its island's site score (forest,
