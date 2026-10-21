@@ -29,9 +29,11 @@ pub mod chair;
 pub mod lingo;
 pub mod map;
 pub mod rules;
+pub mod upgrades;
 
 pub use map::{DepotOwner, Map, MapDepot, MapError, MapPillbox, MapStructure, Terrain, MAP_FORMAT, MAP_H, MAP_W};
 pub use rules::*;
+pub use upgrades::{Economy, Upgrade};
 
 /// Simulation rate. Twenty ticks a second is enough for a game whose
 /// fastest thing is a drone at nine tiles a second, and it keeps a
@@ -808,6 +810,9 @@ pub enum Command {
     /// afloat. No walk, no drive onto it. It takes the squad's material
     /// up to `BOAT_COST`, and launches with none.
     Embark,
+    /// The upgrades prototype: buy the next level of `upgrade`, for the
+    /// base of the depot `at` or for my tank (upgrades.rs).
+    Buy { upgrade: Upgrade, at: Option<EntityId> },
 }
 
 impl Command {
@@ -929,6 +934,9 @@ pub enum Event {
     /// A destroyed tank came back at its start; `left` respawns remain
     /// (`RESPAWNS_UNLIMITED` for no limit).
     Respawned { tank: EntityId, owner: PlayerId, at: V2, left: u8 },
+    /// The upgrades prototype: a level bought, for a depot's base or a
+    /// tank (upgrades.rs).
+    Bought { player: PlayerId, team: TeamId, upgrade: Upgrade, level: u8, at: EntityId },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1040,6 +1048,11 @@ pub struct Scenario {
     /// with a respawn left is not out of the match.
     #[serde(default)]
     pub respawns: u8,
+    /// The upgrades prototype (upgrades.rs, branch `proposal/upgrades`):
+    /// supply earned and `Command::Buy` taken. Not serialised, so not in
+    /// the hash, the replay or the wire.
+    #[serde(skip)]
+    pub upgrades: bool,
 }
 
 /// `--respawns N` as the window and the server read it: a count (254 at
@@ -1087,6 +1100,7 @@ impl Default for Scenario {
             time_limit: 15 * 60 * TICK_HZ as Tick,
             industry: false,
             respawns: 0,
+            upgrades: false,
         }
     }
 }
@@ -1118,6 +1132,10 @@ pub struct World {
     /// Events from the most recent `step`. Cleared at the start of the next.
     #[serde(skip)]
     pub events: Vec<Event>,
+    /// The upgrades prototype's economy, when the scenario has it: beside
+    /// the world's state, not in it (upgrades.rs).
+    #[serde(skip)]
+    pub economy: Option<Economy>,
 }
 
 /// Squads on one pillbox (or structure) that are all of one side do
@@ -1161,6 +1179,7 @@ impl World {
             winner: None,
             winning_team: None,
             events: Vec::new(),
+            economy: scenario.upgrades.then(|| Economy::new(MAX_PLAYERS)),
             scenario: scenario.clone(),
         };
         let seats = scenario.players.len().min(MAX_PLAYERS).min(w.map.starts.len());
@@ -1455,6 +1474,7 @@ impl World {
         self.step_structures();
         self.step_swarm();
         self.step_match();
+        self.step_economy();
     }
 
     /// A message (SPEC UI-22, UI-23): one line, no control characters,
@@ -1828,7 +1848,7 @@ impl World {
                     // BLD-05, BLD-06).
                     PillboyTask::Repair { target } => match self.pillbox(*target) {
                         None => return self.reject(o, "no such pillbox"),
-                        Some(p) if p.health >= PILLBOX_HEALTH => return self.reject(o, "pillbox needs no repair"),
+                        Some(p) if p.health >= self.pillbox_health_of(p) => return self.reject(o, "pillbox needs no repair"),
                         Some(_) if material < PILLBOX_REPAIR_COST => return self.reject(o, "no material"),
                         Some(_) => {}
                     },
@@ -1924,6 +1944,7 @@ impl World {
             Command::Alliance(_) | Command::Propose { .. } | Command::Answer { .. } | Command::Chat { .. } | Command::TakeSeat { .. } | Command::Respawn | Command::Ping { .. } | Command::Request { .. } => {}
             Command::Tow { target } => self.tow(o, tid, *target),
             Command::Embark => self.embark(o, tid),
+            Command::Buy { upgrade, at } => self.buy(o, tid, *upgrade, *at),
         }
     }
 
@@ -2092,6 +2113,149 @@ impl World {
     /// `Command::Embark`: a boat on the water beside the tank, from the
     /// squad's material, and the tank on it. The water tile is the one
     /// beside the tank most nearly ahead of it.
+    // ------------------------------------------------- upgrades (prototype)
+
+    /// The level of a base upgrade over `pos` for `owner`'s side: the
+    /// highest of the side's depots within `UPGRADE_BASE_R`. 0 without
+    /// the economy.
+    fn base_level_at(&self, owner: Option<PlayerId>, pos: V2, u: Upgrade) -> u8 {
+        let (Some(e), Some(team)) = (self.economy.as_ref(), owner.and_then(|o| self.team_of(o))) else { return 0 };
+        self.depots
+            .iter()
+            .filter(|d| d.owner.and_then(|x| self.team_of(x)) == Some(team) && d.pos.dist(pos) <= upgrades::UPGRADE_BASE_R)
+            .map(|d| e.base_level(d.id, u))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// A pillbox's reach: `PILLBOX_RANGE`, longer under calibre.
+    pub fn pillbox_range_of(&self, p: &Pillbox) -> f32 {
+        if self.economy.is_none() {
+            return PILLBOX_RANGE;
+        }
+        upgrades::pillbox_range(self.base_level_at(p.owner, p.pos, Upgrade::Calibre))
+    }
+
+    /// A pillbox's full health: `PILLBOX_HEALTH`, more under plating.
+    pub fn pillbox_health_of(&self, p: &Pillbox) -> f32 {
+        if self.economy.is_none() {
+            return PILLBOX_HEALTH;
+        }
+        upgrades::pillbox_health(self.base_level_at(p.owner, p.pos, Upgrade::PillboxPlating))
+    }
+
+    /// A tank's full armour: `TANK_ARMOR`, more under plating.
+    pub fn tank_armor_of(&self, t: &Tank) -> f32 {
+        match &self.economy {
+            Some(e) => upgrades::tank_armor(e.tank_level(t.id, Upgrade::TankPlating)),
+            None => TANK_ARMOR,
+        }
+    }
+
+    /// `Command::Buy`: the next level of `u`, for the base of the depot
+    /// `at` (the buyer within `UPGRADE_BUY_REACH` of it) or for the
+    /// buyer's tank (on a depot of the side), for the side's supply.
+    fn buy(&mut self, o: &Order, tid: EntityId, u: Upgrade, at: Option<EntityId>) {
+        if self.economy.is_none() {
+            return self.reject(o, "no upgrades in this match");
+        }
+        let Some(team) = self.team_of(o.player) else { return self.reject(o, "no such player") };
+        let Some(me) = self.tank(tid).filter(|t| t.alive).cloned() else { return self.reject(o, "tank destroyed") };
+        let ours = |w: &World, x: Option<PlayerId>| x.and_then(|p| w.team_of(p)) == Some(team);
+        let id = if u.base() {
+            let Some(d) = at.and_then(|a| self.depots.iter().find(|d| d.id == a)).cloned() else { return self.reject(o, "no such depot") };
+            if !ours(self, d.owner) {
+                return self.reject(o, "not a depot of the side");
+            }
+            if d.pos.dist(me.pos) > upgrades::UPGRADE_BUY_REACH {
+                return self.reject(o, "too far from the depot");
+            }
+            d.id
+        } else {
+            if !self.depots.iter().any(|d| ours(self, d.owner) && d.pos.dist(me.pos) <= DEPOT_RADIUS) {
+                return self.reject(o, "not on a depot");
+            }
+            tid
+        };
+        let e = self.economy.as_ref().unwrap();
+        let level = if u.base() { e.base_level(id, u) } else { e.tank_level(id, u) } + 1;
+        if level > u.levels() {
+            return self.reject(o, "already at the top level");
+        }
+        if e.supply[team as usize] < u.price(level) as f32 {
+            return self.reject(o, "not enough supply");
+        }
+        // Plating keeps the share of damage taken: a pillbox's health
+        // and a tank's armour rise with the full.
+        let depot_at = self.depots.iter().find(|d| d.id == id).map(|d| d.pos);
+        let e = self.economy.as_mut().unwrap();
+        e.supply[team as usize] -= u.price(level) as f32;
+        e.set(u.base(), id, u, level);
+        e.bought.push((self.tick, team, u, level));
+        match u {
+            Upgrade::TankPlating => {
+                if let Some(t) = self.tank_mut(tid) {
+                    t.armor += upgrades::tank_armor(level) - upgrades::tank_armor(level - 1);
+                }
+            }
+            Upgrade::PillboxPlating => {
+                let share = upgrades::pillbox_health(level) / upgrades::pillbox_health(level - 1);
+                let at = depot_at.unwrap_or(me.pos);
+                let side: Vec<PlayerId> = self.players.iter().filter(|p| p.team == team).map(|p| p.id).collect();
+                for p in self.pillboxes.iter_mut().filter(|p| p.alive() && p.owner.map(|x| side.contains(&x)).unwrap_or(false) && p.pos.dist(at) <= upgrades::UPGRADE_BASE_R) {
+                    p.health *= share;
+                }
+            }
+            _ => {}
+        }
+        self.events.push(Event::Bought { player: o.player, team, upgrade: u, level, at: id });
+    }
+
+    /// Supply earned this tick (PROPOSAL-UPGRADES.md section 1.1): a
+    /// live pillbox 1 and a depot 2 every 10 s, a powered structure 1
+    /// every 20 s, 10 a hostile tank destroyed, 5 a hostile pillbox
+    /// captured; and a tank's upgrades lost when it is destroyed (down
+    /// or dead: a respawn or a revival starts plain).
+    fn step_economy(&mut self) {
+        if self.economy.is_none() {
+            return;
+        }
+        let team = |w: &World, p: Option<PlayerId>| p.and_then(|p| w.team_of(p));
+        let mut pay: Vec<(TeamId, usize, f32)> = Vec::new();
+        for e in &self.events {
+            match e {
+                Event::TankDestroyed { owner, by, .. } => {
+                    if let (Some(a), Some(b)) = (team(self, *by), team(self, Some(*owner))) {
+                        if a != b {
+                            pay.push((a, 3, 10.0));
+                        }
+                    }
+                }
+                Event::PillboxCaptured { by, from, .. } => {
+                    if let (Some(a), Some(b)) = (team(self, Some(*by)), team(self, *from)) {
+                        if a != b {
+                            pay.push((a, 4, 5.0));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        if self.tick % (10 * TICK_HZ as Tick) == 0 {
+            pay.extend(self.pillboxes.iter().filter(|p| p.alive()).filter_map(|p| team(self, p.owner)).map(|t| (t, 0, 1.0)));
+            pay.extend(self.depots.iter().filter_map(|d| team(self, d.owner)).map(|t| (t, 1, 2.0)));
+            if self.tick % (20 * TICK_HZ as Tick) == 0 {
+                pay.extend(self.structures.iter().filter(|x| x.powered).filter_map(|x| team(self, x.owner)).map(|t| (t, 2, 1.0)));
+            }
+        }
+        let alive: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive).map(|t| t.id).collect();
+        let e = self.economy.as_mut().unwrap();
+        for (t, source, a) in pay {
+            e.earn(t, source, a);
+        }
+        e.tanks.retain(|(id, _, _)| alive.contains(id));
+    }
+
     fn embark(&mut self, o: &Order, tid: EntityId) {
         let Some(t) = self.tank(tid) else { return };
         if t.boat {
@@ -2281,6 +2445,8 @@ impl World {
         }
         let mut done: Vec<(EntityId, PlayerId, Done)> = Vec::new();
         let mut captures: Vec<(EntityId, PlayerId)> = Vec::new();
+        // Each pillbox's full health (upgrades.rs: plating raises it).
+        let full: Vec<(EntityId, f32)> = self.pillboxes.iter().map(|p| (p.id, self.pillbox_health_of(p))).collect();
         let map = &self.map;
         let pillboxes = &self.pillboxes;
         let structures = &self.structures;
@@ -2416,7 +2582,7 @@ impl World {
                 }
                 PillboyTask::Repair { target } => {
                     let p = pillboxes.iter().find(|p| p.id == *target).unwrap();
-                    if p.health >= PILLBOX_HEALTH {
+                    if p.health >= full.iter().find(|f| f.0 == p.id).map(|f| f.1).unwrap_or(PILLBOX_HEALTH) {
                         done.push((t.id, t.owner, Done::Abandon("pillbox needs no repair")));
                     } else if s.material < PILLBOX_REPAIR_COST {
                         done.push((t.id, t.owner, Done::Abandon("no material")));
@@ -2605,8 +2771,9 @@ impl World {
                     }
                 }
                 Done::Repaired(pid) => {
+                    let full = self.pillbox(pid).map(|p| self.pillbox_health_of(p)).unwrap_or(PILLBOX_HEALTH);
                     if let Some(p) = self.pillbox_mut(pid) {
-                        p.health = PILLBOX_HEALTH;
+                        p.health = full;
                     }
                     if let Some(t) = self.tank_mut(tid) {
                         t.pillboys.material -= PILLBOX_REPAIR_COST;
@@ -2625,7 +2792,8 @@ impl World {
                     match what {
                         BuildKind::Pillbox => {
                             let id = self.alloc();
-                            self.pillboxes.push(Pillbox { id, pos: at, owner: Some(owner), health: carried.unwrap_or(PILLBOX_HEALTH), reload: PILLBOX_RELOAD_TICKS, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+                            let full = upgrades::pillbox_health(self.base_level_at(Some(owner), at, Upgrade::PillboxPlating));
+                            self.pillboxes.push(Pillbox { id, pos: at, owner: Some(owner), health: carried.unwrap_or(full), reload: PILLBOX_RELOAD_TICKS, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
                             self.events.push(Event::PillboxBuilt { pillbox: id, by: owner, at });
                         }
                         BuildKind::Wall => self.set_terrain(at, Terrain::Wall),
@@ -2828,7 +2996,9 @@ impl World {
         let mut air: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, drone, link
         // A pillbox on a chain is being moved, not manned: silent.
         let chained: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive).filter_map(|t| t.towing).collect();
-        for p in self.pillboxes.iter_mut() {
+        // Each pillbox's reach (upgrades.rs: calibre lengthens it).
+        let reach: Vec<f32> = self.pillboxes.iter().map(|p| self.pillbox_range_of(p)).collect();
+        for (i, p) in self.pillboxes.iter_mut().enumerate() {
             if chained.contains(&p.id) {
                 continue;
             }
@@ -2843,7 +3013,7 @@ impl World {
             // (PIL-07).
             let tank = tanks
                 .iter()
-                .filter(|(_, o, pos, hidden)| !allied_with(p.owner, *o) && pos.dist(p.pos) <= PILLBOX_RANGE && self.map.line_clear(p.pos, *pos) && (!hidden || pos.dist(p.pos) <= CONCEAL_RANGE))
+                .filter(|(_, o, pos, hidden)| !allied_with(p.owner, *o) && pos.dist(p.pos) <= reach[i] && self.map.line_clear(p.pos, *pos) && (!hidden || pos.dist(p.pos) <= CONCEAL_RANGE))
                 .min_by(|a, b| a.2.dist(p.pos).total_cmp(&b.2.dist(p.pos)).then(a.0.cmp(&b.0)));
             if let Some((tid, _, _, _)) = tank {
                 shots.push((p.id, shooter, *tid, PILLBOX_DAMAGE));
@@ -3479,7 +3649,9 @@ impl World {
                     t.shells = (t.shells + 1).min(TANK_SHELLS);
                 }
                 if serves(StructureKind::Workshop, t.owner, t.pos, WORKSHOP_RANGE) {
-                    t.armor = (t.armor + REPAIR_PER_TICK * 2.0).min(TANK_ARMOR);
+                    // A plated tank (upgrades.rs) is not cut back to the
+                    // plain armour; the workshop mends to that alone.
+                    t.armor = (t.armor + REPAIR_PER_TICK * 2.0).min(TANK_ARMOR.max(t.armor));
                     if t.bay.longshot < BAY_FULL.longshot {
                         t.bay.longshot += 1;
                     } else if t.bay.interceptor < BAY_FULL.interceptor {
@@ -3636,11 +3808,18 @@ impl World {
         }
         for (tid, did) in resupplied {
             let tick = self.tick;
+            // Upgrades (upgrades.rs): a plated tank's full armour, and a
+            // depot with stores restocks twice as fast.
+            let armor_full = self.tank(tid).map(|t| self.tank_armor_of(t)).unwrap_or(TANK_ARMOR);
+            let every = match &self.economy {
+                Some(e) if e.base_level(did, Upgrade::Stores) > 0 => RESUPPLY_EVERY / 2,
+                _ => RESUPPLY_EVERY,
+            };
             let t = self.tank_mut(tid).unwrap();
             let before = (t.shells, t.bay, t.armor as i32, t.fuel as i32);
-            if tick % RESUPPLY_EVERY == 0 {
+            if tick % every == 0 {
                 t.shells = (t.shells + 1).min(TANK_SHELLS);
-                t.armor = (t.armor + REPAIR_PER_TICK).min(TANK_ARMOR);
+                t.armor = (t.armor + REPAIR_PER_TICK).min(armor_full);
                 t.fuel = (t.fuel + 40.0).min(TANK_FUEL);
                 // Interceptors first: the bubble is what keeps the tank alive
                 // long enough to use the rest.
@@ -3830,6 +4009,15 @@ impl World {
             over: self.over,
             winner: self.winner,
             winning_team: self.winning_team,
+            supply: self.economy.as_ref().and_then(|e| self.team_of(p).and_then(|t| e.supply.get(t as usize).copied())),
+            upgrades: match (&self.economy, self.team_of(p)) {
+                (Some(e), Some(team)) => {
+                    let mine = self.tank_of(p).map(|t| t.id);
+                    let side: Vec<EntityId> = self.depots.iter().filter(|d| d.owner.and_then(|o| self.team_of(o)) == Some(team)).map(|d| d.id).collect();
+                    e.bases.iter().filter(|b| side.contains(&b.0)).chain(e.tanks.iter().filter(|t| Some(t.0) == mine)).copied().collect()
+                }
+                _ => Vec::new(),
+            },
         }
     }
 
@@ -4166,6 +4354,13 @@ pub struct Observation {
     pub over: bool,
     pub winner: Option<PlayerId>,
     pub winning_team: Option<TeamId>,
+    /// The upgrades prototype (upgrades.rs): my side's supply, None in a
+    /// match without upgrades; the levels of my side's depots and my
+    /// tank. Not on the wire.
+    #[serde(skip)]
+    pub supply: Option<f32>,
+    #[serde(skip)]
+    pub upgrades: Vec<(EntityId, Upgrade, u8)>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -6059,5 +6254,130 @@ mod tests {
             intercepts += w.events.iter().filter(|e| matches!(e, Event::Intercepted { .. })).count();
         }
         assert!(intercepts > 0, "interceptors never engaged");
+    }
+
+    // ---------------------------------------- upgrades (prototype, 11g)
+
+    fn upgrades_world() -> World {
+        World::new(Scenario { swarm_interval: 0, time_limit: 0, upgrades: true, ..Scenario::bots(4) })
+    }
+
+    /// PROPOSAL-UPGRADES.md section 4: 60 s with two pillboxes and a
+    /// depot pays 24 supply (at `SUPPLY_SCALE`).
+    #[test]
+    fn supply_is_earned_from_what_a_side_holds() {
+        let mut w = upgrades_world();
+        let team = w.team_of(0).unwrap() as usize;
+        for d in w.depots.iter_mut() {
+            d.owner = None;
+        }
+        w.depots[0].owner = Some(0);
+        for (i, p) in w.pillboxes.iter_mut().enumerate() {
+            p.owner = if i < 2 { Some(0) } else { None };
+        }
+        for _ in 0..(60 * TICK_HZ as u64) {
+            w.step(&[]);
+        }
+        let e = w.economy.as_ref().unwrap();
+        assert_eq!(e.earned[team][0], 12.0 * upgrades::SUPPLY_SCALE, "{:?}", e.earned[team]);
+        assert_eq!(e.earned[team][1], 12.0 * upgrades::SUPPLY_SCALE, "{:?}", e.earned[team]);
+        assert_eq!(e.supply[team], 24.0 * upgrades::SUPPLY_SCALE);
+    }
+
+    /// Section 4: refused without the supply (PICNIC), or in a match
+    /// without upgrades; bought with it, and the tank's armour rises.
+    #[test]
+    fn an_upgrade_is_refused_without_the_supply() {
+        let buy = Order { player: 0, cmd: Command::Buy { upgrade: Upgrade::TankPlating, at: None } };
+        let mut off = world();
+        off.step(&[buy.clone()]);
+        assert!(off.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "no upgrades in this match")));
+        let mut w = upgrades_world();
+        let d = w.depots.iter().find(|d| d.owner == Some(0)).unwrap().pos;
+        w.tank_mut(w.players[0].tank).unwrap().pos = d;
+        w.step(&[buy.clone()]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "not enough supply")), "{:?}", w.events);
+        assert_eq!(chair::tagged("not enough supply"), "PICNIC: not enough supply");
+        let team = w.team_of(0).unwrap() as usize;
+        w.economy.as_mut().unwrap().supply[team] = 60.0;
+        let before = w.tank_of(0).unwrap().armor;
+        w.step(&[buy]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Bought { player: 0, upgrade: Upgrade::TankPlating, level: 1, .. })), "{:?}", w.events);
+        assert_eq!(w.tank_of(0).unwrap().armor, before + 10.0);
+        assert!(w.economy.as_ref().unwrap().supply[team] < 11.0);
+    }
+
+    /// Section 4: a base's pillbox shoots a tank past its old reach
+    /// after one level of calibre, and not before.
+    #[test]
+    fn calibre_reaches_further() {
+        let mut w = upgrades_world();
+        let d = w.depots.iter().find(|d| d.owner == Some(0)).unwrap().pos;
+        // Ours, 3 tiles from the depot; an enemy 8.6 tiles from it, in
+        // the open, on a line the pillbox can see down.
+        let at = (0..64).map(|i| V2::from_heading(i as f32 * 0.1)).map(|h| (d + h.scale(3.0), h)).find(|(p, h)| {
+            let t = *p + h.scale(8.6);
+            w.map.at(*p).passable() && w.map.at(t).passable() && w.map.line_clear(*p, t) && !w.pillboxes.iter().any(|b| b.pos.dist(t) < 10.0)
+        });
+        let (pb, h) = at.expect("an open line from the base");
+        let id = w.alloc();
+        w.pillboxes.push(Pillbox { id, pos: pb, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        let foe = w.players[1].tank;
+        w.tank_mut(foe).unwrap().pos = pb + h.scale(8.6);
+        w.tank_mut(w.players[0].tank).unwrap().pos = d;
+        let shot = |w: &World| w.events.iter().any(|e| matches!(e, Event::PillboxFired { pillbox, .. } if *pillbox == id));
+        for _ in 0..TICK_HZ {
+            w.step(&[]);
+            assert!(!shot(&w), "fired past its reach");
+        }
+        let team = w.team_of(0).unwrap() as usize;
+        w.economy.as_mut().unwrap().supply[team] = 60.0;
+        let depot = w.depots.iter().find(|x| x.owner == Some(0)).unwrap().id;
+        w.step(&[Order { player: 0, cmd: Command::Buy { upgrade: Upgrade::Calibre, at: Some(depot) } }]);
+        let mut fired = shot(&w);
+        for _ in 0..TICK_HZ {
+            w.step(&[]);
+            fired |= shot(&w);
+        }
+        assert!(fired, "calibre 1 did not reach 8.6 tiles");
+    }
+
+    /// Section 4: a tank's upgrade goes with the tank.
+    #[test]
+    fn a_tank_upgrade_is_lost_with_the_tank() {
+        let mut w = upgrades_world();
+        let d = w.depots.iter().find(|d| d.owner == Some(0)).unwrap().pos;
+        let me = w.players[0].tank;
+        w.tank_mut(me).unwrap().pos = d;
+        let team = w.team_of(0).unwrap() as usize;
+        w.economy.as_mut().unwrap().supply[team] = 50.0;
+        w.step(&[Order { player: 0, cmd: Command::Buy { upgrade: Upgrade::TankPlating, at: None } }]);
+        assert_eq!(w.economy.as_ref().unwrap().tank_level(me, Upgrade::TankPlating), 1);
+        assert_eq!(w.tank_armor_of(w.tank(me).unwrap()), 110.0);
+        w.damage(me, 500.0, Some(1));
+        w.step(&[]);
+        assert_eq!(w.economy.as_ref().unwrap().tank_level(me, Upgrade::TankPlating), 0);
+    }
+
+    /// Section 3: nothing changes until a side buys. The same match with
+    /// the economy and without has the same hash every tick.
+    #[test]
+    fn the_economy_changes_nothing_until_a_side_buys() {
+        let sc = Scenario { swarm_interval: 10 * TICK_HZ, swarm_size: 2, time_limit: 0, ..Scenario::bots(4) };
+        let mut a = World::new(sc.clone());
+        let mut b = World::new(Scenario { upgrades: true, ..sc });
+        for i in 0..(40 * TICK_HZ as Tick) {
+            let mut orders = vec![];
+            if i % 50 == 7 {
+                let p = (i % 4) as PlayerId;
+                let to = a.map.center();
+                orders.push(Order { player: p, cmd: Command::Move { to } });
+                orders.push(Order { player: (p + 1) % 4, cmd: Command::FireIndirect { at: to } });
+            }
+            a.step(&orders);
+            b.step(&orders);
+            assert_eq!(a.hash(), b.hash(), "diverged at tick {}", a.tick);
+        }
+        assert!(b.economy.as_ref().unwrap().supply.iter().sum::<f32>() > 0.0);
     }
 }

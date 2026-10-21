@@ -2353,6 +2353,47 @@ impl Brain for Commander {
 }
 
 impl Commander {
+    /// The upgrades prototype (sim upgrades.rs, PROPOSAL-UPGRADES.md,
+    /// branch `proposal/upgrades`): a fleet's leader at its base buys
+    /// the base's next level, and a Commander on a depot of its side its
+    /// tank's plating, once the side's supply reaches the price over
+    /// `upgrade_vs_mend` (0 buys nothing; 0.5 keeps as much again in
+    /// reserve; 1 buys as soon as it can). The base's pick follows the
+    /// team's posture: Defend calibre first, Economy stores first, the
+    /// rest the pillboxes' plating first.
+    fn buy(&self, obs: &Observation, me: &Tank) -> Option<Command> {
+        use treadcore_sim::Upgrade;
+        let supply = obs.supply?;
+        let w = self.settings.w[crate::weights::W::UpgradeVsMend];
+        if w <= 0.0 {
+            return None;
+        }
+        let afford = |u: Upgrade, level: u8| level <= u.levels() && supply * w >= u.price(level) as f32;
+        let next = |id: EntityId, u: Upgrade| obs.upgrades.iter().find(|x| x.0 == id && x.1 == u).map(|x| x.2).unwrap_or(0) + 1;
+        let ours = |d: &&treadcore_sim::Depot| d.owner.map(|o| obs.allied(o)).unwrap_or(false);
+        if let (true, Some(base)) = (self.fleet.on, self.base) {
+            let depot = obs.depots.iter().filter(ours).filter(|d| d.pos.dist(base) <= 3.0 && d.pos.dist(me.pos) <= treadcore_sim::upgrades::UPGRADE_BUY_REACH).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)));
+            if let Some(d) = depot {
+                let posture = match &self.board {
+                    Some(b) => b.lock().ok().map(|b| b.posture),
+                    None => None,
+                };
+                let order = match posture {
+                    Some(crate::board::Posture::Defend) => [Upgrade::Calibre, Upgrade::PillboxPlating, Upgrade::Stores],
+                    Some(crate::board::Posture::Economy) => [Upgrade::Stores, Upgrade::PillboxPlating, Upgrade::Calibre],
+                    _ => [Upgrade::PillboxPlating, Upgrade::Calibre, Upgrade::Stores],
+                };
+                if let Some(u) = order.into_iter().find(|u| afford(*u, next(d.id, *u))) {
+                    return Some(Command::Buy { upgrade: u, at: Some(d.id) });
+                }
+            }
+        }
+        if obs.depots.iter().filter(ours).any(|d| d.pos.dist(me.pos) <= DEPOT_RADIUS) && afford(Upgrade::TankPlating, next(me.id, Upgrade::TankPlating)) {
+            return Some(Command::Buy { upgrade: Upgrade::TankPlating, at: None });
+        }
+        None
+    }
+
     /// The think, then `dodge_release` (lib.rs `Dodge::release`, LR 53):
     /// an errand that would drive back under a dodged shell before it
     /// lands waits, and is asked for again (`last_move` cleared); and
@@ -2367,6 +2408,9 @@ impl Commander {
             self.dodge.hold_fire(obs, me, &mut cmds, map);
             if obs.tick % TICK_HZ as Tick == 0 {
                 crate::meter::kite(self.act);
+                if let Some(c) = self.buy(obs, me) {
+                    cmds.push(c);
+                }
             }
         }
         cmds

@@ -666,6 +666,7 @@ fn narrate(world: &World, events: &[Event]) {
             Event::DronesUpgraded { mark } => log::warn!("[{:>6} {:>6.1}s] DRONES now Mk {}: {}", t, s, mark, [DroneKind::Recon, DroneKind::Interceptor, DroneKind::Strike, DroneKind::Longshot].iter().map(|k| drone_spec(*k, *mark).name).collect::<Vec<_>>().join(", ")),
             Event::Revived { owner, by, at, .. } => log::warn!("[{:>6} {:>6.1}s] p{} REVIVED by p{}'s squad at ({:.0},{:.0})", t, s, owner, by, at.x, at.y),
             Event::Respawned { owner, at, left, .. } => log::warn!("[{:>6} {:>6.1}s] p{} RESPAWNS at ({:.0},{:.0}), {} left", t, s, owner, at.x, at.y, if *left == RESPAWNS_UNLIMITED { "no limit".to_string() } else { left.to_string() }),
+            Event::Bought { player, team, upgrade, level, .. } => log::info!("[{:>6} {:>6.1}s] p{} (team {}) BUYS {} level {}", t, s, player, team, upgrade.name(), level),
             Event::Sunk { owner, by, at, .. } => log::warn!("[{:>6} {:>6.1}s] p{} SUNK by {:?} at ({:.0},{:.0})", t, s, owner, by, at.x, at.y),
             Event::FriendlyFireSpared { target, by, damage } => log::info!("[{:>6} {:>6.1}s] friendly fire spared #{} from p{} ({:.0})", t, s, target, by, damage),
             Event::Proposed { from, to, terms, .. } => log::info!("[{:>6} {:>6.1}s] p{} proposes {:?} to p{}", t, s, from, terms, to),

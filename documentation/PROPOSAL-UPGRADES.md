@@ -2,9 +2,10 @@
 
 Status: drafted 18 October 2026 at Paul's request ("think of more base
 upgrades and ways for users to purchase them ... write the upgrades
-proposal"). Trace 1 of section 6 run 21 October (section 7); a post
-for the seven days of discussion (GOVERNANCE.md section 5) drafted the
-same day, to be posted by Paul. Accepted, it becomes roadmap step 11g's
+proposal"). Trace 1 of section 6 run 21 October (section 7); trace 2
+with a prototype of four upgrades on the branch `proposal/upgrades`
+(section 8); a post for the seven days of discussion (GOVERNANCE.md
+section 5) drafted the same day, to be posted by Paul. Accepted, it becomes roadmap step 11g's
 build, in the sim, the wire, the window and the brain, in that order.
 
 It changes the rules and the wire, so it is a proposal and not a pull
@@ -201,5 +202,69 @@ matches, number for number (section 3).
 
 Trace 2 (bots buying at `upgrade_vs_mend` 0.5) needs the build: a
 prototype behind `Scenario::upgrades`, off by default, is the way to
-run it before acceptance without changing a default match.
+run it before acceptance without changing a default match. Section 8.
+
+
+## 8. Trace 2, measured with a prototype (21 October 2026)
+
+**The prototype**, on the branch `proposal/upgrades` (not on main):
+four of the sixteen upgrades, those applied at once with nothing to
+install: pillbox calibre (2 levels) and plating (2) and depot stores
+(1) at a base, plating on a tank (2), at section 1.2's prices; supply
+earned at section 1.1's full rates (`upgrades::SUPPLY_SCALE` 1.0);
+`Command::Buy` checked as section 1.3 says, its refusals named
+(`not enough supply` is PICNIC). The economy is kept beside the world,
+not in it: a match with `Scenario::upgrades` and nothing bought has the
+same hash every tick as one without
+(`the_economy_changes_nothing_until_a_side_buys`), and no replay, wire
+message or default match changes. The bots: a fleet's leader at its
+base buys the base's next level, and any Commander on a depot of its
+side its tank's plating, once the side's supply reaches the price over
+`upgrade_vs_mend` (0.5: as much again kept in reserve); the base's pick
+by the team's posture (Defend calibre first, Economy stores first, the
+rest the pillboxes' plating first).
+
+**The trace**: the same six matches as trace 1 (`supply_trace` with
+`SUPPLY_BUY=1`), against trace 1 run again for its deaths.
+
+| Measure | Trace 1, nothing bought | Trace 2, bots buying |
+| --- | --- | --- |
+| Match length | 18.0 min (16 to 23) | **21.8 min** (14 to 30) |
+| Matches at the 30-minute limit | 0 of 6 | 1 of 6 (no winner) |
+| Winner | | the same in 4 of 6; another in 1; none in 1 |
+| Deaths, all teams | 317 (2.9 a minute) | 343 (2.6 a minute) |
+| Purchases | | 195 |
+
+| Purchases by kind (195) | |
+| --- | --- |
+| Tank plating 1 / 2 | 107 / 39 (75%) |
+| Calibre 1 / 2 | 12 / 5 |
+| Pillbox plating 1 / 2 | 12 / 8 |
+| Depot stores | 12 |
+
+**What it says, for the discussion:**
+
+1. **Upgrades lengthen matches**, the proposal's aim: 3.8 minutes on
+   average (21%), and one of six ran to the limit. Deaths a minute
+   fell, as plated tanks and stronger bases would make them; six
+   matches do not separate that from chance.
+2. **Tank plating is a sink.** It is lost with the tank, so it is
+   bought again after every death: three in four purchases. Whether
+   that is right (death costs something, section 1.2) or a drain that
+   starves the base is for the discussion; a bot that buys it less
+   (its own weight) is one answer, a plating that survives a respawn
+   another.
+3. **The winner buys most** (open question 3): in every decided match
+   the winning side bought the most, 76 of 149 purchases (51%, against
+   33% if even). Upgrades follow supply, and supply follows the
+   leader.
+4. **The base upgrades were bought in every match** (49 in six): a
+   first level of calibre, of pillbox plating and of stores by twelve
+   of the eighteen teams each. The prices are within reach at 0.5's
+   reserve.
+
+Not traced: the twelve upgrades that are installed or change terrain
+(walls, the watchtower, the radar mast, the gatehouse, the workshop,
+the squad, and the side upgrades); the halved rates of section 7
+(`SUPPLY_SCALE` 0.5); a person buying (trace 3, the playtest).
 

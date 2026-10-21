@@ -1191,18 +1191,24 @@ mod tests {
     /// hostile tank destroyed, 5 a hostile pillbox captured. Nothing in
     /// the world reads it, so the match is today's. `cargo test -p
     /// treadcore-brain --release -- --ignored supply_trace --nocapture`
+    ///
+    /// Trace 2 (`SUPPLY_BUY=1`, branch `proposal/upgrades`): the world's
+    /// own economy (sim upgrades.rs) on, so the bots buy, at
+    /// `upgrade_vs_mend` (0.5); the supply then is the world's, net of
+    /// what was spent, and the purchases are listed.
     #[test]
     #[ignore]
     fn supply_trace() {
         use treadcore_sim::*;
         let env = |k: &str, d: u64| std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(d);
         let (seeds, secs, respawns) = (env("SUPPLY_SEEDS", 6), env("SUPPLY_SECS", 1800), env("SUPPLY_RESPAWNS", 3));
+        let buying = env("SUPPLY_BUY", 0) != 0;
         const SIDES: usize = 4;
         const SOURCES: [&str; 5] = ["pillboxes", "depots", "structures", "kills", "captures"];
         // A match: each side's supply by source, the second it first had
         // 60 and 120 (the cheapest upgrade, and a second level), its
         // supply at each 5 minutes, and how the match ended.
-        type Run = (u64, [[u32; 5]; SIDES], [[Option<u32>; 2]; SIDES], Vec<[u32; SIDES]>, u32, Option<TeamId>);
+        type Run = (u64, [[u32; 5]; SIDES], [[Option<u32>; 2]; SIDES], Vec<[u32; SIDES]>, u32, Option<TeamId>, [u32; SIDES], Vec<(u64, TeamId, treadcore_sim::Upgrade, u8)>);
         let runs: Vec<Run> = std::thread::scope(|sc| {
             let hs: Vec<_> = (0..seeds)
                 .map(|n| {
@@ -1212,7 +1218,7 @@ mod tests {
                             let seed = 0x7EAD_C0DE_u64 ^ (n * 0x9E37_79B9);
                             let names: Vec<(String, bool)> = (0..SEATS).map(|i| (name(i), true)).collect();
                             let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
-                            let sc = Scenario { seed, players: names, teams: Some(teams()), time_limit: 0, map, respawns: respawns as _, ..Scenario::default() };
+                            let sc = Scenario { seed, players: names, teams: Some(teams()), time_limit: 0, map, respawns: respawns as _, upgrades: buying, ..Scenario::default() };
                             let mut w = World::new(sc);
                             new_match();
                             let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS).map(|i| (i as PlayerId, brain(i, seed ^ i as u64, false))).collect();
@@ -1221,10 +1227,14 @@ mod tests {
                             let mut got = [[0u32; 5]; SIDES];
                             let mut first = [[None; 2]; SIDES];
                             let mut every5 = Vec::new();
+                            let mut deaths = [0u32; SIDES];
                             while !w.over && w.tick < secs * TICK_HZ as Tick {
                                 let orders = crate::run_bots(&w, &mut bots);
                                 w.step(&orders);
                                 for e in &w.events {
+                                    if let Event::TankDestroyed { owner, .. } = e {
+                                        deaths[team[*owner as usize] as usize] += 1;
+                                    }
                                     match e {
                                         Event::TankDestroyed { owner, by: Some(b), .. } if team[*b as usize] != team[*owner as usize] => got[team[*b as usize] as usize][3] += 10,
                                         Event::PillboxCaptured { by, from: Some(f), .. } if team[*by as usize] != team[*f as usize] => got[team[*by as usize] as usize][4] += 5,
@@ -1265,7 +1275,8 @@ mod tests {
                                     }
                                 }
                             }
-                            (n, got, first, every5, (w.tick / TICK_HZ as Tick) as u32, w.winning_team)
+                            let bought = w.economy.as_ref().map(|e| e.bought.clone()).unwrap_or_default();
+                            (n, got, first, every5, (w.tick / TICK_HZ as Tick) as u32, w.winning_team, deaths, bought)
                         })
                         .unwrap()
                 })
@@ -1274,8 +1285,15 @@ mod tests {
         });
         let mut total = [0u64; 5];
         let (mut minutes, mut firsts, mut seconds_first) = (0f64, 0u32, Vec::new());
-        for (n, got, first, every5, ended, won) in &runs {
-            eprintln!("supply_trace: seed {}: over at {} s, won by {:?}", n, ended, won);
+        let mut kinds: std::collections::BTreeMap<String, u32> = Default::default();
+        let mut all_deaths = 0u32;
+        for (n, got, first, every5, ended, won, deaths, bought) in &runs {
+            eprintln!("supply_trace: seed {}: over at {} s, won by {:?}; deaths by team {:?}", n, ended, won, &deaths[..3]);
+            all_deaths += deaths[..3].iter().sum::<u32>();
+            for (t, team, u, l) in bought {
+                eprintln!("  bought at {} s: team {} {} level {}", t / TICK_HZ as u64, team, u.name(), l);
+                *kinds.entry(format!("{} {}", u.name(), l)).or_default() += 1;
+            }
             for s in 0..3 {
                 let sum: u32 = got[s].iter().sum();
                 eprintln!(
@@ -1310,5 +1328,6 @@ mod tests {
             seconds_first.get(seconds_first.len() / 2).copied().unwrap_or(0),
             minutes / firsts.max(1) as f64
         );
+        eprintln!("supply_trace: buying {}; {} deaths in all teams; bought {:?}", buying, all_deaths, kinds);
     }
 }

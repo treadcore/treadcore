@@ -1,0 +1,83 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 22 Oct 2026 02:00:00 -0700
+Subject: [JOURNAL 0091] Upgrades prototyped: trace 2
+Message-ID: <0091.20261021@treadcore.org>
+In-Reply-To: <0090.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: upgrades, supply, prototype, trace
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "continue"
+X-Commits: 0240b1a (main, local); this entry's commit follows on the
+           branch proposal/upgrades
+
+                     UPGRADES PROTOTYPED: TRACE 2
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    Goal 5, 11g. Four upgrades, supply and buying, on a branch, off by
+    default, out of the hash. Bots buying: matches 18.0 to 21.8 min;
+    three purchases in four a tank's plating; the winner buys most.
+
+INDEX TERMS
+
+    upgrades, prototype, trace.
+
+I. INTRODUCTION
+
+    "continue." Trace 2 needs buying; the rules must not change on main
+    before the discussion.
+
+II. BACKGROUND
+
+    CI-033: trace 1, 48.8 supply a team-minute.
+
+III. METHOD
+
+    A branch; the economy beside the world, not in it; the same six
+    matches with and without buying.
+
+IV. CHRONOLOGY
+
+    1. The hash is bincode over the World: the economy `serde(skip)`.
+    2. Four upgrades, `Command::Buy`, earning at the step's end (after
+       the swarm, or its kills are missed).
+    3. A test of a lost upgrade failed: `damage` outside a step leaves
+       an event the next step clears. Upgrades now go when the tank is
+       not alive.
+    4. The workshop would have cut a plated tank to 100: fixed.
+    5. The Commander buys by `upgrade_vs_mend` and posture.
+    6. Traces: 18.0 and 21.8 min; 195 purchases.
+
+V. RESULTS
+
+    PROPOSAL-UPGRADES.md section 8. Tests: brain 84, sim 56, the rest
+    as before; eight families.
+
+VI. DISCUSSION
+
+    Longer matches, as asked. The plating that dies with the tank is
+    most of the spending.
+
+VII. OPEN PROBLEMS
+
+    1. The proposal's post (Paul) and its seven days.
+    2. The installed upgrades; the halved rates untraced.
+    3. The game is hard for a person (a skill scalar, deferred).
+
+VIII. NEXT STEPS
+
+    1. Paul posts; the discussion decides the plating and the rates.
+
+APPENDIX B. ARTIFACTS
+
+    PROPOSAL-UPGRADES.md section 8; CI-034; branch proposal/upgrades;
+    build/supply/trace-buy0.log, trace-buy1.log.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

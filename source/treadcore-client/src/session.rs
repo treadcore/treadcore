@@ -848,6 +848,7 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
         Event::DronesUpgraded { mark } => format!("drones now Mk {}: {}", mark, [DroneKind::Recon, DroneKind::Interceptor, DroneKind::Strike, DroneKind::Longshot].iter().map(|k| drone_spec(*k, *mark).name).collect::<Vec<_>>().join(", ")),
         Event::Revived { owner, by, .. } => format!("{} revived by {}'s squad", who(owner), who(by)),
         Event::Respawned { owner, left, .. } => format!("{} respawned{}", who(owner), if *left == RESPAWNS_UNLIMITED { String::new() } else { format!(" ({} left)", left) }),
+        Event::Bought { player, upgrade, level, .. } => format!("{} bought {} level {}", who(player), upgrade.name(), level),
         Event::Sunk { owner, by, .. } => format!("{} SUNK by {}", who(owner), by.map(|b| who(&b)).unwrap_or_else(|| "swarm".into())),
         Event::MatchOver { winner, team } => format!("{}{}", treadcore_sim::lingo::match_over(&winner.map(|w| who(&w)).unwrap_or_else(|| "nobody (a draw)".into()), view.last_tick), team.map(|t| format!(" (team {})", t)).unwrap_or_default()),
         Event::FriendlyFireSpared { by, damage, .. } => format!("friendly fire from {} spared ({:.0})", who(by), damage),

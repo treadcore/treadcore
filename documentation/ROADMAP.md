@@ -439,8 +439,10 @@ asked for longer ones. Steps:
   `fleet::tests::supply_trace`): 48.8 supply a team-minute, the first
   60 at a median of 97 s, depots 60% of it, the leader's running away;
   the draft suggests halved rates and a bounty of 5. The post drafted
-  for Paul (CI-033). Trace 2 needs a prototype behind
-  `Scenario::upgrades`.
+  for Paul (CI-033). Trace 2 run 21 October with a prototype of four
+  upgrades on the branch `proposal/upgrades` (its section 8, CI-034):
+  matches 18.0 to 21.8 min, three purchases in four a tank's plating,
+  the winner buying most.
 
   | Upgrade | Levels | What it does | Bought |
   | --- | --- | --- | --- |

@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added, on the branch `proposal/upgrades` only: a prototype of four of
+  the proposal's upgrades (pillbox calibre and plating, depot stores,
+  tank plating), supply, `Command::Buy` and the bots' buying, off
+  unless `Scenario::upgrades`, kept out of the world's hash. Trace 2:
+  matches 21.8 min against 18.0 (PROPOSAL-UPGRADES.md section 8).
+
 - Added: `fleet::tests::supply_trace` (ignored), trace 1 of the upgrades
   proposal: the proposal's supply paid from outside today's matches.
   48.8 supply a team-minute on naval.map, the first 60 at a median of
