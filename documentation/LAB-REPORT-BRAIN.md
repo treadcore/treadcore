@@ -3434,3 +3434,33 @@ parts` cannot give; the table ranks where to look first (`kite`,
 Proof: `make test`: brain 83 passed and 11 ignored; client 32; net 14;
 proto 3; sim 50. `make families`: seven families, each above its
 floor. No code in the brain changed.
+
+## 64. The bottom of the parts table at 48 seeds, 21 October
+
+Backlog 53. LR 63's table read three parts below zero at 12 seeds,
+none past two errors: `kite` -1.76 +/- 1.04, `duck` -1.57 +/- 0.96 and
+the dodge's `dodge_fire` -1.42 +/- 1.22. The hypothesis: one of them
+costs a half point a seat on naval.map.
+
+**The run**: `PARTS="-kite -duck dodge_fire=0" SEEDS=48 JOBS=3 make
+parts`; the fair census, naval.map, 900 s, 3 respawns, seeds 0 to 47
+in one job a part, three at once, a frozen binary, about 50 min
+(`build/parts/20261021-123214`).
+
+| Part off | 48 seeds | Seeds above zero | 12 seeds (LR 63) |
+| --- | --- | --- | --- |
+| `-kite` | -0.94 +/- 0.77 (1.2 errors) | 22 of 48 | -1.76 +/- 1.04 |
+| `-duck` | +0.12 +/- 0.60 (0.2 errors) | 22 of 48 | -1.57 +/- 0.96 |
+| `dodge_fire=0` | -0.19 +/- 0.58 (0.3 errors) | 26 of 48 | -1.42 +/- 1.22 |
+
+None is past two errors. The duck and the dodge's held shot fall to
+nothing; the 12-seed reads were the tail of 31 tests, as LR 63 warned.
+The kite keeps a lean below zero at 1.2 errors. **The defaults stand**;
+no part goes to a family.
+
+The kite is the one left to look at, and it cannot be read yet: the
+meter counts no kiting, so how often it acts, and whether it costs
+when it acts or only shifts the play, are unknown. LR 58's rule
+(count before the census) puts the count first: backlog 54.
+
+Proof: no code changed; `make test` and `make families` as LR 63.

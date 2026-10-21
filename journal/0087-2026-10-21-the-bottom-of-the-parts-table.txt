@@ -1,0 +1,75 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 21 Oct 2026 22:00:00 -0700
+Subject: [JOURNAL 0087] The bottom of the parts table at 48 seeds
+Message-ID: <0087.20261021@treadcore.org>
+In-Reply-To: <0086.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: tuning, kite, duck, dodge, make parts
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "yes. kite , duck, dodge_fire . please try."
+X-Commits: bd2334b (the last); this entry's commit follows
+
+               THE BOTTOM OF THE PARTS TABLE AT 48 SEEDS
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    Backlog 53. The three lowest rows of LR 63 at 48 seeds: the kite
+    off -0.94 +/- 0.77, the duck off +0.12 +/- 0.60, the held shot
+    off -0.19 +/- 0.58. None past two errors; the defaults stand.
+
+INDEX TERMS
+
+    tuning, ablation, census guard.
+
+I. INTRODUCTION
+
+    "yes. kite , duck, dodge_fire . please try." The hypothesis: one
+    of them costs a half point a seat.
+
+II. BACKGROUND
+
+    LR 63: 31 parts off at 12 seeds; only the dodge past two errors,
+    and it pays.
+
+III. METHOD
+
+    `make parts` with SEEDS=48, three at once, a frozen binary.
+
+IV. CHRONOLOGY
+
+    1. The run, about 50 min. A wait that matched the run's first line
+       ("each part off") fired early; waited again on the table.
+    2. The held shot first: -0.19 +/- 0.58. Then the duck, +0.12, and
+       the kite, -0.94.
+    3. The meter has no count of kiting. Backlog 54.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 64. No code changed.
+
+VI. DISCUSSION
+
+    Picked for being low, two of three rows read near zero at four
+    times the seeds. The kite is the one left.
+
+VII. OPEN PROBLEMS
+
+    1. Backlog 52, allies' goals in a joining window (the wire).
+    2. Territory, built and read by nothing.
+
+VIII. NEXT STEPS
+
+    1. Backlog 54, the kite counted.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 64; CI-030; build/parts/20261021-123214.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -406,8 +406,9 @@ and the hop tested (26, LR 60). The guard posts at the front (51, LR
 LR 62): the beach priced by its island, `w_site_beach` 20; +0.82 +/-
 0.69, inside the noise. The starting numbers (48, LR 63): `make parts`,
 each part off; only the dodge past two errors, and it pays; the halved
-posture and swap gap +0.61 +/- 0.60, the defaults kept. Next: the
-bottom of the parts table at 48 seeds (53).
+posture and swap gap +0.61 +/- 0.60, the defaults kept. The bottom of
+the table at 48 seeds (53, LR 64): `kite`, `duck`, `dodge_fire`, none
+past two errors. Next: the kite counted (54).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -919,7 +920,18 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     naval.map. Proof: each off at 48 seeds (`PARTS="-kite -duck
     dodge_fire=0" SEEDS=48 JOBS=3 make parts`); a part past two errors
     goes to its family, to find the case it loses. Cost: about 50 min
-    for the three. State: idea.
+    for the three. State: done 21 October (LR 64), the hypothesis
+    not supported, the defaults kept: at 48 seeds `kite` off -0.94
+    +/- 0.77, `duck` off +0.12 +/- 0.60, `dodge_fire` 0 -0.19 +/-
+    0.58; none past two errors. The kite's lean: 54.
+54. The kite counted. (21 October; cause: LR 64, `kite` off reads
+    -0.94 +/- 0.77 at 48 seeds, and the meter counts no kiting.) Goal
+    4, the tuning phase. Hypothesis: the kite acts seldom on naval.map
+    and its lean is noise; if it acts often, the seconds it holds a
+    tank out of the fight are what it costs. Proof: a meter of seconds
+    kiting and kills won and lost while kiting, read in a 12-seed
+    census; then, if it acts, its numbers (`kite_margin`, `kite_in`)
+    in a family of a duel. Cost: a step. State: idea.
 
 ## Sequencing
 
