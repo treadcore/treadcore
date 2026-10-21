@@ -3620,3 +3620,94 @@ a match at `--skill 0.6` was left open for Paul.
 
 Proof: `make test`: brain 85 passed and 12 ignored; client 32; net 14;
 proto 3; sim 50. `make families`: eight, each above its floor.
+
+## 68. The territory read: the held ground, 21 October
+
+Backlog 57, goal 4's last open item (12e: "Not yet: territory read by
+nothing"). The board built its influence every second; the posture's
+ladder read the territory's share (Expand under a quarter of the
+map), and nothing read where it was. LR 9 gave territory a job:
+Defend when there is "threat in our territory". LR 24 had cut Defend
+to hostiles within the base's alarm (16 tiles), because the sector
+threat counts every hostile on the map.
+
+**The read** (on, LR 54's rule; needs the board):
+
+- **The held ground** (`TeamBoard::ground`): the influence of the
+  pillboxes and depots alone, ours minus theirs, each at
+  `pillbox_worth` with the board's falloff; tanks left out, so a
+  team's tanks do not make the ground around them held, which was
+  LR 24's long tail. A sector is held when it is at least one work's
+  value at `GROUND_R` (14 tiles, a pillbox's reach and six). Without
+  the threshold every sector is held when the other side has no
+  works.
+- **The incursion**: hostile tanks on held ground beyond the base's
+  alarm, their worth (`TeamBoard::incursion`) and the nearest the base
+  (`incursion_at`).
+- **Defend** counts it: the base's threat plus `w_defend_ground` (1)
+  times the incursion, in the ladder (over 0.5) and the score.
+- **The guard goes there**: on the Guard rung with nothing at the base,
+  the guard's post is the side's pillbox or depot nearest the
+  incursion, if that work is an outlying one (past `BASE_R`; the base's
+  own are the alarm's), and it does not rotate
+  (`Commander::raided`, "THE HELD GROUND RAIDED").
+
+At 0 Defend is the base's alone, as LR 24 left it, and the guard as
+before. Test: `a_hostile_on_the_held_ground_is_an_incursion` (on held
+ground 9 tiles from an outlying pillbox: an incursion, where it is;
+inside the alarm: the base's; far from every work: nobody's).
+
+**The family**: `scenarios/families/a-raid-on-the-held-ground.toml`.
+A Commander on Auto with the board at its base in the centre, a
+neutral depot 40 tiles west to expand to; an unseen hostile 35 tiles
+out in any direction, 9 tiles from an outlying pillbox of the side
+(26 from the base, out of the pillbox's reach). At 25 s, the
+Commander away west taking the depot, out of its gun's 60 tiles, a
+teammate comes to the pillbox and sees the raider. Held: the
+Commander hits the raider. Scenario keys, new: a `[[pillbox]]`'s
+`toward`; a move event's `toward` and `step`.
+
+| 400 seeds | Held |
+| --- | --- |
+| `w_defend_ground` 0 | 0.0% |
+| 0.25 | 95.0% |
+| 0.5, 1 (the default) | 100.0% |
+
+Three stagings failed first, each a finding. The raider passing by
+the base was met at 0 too: the indirect gun reaches 60 tiles and the
+spotter's sight is the team's. With a spotter set a fixed 2 tiles
+south of the pillbox, a raider to the north was out of its 10 tiles'
+sight in 31% of seeds: no read can defend what nobody sees (a
+pillbox gives no sight). And the Commander was on Guard both ways
+when nothing else held for it; the neutral depot gives Expand, which
+the read must turn.
+
+**The cost in another family**: the raid on a guarded base (LR 61)
+reads 81.8% (327 of 400), 85.5% at 0. Its spotter is a teammate whose
+start depot stands by the raider: for the half second the raider is
+seen, the read sends the guard toward that depot, an outlying work
+raided, as designed, and the family's measure (met far from the
+base) loses 15 seeds. Above its floor (0.75); kept.
+
+**The meter** (new: board seconds with a hostile on the held ground,
+and those Defend held only for it), the census below: the trial teams
+3,125 seconds (about 22 a match), 2,694 of them defended for it
+alone; the rest, at 0, 6,097 and none.
+
+**The guard**: the trial team on the defaults against the same with
+`w_defend_ground` 0; the fair census, naval.map, 900 s, 3 respawns,
+seeds 0 to 47, a frozen binary (`build/lr68`; a first run was stopped
+and run again when the outlying-work filter went in).
+
+| 48 seeds | Difference a seat |
+| --- | --- |
+| Pooled | -0.36 +/- 0.27 (inside the noise, 1.3 errors) |
+| By job of 16 | -0.60 +/- 0.66, +0.06 +/- 0.38, -0.54 +/- 0.31 |
+| Mean score a seat, by job | trial 7.57, 7.81, 8.23; the rest 7.51, 8.35, 8.83 |
+
+The read acts in every census match and the brain still works with
+it, at a lean below zero inside the noise. Kept on, by Paul's rule of
+20 October; its number is for the tuning that follows.
+
+Proof: `make test`: brain 86 passed and 12 ignored; client 32; net 14;
+proto 3; sim 50. `make families`: nine, each above its floor.

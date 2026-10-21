@@ -1300,9 +1300,12 @@ impl Commander {
     fn defend_base(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
         let base = self.base_of(obs, me);
         let (tank, alarm) = self.base_threat(obs, base);
+        // A raid on the held ground (LR 68): the side's work nearest it.
+        let raid = if tank.is_none() && !alarm { self.raided(obs, base) } else { None };
         // Nothing in sight but a gun of the base at work: go and look.
-        let post = match (&tank, alarm, self.alarm_at) {
-            (None, true, Some(at)) => at,
+        let post = match (&tank, alarm, self.alarm_at, raid) {
+            (None, true, Some(at), _) => at,
+            (_, _, _, Some(w)) => w,
             _ => self.guard_post(base),
         };
         if obs.tick % TICK_HZ as Tick == 0 && self.settings.w[crate::weights::W::FrontPost] > 0.0 && tank.is_some() {
@@ -1312,7 +1315,7 @@ impl Commander {
         // Nothing at the base: out to the push point and back, not on
         // guard (rotation.rs). The guard answers what it meets where it
         // is, and the squad still mends from wherever the tank is.
-        let rotating = tank.is_none() && !alarm && !self.rotation.off && me.pillboys.aboard;
+        let rotating = tank.is_none() && !alarm && raid.is_none() && !self.rotation.off && me.pillboys.aboard;
         self.defend_within(obs, me, if rotating { me.pos } else { post }, BASE_ALARM, mend, cmds);
         if rotating && self.act == Act::OnGuard {
             self.rotate(obs, me, base, cmds);
@@ -1322,8 +1325,30 @@ impl Commander {
             self.set_doing(Act::BaseThreat, format!("BASE UNDER THREAT: {} {:.0} tiles out; {}", who, t.pos.dist(base), self.doing));
         } else if alarm {
             self.set_doing(Act::BaseThreat, format!("BASE UNDER THREAT out of sight: to the pillbox that heard it; {}", self.doing));
+        } else if let Some(w) = raid {
+            self.set_doing(Act::BaseThreat, format!("THE HELD GROUND RAIDED: to the work at ({:.0},{:.0}); {}", w.x, w.y, self.doing));
         }
         !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
+    }
+
+    /// A raid on the held ground (LR 68, `w_defend_ground`): the board's
+    /// incursion, a hostile on the side's works' ground beyond the
+    /// base's alarm; the side's pillbox or depot nearest it, where the
+    /// guard goes, if that is an outlying work (past the base's ring:
+    /// the base's own are the alarm's). None at 0, or without the board.
+    fn raided(&self, obs: &Observation, base: V2) -> Option<V2> {
+        if self.settings.w[crate::weights::W::DefendGround] <= 0.0 {
+            return None;
+        }
+        let at = self.board.as_ref()?.lock().ok()?.incursion_at?;
+        let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
+        obs.pillboxes
+            .iter()
+            .filter(|p| p.alive() && ours(p.owner))
+            .map(|p| p.pos)
+            .chain(obs.depots.iter().filter(|d| ours(d.owner)).map(|d| d.pos))
+            .min_by(|a, b| a.dist(at).total_cmp(&b.dist(at)))
+            .filter(|w| w.dist(base) > BASE_R)
     }
 
     /// An outlying pillbox of mine, nearest the base: one to bring in.

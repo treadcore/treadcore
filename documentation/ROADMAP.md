@@ -326,7 +326,11 @@ to 8.93 a seat).
   October (LR 61; `w_front_push`, `w_front_post`): the rotation's push
   point and the guard's post leaned toward the front;
   `a-raid-on-a-guarded-base.toml`, `the_push_point_leans_to_the_front`.
-  Not yet: territory read by nothing.
+  The territory read, 21 October (LR 68; `w_defend_ground`): a
+  hostile on the held ground (the works' influence) beyond the base's
+  alarm counts toward Defend, and the guard goes to the raided
+  outlying work; `a-raid-on-the-held-ground.toml`,
+  `a_hostile_on_the_held_ground_is_an_incursion`.
 - [~] 12f behaviours: the base cycle (`cycle`,
   `a_full_tank_gives_the_base_an_item`), priced crossings and the island
   site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`;
@@ -413,6 +417,10 @@ alive, mostly holding, nearly all of it a rally's. The kite's hold in
 a duel (55, LR 66): won 63.0% with the kite, 51.5% without; its
 numbers on a flat top, the defaults kept. The tuning leads of the
 parts table are spent; every part on stands as the starting numbers.
+The bot skill dial (56, LR 67): `skill`, `SKILL=`, for the bots
+against a person. The territory read (57, LR 68): the held ground
+defended, `w_defend_ground` 1; -0.36 +/- 0.27, inside the noise. Every
+part of 12e is now read.
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -968,6 +976,16 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Cost: a step. State: done 21 October (LR 67): the duel 63% at 1,
     52% at 0.75, 24.5% at 0.6, 7.8% at 0.5, 0 under; `--skill`,
     `SKILL=`, the bots against the person only.
+57. The territory read. (21 October; cause: 12e, "territory read by
+    nothing"; LR 9, Defend when there is "threat in our territory".)
+    Goal 4, 12e. Hypothesis: a hostile on the side's held ground (the
+    influence of its works alone) beyond the base's alarm, counted
+    toward Defend, with the guard sent to the raided outlying work,
+    defends ground the base's alarm does not reach. Proof: a family of
+    a raid on an outlying pillbox while the team is away; the census.
+    Cost: a step. State: done 21 October (LR 68): `w_defend_ground` 1;
+    the family 100% against 0% at 0; the census -0.36 +/- 0.27; the
+    guarded-base raid 85.5% to 81.8%, above its floor.
 
 ## Sequencing
 

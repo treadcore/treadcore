@@ -1,0 +1,78 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 22 Oct 2026 05:00:00 -0700
+Subject: [JOURNAL 0094] The territory read: the held ground
+Message-ID: <0094.20261021@treadcore.org>
+In-Reply-To: <0093.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: territory, team board, Defend, scenario families
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompts: "territory read. continue." and "continue."
+X-Commits: 949035b (the last, pushed); this entry's commit follows
+
+                  THE TERRITORY READ: THE HELD GROUND
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    A hostile on the side's held ground beyond the base's alarm counts
+    toward Defend, and the guard goes to the raided work. A family:
+    400 of 400 at the default, none at 0. The census: -0.36 +/- 0.27.
+
+I. INTRODUCTION
+
+    "territory read. continue." Goal 4's last open item.
+
+II. BACKGROUND
+
+    LR 9: Defend on threat in our territory. LR 24: Defend cut to the
+    base's alarm, for the sector threat's long tail.
+
+III. METHOD
+
+    The works' ground alone; a family that fails at 0; the census.
+
+IV. CHRONOLOGY
+
+    1. The ground of pillboxes and depots; a threshold, since without
+       hostile works every sector was ours.
+    2. Staging one: the raider met at 0 too, by the gun's 60 tiles.
+    3. Staging two: Guard both ways, nothing else holding; a depot to
+       expand to. Defend now turned the rung, but the guard went home.
+    4. The guard's post at the raided work: 0 to 69%.
+    5. The 31% left: a spotter out of sight. Set toward the raider:
+       0 to 100%.
+    6. The guarded-base raid 85.5 to 81.8%: a teammate's depot by the
+       raider, defended as designed. The base's own depot excluded.
+    7. The census binary predated that; stopped and run again.
+    8. -0.36 +/- 0.27; 22 s a match of incursion.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 68. Tests: brain 86 passed, 12
+    ignored; client 32; net 14; proto 3; sim 50. Nine families.
+
+VI. DISCUSSION
+
+    Territory needs eyes; the read is where, not how much.
+
+VII. OPEN PROBLEMS
+
+    1. The upgrades proposal: Paul's post, seven days.
+    2. Backlog 52, allies' goals in a joining window (the wire).
+
+VIII. NEXT STEPS
+
+    1. Goal 4's parts are all read; the tuning that follows (12g).
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 68; CI-037; build/lr68;
+    scenarios/families/a-raid-on-the-held-ground.toml.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -1,0 +1,61 @@
+# LAB-REPORT-BRAIN.md section 68 (backlog 57, the territory read): a
+# family, its raid drawn from the seed. A Commander on Auto with the
+# team board, at its base in the map's centre, a neutral depot 40 tiles
+# west to expand to. A hostile tank stands 35 tiles off in any
+# direction, unseen; a pillbox of the base's side 9 tiles from it on
+# its line to the base, 26 from the base, beyond the base's alarm (16)
+# and out of the pillbox's reach (8). At 25 s, the Commander away west,
+# a teammate comes to the pillbox, 2 tiles toward the raider, and sees
+# it for the team: a raid on the held ground, with the gun out of range
+# (60). Held: the Commander hits the raider: 400 of 400 seeds, none
+# with `w_defend_ground` 0. Run over many seeds: make scenario S=this
+# RUNS=400.
+name = "a raid on the held ground, from any side"
+runs = 400
+floor = 0.95
+players = 3
+teams = [0, 1, 0]
+seconds = 60
+board = true
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-60, 60]
+y = [-60, 60]
+[[tank]]
+seat = 0
+at = "centre"
+[[depot]]
+at = "seat:0"
+owner = 0
+[[depot]]
+at = "seat:0"
+offset = [-40, 0]
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [35, 0]
+around = true
+[[tank]]
+seat = 2
+at = "seat:0"
+offset = [0, 4]
+[[pillbox]]
+near = "seat:1"
+toward = "seat:0"
+away = 9
+owner = 0
+[[event]]
+at = 25
+move = 2
+to = "pillbox:0"
+toward = "seat:1"
+step = 2
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+[expect]
+hits = { by = 0, on = 1, at_least = 1 }

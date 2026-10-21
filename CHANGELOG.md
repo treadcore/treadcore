@@ -6,6 +6,17 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the territory read (`w_defend_ground` 1, on with the board): a
+  hostile on the side's held ground (the land its pillboxes and depots
+  hold) beyond the base's alarm counts toward the Defend posture, and
+  the guard goes to the raided outlying work. A family of a raid on an
+  outlying pillbox while the team is away: met in 400 of 400 seeds,
+  none at 0. The guard: -0.36 +/- 0.27 a seat over 48 seeds
+  (LAB-REPORT-BRAIN.md section 68).
+- Added: scenarios take a `[[pillbox]]`'s `toward`, and a move event's
+  `toward` and `step`; the meter counts seconds with a hostile on the
+  held ground.
+
 - Added: the bot skill dial. `SKILL=0.6 make run` (`--skill 0..1` on the
   window) makes the bots against you play at that share of full skill;
   your allies play in full. Their shells land further off and lead you

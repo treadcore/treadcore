@@ -49,3 +49,4 @@ report is what ties a conversation to them. Named
 | [033](CI-033-2026-10-21-supply-traced.md) | 21 October 2026 | Supply traced: the upgrades proposal's trace 1 | 0090 | PROPOSAL-UPGRADES.md section 7 |
 | 034, 035 | 21 October 2026 | Upgrades prototyped; trace 2 at half the rates (on the branch `proposal/upgrades`) | 0091, 0092 | PROPOSAL-UPGRADES.md sections 8, 9 |
 | [036](CI-036-2026-10-21-the-bot-skill-dial.md) | 21 October 2026 | The bot skill dial | 0093 | LAB-REPORT-BRAIN.md section 67 |
+| [037](CI-037-2026-10-21-the-territory-read.md) | 21 October 2026 | The territory read: the held ground | 0094 | LAB-REPORT-BRAIN.md section 68 |

@@ -7,6 +7,9 @@
 //!     theirs, each tank by its worth in a fight (armour, shells) and
 //!     each pillbox by `pillbox_worth`, falling off with distance; the
 //!     front is where it changes sign, territory where it is ours;
+//!   - the held ground: the same of the pillboxes and depots alone,
+//!     ours minus theirs; a hostile tank on it beyond the base's alarm
+//!     is an incursion, which Defend reads (`w_defend_ground`, LR 68);
 //!   - the defence points: the side's pillboxes and depots nearest the
 //!     threat, two to four;
 //!   - the members: where each is, how ready (armour times shells), what
@@ -44,6 +47,10 @@ pub const SECTOR: usize = 8;
 pub const SECTORS: usize = MAP_W / SECTOR;
 /// The board is rebuilt this often.
 pub const REBUILD: Tick = TICK_HZ as Tick;
+/// Held ground (LR 68): a sector whose works' influence, ours minus
+/// theirs, is at least one work's at this many tiles: within a
+/// pillbox's reach and six more of what the side has built or taken.
+pub const GROUND_R: f32 = PILLBOX_RANGE + 6.0;
 /// A unit's influence falls to half at this many tiles.
 pub const REACH: f32 = 8.0;
 /// A member this near a defence point is at it.
@@ -166,6 +173,13 @@ pub struct TeamBoard {
     /// where they were, which the front is read from.
     pub seen: Vec<(EntityId, V2, f32, Tick)>,
     pub known: Vec<f32>,
+    /// The held ground (LR 68): the influence of the pillboxes and
+    /// depots alone, ours minus theirs, per sector; and the hostile
+    /// worth on it beyond the base's alarm at the last rebuild.
+    pub ground: Vec<f32>,
+    pub incursion: f32,
+    /// Where: the incursion's hostile nearest the base.
+    pub incursion_at: Option<V2>,
     pub members: Vec<Member>,
     pub points: Vec<V2>,
     pub posture: Posture,
@@ -370,9 +384,19 @@ impl TeamBoard {
             let hostile = !obs.allied(t.owner);
             add(t.pos, worth(t), hostile, &mut self.influence, &mut self.threat);
         }
+        // The held ground: what the side's works hold, without the
+        // tanks that come and go (LR 68).
+        self.ground.clear();
+        self.ground.resize(n, 0.0);
+        let mut none = vec![0.0; n];
         for p in obs.pillboxes.iter().filter(|p| p.alive()) {
             let Some(o) = p.owner else { continue };
             add(p.pos, pill, !obs.allied(o), &mut self.influence, &mut self.threat);
+            add(p.pos, pill, !obs.allied(o), &mut self.ground, &mut none);
+        }
+        for d in obs.depots.iter() {
+            let Some(o) = d.owner else { continue };
+            add(d.pos, pill, !obs.allied(o), &mut self.ground, &mut none);
         }
         // The front's memory (LR 58): each hostile tank in sight is kept
         // where it is; one seen dead, or not seen for `front_memory`
@@ -413,6 +437,20 @@ impl TeamBoard {
         let base_threat: f32 = base
             .map(|b| obs.tanks.iter().filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(b) <= crate::commander::BASE_ALARM).map(worth).sum())
             .unwrap_or(0.0);
+        // An incursion (LR 68): hostile tanks on the held ground beyond
+        // the base's alarm, counted toward Defend at `w_defend_ground`.
+        let ground = &self.ground;
+        let held = pill / (1.0 + GROUND_R / REACH);
+        let raiders: Vec<&Tank> = obs
+            .tanks
+            .iter()
+            .filter(|t| t.alive && !obs.allied(t.owner) && ground.get(sector_of(t.pos)).copied().unwrap_or(0.0) >= held && base.map(|b| t.pos.dist(b) > crate::commander::BASE_ALARM).unwrap_or(true))
+            .collect();
+        self.incursion = raiders.iter().map(|t| worth(t)).sum();
+        self.incursion_at = raiders.iter().map(|t| t.pos).min_by(|a, b| base.map(|b0| a.dist(b0).total_cmp(&b.dist(b0))).unwrap_or(std::cmp::Ordering::Equal));
+        let base_only = base_threat;
+        let base_threat = base_threat + s.w[W::DefendGround].max(0.0) * self.incursion;
+        crate::meter::ground(self.incursion > 0.0, base_only <= 0.5 && base_threat > 0.5);
         let ours = self.influence.iter().filter(|v| **v > 0.0).count();
         // The threshold ladder of 12e (Defend fixed in LR 24).
         let ladder = if base_threat > 0.5 {
@@ -592,6 +630,35 @@ mod tests {
         let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
         t.pos = base + V2::new(6.0, 0.0);
         assert_eq!(run(&w.observe(0), planned, 1.0, 1.0).0, Posture::Defend);
+    }
+
+    #[test]
+    fn a_hostile_on_the_held_ground_is_an_incursion() {
+        // LR 68: seat 0's team (0 and 2) holds a pillbox at (90, 64), 26
+        // tiles from its base at (64, 64). A hostile at 9 tiles from the
+        // pillbox is on the held ground; one at the base is the base's
+        // own threat; one far from every work is on nobody's ground.
+        let base = V2::new(64.0, 64.0);
+        let mut sc = Scenario::bots(4).with_teams(2);
+        sc.advantage = true;
+        let at = |hostile: V2| {
+            let mut w = World::new(sc.clone());
+            w.pillboxes.clear();
+            for d in w.depots.iter_mut() {
+                d.owner = None;
+            }
+            w.pillboxes.push(Pillbox { id: 9_001, pos: V2::new(90.0, 64.0), owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+            for (p, pos) in [(0, base), (2, base + V2::new(0.0, 3.0)), (1, hostile), (3, V2::new(10.0, 120.0))] {
+                w.tanks.iter_mut().find(|t| t.owner == p).unwrap().pos = pos;
+            }
+            let mut b = TeamBoard::default();
+            b.rebuild(&w.observe(0), Some(base), &Settings::default(), Home::default(), 0);
+            (b.incursion, b.incursion_at)
+        };
+        let (n, where_) = at(V2::new(99.0, 64.0));
+        assert!(n > 0.5 && where_ == Some(V2::new(99.0, 64.0)), "{} {:?}", n, where_);
+        assert_eq!(at(V2::new(70.0, 64.0)).0, 0.0, "inside the base's alarm: the base's threat, not an incursion");
+        assert_eq!(at(V2::new(64.0, 10.0)).0, 0.0, "far from every work: nobody's ground");
     }
 
     #[test]

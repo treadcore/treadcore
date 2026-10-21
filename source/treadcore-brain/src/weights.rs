@@ -138,6 +138,7 @@ weights! {
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
     PostureFortify "w_pos_fortify" 1.0, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
+    DefendGround "w_defend_ground" 1.0, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
     PostureExpand "w_pos_expand" 1.0, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
     // The dodge (lib.rs `Dodge`, LR 27): its numbers, once constants.
     DodgeHorizon "dodge_horizon" 4.0, "dodge: seconds before a shell lands that the tank starts out from under it";

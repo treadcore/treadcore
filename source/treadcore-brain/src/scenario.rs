@@ -349,7 +349,11 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         // As the hand-written tests place one: `away` tiles from the
         // anchor toward the map's centre, on open ground it can reach.
         let home = place(&w, &depots, &pillboxes, p.get("near").and_then(Value::str).unwrap_or("seat:0"), None)?;
-        let toward = (w.map.center() - home).norm();
+        // Toward the map's centre, or `toward` a place (LR 68).
+        let toward = match p.get("toward").and_then(Value::str) {
+            Some(a) => (place(&w, &depots, &pillboxes, a, None)? - home).norm(),
+            None => (w.map.center() - home).norm(),
+        };
         let mut at = Map::tile_centre(home + toward.scale(num(p, "away", 20.0) as f32));
         let mut tries = 0;
         while !w.map.at(at).passable() || w.map.route(home, at).is_empty() {
@@ -493,7 +497,13 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
             }
             let seat = num(e, "move", -1.0);
             if seat >= 0.0 {
-                let to = place(&w, &depots, &pillboxes, e.get("to").and_then(Value::str).unwrap_or("seat:0"), e.get("offset"))?;
+                let mut to = place(&w, &depots, &pillboxes, e.get("to").and_then(Value::str).unwrap_or("seat:0"), e.get("offset"))?;
+                // `toward` a place by `step` tiles (LR 68): a spotter set
+                // beside a work on the side its quarry is.
+                if let Some(a) = e.get("toward").and_then(Value::str) {
+                    let q = place(&w, &depots, &pillboxes, a, None)?;
+                    to = to + (q - to).norm().scale(num(e, "step", 2.0) as f32);
+                }
                 let t = w.tanks.iter_mut().find(|t| t.owner == seat as PlayerId).ok_or(format!("no seat {}", seat))?;
                 t.pos = to;
                 t.goal = None;

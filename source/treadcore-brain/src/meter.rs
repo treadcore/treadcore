@@ -56,6 +56,10 @@ pub struct Meter {
     /// Seconds kiting by whom (LR 66), by group: an intruder at the base
     /// (`Act::Kite`), a wingman's (`WingKite`), a rally's (`RallyKite`).
     pub kite_kinds: [[u64; 3]; 2],
+    /// Board rebuilds (a second a team) with a hostile on the held
+    /// ground beyond the base's alarm, and those Defend held only for it
+    /// (LR 68), by the rebuilding seat's group.
+    pub grounds: [[u64; 2]; 2],
 }
 
 /// One kind of shell dodge's count: begun, and of those hit before the
@@ -196,6 +200,15 @@ pub fn kite(act: crate::status::Act) {
         m.kites[g][8] += 1;
     });
 }
+/// A board's second: an incursion on the held ground, and Defend held
+/// only for it.
+pub fn ground(incursion: bool, defended: bool) {
+    let g = group();
+    bump(|m| {
+        m.grounds[g][0] += incursion as u64;
+        m.grounds[g][1] += defended as u64;
+    });
+}
 pub fn spent(d: Duration) {
     bump(|m| m.nanos += d.as_nanos() as u64);
 }
@@ -231,6 +244,11 @@ impl Meter {
         }
         for (a, b) in self.beach_sites.iter_mut().zip(o.beach_sites) {
             *a += b;
+        }
+        for (g, og) in self.grounds.iter_mut().zip(o.grounds) {
+            for (a, b) in g.iter_mut().zip(og) {
+                *a += b;
+            }
         }
         for (g, og) in self.kite_kinds.iter_mut().zip(o.kite_kinds) {
             for (a, b) in g.iter_mut().zip(og) {
@@ -292,6 +310,7 @@ impl Meter {
             + &self.fronts.iter().enumerate().filter(|(_, f)| f[0] + f[2] > 0).map(|(g, f)| format!(", front picks{} {} ({} moved off the nearest depot, {} with no front)", if g == 1 { " (trial)" } else { "" }, f[0], f[1], f[2])).collect::<String>()
             + &self.beach_sites.iter().enumerate().filter(|(_, n)| **n > 0).map(|(g, n)| format!(", seconds afloat with beaches priced by island{}: {}", if g == 1 { " (trial)" } else { "" }, n)).collect::<String>()
             + &self.kites.iter().enumerate().filter(|(_, k)| k[8] > 0).map(|(g, k)| format!(", seconds kiting{}: {} of {} alive (massing {}, closing {}, stepping in {}, stepping out {}, holding {})", if g == 1 { " (trial)" } else { "" }, k[..8].iter().sum::<u64>(), k[8], k[0], k[1], k[2] + k[3], k[4], k[5] + k[6] + k[7])).collect::<String>()
+            + &self.grounds.iter().enumerate().filter(|(_, k)| k[0] > 0).map(|(g, k)| format!(", seconds with a hostile on the held ground{}: {} ({} defended for it alone)", if g == 1 { " (trial)" } else { "" }, k[0], k[1])).collect::<String>()
             + &self.kite_kinds.iter().enumerate().filter(|(_, k)| k.iter().sum::<u64>() > 0).map(|(g, k)| format!(", seconds kiting by whom{}: an intruder {}, a wingman {}, a rally {}", if g == 1 { " (trial)" } else { "" }, k[0], k[1], k[2])).collect::<String>()
             + &self.leans.iter().enumerate().filter(|(_, l)| l.iter().sum::<u64>() > 0).map(|(g, l)| format!(", seconds leaned to the front{}: push {} of {}, post {} of {}", if g == 1 { " (trial)" } else { "" }, l[0], l[0] + l[1], l[2], l[2] + l[3])).collect::<String>()
             + &if self.postures.iter().sum::<u64>() > 0 {
