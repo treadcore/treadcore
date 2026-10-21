@@ -4,8 +4,9 @@ Status: drafted 18 October 2026 at Paul's request ("think of more base
 upgrades and ways for users to purchase them ... write the upgrades
 proposal"). Trace 1 of section 6 run 21 October (section 7); trace 2
 with a prototype of four upgrades on the branch `proposal/upgrades`
-(section 8); a post for the seven days of discussion (GOVERNANCE.md
-section 5) drafted the same day, to be posted by Paul. Accepted, it becomes roadmap step 11g's
+(section 8), and at half the rates (section 9); a post for the seven
+days of discussion (GOVERNANCE.md section 5) drafted the same day, to
+be posted by Paul. Accepted, it becomes roadmap step 11g's
 build, in the sim, the wire, the window and the brain, in that order.
 
 It changes the rules and the wire, so it is a proposal and not a pull
@@ -267,4 +268,34 @@ Not traced: the twelve upgrades that are installed or change terrain
 (walls, the watchtower, the radar mast, the gatehouse, the workshop,
 the squad, and the side upgrades); the halved rates of section 7
 (`SUPPLY_SCALE` 0.5); a person buying (trace 3, the playtest).
+
+
+## 9. Trace 2 at half the rates (21 October 2026)
+
+Section 7's suggestion traced: the prototype of section 8 with every
+earning rate and the kill bounty halved (`Economy::scale` 0.5;
+`supply_trace` with `SUPPLY_BUY=1 SUPPLY_SCALE=0.5`), the same six
+matches.
+
+| Measure | Nothing bought | Full rates | Half rates |
+| --- | --- | --- | --- |
+| Match length | 18.0 min | 21.8 min | 20.6 min (14 to 30) |
+| Matches at the 30-minute limit | 0 | 1 | 1 |
+| Deaths a minute | 2.9 | 2.6 | 2.7 |
+| Purchases | | 195 | 108 |
+| A tank's plating | | 146 (75%) | 92 (85%) |
+| Base upgrades | | 49 | 16 |
+| The first purchase, median of six | | about 130 s | about 235 s |
+| The winner's share of purchases (decided matches) | | 76 of 149 (51%) | 41 of 87 (47%) |
+
+**What it says:** halving does what section 7 meant by it, the first
+purchase near the fourth minute rather than the second and half as
+many in all, and the matches still run longer than without (20.6 min).
+But it squeezes the base: base upgrades fall from 49 to 16, while the
+tank's plating, cheaper and re-bought after each death, takes 85% of
+the spending. If the base upgrades are the point (section 2: "a
+defended base lasts"), halving the rates calls for the plating to
+survive a respawn or the bots to weigh it less; the two questions of
+sections 7 and 8 are one question. Six matches a column: a direction,
+not a measurement to a minute.
 

@@ -1203,6 +1203,10 @@ mod tests {
         let env = |k: &str, d: u64| std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(d);
         let (seeds, secs, respawns) = (env("SUPPLY_SEEDS", 6), env("SUPPLY_SECS", 1800), env("SUPPLY_RESPAWNS", 3));
         let buying = env("SUPPLY_BUY", 0) != 0;
+        // The world's earning rates, as a share of section 1.1's
+        // (`SUPPLY_SCALE`, 1; section 7's halving is 0.5). Trace 1's
+        // count outside the world is at the full rates either way.
+        let scale: f32 = std::env::var("SUPPLY_SCALE").ok().and_then(|s| s.parse().ok()).unwrap_or(treadcore_sim::upgrades::SUPPLY_SCALE);
         const SIDES: usize = 4;
         const SOURCES: [&str; 5] = ["pillboxes", "depots", "structures", "kills", "captures"];
         // A match: each side's supply by source, the second it first had
@@ -1220,6 +1224,9 @@ mod tests {
                             let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
                             let sc = Scenario { seed, players: names, teams: Some(teams()), time_limit: 0, map, respawns: respawns as _, upgrades: buying, ..Scenario::default() };
                             let mut w = World::new(sc);
+                            if let Some(e) = w.economy.as_mut() {
+                                e.scale = scale;
+                            }
                             new_match();
                             let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS).map(|i| (i as PlayerId, brain(i, seed ^ i as u64, false))).collect();
                             let team = teams();
@@ -1328,6 +1335,6 @@ mod tests {
             seconds_first.get(seconds_first.len() / 2).copied().unwrap_or(0),
             minutes / firsts.max(1) as f64
         );
-        eprintln!("supply_trace: buying {}; {} deaths in all teams; bought {:?}", buying, all_deaths, kinds);
+        eprintln!("supply_trace: buying {} at {} of the rates; {} deaths in all teams; bought {:?}", buying, scale, all_deaths, kinds);
     }
 }

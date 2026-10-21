@@ -18,8 +18,9 @@
 use crate::{EntityId, TeamId, PILLBOX_HEALTH, PILLBOX_RANGE, TANK_ARMOR};
 use serde::{Deserialize, Serialize};
 
-/// The share of section 1.1's earning rates paid (1.0 the proposal's,
-/// 0.5 section 7's suggestion). A kill's bounty is scaled too.
+/// The share of section 1.1's earning rates paid by default (1.0 the
+/// proposal's; `Economy::scale` 0.5 is section 7's suggestion). A kill's
+/// bounty is scaled too.
 pub const SUPPLY_SCALE: f32 = 1.0;
 /// A base upgrade applies within this of its depot (the brain's
 /// `BASE_R`, the castle's ring).
@@ -104,11 +105,13 @@ pub struct Economy {
     pub tanks: Vec<(EntityId, Upgrade, u8)>,
     /// Every purchase: tick, team, upgrade, level.
     pub bought: Vec<(u64, TeamId, Upgrade, u8)>,
+    /// The share of the earning rates paid (`SUPPLY_SCALE` at first).
+    pub scale: f32,
 }
 
 impl Economy {
     pub fn new(teams: usize) -> Economy {
-        Economy { supply: vec![0.0; teams], earned: vec![[0.0; 5]; teams], ..Economy::default() }
+        Economy { supply: vec![0.0; teams], earned: vec![[0.0; 5]; teams], scale: SUPPLY_SCALE, ..Economy::default() }
     }
 
     /// A depot's level of a base upgrade.
@@ -122,11 +125,11 @@ impl Economy {
     }
 
     /// Pays `team` from `source` (0 pillboxes, 1 depots, 2 structures,
-    /// 3 kills, 4 captures), at `SUPPLY_SCALE`.
+    /// 3 kills, 4 captures), at `scale`.
     pub fn earn(&mut self, team: TeamId, source: usize, amount: f32) {
         let t = team as usize;
         if t < self.supply.len() {
-            let a = amount * SUPPLY_SCALE;
+            let a = amount * self.scale;
             self.supply[t] += a;
             self.earned[t][source] += a;
         }

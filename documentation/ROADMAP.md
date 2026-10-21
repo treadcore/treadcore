@@ -442,7 +442,8 @@ asked for longer ones. Steps:
   for Paul (CI-033). Trace 2 run 21 October with a prototype of four
   upgrades on the branch `proposal/upgrades` (its section 8, CI-034):
   matches 18.0 to 21.8 min, three purchases in four a tank's plating,
-  the winner buying most.
+  the winner buying most. At half the rates (section 9): 20.6 min,
+  base upgrades 49 to 16, the plating 85% of the spending.
 
   | Upgrade | Levels | What it does | Bought |
   | --- | --- | --- | --- |

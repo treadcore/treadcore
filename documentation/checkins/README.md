@@ -48,3 +48,4 @@ report is what ties a conversation to them. Named
 | [032](CI-032-2026-10-21-the-kites-hold-in-a-duel.md) | 21 October 2026 | The kite's hold in a duel | 0089 | LAB-REPORT-BRAIN.md section 66 |
 | [033](CI-033-2026-10-21-supply-traced.md) | 21 October 2026 | Supply traced: the upgrades proposal's trace 1 | 0090 | PROPOSAL-UPGRADES.md section 7 |
 | [034](CI-034-2026-10-21-upgrades-prototyped.md) | 21 October 2026 | Upgrades prototyped: trace 2 (branch `proposal/upgrades`) | 0091 | PROPOSAL-UPGRADES.md section 8 |
+| [035](CI-035-2026-10-21-trace-2-at-half-the-rates.md) | 21 October 2026 | Trace 2 at half the rates (branch `proposal/upgrades`) | 0092 | PROPOSAL-UPGRADES.md section 9 |

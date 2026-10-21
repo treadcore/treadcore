@@ -1,0 +1,51 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 22 Oct 2026 02:30:00 -0700
+Subject: [JOURNAL 0092] Trace 2 at half the rates
+Message-ID: <0092.20261021@treadcore.org>
+In-Reply-To: <0091.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: upgrades, supply, trace
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "yes. run halved trace. push main."
+X-Commits: main pushed 5bc0faf..0240b1a; this entry's commit follows
+           on the branch proposal/upgrades
+
+                      TRACE 2 AT HALF THE RATES
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    Halved rates: matches 20.6 min, 108 purchases, the first near the
+    fourth minute; base upgrades 49 to 16, the plating 85%.
+
+I. INTRODUCTION
+
+    "yes. run halved trace. push main." Main pushed first.
+
+II. CHRONOLOGY
+
+    1. `Economy::scale`, set by the trace's `SUPPLY_SCALE`.
+    2. Six matches, about 12 min.
+    3. Section 9; the post updated.
+
+III. DISCUSSION
+
+    Halving moves the money to the cheap thing that dies with the tank.
+    The rate and the plating are one question.
+
+IV. NEXT STEPS
+
+    1. Paul posts the proposal.
+
+APPENDIX B. ARTIFACTS
+
+    PROPOSAL-UPGRADES.md section 9; CI-035;
+    build/supply/trace-buy1-half.log.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org
