@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `island_site` where a naval start chooses (`w_site_beach` 20):
+  afloat while the side holds no depot, each beach in sight costs 20
+  tiles of the run less per point of its island's site score (forest,
+  size), so the first landing is on an island fit for a base. A family
+  of a boat by a bare islet lands on the forested island in 400 of 400
+  seeds, none at 0. The guard: +0.82 +/- 0.69 a seat over 48 seeds
+  (LAB-REPORT-BRAIN.md section 62).
+- Added: scenarios take `depots = false` and forest terrain.
+
 - Added: the guard posts at the front (`w_front_push` 0.75,
   `w_front_post` 0.5, on with `board`): the rotation's push point moves
   that share of the way toward the board's front sector nearest it, and

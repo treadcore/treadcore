@@ -1,0 +1,88 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 21 Oct 2026 16:00:00 -0700
+Subject: [JOURNAL 0085] Island sites where a naval start chooses
+Message-ID: <0085.20261021@treadcore.org>
+In-Reply-To: <0084.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: naval start, landfall, island site, scenario families
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "continue with backlog 20"
+X-Commits: d14ffbf (the last); this entry's commit follows
+
+                 ISLAND SITES WHERE A NAVAL START CHOOSES
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    Backlog 20. The island site score never acted: a fleet's base is
+    its leader's depot. In a naval start the island is the beach's
+    choice, so the beach now takes the site score off its cost,
+    `w_site_beach` 20 tiles a point, while the side holds no depot. A
+    boat by a bare islet lands on the forested island in 400 of 400
+    seeds, none at 0. The guard: +0.82 +/- 0.69 a seat over 48 seeds.
+
+INDEX TERMS
+
+    naval start, landfall, island site score, scenario families.
+
+I. INTRODUCTION
+
+    "continue with backlog 20." The hypothesis: a leader choosing its
+    first landing by site score builds more and starves less.
+
+II. BACKGROUND
+
+    `site_score` (12f2, LR 6.2) read by `base_of` alone; idle in LR 24
+    and LR 44. 100 weights, 17 bits; six families with floors.
+
+III. METHOD
+
+    A scenario that fails at 0, a family swept for the starting
+    number, the meter read first, the census guard from a frozen
+    binary.
+
+IV. CHRONOLOGY
+
+    1. The choice found: `landfall_order` picks the beach; ashore,
+       Expand takes the depot nearest.
+    2. `w_site_beach`; the Commander prices each beach by its island
+       for the doctrine.
+    3. The scenario: the side held a generated depot, and depots sat
+       in the new sea. `depots = false`; forest terrain.
+    4. With the part, the island and a castle begun; at 0 the islet,
+       "cannot build there", and on to the island by sea.
+    5. The family: 0, 40, 75.5, 100% at 0, 5, 10, 12.5. 20 kept.
+    6. The meter: priced in every census match. The guard: +0.82 +/-
+       0.69; built 16.7 against 16.2.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 62. Tests: brain 83 passed, 11
+    ignored; client 32; net 14; proto 3; sim 50. 101 weights, 17
+    bits; seven families with floors.
+
+VI. DISCUSSION
+
+    The site score was right and idle because it waited behind a
+    choice already made. A rule has to stand where the choice is.
+
+VII. OPEN PROBLEMS
+
+    1. Backlog 52, allies' goals in a joining window (the wire).
+    2. Territory, built and read by nothing.
+
+VIII. NEXT STEPS
+
+    1. Backlog 48, the starting numbers.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 62; CI-028; build/lr62.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

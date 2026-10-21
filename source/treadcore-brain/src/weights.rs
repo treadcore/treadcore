@@ -126,6 +126,7 @@ weights! {
     SiteForest "w_site_forest" 1.0, "island: a base site's worth of trees enough";
     SiteSmall "w_site_small" 1.0, "island: a base site's cost of a small island";
     SiteArea "site_area" 400.0, "island: an island this large or larger is not small, tiles";
+    SiteBeach "w_site_beach" 20.0, "island: tiles of a boat's run a beach's island is worth per point of its site score (`site_score`, -1 a small bare islet to 1 a large forested island), while the side holds no depot (a naval start); 0 (before LR 62) the beach by its run and danger alone; needs island_site";
     // Formation (LR 6.3).
     ColumnGap "column_gap" 2.0, "column: tiles between tanks in file on a bridge";
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";

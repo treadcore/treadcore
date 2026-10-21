@@ -13,6 +13,7 @@
 //! Positions are an anchor and an offset in tiles: `"seat:0"` (where a
 //! seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed),
 //! and `"centre"` (the map's middle).
+//! `depots = false` keeps only the depots placed (LR 62).
 //! `board = true` gives each team's Commanders one team board, a
 //! Commander's `rungs = [...]` the ladder's rungs on, and a `[[depot]]`'s
 //! `at` and `offset` move it there (LR 58). A family
@@ -252,12 +253,13 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         Ok(base + offset(off)?)
     };
     // `[[terrain]]`: a rectangle of tiles, `x` and `y` in tiles from the
-    // anchor's tile, both ends in, set to water or grass.
+    // anchor's tile, both ends in, set to water, grass or forest.
     for t in list("terrain") {
         let near = place(&w, &depots, &pillboxes, t.get("near").and_then(Value::str).unwrap_or("seat:0"), None)?;
         let kind = match t.get("kind").and_then(Value::str).unwrap_or("water") {
             "water" => Terrain::Water,
             "grass" => Terrain::Grass,
+            "forest" => Terrain::Forest,
             k => return Err(format!("terrain: no kind {}", k)),
         };
         let span = |k: &str| match t.get(k) {
@@ -335,6 +337,11 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
         dep.owner = owner;
         dep.pos = pos;
         depots.push((id, pos));
+    }
+    // `depots = false`: only the `[[depot]]`s placed stay (LR 62; a naval
+    // start, the side holding none).
+    if doc.top.get("depots") == Some(&Value::Bool(false)) {
+        w.depots.retain(|d| depots.iter().any(|(id, _)| *id == d.id));
     }
     for (k, p) in list("pillbox").iter().enumerate() {
         // As the hand-written tests place one: `away` tiles from the

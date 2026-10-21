@@ -1,0 +1,52 @@
+# LAB-REPORT-BRAIN.md section 62 (backlog 20, island_site where a naval
+# start chooses): a Commander afloat in open water, its side holding no
+# depot, the map's middle. A small bare islet (4 by 4 tiles of grass)
+# lies 10 tiles east; a large island (30 by 30, a forest of 10 by 10 in
+# it) 14 tiles west. A neutral depot on each; every other depot gone. With `w_site_beach` the boat lands on the large
+# island; at 0 on the islet, the nearer beach.
+name = "a naval start lands on the forested island"
+players = 2
+seconds = 30
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "water"
+x = [-64, 63]
+y = [-64, 63]
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [10, 13]
+y = [-2, 1]
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-44, -14]
+y = [-15, 15]
+[[terrain]]
+near = "centre"
+kind = "forest"
+x = [-34, -25]
+y = [-5, 4]
+[[tank]]
+seat = 0
+at = "centre"
+boat = true
+[[tank]]
+seat = 1
+at = "centre"
+offset = [50, 55]
+boat = true
+[[depot]]
+at = "centre"
+offset = [11, -1]
+[[depot]]
+at = "centre"
+offset = [-30, 8]
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+[expect]
+lands_near = { seat = 0, at = "centre", offset = [-14, 0], within = 8 }

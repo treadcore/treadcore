@@ -3270,3 +3270,85 @@ starting numbers for the tuning phase (backlog 48).
 
 Proof: `make test`: brain 82 passed and 11 ignored; client 32; net 14;
 proto 3; sim 50. `make families`: six families, each above its floor.
+
+## 62. Island sites where a naval start chooses, 21 October
+
+Backlog 20. `island_site` (12f2) scores a base site: trees enough
+(`w_site_forest`, against `forest_need`) less a small island
+(`w_site_small`, under `site_area`). It was read only by
+`Commander::base_of` among the side's depots when a tank had no base,
+and in a fleet every tank's base is its leader's depot, found first:
+LR 24 and LR 44 found it never acted. In a naval start, with every
+tank afloat and every depot neutral, the first island is chosen by the
+beach: `RuleBot::landfall_order` priced each beach in sight by its
+distance, its danger, the heading toward a gun and the run in a gun's
+reach, and landed on the cheapest. Ashore, Expand takes the depot
+nearest. The beach is where the site has to be read.
+
+**The part** (on, LR 54's rule; needs `island_site`):
+`w_site_beach` (20). While the tank is afloat and its side holds no
+depot, `Commander::beach_worth` gives the doctrine each beach in sight
+(`obs.shore`) with `w_site_beach` times its island's `site_score` (-1
+for a small bare islet to 1 for a large forested island), and
+`landfall_order` takes that worth off the beach's cost
+(`RuleBot::beach_worth`). With the side holding a depot, or at 0, the
+beach as before. Test: `a_boat_lands_where_the_island_is_worth_the_run`
+(the nearer beach with no worth; the farther worth more than the
+difference in the run; the nearer again for a small worth).
+
+**The scenario**: `a-naval-start-lands-on-the-forested-island.toml`.
+Open water in the map's middle; a 4 by 4 islet of grass 10 tiles east,
+a 31 by 31 island with a forest of 10 by 10 14 tiles west; a neutral
+depot on each and every other depot gone (`depots = false`, new;
+`forest` terrain, new). Held: the boat comes ashore within 8 tiles of
+the island's near shore. With the part it lands there, takes the depot
+and the squad begins a castle by 20 s. At 0 it lands on the islet,
+takes its depot, is refused building there ("cannot build there", 12.6
+s on) and sails on for the island.
+
+**The family**: `scenarios/families/a-naval-start-by-a-bare-islet.toml`:
+the boat 9 tiles from the islet's centre, any side, so the islet is
+always the nearest beach; the island 18 tiles west of the islet, its
+beach 15 to 33 tiles from the boat. Held: ashore on the island.
+
+| 400 seeds | landed on the island |
+| --- | --- |
+| `w_site_beach` 0 (before) | 0.0% |
+| 5 | 40.2% +/- 2.5% |
+| 10 | 75.5% +/- 2.2% |
+| 12.5 | 100.0% |
+| 15, 20 (the default), 30 | 100.0% |
+
+The island is worth 1.96 points more than the islet, so at 20 a run up
+to 39 tiles longer, 7 s for a boat at 5.7 tiles a second. 20 was kept
+over 12.5 for the margin: the family's longest extra run is 26 tiles
+less the danger terms. Floor 0.95.
+
+**The meter** (new: seconds afloat with beaches priced, by group), read
+in the census's first matches: 54 to 169 trial seat-seconds a match,
+in every match.
+
+**The guard**: the trial team on the defaults against the same with
+`w_site_beach` 0; the fair census, naval.map, 900 s, 3 respawns, seeds
+0 to 47, a frozen binary (`build/lr62`).
+
+| 48 seeds | Trial (`w_site_beach` 20) | The rest (0) |
+| --- | --- | --- |
+| Difference a seat | +0.82 +/- 0.69 (inside the noise, 1.2 errors) | |
+| By job of 16 seeds | +0.72 +/- 1.37, +1.41 +/- 1.10, +0.34 +/- 1.15 | |
+| Mean score a seat, by job | 8.54, 9.01, 8.98 | 8.20, 7.60, 8.26 |
+| Seconds afloat with beaches priced | 12,779, about 89 a trial match | |
+| Built a team-match | 16.72 +/- 0.84 (144) | 16.17 +/- 0.57 (288) |
+| Afloat dodges: hit | 8.3% (374 of 4,524) | 8.4% (846 of 10,105) |
+| Brain time | 60.8 to 62.7 us a seat-tick, both sides | |
+
+The brain still works with the part, and the score leans its way
+without leaving the noise. The hypothesis's "builds more" is not shown:
+LR 61's census, with nothing that builds under test, read the trial
+seat 0.4 higher on the same count, as this one does by 0.55. naval.map
+starts every side near islands fit for a base, so the choice the part
+makes is seldom a bad one avoided.
+
+Proof: `make test`: brain 83 passed and 11 ignored; client 32; net 14;
+proto 3; sim 50. `make families`: seven families, each above its
+floor.

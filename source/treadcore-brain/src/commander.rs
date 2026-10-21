@@ -1202,6 +1202,22 @@ impl Commander {
         }
     }
 
+    /// Each beach in sight with what its island is worth as a base, in
+    /// tiles of the run (`w_site_beach` times `site_score`), while afloat
+    /// and the side holds no depot; none otherwise.
+    fn beach_worth(&self, obs: &Observation) -> Vec<(V2, f32)> {
+        let w = self.settings.w[crate::weights::W::SiteBeach];
+        let afloat = obs.me.as_ref().map(|t| t.alive && t.boat).unwrap_or(false);
+        if w == 0.0 || !afloat || !self.caps().has(crate::weights::Caps::ISLAND_SITE) || self.facts.islands().is_empty() || obs.depots.iter().any(|d| Self::mine_or_allied(obs, d.owner)) {
+            return Vec::new();
+        }
+        let worth = obs.shore.iter().map(|b| (*b, self.facts.site_score(&self.settings, *b))).filter(|(_, s)| *s > f32::MIN).map(|(b, s)| (b, w * s)).collect();
+        if obs.tick % TICK_HZ as Tick == 0 {
+            crate::meter::beach_site();
+        }
+        worth
+    }
+
     /// The centres of the team board's front sectors (LR 58), with the
     /// board on; none without a board or with no hostile known.
     fn front_points(&self) -> Vec<V2> {
@@ -2435,6 +2451,9 @@ impl Commander {
         if let Some(m) = map.filter(|_| self.caps().has(crate::weights::Caps::ISLAND_SITE)) {
             self.facts.refresh(m, obs.tick);
         }
+        // A naval start (backlog 20, LR 62): afloat with no depot of the
+        // side, a beach is worth what its island is as a base.
+        self.inner.beach_worth = self.beach_worth(obs);
         let doctrine = self.inner.think_map(obs, map);
         // A new target the team is on, or called: say it, so the rest
         // of the side's scores lean the same way (a focus call).

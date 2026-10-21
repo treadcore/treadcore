@@ -1,0 +1,57 @@
+# LAB-REPORT-BRAIN.md section 62 (backlog 20): a family, its start drawn
+# from the seed. A Commander afloat 9 tiles from a small bare islet (4 by
+# 4 tiles of grass, in the map's middle), any side, so the islet is
+# always the nearest beach; a large island (31 by 31, a forest of 10 by
+# 10 in it) lies 18 tiles west of the islet, 15 to 33 tiles from the
+# boat. A neutral depot on each, every other depot gone: a naval start.
+# Held: the boat comes ashore on the large island. Run over many seeds:
+# make scenario S=this RUNS=1000.
+name = "a naval start by a bare islet, from any side"
+runs = 400
+floor = 0.95
+players = 2
+seconds = 25
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "water"
+x = [-64, 63]
+y = [-64, 63]
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-2, 1]
+y = [-2, 1]
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-50, -20]
+y = [-15, 15]
+[[terrain]]
+near = "centre"
+kind = "forest"
+x = [-40, -31]
+y = [-5, 4]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [9, 0]
+around = true
+boat = true
+[[tank]]
+seat = 1
+at = "centre"
+offset = [50, 55]
+boat = true
+[[depot]]
+at = "centre"
+[[depot]]
+at = "centre"
+offset = [-35, 8]
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "auto"
+[expect]
+lands_near = { seat = 0, at = "centre", offset = [-35, 0], within = 23 }

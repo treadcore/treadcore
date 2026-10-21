@@ -329,7 +329,9 @@ to 8.93 a seat).
   Not yet: territory read by nothing.
 - [~] 12f behaviours: the base cycle (`cycle`,
   `a_full_tank_gives_the_base_an_item`), priced crossings and the island
-  site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`),
+  site (`priced_crossing`, `island_site`, `a_small_island_takes_a_boat`;
+  since LR 62 also the beach a naval start lands on, `w_site_beach`,
+  `a-naval-start-by-a-bare-islet.toml`),
   the column (`column`, `a_fleet_crosses_a_bridge_in_file`), the
   escort (`escort`, `a_far_fetch_gathers_the_fleet`: a far fetch
   gathers the fleet, which screens the carry home along the road; LR
@@ -400,8 +402,9 @@ remembered 30 s; -0.14 +/- 0.42, inside the noise. The families held to
 floors (47, LR 59); allies' goals shown when hosting (50); the crews
 and the hop tested (26, LR 60). The guard posts at the front (51, LR
 61): the push point leaned 0.75 of the way, the post 0.5; -0.27 +/-
-0.64, inside the noise. Next, one at a time: `island_site` where a
-naval start chooses (20); then the starting numbers (48) once the
+0.64, inside the noise. `island_site` where a naval start chooses (20,
+LR 62): the beach priced by its island, `w_site_beach` 20; +0.82 +/-
+0.69, inside the noise. Next: the starting numbers (48) once the
 features are in.
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
@@ -543,7 +546,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     islet is nearer than a large forested island and the leader lands
     on the island; the census with `island_site` reading nonzero
     seat-seconds, then d and its error at 36 seeds (sigma unknown until
-    it acts). Cost: 108 matches, 6 min. State: idea.
+    it acts). Cost: 108 matches, 6 min. State: done 21 October (LR 62).
+    The choice is the beach, not the depot: ashore, Expand takes the
+    depot nearest. `w_site_beach` (20 tiles a point of site score,
+    while the side holds no depot) in `RuleBot::landfall_order`. A
+    family of a boat 9 tiles off a bare islet, the forested island 15
+    to 33 tiles off: 100% land on the island, 0% at 0. The census: 89
+    trial seconds a match afloat with beaches priced; +0.82 +/- 0.69 a
+    seat over 48 seeds; built 16.7 against 16.2 a team, no difference.
 21. The posture as scores. (18 October; cause: LR 24, CI-001 A3; Paul's
     rule, every either/or a scalar.) Goal 4, 12e. Hypothesis: the
     board's posture, a first-match ladder on thresholds, scored as LR 9

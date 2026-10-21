@@ -267,6 +267,10 @@ pub struct RuleBot {
     pub landfall_memory: f32,
     /// Hostile tanks out of sight: whose, where last seen, and when.
     remembered: Vec<(PlayerId, V2, Tick)>,
+    /// What each beach's island is worth as a base, in tiles of the run
+    /// (backlog 20, LR 62): set by a Commander from its map facts while
+    /// its side holds no depot (a naval start); empty, as before.
+    pub beach_worth: Vec<(V2, f32)>,
     /// Out of a shell's way (`Dodge`); not a rookie's.
     dodge: Dodge,
     /// Island hopping, when nothing is left in reach by land (hop.rs).
@@ -750,7 +754,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, landfall_wait: 0.0, standoff: None, standing: false, landfall_memory: 0.0, remembered: Vec::new(), dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, landfall_wait: 0.0, standoff: None, standing: false, landfall_memory: 0.0, remembered: Vec::new(), beach_worth: Vec::new(), dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
     }
 
     /// Hostile tanks kept where last seen, for `landfall_memory` seconds
@@ -826,7 +830,8 @@ impl RuleBot {
             let steps = b.dist(me.pos).ceil().max(1.0) as usize;
             (1..=steps).filter(|i| guns.iter().any(|(g, r)| me.pos.lerp(b, *i as f32 / steps as f32).dist(*g) < *r)).count() as f32 * b.dist(me.pos) / steps as f32
         };
-        let score = |b: V2| b.dist(me.pos) + danger(b) + toward(b) + 4.0 * shy * exposed(b);
+        let worth = |b: V2| self.beach_worth.iter().find(|(at, _)| at.tile() == b.tile()).map(|(_, w)| *w).unwrap_or(0.0);
+        let score = |b: V2| b.dist(me.pos) + danger(b) + toward(b) + 4.0 * shy * exposed(b) - worth(b);
         let best = obs.shore.iter().filter(|b| !self.unreachable_tiles.contains(&b.tile())).min_by(|a, b| score(**a).total_cmp(&score(**b))).copied();
         let going = me.route.last().copied().or(me.goal);
         let Some(best) = best else {
@@ -2129,6 +2134,28 @@ mod tests {
             let mut b = RuleBot::new(1, "boat");
             b.landfall_shy = shy;
             assert_eq!(b.landfall_order(&obs, &me), Some(Command::Move { to: want }), "shy {}", shy);
+        }
+    }
+
+    /// `beach_worth` (backlog 20, LR 62): of two clear beaches, with no
+    /// worth the boat takes the nearer; the farther worth more than the
+    /// difference in the run, the farther.
+    #[test]
+    fn a_boat_lands_where_the_island_is_worth_the_run() {
+        let w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(1) });
+        let mut obs = w.observe(0);
+        let mut me = obs.me.clone().unwrap();
+        me.route.clear();
+        me.goal = None;
+        let p = me.pos;
+        let (near, far) = (p + V2::new(8.0, 0.0), p + V2::new(-20.0, 0.0));
+        obs.tanks = vec![me.clone()];
+        obs.pillboxes.clear();
+        obs.shore = vec![near, far];
+        for (worth, want) in [(vec![], near), (vec![(near, -19.0), (far, 20.0)], far), (vec![(near, -2.0), (far, 2.0)], near)] {
+            let mut b = RuleBot::new(1, "boat");
+            b.beach_worth = worth.clone();
+            assert_eq!(b.landfall_order(&obs, &me), Some(Command::Move { to: want }), "worth {:?}", worth);
         }
     }
 
