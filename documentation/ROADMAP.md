@@ -408,7 +408,8 @@ LR 62): the beach priced by its island, `w_site_beach` 20; +0.82 +/-
 each part off; only the dodge past two errors, and it pays; the halved
 posture and swap gap +0.61 +/- 0.60, the defaults kept. The bottom of
 the table at 48 seeds (53, LR 64): `kite`, `duck`, `dodge_fire`, none
-past two errors. Next: the kite counted (54).
+past two errors. The kite counted (54, LR 65): 4.7% of the seconds
+alive, mostly holding. Next: the kite's hold in a duel (55).
 Twelve seeds resolve a point a seat; a half point takes 10 to 300 seeds
 by the part (CI-001 IV.A), one night's census for all of them.
 
@@ -931,7 +932,19 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     tank out of the fight are what it costs. Proof: a meter of seconds
     kiting and kills won and lost while kiting, read in a 12-seed
     census; then, if it acts, its numbers (`kite_margin`, `kite_in`)
-    in a family of a duel. Cost: a step. State: idea.
+    in a family of a duel. Cost: a step. State: done 21 October (LR
+    65): `meter::kite`, seconds alive by kite step; the trial seat
+    kites 4.7% of its seconds alive, about 114 s a match, 62% of it
+    holding past the target's reach and 9% stepping in. The hold: 55.
+55. The kite's hold in a duel. (21 October; cause: LR 65, the kite
+    acts about 114 s a trial match and spends 62% of it holding past
+    the target's reach, 9% stepping in.) Goal 4, the tuning phase.
+    Hypothesis: the hold waits for a window that seldom opens, and a
+    shorter wait (a smaller `kite_spare`, a nearer `kite_in`) scores
+    more in a duel without losing more tanks. Proof: a scenario family
+    of one tank against one at its reach, scored by hits given and
+    taken, swept over the kite's numbers; the census at 48 for a
+    number the family moves. Cost: a step. State: idea.
 
 ## Sequencing
 

@@ -50,6 +50,9 @@ pub struct Meter {
     /// Seconds afloat in a naval start with the beaches priced by their
     /// islands (LR 62), by the seat's group.
     pub beach_sites: [u64; 2],
+    /// Seconds alive (LR 65), by the seat's group: kiting, by the step
+    /// (`KiteStep::ALL`'s order), and in all (the last).
+    pub kites: [[u64; 9]; 2],
 }
 
 /// One kind of shell dodge's count: begun, and of those hit before the
@@ -170,6 +173,16 @@ pub fn beach_site() {
     let g = group();
     bump(|m| m.beach_sites[g] += 1);
 }
+/// A second alive: kiting at `step`, or not.
+pub fn kite(step: Option<crate::status::KiteStep>) {
+    let g = group();
+    bump(|m| {
+        if let Some(k) = step {
+            m.kites[g][crate::status::KiteStep::ALL.iter().position(|s| *s == k).unwrap_or(0)] += 1;
+        }
+        m.kites[g][8] += 1;
+    });
+}
 pub fn spent(d: Duration) {
     bump(|m| m.nanos += d.as_nanos() as u64);
 }
@@ -205,6 +218,11 @@ impl Meter {
         }
         for (a, b) in self.beach_sites.iter_mut().zip(o.beach_sites) {
             *a += b;
+        }
+        for (g, og) in self.kites.iter_mut().zip(o.kites) {
+            for (a, b) in g.iter_mut().zip(og) {
+                *a += b;
+            }
         }
         for (g, og) in self.leans.iter_mut().zip(o.leans) {
             for (a, b) in g.iter_mut().zip(og) {
@@ -255,6 +273,7 @@ impl Meter {
         ) + &self.dodge_line()
             + &self.fronts.iter().enumerate().filter(|(_, f)| f[0] + f[2] > 0).map(|(g, f)| format!(", front picks{} {} ({} moved off the nearest depot, {} with no front)", if g == 1 { " (trial)" } else { "" }, f[0], f[1], f[2])).collect::<String>()
             + &self.beach_sites.iter().enumerate().filter(|(_, n)| **n > 0).map(|(g, n)| format!(", seconds afloat with beaches priced by island{}: {}", if g == 1 { " (trial)" } else { "" }, n)).collect::<String>()
+            + &self.kites.iter().enumerate().filter(|(_, k)| k[8] > 0).map(|(g, k)| format!(", seconds kiting{}: {} of {} alive (massing {}, closing {}, stepping in {}, stepping out {}, holding {})", if g == 1 { " (trial)" } else { "" }, k[..8].iter().sum::<u64>(), k[8], k[0], k[1], k[2] + k[3], k[4], k[5] + k[6] + k[7])).collect::<String>()
             + &self.leans.iter().enumerate().filter(|(_, l)| l.iter().sum::<u64>() > 0).map(|(g, l)| format!(", seconds leaned to the front{}: push {} of {}, post {} of {}", if g == 1 { " (trial)" } else { "" }, l[0], l[0] + l[1], l[2], l[2] + l[3])).collect::<String>()
             + &if self.postures.iter().sum::<u64>() > 0 {
             let names = ["defend base", "fortify", "turrets", "hunt", "expand", "guard"];
@@ -310,6 +329,27 @@ mod tests {
         total.add_dodges(&m);
         assert_eq!(total.dodges[1][1][1].killed, 2);
         assert!(m.line().contains("dodges (trial) dropped afloat 1 (1 hit, 0 by the shell, 1 killed)"), "{}", m.line());
+        trial(0);
+        reset();
+    }
+    #[test]
+    fn a_second_alive_counts_its_kite_step() {
+        use crate::status::KiteStep;
+        reset();
+        trial(1 << 1);
+        seat(1);
+        kite(Some(KiteStep::HoldLoaded));
+        kite(Some(KiteStep::StepInBusy));
+        kite(None);
+        seat(0);
+        kite(None);
+        let m = read();
+        assert_eq!(m.kites[1][7] + m.kites[1][3], 2);
+        assert_eq!((m.kites[1][8], m.kites[0][8]), (3, 1));
+        let mut total = Meter::default();
+        total.add_fronts(&m);
+        assert_eq!(total.kites, m.kites);
+        assert!(m.line().contains("seconds kiting (trial): 2 of 3 alive (massing 0, closing 0, stepping in 1, stepping out 0, holding 1)"), "{}", m.line());
         trial(0);
         reset();
     }

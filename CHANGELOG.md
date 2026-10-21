@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the meter counts seconds kiting by step (massing, closing,
+  stepping in, stepping out, holding) out of seconds alive. The trial
+  seat kites 4.7% of its seconds alive on naval.map, 62% of that
+  holding past the target's reach (LAB-REPORT-BRAIN.md section 65).
+
 - Added: `make parts` (`scripts/parts.sh`), the reverse of `make
   switches`: each part off from the brain with every part on, over the
   fair census (`PARTS`, `SEEDS`, `SECS`, `MAP`, `RESPAWNS`, `JOBS`). Of

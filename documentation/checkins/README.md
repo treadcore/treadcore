@@ -44,3 +44,4 @@ report is what ties a conversation to them. Named
 | [028](CI-028-2026-10-21-island-sites-at-sea.md) | 21 October 2026 | Island sites where a naval start chooses | 0085 | LAB-REPORT-BRAIN.md section 62 |
 | [029](CI-029-2026-10-21-every-part-off.md) | 21 October 2026 | Every part off, one at a time | 0086 | LAB-REPORT-BRAIN.md section 63 |
 | [030](CI-030-2026-10-21-the-bottom-of-the-parts-table.md) | 21 October 2026 | The bottom of the parts table at 48 seeds | 0087 | LAB-REPORT-BRAIN.md section 64 |
+| [031](CI-031-2026-10-21-the-kite-counted.md) | 21 October 2026 | The kite counted | 0088 | LAB-REPORT-BRAIN.md section 65 |

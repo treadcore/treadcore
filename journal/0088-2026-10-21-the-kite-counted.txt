@@ -1,0 +1,75 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 21 Oct 2026 23:00:00 -0700
+Subject: [JOURNAL 0088] The kite counted
+Message-ID: <0088.20261021@treadcore.org>
+In-Reply-To: <0087.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: kite, meter, census
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "continue"
+X-Commits: fc67e38 (the last); this entry's commit follows
+
+                           THE KITE COUNTED
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    Backlog 54. A meter of seconds by kite step. The trial seat kites
+    4.7% of its seconds alive, about 114 s a match, 62% of it holding
+    past the target's reach and 9% stepping in.
+
+INDEX TERMS
+
+    kite, meter.
+
+I. INTRODUCTION
+
+    "continue." The hypothesis: the kite acts seldom; or, acting
+    often, holds a tank out of the fight.
+
+II. BACKGROUND
+
+    LR 64: the kite off -0.94 +/- 0.77 at 48 seeds; no count of it.
+
+III. METHOD
+
+    Count, then census: the meter read in 12 seeds, the play
+    unchanged.
+
+IV. CHRONOLOGY
+
+    1. `Act::kite()` already names the step; counted once a second
+       after the think.
+    2. 12 seeds: 4,111 of 88,122 seconds alive kiting; the rest 0.
+       The per-seed differences are LR 63's.
+    3. The hold to backlog 55.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 65. Tests: brain 84 passed, 11
+    ignored; client 32; net 14; proto 3; sim 50.
+
+VI. DISCUSSION
+
+    A part that acts two minutes a match, and mostly waits.
+
+VII. OPEN PROBLEMS
+
+    1. Backlog 52, allies' goals in a joining window (the wire).
+    2. Territory, built and read by nothing.
+
+VIII. NEXT STEPS
+
+    1. Backlog 55, the kite's hold in a duel.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 65; CI-031; build/lr65.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

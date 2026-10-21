@@ -3464,3 +3464,51 @@ when it acts or only shifts the play, are unknown. LR 58's rule
 (count before the census) puts the count first: backlog 54.
 
 Proof: no code changed; `make test` and `make families` as LR 63.
+
+## 65. The kite counted, 21 October
+
+Backlog 54. LR 64 read the kite off at -0.94 +/- 0.77 at 48 seeds, the
+one lean left in the parts table, and the meter counted no kiting. LR
+58's rule: count before the census. The hypothesis: the kite acts
+seldom on naval.map and its lean is noise; if it acts often, the
+seconds it holds a tank out of the fight are what it costs.
+
+**The meter** (new): `meter::kite(step)`, once a second for each live
+Commander seat after its think (`think_released`), with the kite step
+of its act (`Act::kite()`: `Kite`, `WingKite`, `RallyKite`) or none,
+by the seat's group. The census line: "seconds kiting: N of M alive
+(massing, closing, stepping in, stepping out, holding)". Test:
+`a_second_alive_counts_its_kite_step`. No decision reads it: the 12
+per-seed differences below are LR 63's to the hundredth.
+
+**The read**: the defaults (trial) against the kite off; the fair
+census, naval.map, 900 s, 3 respawns, seeds 0 to 11 in three jobs of
+4, a frozen binary (`build/lr65`).
+
+| 12 seeds, the trial seat | Seconds | Share |
+| --- | --- | --- |
+| Alive | 88,122 | |
+| Kiting | 4,111 | 4.7% of alive; about 114 a trial match |
+| Holding past its reach (reloading, covered, loaded) | 2,549 | 62% of kiting |
+| Massing out of its reach | 746 | 18% |
+| Stepping out to reload | 433 | 11% |
+| Stepping in | 356 | 9% |
+| Closing on a tank with no shells | 27 | 1% |
+| The rest (kite off) | 0 of 199,437 | |
+
+Difference a seat: -1.76 +/- 1.04 (the pooled 12; LR 63's row).
+
+The kite acts, about two minutes of a trial match, and is not the
+seldom part the hypothesis's first branch guessed. What it does is
+mostly wait: of every 10 s kiting, 6 are spent holding past the
+target's reach and 2 massing, and under 1 stepping in to fire. That
+fits the second branch, a tank held out of the fight, without proving
+it: the score's lean is still 1.2 errors at 48 seeds, and the meter
+does not say what the held tank would have done instead.
+
+The kite stays on (the defaults stand). The next question is the
+hold's numbers in a duel, where a tank's minute held can be scored:
+backlog 55.
+
+Proof: `make test`: brain 84 passed and 11 ignored; client 32; net 14;
+proto 3; sim 50.
