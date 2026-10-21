@@ -200,7 +200,7 @@ impl Grace {
 ///      Low on anything, it goes home instead and the storm is off.
 pub struct RuleBot {
     name: String,
-    rng: Rng,
+    pub(crate) rng: Rng,
     last_fire_tick: Tick,
     scoot_until: Tick,
     resupplying: bool,
@@ -222,8 +222,9 @@ pub struct RuleBot {
     patience: f32,
     /// Use the squad at all. Off for the control group in the proof.
     pub pillboys: bool,
-    /// A bot for a newcomer to beat (PLAYABILITY item 9): see `rookie`.
-    pub rookie: bool,
+    /// How well it plays (PLAYABILITY item 9, the weight `skill`): 1 in
+    /// full, 0 a rookie's (`RuleBot::rookie`); see `is_rookie`.
+    pub skill: f32,
     /// What the world refused and why it will stay refused: pillboxes
     /// the squad cannot reach, and tiles the tank cannot drive to. On an
     /// island map (the converted prior-art maps) half the objectives are
@@ -754,7 +755,7 @@ impl RuleBot {
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
-        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, rookie: false, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, landfall_wait: 0.0, standoff: None, standing: false, landfall_memory: 0.0, remembered: Vec::new(), beach_worth: Vec::new(), dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
+        RuleBot { name: name.into(), rng, last_fire_tick: 0, scoot_until: 0, resupplying: false, last_think: 0, last_contact: 0, contact_total: 0.0, contact_objective: None, storm: None, settled_at: None, patience, pillboys: true, skill: 1.0, unreachable_pillboxes: Vec::new(), unreachable_tiles: Vec::new(), grace: Grace::default(), hurt_by: Vec::new(), last_longshot: 0, works_hit: false, no_room: Vec::new(), form: Form::default(), landfall: None, landfall_shy: 0.0, landfall_wait: 0.0, standoff: None, standing: false, landfall_memory: 0.0, remembered: Vec::new(), beach_worth: Vec::new(), dodge: Dodge::default(), hop: hop::Hop::default(), hops: true, own_resupply: true, tactics: None, kites: false }
     }
 
     /// Hostile tanks kept where last seen, for `landfall_memory` seconds
@@ -881,8 +882,24 @@ impl RuleBot {
     /// tiles of error and no lead, and never storms. The squad and the
     /// standoff are kept: a rookie still plays the game, it plays it
     /// slowly.
+    /// Under half skill: no dodge, kite or storm, one interceptor up.
+    pub fn is_rookie(&self) -> bool {
+        self.skill < 0.5
+    }
+
+    /// The skill its aim is spoiled by: a Commander's doctrine (with
+    /// `tactics`) aims in full, its Commander spoiling every shot once
+    /// (`Commander::blunt`).
+    fn aim_skill(&self) -> f32 {
+        if self.tactics.is_some() {
+            1.0
+        } else {
+            self.skill.clamp(0.0, 1.0)
+        }
+    }
+
     pub fn rookie(seed: u64, name: &str) -> RuleBot {
-        RuleBot { rookie: true, ..RuleBot::new(seed, name) }
+        RuleBot { skill: 0.0, ..RuleBot::new(seed, name) }
     }
 
     /// The same doctrine without the squad: the control group.
@@ -1049,7 +1066,7 @@ impl RuleBot {
         }
         // Think four times a second; the world does not need more and the
         // host has three other bots to run.
-        let every = if self.rookie { TICK_HZ / 2 } else { TICK_HZ / 4 };
+        let every = TICK_HZ / 4 + ((1.0 - self.skill.clamp(0.0, 1.0)) * (TICK_HZ / 4) as f32).round() as u32;
         if obs.tick.saturating_sub(self.last_think) < every as Tick {
             return cmds;
         }
@@ -1113,11 +1130,11 @@ impl RuleBot {
         let our_jammer = |at: V2, margin: f32| obs.structures.iter().find(|x| x.kind == StructureKind::Jammer && x.working() && x.owner.map(|o| obs.allied(o)).unwrap_or(false) && x.pos.dist(at) <= JAMMER_RANGE + margin);
         let jammed_here = our_jammer(me.pos, me.bubble + 1.0);
         // A rookie's hangar opens late.
-        let late = self.rookie && obs.seconds() < ROOKIE_LATE;
+        let late = obs.seconds() < (1.0 - self.skill.clamp(0.0, 1.0)) * ROOKIE_LATE;
         let grounded = late || jammed_here.is_some();
 
         // 1. The bubble.
-        let want_station = if self.rookie { 1 } else if hostile_air > 0 { 4 } else { 2 };
+        let want_station = if self.is_rookie() { 1 } else if hostile_air > 0 { 4 } else { 2 };
         if my_interceptors < want_station && me.bay.interceptor > 0 && !grounded {
             cmds.push(Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return });
         }
@@ -1129,7 +1146,7 @@ impl RuleBot {
 
         // Out of the way of a shell coming down on us, or a jink when
         // hit; the rest of the think waits for the next.
-        if !self.rookie {
+        if !self.is_rookie() {
             if let Some(d) = self.dodge.order_on(obs, me, true, map) {
                 cmds.push(d);
                 self.settled_at = None;
@@ -1246,7 +1263,7 @@ impl RuleBot {
         // patience and the objective is in reach; off when the depot
         // is ours or the bot runs low (section 7 takes it home).
         let hostile_box = |p: &&Pillbox| p.alive() && !p.owner.map(|o| obs.allied(o)).unwrap_or(false);
-        if self.storm.is_none() && !self.rookie {
+        if self.storm.is_none() && !self.is_rookie() {
             let long_contact = self.contact_total >= patience * 2.0;
             if long_contact && me.pos.dist(objective) <= INDIRECT_MAX_RANGE {
                 self.storm = Some(objective);
@@ -1279,7 +1296,8 @@ impl RuleBot {
             let range = me.pos.dist(e.pos);
             if me.reload == 0 && me.shells > 0 && gun_target.is_none() {
                 if range <= DIRECT_RANGE {
-                    let aim = if self.rookie { e.pos } else { lead(me, e) };
+                    // The lead taken by skill (in full at 1).
+                    let aim = if self.aim_skill() >= 1.0 { lead(me, e) } else { e.pos + (lead(me, e) - e.pos).scale(self.aim_skill()) };
                     cmds.push(Command::FireDirect { at: aim });
                     self.last_fire_tick = obs.tick;
                 } else if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&range) {
@@ -1289,7 +1307,9 @@ impl RuleBot {
                     // fire at the tank itself.
                     let flight = range / SHELL_SPEED_INDIRECT;
                     let lead = V2::from_heading(e.heading).scale(e.speed * flight * 0.8);
-                    let aim = if self.rookie { e.pos + self.rng.disc().scale(ROOKIE_SCATTER) } else { e.pos + lead };
+                    // Under full skill, the lead shrinks and the aim
+                    // scatters (a rookie's: no lead, `ROOKIE_SCATTER`).
+                    let aim = if self.aim_skill() >= 1.0 { e.pos + lead } else { e.pos + lead.scale(self.aim_skill()) + self.rng.disc().scale((1.0 - self.aim_skill()) * ROOKIE_SCATTER) };
                     let aim = if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&me.pos.dist(aim)) { aim } else { e.pos };
                     cmds.push(Command::FireIndirect { at: aim });
                     self.last_fire_tick = obs.tick;
@@ -1438,7 +1458,7 @@ impl RuleBot {
             // 5b. A plain RuleBot kites (a Commander drives its own): in
             // to direct range while the target's gun is reloading, a
             // shot, and the standoff below takes it out again.
-            if self.kites && !self.rookie && self.tactics.is_none() {
+            if self.kites && !self.is_rookie() && self.tactics.is_none() {
                 let k = tactics::Tactician::default().kite(obs, me, e, (me.pos - e.pos).norm(), tactics::Stance::Engage, DIRECT_RANGE * 1.8);
                 if k.stepping_in {
                     cmds.push(Command::Move { to: k.to });

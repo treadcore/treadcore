@@ -958,6 +958,16 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     (scenarios take `pings` and `outscores`) is won 63.0% with the
     kite, 51.5% without; its numbers on a flat top, `kite_spare` 0
     64.0%. Floor 0.55.
+56. The bot skill dial. (21 October; cause: Paul, after the autopilot:
+    "the game is hard"; `--rookies` is a yes or no, and in a teamed
+    match, `make run`'s, it reached no bot.) Goal 4's either/or rule;
+    PLAYABILITY item 9. Hypothesis: one weight, `skill`, blending each
+    of a rookie's traits by how much, gives a dial whose win rate falls
+    steadily, with no default changed. Proof: the duel family swept
+    over the Commander's skill; every family's count unchanged at 1.
+    Cost: a step. State: done 21 October (LR 67): the duel 63% at 1,
+    52% at 0.75, 24.5% at 0.6, 7.8% at 0.5, 0 under; `--skill`,
+    `SKILL=`, the bots against the person only.
 
 ## Sequencing
 

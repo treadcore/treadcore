@@ -88,6 +88,10 @@ pub struct Args {
     /// How many of the bot seats are rookies (`--rookies N`,
     /// PLAYABILITY item 9): the first N after the people.
     pub rookies: usize,
+    /// How well the bots against the person play (`--skill 0..1`, the
+    /// brain's weight `skill`, LR 67): 1 in full, 0 a rookie's; the
+    /// person's allies always in full.
+    pub skill: f32,
     /// How many of the bot seats are wingmen (`--wingmen N`, step 11a):
     /// the first N after the people, each following the player, asking
     /// to join the player's side and fighting beside it.
@@ -139,6 +143,7 @@ fn parse_args() -> Args {
         industry: false,
         respawns: treadcore_sim::RESPAWNS_UNLIMITED,
         rookies: 0,
+        skill: 1.0,
         wingmen: 0,
         fleets: false,
         weights: None,
@@ -179,6 +184,7 @@ fn parse_args() -> Args {
                 }
             }
             "--rookies" => a.rookies = val().parse().unwrap_or(0),
+            "--skill" => a.skill = val().parse().unwrap_or(1.0),
             "--wingmen" => a.wingmen = val().parse().unwrap_or(0),
             "--fleets" => a.fleets = true,
             "--weights" => a.weights = Some(val()),
@@ -231,7 +237,7 @@ fn parse_args() -> Args {
             }
 
             "-h" | "--help" => {
-                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--wingmen N] [--fleets] [--weights FILE] [--style bulwark|strider|rattler] [--autopilot] [--plain-bots] [--speed 1|2|4] [--keys FILE] [--map FILE|island] [--industry] [--respawns N|unlimited] [--mute] [--write-sounds DIR]");
+                println!("treadcore [--solo | --lan] [--name N] [--game G] [--want N] [--peer HOST:PORT] [--introducer HOST:PORT] [--no-beacon] [--identity FILE] [--seed S] [--seconds N] [--window X,Y,W,H] [--swarm SECONDS] [--players 1..16] [--teams N] [--rookies N] [--skill 0..1] [--wingmen N] [--fleets] [--weights FILE] [--style bulwark|strider|rattler] [--autopilot] [--plain-bots] [--speed 1|2|4] [--keys FILE] [--map FILE|island] [--industry] [--respawns N|unlimited] [--mute] [--write-sounds DIR]");
 
 
                 std::process::exit(0);

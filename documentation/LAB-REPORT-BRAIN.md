@@ -3562,3 +3562,61 @@ says it is real.
 Proof: `make test`: brain 84 passed and 11 ignored; client 32; net 14;
 proto 3; sim 50. `make families`: eight families, each above its
 floor.
+
+## 67. The bot skill dial, 21 October
+
+Backlog 56. Paul, after watching the autopilot: "the game is hard".
+The only dial was `--rookies N`, a yes or no a bot, and it was read
+only where plain RuleBots are dealt: in a teamed match, which `make
+run` is (`--teams 3`), every bot is a team's Commander and `--rookies`
+reached none. The player guide's "start here" did nothing.
+
+**The weight** (goal 4's rule, every either/or a scalar): `skill` (1,
+today's bots). `RuleBot::rookie: bool` became `RuleBot::skill: f32`
+(`RuleBot::rookie` is skill 0), each of a rookie's traits by it:
+
+| Trait | At skill s | At 1 | At 0 (a rookie, as before) |
+| --- | --- | --- | --- |
+| A plain RuleBot's think | every quarter second plus (1 - s) of a quarter | 4 Hz | 2 Hz |
+| Drones | none before (1 - s) of `ROOKIE_LATE` (90 s) | at once | 90 s |
+| An indirect shell's aim | lead times s; off by up to (1 - s) of `ROOKIE_SCATTER` (4 tiles) | led | at the tank, 4 tiles |
+| A direct shot's aim | lead times s | led | at the tank |
+| Dodge, kite, storm; interceptors on station | off under 0.5; one under 0.5 | on; 2 to 4 | off; one |
+
+A Commander takes `skill` in `set_settings` (its doctrine's, its
+tactician's kite under 0.5, its dodge under 0.5) and spoils what it
+says at one place, after its think (`Commander::blunt`): every
+`FireIndirect` off by up to (1 - s) of 4 tiles, every `FireDirect` by
+a tenth of that, and every `Launch` held before (1 - s) of 90 s. Its
+doctrine aims in full (`RuleBot::aim_skill`), so a shot is spoiled
+once. At 1 nothing is touched: no random draw, no blend computed.
+Test: `skill_spoils_the_aim_and_holds_the_drones`.
+
+**The dial for a person**: `--skill` on the window, `SKILL=` on make,
+dealt to every bot not on the person's team (a teamed match), not of
+the person's fleet (`--fleets`), not a wingman; allies play in full.
+
+**The proof**: the duel family (LR 66) with the Commander's `skill`
+swept, 400 seeds each.
+
+| skill | 1 | 0.95 | 0.9 | 0.85 | 0.75 | 0.7 | 0.65 | 0.6 | 0.55 | 0.5 | 0.4, 0.25, 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Duels outscored | 63.0% | 70.8 | 62.0 | 67.8 | 52.0 | 43.2 | 38.0 | 24.5 | 14.2 | 7.8 | 0 |
+
+Flat within the noise from 1 to 0.85, then falling steadily to 0.5;
+under 0.5, with no dodge and no kite, a Commander never outscores a
+full RuleBot one on one, as `rookies_are_beatable` found of rookies
+against RuleBots. The useful range is 0.5 to 1. Two shapes tried on
+the way: a direct shot off by a quarter of the indirect scatter read
+the same at 0.75 (54.5%) as a tenth, so the tenth was kept (a direct
+shot at short range is the precise one); the doctrine's shot spoiled
+twice (its own scatter, then the Commander's) read 7.2% at 0.5, once
+7.8%, within the noise; once was kept, as the plainer rule.
+
+**Nothing changed at 1**: every family's count is the same to the seed
+(duel 252, islet 400, raid 342, the four dodges 1,000 each, the ready
+gun 834 of 1,000). Whether a person finds 0.6 right is a playtest's:
+a match at `--skill 0.6` was left open for Paul.
+
+Proof: `make test`: brain 85 passed and 12 ignored; client 32; net 14;
+proto 3; sim 50. `make families`: eight, each above its floor.

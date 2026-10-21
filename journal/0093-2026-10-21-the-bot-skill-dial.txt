@@ -1,0 +1,80 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 22 Oct 2026 03:30:00 -0700
+Subject: [JOURNAL 0093] The bot skill dial
+Message-ID: <0093.20261021@treadcore.org>
+In-Reply-To: <0092.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: difficulty, skill, rookies
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "bot skill dial. continue."
+X-Commits: 0240b1a (main, pushed); this entry's commit follows on main.
+           Journals 0091 and 0092 are on the branch proposal/upgrades.
+
+                          THE BOT SKILL DIAL
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    `skill`, 1 in full, 0 a rookie, for every bot against the person.
+    The duel: 63% at 1, 52% at 0.75, 24.5% at 0.6, 7.8% at 0.5.
+    Nothing changed at 1.
+
+I. INTRODUCTION
+
+    "bot skill dial. continue." Paul found the game hard.
+
+II. BACKGROUND
+
+    `--rookies N`, a flag a bot, read only for plain RuleBots.
+
+III. METHOD
+
+    A weight blending each rookie trait; the Commander spoiled at one
+    place; the duel family swept.
+
+IV. CHRONOLOGY
+
+    1. Found: in a teamed match, `make run`'s, `--rookies` reaches no
+       bot. The guide's "start here" did nothing.
+    2. `skill` in Settings; the RuleBot's traits blended or cut at 0.5.
+    3. `Commander::blunt`: shells off, drones held.
+    4. The sweep: a cliff at first look (63, 54.5, 7.8, 0). A direct
+       shot's scatter cut to a tenth: the same. The doctrine's scatter
+       doubled by the Commander's: made once; the same. Filled in, the
+       curve falls steadily from 0.85 to 0.5.
+    5. `--skill`, `SKILL=`; allies in full. The guide corrected.
+    6. Killing the old demo, `pkill -f` matched the shell's own command
+       line twice; the launch on its own.
+    7. A match at 0.6 left open for Paul.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 67. Tests: brain 85 passed, 12
+    ignored; client 32; net 14; proto 3; sim 50. Eight families,
+    their counts unchanged.
+
+VI. DISCUSSION
+
+    A dial built for one dealing was left behind when the dealing
+    changed. A weight read where every bot is made does not.
+
+VII. OPEN PROBLEMS
+
+    1. Whether 0.6 feels right: Paul's playtest.
+    2. The upgrades proposal: Paul's post, seven days.
+
+VIII. NEXT STEPS
+
+    1. Paul plays at 0.6.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 67; CI-036; build/logs/skill-demo-*.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

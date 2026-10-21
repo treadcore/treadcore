@@ -47,3 +47,5 @@ report is what ties a conversation to them. Named
 | [031](CI-031-2026-10-21-the-kite-counted.md) | 21 October 2026 | The kite counted | 0088 | LAB-REPORT-BRAIN.md section 65 |
 | [032](CI-032-2026-10-21-the-kites-hold-in-a-duel.md) | 21 October 2026 | The kite's hold in a duel | 0089 | LAB-REPORT-BRAIN.md section 66 |
 | [033](CI-033-2026-10-21-supply-traced.md) | 21 October 2026 | Supply traced: the upgrades proposal's trace 1 | 0090 | PROPOSAL-UPGRADES.md section 7 |
+| 034, 035 | 21 October 2026 | Upgrades prototyped; trace 2 at half the rates (on the branch `proposal/upgrades`) | 0091, 0092 | PROPOSAL-UPGRADES.md sections 8, 9 |
+| [036](CI-036-2026-10-21-the-bot-skill-dial.md) | 21 October 2026 | The bot skill dial | 0093 | LAB-REPORT-BRAIN.md section 67 |

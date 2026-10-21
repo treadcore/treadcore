@@ -271,7 +271,20 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
         .map(|i| {
             let seed = args.seed.wrapping_mul(31) ^ (i as u64 + 1) ^ round.wrapping_mul(0x9E37_79B9_7F4A_7C15);
             let n = (i - first_bot) as usize;
-            let b: Box<dyn Brain> = if args.fleets {
+            // `--skill` (LR 67): the bots against the person play at it;
+            // the person's allies and wingmen in full.
+            let ally = if args.fleets {
+                let t = treadcore_brain::fleet::teams();
+                t.get(i as usize) == t.get(me_player as usize)
+            } else if teamed {
+                team_of(i as usize).contains(&(me_player as usize))
+            } else {
+                n < args.wingmen
+            };
+            let skill = if ally { 1.0 } else { args.skill.clamp(0.0, 1.0) };
+            let mut s = treadcore_brain::fleet::settings();
+            s.w[treadcore_brain::weights::W::Skill] = skill;
+            let b: Box<dyn Brain> = treadcore_brain::fleet::with_settings(s, || -> Box<dyn Brain> { if args.fleets {
                 // A team led from a person's seat assists the person.
                 let (_, leader) = treadcore_brain::fleet::role(i as usize, true);
                 treadcore_brain::fleet::brain(i as usize, seed, leader < first_bot)
@@ -283,8 +296,10 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
             } else if n < args.wingmen + args.rookies {
                 Box::new(RuleBot::rookie(seed, "rookie"))
             } else {
-                Box::new(RuleBot::new(seed, "rulebot"))
-            };
+                let mut r = RuleBot::new(seed, "rulebot");
+                r.skill = skill;
+                Box::new(r)
+            } });
             (i, b)
         })
         .collect();

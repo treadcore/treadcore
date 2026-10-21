@@ -73,6 +73,7 @@ esac
 case "$MODE" in solo|lan|host|seat|listen) [ "${INDUSTRY:-0}" = 1 ] && ARGS+=(--industry) ;; esac
 case "$MODE" in solo|lan|host|listen) [ "${ROOKIES:-0}" != 0 ] && ARGS+=(--rookies "$ROOKIES") ;; esac
 case "$MODE" in solo|lan) [ "${WINGMEN:-0}" != 0 ] && ARGS+=(--wingmen "$WINGMEN") ;; esac
+case "$MODE" in solo|lan) [ -n "${SKILL:-}" ] && ARGS+=(--skill "$SKILL") ;; esac
 case "$MODE" in solo) [ "${FLEETS:-0}" != 0 ] && ARGS+=(--fleets) ;; esac
 say "$BIN ${ARGS[*]}  (log: $LOG)"
 

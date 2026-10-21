@@ -20,7 +20,8 @@
 #   make debug       bot-only match, RUST_LOG=trace, backtraces on, everything
 #                    captured under build/logs/ -- the trace for AI-assisted
 #                    development and debugging
-#   make run         the window, solo against fifteen bots (PLAYERS=4 for three)
+#   make run         the window, solo against fifteen bots (PLAYERS=4 for three;
+#                    SKILL=0.6 for weaker bots against you, 1 in full)
 #   make lan         the window, LAN lobby: waits for peers, elects a host
 #   make host        headless host on the LAN (plus bots for empty seats, PLAYERS)
 #   make seat        headless bot that joins a LAN lobby (run four: a test)
@@ -182,7 +183,7 @@ MAP      ?=
 # 1: give a map with no structures an economy (roadmap step 10f).
 INDUSTRY ?= 0
 REPLAY   ?=
-export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS ROOKIES WINGMEN FLEETS TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG LOBBIES
+export BUILDDIR LOGDIR GAME_SECONDS SEED NAME GAME WANT PEER PLAYERS DEFENDERS ROOKIES SKILL WINGMEN FLEETS TEAMS GAMETYPE MAP INDUSTRY JOBS VERBOSE LAG INTRODUCER BEACON IDENTITY REJOIN REJOIN_AFTER PORT LISTEN LISTEN_DIR LISTEN_LAG LOBBIES
 
 help:
 	@sed -n '/^#   make /,/^$$/p' Makefile | sed 's/^#//'

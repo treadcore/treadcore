@@ -6,6 +6,16 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the bot skill dial. `SKILL=0.6 make run` (`--skill 0..1` on the
+  window) makes the bots against you play at that share of full skill;
+  your allies play in full. Their shells land further off and lead you
+  less and their drones go up later as it falls; under 0.5 they stop
+  dodging and kiting. In a duel a full bot outscores its opponent 63%
+  of the time, one at 0.75 52%, at 0.6 25%, at 0.5 8% (LAB-REPORT-BRAIN.md
+  section 67).
+- Fixed: the player guide said `ROOKIES=15 make run` makes the bots
+  easier; with teams, `make run`'s default, it reached no bot.
+
 - Added: `fleet::tests::supply_trace` (ignored), trace 1 of the upgrades
   proposal: the proposal's supply paid from outside today's matches.
   48.8 supply a team-minute on naval.map, the first 60 at a median of

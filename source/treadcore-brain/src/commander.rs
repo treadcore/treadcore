@@ -484,8 +484,12 @@ impl Commander {
         self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold], s.w[W::DodgePlan], s.w[W::DodgeRelease], s.w[W::DodgeEvery], s.w[W::DodgeFire]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.
+        // How well it plays (LR 67): the doctrine's aim and drones, and
+        // under half skill no kite and no dodge.
+        self.inner.skill = s.w[W::Skill].clamp(0.0, 1.0);
         if let Some(t) = self.inner.tactics.as_mut() {
             t.w = crate::tactics::Tactics::from_weights(&s);
+            t.w.kite &= s.w[W::Skill] >= 0.5;
             t.base = self.base;
             t.confirm = s.smooth_on().then(|| (s.w[W::ConfirmTurret].round().clamp(1.0, 255.0) as u8, s.w[W::Margin]));
             t.smooth = s.smooth_on().then(|| (s.w[W::Beta], s.w[W::AdvanceBand]));
@@ -2369,7 +2373,28 @@ impl Commander {
                 crate::meter::kite(self.act);
             }
         }
+        if self.inner.skill < 1.0 {
+            self.blunt(obs, &mut cmds);
+        }
         cmds
+    }
+
+    /// Under full skill (LR 67), what the Commander says, made worse
+    /// where every path to the gun and the hangar meets: a shell's aim
+    /// off by up to (1 - skill) of a rookie's scatter (a direct shot a
+    /// quarter of that), and no drone up before (1 - skill) of a
+    /// rookie's 90 s.
+    fn blunt(&mut self, obs: &Observation, cmds: &mut Vec<Command>) {
+        let off = 1.0 - self.inner.skill.clamp(0.0, 1.0);
+        let held = obs.seconds() < off * crate::ROOKIE_LATE;
+        cmds.retain(|c| !(held && matches!(c, Command::Launch { .. })));
+        for c in cmds.iter_mut() {
+            match c {
+                Command::FireIndirect { at } => *at = *at + self.inner.rng.disc().scale(off * crate::ROOKIE_SCATTER),
+                Command::FireDirect { at } => *at = *at + self.inner.rng.disc().scale(off * crate::ROOKIE_SCATTER * 0.1),
+                _ => {}
+            }
+        }
     }
 }
 
@@ -2542,8 +2567,9 @@ impl Commander {
         // or a hop picks up again after.
         let mending = self.reviving.is_some() && matches!(me.pillboys.task, Some(PillboyTask::Repair { .. }));
         self.dodge.dropped = !self.dodges;
-        let dodge = self.dodge.order_on(obs, &me, !mending, map).filter(|_| self.dodges);
-        if dodge.is_some() || (self.dodges && self.dodge.holding(obs, &me)) {
+        let dodges = self.dodges && !self.inner.is_rookie();
+        let dodge = self.dodge.order_on(obs, &me, !mending, map).filter(|_| dodges);
+        if dodge.is_some() || (dodges && self.dodge.holding(obs, &me)) {
             cmds.extend(dodge);
             self.last_move = None;
             self.set_doing(Act::Dodge, "dodging".into());
@@ -2872,6 +2898,32 @@ impl Commander {
 mod tests {
     use super::*;
     use crate::fortify::TOWER_R;
+
+    /// LR 67: under full skill the Commander's shells land off its aim
+    /// and its drones wait; in full, nothing it says is touched; under
+    /// half, no kite.
+    #[test]
+    fn skill_spoils_the_aim_and_holds_the_drones() {
+        let w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let obs = w.observe(0);
+        let at = w.map.center();
+        let said = || vec![Command::FireIndirect { at }, Command::Launch { kind: DroneKind::Recon, task: DroneTask::Return }];
+        let mut c = Commander::new(17, "commander");
+        let mut s = crate::weights::Settings::default();
+        s.w[crate::weights::W::Skill] = 0.0;
+        c.set_settings(s.clone());
+        assert!(c.inner.is_rookie() && !c.inner.tactics.as_ref().unwrap().w.kite);
+        let mut cmds = said();
+        c.blunt(&obs, &mut cmds);
+        assert_eq!(cmds.len(), 1, "a rookie's drone went up at once: {:?}", cmds);
+        let Command::FireIndirect { at: off } = cmds[0] else { panic!("{:?}", cmds) };
+        assert!(off != at && off.dist(at) <= crate::ROOKIE_SCATTER);
+        s.w[crate::weights::W::Skill] = 1.0;
+        c.set_settings(s);
+        let mut cmds = said();
+        c.blunt(&obs, &mut cmds);
+        assert_eq!(cmds, said());
+    }
 
     /// Paul's castle in play (roadmap 12h): alone, the capped castle goes
     /// up with two pillboxes inside, the first outlying pillbox is carried

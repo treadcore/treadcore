@@ -14,7 +14,7 @@ make run                 # solo: the naval match, three teams, sixteen tanks
 MAP=island make run      # the generated island instead
 TEAMS=0 make run         # everyone alone
 PLAYERS=4 make run       # four tanks
-ROOKIES=15 make run      # against fifteen bots that play badly: start here
+SKILL=0.6 make run       # the bots against you weaker: start here
 make lan                 # a LAN game: waits for peers, elects a host
 ```
 
@@ -101,11 +101,20 @@ sit at the start and read this. The moment you drive or shoot, you
 have begun, and so have they. After the minute, a tank that stands
 still is found: move after you fire.
 
-**Rookies for a first match.** `ROOKIES=n make run` (or `treadcore
---solo --rookies n`) makes the first n bots rookies: no drones for a
-minute and a half and one interceptor after, shells that land a few
-tiles off and never lead you, and no storming of your depot. They
-still fight; they fight slowly. Lower the number as you win.
+**Easier bots for a first match.** `SKILL=0.6 make run` (or
+`treadcore --solo --skill 0.6`) makes every bot against you play at
+0.6 of full skill; your allies play in full. 1 is the bots as they
+are; 0 is a rookie. As skill falls the bots' shells land further off
+and lead you less, and their drones go up later; under 0.5 they stop
+dodging and kiting, keep one interceptor up and never storm your
+depot. Between 0.5 and 1 the dial is smooth: in a one-on-one duel
+against a full bot, a bot in full outscores it 63% of the time, one at
+0.75 52%, at 0.6 25%, at 0.5 8%, and under 0.5 never. Raise it as you
+win.
+
+`ROOKIES=n` makes the first n bots plain rookies, but only in a match
+without teams (`TEAMS=0 make run`); with teams every bot is dealt by
+its team, so use `SKILL` there.
 
 **Again.** When a solo match ends, the screen gives the scores, your
 kills and deaths, and how many rounds you have won of how many played.
