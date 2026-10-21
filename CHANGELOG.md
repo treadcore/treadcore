@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `fleet::tests::supply_trace` (ignored), trace 1 of the upgrades
+  proposal: the proposal's supply paid from outside today's matches.
+  48.8 supply a team-minute on naval.map, the first 60 at a median of
+  97 s (PROPOSAL-UPGRADES.md section 7).
+
 - Added: a scenario family of a duel in the open
   (`a-duel-in-the-open.toml`, floor 0.55): a Commander that rallies on
   a RuleBot 16 tiles off outscores it in 63.0% of 400 seeds with the

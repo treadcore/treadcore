@@ -1,0 +1,83 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 22 Oct 2026 00:30:00 -0700
+Subject: [JOURNAL 0090] Supply traced: the upgrades proposal's trace 1
+Message-ID: <0090.20261021@treadcore.org>
+In-Reply-To: <0089.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: upgrades, supply, proposal, trace
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "ok. nice. the game is hard. continue." and
+           his choice: "Goal 5: upgrades proposal"
+X-Commits: 5bc0faf (the last, pushed); this entry's commit follows
+
+                 SUPPLY TRACED: THE UPGRADES PROPOSAL'S TRACE 1
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    Goal 5, 11g. The proposal's supply paid from outside six bot-only
+    naval matches: 48.8 a team-minute, the first 60 at a median of 97
+    s, depots 60% of it, the leader's running away. Section 7 of the
+    proposal; the post drafted for Paul.
+
+INDEX TERMS
+
+    upgrades, supply, governance.
+
+I. INTRODUCTION
+
+    Paul watched the autopilot and found the game hard. Offered a
+    skill scalar, the territory read or the upgrades; he chose the
+    upgrades proposal.
+
+II. BACKGROUND
+
+    PROPOSAL-UPGRADES.md, 18 October: supply, sixteen upgrades, wire
+    17; two traces and seven days before acceptance.
+
+III. METHOD
+
+    Trace 1 needs no rule: pay from outside, count, compare with the
+    proposal's guesses.
+
+IV. CHRONOLOGY
+
+    1. `supply_trace`, a thread a seed; a 2-minute smoke run: kills
+       81% of the opening.
+    2. Six matches of up to 30 minutes, about 12 min to run.
+    3. Section 7 written; three overstated sentences corrected against
+       the log before commit.
+    4. The Discussion post drafted in build/supply/.
+
+V. RESULTS
+
+    PROPOSAL-UPGRADES.md section 7.
+
+VI. DISCUSSION
+
+    The guess was low. The first upgrade comes at a minute and a half,
+    and the winner can buy everything.
+
+VII. OPEN PROBLEMS
+
+    1. Trace 2 needs a prototype behind `Scenario::upgrades`.
+    2. The game is hard for a person (a skill scalar, deferred).
+    3. Backlog 52, allies' goals in a joining window (the wire).
+
+VIII. NEXT STEPS
+
+    1. Paul posts the proposal; seven days.
+    2. Meanwhile, the prototype for trace 2, off by default.
+
+APPENDIX B. ARTIFACTS
+
+    PROPOSAL-UPGRADES.md section 7; CI-033; build/supply/trace1.log;
+    build/supply/discussion-post.md.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

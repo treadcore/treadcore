@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-18 files, 398 functions (99 with no doc comment), 95 tests.
+18 files, 398 functions (99 with no doc comment), 96 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -15,7 +15,7 @@ structure as built is `checkins/`.
 | [`crew.rs`](#crewrs) | 584 | 18 | 0 | 1 | The fleet commander and its crews (Paul, 16 October: "each side has a fleet commander and they request and organize fort construction"). |
 | [`cycle.rs`](#cyclers) | 438 | 9 | 3 | 4 | The base cycle (roadmap step 12f1, LAB-REPORT-BRAIN.md section 6.1; Paul, 18 October: "after they fill up on base resources, add to the base 1 item, 1 improvement, and attempt to build roads to other established bases... |
 | [`facts.rs`](#factsrs) | 212 | 10 | 2 | 2 | What the map says, worked out once (roadmap steps 12b and 12f2, LAB-REPORT-BRAIN.md sections 5 and 6.2). |
-| [`fleet.rs`](#fleetrs) | 1184 | 20 | 2 | 8 | Fleets (Paul, 15 October: "can we start a game with ... 3 teams of base building, 5 on each, and 1 random aggro bot"): sixteen seats dealt into three teams of five neighbours round the map's edge and one RuleBot alone... |
+| [`fleet.rs`](#fleetrs) | 1314 | 20 | 2 | 9 | Fleets (Paul, 15 October: "can we start a game with ... 3 teams of base building, 5 on each, and 1 random aggro bot"): sixteen seats dealt into three teams of five neighbours round the map's edge and one RuleBot alone... |
 | [`fortify.rs`](#fortifyrs) | 676 | 25 | 3 | 2 | Fortification to a plan (roadmap step 11b): a castle's gate. |
 | [`hop.rs`](#hoprs) | 938 | 25 | 0 | 1 | Island hopping: a bot that has taken everything it can reach goes for what it cannot, across the water. |
 | [`intent.rs`](#intentrs) | 181 | 9 | 5 | 3 | Holding a decision (roadmap step 12d, LAB-REPORT-BRAIN.md section 7). |
@@ -279,7 +279,7 @@ Fleets (Paul, 15 October: "can we start a game with ... 3 teams of base building
 | 746 | `rung_line` |  |  | Seat-seconds a rung, in the ladder's order, for a census line. |
 | 753 | `killed_by` |  |  | What took a tank, read from the events of the tick it died in (backlog 28): the weapon whose hit names it, whether it sank in a boat, and whether the shooter was the lone RuleBot. |
 
-Tests (8):
+Tests (9):
 
 - `three_teams_of_five_and_one_alone` (line 278)
 - `a_fleet_match_plays_out` (line 297): A fleet match with no time limit is decided: one side is left inside half an hour.
@@ -289,6 +289,7 @@ Tests (8):
 - `quad_census` (line 519): The quad match headless (scripts/quad.sh): fifteen seats, three teams, each led by a window's autopilot (a fleet commander on Auto), respawns without limit.
 - `brain_census` (line 798): The brain census (roadmap 12a and 12g): sixteen seats dealt as `--fleets` deals them, one team on the trial settings and the other two on the baseline, the trial team turned round the three over the seeds so no start...
 - `three_fleets_build` (line 1133): Sixteen seats as the window deals them with `--fleets`, seat 0 on Auto as a person under the coordination screen would be.
+- `supply_trace` (line 1196): Trace 1 of PROPOSAL-UPGRADES.md section 6 (goal 5, 11g): supply counted and nothing bought.
 
 ## fortify.rs
 

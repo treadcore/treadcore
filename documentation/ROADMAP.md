@@ -435,7 +435,12 @@ asked for longer ones. Steps:
   supply's earning rates, sixteen upgrades with prices, `Command::Buy`
   and `PillboyTask::Install`, wire version 17, the proofs and the
   traces it needs); next, posted for its seven days, and the two traces
-  of its section 6.
+  of its section 6. Trace 1 run 21 October (its section 7,
+  `fleet::tests::supply_trace`): 48.8 supply a team-minute, the first
+  60 at a median of 97 s, depots 60% of it, the leader's running away;
+  the draft suggests halved rates and a bounty of 5. The post drafted
+  for Paul (CI-033). Trace 2 needs a prototype behind
+  `Scenario::upgrades`.
 
   | Upgrade | Levels | What it does | Bought |
   | --- | --- | --- | --- |

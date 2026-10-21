@@ -46,3 +46,4 @@ report is what ties a conversation to them. Named
 | [030](CI-030-2026-10-21-the-bottom-of-the-parts-table.md) | 21 October 2026 | The bottom of the parts table at 48 seeds | 0087 | LAB-REPORT-BRAIN.md section 64 |
 | [031](CI-031-2026-10-21-the-kite-counted.md) | 21 October 2026 | The kite counted | 0088 | LAB-REPORT-BRAIN.md section 65 |
 | [032](CI-032-2026-10-21-the-kites-hold-in-a-duel.md) | 21 October 2026 | The kite's hold in a duel | 0089 | LAB-REPORT-BRAIN.md section 66 |
+| [033](CI-033-2026-10-21-supply-traced.md) | 21 October 2026 | Supply traced: the upgrades proposal's trace 1 | 0090 | PROPOSAL-UPGRADES.md section 7 |

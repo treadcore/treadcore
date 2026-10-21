@@ -1181,4 +1181,134 @@ mod tests {
             }
         }
     }
+
+    /// Trace 1 of PROPOSAL-UPGRADES.md section 6 (goal 5, 11g): supply
+    /// counted and nothing bought. The default brain in every seat, the
+    /// naval map, `SUPPLY_SECS` (1,800) at most, `SUPPLY_RESPAWNS` (3),
+    /// `SUPPLY_SEEDS` (6) a thread each. Each team is paid from outside
+    /// the world at the proposal's rates (section 1.1): a live pillbox 1
+    /// and a depot 2 every 10 s, a powered structure 1 every 20 s, 10 a
+    /// hostile tank destroyed, 5 a hostile pillbox captured. Nothing in
+    /// the world reads it, so the match is today's. `cargo test -p
+    /// treadcore-brain --release -- --ignored supply_trace --nocapture`
+    #[test]
+    #[ignore]
+    fn supply_trace() {
+        use treadcore_sim::*;
+        let env = |k: &str, d: u64| std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(d);
+        let (seeds, secs, respawns) = (env("SUPPLY_SEEDS", 6), env("SUPPLY_SECS", 1800), env("SUPPLY_RESPAWNS", 3));
+        const SIDES: usize = 4;
+        const SOURCES: [&str; 5] = ["pillboxes", "depots", "structures", "kills", "captures"];
+        // A match: each side's supply by source, the second it first had
+        // 60 and 120 (the cheapest upgrade, and a second level), its
+        // supply at each 5 minutes, and how the match ended.
+        type Run = (u64, [[u32; 5]; SIDES], [[Option<u32>; 2]; SIDES], Vec<[u32; SIDES]>, u32, Option<TeamId>);
+        let runs: Vec<Run> = std::thread::scope(|sc| {
+            let hs: Vec<_> = (0..seeds)
+                .map(|n| {
+                    std::thread::Builder::new()
+                        .stack_size(256 << 20)
+                        .spawn_scoped(sc, move || {
+                            let seed = 0x7EAD_C0DE_u64 ^ (n * 0x9E37_79B9);
+                            let names: Vec<(String, bool)> = (0..SEATS).map(|i| (name(i), true)).collect();
+                            let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
+                            let sc = Scenario { seed, players: names, teams: Some(teams()), time_limit: 0, map, respawns: respawns as _, ..Scenario::default() };
+                            let mut w = World::new(sc);
+                            new_match();
+                            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS).map(|i| (i as PlayerId, brain(i, seed ^ i as u64, false))).collect();
+                            let team = teams();
+                            let side = |o: Option<PlayerId>| o.map(|p| team[p as usize] as usize);
+                            let mut got = [[0u32; 5]; SIDES];
+                            let mut first = [[None; 2]; SIDES];
+                            let mut every5 = Vec::new();
+                            while !w.over && w.tick < secs * TICK_HZ as Tick {
+                                let orders = crate::run_bots(&w, &mut bots);
+                                w.step(&orders);
+                                for e in &w.events {
+                                    match e {
+                                        Event::TankDestroyed { owner, by: Some(b), .. } if team[*b as usize] != team[*owner as usize] => got[team[*b as usize] as usize][3] += 10,
+                                        Event::PillboxCaptured { by, from: Some(f), .. } if team[*by as usize] != team[*f as usize] => got[team[*by as usize] as usize][4] += 5,
+                                        _ => {}
+                                    }
+                                }
+                                let t = w.tick / TICK_HZ as Tick;
+                                if w.tick % (10 * TICK_HZ as Tick) == 0 {
+                                    for p in w.pillboxes.iter().filter(|p| p.alive()) {
+                                        if let Some(s) = side(p.owner) {
+                                            got[s][0] += 1;
+                                        }
+                                    }
+                                    for d in &w.depots {
+                                        if let Some(s) = side(d.owner) {
+                                            got[s][1] += 2;
+                                        }
+                                    }
+                                    if w.tick % (20 * TICK_HZ as Tick) == 0 {
+                                        for x in w.structures.iter().filter(|x| x.powered) {
+                                            if let Some(s) = side(x.owner) {
+                                                got[s][2] += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                                if w.tick % TICK_HZ as Tick == 0 {
+                                    for s in 0..SIDES {
+                                        let sum: u32 = got[s].iter().sum();
+                                        for (k, at) in [60, 120].iter().enumerate() {
+                                            if first[s][k].is_none() && sum >= *at {
+                                                first[s][k] = Some(t as u32);
+                                            }
+                                        }
+                                    }
+                                    if t % 300 == 0 && t > 0 {
+                                        every5.push(std::array::from_fn(|s| got[s].iter().sum()));
+                                    }
+                                }
+                            }
+                            (n, got, first, every5, (w.tick / TICK_HZ as Tick) as u32, w.winning_team)
+                        })
+                        .unwrap()
+                })
+                .collect();
+            hs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        let mut total = [0u64; 5];
+        let (mut minutes, mut firsts, mut seconds_first) = (0f64, 0u32, Vec::new());
+        for (n, got, first, every5, ended, won) in &runs {
+            eprintln!("supply_trace: seed {}: over at {} s, won by {:?}", n, ended, won);
+            for s in 0..3 {
+                let sum: u32 = got[s].iter().sum();
+                eprintln!(
+                    "  team {}: {} supply, {:.1} a minute ({}); 60 at {}, 120 at {}; by 5 min: {}",
+                    s,
+                    sum,
+                    sum as f64 / (*ended as f64 / 60.0),
+                    SOURCES.iter().zip(got[s]).map(|(k, v)| format!("{} {}", k, v)).collect::<Vec<_>>().join(", "),
+                    first[s][0].map(|t| format!("{} s", t)).unwrap_or("never".into()),
+                    first[s][1].map(|t| format!("{} s", t)).unwrap_or("never".into()),
+                    every5.iter().map(|v| v[s].to_string()).collect::<Vec<_>>().join(" ")
+                );
+                for k in 0..5 {
+                    total[k] += got[s][k] as u64;
+                }
+                minutes += *ended as f64 / 60.0;
+                firsts += 1;
+                if let Some(t) = first[s][0] {
+                    seconds_first.push(t);
+                }
+            }
+        }
+        seconds_first.sort();
+        let all: u64 = total.iter().sum();
+        eprintln!(
+            "supply_trace: {} seeds, {:.1} supply a team-minute ({}); 60 reached by {} of {} teams, median at {} s; matches {:.1} min on average",
+            seeds,
+            all as f64 / minutes,
+            SOURCES.iter().zip(total).map(|(k, v)| format!("{} {:.0}%", k, 100.0 * v as f64 / all.max(1) as f64)).collect::<Vec<_>>().join(", "),
+            seconds_first.len(),
+            firsts,
+            seconds_first.get(seconds_first.len() / 2).copied().unwrap_or(0),
+            minutes / firsts.max(1) as f64
+        );
+    }
 }

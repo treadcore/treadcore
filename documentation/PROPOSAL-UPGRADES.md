@@ -2,8 +2,9 @@
 
 Status: drafted 18 October 2026 at Paul's request ("think of more base
 upgrades and ways for users to purchase them ... write the upgrades
-proposal"). Not yet posted for the seven days of discussion
-(GOVERNANCE.md section 5). Accepted, it becomes roadmap step 11g's
+proposal"). Trace 1 of section 6 run 21 October (section 7); a post
+for the seven days of discussion (GOVERNANCE.md section 5) drafted the
+same day, to be posted by Paul. Accepted, it becomes roadmap step 11g's
 build, in the sim, the wire, the window and the brain, in that order.
 
 It changes the rules and the wire, so it is a proposal and not a pull
@@ -153,3 +154,52 @@ and apply wherever the side has roads.
 1. A bot-only match of 16 seats on naval.map, 30 minutes, with supply counted and nothing bought. This shows the earning rate and when the first upgrade comes into reach.
 2. The same match with bots buying at `upgrade_vs_mend` 0.5. This compares match length, purchases by kind, and kills and deaths against the first.
 3. A playtest of the works tab, for whether the prices feel right.
+
+
+## 7. Trace 1, measured (21 October 2026)
+
+The proposal's earning, paid from outside the world, in today's
+matches (`fleet::tests::supply_trace`, ignored): the default brain in
+all sixteen seats, naval.map, 3 respawns, 30 minutes at most, six
+seeds. Nothing in the world reads the count, so these are today's
+matches, number for number (section 3).
+
+| Measure | Proposal's guess (1.1) | Measured |
+| --- | --- | --- |
+| Supply a team-minute | 12 to 50 | 48.8 on average; 7.3 to 92.5 by team |
+| The first 60 | between the second and fifth minute | every team (18 of 18), median 97 s |
+| By 5 minutes | | 98 to 284 a team |
+| By the match's end | | the winner 1,040 to 1,770; a side out early 134 to 196 |
+| Match length | 8 to 16 min | 18.0 min on average (16 to 23); none reached 30 |
+
+| Source | Share of all supply |
+| --- | --- |
+| Depots (2 every 10 s) | 60% |
+| Pillboxes (1 every 10 s) | 21% |
+| Kills (10) | 19% (81% in the first two minutes) |
+| Hostile pillboxes captured (5) | under 1% |
+| Powered structures (1 every 20 s) | 0% (naval.map has no industry) |
+
+**What it says, for the discussion:**
+
+1. **Supply comes too early and too much.** Every base and side
+   upgrade at every level costs 1,320; a winning side has 870 to 1,300
+   by the 15th minute, and the one match that ran past the 20th
+   passed it (1,442). Suggested: halve every earning rate (a pillbox 1 every 20
+   s, a depot 1 every 10 s), which should put the first 60 near the third
+   minute and the full list out of reach in an ordinary match.
+2. **Kills are the opening's income** (open question 2): 81% of the
+   first two minutes. A bounty of 5 keeps a kill worth something
+   without paying the first upgrade for the first fight.
+3. **The leader's supply runs away** (open question 3): in three of
+   six matches one side earned under a sixth of the winner's, and a
+   side reduced to its last tank earns nothing. Untested, but likely:
+   upgrades bought with it would harden the leader most. A catch-up price
+   (cheaper for the side with the least supply) has evidence for it.
+4. **Structures pay nothing on the naval map** (open question 1): the
+   question is the industry map's alone.
+
+Trace 2 (bots buying at `upgrade_vs_mend` 0.5) needs the build: a
+prototype behind `Scenario::upgrades`, off by default, is the way to
+run it before acceptance without changing a default match.
+
