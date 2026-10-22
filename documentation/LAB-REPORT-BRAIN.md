@@ -3711,3 +3711,54 @@ it, at a lean below zero inside the noise. Kept on, by Paul's rule of
 
 Proof: `make test`: brain 86 passed and 12 ignored; client 32; net 14;
 proto 3; sim 50. `make families`: nine, each above its floor.
+
+## 69. The dodge's SPSA point on today's brain, 21 October
+
+12g's tuning, backlog 23's open lead. LR 43's SPSA walk ended at
+`dodge_horizon` 2.05, `dodge_margin` 1.52, `dodge_clear` 3.73 (the
+defaults 4.0, 0.8, 2.5) and read +0.88 +/- 0.51 over 96 unseen seeds,
+1.74 errors: not promoted. The brain has changed since (the dodge's
+plan, LR 53; the kite, the duck, the posture, the held ground), so the
+point was read again on today's brain, on more seeds than before.
+
+**First, the families.** At the point the five dodge families hold:
+99.9 to 100%, and the ready gun 83.5% against 83.4% at the defaults.
+Nothing the dodge was built for breaks.
+
+**The rule, set before the run**: promoted only past two errors.
+
+**The census**: the fair census, trial the point, baseline the
+defaults; naval.map, 900 s, 3 respawns; fresh seeds 96 to 287 (none
+read before), four jobs of 48, a frozen binary (`build/lr69`).
+
+| 192 seeds | Difference a seat |
+| --- | --- |
+| Pooled | +0.25 +/- 0.32 (inside the noise, 0.79 errors) |
+| By job of 48 (seeds 96, 144, 192, 240 on) | +0.88 +/- 0.60, +0.56 +/- 0.65, -0.43 +/- 0.63, +0.00 +/- 0.69 |
+| Mean score a seat, by job | trial 9.02, 8.58, 8.05, 8.38; the rest 8.14, 8.02, 8.48, 8.38 |
+
+**The meter** (dodges summed over the four jobs; the rest is two
+teams, so a team's share is half):
+
+| Dodges, a team | Taken | Hit after | By the shell dodged | Killed |
+| --- | --- | --- | --- | --- |
+| Ashore, the point | 49,707 | 6,100 | 997 | 1,401 |
+| Ashore, the defaults | 26,092 | 5,345 | 316 | 1,398 |
+| Afloat, the point | 18,157 | 1,215 | 45 | 1,132 |
+| Afloat, the defaults | 10,217 | 1,000 | 36 | 899 |
+
+The point dodges about twice as often (the wider clear, 3.73, counts
+more shells a threat) and is hit by the shell it dodged three times
+as often (the shorter horizon, 2.05 s, starts later). Kills after a
+dodge are level ashore and a quarter higher afloat. Twice the dodging buys nothing the score
+sees; likely the extra dodges are of shells that would have missed
+(not measured).
+
+**The verdict**: not promoted; the defaults stay. One job of four
+read LR 43's +0.88 again; the other three read nothing. Either LR
+43's reading was chance (a 1.7-error reading comes about one time in
+twenty) or the brain's changes since took the gain away; this census
+cannot tell which, and either way the point is not worth promoting
+today. Backlog 23's lead is closed.
+
+Proof: `make test` and `make families` unchanged (no default moved).

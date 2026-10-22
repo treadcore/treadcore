@@ -1,0 +1,73 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 22 Oct 2026 08:00:00 -0700
+Subject: [JOURNAL 0095] The dodge's SPSA point on today's brain
+Message-ID: <0095.20261021@treadcore.org>
+In-Reply-To: <0094.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: tuning, SPSA, the dodge, census
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompt: "continue with 12g tuning"
+X-Commits: d930513 (the last, pushed); this entry's commit follows
+
+               THE DODGE'S SPSA POINT ON TODAY'S BRAIN
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    LR 43's SPSA point for the dodge, read again on today's brain over
+    192 fresh seeds: +0.25 +/- 0.32. Not promoted; the lead closed.
+
+I. INTRODUCTION
+
+    "continue with 12g tuning". The strongest open lead first: LR
+    43's point, 1.74 errors over 96 seeds.
+
+II. BACKGROUND
+
+    LR 40 to 43: SPSA on the paired census. The planted test partly
+    passed; the dodge's walk ended at horizon 2.05, margin 1.52,
+    clear 3.73.
+
+III. METHOD
+
+    The five dodge families at the point; then the fair census, 192
+    fresh seeds in four jobs; the rule set before: past two errors.
+
+IV. CHRONOLOGY
+
+    1. Families: 99.9 to 100%; the ready gun 83.5% against 83.4%.
+    2. The census, about two hours: +0.88, +0.56, -0.43, +0.00 by job.
+    3. Pooled +0.25 +/- 0.32, 0.79 errors. Not promoted.
+    4. The meter: the point dodges twice as often, is hit by the shell
+       it dodged three times as often, for no score.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 69. No default moved.
+
+VI. DISCUSSION
+
+    Chance or a changed brain; the census cannot say which. The dodge's
+    numbers sit on a flat. At 48 seeds the census cannot see a lead
+    under about a point a seat.
+
+VII. OPEN PROBLEMS
+
+    1. The upgrades proposal: Paul's post, seven days.
+    2. Tuning wants a measure nearer the part, or a part worth more.
+
+VIII. NEXT STEPS
+
+    1. Paul's choice of the next step.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 69; CI-038; build/lr69.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

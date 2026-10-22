@@ -391,7 +391,8 @@ deaths halved. The memory carries it, and each of the other two adds
 (37, LR 37). On by default (LR 38); the reverse census reads even;
 with every team on them the deaths move ashore, into the dodge, and
 the matches run longer (38, LR 39). The dodge's numbers by SPSA (23,
-LR 43): +0.88 +/- 0.51 over 96 unseen seeds, not promoted. Scenarios
+LR 43): +0.88 +/- 0.51 over 96 unseen seeds, not promoted; on today's
+brain over 192 fresh seeds +0.25 +/- 0.32, the lead closed (LR 69). Scenarios
 (24, LR 48 to 52) test a behaviour in seconds; over many seeds they
 found the circle at the edge of sight (LR 50) and a dodge into water
 (LR 52). The dodge planned by the tank's own motion (44, LR 53):
@@ -606,7 +607,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     margin 1.52, clear 3.73 reads +1.24 +/- 0.75 on 48 unused seeds,
     promising, not confirmed. The second fixed batch (seeds 48 to 95):
     +0.53 +/- 0.69; the 96 pooled +0.88 +/- 0.51, 1.74 errors. Not
-    promoted; the defaults stay. Done: SPSA built and tried.
+    promoted; the defaults stay. Done: SPSA built and tried. Read
+    again 21 October on today's brain (LR 69), 192 fresh seeds:
+    +0.25 +/- 0.32, 0.79 errors; the point dodges twice as often for
+    nothing the score sees. Not promoted; the lead closed.
 24. Scenario files: a playtest described in text and run headless at
     85x. (18 October; cause: Paul, "is there a way to create description
     and try to attempt these via playtests faster".) Goal 4; goal 1.
