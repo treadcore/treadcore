@@ -68,7 +68,8 @@
 #                    each held to its floor (SET="w=v" to break one).
 #   make census      one brain against another over the fair census, its
 #                    seeds split over JOBS, pooled overall and by map
-#                    (scripts/census.sh; TRIAL, BASE, SEEDS, SEED0, MAP=all)
+#                    (scripts/census.sh; TRIAL, BASE, SEEDS, SEED0, MAP=all;
+#                    RESUME=build/census/STAMP finishes a stopped one)
 #   make parts       each part off from the brain with every part on, by
 #                    the census (scripts/parts.sh; PARTS, SEEDS, JOBS)
 #   make spsa        tune named weights by SPSA over the paired census

@@ -997,6 +997,39 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Cost: a step. State: done 21 October (LR 68): `w_defend_ground` 1;
     the family 100% against 0% at 0; the census -0.36 +/- 0.27; the
     guarded-base raid 85.5% to 81.8%, above its floor.
+58. A dedicated census machine. (22 October; cause: LR 71, 3.4
+    CPU-hours run in 2 h 45 min at a third of a core a job; Paul, "I
+    can put you on a server".) Goal 4, 12g. Hypothesis: a census needs
+    cores only (5 MB a job), so a many-core machine makes a 200-seed
+    reading on every map an hour's work. Proof: LR 71's census again
+    on the machine, its time against the estimate (LR 72). Cost: the
+    setup. State: the manual (`CENSUS.md`), `RESUME=` and `run.env`,
+    `JOBS` from `nproc`, `CLAUDE.md` for a session on the machine,
+    done 22 October (LR 72); the machine itself waits on Paul.
+59. Read sooner: a sequential census. (22 October; cause: LR 72, the
+    dodge was settled by seed 20 of 176.) Goal 4, 12g. Hypothesis: a
+    sequential test (stop when the reading passes a bound, as chess
+    engines' testing frameworks do) spends seeds on close calls only,
+    and the rule set first stays honest. Proof: replayed on LR 63 and
+    LR 71's logs, it reaches their verdicts with fewer seeds. Cost: a
+    step. State: idea.
+60. Profiles and their round robin. (22 October; cause: Paul, "we can
+    have competitions, and variations of game attitudes and game play
+    style ... profiles in a rock paper scissors like game. Cause there
+    is no single method that works".) Goal 4, 12h; goal 5. Hypothesis:
+    four profiles as weights files (Turtle, Raider, Expander, Navy)
+    are not ordered: the round robin's payoff matrix has a cycle past
+    two errors on some maps. Proof: `make census` for each ordered
+    pair, `MAP=all`, the matrix with its errors; a three-way census
+    (three brains, one a team) as a second form. Cost: 12 censuses,
+    about 3 h on the machine. State: idea (LR 72).
+61. Rotation as a meta-strategy. (22 October; cause: Paul, "Perhaps a
+    rotation to strategies is even a meta strategy".) Goal 4, 12h.
+    Hypothesis: a brain that mixes the profiles by the matrix's solved
+    shares (between matches), or switches on what it reads of the
+    opponent (within one), ties or beats every fixed profile. Proof:
+    one more row in 60's matrix. Cost: a step after 60. State: idea
+    (LR 72).
 
 ## Sequencing
 

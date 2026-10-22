@@ -508,6 +508,7 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/MAPS.md | the map file format; converting prior-art maps |
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
 | documentation/LAB-REPORT-BRAIN.md | the bot AI: the baseline of 17 October (section 2, archived), the research, the step 12 design, the record of building it (sections 11 to 19, 21 to 24) and the brain now (section 20) |
+| documentation/CENSUS.md | the brain census: running, reading and resuming it, and a dedicated machine for it |
 | documentation/BRAIN-MAP.md | every brain file and function with its doc comment's first sentence, written by `make brainmap` |
 | documentation/checkins/ | check-in reports in IEEE form: the prompts, the decisions they caused, methods, results (CI-001: each switch alone, the posture, a review of the brain) |
 | documentation/PROPOSAL-UPGRADES.md | the proposal for roadmap 11g: supply, sixteen upgrades and how they are bought (18 October 2026) |

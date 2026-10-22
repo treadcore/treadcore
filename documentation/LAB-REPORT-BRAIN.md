@@ -3886,3 +3886,166 @@ the census's one map did not overstate the dodge.
 Proof: the census code is the tests' (`brain_census`, ignored);
 `CENSUS_MAP` unset plays `gen` as before; a frozen binary built from
 the tree as committed.
+
+## 72. The method, a machine for it, and competitions, 22 October
+
+Not a census but a look at the method that produced the last 71
+sections, written as the census moves to a dedicated machine. The
+manual is `CENSUS.md`; this section is the method and what the
+machine opens.
+
+### The method: directed changes, Monte Carlo tests
+
+The brain is not evolved at random. Each change is **directed**: a
+reading names a cause and a part is built against it. LR 27 found the
+dodge was the code held last at 43% of deaths; LR 29 to 53 built and
+measured the dodge; LR 71 showed it holds on every map. Each change is
+**tested by Monte Carlo**: random seeded matches, each seed played
+with both brains on the same start, the difference averaged over
+seeds with its standard error. Each test asks one question: is this
+brain better than that one, and by how much, past the noise?
+
+```
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ 1. OBSERVE   the meter, CENSUS_ACTS, a family, a playtest, Paul  │
+  │              (where the time goes, what kills, what looks wrong) │
+  └───────────────────────────────┬──────────────────────────────────┘
+                                  ▼
+  2. HYPOTHESIS  a cause, a part to answer it; the rule that would
+                 confirm it, written before any run
+                                  ▼
+  3. DIRECTED    the part built as a weight (either/or is a scalar)
+     CHANGE      and a Caps switch, on by default, old way one switch
+                 away
+                                  ▼
+  4. FAMILY      a scenario family: does it do what it was built for,
+                 over its seeds, held to a floor? ──── no ──► back to 3
+                                  ▼ yes
+  5. CENSUS      Monte Carlo, paired:
+                   seed ──► 3 matches (each team in the trial seat)
+                        ──► Δ = trial − baseline, a seat
+                   mean Δ ± SE over seeds, overall and by map,
+                   on a frozen binary, JOBS at once
+                                  ▼
+  6. VERDICT     against the rule from 2:
+                   past +2 SE ───► keep; a default
+                   inside ───────► keep if cheap (features on),
+                                   else withdraw
+                   past −2 SE ───► fix (back to 3) or switch off
+                                  ▼
+  7. TUNE        SPSA on the part's weights over the paired census;
+                 a point promoted only past 2 SE on fresh seeds
+                                  ▼
+  8. RECORD      LR section, check-in, journal, roadmap, changelog
+                                  │
+                                  └──► new readings, new questions ──► 1
+```
+
+What 71 sections taught about the loop:
+
+- **Most parts are small.** Of the parts table (LR 63), only the dodge
+  read past two errors at 12 seeds. A half point a seat needs about
+  200 seeds (LR 24). The dodge, at +5.94, was settled by seed 30.
+- **The tuner finds noise unless the test is strict.** LR 41's planted
+  test failed. LR 69 read LR 43's promising point again on 192 fresh
+  seeds and found nothing. Promotion needs fresh seeds and two errors.
+- **One map can mislead.** Until LR 71 every census was naval.map. The
+  dodge happened to be mid-table there, but on its least favourable
+  map it reads under half its pooled value. `MAP=all` is now the
+  default question.
+- **The rule written first** keeps a reading honest when it comes in
+  near the line (fortressisles2, 1.99 errors).
+
+### The cost, and the machine
+
+LR 71's census was 528 matches of 900 s on eleven maps: 3.4 CPU-hours,
+23 s of CPU a match. It took 2 h 45 min in the guest VM because each of
+its four jobs had a third of a core. The memory it needs is about 5 MB
+a job. The census wants cores and nothing else.
+
+| Machine | Cores at work | LR 71's census | Backlog 22 (6,600 matches) |
+| --- | --- | --- | --- |
+| The guest VM, as LR 71 ran | ~1.2 | 2 h 45 min (measured) | about 1.5 days |
+| The guest VM, its cores fed | 4 | about 50 min | about 10 h |
+| A dual-socket server, 48 threads (to be confirmed) | ~20 core-equivalents | about 10 to 15 min | about 2 h |
+
+The last two rows are estimates from the measured CPU-hours. A census
+run on the new machine will replace them.
+
+**The milestone.** With a machine of its own, a census stops being a
+night's wait. A 200-seed reading on every map, the bar for a half
+point, takes an hour, not a day. The switch census (backlog 22), SPSA
+on every map, and the round robins below become routine.
+
+**Resuming.** A census stopped part-way is finished by
+`RESUME=build/census/STAMP make census` (`scripts/census.sh`, its
+settings in the run's `run.env`). A job whose log never reached `test
+result: ok` is played again whole on the same binary. Checked: a
+2-seed census with one job's ending removed, resumed, replayed that
+job line for line as it first played (timings apart). `JOBS` now
+defaults to the machine's cores. `CLAUDE.md` at the top of the tree
+carries the working rules, so a session on the new machine resumes
+from a clone (CENSUS.md section 4 has the prompt).
+
+### Competitions: profiles, rock-paper-scissors, rotation
+
+The census compares two weights files, and nothing requires one of
+them to be the defaults. A **profile** is a weights file with a
+character. Every behaviour is already a weight (either/or is a
+scalar), so a style of play is a point in that space:
+
+- **Turtle**: Fortify and Turrets first, the capped castle, the guard
+  at home; slow to Expand.
+- **Raider**: Hunt and the push leaned to the front; presses at lower
+  odds; few works.
+- **Expander**: takes ground, roads and depots first; fights for what
+  it holds (the territory read).
+- **Navy**: crosses early and lands where the guns are not (the
+  landfall weights, the island site).
+
+The weights that make each are chosen from `weights.rs` when the
+profile is built. None exists yet.
+
+**No single method works** if the profiles are not ordered: Turtle
+beats Raider, Raider beats Expander, Expander beats Turtle. The
+census measures this directly. In a round robin, each ordered pair
+(A in the trial seat, B the baseline) on every map gives a payoff
+matrix M[A][B] = Δ ± SE:
+
+```
+               vs Turtle   vs Raider   vs Expander   vs Navy
+  Turtle           0          M_TR        M_TE         M_TN
+  Raider         M_RT          0          M_RE         M_RN
+  Expander       M_ET        M_ER          0           M_EN
+  Navy           M_NT        M_NR        M_NE           0
+```
+
+- **Transitive** if one rating orders it: then there is a best
+  profile, and tuning should climb toward it.
+- **Rock-paper-scissors** if it has a cycle past two errors, A > B >
+  C > A. Then no profile is best, only best against something.
+- The matrix also differs by map. A profile's strength there is a
+  property of the map, which is a reason the census keeps by-map
+  readings.
+
+**Rotation as a meta-strategy.** In a game with a cycle, the best a
+side can do without knowing its opponent is to mix: play each profile
+some share of the time, the shares solved from the matrix (its Nash
+equilibrium, by linear programming or fictitious play). Rotation is
+that mix made into a brain, in two forms:
+
+1. **Between matches:** draw the profile by the solved shares. Nobody
+   can prepare against it, and the census measures it as one brain.
+2. **Within a match:** read what the opponent is (the board already
+   holds its posture, its front and its works) and switch to what
+   beats it. The posture (LR 25) is a first, fixed form of this.
+
+Both are testable the same way as everything else: a rotating brain is
+one more row in the matrix. The hypothesis to beat is that it ties or
+beats every fixed profile across the maps. A competition is then a
+league table over the matrix. The census already plays one; it needs
+the profiles and the machine.
+
+The machine and resuming are done (backlog 58). Faster reading
+(backlog 59), the profiles and their round robin (60), and rotation
+(61) are open in ROADMAP.md.

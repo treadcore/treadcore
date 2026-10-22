@@ -1,0 +1,83 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Thu, 22 Oct 2026 11:00:00 -0700
+Subject: [JOURNAL 0098] The method, a machine for it, and competitions
+Message-ID: <0098.20261022@treadcore.org>
+In-Reply-To: <0097.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: census, compute, resume, profiles, rock-paper-scissors
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompts: "what other backlog itmes need. should we
+           be testing this on the mac side. seems we are ram and cpu
+           limted ..."; "its a dual socket supermicro server board";
+           "update section 71 with the final numbers and push. WRite
+           a lab writeup ... So now we can have competitions ..."
+X-Commits: db2a658; this entry's commit follows
+
+               THE METHOD, A MACHINE FOR IT, AND COMPETITIONS
+
+                     Paul Richeson, treadcore.org
+                           22 October 2026
+
+
+ABSTRACT
+
+    LR 71 final: +5.94 +/- 0.38 over 176 seeds. The census costs
+    cores, not memory: 3.4 CPU-hours, 5 MB a job, a third of a core
+    each in the VM. A manual, RESUME, and CLAUDE.md ready it for a
+    dedicated machine. LR 72 draws the method and opens competitions.
+
+I. INTRODUCTION
+
+    Paul offered a server or a new PC and asked what would speed the
+    census. Measured first: the VM starved it of CPU.
+
+II. BACKGROUND
+
+    LR 14 the fair census, LR 24 the noise, LR 41 the frozen binary,
+    LR 71 every map.
+
+III. METHOD
+
+    ps and free during the run; pool.sh at its end; a 2-seed census
+    stopped and resumed, its logs compared.
+
+IV. CHRONOLOGY
+
+    1. The census ended overnight: pooled.txt, 176 seeds.
+    2. RAM 5 MB a job; CPU a third of a core a job.
+    3. "DDR2, 48 threads" does not fit two sockets: asked for lscpu.
+    4. LR 71 final; the meter recounted (the end summaries had
+       doubled it). Pushed.
+    5. RESUME and run.env in census.sh; JOBS from nproc; checked
+       deterministic on resume.
+    6. CENSUS.md, CLAUDE.md, LR 72 with the loop drawn, backlog 58
+       to 61.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md sections 71 and 72; CI-041.
+
+VI. DISCUSSION
+
+    The method is directed changes tested by paired Monte Carlo.
+    With a machine, the question can move from "is this part worth
+    anything" to "which style beats which".
+
+VII. OPEN PROBLEMS
+
+    1. The server's real core count, and LR 71 timed on it.
+    2. Read sooner (59); profiles (60); rotation (61).
+
+VIII. NEXT STEPS
+
+    1. The machine set up by CENSUS.md section 5.
+
+APPENDIX B. ARTIFACTS
+
+    CENSUS.md; CLAUDE.md; scripts/census.sh; LAB-REPORT-BRAIN.md
+    section 72; CI-041.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

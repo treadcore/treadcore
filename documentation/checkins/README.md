@@ -53,3 +53,4 @@ report is what ties a conversation to them. Named
 | [038](CI-038-2026-10-21-the-dodges-spsa-point.md) | 21 October 2026 | The dodge's SPSA point on today's brain | 0095 | LAB-REPORT-BRAIN.md section 69 |
 | [039](CI-039-2026-10-21-the-brain-documented.md) | 21 October 2026 | The brain documented | 0096 | LAB-REPORT-BRAIN.md section 70 |
 | [040](CI-040-2026-10-21-the-dodge-on-every-map.md) | 21 October 2026 | The dodge on every map | 0097 | LAB-REPORT-BRAIN.md section 71 |
+| [041](CI-041-2026-10-22-the-method-and-a-machine.md) | 22 October 2026 | The method, a machine for it, and competitions | 0098 | LAB-REPORT-BRAIN.md section 72 |

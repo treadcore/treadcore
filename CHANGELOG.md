@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `RESUME=build/census/STAMP make census` finishes a stopped
+  census on its own binary and settings (`run.env`); `JOBS` defaults to
+  the machine's cores. `documentation/CENSUS.md`, the census's manual,
+  and `CLAUDE.md`, the working rules for an agent on a new machine
+  (LAB-REPORT-BRAIN.md section 72).
+
 - Added: the census on every map. `make census` plays one brain
   against another (`TRIAL`, `BASE`) over the fair census, its seeds
   split over `JOBS`, pooled overall and by map; `MAP` takes a list of
