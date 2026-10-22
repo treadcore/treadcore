@@ -52,6 +52,7 @@ pub enum Role {
 }
 
 impl Role {
+    /// The role in a word, for the status line and the logs.
     pub fn word(self) -> &'static str {
         match self {
             Role::Leader => "leader",
@@ -205,6 +206,8 @@ pub fn name(seat: usize) -> String {
     }
 }
 
+/// The seat is in seat 0's team, which the roster names as a person's to
+/// lead (a window deals it so).
 fn seat_zero_team(seat: usize) -> bool {
     TEAMS[0].contains(&seat)
 }

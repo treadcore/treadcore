@@ -27,10 +27,12 @@ impl<T> Default for Forget<T> {
 }
 
 impl<T: PartialEq + Copy> Forget<T> {
+    /// Nothing remembered; each memory kept `keep` ticks (`NEVER`: for good).
     pub fn new(keep: Tick) -> Self {
         Forget { items: Vec::new(), keep }
     }
 
+    /// A memory put at `at` is still kept at `now`.
     fn live(&self, at: Tick, now: Tick) -> bool {
         self.keep == NEVER || now < at.saturating_add(self.keep)
     }
@@ -57,10 +59,12 @@ impl<T: PartialEq + Copy> Forget<T> {
         }
     }
 
+    /// Forget everything.
     pub fn clear(&mut self) {
         self.items.clear();
     }
 
+    /// Forget `x` now, its time up or not.
     pub fn remove(&mut self, x: &T) {
         self.items.retain(|(y, _)| y != x);
     }
@@ -70,6 +74,7 @@ impl<T: PartialEq + Copy> Forget<T> {
         self.items.len()
     }
 
+    /// Nothing held (old ones included, as `len`).
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }

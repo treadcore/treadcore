@@ -633,7 +633,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     the tests done 20 October (LR 60), each failing broken; crew.rs,
     hop.rs and board.rs documented, 99 of 392 functions left without a
     doc comment (`commander.rs` 23, `lib.rs` 21, `weights.rs` 14 the
-    most).
+    most). Done 21 October (LR 70): the other 71
+    documented; 29 trait methods listed as their trait's
+    (`brainmap.py`); 0 of 403 without a doc comment.
 27. Which rungs the posture's lean moves. (18 October; cause: LR 25,
     leaning the ladder reads -0.93 +/- 0.49 in both forms of the
     posture.) Goal 4, 12e. Hypothesis: Economy, read 37% of the time

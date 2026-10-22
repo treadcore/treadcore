@@ -66,6 +66,7 @@ impl Cycle {
         self.was_home = resupplying;
     }
 
+    /// Start a cycle at its first stage, the item.
     pub fn begin(&mut self, now: Tick) {
         self.stage = Stage::Item;
         self.since = now;
@@ -73,10 +74,12 @@ impl Cycle {
         self.out = false;
     }
 
+    /// A cycle is under way.
     pub fn active(&self) -> bool {
         self.stage != Stage::Idle
     }
 
+    /// On to the next stage (item, improvement, connection, then idle).
     fn advance(&mut self, now: Tick) {
         self.stage = match self.stage {
             Stage::Idle => Stage::Idle,

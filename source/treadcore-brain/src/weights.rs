@@ -34,15 +34,19 @@ macro_rules! weights {
 
         impl W {
             pub const ALL: &'static [W] = &[$(W::$id,)*];
+            /// The weight's name in a weights file and on a slider.
             pub fn name(self) -> &'static str {
                 match self { $(W::$id => $name,)* }
             }
+            /// The weight's default, the brain's as shipped.
             pub fn default_value(self) -> f32 {
                 match self { $(W::$id => $default,)* }
             }
+            /// The weight's doc line: what it does, and why its default.
             pub fn doc(self) -> &'static str {
                 match self { $(W::$id => $doc,)* }
             }
+            /// The weight of that name, if any.
             pub fn by_name(name: &str) -> Option<W> {
                 match name { $($name => Some(W::$id),)* _ => None }
             }
@@ -260,12 +264,15 @@ impl Default for Caps {
 }
 
 impl Caps {
+    /// Every bit of `c` is on.
     pub fn has(self, c: Caps) -> bool {
         self.0 & c.0 == c.0
     }
+    /// These, and `c` on.
     pub fn with(self, c: Caps) -> Caps {
         Caps(self.0 | c.0)
     }
+    /// These, and `c` off.
     pub fn without(self, c: Caps) -> Caps {
         Caps(self.0 & !c.0)
     }
@@ -273,6 +280,7 @@ impl Caps {
     pub fn all() -> Caps {
         Caps(Caps::NAMES.iter().fold(0, |a, (_, c)| a | c.0))
     }
+    /// The capability of that name, as a weights file spells it.
     pub fn by_name(name: &str) -> Option<Caps> {
         Caps::NAMES.iter().find(|(n, _)| *n == name).map(|(_, c)| *c)
     }
@@ -440,6 +448,8 @@ pub enum Curve {
 }
 
 impl Curve {
+    /// The curve at `x`, clamped to 0..1 both ways; a value that is not
+    /// finite reads 0.
     pub fn eval(self, x: f32) -> f32 {
         let x = x.clamp(0.0, 1.0);
         let y = match self {

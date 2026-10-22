@@ -40,7 +40,11 @@ pub use commander::{Commander, Goal, Rung};
 // Send + Sync so a seat's Brain can live in a Bevy resource; JsonBrain keeps
 // its receiver behind a Mutex for the same reason.
 pub trait Brain: Send + Sync {
+    /// The seat's name, as the scoreboard and the logs show it.
     fn name(&self) -> &str;
+    /// One tick's orders for the seat from what it can see: called
+    /// every tick the tank is alive (`run_bots`); a brain that thinks
+    /// less often answers with nothing in between.
     fn think(&mut self, obs: &Observation) -> Vec<Command>;
     /// `think` with the map (the host's world map, or a window's copy):
     /// public, as every window draws it, and what plans a bridge or a
@@ -83,7 +87,6 @@ pub trait Brain: Send + Sync {
     }
 }
 
-/// Run every bot seat for one tick.
 /// A person took a bot's seat (roadmap step 8): that bot stops, from the
 /// tick the world said so.
 pub fn retire_taken(bots: &mut Vec<(PlayerId, Box<dyn Brain>)>, events: &[Event]) {
@@ -94,6 +97,9 @@ pub fn retire_taken(bots: &mut Vec<(PlayerId, Box<dyn Brain>)>, events: &[Event]
     }
 }
 
+/// Run every bot seat for one tick: each seat's own Observation, a
+/// `think_on` with the world's map if alive, `dead` and a respawn when
+/// due if not. The orders in seat order; the time spent to the meter.
 pub fn run_bots(world: &World, bots: &mut [(PlayerId, Box<dyn Brain>)]) -> Vec<Order> {
     let started = std::time::Instant::now();
     let mut out = Vec::new();
@@ -145,6 +151,8 @@ struct Grace {
 }
 
 impl Grace {
+    /// Note every hostile tank seen below full fuel or reloading: it
+    /// has moved or fired. Nothing to note after the first minute.
     fn update(&mut self, obs: &Observation) {
         if obs.tick >= GRACE_SECONDS as Tick * TICK_HZ as Tick {
             return;
@@ -357,6 +365,8 @@ impl Dodge {
         }
     }
 
+    /// The dodge's order this tick, if any: out of a seen shell's way,
+    /// or a jink after a hit. As `order_with`, jinking.
     pub fn order(&mut self, obs: &Observation, me: &Tank) -> Option<Command> {
         self.order_with(obs, me, true)
     }
@@ -752,6 +762,9 @@ impl RuleBot {
         self.hurt_by.contains(&p)
     }
 
+    /// A RuleBot at full skill, every part on: `seed` deals its own
+    /// randomness (its patience among it), so two bots of one seed
+    /// play alike.
     pub fn new(seed: u64, name: &str) -> RuleBot {
         let mut rng = Rng::new(seed);
         let patience = PATIENCE * rng.range(0.5, 2.5);
@@ -898,6 +911,8 @@ impl RuleBot {
         }
     }
 
+    /// A RuleBot at skill 0 (`is_rookie`): no dodge, kite or storm, one
+    /// interceptor up and late, a slower think, its shells scattered.
     pub fn rookie(seed: u64, name: &str) -> RuleBot {
         RuleBot { skill: 0.0, ..RuleBot::new(seed, name) }
     }
@@ -907,6 +922,8 @@ impl RuleBot {
         RuleBot { pillboys: false, ..RuleBot::new(seed, name) }
     }
 
+    /// The nearest hostile tank in sight that the first minute lets it
+    /// shoot (`Grace::fair`).
     fn nearest_enemy<'a>(&self, obs: &'a Observation, me: &Tank) -> Option<&'a Tank> {
         obs.hostile_tanks().filter(|t| self.grace.fair(obs, t)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))
     }
@@ -1010,6 +1027,10 @@ impl Brain for RuleBot {
 }
 
 impl RuleBot {
+    /// The think, with the map when there is one: every tick, what it
+    /// hears (hurt, refused, guns seen); then the dodge, and on its
+    /// think tick the doctrine's ladder from fighting to resupply. The
+    /// Commander calls this for its inner RuleBot.
     pub(crate) fn think_map(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
         let mut cmds = Vec::new();
         let Some(me) = obs.me.as_ref() else { return cmds };
@@ -1610,6 +1631,8 @@ pub const APPROACH: f32 = 8.0;
 pub const PROPOSE_EVERY: f32 = 60.0;
 
 impl Defender {
+    /// A Defender of the depot it starts on; `fortify` false is the
+    /// control (holds and fights, builds nothing).
     pub fn new(name: &str, fortify: bool) -> Defender {
         Defender {
             name: name.into(),
@@ -1964,6 +1987,8 @@ pub struct JsonBrain {
 }
 
 impl JsonBrain {
+    /// Start `program` with `args` and read its answers on a thread of
+    /// their own, so a slow program never holds up a tick.
     pub fn spawn(name: &str, program: &str, args: &[String]) -> std::io::Result<JsonBrain> {
         use std::process::{Command as P, Stdio};
         let mut child = P::new(program).args(args).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;

@@ -43,6 +43,7 @@ impl KiteStep {
         }
     }
 
+    /// The step's code, the last part of `kite.<code>`.
     pub fn code(self) -> &'static str {
         match self {
             KiteStep::Mass => "mass",
@@ -56,6 +57,7 @@ impl KiteStep {
         }
     }
 
+    /// A step toward the target: closing or stepping in.
     pub fn stepping_in(self) -> bool {
         matches!(self, KiteStep::Close | KiteStep::StepInReloading | KiteStep::StepInBusy)
     }
@@ -92,6 +94,7 @@ pub enum HopAct {
 }
 
 impl HopAct {
+    /// The step's code, the last part of `hop.<code>`.
     pub fn code(self) -> &'static str {
         match self {
             HopAct::Idle => "idle",
@@ -148,6 +151,7 @@ impl CycleAct {
         }
     }
 
+    /// The stage's code, the last part of `cycle.<code>`.
     pub fn code(self) -> &'static str {
         match self {
             CycleAct::SquadOut => "squad_out",
@@ -238,6 +242,7 @@ impl Act {
         }
     }
 
+    /// The code of an act with nothing inside it.
     fn plain(self) -> &'static str {
         match self {
             Act::Idle => "idle",

@@ -51,3 +51,4 @@ report is what ties a conversation to them. Named
 | [036](CI-036-2026-10-21-the-bot-skill-dial.md) | 21 October 2026 | The bot skill dial | 0093 | LAB-REPORT-BRAIN.md section 67 |
 | [037](CI-037-2026-10-21-the-territory-read.md) | 21 October 2026 | The territory read: the held ground | 0094 | LAB-REPORT-BRAIN.md section 68 |
 | [038](CI-038-2026-10-21-the-dodges-spsa-point.md) | 21 October 2026 | The dodge's SPSA point on today's brain | 0095 | LAB-REPORT-BRAIN.md section 69 |
+| [039](CI-039-2026-10-21-the-brain-documented.md) | 21 October 2026 | The brain documented | 0096 | LAB-REPORT-BRAIN.md section 70 |

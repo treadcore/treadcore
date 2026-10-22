@@ -88,6 +88,7 @@ impl MapFacts {
         (id > 0).then(|| (id, self.islands[id as usize - 1]))
     }
 
+    /// Every island of the map, in id order (an id is its index and 1).
     pub fn islands(&self) -> &[Island] {
         &self.islands
     }
@@ -149,6 +150,8 @@ pub fn bridge_it(s: &Settings, len: usize, scarcity: f32) -> bool {
 mod tests {
     use super::*;
 
+    /// A map of water with two islands: a big forested one west, a
+    /// small bare one east.
     fn island_map() -> Map {
         // Water everywhere; a big island at the west with forest, a
         // small bare one at the east.

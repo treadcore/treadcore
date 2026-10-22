@@ -127,6 +127,7 @@ pub enum Rung {
 
 impl Rung {
     pub const ALL: [Rung; 6] = [Rung::DefendBase, Rung::Fortify, Rung::Turrets, Rung::Hunt, Rung::Expand, Rung::Guard];
+    /// The rung in words, for the status line and the census.
     pub fn label(self) -> &'static str {
         match self {
             Rung::DefendBase => "defend base",
@@ -137,6 +138,8 @@ impl Rung {
             Rung::Guard => "guard",
         }
     }
+    /// Its place in `ALL`, top first: the index of the ladder's flags
+    /// and the census's counts.
     pub fn index(self) -> usize {
         Rung::ALL.iter().position(|r| *r == self).unwrap()
     }
@@ -207,6 +210,7 @@ pub enum Goal {
 }
 
 impl Goal {
+    /// The goal in words, for the window's goal line.
     pub fn label(&self) -> &'static str {
         match self {
             Goal::Manual => "manual",
@@ -451,6 +455,8 @@ impl Commander {
         c
     }
 
+    /// A Commander on Manual, its doctrine a RuleBot of `seed` with
+    /// tactics, the default Settings applied.
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
@@ -527,6 +533,7 @@ impl Commander {
         self.settings = s;
     }
 
+    /// The capabilities in its Settings: which parts are on.
     fn caps(&self) -> crate::weights::Caps {
         self.settings.caps
     }
@@ -546,6 +553,7 @@ impl Commander {
         }
     }
 
+    /// Owned by this seat or an ally; an unowned thing is neither.
     fn mine_or_allied(obs: &Observation, owner: Option<PlayerId>) -> bool {
         owner.map(|o| obs.allied(o)).unwrap_or(false)
     }
@@ -668,6 +676,8 @@ impl Commander {
         true
     }
 
+    /// The world lately refused a drive to this tile as over the water,
+    /// and no island hop is under way to cross it.
     fn over_water(&self, to: V2) -> bool {
         !self.inner.hop.active() && self.refused.iter().any(|(t, _)| *t == to.tile())
     }
@@ -719,6 +729,9 @@ impl Commander {
         }
     }
 
+    /// Whether to go home to resupply: once low on shells or armour
+    /// (the constants blended to the weights by `w_smooth`), until full
+    /// again; held between thinks in `resupplying`.
     fn needs_home(&mut self, me: &Tank) -> bool {
         // The retreat thresholds blend from the constants (0) to the
         // weights (1) by `w_smooth` (LR 46).
@@ -1735,6 +1748,9 @@ impl Commander {
         Some((obs.clamp(to), gun))
     }
 
+    /// The leader waits for its fleet before going out: stopped, "form
+    /// up on me", for up to `GATHER_FOR`, then on with a cool-down.
+    /// Not in a fight, afloat or on a bridge. True while it waits.
     fn gathering(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
         // Afloat they are on their way: counted, not near.
         let fleet: Vec<&Tank> = obs.tanks.iter().filter(|t| t.alive && self.members.contains(&t.owner)).collect();
@@ -2023,6 +2039,7 @@ impl Commander {
         true
     }
 
+    /// Where a chain's work is: the pillbox or depot of that id, if seen.
     fn chain_target(obs: &Observation, id: EntityId) -> Option<V2> {
         obs.pillboxes.iter().find(|p| p.id == id).map(|p| p.pos).or_else(|| obs.depots.iter().find(|d| d.id == id).map(|d| d.pos))
     }
@@ -2037,6 +2054,7 @@ impl Commander {
         V2::new(from.x * c - from.y * s, from.x * s + from.y * c)
     }
 
+    /// The seat's flank in a word, as `flank` takes it.
     fn flank_word(seat: PlayerId) -> &'static str {
         ["left", "centre", "right"][seat as usize % 3]
     }
@@ -2262,6 +2280,10 @@ impl Commander {
         self.defend_within(obs, me, at, DEFEND_LEASH, mend, cmds)
     }
 
+    /// Defend `at` within `leash`: the nearest hostile tank inside it
+    /// kited from the defended side, shot in direct reach or met between
+    /// it and `at`; with none, to the post and on guard. `mend`, a
+    /// pillbox, is repaired by the squad when hurt and nothing threatens.
     fn defend_within(&mut self, obs: &Observation, me: &Tank, at: V2, leash: f32, mend: Option<EntityId>, cmds: &mut Vec<Command>) {
         // A hostile tank inside the leash and in direct reach is shot
         // here; beyond, the inner doctrine's indirect fire answers.
@@ -2424,6 +2446,9 @@ impl Commander {
 }
 
 impl Commander {
+    /// The think: the inner doctrine every tick, then the goal (Auto's
+    /// ladder, or the person's), and of the doctrine's orders only what
+    /// the goal leaves it (`keep_inner`).
     fn think_map(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
         let mut cmds = Vec::new();
         // The doctrine thinks every tick so its memory stays current;
@@ -3430,6 +3455,7 @@ mod tests {
         w
     }
 
+    /// Step `w` for `ticks` with seat 1 thinking, `each` after a step.
     fn fly(w: &mut World, c: &mut Commander, ticks: u32, mut each: impl FnMut(&World, u32)) {
         for i in 0..ticks {
             let obs = w.observe(1);

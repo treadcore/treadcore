@@ -389,6 +389,7 @@ impl Plan {
         }
     }
 
+    /// The turret slots: set down, and planned (not skipped).
     pub fn turrets(&self) -> (usize, usize) {
         (self.items.iter().filter(|i| i.lifted && i.state == State::Done).count(), self.items.iter().filter(|i| i.lifted && i.state != State::Skipped).count())
     }
@@ -448,10 +449,12 @@ impl Plan {
         slots.iter().filter(|i| i.state != State::Done).count() as f32 / slots.len() as f32
     }
 
+    /// The plan's items built.
     pub fn done(&self) -> usize {
         self.items.iter().filter(|i| i.state == State::Done).count()
     }
 
+    /// The plan's item on the tile of `at`.
     fn item_at(&mut self, at: V2) -> Option<&mut Item> {
         self.items.iter_mut().find(|i| i.at.tile() == at.tile())
     }

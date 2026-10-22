@@ -37,6 +37,7 @@ impl Desire {
         self.at = None;
     }
 
+    /// Where it went last, if it has a pull.
     pub fn at(&self) -> Option<V2> {
         self.at
     }
@@ -97,10 +98,12 @@ impl<T: Copy + PartialEq> Confirm<T> {
         self.challenger = None;
     }
 
+    /// The choice held, if any.
     pub fn held(&self) -> Option<T> {
         self.held
     }
 
+    /// Hold nothing: the next choice is taken at once.
     pub fn clear(&mut self) {
         self.held = None;
         self.challenger = None;
@@ -122,6 +125,8 @@ pub enum Step {
 }
 
 impl Advance {
+    /// Smooth in `raw` (clamped to -1..1) at share `beta` and read the
+    /// step: push above `band`, back below `-band`, else hold.
     pub fn update(&mut self, raw: f32, beta: f32, band: f32) -> Step {
         self.a = (1.0 - beta) * self.a + beta * raw.clamp(-1.0, 1.0);
         if self.a > band {

@@ -8,7 +8,9 @@ The index is the code's own words, read from its `//!` and `///`
 comments, so it is as true as they are and is written again, never
 edited by hand (`make brainmap`). Tests are listed apart from the
 functions they prove. A function without a doc comment is listed with
-none, which is itself worth seeing.
+none, which is itself worth seeing. A method of a trait's impl (`impl
+Brain for Commander`) is documented by the trait, as rustdoc shows it:
+listed as the trait's, and not counted as undocumented.
 """
 import os
 import re
@@ -32,6 +34,8 @@ def first_sentence(lines):
 def scan(path):
     head, fns, tests = [], [], []
     doc, owner, test_next, in_tests = [], None, False, False
+    # The trait of the impl the next methods are in, and its indent.
+    trait, trait_indent = None, -1
     with open(path, encoding="utf-8") as f:
         lines = f.read().split("\n")
     for i, line in enumerate(lines):
@@ -50,14 +54,18 @@ def scan(path):
         if s.startswith("#["):
             continue
         m = IMPL.match(line)
-        if m and not line.startswith(" " * 8):
-            owner = m.group(2)
+        if m:
+            if not line.startswith(" " * 8):
+                owner = m.group(2)
+            trait, trait_indent = m.group(1), len(line) - len(line.lstrip())
         m = FN.match(line)
         if m:
             name = m.group(3)
             indent = len(m.group(1))
             where = owner if indent >= 4 and owner and not in_tests else None
-            entry = (i + 1, name, where, bool(m.group(2)), first_sentence(doc) if doc else "")
+            of = trait.split("::")[-1].split("<")[0] if trait and indent == trait_indent + 4 else None
+            d = first_sentence(doc) if doc else (f"*(the `{of}` trait's)*" if of else "")
+            entry = (i + 1, name, where, bool(m.group(2)), d)
             (tests if test_next else fns).append(entry)
             test_next = False
         if s and not s.startswith("//"):
@@ -69,13 +77,14 @@ def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "documentation", "BRAIN-MAP.md")
     files = sorted(f for f in os.listdir(SRC) if f.endswith(".rs"))
     rows, body = [], []
-    tf = tt = tu = 0
+    tf = tt = tu = ttr = 0
     for name in files:
         path = os.path.join(SRC, name)
         head, fns, tests = scan(path)
         n = sum(1 for _ in open(path, encoding="utf-8"))
         undoc = sum(1 for e in fns if not e[4])
-        tf, tt, tu = tf + len(fns), tt + len(tests), tu + undoc
+        tr = sum(1 for e in fns if e[4].startswith("*(the `"))
+        tf, tt, tu, ttr = tf + len(fns), tt + len(tests), tu + undoc, ttr + tr
         rows.append(f"| [`{name}`](#{name.replace('.', '')}) | {n} | {len(fns)} | {undoc} | {len(tests)} | {first_sentence(head) if head else ''} |")
         body.append(f"\n## {name}\n")
         if head:
@@ -95,7 +104,7 @@ def main():
         f.write("`scripts/brainmap.py` (`make brainmap`); do not edit by hand. The\n")
         f.write("design and its review are `LAB-REPORT-BRAIN.md`; the review of the\n")
         f.write("structure as built is `checkins/`.\n\n")
-        f.write(f"{len(files)} files, {tf} functions ({tu} with no doc comment), {tt} tests.\n\n")
+        f.write(f"{len(files)} files, {tf} functions ({tu} with no doc comment; {ttr} more are a trait's, documented by it), {tt} tests.\n\n")
         f.write("| File | Lines | Functions | Undocumented | Tests | What it is |\n| --- | --- | --- | --- | --- | --- |\n")
         f.write("\n".join(rows) + "\n")
         f.write("\n".join(body) + "\n")

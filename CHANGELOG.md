@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: every function of the brain has a doc comment
+  (`BRAIN-MAP.md`: 0 of 403 without one, from 100). `make brainmap`
+  lists a trait impl's method as the trait's and no longer counts it
+  as undocumented (LAB-REPORT-BRAIN.md section 70).
+
 - Added: the territory read (`w_defend_ground` 1, on with the board): a
   hostile on the side's held ground (the land its pillboxes and depots
   hold) beyond the base's alarm counts toward the Defend posture, and

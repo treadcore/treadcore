@@ -272,6 +272,7 @@ fn worth(t: &Tank) -> f32 {
 }
 
 impl Tactician {
+    /// A Tactician of these weights, with nothing heard yet.
     pub fn with(w: Tactics) -> Tactician {
         Tactician { w, ..Tactician::default() }
     }
@@ -302,6 +303,8 @@ impl Tactician {
         self.rate(obs, me, t, &mut None, &mut 0)
     }
 
+    /// A target's score; the reasons pushed to `why` when it is Some,
+    /// and their tags set in `tags` (`score` wants them, `value` not).
     fn rate(&self, obs: &Observation, me: &Tank, t: &Tank, why: &mut Option<Vec<String>>, tags: &mut u8) -> f32 {
         let mut say = |f: &dyn Fn() -> String| {
             if let Some(w) = why.as_mut() {

@@ -29,6 +29,7 @@ pub struct Genome {
 }
 
 impl Genome {
+    /// The genome of these Settings in this role, its id their hash.
     pub fn of(s: &Settings, seed: u64, role: &str, parent: Option<String>) -> Genome {
         // FNV-1a over the weights' bits, the capabilities and the role.
         let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -102,6 +103,8 @@ impl ScoreWeights {
     }
 }
 
+/// A seat's match score: the win, kills less deaths, ground held over
+/// the match's length, works built and road laid, each at its weight.
 pub fn score(o: &Outcome, seconds: u32, k: &ScoreWeights) -> f32 {
     let t = seconds.max(1) as f32;
     (if o.won { k.win } else { 0.0 }) + k.kill * o.kills as f32 - k.death * o.deaths as f32 + k.held * o.held_s as f32 / t + k.build * o.built as f32 + k.road * (o.road_tiles + o.bridge_tiles) as f32
@@ -114,6 +117,7 @@ pub struct Tally {
 }
 
 impl Tally {
+    /// An empty count for each seat of the world, with its team.
     pub fn new(w: &World) -> Tally {
         Tally { seats: w.players.iter().map(|p| Outcome { team: w.team_of(p.id), ..Outcome::default() }).collect() }
     }

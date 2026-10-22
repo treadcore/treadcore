@@ -103,6 +103,7 @@ fn group() -> usize {
     })
 }
 
+/// Change this thread's counts.
 fn bump(f: impl FnOnce(&mut Meter)) {
     METER.with(|m| {
         let mut v = m.get();
@@ -116,21 +117,28 @@ pub fn seat(p: crate::PlayerId) {
     SEATS.with(|s| s.set((s.get().0, p)));
     bump(|m| m.seats += 1);
 }
+/// A RuleBot think (four a second at full skill).
 pub fn think() {
     bump(|m| m.thinks += 1);
 }
+/// Move orders given.
 pub fn moves(n: u64) {
     bump(|m| m.moves += n);
 }
+/// A water crossing worked out.
 pub fn crossing() {
     bump(|m| m.crossings += 1);
 }
+/// A water crossing answered from the facts' cache.
 pub fn crossing_cached() {
     bump(|m| m.crossings_cached += 1);
 }
+/// A fortification plan copied.
 pub fn plan_clone() {
     bump(|m| m.plan_clones += 1);
 }
+/// A ladder pick under a posture: the rung the ladder alone takes
+/// (`first`) and the one taken with the posture's lean.
 pub fn posture(p: crate::board::Posture, first: usize, taken: usize) {
     bump(|m| {
         m.postures[p as usize] += 1;
@@ -209,6 +217,7 @@ pub fn ground(incursion: bool, defended: bool) {
         m.grounds[g][1] += defended as u64;
     });
 }
+/// Time spent running the bots.
 pub fn spent(d: Duration) {
     bump(|m| m.nanos += d.as_nanos() as u64);
 }

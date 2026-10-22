@@ -3762,3 +3762,35 @@ cannot tell which, and either way the point is not worth promoting
 today. Backlog 23's lead is closed.
 
 Proof: `make test` and `make families` unchanged (no default moved).
+
+## 70. The brain documented, 21 October
+
+Backlog 26's last part (CI-001 A9): of the brain's 403 functions, 100
+had no doc comment (LR 60 left 99; the steps since added one).
+
+**Trait methods.** 29 of the 100 were methods of a trait's impl: the
+`Brain` methods of `Commander`, `RuleBot`, `Defender`, `JsonBrain` and
+a test's attacker; `Default`, `Display`, `Drop`, `Index`. Rust's way,
+and rustdoc's, is that the trait documents them. `scripts/brainmap.py`
+now lists such a method as "(the `Brain` trait's)" and does not count
+it; the map's first line gives both counts. The scan had credited
+the test's attacker (an `impl Brain` inside a test function) to the
+`Drop` impl above it; it now reads each impl's trait by its indent.
+
+**The rest, 71, documented**, each from its code and, where its name
+promised more, checked against it. What the reading found:
+
+- The trait itself: `Brain::name` and `Brain::think`, the two methods
+  every brain implements, had no doc; `run_bots`'s ("Run every bot
+  seat for one tick") had slipped onto `retire_taken` above it and is
+  back on its function, which also says now what it does for a dead
+  seat.
+- `RuleBot::rookie`: a skill-0 bot does more than not dodge
+  (`is_rookie`): no kite or storm, one interceptor up and late, a
+  slower think, scattered shells. Its doc says all of it.
+- `Commander::defend_within`: the one engagement every guard, post
+  and defence goes through, now described in its four cases.
+
+`make brainmap`: 403 functions, 0 with no doc comment, 29 a trait's,
+98 tests. Comments only: `make test` as before (brain 86 passed and
+12 ignored; client 32; net 14; proto 3; sim 50).
