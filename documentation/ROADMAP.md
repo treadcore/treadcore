@@ -625,7 +625,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     every census since LR 11 is naval.map.) Goal 4, 12g. Hypothesis: a
     part's difference holds on a generated map as on naval.map.
     Proof: `CENSUS_MAP` over a list; promotion asks two maps. Cost:
-    doubles a census. State: idea.
+    doubles a census. State: done 21 October (LR 71): `CENSUS_MAP` a
+    list or `gen`, `MAP=all` eleven maps, `make census` and
+    `scripts/pool.sh` by map. First reading, the dodge on against off
+    over 123 seeds: +6.00 +/- 0.48, ten maps of eleven past two errors
+    and none against (fortressisles2 +1.26 +/- 0.94); naval.map is
+    mid-table.
 26. 120 of 337 brain functions have no doc comment (`BRAIN-MAP.md`;
     CI-001 A9); `crew.rs` and `hop.rs` have no tests of their own (A10).
     Goal 4. Proof: `make brainmap` reading fewer; a test each for the

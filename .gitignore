@@ -4,3 +4,4 @@
 .DS_Store
 *.log
 /reports/ledger
+__pycache__/

@@ -66,6 +66,9 @@
 #                    holds; SET="name=value" sets a weight on every brain
 #   make families    every family in scenarios/families/ over its seeds,
 #                    each held to its floor (SET="w=v" to break one).
+#   make census      one brain against another over the fair census, its
+#                    seeds split over JOBS, pooled overall and by map
+#                    (scripts/census.sh; TRIAL, BASE, SEEDS, SEED0, MAP=all)
 #   make parts       each part off from the brain with every part on, by
 #                    the census (scripts/parts.sh; PARTS, SEEDS, JOBS)
 #   make spsa        tune named weights by SPSA over the paired census
@@ -121,7 +124,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts spsa switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -270,6 +273,9 @@ switches:
 
 parts:
 	@scripts/parts.sh
+
+census:
+	@scripts/census.sh
 
 spsa:
 	@scripts/spsa.sh

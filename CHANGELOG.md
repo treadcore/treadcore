@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the census on every map. `make census` plays one brain
+  against another (`TRIAL`, `BASE`) over the fair census, its seeds
+  split over `JOBS`, pooled overall and by map; `MAP` takes a list of
+  maps, `gen` or `all` (eleven), here and in `make parts`, `switches`,
+  `spsa` and `tune`. The dodge on against off over every map: +6.00
+  +/- 0.48 a seat, for the dodge on ten maps of eleven
+  (LAB-REPORT-BRAIN.md section 71).
+
 - Changed: every function of the brain has a doc comment
   (`BRAIN-MAP.md`: 0 of 403 without one, from 100). `make brainmap`
   lists a trait impl's method as the trait's and no longer counts it

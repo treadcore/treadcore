@@ -28,7 +28,7 @@ RESPAWNS="${RESPAWNS:-3}"
 JOBS="${JOBS:-1}"
 OUT="$BUILDDIR/parts/$STAMP"
 mkdir -p "$OUT"
-MAPFILE_="$(cd "$(dirname "$MAP")" && pwd)/$(basename "$MAP")"
+MAPFILE_="$(census_maps "$MAP")"
 
 say "each part off: $PARTS; $SEEDS seeds of $SECS s on $MAP, respawns $RESPAWNS, $JOBS at once -> $OUT"
 BIN="$(census_bin "$OUT")"

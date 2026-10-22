@@ -3794,3 +3794,90 @@ promised more, checked against it. What the reading found:
 `make brainmap`: 403 functions, 0 with no doc comment, 29 a trait's,
 98 tests. Comments only: `make test` as before (brain 86 passed and
 12 ignored; client 32; net 14; proto 3; sim 50).
+
+## 71. The dodge on every map, 21 October
+
+Backlog 25 (CI-001 A8): every census since LR 11 is naval.map. The
+census now takes more than one map: `CENSUS_MAP` a comma-separated
+list or `gen` (a map generated from each seed), seed n on the
+(n mod k)th of k maps, so a seed keeps its map however the seeds are
+split over jobs. `MAP=all` is every map under `maps/` and `gen`:
+eleven. The census prints a difference for each map beside the pooled
+one; `make census` (`scripts/census.sh`) splits the seeds over JOBS
+from a frozen binary and `scripts/pool.sh` pools the jobs, overall and
+by map. `make parts`, `switches`, `spsa` and `tune` take the same MAP.
+
+**The question**: the dodge is the largest part on naval.map (LR 29,
+-2.45 +/- 0.67 off; LR 63, +5.20 +/- 1.91 on against off). Does it
+hold on the other ten maps?
+
+**The rule, set before the run**: it holds if the pooled difference is
+past two errors and no map is past two errors the other way.
+
+**The census**: the fair census, trial the defaults (the dodge on),
+baseline `-dodge`; `MAP=all`, seeds 1000 to 1175 (16 a map), 900 s, 3
+respawns, four jobs of 44, a frozen binary
+(`build/census/20261021-193635`).
+
+**Read part-way.** The census was still running when read: 124 seeds
+of 176 played, 123 of them whole (each team in the trial seat). The
+census prints its differences only at its end, so they were taken
+from the per-match team lines: a seed's mean trial score a seat less
+its baseline's, the census's own sum near enough (a team's line is
+its mean a seat; the teams seat 6, 5 and 5). `pooled.txt` at the end
+is the record; this section reads the part played.
+
+| 123 seeds | Dodge on less off, a seat | Seeds |
+| --- | --- | --- |
+| **Every map** | **+6.00 +/- 0.48** (12.5 errors) | 123 |
+| island | +11.90 +/- 1.74 | 12 |
+| generated | +9.44 +/- 1.53 | 12 |
+| industry | +9.11 +/- 0.95 | 12 |
+| fidos-airstrip | +8.83 +/- 0.97 | 12 |
+| europe | +6.38 +/- 0.91 | 8 |
+| naval | +4.56 +/- 1.64 | 12 |
+| big-lizard | +4.08 +/- 1.44 | 12 |
+| fortressislesx | +3.88 +/- 1.40 | 11 |
+| constanine | +3.05 +/- 0.68 | 12 |
+| atlantic | +2.23 +/- 0.84 | 8 |
+| fortressisles2 | +1.26 +/- 0.94 (inside the noise) | 12 |
+
+Ten maps of eleven past two errors, all of them for the dodge; none
+the other way. A team, every match (372 trial, 744 baseline): score
+15.63 against 9.67 a seat, kills 22.99 against 14.63, deaths 15.52
+against 20.41.
+
+**The meter.** The baseline's dodges are counted as dropped: the
+shells it would have dodged, and what came of them.
+
+| Dodges, ashore | Count | Hit after | By the shell | Killed |
+| --- | --- | --- | --- | --- |
+| Trial, taken | 38,000 | 20.1% | 2.6% | 4.9% |
+| Baseline, dropped | 52,342 | 49.9% | 22.8% | 12.4% |
+
+| Dodges, afloat | Count | Hit after | By the shell | Killed |
+| --- | --- | --- | --- | --- |
+| Trial, taken | 2,047 | 10.0% | 0.5% | 8.9% |
+| Baseline, dropped | 3,468 | 14.0% | 4.6% | 12.5% |
+
+Ashore the dodge cuts the dodged shell's hits about ninefold and the
+deaths after it by three fifths; afloat less (LR 29's finding, on
+every map).
+
+**The matches.** How a 900 s match ends, by map, over the 372: by
+elimination mostly on constanine (34 of 36, median 465 s), fidos-airstrip
+(33, 634 s) and big-lizard (30, 534 s); four to six in ten on
+industry, island, naval and generated; 6 of 36 on fortressisles2;
+1 of 24 on europe, none on atlantic or fortressislesx. MAPS.md's
+paragraph, written from one seed a map, is corrected to these.
+
+**The verdict**: holds, by the rule set before the run. The dodge pays
+on every map, most where the fighting is ashore and open (island,
+industry, the generated maps) and least on the island-chain maps
+(fortressisles2, atlantic), where more of the fighting is afloat and
+the dodge afloat buys little (backlog 31). Naval.map is mid-table, so
+the census's one map did not overstate the dodge.
+
+Proof: the census code is the tests' (`brain_census`, ignored);
+`CENSUS_MAP` unset plays `gen` as before; a frozen binary built from
+the tree as committed.

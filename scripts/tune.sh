@@ -38,7 +38,7 @@ OUT="$BUILDDIR/tune/$STAMP"
 mkdir -p "$OUT"
 BIN="$(census_bin "$OUT")"
 MAPARG=()
-[ -n "${MAP:-}" ] && MAPARG=(CENSUS_MAP="$(cd "$(dirname "$MAP")" && pwd)/$(basename "$MAP")" CENSUS_RESPAWNS="${RESPAWNS:-3}")
+[ -n "${MAP:-}" ] && MAPARG=(CENSUS_MAP="$(census_maps "$MAP")" CENSUS_RESPAWNS="${RESPAWNS:-3}")
 
 census() { # census FILE LOG -> prints the fitness
     env "${MAPARG[@]}" CENSUS_WEIGHTS="$1" CENSUS_SEEDS="$SEEDS" CENSUS_SECS="$SECS" \

@@ -28,7 +28,7 @@ RESPAWNS="${RESPAWNS:-3}"
 JOBS="${JOBS:-1}"
 OUT="$BUILDDIR/switches/$STAMP"
 mkdir -p "$OUT"
-MAPFILE_="$(cd "$(dirname "$MAP")" && pwd)/$(basename "$MAP")"
+MAPFILE_="$(census_maps "$MAP")"
 
 # What a switch needs on for every team, else nothing.
 needs() {

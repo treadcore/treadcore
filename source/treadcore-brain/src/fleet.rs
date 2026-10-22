@@ -882,14 +882,29 @@ mod tests {
         // matches: the census before 18 October, archived
         // (documentation/archive/BRAIN-METHODS.md).
         let fair = std::env::var("CENSUS_FAIR").map(|v| v != "0").unwrap_or(true);
+        // The maps (`CENSUS_MAP`, backlog 25, LR 71): a file, or a list of
+        // them split by commas, `gen` for a map generated from the seed
+        // (a new map every seed). Seed n plays the (n mod k)th, so a seed
+        // keeps its map however the seeds are split over jobs; every team
+        // takes the trial seat on it as before, and each seed is one paired
+        // reading on one map. Unset: `gen` alone.
+        let maps: Vec<(String, MapSource)> = std::env::var("CENSUS_MAP")
+            .unwrap_or_else(|_| "gen".into())
+            .split(',')
+            .map(str::trim)
+            .filter(|m| !m.is_empty())
+            .map(|m| match m {
+                "gen" => ("generated".to_string(), MapSource::FromScenarioSeed),
+                path => (std::path::Path::new(path).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| path.into()), MapSource::Text(std::fs::read_to_string(path).unwrap_or_else(|e| panic!("CENSUS_MAP {}: {}", path, e)))),
+            })
+            .collect();
+        assert!(!maps.is_empty(), "CENSUS_MAP names no map");
+        let map_of = |n: u64| &maps[(n % maps.len() as u64) as usize];
         let plays: Vec<(u64, TeamId)> = (seed0..seed0 + seeds).flat_map(|n| if fair { (0..3).map(|t| (n, t as TeamId)).collect::<Vec<_>>() } else { vec![(n, (n % 3) as TeamId)] }).collect();
         for (n, lucky) in plays {
             let seed = 0x7EAD_C0DE_u64 ^ (n * 0x9E37_79B9);
             let names: Vec<(String, bool)> = (0..SEATS).map(|i| (name(i), true)).collect();
-            let map = match std::env::var("CENSUS_MAP") {
-                Ok(path) => MapSource::Text(std::fs::read_to_string(&path).expect("CENSUS_MAP")),
-                Err(_) => MapSource::FromScenarioSeed,
-            };
+            let (map_name, map) = map_of(n).clone();
             let sc = Scenario { seed, players: names, teams: Some(teams()), time_limit: 0, map, respawns: std::env::var("CENSUS_RESPAWNS").ok().and_then(|s| s.parse().ok()).unwrap_or(0), ..Scenario::default() };
             let mut w = World::new(sc);
             new_match();
@@ -1023,11 +1038,11 @@ mod tests {
                 }
             }
             let genomes: Vec<(PlayerId, Genome)> = bots.iter().map(|(p, b)| (*p, Genome::of(&b.settings().cloned().unwrap_or_default(), seed ^ *p as u64, &name(*p as usize), None))).collect();
-            let records = tally.records(&w, "default", &genomes, &k);
+            let records = tally.records(&w, &map_name, &genomes, &k);
             if ledger {
                 crate::ledger::write(&dir, &records).expect("the ledger");
             }
-            eprintln!("seed {:x}: trial team {}, over {} at {} s, won by {:?}", seed, lucky, w.over, w.tick / TICK_HZ as Tick, w.winning_team);
+            eprintln!("seed {:x} on {}: trial team {}, over {} at {} s, won by {:?}", seed, map_name, lucky, w.over, w.tick / TICK_HZ as Tick, w.winning_team);
             for t in 0..3u8 {
                 let rs: Vec<_> = records.iter().filter(|r| r.outcome.team == Some(t)).collect();
                 let sum = |f: &dyn Fn(&crate::ledger::Outcome) -> u32| rs.iter().map(|r| f(&r.outcome)).sum::<u32>();
@@ -1124,7 +1139,20 @@ mod tests {
         // errors of zero is "inside the noise".
         let d: Vec<f32> = by_seed.iter().map(|&(t, tn, b, bn)| t / tn.max(1) as f32 - b / bn.max(1) as f32).collect();
         let (mean, se) = crate::ledger::mean_se(&d);
-        eprintln!("brain_census: difference {:+.2} a seat, standard error {:.2} over {} seeds ({}); a seed: {}", mean, se, d.len(), if se > 0.0 && mean.abs() > 2.0 * se { "outside the noise" } else { "inside the noise" }, d.iter().map(|x| format!("{:+.2}", x)).collect::<Vec<_>>().join(" "));
+        let noise = |mean: f32, se: f32| if se > 0.0 && mean.abs() > 2.0 * se { "outside the noise" } else { "inside the noise" };
+        eprintln!("brain_census: difference {:+.2} a seat, standard error {:.2} over {} seeds ({}); a seed: {}", mean, se, d.len(), noise(mean, se), d.iter().map(|x| format!("{:+.2}", x)).collect::<Vec<_>>().join(" "));
+        // Each map's own reading, its seeds' differences listed so jobs
+        // over other seeds pool by map (scripts/pool.sh).
+        if maps.len() > 1 {
+            for (i, (name, _)) in maps.iter().enumerate() {
+                let dm: Vec<f32> = (seed0..seed0 + seeds).filter(|n| (n % maps.len() as u64) as usize == i).map(|n| d[(n - seed0) as usize]).collect();
+                if dm.is_empty() {
+                    continue;
+                }
+                let (mean, se) = crate::ledger::mean_se(&dm);
+                eprintln!("brain_census: on {}: difference {:+.2} a seat, standard error {:.2} over {} seeds ({}); a seed: {}", name, mean, se, dm.len(), noise(mean, se), dm.iter().map(|x| format!("{:+.2}", x)).collect::<Vec<_>>().join(" "));
+            }
+        }
     }
 
     /// Sixteen seats as the window deals them with `--fleets`, seat 0 on

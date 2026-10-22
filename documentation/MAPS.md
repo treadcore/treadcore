@@ -214,3 +214,24 @@ York does not reach Berlin.
 The bots' doctrine was written for a 128-tile island; on a 512-tile
 map they play their own corner of it, take the industry in reach and
 send longshots across the ocean.
+
+## The census on every map
+
+The brain's census (`make census`, `make parts`, `make switches`,
+`make spsa`, `make tune`) plays naval.map unless told otherwise. `MAP`
+takes a map file, a comma-separated list of them, `gen` for a map
+generated from each seed (a new map every seed), or `all`: every map
+under `maps/` and `gen`, eleven in all. Seed n plays the (n mod k)th of
+k maps, and the census prints a difference for every map as well as
+the pooled one (`scripts/pool.sh` pools jobs by map).
+
+    MAP=all SEEDS=176 make census     # 16 seeds a map
+    MAP=maps/naval.map,gen make parts
+
+Every map seats the census's sixteen bots in three teams, and every
+map has a fight. How a 900 s match ends on each, over LR 71's 372
+matches (LAB-REPORT-BRAIN.md section 71): constanine, big-lizard and
+fidos-airstrip mostly by elimination (median 465, 534 and 634 s);
+industry, island, naval and the generated maps four to six times in ten;
+fortressisles2 one time in six; atlantic, europe and fortressislesx
+almost never.

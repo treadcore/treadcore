@@ -1,0 +1,75 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Wed, 21 Oct 2026 22:10:00 -0700
+Subject: [JOURNAL 0097] The dodge on every map
+Message-ID: <0097.20261021@treadcore.org>
+In-Reply-To: <0096.20261021@treadcore.org>
+Organization: treadcore.org
+Keywords: census, maps, dodge
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompts: "i just cancled some drive runs mid
+           process. do you have record o the last run. does it give
+           any insite?"; "ok. so update. commit. push. i like this."
+X-Commits: f18315c; this entry's commit follows
+
+                         THE DODGE ON EVERY MAP
+
+                     Paul Richeson, treadcore.org
+                           21 October 2026
+
+
+ABSTRACT
+
+    The census plays every map. The dodge, on against off over 123
+    seeds on eleven maps: +6.00 +/- 0.48 a seat; ten maps of eleven
+    past two errors for it, none against.
+
+I. INTRODUCTION
+
+    Backlog 25: every census since LR 11 was naval.map. Paul stopped
+    some runs and asked what the last one said. The census of the
+    dodge on every map was still running and was read part-way.
+
+II. BACKGROUND
+
+    CI-001 A8. The dodge: LR 29, LR 63.
+
+III. METHOD
+
+    CENSUS_MAP a list; seed n on map n mod k; make census over four
+    jobs; pool.sh by map. Read part-way from the team lines.
+
+IV. CHRONOLOGY
+
+    1. CENSUS_MAP, census.sh, pool.sh; MAP for every census script.
+    2. Smoke runs; the census launched at 19:36, 176 seeds.
+    3. Paul's runs stopped; this one was still going. Read at 124.
+    4. MAPS.md's one-seed paragraph corrected from 372 matches.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 71. Island +11.90, naval +4.56,
+    fortressisles2 +1.26 (inside the noise).
+
+VI. DISCUSSION
+
+    The one map did not flatter the dodge. It pays least where the
+    fight is afloat.
+
+VII. OPEN PROBLEMS
+
+    1. The census's own pooled.txt at 176 seeds.
+    2. The dodge afloat (backlog 31).
+
+VIII. NEXT STEPS
+
+    1. Paul's choice. The parts table on every map is a candidate.
+
+APPENDIX B. ARTIFACTS
+
+    LAB-REPORT-BRAIN.md section 71; CI-040; MAPS.md;
+    build/census/20261021-193635.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

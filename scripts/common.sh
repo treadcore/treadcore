@@ -27,6 +27,23 @@ need_config() {
 # The newest log of a kind, for the "see ..." line at the end.
 latest() { ls -t "$LOGDIR"/"$1"-*.log 2>/dev/null | head -1; }
 
+# census_maps SPEC: the census's CENSUS_MAP (roadmap backlog 25, LR 71)
+# from MAP: a map file, or a comma-separated list of them; `gen` for a
+# map generated from each seed (a new map every seed); `all` for every
+# map under maps/ and `gen`. Files made absolute; printed comma-joined.
+census_maps() {
+    local out="" m
+    for m in $(echo "$1" | tr ',' ' '); do
+        case "$m" in
+            gen) out="$out,gen" ;;
+            all) out="$out,$(ls "$ROOT"/maps/*.map "$ROOT"/maps/*/*.map | grep -v '/\._' | paste -sd,),gen" ;;
+            *) [ -f "$m" ] || die "no map file $m"
+               out="$out,$(cd "$(dirname "$m")" && pwd)/$(basename "$m")" ;;
+        esac
+    done
+    echo "${out#,}"
+}
+
 # census_bin DIR: build the brain's tests once and copy the test binary
 # into DIR; print the copy's path. A census run from the copy is the code
 # as it was when the run began, so the tree can change while it plays

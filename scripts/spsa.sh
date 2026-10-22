@@ -36,7 +36,7 @@ RESPAWNS="${RESPAWNS:-3}"
 TUNE="${TUNE:-dodge_horizon dodge_margin dodge_clear}"
 OUT="$BUILDDIR/spsa/$STAMP"
 mkdir -p "$OUT"
-MAPFILE_="$(cd "$(dirname "$MAP")" && pwd)/$(basename "$MAP")"
+MAPFILE_="$(census_maps "$MAP")"
 
 BIN="$(census_bin "$OUT")"
 THETA="$OUT/theta.toml"
