@@ -3819,57 +3819,62 @@ baseline `-dodge`; `MAP=all`, seeds 1000 to 1175 (16 a map), 900 s, 3
 respawns, four jobs of 44, a frozen binary
 (`build/census/20261021-193635`).
 
-**Read part-way.** The census was still running when read: 124 seeds
-of 176 played, 123 of them whole (each team in the trial seat). The
-census prints its differences only at its end, so they were taken
-from the per-match team lines: a seed's mean trial score a seat less
-its baseline's, the census's own sum near enough (a team's line is
-its mean a seat; the teams seat 6, 5 and 5). `pooled.txt` at the end
-is the record; this section reads the part played.
+**The reading**: all 176 seeds, the census's own `pooled.txt` (it
+was read part-way at 123 seeds first, +6.00 +/- 0.48, and committed so
+before it ended; the final reading replaces it). Four jobs of 44
+seeds, each 2 h 45 min.
 
-| 123 seeds | Dodge on less off, a seat | Seeds |
+| 176 seeds | Dodge on less off, a seat | Seeds |
 | --- | --- | --- |
-| **Every map** | **+6.00 +/- 0.48** (12.5 errors) | 123 |
-| island | +11.90 +/- 1.74 | 12 |
-| generated | +9.44 +/- 1.53 | 12 |
-| industry | +9.11 +/- 0.95 | 12 |
-| fidos-airstrip | +8.83 +/- 0.97 | 12 |
-| europe | +6.38 +/- 0.91 | 8 |
-| naval | +4.56 +/- 1.64 | 12 |
-| big-lizard | +4.08 +/- 1.44 | 12 |
-| fortressislesx | +3.88 +/- 1.40 | 11 |
-| constanine | +3.05 +/- 0.68 | 12 |
-| atlantic | +2.23 +/- 0.84 | 8 |
-| fortressisles2 | +1.26 +/- 0.94 (inside the noise) | 12 |
+| **Every map** | **+5.94 +/- 0.38** (15.6 errors) | 176 |
+| island | +10.86 +/- 1.48 | 16 |
+| generated | +9.01 +/- 1.19 | 16 |
+| industry | +8.41 +/- 0.95 | 16 |
+| fidos-airstrip | +7.36 +/- 1.07 | 16 |
+| europe | +6.33 +/- 0.84 | 16 |
+| big-lizard | +6.19 +/- 1.60 | 16 |
+| naval | +4.64 +/- 1.37 | 16 |
+| fortressislesx | +4.03 +/- 1.09 | 16 |
+| constanine | +3.25 +/- 0.54 | 16 |
+| atlantic | +2.99 +/- 0.53 | 16 |
+| fortressisles2 | +2.29 +/- 1.15 (inside the noise, 1.99 errors) | 16 |
+| By job of 44 (seeds 1000, 1044, 1088, 1132 on) | +6.65 +/- 0.77, +6.58 +/- 0.80, +6.01 +/- 0.78, +4.52 +/- 0.72 | |
 
-Ten maps of eleven past two errors, all of them for the dodge; none
-the other way. A team, every match (372 trial, 744 baseline): score
-15.63 against 9.67 a seat, kills 22.99 against 14.63, deaths 15.52
-against 20.41.
+Ten maps of eleven past two errors, all of them for the dodge; the
+eleventh a hair inside, and for it; none the other way. A team, every
+match (528 trial, 1,056 baseline): score 15.83 against 9.88 a seat,
+kills 22.78 against 14.41, deaths 15.27 against 20.29.
 
 **The meter.** The baseline's dodges are counted as dropped: the
-shells it would have dodged, and what came of them.
+shells it would have dodged, and what came of them. Summed over the
+per-match meter lines.
 
 | Dodges, ashore | Count | Hit after | By the shell | Killed |
 | --- | --- | --- | --- | --- |
-| Trial, taken | 38,000 | 20.1% | 2.6% | 4.9% |
-| Baseline, dropped | 52,342 | 49.9% | 22.8% | 12.4% |
+| Trial, taken | 54,088 | 19.5% | 2.4% | 4.8% |
+| Baseline, dropped | 74,695 | 49.4% | 23.0% | 12.2% |
 
 | Dodges, afloat | Count | Hit after | By the shell | Killed |
 | --- | --- | --- | --- | --- |
-| Trial, taken | 2,047 | 10.0% | 0.5% | 8.9% |
-| Baseline, dropped | 3,468 | 14.0% | 4.6% | 12.5% |
+| Trial, taken | 2,827 | 10.0% | 0.5% | 9.0% |
+| Baseline, dropped | 4,622 | 13.8% | 4.3% | 12.2% |
 
 Ashore the dodge cuts the dodged shell's hits about ninefold and the
-deaths after it by three fifths; afloat less (LR 29's finding, on
+deaths after it by three fifths; afloat a quarter (LR 29's finding, on
 every map).
 
-**The matches.** How a 900 s match ends, by map, over the 372: by
-elimination mostly on constanine (34 of 36, median 465 s), fidos-airstrip
-(33, 634 s) and big-lizard (30, 534 s); four to six in ten on
-industry, island, naval and generated; 6 of 36 on fortressisles2;
-1 of 24 on europe, none on atlantic or fortressislesx. MAPS.md's
-paragraph, written from one seed a map, is corrected to these.
+**The matches.** How a 900 s match ends, by map, over the 528: by
+elimination mostly on constanine (46 of 48, median 460 s),
+fidos-airstrip (43, 649 s) and big-lizard (40, 507 s); 31 of 48 on
+industry, 26 on island, 18 on naval, 17 on generated; 12 on
+fortressisles2; 2 on europe, none on atlantic or fortressislesx.
+MAPS.md's paragraph, written from one seed a map, is corrected to
+these.
+
+**The cost.** 528 matches of 900 s in 2 h 45 min on the guest's four
+cores; each job had about a third of a core (44 min of CPU in its
+first 2 h 22 min), so the census was about 3.4 CPU-hours, 23 s of CPU a
+match. Section 72 takes this up.
 
 **The verdict**: holds, by the rule set before the run. The dodge pays
 on every map, most where the fighting is ashore and open (island,

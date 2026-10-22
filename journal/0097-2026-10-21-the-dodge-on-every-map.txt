@@ -20,8 +20,8 @@ X-Commits: f18315c; this entry's commit follows
 
 ABSTRACT
 
-    The census plays every map. The dodge, on against off over 123
-    seeds on eleven maps: +6.00 +/- 0.48 a seat; ten maps of eleven
+    The census plays every map. The dodge, on against off over 176
+    seeds on eleven maps: +5.94 +/- 0.38 a seat; ten maps of eleven
     past two errors for it, none against.
 
 I. INTRODUCTION
@@ -48,8 +48,10 @@ IV. CHRONOLOGY
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md section 71. Island +11.90, naval +4.56,
-    fortressisles2 +1.26 (inside the noise).
+    LAB-REPORT-BRAIN.md section 71. Island +10.86, naval +4.64,
+    fortressisles2 +2.29 (inside the noise). Read part-way at 123
+    seeds first (+6.00 +/- 0.48); the final reading replaced it on
+    22 October.
 
 VI. DISCUSSION
 
@@ -58,8 +60,7 @@ VI. DISCUSSION
 
 VII. OPEN PROBLEMS
 
-    1. The census's own pooled.txt at 176 seeds.
-    2. The dodge afloat (backlog 31).
+    1. The dodge afloat (backlog 31).
 
 VIII. NEXT STEPS
 

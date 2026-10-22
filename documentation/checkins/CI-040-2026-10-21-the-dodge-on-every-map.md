@@ -12,8 +12,8 @@ CI-001 A8; roadmap backlog 25.
 Every census since LR 11 played naval.map alone (CI-001 A8). The
 census now plays a list of maps, `MAP=all` being all eleven, and
 reads a difference on each beside the pooled one. Its first reading
-puts the dodge, on against off, over 123 seeds of the 176 planned:
-+6.00 +/- 0.48 a seat, 12.5 errors. Ten maps of eleven are past two
+puts the dodge, on against off, over 176 seeds: +5.94 +/- 0.38 a seat,
+15.6 errors (read first part-way, 123 seeds, +6.00 +/- 0.48). Ten maps of eleven are past two
 errors for the dodge, and none against it. The dodge holds by the rule
 set before the run. Naval.map is mid-table, so the one map did not
 overstate the part.
@@ -83,26 +83,26 @@ counts were summed over every match played.
 
 | | Dodge on less off, a seat |
 | --- | --- |
-| Every map, 123 seeds | +6.00 +/- 0.48 |
-| Highest | island +11.90 +/- 1.74; generated +9.44 +/- 1.53; industry +9.11 +/- 0.95 |
-| naval (12) | +4.56 +/- 1.64 |
-| Lowest | atlantic +2.23 +/- 0.84; fortressisles2 +1.26 +/- 0.94 (inside) |
+| Every map, 176 seeds | +5.94 +/- 0.38 |
+| Highest | island +10.86 +/- 1.48; generated +9.01 +/- 1.19; industry +8.41 +/- 0.95 |
+| naval (16) | +4.64 +/- 1.37 |
+| Lowest | atlantic +2.99 +/- 0.53; fortressisles2 +2.29 +/- 1.15 (inside) |
 
-Ashore, the dodged shell hits 2.6% of the time with the dodge and
-22.8% without. Afloat it hits 0.5% against 4.6%, but deaths after
-the shell fall less (8.9% against 12.5%). The full table is in LR 71.
+Ashore, the dodged shell hits 2.4% of the time with the dodge and
+23.0% without. Afloat it hits 0.5% against 4.3%, but deaths after
+the shell fall less (9.0% against 12.2%). The full table is in LR 71.
 
 ---
 
 ## V. Discussion
 
 1. **The dodge holds everywhere.** It is the one part so far past two
-   errors on a single map. On eleven maps it is past twelve errors.
+   errors on a single map. On eleven maps it is past fifteen errors.
 2. **Where it pays least.** It pays least on the island-chain maps,
    where more of the fight is afloat. This matches LR 29: afloat, the
    dodge changes little (backlog 31).
 3. **The method.** Ten maps cost no more than one at the same seeds.
    Promotions can now ask for more than one map.
 
-**For Paul:** the census is still running at the time of writing. Its
-`pooled.txt` is the final word; the section can be updated from it.
+**Update, 22 October:** the census ended; LR 71 and this report carry
+its `pooled.txt` (176 seeds), which replaces the part-way reading.

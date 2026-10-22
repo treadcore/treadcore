@@ -10,8 +10,8 @@ fixed form (`journal/TEMPLATE.txt`).
   against another (`TRIAL`, `BASE`) over the fair census, its seeds
   split over `JOBS`, pooled overall and by map; `MAP` takes a list of
   maps, `gen` or `all` (eleven), here and in `make parts`, `switches`,
-  `spsa` and `tune`. The dodge on against off over every map: +6.00
-  +/- 0.48 a seat, for the dodge on ten maps of eleven
+  `spsa` and `tune`. The dodge on against off over every map: +5.94
+  +/- 0.38 a seat, for the dodge on ten maps of eleven
   (LAB-REPORT-BRAIN.md section 71).
 
 - Changed: every function of the brain has a doc comment
