@@ -73,11 +73,15 @@ fn autopilot_button(pilot: Res<crate::goal::Pilot>, bind: Res<crate::keys::Keys>
 /// wide bars. expand the visual of the playing field"): were 156 and 268.
 /// Again on 17 October: the right column by a quarter (was 196), the
 /// bottom strip by half (was 128), the top strip by a quarter (was 58);
-/// the minimap at the foot of the right column.
+/// the minimap at the foot of the right column. Halved again on 22
+/// October, both strips with the padding round them gone (Paul, on a
+/// 4x4 grid of sixteen windows: "the bottom bar on treadcore is too big.
+/// remove padding spacing on both top and bottom bar. reduce height of
+/// top and bottom bar by 50%"): were 44 and 64.
 pub const LEFT: f32 = 52.0;
 pub const RIGHT: f32 = 148.0;
-pub const TOP: f32 = 44.0;
-pub const BOTTOM: f32 = 64.0;
+pub const TOP: f32 = 22.0;
+pub const BOTTOM: f32 = 32.0;
 const FONT: f32 = 13.0;
 const SMALL_FONT: f32 = 9.0;
 /// Lamps a row in the right column.
@@ -297,6 +301,13 @@ fn text(p: &mut ChildSpawnerCommands, which: Panel, size: f32) {
     p.spawn((Text::new(""), TextFont { font_size: size, ..default() }, TextColor(INK), which));
 }
 
+/// A strip's text: one line, no wrapping, its first line at the top of
+/// the box. At half height a strip holds one line; wrapped or centred, it
+/// showed the bottom of one line and the top of the next.
+fn line(p: &mut ChildSpawnerCommands, which: Panel, size: f32) {
+    p.spawn((Text::new(""), TextFont { font_size: size, ..default() }, TextLayout::new_with_no_wrap(), TextColor(INK), which));
+}
+
 /// A sunken box on the bezel: black, bevelled dark above and light
 /// below, a little rounding.
 fn inset<'a, 'w>(p: &'a mut ChildSpawnerCommands<'w>, node: Node) -> EntityCommands<'a> {
@@ -315,6 +326,16 @@ fn tight<'a, 'w>(p: &'a mut ChildSpawnerCommands<'w>, node: Node) -> EntityComma
     n.padding = UiRect::axes(Val::Px(4.0), Val::Px(1.0));
     n.margin = UiRect::all(Val::Px(1.0));
     p.spawn((n, BackgroundColor(INSET), sunken(), BorderRadius::all(Val::Px(4.0))))
+}
+
+/// The top and bottom strips' boxes: the bevel and nothing round it,
+/// for strips half the height they were.
+fn flush<'a, 'w>(p: &'a mut ChildSpawnerCommands<'w>, node: Node) -> EntityCommands<'a> {
+    let mut n = node;
+    n.border = UiRect::all(Val::Px(2.0));
+    n.padding = UiRect::axes(Val::Px(4.0), Val::Px(0.0));
+    n.margin = UiRect::all(Val::Px(0.0));
+    p.spawn((n, BackgroundColor(INSET), sunken(), BorderRadius::all(Val::Px(3.0))))
 }
 
 fn small_label(p: &mut ChildSpawnerCommands, s: &str) {
@@ -453,8 +474,8 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         .spawn(Node { position_type: PositionType::Absolute, left: Val::Px(0.0), top: Val::Px(0.0), width: Val::Percent(100.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, ..default() })
         .with_children(|root| {
             // Top strip.
-            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(TOP), padding: pad, flex_shrink: 0.0, ..default() }, plate())).with_children(|strip| {
-                inset(strip, Node { width: Val::Percent(100.0), height: Val::Percent(100.0), ..default() }).with_children(|p| text(p, Panel::Top, FONT));
+            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(TOP), flex_shrink: 0.0, ..default() }, plate())).with_children(|strip| {
+                flush(strip, Node { width: Val::Percent(100.0), height: Val::Percent(100.0), overflow: Overflow::clip(), ..default() }).with_children(|p| line(p, Panel::Top, FONT));
             });
             root.spawn(Node { width: Val::Percent(100.0), flex_grow: 1.0, flex_direction: FlexDirection::Row, min_height: Val::Px(0.0), ..default() }).with_children(|mid| {
                 // The orders column (Paul, 16 October: "reduce the
@@ -589,10 +610,10 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
                 });
             });
             // The bottom strip, one row: the air and the newswire.
-            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(BOTTOM), padding: pad, flex_shrink: 0.0, flex_direction: FlexDirection::Row, overflow: Overflow::clip(), ..default() }, plate())).with_children(|outer| {
+            root.spawn((Node { width: Val::Percent(100.0), height: Val::Px(BOTTOM), flex_shrink: 0.0, flex_direction: FlexDirection::Row, overflow: Overflow::clip(), ..default() }, plate())).with_children(|outer| {
             outer.spawn(Node { flex_grow: 1.0, min_width: Val::Px(0.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Row, overflow: Overflow::clip(), ..default() }).with_children(|row| {
-                    tight(row, Node { flex_grow: 1.0, min_width: Val::Px(0.0), overflow: Overflow::clip(), ..default() }).with_children(|p| text(p, Panel::Air, SMALL_FONT));
-                    tight(row, Node { flex_grow: 2.0, min_width: Val::Px(0.0), align_items: AlignItems::Center, overflow: Overflow::clip(), ..default() }).with_children(|p| text(p, Panel::Wire, WIRE_FONT));
+                    flush(row, Node { flex_grow: 1.0, min_width: Val::Px(0.0), overflow: Overflow::clip(), ..default() }).with_children(|p| text(p, Panel::Air, SMALL_FONT));
+                    flush(row, Node { flex_grow: 2.0, min_width: Val::Px(0.0), overflow: Overflow::clip(), ..default() }).with_children(|p| line(p, Panel::Wire, WIRE_FONT));
             });
             });
         });
