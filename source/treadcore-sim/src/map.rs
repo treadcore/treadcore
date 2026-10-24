@@ -605,17 +605,71 @@ impl Map {
         let n = self.w * self.h;
         // A state is a tile and the way it was entered.
         let state = |x: i32, y: i32, d: usize| (y as usize * self.w + x as usize) * 4 + d;
-        let mut g = vec![f32::INFINITY; n * 4];
-        let mut came = vec![usize::MAX; n * 4];
+        // A* toward b: no step costs less than the cheapest ground (a
+        // road, 0.6) a tile, so 0.6 a tile of Manhattan distance never
+        // overestimates and the crossing found is as cheap as before.
+        // Before LR 75 it spread every way at once, and on the world
+        // map a crossing read two and a half million states.
+        let h = |s: usize| {
+            let t = s / 4;
+            (((t % self.w) as i32 - bx).abs() + ((t / self.w) as i32 - by).abs()) as f32 * 0.6
+        };
+        SCRATCH.with(|sc| {
+        let sc = &mut *sc.borrow_mut();
+        // First the fewest water tiles any way to b crosses, land free
+        // (a 0-1 search, none past `max_water`): if that is more than
+        // `max_water`, so is the cheapest crossing's, and the answer is
+        // None without the search. A target across an ocean was nearly
+        // every crossing the world map asked, each refused after
+        // millions of states.
+        sc.begin(n);
+        let tix = |x: i32, y: i32| y as usize * self.w + x as usize;
+        let mut deque = std::collections::VecDeque::new();
+        sc.set(tix(ax, ay), 0.0, usize::MAX);
+        deque.push_back(tix(ax, ay));
+        let goal_tile = tix(bx, by);
+        let mut near = false;
+        while let Some(t) = deque.pop_front() {
+            if t == goal_tile {
+                near = true;
+                break;
+            }
+            let wt = sc.g(t);
+            let (cx, cy) = ((t % self.w) as i32, (t / self.w) as i32);
+            for (dx, dy) in DIRS {
+                let (nx, ny) = (cx + dx, cy + dy);
+                if !self.in_tile(nx, ny) {
+                    continue;
+                }
+                let ter = self.at_tile(nx as usize, ny as usize);
+                let add = match ter {
+                    Terrain::Water if forbidden(V2::new(nx as f32 + 0.5, ny as f32 + 0.5)) => continue,
+                    Terrain::Water => 1.0,
+                    t if t.passable() => 0.0,
+                    _ => continue,
+                };
+                let nw = wt + add;
+                let ni = tix(nx, ny);
+                if nw > max_water as f32 || nw >= sc.g(ni) {
+                    continue;
+                }
+                sc.set(ni, nw, t);
+                if add == 0.0 { deque.push_front(ni) } else { deque.push_back(ni) }
+            }
+        }
+        if !near {
+            return None;
+        }
+        sc.begin(n * 4);
         let mut open = BinaryHeap::new();
         for d in 0..4 {
             let s = state(ax, ay, d);
-            g[s] = 0.0;
-            open.push(Node(0.0, s));
+            sc.set(s, 0.0, usize::MAX);
+            open.push(Node(h(s), s));
         }
         let mut end = None;
-        while let Some(Node(cost, cur)) = open.pop() {
-            if cost > g[cur] {
+        while let Some(Node(f, cur)) = open.pop() {
+            if f > sc.g(cur) + h(cur) {
                 continue;
             }
             let (tile, d) = (cur / 4, cur % 4);
@@ -637,25 +691,26 @@ impl Map {
                     _ => continue,
                 };
                 let ns = state(nx, ny, nd);
-                if g[cur] + step < g[ns] {
-                    g[ns] = g[cur] + step;
-                    came[ns] = cur;
-                    open.push(Node(g[ns], ns));
+                let ng = sc.g(cur) + step;
+                if ng < sc.g(ns) {
+                    sc.set(ns, ng, cur);
+                    open.push(Node(ng + h(ns), ns));
                 }
             }
         }
         let mut cur = end?;
         let mut water = Vec::new();
-        while came[cur] != usize::MAX {
+        while sc.came(cur) != usize::MAX {
             let tile = cur / 4;
             let (x, y) = (tile % self.w, tile / self.w);
             if self.at_tile(x, y) == Terrain::Water {
                 water.push(V2::new(x as f32 + 0.5, y as f32 + 0.5));
             }
-            cur = came[cur];
+            cur = sc.came(cur);
         }
         water.reverse();
         (water.len() <= max_water).then_some(water)
+        })
     }
 
     pub fn route_by(&self, a: V2, b: V2, afloat: bool, danger: impl Fn(V2) -> f32) -> Vec<V2> {
@@ -683,17 +738,24 @@ impl Map {
         let start = idx(ax, ay);
         let goal = idx(bx, by);
         let n = self.w * self.h;
-        let mut g = vec![f32::INFINITY; n];
-        let mut came = vec![usize::MAX; n];
+        SCRATCH.with(|sc| {
+        let sc = &mut *sc.borrow_mut();
+        sc.begin(n);
         let mut open = BinaryHeap::new();
-        g[start] = 0.0;
+        sc.set(start, 0.0, usize::MAX);
         open.push(Node(0.0, start));
         let h = |i: usize| {
             let (x, y) = ((i % self.w) as f32, (i / self.w) as f32);
             ((x - bx as f32).powi(2) + (y - by as f32).powi(2)).sqrt() * 0.6
         };
         let mut found = false;
-        while let Some(Node(_, cur)) = open.pop() {
+        while let Some(Node(f, cur)) = open.pop() {
+            // An entry pushed before a cheaper way here was found: its
+            // neighbours were already seen at the cheaper cost, so it
+            // can change nothing (the same routes as before, sooner).
+            if f > sc.g(cur) + h(cur) + 1e-3 {
+                continue;
+            }
             if cur == goal {
                 found = true;
                 break;
@@ -742,10 +804,9 @@ impl Map {
                 #[allow(clippy::approx_constant)]
                 let step = if dx != 0 && dy != 0 { 1.4142 } else { 1.0 } * cost * (1.0 + danger(V2::new(nx as f32 + 0.5, ny as f32 + 0.5)));
 
-                let ng = g[cur] + step;
-                if ng < g[ni] {
-                    g[ni] = ng;
-                    came[ni] = cur;
+                let ng = sc.g(cur) + step;
+                if ng < sc.g(ni) {
+                    sc.set(ni, ng, cur);
                     open.push(Node(ng + h(ni), ni));
                 }
             }
@@ -756,7 +817,7 @@ impl Map {
         let mut path = vec![goal];
         let mut cur = goal;
         while cur != start {
-            cur = came[cur];
+            cur = sc.came(cur);
             path.push(cur);
         }
         path.reverse();
@@ -779,7 +840,50 @@ impl Map {
             out.push(b);
         }
         out
+        })
     }
+}
+
+/// A search's working arrays (costs and parents), kept per thread and
+/// reused: an entry counts only where its stamp is the search's own, so
+/// a search costs the tiles it touches, not the map (a 1024 x 1024
+/// map's were 12 MB for a route and 48 MB for a crossing, every call).
+struct Scratch {
+    g: Vec<f32>,
+    came: Vec<usize>,
+    stamp: Vec<u32>,
+    now: u32,
+}
+
+impl Scratch {
+    /// Ready for a search over `n` states.
+    fn begin(&mut self, n: usize) {
+        if self.g.len() < n {
+            self.g.resize(n, f32::INFINITY);
+            self.came.resize(n, usize::MAX);
+            self.stamp.resize(n, 0);
+        }
+        self.now = self.now.wrapping_add(1);
+        if self.now == 0 {
+            self.stamp.iter_mut().for_each(|s| *s = 0);
+            self.now = 1;
+        }
+    }
+    fn g(&self, i: usize) -> f32 {
+        if self.stamp[i] == self.now { self.g[i] } else { f32::INFINITY }
+    }
+    fn came(&self, i: usize) -> usize {
+        if self.stamp[i] == self.now { self.came[i] } else { usize::MAX }
+    }
+    fn set(&mut self, i: usize, g: f32, came: usize) {
+        self.stamp[i] = self.now;
+        self.g[i] = g;
+        self.came[i] = came;
+    }
+}
+
+thread_local! {
+    static SCRATCH: std::cell::RefCell<Scratch> = const { std::cell::RefCell::new(Scratch { g: Vec::new(), came: Vec::new(), stamp: Vec::new(), now: 0 }) };
 }
 
 // ---------------------------------------------------------------- files
