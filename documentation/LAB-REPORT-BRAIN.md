@@ -4049,3 +4049,106 @@ the profiles and the machine.
 The machine and resuming are done (backlog 58). Faster reading
 (backlog 59), the profiles and their round robin (60), and rotation
 (61) are open in ROADMAP.md.
+
+## 73. The first night on a real machine: each switch off, the island site, the posture tuned, 22 to 23 October
+
+The machine of LR 72: an i7-13700F (16 cores, 24 threads), 62 GB,
+Alpine. LR 71's census, played again on it from the same seeds, read
+the same to every digit (every map +5.94 +/- 0.38) in 977 s, against
+2 h 45 min in the VM: about ten times faster. A third of the CPU time
+is the kernel's (sys) during a census; not yet profiled.
+
+**Each switch alone (backlog 22), as written: nothing to read.** 200
+seeds a switch on every map, `SPLIT=2 JOBS=24` (`scripts/switches.sh`,
+5eb9603), 4 h. Eleven of the twelve rows read +0.00 +/- 0.00: every one
+of those switches is on by default now (LR 44 onward promoted them), so
+"the default with the switch added" is the default, and both sides
+played the same games. `smooth`, a weight since LR 46 and off by
+default, read -0.92 +/- 0.31: it stays off. The script's list is from
+before the promotions; the question had become the other one.
+
+**Each default off.** The same 200 seeds (0 to 199), every map, the
+trial team with one default taken off (`SWITCHES="-forget -board ..."`,
+`build/switches/20261023-061019`), 4 h 6 min. Below zero, the switch
+earns its place.
+
+| Taken off | Difference a seat | Errors |
+| --- | --- | --- |
+| dodge | -4.37 +/- 0.28 | 15.6 |
+| posture | -0.58 +/- 0.25 | 2.3 |
+| priced_crossing | -0.41 +/- 0.19 | 2.2 |
+| cycle | -0.30 +/- 0.18 | 1.7 |
+| forget, column, escort, bridge_jobs | -0.12 to -0.03, errors 0.05 to 0.11 | under 1.2 |
+| duck | +0.31 +/- 0.28 | 1.1 |
+| team_rotate | +0.32 +/- 0.21 | 1.5 |
+| board (and with it team_rotate, bridge_jobs, posture) | +0.49 +/- 0.26 | 1.9 |
+| **island_site** | **+0.43 +/- 0.17** | **2.5** |
+
+Twelve rows at two errors: about one passes by chance, so a row past
+two errors was read again on fresh seeds before anything was changed.
+By map, `board` splits (off: island +3.98, atlantic +1.87, industry
++1.56; on: naval -1.29, fidos-airstrip -1.45), and is left for its own
+study. `island_site` reads +0.00 on nine maps and all of its harm is
+on the two of continents: atlantic +3.10 +/- 0.59, europe +2.46 +/-
+0.71.
+
+**The island site, read.** With `island_site` on, the base is the
+best of the side's depots by `site_score` (-1 a small bare islet to 1
+a large forested island) less 0.01 a tile from the tank. A tile is a
+hundredth of a point, so a better site anywhere on the map won. A
+meter line was added (`bases by site: N (M off the nearest depot, T
+tiles in all)`). On atlantic and europe nearly every base went 70 to
+275 tiles off the nearest depot, across the sea: the depot a team
+starts by scores a poor site there, likely the continents cut by
+rivers into small, bare islands (not measured).
+
+**The fix**: two weights in `base_of` (commander.rs).
+
+- `site_reach` (30 tiles): the better site must lie this near the
+  nearest depot. 1000 is the rule before.
+- `site_poor` (0.5): the base leaves the nearest depot only when that
+  depot's site scores under this. 2 is the rule before. It changed no
+  game in either census below; kept, as the SPSA run below has it in
+  its weights files.
+
+**The rule, set before the run**: on seeds 200 to 399, none read
+before, every map, the fix against the rule before (`site_poor = 2,
+site_reach = 1000`); kept if past two errors and no map past two
+errors the other way. Eight jobs of 25 seeds an arm
+(`build/sitepoor/20261023-185003` and `-195645`), 1 h each.
+
+| Against the rule before | Every map | atlantic | europe |
+| --- | --- | --- | --- |
+| `site_poor` 0.5 alone | +0.03 +/- 0.02 | +0.00 | +0.00 |
+| `site_poor` 0 alone | +0.03 +/- 0.02 | +0.00 | +0.00 |
+| `site_reach` 30 alone | +0.66 +/- 0.13 | +1.97 +/- 0.48 | +4.95 +/- 0.48 |
+| **both (the new defaults)** | **+0.66 +/- 0.13** | **+1.97 +/- 0.48** | **+4.95 +/- 0.48** |
+| `island_site` off | +0.74 +/- 0.16 | +1.97 +/- 0.48 | +4.95 +/- 0.48 |
+
+`site_poor` alone moved nothing (the start depots score under 0
+there). The reach limit takes back the whole of the continents' loss,
+the same games as `island_site` off on both maps. No map reads past two
+errors the other way. **Kept**: `site_reach` 30 and `site_poor` 0.5 are
+the defaults. The fix against `island_site` off reads within the noise
+(+0.66 against +0.74); the switch stays, for a small island's
+neighbour.
+
+**The posture, tuned (running).** After the dodge, the posture is the
+largest part the census read off (-0.58), and it splits by map
+(industry -1.67, generated -2.37 off; naval +1.81). Its numbers were
+set by hand in LR 24 and 25 and never tuned.
+
+- **Intention**: find posture weights that score more a seat across
+  every map, from the new defaults, by SPSA (LR 40).
+- **The weights**: `w_posture`, `w_pos_defend`, `w_pos_economy`,
+  `w_pos_fortify`, `w_pos_connect`, `w_pos_expand`, `w_defend_ground`.
+- **The run**: 64 steps of 48 fresh seeds (5000 on), every map, 24 jobs,
+  a 0.6, c 0.4 (`build/spsa/20261023-220502`), about 8 h, from 22:05
+  on 23 October.
+- **The rule, set before the run**: the point SPSA ends on is promoted
+  only if, on 528 seeds none of the search used (20000 on), every map,
+  it beats the defaults past two errors and no map reads past two
+  errors the other way (ROADMAP goal 4). The census is queued to start
+  when the search ends.
+
+The result and the verdict are a later section.

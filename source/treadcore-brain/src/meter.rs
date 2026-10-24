@@ -50,6 +50,10 @@ pub struct Meter {
     /// Seconds afloat in a naval start with the beaches priced by their
     /// islands (LR 62), by the seat's group.
     pub beach_sites: [u64; 2],
+    /// Bases chosen by their sites (island_site, LR 73), by the seat's
+    /// group: chosen, of those not the nearest depot, and the tiles
+    /// from it in all.
+    pub base_sites: [[u64; 3]; 2],
     /// Seconds alive (LR 65), by the seat's group: kiting, by the step
     /// (`KiteStep::ALL`'s order), and in all (the last).
     pub kites: [[u64; 9]; 2],
@@ -188,6 +192,17 @@ pub fn beach_site() {
     let g = group();
     bump(|m| m.beach_sites[g] += 1);
 }
+/// A base chosen by its site, `off` tiles from the nearest depot.
+pub fn base_site(off: f32) {
+    let g = group();
+    bump(|m| {
+        m.base_sites[g][0] += 1;
+        if off > 0.5 {
+            m.base_sites[g][1] += 1;
+            m.base_sites[g][2] += off.round() as u64;
+        }
+    });
+}
 /// A second alive: kiting at `step`, or not.
 pub fn kite(act: crate::status::Act) {
     use crate::status::Act;
@@ -254,6 +269,11 @@ impl Meter {
         for (a, b) in self.beach_sites.iter_mut().zip(o.beach_sites) {
             *a += b;
         }
+        for (g, og) in self.base_sites.iter_mut().zip(o.base_sites) {
+            for (a, b) in g.iter_mut().zip(og) {
+                *a += b;
+            }
+        }
         for (g, og) in self.grounds.iter_mut().zip(o.grounds) {
             for (a, b) in g.iter_mut().zip(og) {
                 *a += b;
@@ -318,6 +338,7 @@ impl Meter {
         ) + &self.dodge_line()
             + &self.fronts.iter().enumerate().filter(|(_, f)| f[0] + f[2] > 0).map(|(g, f)| format!(", front picks{} {} ({} moved off the nearest depot, {} with no front)", if g == 1 { " (trial)" } else { "" }, f[0], f[1], f[2])).collect::<String>()
             + &self.beach_sites.iter().enumerate().filter(|(_, n)| **n > 0).map(|(g, n)| format!(", seconds afloat with beaches priced by island{}: {}", if g == 1 { " (trial)" } else { "" }, n)).collect::<String>()
+            + &self.base_sites.iter().enumerate().filter(|(_, b)| b[0] > 0).map(|(g, b)| format!(", bases by site{}: {} ({} off the nearest depot, {} tiles in all)", if g == 1 { " (trial)" } else { "" }, b[0], b[1], b[2])).collect::<String>()
             + &self.kites.iter().enumerate().filter(|(_, k)| k[8] > 0).map(|(g, k)| format!(", seconds kiting{}: {} of {} alive (massing {}, closing {}, stepping in {}, stepping out {}, holding {})", if g == 1 { " (trial)" } else { "" }, k[..8].iter().sum::<u64>(), k[8], k[0], k[1], k[2] + k[3], k[4], k[5] + k[6] + k[7])).collect::<String>()
             + &self.grounds.iter().enumerate().filter(|(_, k)| k[0] > 0).map(|(g, k)| format!(", seconds with a hostile on the held ground{}: {} ({} defended for it alone)", if g == 1 { " (trial)" } else { "" }, k[0], k[1])).collect::<String>()
             + &self.kite_kinds.iter().enumerate().filter(|(_, k)| k.iter().sum::<u64>() > 0).map(|(g, k)| format!(", seconds kiting by whom{}: an intruder {}, a wingman {}, a rally {}", if g == 1 { " (trial)" } else { "" }, k[0], k[1], k[2])).collect::<String>()

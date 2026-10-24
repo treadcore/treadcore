@@ -1193,16 +1193,26 @@ impl Commander {
         // patch of open water for the rest of the match.
         // A small island with few trees is a poor base (roadmap 12f2): of
         // the side's depots, the best site, a tile of distance costing a
-        // little.
+        // little. Only when the nearest depot's own site is poor
+        // (`site_poor`, LR 73), and only a site near it (`site_reach`):
+        // a tile is worth a hundredth of a point, so on atlantic and
+        // europe the bases went 70 to 275 tiles off, across the sea.
         if self.base.is_none() && self.caps().has(crate::weights::Caps::ISLAND_SITE) && !self.facts.islands().is_empty() {
             let s = &self.settings;
-            self.base = obs
-                .depots
-                .iter()
-                .filter(|d| Self::mine_or_allied(obs, d.owner))
-                .map(|d| (d.pos, self.facts.site_score(s, d.pos) - 0.01 * d.pos.dist(me.pos)))
-                .max_by(|a, b| a.1.total_cmp(&b.1).then(b.0.x.total_cmp(&a.0.x)))
-                .map(|(p, _)| Map::tile_centre(p));
+            let home = self.home(obs, me);
+            if home.map(|h| self.facts.site_score(s, h) < s.w[crate::weights::W::SitePoor]).unwrap_or(true) {
+                self.base = obs
+                    .depots
+                    .iter()
+                    .filter(|d| Self::mine_or_allied(obs, d.owner))
+                    .filter(|d| home.map(|h| d.pos.dist(h) <= s.w[crate::weights::W::SiteReach]).unwrap_or(true))
+                    .map(|d| (d.pos, self.facts.site_score(s, d.pos) - 0.01 * d.pos.dist(me.pos)))
+                    .max_by(|a, b| a.1.total_cmp(&b.1).then(b.0.x.total_cmp(&a.0.x)))
+                    .map(|(p, _)| Map::tile_centre(p));
+            }
+            if let Some(b) = self.base {
+                crate::meter::base_site(home.map(|h| Map::tile_centre(h).dist(b)).unwrap_or(0.0));
+            }
         }
         if self.base.is_none() {
             self.base = self.home(obs, me).map(Map::tile_centre);

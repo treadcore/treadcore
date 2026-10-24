@@ -1,0 +1,93 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Fri, 23 Oct 2026 22:30:00 -0700
+Subject: [JOURNAL 0099] A night on the machine: the switches, the island site, the posture
+Message-ID: <0099.20261023@treadcore.org>
+In-Reply-To: <0098.20261022@treadcore.org>
+Organization: treadcore.org
+Keywords: census, switches, island_site, site_reach, spsa, posture, hyprland
+X-Session: the same guest; Claude Code (Claude Opus 5.5) as the pair.
+           Paul's prompts: "can you also start a GUI tournament showing
+           all 16 bots at the same time"; "can you test the brain. max
+           this cpu out"; "is there a variety of census or adjustment
+           of the AI to develop better success"; "yes do the fix and
+           start the census"; "you can run something for 8 hours";
+           "write notes about the run. its intention. save. then
+           execuite."
+X-Commits: 29737be 9b293cb 5eb9603; this entry's commit follows
+
+          A NIGHT ON THE MACHINE: THE SWITCHES, THE ISLAND SITE,
+                              THE POSTURE
+
+                     Paul Richeson, treadcore.org
+                           23 October 2026
+
+
+ABSTRACT
+
+    The census machine came up (i7-13700F, 24 threads): LR 71 again
+    in 977 s, the same to every digit. Sixteen networked clients
+    played on one Hyprland screen. Each default switched off read the
+    dodge, posture and priced_crossing as earning their place and
+    island_site as costing 0.43 a seat, all of it on atlantic and
+    europe. The base went across the sea; a 30-tile reach fixed it
+    (+0.66 +/- 0.13, +4.95 on europe). SPSA tunes the posture overnight.
+
+I. INTRODUCTION
+
+    A PC with an RTX 4060 Ti joined the bench (copal, NVK). Paul asked
+    for it to be worked hard.
+
+II. BACKGROUND
+
+    LR 22 to 25 the switches and the posture; LR 40 SPSA; LR 71 every
+    map; LR 72 the machine.
+
+III. METHOD
+
+    The fair census from frozen binaries, split over 24 jobs, pooled
+    by pool.sh; a meter line where a reading needed a cause.
+
+IV. CHRONOLOGY
+
+    1. scripts/quad.sh on Hyprland: a grid of floating windows; the
+       stagger 1 s -> 0.25 s, so all 16 find the lobby in its 8 s.
+    2. The HUD's top and bottom strips at half height (9b293cb).
+    3. LR 71 replayed: 977 s.
+    4. switches.sh SPLIT (5eb9603); the switch census: eleven rows
+       0.00, the switches already on.
+    5. Each default off, 200 seeds: island_site +0.43, atlantic and
+       europe.
+    6. site_poor: no game changed. The meter: bases 70 to 275 tiles
+       off. site_reach 30: +0.66 +/- 0.13, as island_site off on both
+       maps.
+    7. SPSA over seven posture weights, 64 steps; the unseen-seed
+       census queued behind it.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 73.
+
+VI. DISCUSSION
+
+    A switch list that outlives its promotions reads nothing. A
+    per-map reading pointed at two maps; a meter line at the cause.
+
+VII. OPEN PROBLEMS
+
+    1. board splits by map (island +3.98 off, naval -1.29 on).
+    2. A third of a census's CPU is sys time.
+    3. switches.sh's default list is the switches before promotion.
+
+VIII. NEXT STEPS
+
+    1. The SPSA point against the defaults on 528 unseen seeds.
+
+APPENDIX B. ARTIFACTS
+
+    commander.rs base_of; weights.rs site_reach, site_poor; meter.rs
+    base_sites; LAB-REPORT-BRAIN.md section 73.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

@@ -130,6 +130,8 @@ weights! {
     SiteForest "w_site_forest" 1.0, "island: a base site's worth of trees enough";
     SiteSmall "w_site_small" 1.0, "island: a base site's cost of a small island";
     SiteArea "site_area" 400.0, "island: an island this large or larger is not small, tiles";
+    SitePoor "site_poor" 0.5, "island: island_site moves the base off the nearest depot only when that depot's site scores under this (`site_score`, -1 to 1); 2 (before LR 73) always, so on a map of continents a slightly better site an ocean away won";
+    SiteReach "site_reach" 30.0, "island: island_site's better site lies within this many tiles of the nearest depot; 1000 (before LR 73) anywhere, and on atlantic and europe the bases went 70 to 275 tiles off";
     SiteBeach "w_site_beach" 20.0, "island: tiles of a boat's run a beach's island is worth per point of its site score (`site_score`, -1 a small bare islet to 1 a large forested island), while the side holds no depot (a naval start); 0 (before LR 62) the beach by its run and danger alone; needs island_site";
     // Formation (LR 6.3).
     ColumnGap "column_gap" 2.0, "column: tiles between tanks in file on a bridge";
