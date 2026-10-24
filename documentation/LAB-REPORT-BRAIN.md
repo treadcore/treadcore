@@ -4152,3 +4152,60 @@ set by hand in LR 24 and 25 and never tuned.
   when the search ends.
 
 The result and the verdict are a later section.
+
+## 74. The posture tuned: a ridge, not a peak, 24 October
+
+LR 73's run. SPSA over the seven posture weights, 64 steps of 48 fresh
+seeds (5000 to 8071), every map, 24 jobs (`build/spsa/20261023-220502`),
+22:05 to 05:36: 7 h 31 min, a step 7 min.
+
+**Where it walked:**
+
+| Weight | Default | SPSA's point |
+| --- | --- | --- |
+| `w_posture` | 0.5 | 0.977 |
+| `w_pos_defend` | 1.0 | 4.18 |
+| `w_pos_fortify` | 1.0 | 2.95 |
+| `w_pos_economy` | 1.0 | 1.85 |
+| `w_defend_ground` | 1.0 | 0.750 |
+| `w_pos_connect` | 1.0 | 0.588 |
+| `w_pos_expand` | 1.0 | 0.594 |
+
+The last four steps read -0.08, -0.46, -0.27 and +0.25 a seat (errors
+0.15 to 0.34): flat. At `w_posture` 0.98 a leaned rung climbs past
+some 200 rungs, so the posture, not the ladder's order, picks the rung
+nearly always.
+
+**The rule, set before the run** (LR 73): promoted if, on 528 seeds the
+search did not use (20000 to 20527), every map, it beats the defaults
+past two errors and no map reads past two errors the other way.
+
+**The census** (`build/census/20261024-053657`, 05:37 to 06:32):
+
+| 528 seeds | The point less the defaults, a seat |
+| --- | --- |
+| **Every map** | **-0.00 +/- 0.14** |
+| naval | +0.96 +/- 0.53 |
+| fidos-airstrip | +0.84 +/- 0.52 |
+| atlantic | +0.77 +/- 0.35 (past two errors) |
+| europe | +0.46 +/- 0.34 |
+| island | +0.20 +/- 0.47 |
+| industry | -0.23 +/- 0.43 |
+| fortressisles2 | -0.24 +/- 0.52 |
+| constanine | -0.40 +/- 0.30 |
+| generated | -0.45 +/- 0.51 |
+| fortressislesx | -0.55 +/- 0.40 |
+| big-lizard | -1.36 +/- 0.67 (past two errors the other way) |
+
+**The verdict**: not promoted, on both counts; the defaults stay.
+
+**The reading.** The weights moved far, the posture took over the
+ladder, and the score a seat did not move: across every map the
+posture's weights are a ridge, not a peak. What they change is which
+maps a team does well on (atlantic and naval up, big-lizard down).
+One set of numbers for every map averages those away. That is LR
+72's case for profiles (backlog 60): a posture fitted to a map, or
+read from it, could keep the gains without the losses. SPSA on one
+map at a time would find each map's point; a census of each against
+the defaults on its own map would say whether the maps differ past
+the noise.
