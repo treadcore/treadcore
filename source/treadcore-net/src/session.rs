@@ -106,7 +106,14 @@ pub struct Seat {
     last_seen: Instant,
     last_heartbeat: Instant,
     pub rtt_ticks: u32,
+    /// The Welcome last sent, in its pieces, and when: a Join again
+    /// within `WELCOME_KEEP` gets the same pieces, so the client's
+    /// assembler fills in what it lost instead of starting over.
+    welcome: Option<(Instant, Vec<Packet>)>,
 }
+
+/// A Welcome's pieces are sent again as they were for this long.
+const WELCOME_KEEP: Duration = Duration::from_secs(5);
 
 impl Seat {
     fn new(player: PlayerId, peer: PeerId, name: String, now: Instant) -> Seat {
@@ -125,6 +132,7 @@ impl Seat {
             last_seen: now,
             last_heartbeat: now,
             rtt_ticks: 0,
+            welcome: None,
         }
     }
 }
@@ -274,15 +282,24 @@ impl Host {
                         seat.pending.clear();
                         seat.events_out.clear();
                         seat.events_seq = 0;
+                        seat.welcome = None;
                     }
+                    let again = seat.joined;
                     seat.joined = true;
-                    let w = Packet::Welcome { player: seat.player, scenario: self.world.scenario.clone(), tick: self.world.tick, map: self.world.map.clone() };
-                    // The map can be 65 KiB: in pieces, a fresh id each time.
-                    self.welcome_id = self.welcome_id.wrapping_add(1);
-                    for piece in chunk_packets(&w, self.welcome_id) {
-                        self.routes.send(&mut sock, self.me, peer, &piece);
+                    // The map can be 1 MiB: in pieces, a fresh id each
+                    // time, but the same pieces again for a Join soon
+                    // after (the client's retry while they arrive).
+                    if seat.welcome.as_ref().map(|(t, _)| now.duration_since(*t) >= WELCOME_KEEP).unwrap_or(true) {
+                        let w = Packet::Welcome { player: seat.player, scenario: self.world.scenario.clone(), tick: self.world.tick, map: self.world.map.clone() };
+                        self.welcome_id = self.welcome_id.wrapping_add(1);
+                        seat.welcome = Some((now, chunk_packets(&w, self.welcome_id)));
                     }
-                    log::info!("seat {} '{}' joined from {:016x}", seat.player, seat.name, peer);
+                    for piece in &seat.welcome.as_ref().unwrap().1 {
+                        self.routes.send(&mut sock, self.me, peer, piece);
+                    }
+                    if !again {
+                        log::info!("seat {} '{}' joined from {:016x}", seat.player, seat.name, peer);
+                    }
                 }
                 Packet::Command { seq, cmd, .. } => {
                     self.routes.send(&mut sock, self.me, peer, &Packet::CommandAck { seq });

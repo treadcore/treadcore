@@ -229,12 +229,16 @@ impl Packet {
 }
 
 /// Any packet, split into `Chunk`s if it does not fit a datagram, or as
-/// itself if it does. For Welcome, whose map may be 65 KiB.
+/// itself if it does. For Welcome, whose map may be 1 MiB (the world,
+/// 1024 x 1024): packed first (`pack`), a map's cells being long runs of
+/// one ground, so the world goes in some ninety datagrams, not nine
+/// hundred.
 pub fn chunk_packets(p: &Packet, id: u32) -> Vec<Packet> {
     let bytes = p.encode();
     if bytes.len() <= MAX_DATAGRAM {
         return vec![p.clone()];
     }
+    let bytes = pack(&bytes);
     let chunk = MAX_DATAGRAM - 64;
     let parts = bytes.chunks(chunk).count() as u16;
     bytes.chunks(chunk).enumerate().map(|(i, c)| Packet::Chunk { id, part: i as u16, parts, bytes: c.to_vec() }).collect()
@@ -261,11 +265,57 @@ impl ChunkAssembler {
             for p in self.parts.drain(..) {
                 all.extend(p.unwrap());
             }
-            Packet::decode(&all).ok()
+            Packet::decode(&unpack(&all)?).ok()
         } else {
             None
         }
     }
+}
+
+/// Run-length packing (PackBits): a control byte n of 0 to 127 is n + 1
+/// bytes as they are; 128 to 255 is the next byte n - 126 times (2 to
+/// 129).
+pub fn pack(b: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(b.len() / 4 + 16);
+    let mut i = 0;
+    while i < b.len() {
+        let mut run = 1;
+        while i + run < b.len() && run < 129 && b[i + run] == b[i] {
+            run += 1;
+        }
+        if run >= 2 {
+            out.push((run + 126) as u8);
+            out.push(b[i]);
+            i += run;
+            continue;
+        }
+        // Bytes as they are, up to the next run of two or more.
+        let start = i;
+        while i < b.len() && i - start < 128 && !(i + 1 < b.len() && b[i + 1] == b[i]) {
+            i += 1;
+        }
+        out.push((i - start - 1) as u8);
+        out.extend_from_slice(&b[start..i]);
+    }
+    out
+}
+
+/// `pack` undone; `None` if the bytes end inside a control's count.
+pub fn unpack(b: &[u8]) -> Option<Vec<u8>> {
+    let mut out = Vec::with_capacity(b.len() * 4);
+    let mut i = 0;
+    while i < b.len() {
+        let n = b[i] as usize;
+        i += 1;
+        if n < 128 {
+            out.extend_from_slice(b.get(i..i + n + 1)?);
+            i += n + 1;
+        } else {
+            out.extend(std::iter::repeat(*b.get(i)?).take(n - 126));
+            i += 1;
+        }
+    }
+    Some(out)
 }
 
 /// An observation on the wire: bincode, then split into MAX_DATAGRAM
@@ -336,7 +386,7 @@ mod tests {
         let w = treadcore_sim::World::new(treadcore_sim::Scenario::default());
         let p = Packet::Welcome { player: 3, scenario: w.scenario.clone(), tick: 7, map: w.map.clone() };
         let pieces = chunk_packets(&p, 42);
-        assert!(pieces.len() > 10, "a 16 KiB map should take more than ten datagrams, got {}", pieces.len());
+        assert!(pieces.len() > 1, "a 16 KiB map, packed, should still take more than one datagram, got {}", pieces.len());
         let mut asm = ChunkAssembler::default();
         let mut got = None;
         // Out of order, too.
@@ -350,6 +400,28 @@ mod tests {
         assert_eq!(got, Some(p));
         // A small packet is not chunked.
         assert_eq!(chunk_packets(&Packet::CommandAck { seq: 1 }, 1).len(), 1);
+    }
+
+    /// The world map, 1 MiB of cells, goes in under 150 datagrams and
+    /// comes back whole; packing round-trips any bytes.
+    #[test]
+    fn the_world_packs_small() {
+        let map = treadcore_sim::Map::from_text(include_str!("../../../maps/world/world.map")).unwrap();
+        let w = treadcore_sim::World::new(treadcore_sim::Scenario::default());
+        let p = Packet::Welcome { player: 0, scenario: w.scenario.clone(), tick: 1, map };
+        let pieces = chunk_packets(&p, 9);
+        assert!(pieces.len() < 150, "the world took {} datagrams", pieces.len());
+        let mut asm = ChunkAssembler::default();
+        let mut got = None;
+        for q in &pieces {
+            if let Packet::Chunk { id, part, parts, bytes } = q {
+                got = asm.push(*id, *part, *parts, bytes.clone()).or(got);
+            }
+        }
+        assert_eq!(got, Some(p));
+        for b in [vec![], vec![7u8], vec![1, 1], vec![1, 2, 3, 3, 3, 4], vec![0u8; 1000], (0..=255u8).cycle().take(700).collect::<Vec<u8>>()] {
+            assert_eq!(unpack(&pack(&b)).as_deref(), Some(&b[..]));
+        }
     }
 
     #[test]
