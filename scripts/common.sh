@@ -36,7 +36,9 @@ census_maps() {
     for m in $(echo "$1" | tr ',' ' '); do
         case "$m" in
             gen) out="$out,gen" ;;
-            all) out="$out,$(ls "$ROOT"/maps/*.map "$ROOT"/maps/*/*.map | grep -v '/\._' | paste -sd,),gen" ;;
+            # The world (1024 x 1024) is left out until its routes are
+            # cheap: MAP=all stays the eleven maps of LR 71.
+            all) out="$out,$(ls "$ROOT"/maps/*.map "$ROOT"/maps/*/*.map | grep -v '/\._' | grep -v '/world/world\.map$' | paste -sd,),gen" ;;
             *) [ -f "$m" ] || die "no map file $m"
                out="$out,$(cd "$(dirname "$m")" && pwd)/$(basename "$m")" ;;
         esac

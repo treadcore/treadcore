@@ -1090,6 +1090,19 @@ mod tests {
         for s in [0usize, 15] {
             assert!(!e.route(e.starts[s], e.starts[1]).is_empty(), "europe: no road from seat {} to Moscow", s);
         }
+        // The world, 1024 x 1024: Afro-Eurasia's starts (London, Beijing,
+        // Cairo, Delhi, Moscow, Lagos, Shanghai, Tehran) reach each other
+        // by land, and the Americas' (New York, Sao Paulo, Los Angeles,
+        // Mexico City, Buenos Aires) theirs; nothing crosses an ocean.
+        let w = Map::from_text(include_str!("../../../maps/world/world.map")).expect("world.map reads");
+        assert_eq!((w.w, w.h, w.starts.len()), (1024, 1024, crate::MAX_PLAYERS));
+        for side in [&[2usize, 4, 5, 7, 8, 11, 12, 14][..], &[0, 3, 6, 10, 13][..]] {
+            for s in &side[1..] {
+                assert!(!w.route(w.starts[side[0]], w.starts[*s]).is_empty(), "world: no road from seat {} to seat {}", side[0], s);
+            }
+        }
+        assert!(w.route(w.starts[0], w.starts[2]).is_empty(), "New York should not reach London by land");
+        assert!(w.route(w.starts[4], w.starts[9]).is_empty(), "Beijing should not reach Sydney by land");
     }
 
     #[test]

@@ -212,6 +212,19 @@ CITY = {
     "rabat": (-6.8, 34.0), "algiers": (3.05, 36.75), "hassi messaoud": (6.0, 31.7), "tunis": (10.2, 36.8),
     "tripoli": (13.2, 32.9), "ras lanuf": (18.6, 30.5), "cairo": (31.2, 30.0), "suez": (32.55, 29.97),
     "dakar": (-17.4, 14.7), "lagos": (3.4, 6.5), "reykjavik": (-21.9, 64.15), "kazan": (49.1, 55.8),
+    # Asia, Africa south of the Sahara, Australasia: the world map's.
+    "tokyo": (139.7, 35.7), "osaka": (135.5, 34.7), "seoul": (127.0, 37.55), "shenyang": (123.4, 41.8),
+    "beijing": (116.4, 39.9), "shanghai": (121.5, 31.2), "hong kong": (114.2, 22.3), "chengdu": (104.0, 30.7),
+    "hanoi": (105.85, 21.0), "bangkok": (100.5, 13.75), "kuala lumpur": (101.7, 3.15), "singapore": (103.8, 1.35),
+    "jakarta": (106.8, -6.2), "manila": (121.0, 14.6), "delhi": (77.2, 28.6), "mumbai": (72.9, 19.1),
+    "chennai": (80.3, 13.1), "kolkata": (88.4, 22.6), "dhaka": (90.4, 23.8), "karachi": (67.0, 24.9),
+    "lahore": (74.3, 31.5), "kabul": (69.2, 34.5), "tehran": (51.4, 35.7), "mashhad": (59.6, 36.3),
+    "tashkent": (69.2, 41.3), "almaty": (76.9, 43.25), "urumqi": (87.6, 43.8), "yekaterinburg": (60.6, 56.8),
+    "novosibirsk": (82.9, 55.0), "irkutsk": (104.3, 52.3), "vladivostok": (131.9, 43.1),
+    "khartoum": (32.5, 15.6), "addis ababa": (38.75, 9.0), "nairobi": (36.8, -1.3), "kinshasa": (15.3, -4.3),
+    "johannesburg": (28.0, -26.2), "cape town": (18.4, -33.9),
+    "sydney": (151.2, -33.9), "melbourne": (145.0, -37.8), "adelaide": (138.6, -34.9), "perth": (115.9, -31.95),
+    "brisbane": (153.0, -27.5), "darwin": (130.8, -12.5), "alice springs": (133.9, -23.7), "auckland": (174.8, -36.85),
 }
 
 PAN_AMERICAN_NORTH = ["prudhoe bay", "fairbanks", "whitehorse", "dawson creek", "edmonton", "calgary", "great falls", "denver", "dallas", "laredo", "monterrey", "mexico city", "oaxaca", "tuxtla", "guatemala city", "san salvador", "tegucigalpa", "managua", "san jose", "panama city", "yaviza"]
@@ -253,12 +266,110 @@ INDUSTRY = [
 # Chokepoints: neutral pillboxes.
 GUNS = ["panama city", "yaviza", "turbo", "tarifa", "tangier", "istanbul", "suez", "dover", "calais", "copenhagen", "laredo", "rio gallegos", "dawson creek", "amman", "belgrade", "kyiv"]
 
+# The rest of the world, for the world map only: drawn after the lists
+# above, so atlantic and europe come out as they did, byte for byte.
+ASIA = [
+    (65, 69.5), (70, 73), (73, 71.5), (75, 72.5), (80, 73.5), (87, 74), (100, 77), (110, 74), (113, 73.5),
+    (120, 73), (128, 72.5), (130, 71), (140, 72.5), (150, 71.5), (160, 69.7), (170, 70), (180, 69),
+    (180, 65), (178, 64.5), (174, 61.8), (170, 60), (165, 60), (163, 58), (162.5, 56), (160, 53), (158, 51),
+    (156.5, 51), (156, 53), (155.5, 57), (158, 58), (160, 60.5), (156, 61.5), (152, 59.2), (143, 59.3),
+    (140, 58), (137, 54.5), (141, 53), (140.5, 48.5), (138, 45.5), (133, 42.8), (130.5, 42.3), (129.5, 40.5),
+    (128.5, 38.5), (129.4, 36), (129, 35.1), (126.5, 34.4), (126.2, 36.8), (126.6, 37.7), (124.8, 39.8),
+    (121.5, 39), (121.2, 40.9), (119, 39.2), (117.7, 38.5), (118.9, 37.3), (122.5, 37.4), (120.3, 36),
+    (119.3, 35), (120.9, 32.5), (121.9, 31), (121.4, 28.4), (120, 26.5), (117.5, 23.6), (114.2, 22.3),
+    (110.4, 21.2), (110, 20.3), (108.5, 21.6), (106, 19.5), (107.5, 16.4), (109, 14.5), (109.3, 12),
+    (106.8, 10.3), (105, 8.6), (104.8, 10.4), (103, 11), (101, 12.7), (100, 13.4), (99.2, 10.3), (100.3, 8.2),
+    (100.6, 6.5), (102, 6.2), (103.4, 4.2), (104.2, 1.4), (103.5, 1.3), (101.3, 2.9), (100.3, 5.4), (98.3, 8),
+    (98.7, 12.5), (97.7, 16.5), (96, 17), (94.3, 16), (94.6, 18.8), (92.5, 21), (91.8, 22.5), (90.5, 22),
+    (87, 21.5), (84.8, 19.2), (82.3, 16.7), (80.3, 15.5), (80.3, 13.2), (79.8, 10.3), (78.2, 8.9), (77.5, 8.1),
+    (76.5, 9), (75.5, 11.8), (74.6, 14.8), (72.8, 19), (72.6, 22.2), (70, 21), (68.9, 22.5), (67.5, 23.8),
+    (66.6, 25.3), (65, 25.3),
+]
+SRI_LANKA = [(79.8, 9.8), (81.2, 8.5), (81.9, 7), (81.2, 6.2), (80, 6), (79.7, 8)]
+HONSHU = [(130.9, 34), (132.5, 35.4), (135, 35.7), (136.9, 37.1), (138.5, 37.4), (140, 39.5), (140, 41.2), (141.5, 41.4),
+          (142, 39.5), (141, 37), (140.6, 35.7), (139.8, 35), (138.8, 34.6), (137, 34.6), (135.8, 33.5), (135, 34.5), (133, 34.3)]
+HOKKAIDO = [(140, 41.5), (140, 43.2), (141.7, 45.4), (143.5, 44.2), (145.5, 43.3), (143.3, 42), (141.2, 42.4)]
+KYUSHU = [(129.8, 33.5), (131, 33.9), (131.8, 33), (131.2, 31.3), (130.2, 31.2), (129.7, 32.6)]
+SHIKOKU = [(132.5, 33.9), (134.6, 34.2), (134.7, 33.8), (133.3, 33.2), (132.4, 33.1)]
+SAKHALIN = [(142, 46), (142.2, 49), (142, 51.5), (142.7, 54.3), (143.3, 52.5), (143.2, 49.3), (144.5, 49), (143, 47)]
+TAIWAN = [(120.1, 23), (121, 25.2), (121.9, 25), (121.5, 23), (120.8, 21.9)]
+HAINAN = [(108.6, 19.2), (110, 20.1), (111, 19.6), (110, 18.2), (108.7, 18.5)]
+LUZON = [(119.8, 16.3), (120.5, 18.5), (122.2, 18.5), (122.5, 17), (121.6, 15.7), (124, 13.8), (123, 13), (121, 13.8), (120.6, 14.5)]
+MINDANAO = [(122, 7), (123.5, 8.5), (125.5, 9.5), (126.5, 8), (126, 6.3), (125.4, 5.6), (124, 6.4), (123.6, 7.8)]
+BORNEO = [(109, 1.8), (111.8, 2.9), (113.5, 3.8), (115.4, 5.2), (116.8, 7), (119.2, 5.2), (118.2, 4.4), (117.8, 1), (118.9, 0.9),
+          (117.5, 0), (116.6, -1.5), (116.3, -3.6), (114.5, -4), (113, -3.2), (110.2, -2.9), (109.5, -1), (109, 0.5)]
+SUMATRA = [(95.2, 5.6), (97.5, 5.2), (98.7, 3.8), (100.4, 2.2), (103.6, -0.8), (104.5, -1.9), (105.8, -3.5), (105.8, -5.8),
+           (104.5, -5.9), (102.3, -4), (101, -2.5), (99.5, 0), (98.6, 1.7), (97.2, 3.2), (95.4, 4.6)]
+JAVA = [(105.2, -6.8), (106.5, -6), (108.3, -6.3), (110.4, -6.9), (112.5, -6.9), (114.5, -7.7), (114.4, -8.7), (111, -8.2), (108, -7.8), (106.4, -7.4)]
+SULAWESI = [(119.4, -5.5), (120.4, -5.5), (120.8, -2.6), (122, -4.8), (123.2, -4.4), (121.3, -1.9), (123.4, -0.9), (121, -1.3),
+            (120.3, 0.4), (124.5, 0.4), (125.2, 1.6), (124, 1), (120.8, 1.3), (119.8, 0), (119.4, -3.5)]
+NEW_GUINEA = [(131, -1.4), (134, -0.9), (135, -3.3), (138, -1.6), (141, -2.6), (145, -4.3), (146, -5.5), (147.5, -6), (148, -8),
+              (150.5, -10.5), (147, -10.1), (144, -7.8), (143, -9.2), (141, -9.1), (139, -8.1), (137.5, -5), (135, -4.4), (133, -4), (132, -2.8)]
+AUSTRALIA = [
+    (113.5, -22), (114, -26), (115, -30), (115, -34), (117.5, -35), (120, -33.9), (123.5, -33.9), (126, -32.3), (131, -31.5),
+    (134, -32.5), (135.6, -34.8), (137.8, -32.6), (137.5, -35.6), (140, -37.7), (143.5, -38.8), (146.3, -39.1), (148, -37.8),
+    (150, -37.5), (150.8, -34.3), (152.5, -32), (153.6, -28.7), (153, -25), (150.8, -22.5), (149, -20.5), (146.3, -19),
+    (145.4, -16), (145.3, -14.8), (143.6, -14), (142.5, -10.7), (141.6, -12.7), (141.5, -15.5), (140.6, -17.5), (139, -17),
+    (137, -15.9), (135.5, -15), (136.8, -12.2), (135, -12.2), (132.6, -11.5), (131, -12.2), (129.6, -14.9), (128, -15),
+    (126.2, -14), (124.5, -16.4), (122.2, -17.5), (121.7, -18.8), (119, -20), (116.7, -20.6), (114.2, -21.8),
+]
+TASMANIA = [(144.6, -40.7), (148.3, -40.9), (148, -43.2), (146.8, -43.6), (145.2, -42.2)]
+NZ_NORTH = [(172.7, -34.4), (174.3, -35.8), (175.9, -37.3), (178.5, -37.7), (177.9, -39.2), (176.9, -39.5), (175.2, -41.6),
+            (174.6, -41.3), (175.2, -40.1), (174, -39.3), (174.6, -38.1), (174.3, -36.9)]
+NZ_SOUTH = [(172.7, -40.5), (174.3, -41.7), (173.3, -43), (172.8, -43.9), (171, -44.6), (170.6, -45.9), (169, -46.6),
+            (166.5, -46), (167, -45), (168.3, -44), (170.8, -42.7), (172, -41.5)]
+LANDS_WORLD = [ASIA, SRI_LANKA, HONSHU, HOKKAIDO, KYUSHU, SHIKOKU, SAKHALIN, TAIWAN, HAINAN, LUZON, MINDANAO,
+               BORNEO, SUMATRA, JAVA, SULAWESI, NEW_GUINEA, AUSTRALIA, TASMANIA, NZ_NORTH, NZ_SOUTH]
+BAIKAL = [(104, 51.6), (106, 52.5), (108.5, 54), (109.5, 55.7), (109, 53.5), (106.5, 51.5)]
+WATERS_WORLD = [BAIKAL]
+MOUNTAINS_WORLD = [
+    [(67, 35), (71, 36.5), (74, 35.5), (77, 34), (80, 31), (84, 28.5), (88, 27.8), (92, 27.8), (95, 28.8), (97.5, 28)],
+    [(76, 36), (82, 36), (90, 36), (98, 35)],
+    [(70, 41), (75, 41.5), (80, 42), (85, 43), (90, 43.5), (95, 43)],
+    [(85, 50), (90, 49.5), (95, 47.5)],
+    [(44, 37.5), (47, 34.5), (50, 32), (53, 29.5), (57, 27.5)],
+    [(125, 70), (130, 66), (135, 63)],
+    [(145.5, -16), (147, -21), (150, -26), (151.5, -30), (149.5, -35), (146.5, -37.5)],
+    [(37, 8), (38.5, 10.5), (39.5, 13.5)],
+    [(27, -32), (29.5, -29), (31, -26)],
+    [(167.5, -45.5), (170, -43.5), (172.5, -42)],
+    [(-84, 34.5), (-80, 37.5), (-77, 40.5), (-73, 43), (-70, 45)],
+]
+DESERTS_WORLD = [(92, 38, 115, 46), (76, 36, 90, 42), (69, 24, 75, 29.5), (52, 27, 62, 34), (118, -31, 141, -19)]
+ROADS_WORLD = [
+    ["moscow", "kazan", "yekaterinburg", "novosibirsk", "irkutsk", "vladivostok"],
+    ["baghdad", "tehran", "mashhad", "tashkent", "almaty", "urumqi", "beijing"], ["mashhad", "kabul", "lahore"],
+    ["tehran", "karachi", "lahore", "delhi", "kolkata", "dhaka", "bangkok", "kuala lumpur", "singapore"],
+    ["delhi", "mumbai", "chennai"], ["beijing", "shanghai", "hong kong", "hanoi", "bangkok"], ["shanghai", "chengdu"],
+    ["beijing", "shenyang", "seoul"], ["tokyo", "osaka"],
+    ["perth", "adelaide", "melbourne", "sydney", "brisbane"], ["adelaide", "alice springs", "darwin"],
+    ["cairo", "khartoum", "addis ababa", "nairobi", "johannesburg", "cape town"], ["lagos", "kinshasa", "johannesburg"],
+]
+INDUSTRY_WORLD = [
+    ("shanghai", ["power", "workshop"]), ("tokyo", ["datacentre", "power"]), ("singapore", ["refinery", "datacentre"]),
+    ("mumbai", ["refinery", "power"]), ("johannesburg", ["power", "workshop"]), ("perth", ["refinery"]),
+]
+
 REGIONS = {
     "atlantic": {
         "bbox": (-170, -57, 66, 76), "width": 512, "parallel": 30, "seed": 0x5EA,
         "starts": ["new york", "berlin", "buenos aires", "riyadh", "los angeles", "madrid", "lima", "moscow",
                    "mexico city", "london", "sao paulo", "istanbul", "edmonton", "rome", "bogota", "cairo"],
         "depots": ["panama city", "chicago", "houston", "santiago", "manaus", "dakar", "lagos", "kyiv", "oslo", "algiers", "baghdad", "reykjavik"],
+    },
+    # The world from 72 N to 56 S: the land, not the poles. 1024 x 1024,
+    # so a tile is 0.34 degrees east and 0.125 north: the map stands 2.4
+    # times taller than the world. Pillboxes in the deserts and along the
+    # ranges as well as at the chokepoints.
+    "world": {
+        "bbox": (-170, -56, 180, 72), "width": 1024, "height": 1024, "parallel": 30, "seed": 0x3A27,
+        "world": True,
+        "starts": ["new york", "tokyo", "london", "sao paulo", "beijing", "cairo", "los angeles", "delhi",
+                   "moscow", "sydney", "mexico city", "lagos", "shanghai", "buenos aires", "tehran", "jakarta"],
+        "depots": ["chicago", "houston", "toronto", "bogota", "lima", "santiago", "paris", "berlin", "madrid", "rome",
+                   "istanbul", "riyadh", "karachi", "mumbai", "dhaka", "bangkok", "manila", "seoul", "hong kong",
+                   "singapore", "osaka", "kinshasa", "nairobi", "johannesburg", "cape town", "tashkent", "novosibirsk",
+                   "vladivostok", "almaty", "addis ababa", "perth", "melbourne", "auckland"],
     },
     "europe": {
         "bbox": (-12, 33, 46, 64), "width": 320, "parallel": 48, "seed": 0xE0,
@@ -279,7 +390,7 @@ class Canvas:
         self.lon0, self.lat0, self.lon1, self.lat1 = r["bbox"]
         self.k = math.cos(math.radians(r["parallel"]))
         self.w = r["width"]
-        self.h = int(round(self.w * (self.lat1 - self.lat0) / ((self.lon1 - self.lon0) * self.k)))
+        self.h = r.get("height") or int(round(self.w * (self.lat1 - self.lat0) / ((self.lon1 - self.lon0) * self.k)))
         self.cells = [["water"] * self.w for _ in range(self.h)]
         self.rng = random.Random(r["seed"])
 
@@ -439,6 +550,13 @@ def draw(region):
         c.fill(ring, "water", depth=2)
     for ring in ISLANDS:
         c.fill(ring, "grass", depth=2)
+    world = r.get("world", False)
+    if world:
+        for ring in LANDS_WORLD:
+            c.fill(ring, "grass")
+        for ring in WATERS_WORLD:
+            c.fill(ring, "water", depth=2)
+    deserts = DESERTS + (DESERTS_WORLD if world else [])
     # Forest: how much by latitude (boreal and tropical thick, the
     # temperate belt light), none in the deserts.
     n = noise(r["seed"] + 1)
@@ -448,12 +566,12 @@ def draw(region):
             if c.cells[y][x] != "grass":
                 continue
             lon = c.lon0 + (x + 0.5) / c.w * (c.lon1 - c.lon0)
-            if any(a <= lon <= b and p <= lat <= q for a, p, b, q in DESERTS):
+            if any(a <= lon <= b and p <= lat <= q for a, p, b, q in deserts):
                 continue
             want = forest_line(abs(lat))
             if n(x * 24.0 / c.w * (c.w / 128.0) * 0.5, y * 24.0 / c.h * (c.h / 128.0) * 0.5) > want:
                 c.cells[y][x] = "forest"
-    for ridge in MOUNTAINS:
+    for ridge in MOUNTAINS + (MOUNTAINS_WORLD if world else []):
         c.path(ridge, "rubble", keep=("water",))
         # Two tiles wide, a little ragged.
         pts = [(lo + 0.25 * (c.lon1 - c.lon0) / c.w, la - 0.25 * (c.lat1 - c.lat0) / c.h) for lo, la in ridge]
@@ -468,7 +586,7 @@ def draw(region):
         for x in range(int(gap[0][0]) - 1, int(gap[1][0]) + 2):
             if c.inside(x, y) and c.cells[y][x] in ("grass", "rubble"):
                 c.cells[y][x] = "forest"
-    for road in ROADS_AMERICAS + ROADS_OLD_WORLD:
+    for road in ROADS_AMERICAS + ROADS_OLD_WORLD + (ROADS_WORLD if world else []):
         if all(c.inside(*c.xy(*CITY[n])) for n in road):
             c.road(road)
         else:
@@ -489,7 +607,7 @@ def draw(region):
     starts = [site(s) for s in r["starts"]]
     # Industry first, so a depot or a start does not land on a pad.
     structures = []
-    for city, kinds in INDUSTRY:
+    for city, kinds in INDUSTRY + (INDUSTRY_WORLD if world else []):
         if not c.inside(*c.xy(*CITY[city])):
             continue
         x, y = site(city)
@@ -538,6 +656,42 @@ def draw(region):
                     c.cells[py][px] = "grass"
                 guns.append((px, py, name))
                 break
+    # The world map: pillboxes on the ranges, one every four degrees of
+    # ridge, and over the deserts, one every five by four degrees; on
+    # dry ground, three tiles or more from a start, a depot or a pad.
+    if world:
+        taken = set((x, y) for x, y, _ in guns)
+        def gun(lon, lat, what):
+            x, y = c.xy(lon, lat)
+            p = c.land_near(int(x), int(y), r=3)
+            if p is None:
+                return
+            px, py = p
+            if c.cells[py][px] not in ("grass", "forest", "rubble") or (px, py) in taken:
+                return
+            if any(abs(px - sx) + abs(py - sy) < 3 for sx, sy in starts) or any(abs(px - dx) + abs(py - dy) < 3 for dx, dy, _, _ in depots):
+                return
+            if any(c.inside(px + i, py + j) and c.cells[py + j][px + i] == "pad" for i in (-1, 0, 1) for j in (-1, 0, 1)):
+                return
+            if c.cells[py][px] == "forest":
+                c.cells[py][px] = "grass"
+            taken.add((px, py))
+            guns.append((px, py, what))
+        for ridge in MOUNTAINS + MOUNTAINS_WORLD:
+            for (a, b), (p, q) in zip(ridge, ridge[1:]):
+                n = max(1, int(math.hypot(p - a, q - b) / 4.0))
+                for i in range(n):
+                    gun(a + (p - a) * i / n, b + (q - b) * i / n, "a range")
+        jit = random.Random(r["seed"] + 2)
+        for a, p, b, q in deserts:
+            lon = a + 2.5
+            while lon < b:
+                lat = p + 2.0
+                while lat < q:
+                    # A little off the lattice, the same every run.
+                    gun(lon + jit.uniform(-1.8, 1.8), lat + jit.uniform(-1.4, 1.4), "a desert")
+                    lat += 4.0
+                lon += 5.0
     # Clear forest off starts so nobody begins inside a wood.
     for x, y in starts:
         for dy in (-1, 0, 1):
@@ -562,7 +716,10 @@ def write(region, out):
     lines.append("# depots: a start's own first, then neutral ones")
     for x, y, name, own in depots:
         lines.append("depot %s %s%s" % (x + 0.5, y + 0.5, "" if own else " neutral"))
-    lines.append("# pillboxes at the chokepoints: " + ", ".join(g[2] for g in guns))
+    chokes = [g[2] for g in guns if g[2] not in ("a range", "a desert")]
+    lines.append("# pillboxes at the chokepoints: " + ", ".join(chokes))
+    if len(chokes) < len(guns):
+        lines.append("# and %d on the ranges, %d over the deserts" % (sum(1 for g in guns if g[2] == "a range"), sum(1 for g in guns if g[2] == "a desert")))
     for x, y, _ in guns:
         lines.append("pillbox %s %s neutral" % (x + 0.5, y + 0.5))
     lines.append("# industry: " + ", ".join(sorted(set(s[3] for s in structures))))

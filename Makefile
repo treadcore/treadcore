@@ -50,7 +50,7 @@
 #                    maps/generated-SEED.map): the start of a hand-made one;
 #                    MAP=maps/x.map make debug|run|host plays on it
 #                    (INDUSTRY=1: with pads and neutral structures)
-#   make worldmaps   draw maps/world/atlantic.map and europe.map from
+#   make worldmaps   draw maps/world/atlantic.map, europe.map and world.map from
 #                    scripts/worldmap.py's coastlines (roadmap step 10g),
 #                    and maps/naval.map, every start at sea, from
 #                    scripts/navalmap.py
@@ -261,6 +261,7 @@ worldmaps:
 	@mkdir -p maps/world
 	@python3 -I scripts/worldmap.py atlantic maps/world/atlantic.map
 	@python3 -I scripts/worldmap.py europe maps/world/europe.map
+	@python3 -I scripts/worldmap.py world maps/world/world.map
 	@python3 -I scripts/navalmap.py maps/naval.map
 
 test:

@@ -93,6 +93,7 @@ The maps in `maps/`:
 | `maps/industry.map` | the same island industrialised (`INDUSTRY=1 make map`): a pad zone half way along each spoke with a neutral power plant and refinery, and two by the centre with a power plant and a data centre |
 | `maps/world/atlantic.map` | the Americas, the Atlantic, Europe, Africa and Arabia, 512 x 333, drawn by `scripts/worldmap.py` (below) |
 | `maps/world/europe.map` | Europe and the Mediterranean, 320 x 256, by the same script |
+| `maps/world/world.map` | the world from 72 N to 56 S, 1024 x 1024 (the loader's largest), by the same script: bases at big cities, pillboxes over the deserts and along the ranges; not in `MAP=all` (below) |
 | `maps/prior-art/*.map` | five prior-art maps converted by `scripts/priorart2map.py` (below) |
 
 ## Converting prior-art maps
@@ -208,7 +209,35 @@ there is two continents and the longshot. The test
 that: every start reaches the others on its side by land, and New
 York does not reach Berlin.
 
+**The world** (`worldmap.py world`, 24 October; Paul: "a world map.
+with bases at Big Cities, and pillboxes in deserts and mountains"):
+every continent but Antarctica, 72 N to 56 S (the poles cut, the land
+kept), on 1024 x 1024 tiles. A tile is 0.34 degrees east and 0.125
+north, so the map stands 2.4 times taller than the world. Asia,
+Japan, the Philippines, Indonesia, New Guinea, Australia and New
+Zealand are added to the coastlines, with the Himalaya, the Kunlun,
+the Tian Shan, the Altai, the Zagros, the Great Dividing Range and
+others as ranges, and the Gobi, the Taklamakan, the Thar, the Iranian
+plateau and the Outback as deserts. The sixteen starts are New York,
+Tokyo, London, Sao Paulo, Beijing, Cairo, Los Angeles, Delhi, Moscow,
+Sydney, Mexico City, Lagos, Shanghai, Buenos Aires, Tehran and
+Jakarta; 33 more big cities hold neutral depots. Neutral pillboxes
+stand at the chokepoints, one every four degrees along each range and
+one every five by four degrees over each desert, a little off the
+lattice (229 in all). The Trans-Siberian, the Asian Highway, India's,
+China's, Australia's and Africa's trunk roads join the rest. The
+world's additions are drawn after the others, so atlantic and europe
+are unchanged to the byte. The test holds Afro-Eurasia's starts to
+each other by land, the Americas' to theirs, and New York from London
+and Beijing from Sydney.
+
+At this size every route the sim and the bots plan searches a map 64
+times a 128-tile island's: a seat-tick costs some 1,600 us against
+120. Until the searches are bounded, `census_maps all` leaves the
+world out, so `MAP=all` stays the eleven maps it was.
+
     MAP=maps/world/atlantic.map make debug   # sixteen bots on it
+    CLIENTS=4 MAP=maps/world/world.map make quad   # four windows on the world
     MAP=maps/world/atlantic.map make run      # the window
 
 The bots' doctrine was written for a 128-tile island; on a 512-tile
