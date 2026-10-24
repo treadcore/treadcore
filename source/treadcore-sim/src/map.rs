@@ -128,6 +128,14 @@ pub struct Map {
     /// is industrialised; a map file places its own.
     #[serde(default)]
     pub structures: Vec<MapStructure>,
+    /// The land's regions (`Regions`), worked out when a route first
+    /// asks and forgotten when a tile changes whether it can be driven.
+    #[serde(skip)]
+    pub regions: Regions,
+    /// Which map this is and how often its cells have changed (`Edits`),
+    /// for a route cache that cannot go stale.
+    #[serde(skip)]
+    pub edits: Edits,
 }
 
 /// Why a map file was refused, with the line it happened on.
@@ -180,6 +188,140 @@ impl Terrain {
     }
 }
 
+
+/// Which land region each tile is in: tiles a tank can drive, joined
+/// four ways (a diagonal step needs both of its sides drivable, so it
+/// joins nothing four ways does not), numbered from 1; 0 cannot be
+/// driven. A route between two regions is refused without a search: on
+/// the world map a fifth of the routes the tanks asked had no way, and
+/// each searched its whole continent first. Not part of the map's
+/// equality or its wire form: it follows from the cells.
+#[derive(Clone, Default)]
+pub struct Regions(std::sync::OnceLock<Vec<u32>>);
+
+impl PartialEq for Regions {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl std::fmt::Debug for Regions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(if self.0.get().is_some() { "Regions(worked out)" } else { "Regions(not yet)" })
+    }
+}
+
+/// A map instance's id (fresh for every map made, read or cloned) and
+/// a count of its cell changes: a route kept under both is the route
+/// the map would give again. Not part of the map's equality or its wire
+/// form.
+pub struct Edits {
+    pub id: u64,
+    pub n: u64,
+}
+
+static MAP_IDS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+impl Default for Edits {
+    fn default() -> Self {
+        Edits { id: MAP_IDS.fetch_add(1, std::sync::atomic::Ordering::Relaxed), n: 0 }
+    }
+}
+
+impl Clone for Edits {
+    /// A clone is another map from here on: a fresh id.
+    fn clone(&self) -> Self {
+        Edits::default()
+    }
+}
+
+impl PartialEq for Edits {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl std::fmt::Debug for Edits {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Edits({}, {})", self.id, self.n)
+    }
+}
+
+/// Routes `Map::route_kept` has found, per thread: (map id, edits, from
+/// tile, to tile, afloat) to the route.
+type RouteKey = (u64, u64, (i32, i32), (i32, i32), bool);
+thread_local! {
+    static ROUTES: std::cell::RefCell<std::collections::HashMap<RouteKey, Vec<V2>>> = std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+impl Map {
+    /// `route_by` with no danger, kept: the same route for the same
+    /// tiles on the same cells, without the search again. The brain's
+    /// look ahead (`drive_path`) asks the route to a move's end several
+    /// times a think, and on the world map that end is hundreds of
+    /// tiles off.
+    pub fn route_kept(&self, a: V2, b: V2, afloat: bool) -> Vec<V2> {
+        let key = (self.edits.id, self.edits.n, a.tile(), b.tile(), afloat);
+        if let Some(mut r) = ROUTES.with(|c| c.borrow().get(&key).cloned()) {
+            // The route ends at b itself, not its tile's centre.
+            if let Some(last) = r.last_mut() {
+                *last = b;
+            }
+            return r;
+        }
+        let r = self.route_by(a, b, afloat, |_| 0.0);
+        ROUTES.with(|c| {
+            let mut c = c.borrow_mut();
+            if c.len() >= 4096 {
+                c.clear();
+            }
+            c.insert(key, r.clone());
+        });
+        r
+    }
+
+    /// The land regions, worked out on first use.
+    fn regions(&self) -> &[u32] {
+        self.regions.0.get_or_init(|| {
+            let mut label = vec![0u32; self.w * self.h];
+            let mut next = 0u32;
+            let mut stack = Vec::new();
+            for i0 in 0..self.w * self.h {
+                if label[i0] != 0 || !Terrain::from_u8(self.cells[i0]).passable() {
+                    continue;
+                }
+                next += 1;
+                label[i0] = next;
+                stack.push(i0);
+                while let Some(i) = stack.pop() {
+                    let (x, y) = (i % self.w, i / self.w);
+                    let mut visit = |j: usize| {
+                        if label[j] == 0 && Terrain::from_u8(self.cells[j]).passable() {
+                            label[j] = next;
+                            stack.push(j);
+                        }
+                    };
+                    if x > 0 { visit(i - 1); }
+                    if x + 1 < self.w { visit(i + 1); }
+                    if y > 0 { visit(i - self.w); }
+                    if y + 1 < self.h { visit(i + self.w); }
+                }
+            }
+            label
+        })
+    }
+
+    /// The regions are out of date: a tile changed whether it can be
+    /// driven.
+    fn forget_regions(&mut self) {
+        self.regions = Regions::default();
+    }
+
+    /// A cell changed: routes kept before are not this map's now.
+    fn edited(&mut self) {
+        self.edits.n += 1;
+    }
+}
 
 impl Map {
     pub fn generate(seed: u64) -> Map {
@@ -259,7 +401,7 @@ impl Map {
             pillboxes.push(MapPillbox { pos: center + V2::new(dx, dy), owner: None });
         }
 
-        let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new() };
+        let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new(), regions: Regions::default(), edits: Edits::default() };
 
         // Roads: the four sides to the centre, and a ring road round the
         // edge through every start, so each start reaches a spoke. Roads
@@ -296,6 +438,7 @@ impl Map {
     /// ground. The generated island has none of this unless asked, so
     /// every proof on it reads as before.
     pub fn industrialise(&mut self) {
+        self.edited();
         let c = self.center();
         let starts = self.starts.clone();
         let zone = |m: &mut Map, at: V2, w: i32, h: i32| {
@@ -327,6 +470,8 @@ impl Map {
     }
 
     fn road(&mut self, a: V2, b: V2, rng: &mut Rng) {
+        self.forget_regions();
+        self.edited();
         // A gently wobbling walk from a to b, one tile wide.
         let steps = (a.dist(b) * 1.5) as usize + 1;
         let mut wobble = 0.0f32;
@@ -360,6 +505,8 @@ impl Map {
     }
 
     fn clear_disc(&mut self, c: V2, r: f32) {
+        self.forget_regions();
+        self.edited();
         for y in 0..self.h {
             for x in 0..self.w {
                 if V2::new(x as f32 + 0.5, y as f32 + 0.5).dist(c) <= r {
@@ -373,6 +520,8 @@ impl Map {
     }
 
     fn stamp(&mut self, c: V2, half: i32, t: Terrain) {
+        self.forget_regions();
+        self.edited();
         let (cx, cy) = c.tile();
         for y in cy - half..=cy + half {
             for x in cx - half..=cx + half {
@@ -386,6 +535,7 @@ impl Map {
     /// A shell landing turns grass and forest to rubble and roads to
     /// rubble; the map remembers the fight.
     pub fn crater(&mut self, at: V2) {
+        self.edited();
         let (cx, cy) = at.tile();
         for (dx, dy) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)] {
             let (x, y) = (cx + dx, cy + dy);
@@ -442,6 +592,12 @@ impl Map {
         let (x, y) = at.tile();
         if self.in_tile(x, y) {
             let i = y as usize * self.w + x as usize;
+            if Terrain::from_u8(self.cells[i]).passable() != t.passable() {
+                self.forget_regions();
+            }
+            if self.cells[i] != t as u8 {
+                self.edited();
+            }
             self.cells[i] = t as u8;
             Some(i)
         } else {
@@ -738,6 +894,14 @@ impl Map {
         let start = idx(ax, ay);
         let goal = idx(bx, by);
         let n = self.w * self.h;
+        // Ashore, from a drivable tile to another region: no way, and
+        // no search to find that out (the same empty route, at once).
+        if !afloat {
+            let r = self.regions();
+            if r[start] != 0 && r[start] != r[goal] {
+                return vec![];
+            }
+        }
         SCRATCH.with(|sc| {
         let sc = &mut *sc.borrow_mut();
         sc.begin(n);
@@ -1071,7 +1235,7 @@ impl Map {
         if starts.len() > MAX_PLAYERS {
             return Err(err(0, &format!("{} starts; the most is {}", starts.len(), MAX_PLAYERS)));
         }
-        Ok(Map { w, h, seed, cells, starts, depots, pillboxes, structures })
+        Ok(Map { w, h, seed, cells, starts, depots, pillboxes, structures, regions: Regions::default(), edits: Edits::default() })
     }
 }
 

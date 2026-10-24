@@ -195,6 +195,12 @@ pub struct TeamBoard {
     /// relieves, at which point, and the rebuilds it has held.
     pending: Option<(PlayerId, PlayerId, V2, u8)>,
     orders: Vec<(PlayerId, BoardOrder, Tick)>,
+    /// Sectors across and down: the map's own size over `SECTOR`, set
+    /// at each rebuild; 0 before the first, read as the generated map's
+    /// `SECTORS`. Before LR 75 every map was 16 by 16 sectors, and past
+    /// 128 tiles a map was folded into the last row and column.
+    pub cols: usize,
+    pub rows: usize,
 }
 
 /// A tank's worth in a fight, for the influence: its armour share, at
@@ -216,19 +222,46 @@ pub fn readiness(t: &Tank) -> f32 {
     }
 }
 
-/// The sector a point is in, row-major; off the map, the nearest.
+/// The sector a point is in on a 128-tile map, row-major; off the map,
+/// the nearest.
 pub fn sector_of(p: V2) -> usize {
-    let x = (p.x.max(0.0) as usize / SECTOR).min(SECTORS - 1);
-    let y = (p.y.max(0.0) as usize / SECTOR).min(SECTORS - 1);
-    y * SECTORS + x
+    sector_in(p, SECTORS, SECTORS)
 }
 
-/// The middle of a sector.
+/// The middle of a sector of a 128-tile map.
 pub fn sector_centre(s: usize) -> V2 {
-    V2::new(((s % SECTORS) * SECTOR) as f32 + SECTOR as f32 / 2.0, ((s / SECTORS) * SECTOR) as f32 + SECTOR as f32 / 2.0)
+    centre_in(s, SECTORS)
+}
+
+/// The sector a point is in on a grid `cols` by `rows`.
+pub fn sector_in(p: V2, cols: usize, rows: usize) -> usize {
+    let x = (p.x.max(0.0) as usize / SECTOR).min(cols - 1);
+    let y = (p.y.max(0.0) as usize / SECTOR).min(rows - 1);
+    y * cols + x
+}
+
+/// The middle of sector `s` of a grid `cols` across.
+pub fn centre_in(s: usize, cols: usize) -> V2 {
+    V2::new(((s % cols) * SECTOR) as f32 + SECTOR as f32 / 2.0, ((s / cols) * SECTOR) as f32 + SECTOR as f32 / 2.0)
 }
 
 impl TeamBoard {
+    /// Sectors across and down.
+    pub fn dims(&self) -> (usize, usize) {
+        if self.cols == 0 { (SECTORS, SECTORS) } else { (self.cols, self.rows) }
+    }
+
+    /// The sector a point is in, on this board's grid.
+    pub fn sector_of(&self, p: V2) -> usize {
+        let (c, r) = self.dims();
+        sector_in(p, c, r)
+    }
+
+    /// The middle of a sector, on this board's grid.
+    pub fn sector_centre(&self, s: usize) -> V2 {
+        centre_in(s, self.dims().0)
+    }
+
     /// Every think of a member: where it is and what it is doing, and the
     /// jobs it heard given out.
     pub fn post(&mut self, obs: &Observation, me: &Tank, doing: &str) {
@@ -321,25 +354,26 @@ impl TeamBoard {
 
     /// Ours minus theirs at a point's sector, as last seen.
     pub fn influence_at(&self, p: V2) -> f32 {
-        self.influence.get(sector_of(p)).copied().unwrap_or(0.0)
+        self.influence.get(self.sector_of(p)).copied().unwrap_or(0.0)
     }
 
     /// Hostile strength at a point's sector, as last seen.
     pub fn threat_at(&self, p: V2) -> f32 {
-        self.threat.get(sector_of(p)).copied().unwrap_or(0.0)
+        self.threat.get(self.sector_of(p)).copied().unwrap_or(0.0)
     }
 
     /// The front: our sectors with a neighbour that is theirs, on the
     /// influence with the hostiles remembered (`known`), else as seen.
     pub fn front(&self) -> Vec<usize> {
         let inf = if self.known.len() == self.influence.len() { &self.known } else { &self.influence };
+        let (cols, rows) = self.dims();
         let mut out = Vec::new();
         for s in 0..inf.len() {
             if inf[s] <= 0.0 {
                 continue;
             }
-            let (x, y) = (s % SECTORS, s / SECTORS);
-            let theirs = |nx: usize, ny: usize| nx < SECTORS && ny < SECTORS && inf[ny * SECTORS + nx] < 0.0;
+            let (x, y) = (s % cols, s / cols);
+            let theirs = |nx: usize, ny: usize| nx < cols && ny < rows && inf[ny * cols + nx] < 0.0;
             if theirs(x.wrapping_sub(1), y) || theirs(x + 1, y) || theirs(x, y.wrapping_sub(1)) || theirs(x, y + 1) {
                 out.push(s);
             }
@@ -350,7 +384,7 @@ impl TeamBoard {
     /// Tiles from `p` to the nearest front sector's centre (LR 58); none
     /// with no front (no hostile seen at the last rebuild).
     pub fn front_dist(&self, p: V2) -> Option<f32> {
-        self.front().into_iter().map(|s| sector_centre(s).dist(p)).min_by(|a, b| a.total_cmp(b))
+        self.front().into_iter().map(|s| self.sector_centre(s).dist(p)).min_by(|a, b| a.total_cmp(b))
     }
 
     /// The share of the map that is ours.
@@ -364,7 +398,10 @@ impl TeamBoard {
     /// Once a second: the maps, the points, the posture, the swaps.
     pub fn rebuild(&mut self, obs: &Observation, base: Option<V2>, s: &Settings, home: Home, now: Tick) {
         self.built = Some(now);
-        let n = SECTORS * SECTORS;
+        self.cols = (obs.map_w as usize).div_ceil(SECTOR).max(1);
+        self.rows = (obs.map_h as usize).div_ceil(SECTOR).max(1);
+        let (cols, rows) = (self.cols, self.rows);
+        let n = cols * rows;
         self.influence.clear();
         self.influence.resize(n, 0.0);
         self.threat.clear();
@@ -372,7 +409,7 @@ impl TeamBoard {
         let pill = s.w[W::PillboxWorth];
         let add = |at: V2, v: f32, hostile: bool, inf: &mut Vec<f32>, thr: &mut Vec<f32>| {
             for (k, cell) in inf.iter_mut().enumerate() {
-                let d = sector_centre(k).dist(at);
+                let d = centre_in(k, cols).dist(at);
                 let f = v / (1.0 + d / REACH);
                 *cell += if hostile { -f } else { f };
                 if hostile {
@@ -444,7 +481,7 @@ impl TeamBoard {
         let raiders: Vec<&Tank> = obs
             .tanks
             .iter()
-            .filter(|t| t.alive && !obs.allied(t.owner) && ground.get(sector_of(t.pos)).copied().unwrap_or(0.0) >= held && base.map(|b| t.pos.dist(b) > crate::commander::BASE_ALARM).unwrap_or(true))
+            .filter(|t| t.alive && !obs.allied(t.owner) && ground.get(sector_in(t.pos, cols, rows)).copied().unwrap_or(0.0) >= held && base.map(|b| t.pos.dist(b) > crate::commander::BASE_ALARM).unwrap_or(true))
             .collect();
         self.incursion = raiders.iter().map(|t| worth(t)).sum();
         self.incursion_at = raiders.iter().map(|t| t.pos).min_by(|a, b| base.map(|b0| a.dist(b0).total_cmp(&b.dist(b0))).unwrap_or(std::cmp::Ordering::Equal));

@@ -34,6 +34,11 @@ pub struct MapFacts {
     /// Island k is `islands[k - 1]`.
     islands: Vec<Island>,
     labelled: Option<Tick>,
+    /// The labelled map's size: the map's own, not the generated one's
+    /// 128 (before LR 75 a larger map was labelled in its top-left 128
+    /// tiles alone, and every site past them read as no island).
+    w: usize,
+    h: usize,
     crossings: Vec<(((i32, i32), (i32, i32)), Option<Vec<V2>>, Tick)>,
 }
 
@@ -44,13 +49,15 @@ impl MapFacts {
             return;
         }
         self.labelled = Some(now);
+        let (w, h) = (map.w, map.h);
+        (self.w, self.h) = (w, h);
         self.label.clear();
-        self.label.resize(MAP_W * MAP_H, 0);
+        self.label.resize(w * h, 0);
         self.islands.clear();
         let mut stack: Vec<(usize, usize)> = Vec::new();
-        for y0 in 0..MAP_H {
-            for x0 in 0..MAP_W {
-                if self.label[y0 * MAP_W + x0] != 0 || map.at_tile(x0, y0) == Terrain::Water {
+        for y0 in 0..h {
+            for x0 in 0..w {
+                if self.label[y0 * w + x0] != 0 || map.at_tile(x0, y0) == Terrain::Water {
                     continue;
                 }
                 if self.islands.len() >= u16::MAX as usize - 1 {
@@ -58,7 +65,7 @@ impl MapFacts {
                 }
                 let id = self.islands.len() as u16 + 1;
                 let mut isl = Island::default();
-                self.label[y0 * MAP_W + x0] = id;
+                self.label[y0 * w + x0] = id;
                 stack.push((x0, y0));
                 while let Some((x, y)) = stack.pop() {
                     isl.area += 1;
@@ -67,8 +74,8 @@ impl MapFacts {
                     }
                     let n = [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)];
                     for (nx, ny) in n {
-                        if nx < MAP_W && ny < MAP_H && self.label[ny * MAP_W + nx] == 0 && map.at_tile(nx, ny) != Terrain::Water {
-                            self.label[ny * MAP_W + nx] = id;
+                        if nx < w && ny < h && self.label[ny * w + nx] == 0 && map.at_tile(nx, ny) != Terrain::Water {
+                            self.label[ny * w + nx] = id;
                             stack.push((nx, ny));
                         }
                     }
@@ -81,10 +88,10 @@ impl MapFacts {
     /// The island under a point, if it is land and labelled.
     pub fn island_at(&self, p: V2) -> Option<(u16, Island)> {
         let (x, y) = p.tile();
-        if x < 0 || y < 0 || x as usize >= MAP_W || y as usize >= MAP_H || self.label.is_empty() {
+        if x < 0 || y < 0 || x as usize >= self.w || y as usize >= self.h || self.label.is_empty() {
             return None;
         }
-        let id = self.label[y as usize * MAP_W + x as usize];
+        let id = self.label[y as usize * self.w + x as usize];
         (id > 0).then(|| (id, self.islands[id as usize - 1]))
     }
 

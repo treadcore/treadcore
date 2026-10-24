@@ -1251,7 +1251,7 @@ impl Commander {
         if !self.caps().has(crate::weights::Caps::BOARD) {
             return Vec::new();
         }
-        self.board.as_ref().and_then(|b| b.lock().ok().map(|b| b.front().into_iter().map(crate::board::sector_centre).collect())).unwrap_or_default()
+        self.board.as_ref().and_then(|b| b.lock().ok().map(|b| b.front().into_iter().map(|k| b.sector_centre(k)).collect())).unwrap_or_default()
     }
 
     /// The guard's post (backlog 51, LR 61): the post moved `w_front_post`

@@ -596,7 +596,7 @@ pub fn drive_to(me: &Tank, to: V2, ticks: u32, map: Option<&Map>) -> Option<V2> 
 /// (`dodge_every`, LR 56).
 pub fn drive_path(me: &Tank, to: V2, ticks: u32, map: Option<&Map>) -> Option<Vec<V2>> {
     let mut route = match map {
-        Some(m) => m.route_by(me.pos, to, me.boat, |_| 0.0),
+        Some(m) => m.route_kept(me.pos, to, me.boat),
         None => vec![to],
     };
     if route.is_empty() {
