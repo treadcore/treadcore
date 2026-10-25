@@ -90,7 +90,8 @@ job (`g-SEED0.log`), and at the end `pooled.txt`.
 - Write the rule down before the run ("holds if pooled > 2 SE and no
   map past 2 SE the other way"), then read the result against it.
 - The per-match lines in the logs carry the **meter**: dodges, kites,
-  postures, the cost of a seat-tick. Use them to explain the number,
+  postures, the squad's time by task (LR 83), the cost of a seat-tick.
+  `scripts/rungs.py` reads a switch census's rung seconds by map. Use them to explain the number,
   not to replace it.
 
 **The sequential census** (`LOOKS=8`, LR 78 and 79) writes each look

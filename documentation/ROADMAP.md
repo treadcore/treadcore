@@ -1069,6 +1069,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     takes 48% of atlantic's ladder time (elsewhere 3% to 22%), and the
     posture stops atlantic's teams spending on bridges and turrets; the
     board's worth there is the posture's. No default changes.
+65. The squad's time by task. (25 October; cause: LR 82, what a bridge
+    costs on atlantic.) Goal 4, 12a. A meter line: seconds alive with
+    the squad out, by task (each build kind, a road over water a
+    bridge, harvest, capture, repair, lift, the walk home). Proof: the
+    same census before and after, the same to the digit. Cost: a step.
+    State: done 25 October (LR 83); its reading on atlantic is next.
 
 ## Sequencing
 

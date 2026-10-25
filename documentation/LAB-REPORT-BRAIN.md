@@ -4747,3 +4747,33 @@ build time by kind would read the second.
 three switches through two mechanisms: rotation takes its seats off the
 ladder, and the posture stops it spending on bridges and turrets. The
 first is already off; the second already pays. Backlog 64 is done.
+
+## 83. The squad's time by task: a meter line, 25 October
+
+Backlog 65. LR 82 could not say what a bridge on atlantic costs in the
+builders' time: the posture off builds 4.6 more bridges there, and the
+meter counted what was built, not how long it took. A new count: each
+second a seat is alive (where the kiting seconds are counted,
+`Commander::think_released`), whether its squad is out and on what
+task (`meter::SquadTask`): a Build by kind (road; bridge, a road whose
+site is water or a bridge on the map; wall and concrete; pillbox; mine;
+structure; boat), each covering the walk to the site and the work;
+harvest; capture; repair; lift; the walk home; out with no task. By
+group, the trial's apart, as the other counts. The match line:
+
+    seconds the squad out (trial): 491 of 1331 alive (road 0, bridge
+    16, wall 25, pillbox 56, mine 0, structure 0, boat 5, harvest 41,
+    capture 173, repair 7, lift 11, home 157, idle 0)
+
+**Checks.** The meter decides nothing. The same census at a6c71f3 and
+with the count (atlantic, 4 seeds from 500, 300 s, defaults on both
+sides) prints the same 12 match and 36 team lines, to the digit.
+`a_squad_second_counts_by_its_task` tests the group, the bridge and the
+line; the brain's tests, 88 passed.
+
+**A first look**, not a reading (those 4 seeds, every seat): the squad
+is out 37% of the seconds alive. Of that, the walk home 39%, captures
+28%, pillboxes 11%, walls 9%, harvest 5%, bridges 1.5%. If it holds
+over a census, the posture's cost on atlantic is not the bridges' own
+work but the walking that each job adds. The reading is LR 82's rows
+on atlantic with this line, its rule written first.

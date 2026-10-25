@@ -2428,6 +2428,17 @@ impl Commander {
             self.dodge.hold_fire(obs, me, &mut cmds, map);
             if obs.tick % TICK_HZ as Tick == 0 {
                 crate::meter::kite(self.act);
+                let squad = &me.pillboys;
+                crate::meter::squad(squad.deployed().then(|| match &squad.task {
+                    Some(t) => {
+                        let water = match t {
+                            PillboyTask::Build { at, .. } => map.map(|m| matches!(m.at(*at), Terrain::Water | Terrain::Bridge)).unwrap_or(false),
+                            _ => false,
+                        };
+                        crate::meter::SquadTask::of(t, water)
+                    }
+                    None => crate::meter::SquadTask::Idle,
+                }));
             }
         }
         if self.inner.skill < 1.0 {

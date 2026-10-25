@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the meter's "seconds the squad out" line: seconds alive with
+  the squad out, by task (road, bridge, wall, pillbox, mine, structure,
+  boat, harvest, capture, repair, lift, home, idle), the trial's apart.
+  It decides nothing; a census reads the same with it
+  (LAB-REPORT-BRAIN.md section 83).
+
 - Added: `scripts/rungs.py`, a switch census read map by map: the trial
   team's seconds a rung and its held ground, built and bridges against
   the others. Why atlantic: rotation takes half its ladder time, and

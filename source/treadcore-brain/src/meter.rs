@@ -64,6 +64,71 @@ pub struct Meter {
     /// ground beyond the base's alarm, and those Defend held only for it
     /// (LR 68), by the rebuilding seat's group.
     pub grounds: [[u64; 2]; 2],
+    /// Seconds alive with the squad out (LR 83), by group: by its task,
+    /// in `SquadTask::ALL`'s order, and seconds alive in all (the last).
+    pub squads: [[u64; 14]; 2],
+}
+
+/// What a squad out is doing, for the meter (LR 83): a Build by its
+/// kind (the walk to the site and the work), a road over water a
+/// bridge; material from a forest; a capture, a repair, a lift; the
+/// walk home; and out with no task.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SquadTask {
+    Road,
+    Bridge,
+    Wall,
+    Pillbox,
+    Mine,
+    Structure,
+    Boat,
+    Harvest,
+    Capture,
+    Repair,
+    Lift,
+    Return,
+    Idle,
+}
+
+impl SquadTask {
+    pub const ALL: [SquadTask; 13] = [
+        SquadTask::Road,
+        SquadTask::Bridge,
+        SquadTask::Wall,
+        SquadTask::Pillbox,
+        SquadTask::Mine,
+        SquadTask::Structure,
+        SquadTask::Boat,
+        SquadTask::Harvest,
+        SquadTask::Capture,
+        SquadTask::Repair,
+        SquadTask::Lift,
+        SquadTask::Return,
+        SquadTask::Idle,
+    ];
+    const NAMES: [&'static str; 13] = ["road", "bridge", "wall", "pillbox", "mine", "structure", "boat", "harvest", "capture", "repair", "lift", "home", "idle"];
+
+    /// The squad's task read: `water` whether the site is water or a
+    /// bridge (a road there is a bridge).
+    pub fn of(task: &treadcore_sim::PillboyTask, water: bool) -> SquadTask {
+        use treadcore_sim::{BuildKind, PillboyTask};
+        match task {
+            PillboyTask::Build { what, .. } => match what {
+                BuildKind::Road if water => SquadTask::Bridge,
+                BuildKind::Road => SquadTask::Road,
+                BuildKind::Wall | BuildKind::Concrete => SquadTask::Wall,
+                BuildKind::Pillbox => SquadTask::Pillbox,
+                BuildKind::Mine => SquadTask::Mine,
+                BuildKind::Structure(_) => SquadTask::Structure,
+                BuildKind::Boat => SquadTask::Boat,
+            },
+            PillboyTask::Harvest { .. } => SquadTask::Harvest,
+            PillboyTask::Capture { .. } => SquadTask::Capture,
+            PillboyTask::Repair { .. } => SquadTask::Repair,
+            PillboyTask::Lift { .. } => SquadTask::Lift,
+            PillboyTask::Return => SquadTask::Return,
+        }
+    }
 }
 
 /// One kind of shell dodge's count: begun, and of those hit before the
@@ -223,6 +288,16 @@ pub fn kite(act: crate::status::Act) {
         m.kites[g][8] += 1;
     });
 }
+/// A second alive: the squad out at `task`, or aboard (None).
+pub fn squad(task: Option<SquadTask>) {
+    let g = group();
+    bump(|m| {
+        if let Some(t) = task {
+            m.squads[g][SquadTask::ALL.iter().position(|s| *s == t).unwrap_or(12)] += 1;
+        }
+        m.squads[g][13] += 1;
+    });
+}
 /// A board's second: an incursion on the held ground, and Defend held
 /// only for it.
 pub fn ground(incursion: bool, defended: bool) {
@@ -275,6 +350,11 @@ impl Meter {
             }
         }
         for (g, og) in self.grounds.iter_mut().zip(o.grounds) {
+            for (a, b) in g.iter_mut().zip(og) {
+                *a += b;
+            }
+        }
+        for (g, og) in self.squads.iter_mut().zip(o.squads) {
             for (a, b) in g.iter_mut().zip(og) {
                 *a += b;
             }
@@ -342,6 +422,7 @@ impl Meter {
             + &self.kites.iter().enumerate().filter(|(_, k)| k[8] > 0).map(|(g, k)| format!(", seconds kiting{}: {} of {} alive (massing {}, closing {}, stepping in {}, stepping out {}, holding {})", if g == 1 { " (trial)" } else { "" }, k[..8].iter().sum::<u64>(), k[8], k[0], k[1], k[2] + k[3], k[4], k[5] + k[6] + k[7])).collect::<String>()
             + &self.grounds.iter().enumerate().filter(|(_, k)| k[0] > 0).map(|(g, k)| format!(", seconds with a hostile on the held ground{}: {} ({} defended for it alone)", if g == 1 { " (trial)" } else { "" }, k[0], k[1])).collect::<String>()
             + &self.kite_kinds.iter().enumerate().filter(|(_, k)| k.iter().sum::<u64>() > 0).map(|(g, k)| format!(", seconds kiting by whom{}: an intruder {}, a wingman {}, a rally {}", if g == 1 { " (trial)" } else { "" }, k[0], k[1], k[2])).collect::<String>()
+            + &self.squads.iter().enumerate().filter(|(_, q)| q[13] > 0).map(|(g, q)| format!(", seconds the squad out{}: {} of {} alive ({})", if g == 1 { " (trial)" } else { "" }, q[..13].iter().sum::<u64>(), q[13], SquadTask::NAMES.iter().zip(&q[..13]).map(|(n, v)| format!("{} {}", n, v)).collect::<Vec<_>>().join(", "))).collect::<String>()
             + &self.leans.iter().enumerate().filter(|(_, l)| l.iter().sum::<u64>() > 0).map(|(g, l)| format!(", seconds leaned to the front{}: push {} of {}, post {} of {}", if g == 1 { " (trial)" } else { "" }, l[0], l[0] + l[1], l[2], l[2] + l[3])).collect::<String>()
             + &if self.postures.iter().sum::<u64>() > 0 {
             let names = ["defend base", "fortify", "turrets", "hunt", "expand", "guard"];
@@ -376,6 +457,29 @@ mod tests {
         assert!((m.micros_per_seat() - 5.0).abs() < 1e-9);
         reset();
         assert_eq!(read(), Meter::default());
+    }
+
+    /// A squad's second counts under its seat's group, by its task, a
+    /// road over water as a bridge (LR 83).
+    #[test]
+    fn a_squad_second_counts_by_its_task() {
+        use treadcore_sim::{BuildKind, PillboyTask, V2};
+        reset();
+        trial(1 << 1);
+        seat(1);
+        let road = PillboyTask::Build { what: BuildKind::Road, at: V2::new(0.0, 0.0) };
+        squad(Some(SquadTask::of(&road, true)));
+        squad(Some(SquadTask::of(&road, false)));
+        squad(None);
+        seat(0);
+        squad(Some(SquadTask::of(&PillboyTask::Harvest { at: V2::new(0.0, 0.0) }, false)));
+        let m = read();
+        assert_eq!(m.squads[1][..2], [1, 1]);
+        assert_eq!(m.squads[1][13], 3);
+        assert_eq!(m.squads[0][7], 1);
+        assert!(m.line().contains("seconds the squad out (trial): 2 of 3 alive (road 1, bridge 1, wall 0"), "{}", m.line());
+        trial(0);
+        reset();
     }
 
     /// A dodge counts under the seat that made it (the trial's or the
