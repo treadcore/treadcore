@@ -4278,3 +4278,54 @@ the scenario, `w_front` at 1 takes no depot in 40 s, where 0 and 0.5
 each take one. A depot "kept until taken or given up" may hold a tank
 on a pick it cannot reach in time; worth a look before the front read
 comes back in any form.
+
+## 76. Each default off again, on the fixed board, 24 October
+
+LR 73's census of each default off ran before three changes: the base
+from home (`fd381ad`), the board and the island labels at the map's own
+size (`0828d4a`), and the front read off (`5899e8e`, LR 75). Its
+readings of the board and of what rides on it were taken with the front
+read aimed by a wrong grid on seven of the eleven maps. The same twelve
+switches, 200 fresh seeds (50000 to 50199), every map, `SPLIT=2
+JOBS=24` at `5899e8e` (`build/switches/20261024-190434`), 19:04 to
+21:16: 2 h 12 min. Below zero, the switch earns its place.
+
+| Taken off | Now | LR 73 |
+| --- | --- | --- |
+| dodge | **-4.50 +/- 0.27** | -4.37 +/- 0.28 |
+| posture | **-0.88 +/- 0.23** | -0.58 +/- 0.25 |
+| board (and team_rotate, bridge_jobs, posture) | **-0.67 +/- 0.25** | +0.49 +/- 0.26 |
+| priced_crossing | **-0.40 +/- 0.18** | -0.41 +/- 0.19 |
+| forget | -0.14 +/- 0.07 | -0.12 to -0.03 |
+| column | -0.13 +/- 0.10 | -0.12 to -0.03 |
+| bridge_jobs | -0.10 +/- 0.09 | -0.12 to -0.03 |
+| cycle | -0.09 +/- 0.15 | -0.30 +/- 0.18 |
+| escort | +0.03 +/- 0.08 | -0.12 to -0.03 |
+| duck | +0.03 +/- 0.25 | +0.31 +/- 0.28 |
+| island_site | +0.06 +/- 0.11 | +0.43 +/- 0.17 |
+| **team_rotate** | **+0.42 +/- 0.20** | +0.32 +/- 0.21 |
+
+**The board turned.** Off, it read +0.49 in LR 73; now -0.67, past two
+errors: with its grid at the map's size and the front read off, the
+board pays. By map it is worth most on fortressislesx (-2.12 +/- 0.62
+off) and island (-1.58 +/- 0.52); naval alone leans the other way
+(+1.23 +/- 0.85, inside the noise). LR 73's split by map was the front
+read on a wrong grid.
+
+**The posture pays more**: -0.88, past two errors on six maps
+(big-lizard -2.60, atlantic -1.86, constanine -1.75, industry and
+fortressislesx -1.23), and none the other way.
+
+**The island site is fixed**: +0.43 (harm) in LR 73, +0.06 now, inside
+the noise; the base from home (LR 73's fix) holds on fresh seeds.
+
+**team_rotate** off reads +0.42 +/- 0.20, 2.1 errors; atlantic +2.90
++/- 0.51, no map past two errors the other way (big-lizard -1.14 +/-
+0.90 the nearest). Twelve rows at two errors: about one passes by
+chance. By the rule set before the run (`build/switches/NOTES-lr76.txt`)
+it is read again on 400 fresh seeds (70000 to 70399) before it changes;
+queued behind the profiles' round robin (`build/rotate/NOTES.txt`).
+
+**The verdict, so far**: no default changes. The parts that pay are the
+dodge, the posture, the board and the priced crossing; the rest sit
+inside the noise.
