@@ -4607,3 +4607,83 @@ census. `LOOKS` stays as an option for a screen where a large effect
 is expected (z past 5: a part thought to carry the brain, a broken
 change), where it reads in a third to a half of the seeds and keeps
 the false alarm rate below the fixed one. Backlog 59 is done.
+
+## 80. The guarded-base family after the front read, 25 October
+
+Backlog 62. `make families` at LR 76's team_rotate change showed
+a-raid-on-a-guarded-base at 281 of 400, 70.2%, under its 75% floor, and
+the same at HEAD without the change. Bisected in a worktree: 81.8% at
+fa8ba05, 3f19029 and 0828d4a; 70.2% at 5899e8e, the front read off
+(LR 75). The family's own header names its mechanism: the rotation's
+push point toward the front, 85.5% over 400 seeds against 50.5% with
+`w_front_push` at 0 (LR 61). 5899e8e set `w_front`, `w_front_post` and
+`w_front_push` to 0 and gave the front scenario its old `w_front` back,
+so that scenario still tests the front read; this family was missed.
+
+**The rule, set before the run** (`build/b62/NOTES.txt`): the family
+sets `w_front_push = 0.75`, its old default, as 5899e8e did for the
+front scenario. Confirmed if `make families` then holds every family at
+or above its floor, this one included, on its own 400 seeds; if not,
+the step stops, and no other weight is tried in it.
+
+**The run** (the Mac, at 7c18851, the new defaults of LR 77):
+
+| Family | Held | Floor |
+| --- | --- | --- |
+| a-raid-on-a-guarded-base, `w_front_push` 0 (the default) | 281 of 400, 70.2% | 75% |
+| a-raid-on-a-guarded-base, `w_front_push` 0.75 | **326 of 400, 81.5% +/- 1.9%** | 75% |
+
+Every other family held as before (a duel 63.0%, a ready gun 83.4%, the
+rest at or near 100%). The brain's tests, 87 passed.
+
+**The verdict**: by the rule, **confirmed**. The family keeps testing
+the push point it was written for, 81.5% against the 81.8% it read
+before 5899e8e under the old defaults. The defaults are unchanged: the
+front read stays off for play, as LR 75's census found. The lesson is
+CLAUDE.md's newest rule, already in: a default change runs `make
+families`, so a weight set to 0 is caught where a scenario leans on it.
+Backlog 62 is done.
+
+## 81. Each default off again, on the new defaults, 25 October
+
+Backlog 63. LR 77 made turtle and team_rotate off the defaults; LR 76
+read each part against the old ones. A part that paid for an outgoing
+brain may not pay for a turtle. The same twelve switches, team_rotate
+now added (it is off), 200 fresh seeds (100000 to 100199), every map,
+`SPLIT=2 JOBS=24` at `7c18851` (`build/switches/20261025-131009`),
+13:10 to 15:05: 1 h 55 min. Below zero, the switch earns its place
+(for team_rotate, below zero means adding it costs).
+
+**The rule, set before the run** (`build/switches/NOTES-lr81.txt`): a
+default whose removal (or team_rotate's addition) reads past two errors
+above zero over every map, with no map past two errors the other way,
+is read again on 400 fresh seeds before it changes. Anything else stays.
+
+| Changed | Now (LR 81) | Old defaults (LR 76) |
+| --- | --- | --- |
+| dodge off | **-4.76 +/- 0.28** | -4.50 +/- 0.27 |
+| posture off | **-0.51 +/- 0.22** | -0.88 +/- 0.23 |
+| priced_crossing off | **-0.47 +/- 0.15** | -0.40 +/- 0.18 |
+| board off | -0.37 +/- 0.21 | -0.67 +/- 0.25 |
+| team_rotate **on** | -0.24 +/- 0.23 | (off: +0.42 +/- 0.20) |
+| escort off | -0.06 +/- 0.06 | +0.03 +/- 0.08 |
+| bridge_jobs off | -0.03 +/- 0.08 | -0.10 +/- 0.09 |
+| column off | -0.02 +/- 0.11 | -0.13 +/- 0.10 |
+| island_site off | -0.01 +/- 0.15 | +0.06 +/- 0.11 |
+| forget off | +0.04 +/- 0.06 | -0.14 +/- 0.07 |
+| duck off | +0.04 +/- 0.28 | +0.03 +/- 0.25 |
+| cycle off | +0.10 +/- 0.13 | -0.09 +/- 0.15 |
+
+**By map**: the dodge pays everywhere. The posture and the board each
+pay most on atlantic (-1.90 +/- 0.47 and -1.80 +/- 0.47 off), and no map
+is past two errors the other way. team_rotate on costs atlantic -4.13
++/- 0.70, as LR 76's re-read found, and pays only on fortressisles2
+(+1.18 +/- 0.53). priced_crossing acts on four maps and pays on
+fidos-airstrip (-3.83 +/- 1.14).
+
+**The verdict**: by the rule, **no default changes**: no row is past
+two errors toward a change. The posture and the board pay less on the
+turtle than on the old brain (-0.51 against -0.88, -0.37 against
+-0.67). Turtle's weights already hold the base, so the posture's lean
+toward holding adds less. Neither difference is past two errors of the
+pair. team_rotate off is confirmed a third time. Backlog 63 is done.

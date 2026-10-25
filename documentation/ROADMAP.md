@@ -1051,7 +1051,16 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     did, which LR 75 kept on (`w_front` 0.5) for that scenario alone.
     Proof: the family with the old front weights in its toml back over
     its floor, or the floor read again with the front read off. Cost: a
-    step. State: idea.
+    step. State: done 25 October (LR 80): the family sets
+    `w_front_push` to its old 0.75, the push point it was written to
+    test, and reads 81.5% +/- 1.9% (326 of 400); every family holds.
+    The defaults are unchanged.
+63. Each default off again on the new defaults. (25 October; cause:
+    LR 77 changed the defaults that LR 76 read each part against.)
+    Goal 4. Proof: LR 76's census at the new defaults, team_rotate
+    added. Cost: 2 h on the machine. State: done 25 October (LR 81):
+    no row past two errors toward a change; the dodge, the posture and
+    priced_crossing pay, the rest inside the noise; no default changes.
 
 ## Sequencing
 

@@ -57,3 +57,5 @@ report is what ties a conversation to them. Named
 | [042](CI-042-2026-10-24-a-sequential-census-replayed.md) | 24 October 2026 | Read sooner: a sequential census, replayed | 0100 | LAB-REPORT-BRAIN.md section 78 |
 | [043](CI-043-2026-10-25-the-sequential-census-with-a-re-read.md) | 25 October 2026 | The sequential census with a re-read | 0100 | LAB-REPORT-BRAIN.md section 79 |
 | [044](CI-044-2026-10-25-the-styles-ordered-and-team-rotate-off.md) | 25 October 2026 | The styles ordered: turtle the defaults, team_rotate off | 0100 | LAB-REPORT-BRAIN.md sections 76 and 77 |
+| [045](CI-045-2026-10-25-the-guarded-base-family-after-the-front-read.md) | 25 October 2026 | The guarded-base family after the front read | 0100 | LAB-REPORT-BRAIN.md section 80 |
+| [046](CI-046-2026-10-25-each-default-off-on-the-new-defaults.md) | 25 October 2026 | Each default off again, on the new defaults | 0100 | LAB-REPORT-BRAIN.md section 81 |

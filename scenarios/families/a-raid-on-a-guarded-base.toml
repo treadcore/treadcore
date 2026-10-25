@@ -10,7 +10,9 @@
 # arrives. The rotation's push point toward the front does it: 85.5%
 # over 400 seeds, 50.5% with `w_front_push` at 0. With drones and the
 # teammate's sight the guard's gun meets a raid 20 tiles out whatever
-# the post. Run over many seeds: make scenario S=this RUNS=1000.
+# the post. `w_front_push` is 0 by default since LR 75, so this sets the
+# old 0.75 to keep the push point itself tested (backlog 62).
+# Run over many seeds: make scenario S=this RUNS=1000.
 name = "a raid on a guarded base, from any side"
 runs = 400
 floor = 0.75
@@ -56,5 +58,6 @@ seat = 0
 kind = "commander"
 goal = "auto"
 rungs = ["guard"]
+weights = { w_front_push = 0.75 }
 [expect]
 met_beyond = { by = 0, on = 1, at = "seat:0", more_than = 10 }

@@ -1,0 +1,104 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Sun, 25 Oct 2026 12:45:00 -0700
+Subject: [JOURNAL 0100] Read sooner, and the styles ordered
+Message-ID: <0100.20261025@treadcore.org>
+In-Reply-To: <0099.20261023@treadcore.org>
+Organization: treadcore.org
+Keywords: census, sequential testing, play styles, defaults, families
+X-Session: the Mac and the census machine; Claude Code (Claude Opus
+           5.5) as the pair. Paul's prompts: "hi. we just started a run
+           of treadcore. and you were working on next items while it
+           computes. also. ..."; "its going well. thanks. continue.
+           resume."; "commit and push. then build the re-read
+           version"; "do it. start. yeah. start ."; "commit and push
+           when turtle lands. then fix backlog 62"; "keep testing."
+X-Commits: 732fde3 8062fb7 7c18851; this entry's commit follows
+
+               READ SOONER, AND THE STYLES ORDERED
+
+                     Paul Richeson, treadcore.org
+                           25 October 2026
+
+
+ABSTRACT
+
+    While the machine played the styles' round robin and team_rotate's
+    re-read, the Mac built a sequential census: replayed over 44
+    censuses (LR 78), then with an early stop read again on fresh
+    seeds (LR 79). It holds false alarms to 2.8% but spends 106% of
+    the seeds, so it stays an option. The round robin found no cycle:
+    turtle first. Turtle and team_rotate off became the defaults,
+    +1.75 +/- 0.19 a seat against the old. A family that fell at
+    5899e8e was found and fixed in its test (81.5%). On the new
+    defaults each part was read again: no default changes.
+
+INDEX TERMS
+
+    census, O'Brien-Fleming, round robin, defaults, scenario families.
+
+
+I. INTRODUCTION
+
+    Two long runs on the machine; the Mac's work in the meantime was
+    backlog 59, then reading what the machine produced.
+
+II. BACKGROUND
+
+    Journal 0099's open problems; LR 75 (the front read off), LR 76
+    (each default off again), backlog 60 (the round robin) queued.
+
+III. METHOD
+
+    The rule before each run, written to the run's NOTES.txt. Censuses
+    on one machine each; the Mac only for scripts, families and tests.
+
+IV. CHRONOLOGY
+
+    1. LR 78: 44 finished censuses replayed under group-sequential
+       bounds; a quarter of the seeds saved, one false early stop.
+       Committed (732fde3).
+    2. LR 79: LOOKS=8 make census, an early stop read again on fresh
+       seeds. Tested live on the Mac. Not the default (8062fb7).
+    3. The round robin and team_rotate's re-read read: no cycle;
+       team_rotate off +0.55 +/- 0.15.
+    4. Turtle on 400 fresh seeds: +1.40 +/- 0.18. The pair against
+       the old defaults: +1.75 +/- 0.19. Both in; classic.weights
+       keeps the old (7c18851).
+    5. make families: a-raid-on-a-guarded-base 70.2%; bisected to
+       5899e8e. The family sets w_front_push 0.75 again: 81.5%.
+    6. LR 81: each default off again on the new defaults, 200 fresh
+       seeds. The dodge, posture and priced_crossing pay; team_rotate
+       on costs atlantic; no default changes. Each scenario over 200
+       seeds: ten at 100%, the two from the ready-gun family at 80%.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md sections 76 to 81; CI-042 to CI-046.
+
+VI. DISCUSSION
+
+    Confirmation costs what an early stop saves, except on large
+    effects. A fixture that tests a mechanism must hold it on when a
+    default turns it off; make families at each default change
+    catches the miss.
+
+VII. OPEN PROBLEMS
+
+    1. A style built to beat turtle could close a ring (backlog 61).
+    2. journal 0099's 1 to 3 carried.
+
+VIII. NEXT STEPS
+
+    1. Atlantic carries the board, the posture and team_rotate: a
+       meter line there on the new defaults.
+
+APPENDIX B. ARTIFACTS
+
+    scripts/sequential.py; census.sh LOOKS; profiles/classic.weights;
+    weights.rs defaults; build/{rr,rotate,turtle,newdefaults,b62}/
+    NOTES.txt, build/switches/NOTES-lr81.txt on the machine and the Mac.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

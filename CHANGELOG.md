@@ -6,6 +6,16 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: each default off again on the new defaults: the dodge, the
+  posture and priced_crossing pay, team_rotate on costs atlantic, no
+  default changes (LAB-REPORT-BRAIN.md section 81).
+
+- Fixed: the a-raid-on-a-guarded-base family under its floor since the
+  front read went off (5899e8e). It sets `w_front_push` to its old
+  0.75, as the front scenario sets `w_front`, so it still tests the
+  push point: 81.5% against a 75% floor (LAB-REPORT-BRAIN.md section
+  80).
+
 - Changed: the defaults lean toward holding what the base has, the
   turtle style of the round robin: the posture at 0.95, Defend and
   Fortify worth 3, Expand 0.4, a castle of four inside and two on the
