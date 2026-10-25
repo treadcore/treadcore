@@ -840,6 +840,10 @@ mod tests {
         let ledger = std::env::var("CENSUS_LEDGER").map(|v| v != "0").unwrap_or(true);
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../reports/ledger");
         let k = ScoreWeights::from_long_game(std::env::var("CENSUS_LONG_GAME").ok().and_then(|v| v.parse().ok()).unwrap_or(crate::weights::W::LongGame.default_value()));
+        // The rewards (LR 84) are in the score; `CENSUS_REWARDS=0` scores
+        // as before them.
+        let k = if std::env::var("CENSUS_REWARDS").map(|v| v == "0").unwrap_or(false) { k.without_rewards() } else { k };
+        eprintln!("brain_census: rewards {}", if k.direct_hit > 0.0 { "on" } else { "off (CENSUS_REWARDS=0)" });
         eprintln!("brain_census: trial caps [{}], {} weights changed {:?}; baseline caps [{}], {} weights changed {:?}", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>(), base.caps.names(), base.diff().len(), base.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>());
         let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
         // A seed's sums, trial and baseline, for the difference a seed
@@ -1047,8 +1051,9 @@ mod tests {
                 let rs: Vec<_> = records.iter().filter(|r| r.outcome.team == Some(t)).collect();
                 let sum = |f: &dyn Fn(&crate::ledger::Outcome) -> u32| rs.iter().map(|r| f(&r.outcome)).sum::<u32>();
                 let score: f32 = rs.iter().map(|r| r.score).sum::<f32>() / rs.len().max(1) as f32;
+                let rewards: f32 = rs.iter().map(|r| crate::ledger::rewards(&r.outcome, &k)).sum::<f32>() / rs.len().max(1) as f32;
                 eprintln!(
-                    "  team {}{}: score {:.2}, kills {}, deaths {}, revives {}, built {}, road {}, bridge {}, held {:.1}",
+                    "  team {}{}: score {:.2}, kills {}, deaths {}, revives {}, built {}, road {}, bridge {}, held {:.1}, rewards {:.2} (direct hits {}, pillbox damage {:.1}, pillboxes taken {} neutral {} hostile, defends {}, all neutral {})",
                     t,
                     if t == lucky { " (trial)" } else { "" },
                     score,
@@ -1058,7 +1063,14 @@ mod tests {
                     sum(&|o| o.built),
                     sum(&|o| o.road_tiles),
                     sum(&|o| o.bridge_tiles),
-                    rs.first().map(|r| r.outcome.held_s as f32 / r.seconds.max(1) as f32).unwrap_or(0.0)
+                    rs.first().map(|r| r.outcome.held_s as f32 / r.seconds.max(1) as f32).unwrap_or(0.0),
+                    rewards,
+                    sum(&|o| o.direct_hits),
+                    rs.iter().map(|r| r.outcome.pillbox_damage).sum::<f32>(),
+                    sum(&|o| o.neutral_taken),
+                    sum(&|o| o.enemy_taken),
+                    sum(&|o| o.defends),
+                    if rs.iter().any(|r| r.outcome.all_neutral) { "yes" } else { "no" }
                 );
                 let e = &mut by_seed[(n - seed0) as usize];
                 if t == lucky {

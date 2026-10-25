@@ -91,7 +91,10 @@ job (`g-SEED0.log`), and at the end `pooled.txt`.
   map past 2 SE the other way"), then read the result against it.
 - The per-match lines in the logs carry the **meter**: dodges, kites,
   postures, the squad's time by task (LR 83), the cost of a seat-tick.
-  `scripts/rungs.py` reads a switch census's rung seconds by map. Use them to explain the number,
+  `scripts/rungs.py` reads a switch census's rung seconds by map.
+- The score includes **rewards** since LR 84 (direct hits, pillbox
+  damage and captures, defences). `CENSUS_REWARDS=0` scores as before,
+  for a census to compare with one before LR 84. Use them to explain the number,
   not to replace it.
 
 **The sequential census** (`LOOKS=8`, LR 78 and 79) writes each look

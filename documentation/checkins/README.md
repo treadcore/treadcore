@@ -61,3 +61,4 @@ report is what ties a conversation to them. Named
 | [046](CI-046-2026-10-25-each-default-off-on-the-new-defaults.md) | 25 October 2026 | Each default off again, on the new defaults | 0100 | LAB-REPORT-BRAIN.md section 81 |
 | [047](CI-047-2026-10-25-why-atlantic.md) | 25 October 2026 | Why atlantic: where the switches move the time | 0100 | LAB-REPORT-BRAIN.md section 82 |
 | [048](CI-048-2026-10-25-the-squads-time-by-task.md) | 25 October 2026 | The squad's time by task: a meter line | 0100 | LAB-REPORT-BRAIN.md section 83 |
+| [049](CI-049-2026-10-25-rewards-in-the-census-score.md) | 25 October 2026 | Rewards in the census score | 0100 | LAB-REPORT-BRAIN.md section 84 |

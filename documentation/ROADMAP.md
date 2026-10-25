@@ -1075,6 +1075,25 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     bridge, harvest, capture, repair, lift, the walk home). Proof: the
     same census before and after, the same to the digit. Cost: a step.
     State: done 25 October (LR 83); its reading on atlantic is next.
+66. Rewards in the census score. (25 October; cause: Paul, "improve
+    Census with a reward system".) Goal 4. Direct hits, damage to
+    hostile pillboxes, neutral and hostile pillboxes taken, kills
+    defending a pillbox, and every neutral pillbox taken, each a weight
+    in `ScoreWeights`; `CENSUS_REWARDS=0` the score before. Proof: each
+    term counted in a test; the census the same to the digit with them
+    off. Cost: a step. State: done 25 October (LR 84), at about a
+    third of the score (Paul's choice).
+67. Personalities. (25 October; cause: Paul: pillbox collectors,
+    tight castles, the ambitious, cowboys who spend shells and drones
+    on long shots, timid and aggressive plain to see, a defensive front
+    line.) Goal 4. Profiles in `profiles/`, and new weights where no
+    weight carries the lean (shell and drone spending, neutral
+    pillboxes). Proof: each profile's own behaviour visible in the
+    meter and its round robin row. Cost: several steps. State: idea.
+68. Pillboxes as Paul describes them. (25 October; cause: the same
+    prompt.) Fire slower when damaged; still functional when highly
+    damaged; repaired when dragged through forest; fight each other.
+    Each a sim change, a rule and a census. State: idea, Paul to choose.
 
 ## Sequencing
 

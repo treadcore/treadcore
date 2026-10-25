@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: rewards in the census score: direct hits on hostile tanks,
+  damage to hostile pillboxes, neutral and hostile pillboxes taken,
+  kills defending a pillbox, and a bonus for taking every neutral
+  pillbox. `CENSUS_REWARDS=0` scores as before; each team line shows
+  the rewards' part and counts (LAB-REPORT-BRAIN.md section 84).
+
 - Added: the meter's "seconds the squad out" line: seconds alive with
   the squad out, by task (road, bridge, wall, pillbox, mine, structure,
   boat, harvest, capture, repair, lift, home, idle), the trial's apart.

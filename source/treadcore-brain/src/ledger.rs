@@ -60,7 +60,31 @@ pub struct Outcome {
     pub bridge_tiles: u32,
     /// The pillboxes and depots the seat's team held, summed each second.
     pub held_s: u32,
+    /// The rewards' counts (LR 84). Direct shells of the seat's main gun
+    /// that hit a hostile tank.
+    #[serde(default)]
+    pub direct_hits: u32,
+    /// Damage the seat did to hostile pillboxes, in pillboxes' health
+    /// (`PILLBOX_HEALTH` is 1).
+    #[serde(default)]
+    pub pillbox_damage: f32,
+    /// Pillboxes the seat's squad took: neutral, and from a hostile.
+    #[serde(default)]
+    pub neutral_taken: u32,
+    #[serde(default)]
+    pub enemy_taken: u32,
+    /// Hostile tanks the seat killed within `DEFEND_R` of a live
+    /// pillbox of its team.
+    #[serde(default)]
+    pub defends: u32,
+    /// The seat's team took every pillbox that began neutral itself.
+    #[serde(default)]
+    pub all_neutral: bool,
 }
+
+/// A kill this near a live pillbox of the killer's team defends it
+/// (LR 84): twice a pillbox's reach.
+pub const DEFEND_R: f32 = 2.0 * PILLBOX_RANGE;
 
 /// A ledger line.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -83,11 +107,36 @@ pub struct ScoreWeights {
     pub held: f32,
     pub build: f32,
     pub road: f32,
+    /// The rewards (LR 84), each a count's worth, about a third of a
+    /// match's score in all (Paul's choice): a direct hit on a hostile
+    /// tank (three or so kill it, a kill is 1); a whole
+    /// pillbox's health of damage to hostile ones; a neutral pillbox
+    /// taken; a hostile one taken; a kill defending a pillbox; and every
+    /// neutral pillbox held at once, once a match.
+    pub direct_hit: f32,
+    pub pillbox_damage: f32,
+    pub neutral_taken: f32,
+    pub enemy_taken: f32,
+    pub defend: f32,
+    pub all_neutral: f32,
 }
 
 impl Default for ScoreWeights {
     fn default() -> ScoreWeights {
-        ScoreWeights { win: 10.0, kill: 1.0, death: 1.0, held: 2.0, build: 0.1, road: 0.05 }
+        ScoreWeights {
+            win: 10.0,
+            kill: 1.0,
+            death: 1.0,
+            held: 2.0,
+            build: 0.1,
+            road: 0.05,
+            direct_hit: 1.5,
+            pillbox_damage: 1.5,
+            neutral_taken: 3.0,
+            enemy_taken: 6.0,
+            defend: 1.5,
+            all_neutral: 15.0,
+        }
     }
 }
 
@@ -101,40 +150,108 @@ impl ScoreWeights {
         let short = 1.5 - lg;
         ScoreWeights { win: 10.0 * short, kill: short, death: short, held: 4.0 * lg, ..ScoreWeights::default() }
     }
+
+    /// The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`.
+    pub fn without_rewards(self) -> ScoreWeights {
+        ScoreWeights { direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
+    }
+}
+
+/// The rewards' part of a seat's score (LR 84).
+pub fn rewards(o: &Outcome, k: &ScoreWeights) -> f32 {
+    k.direct_hit * o.direct_hits as f32 + k.pillbox_damage * o.pillbox_damage + k.neutral_taken * o.neutral_taken as f32 + k.enemy_taken * o.enemy_taken as f32 + k.defend * o.defends as f32 + if o.all_neutral { k.all_neutral } else { 0.0 }
 }
 
 /// A seat's match score: the win, kills less deaths, ground held over
-/// the match's length, works built and road laid, each at its weight.
+/// the match's length, works built and road laid, and the rewards, each
+/// at its weight.
 pub fn score(o: &Outcome, seconds: u32, k: &ScoreWeights) -> f32 {
     let t = seconds.max(1) as f32;
-    (if o.won { k.win } else { 0.0 }) + k.kill * o.kills as f32 - k.death * o.deaths as f32 + k.held * o.held_s as f32 / t + k.build * o.built as f32 + k.road * (o.road_tiles + o.bridge_tiles) as f32
+    (if o.won { k.win } else { 0.0 }) + k.kill * o.kills as f32 - k.death * o.deaths as f32 + k.held * o.held_s as f32 / t + k.build * o.built as f32 + k.road * (o.road_tiles + o.bridge_tiles) as f32 + rewards(o, k)
 }
 
 /// The counts, as the match runs.
 #[derive(Clone, Debug, Default)]
 pub struct Tally {
     pub seats: Vec<Outcome>,
+    /// The pillboxes neutral at the start, and how many of them each
+    /// team has taken (LR 84; a pillbox set down after a lift is another
+    /// id, so they are counted as taken, not by id).
+    neutral: usize,
+    neutral_by_team: std::collections::HashMap<TeamId, usize>,
+    /// Shells in flight and whose (LR 84).
+    shells: std::collections::HashMap<EntityId, PlayerId>,
 }
 
 impl Tally {
     /// An empty count for each seat of the world, with its team.
     pub fn new(w: &World) -> Tally {
-        Tally { seats: w.players.iter().map(|p| Outcome { team: w.team_of(p.id), ..Outcome::default() }).collect() }
+        Tally {
+            seats: w.players.iter().map(|p| Outcome { team: w.team_of(p.id), ..Outcome::default() }).collect(),
+            neutral: w.pillboxes.iter().filter(|p| p.owner.is_none()).count(),
+            neutral_by_team: Default::default(),
+            shells: Default::default(),
+        }
     }
 
     /// After each `step`: the tick's events; once a second, the holdings.
     pub fn hear(&mut self, w: &World) {
         let n = self.seats.len();
         let seat = |p: PlayerId| -> Option<usize> { ((p as usize) < n).then_some(p as usize) };
+        // Two players hostile: both on teams, not the same one.
+        let hostile = |a: PlayerId, b: PlayerId| matches!((w.team_of(a), w.team_of(b)), (Some(x), Some(y)) if x != y);
         for e in &w.events {
             match e {
-                Event::TankDestroyed { owner, by, .. } => {
+                Event::TankDestroyed { tank, owner, by } => {
                     if let Some(i) = seat(*owner) {
                         self.seats[i].deaths += 1;
                     }
                     if let Some(i) = by.and_then(seat) {
                         if Some(i as PlayerId) != Some(*owner) {
                             self.seats[i].kills += 1;
+                            let killer = i as PlayerId;
+                            let at = w.tank(*tank).map(|t| t.pos);
+                            let defended = at.is_some_and(|at| w.pillboxes.iter().any(|p| p.alive() && p.owner.is_some_and(|o| !hostile(o, killer) && w.team_of(o).is_some()) && p.pos.dist(at) <= DEFEND_R));
+                            if defended && hostile(*owner, killer) {
+                                self.seats[i].defends += 1;
+                            }
+                        }
+                    }
+                }
+                Event::ShellLaunched { shell, owner, .. } => {
+                    self.shells.insert(*shell, *owner);
+                }
+                Event::ShellImpact { shell, kind, hits, .. } => {
+                    if let Some(owner) = self.shells.remove(shell) {
+                        if *kind == ShellKind::Direct {
+                            if let Some(i) = seat(owner) {
+                                let n = hits.iter().filter(|h| w.tank(**h).is_some_and(|t| hostile(t.owner, owner))).count();
+                                self.seats[i].direct_hits += n as u32;
+                            }
+                        }
+                    }
+                }
+                Event::PillboxDamaged { pillbox, by: Some(by), damage, .. } => {
+                    let theirs = w.pillbox(*pillbox).and_then(|p| p.owner).is_some_and(|o| hostile(o, *by));
+                    if let (true, Some(i)) = (theirs, seat(*by)) {
+                        self.seats[i].pillbox_damage += damage / PILLBOX_HEALTH;
+                    }
+                }
+                Event::PillboxCaptured { by, from, .. } => {
+                    if let Some(i) = seat(*by) {
+                        match from {
+                            None => {
+                                self.seats[i].neutral_taken += 1;
+                                if let Some(t) = w.team_of(*by) {
+                                    let n = self.neutral_by_team.entry(t).or_insert(0);
+                                    *n += 1;
+                                    if *n >= self.neutral && self.neutral > 0 {
+                                        self.seats.iter_mut().filter(|o| o.team == Some(t)).for_each(|o| o.all_neutral = true);
+                                    }
+                                }
+                            }
+                            Some(f) if hostile(*f, *by) => self.seats[i].enemy_taken += 1,
+                            _ => {}
                         }
                     }
                 }
@@ -322,5 +439,51 @@ mod tests {
         let d = ScoreWeights::default();
         assert_eq!((half.win, half.kill, half.held), (d.win, d.kill, d.held), "long_game 0.5 is the default score");
         assert!(score(&o, 600, &ScoreWeights::from_long_game(1.0)) < score(&o, 600, &ScoreWeights::from_long_game(0.0)), "a short win counts for less in a long game");
+    }
+
+    /// Each reward counts what it says, for the seat that did it, and
+    /// only against a hostile (LR 84); `without_rewards` is the score
+    /// before them.
+    #[test]
+    fn the_rewards_count_their_events() {
+        let mut w = World::new(Scenario::bots(4).with_teams(2));
+        assert_eq!((w.team_of(0), w.team_of(2)), (w.team_of(2), w.team_of(0)), "0 and 2 a team");
+        assert_ne!(w.team_of(0), w.team_of(1));
+        let tank = |w: &World, p: PlayerId| w.tanks.iter().find(|t| t.owner == p).unwrap().id;
+        // Two pillboxes only: one neutral, one seat 1's.
+        let mk = |owner: Option<PlayerId>, at: V2, id: EntityId| Pillbox { id, pos: at, owner, health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS };
+        w.pillboxes = vec![mk(None, V2::new(10.5, 10.5), 90_001), mk(Some(1), V2::new(40.5, 40.5), 90_002)];
+        let mut t = Tally::new(&w);
+        let (t1, t2) = (tank(&w, 1), tank(&w, 2));
+        w.events = vec![
+            // Seat 0's direct shell hits seat 1 (hostile) and seat 2 (a teammate).
+            Event::ShellLaunched { shell: 7, owner: 0, kind: ShellKind::Direct, spotted: false, eta_ticks: 1 },
+            Event::ShellImpact { shell: 7, at: V2::new(0.0, 0.0), kind: ShellKind::Direct, hits: vec![t1, t2] },
+            // An indirect shell's hit is not a direct hit.
+            Event::ShellLaunched { shell: 8, owner: 0, kind: ShellKind::Indirect, spotted: false, eta_ticks: 1 },
+            Event::ShellImpact { shell: 8, at: V2::new(0.0, 0.0), kind: ShellKind::Indirect, hits: vec![t1] },
+            // Half a pillbox of damage to seat 1's, and some to the neutral one.
+            Event::PillboxDamaged { pillbox: 90_002, by: Some(0), damage: PILLBOX_HEALTH / 2.0, health_left: PILLBOX_HEALTH / 2.0 },
+            Event::PillboxDamaged { pillbox: 90_001, by: Some(0), damage: 10.0, health_left: 50.0 },
+            // Seat 2 takes the neutral one: every neutral pillbox, for team 0.
+            Event::PillboxCaptured { pillbox: 90_001, by: 2, from: None },
+            Event::PillboxCaptured { pillbox: 90_002, by: 0, from: Some(1) },
+        ];
+        // Seat 1's tank by seat 2's pillbox, killed by seat 0: a defence.
+        w.tanks.iter_mut().find(|x| x.owner == 1).unwrap().pos = V2::new(12.5, 10.5);
+        w.pillboxes[0].owner = Some(2);
+        w.events.push(Event::TankDestroyed { tank: t1, owner: 1, by: Some(0) });
+        t.hear(&w);
+        let (a, b, c) = (&t.seats[0], &t.seats[1], &t.seats[2]);
+        assert_eq!(a.direct_hits, 1, "one hostile tank hit, direct");
+        assert!((a.pillbox_damage - 0.5).abs() < 1e-6, "half a hostile pillbox: {}", a.pillbox_damage);
+        assert_eq!((a.enemy_taken, a.neutral_taken, c.neutral_taken), (1, 0, 1));
+        assert_eq!((a.kills, a.defends), (1, 1));
+        assert!(a.all_neutral && c.all_neutral && !b.all_neutral, "team 0 took every neutral pillbox");
+        let k = ScoreWeights::default();
+        let r = rewards(a, &k);
+        assert!((r - (1.5 + 0.75 + 6.0 + 1.5 + 15.0)).abs() < 1e-5, "{}", r);
+        assert!((score(a, 600, &k) - score(a, 600, &k.without_rewards()) - r).abs() < 1e-5);
+        assert_eq!(rewards(a, &k.without_rewards()), 0.0);
     }
 }

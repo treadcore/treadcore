@@ -4777,3 +4777,61 @@ is out 37% of the seconds alive. Of that, the walk home 39%, captures
 over a census, the posture's cost on atlantic is not the bridges' own
 work but the walking that each job adds. The reading is LR 82's rows
 on atlantic with this line, its rule written first.
+
+## 84. Rewards in the census score, 25 October
+
+Backlog 66. Paul: "we want to improve Census with a reward system ...
+Big points for capturing all neautral pillboxes . Good points for
+taking enemy pillbox. Good points for doing damage to enemy pillbox.
+Getting a direct hit with the main tank weapon is a very good amount
+of points". And pillboxes "taken, defended". The census score (LR 8,
+`ledger::score`) judged the win, kills less deaths, ground held over
+time, works built and road laid. A pillbox counted only by being held.
+
+**The terms** (`ledger::Tally::hear`, from the sim's events; a seat's
+count, a team's score the mean of its seats'):
+
+| Reward | Counted from | Worth |
+| --- | --- | --- |
+| a direct hit | `ShellImpact` of a `Direct` shell (its owner from `ShellLaunched`) on a hostile tank | 1.5 (about three kill, a kill 1) |
+| pillbox damage | `PillboxDamaged` to a hostile-owned pillbox, in pillboxes' health | 1.5 a whole pillbox |
+| a neutral pillbox taken | `PillboxCaptured`, `from` none | 3 |
+| a hostile pillbox taken | `PillboxCaptured`, `from` a hostile | 6 |
+| a defence | a kill of a hostile tank within `DEFEND_R` (16 tiles, twice a pillbox's reach) of a live pillbox of the killer's team | 1.5 |
+| every neutral pillbox | the team itself took as many neutral pillboxes as began neutral (counted, since a pillbox lifted and set down is another id) | 15, once |
+
+**The switch**: on by default; `CENSUS_REWARDS=0` scores as before.
+The census prints `brain_census: rewards on` (or off) and each team
+line ends with the rewards' part and its counts:
+
+    team 1: score 18.21, ..., held 8.8, rewards 0.70 (direct hits 1,
+    pillbox damage 0.0, pillboxes taken 3 neutral 0 hostile, defends
+    0, all neutral no)
+
+**Checks**: `the_rewards_count_their_events` (a hostile direct hit
+counted, a teammate's and an indirect shell's not; damage to a neutral
+pillbox not; each capture; a defence; every neutral pillbox for one
+team, not the other; `without_rewards` the old score); the brain's
+tests, 89 passed. On atlantic (4 seeds from 500, 300 s), with
+`CENSUS_REWARDS=0` every team line matches LR 83's to the digit; on,
+every term but defences and every neutral fired.
+
+**The scale**: first set at a third of these (a direct hit 0.5, a
+pillbox's damage 0.5, neutral 1, hostile 2, a defence 0.5, every
+neutral 5), the rewards were 0.2 to 0.7 a seat on those seeds against
+a score of about 17, of which held ground is 2 x 8.7: a nudge. Paul
+chose "about a third" of the score, so each was tripled, the values in
+the table. Tripled, on the same four seeds: 10% of the score at 300 s
+(1.91 of 19.04), and **25% at the census's 900 s** (6.80 of 27.24).
+The rewards are counts and grow with the match, while held ground is
+averaged over it. The census reads a difference, so a term moves a
+verdict by how much it differs between teams, not by its size alone.
+
+**What the sim does, against Paul's description** (read, not
+changed): pillboxes shoot tanks and drones, not each other; damage
+does not slow their fire; at zero health a pillbox is dead (silent,
+capturable), not "highly damaged and still functional"; repair takes
+material, which comes from forest (harvest), depots or the start; a
+pillbox of one's own side can be towed by two tanks or lifted, dead or
+alive; towing through forest does not repair it. Those differences are
+sim changes, each a step of its own.

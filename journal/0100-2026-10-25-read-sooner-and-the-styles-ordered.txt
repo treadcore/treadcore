@@ -14,8 +14,10 @@ X-Session: the Mac and the census machine; Claude Code (Claude Opus
            version"; "do it. start. yeah. start ."; "commit and push
            when turtle lands. then fix backlog 62"; "keep testing."; "any
            more. commit .push. yeah? do it!"; "1"; "commit and
-           push. then add the build time meter"
-X-Commits: 732fde3 8062fb7 7c18851 ff2055d a6c71f3; this entry's commit follows
+           push. then add the build time meter"; Paul's ask for personalities
+           and rewards (CI-049); "ok. start with the reward system";
+           "ok go"; "About a third"; "Commit and push"
+X-Commits: 732fde3 8062fb7 7c18851 ff2055d a6c71f3 4c85d1b; this entry's commit follows
 
                READ SOONER, AND THE STYLES ORDERED
 
@@ -82,11 +84,16 @@ IV. CHRONOLOGY
     8. LR 83: the squad's time by task in the meter line; the same
        census before and after to the digit. A first look on
        atlantic: the walk home 39% of the squad's time out, bridges
-       1.5%.
+       1.5%. Committed (4c85d1b).
+    9. LR 84: rewards in the census score (direct hits, pillbox
+       damage and captures, defences, every neutral); off, the score
+       is the old one to the digit. Personalities and Paul's pillbox
+       mechanics logged as backlog 67 and 68. Paul chose rewards of
+       about a third of the score: each tripled.
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md sections 76 to 83; CI-042 to CI-048.
+    LAB-REPORT-BRAIN.md sections 76 to 84; CI-042 to CI-049.
 
 VI. DISCUSSION
 
@@ -102,8 +109,9 @@ VII. OPEN PROBLEMS
 
 VIII. NEXT STEPS
 
-    1. LR 82's rows on atlantic with the squad's line: where the
-       posture's cost goes, its rule written first.
+    1. A census reading the rewards, now about a third of the score.
+    2. Personalities (backlog 67); pillbox mechanics (68).
+    3. LR 82's rows on atlantic with the squad's line.
 
 APPENDIX B. ARTIFACTS
 
