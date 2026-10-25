@@ -4330,6 +4330,111 @@ queued behind the profiles' round robin (`build/rotate/NOTES.txt`).
 dodge, the posture, the board and the priced crossing; the rest sit
 inside the noise.
 
+**team_rotate, read again** (`build/census/20261024-231844`, 400 fresh
+seeds 70000 to 70399, every map, 23:18 to 23:38, the rule in
+`build/rotate/NOTES.txt`): off less on **+0.55 +/- 0.15** a seat, 3.7
+errors; atlantic +2.47 +/- 0.30 and island +0.92 +/- 0.39 past two
+errors; below zero only naval -0.28 +/- 0.49, fidos-airstrip -0.28 +/-
+0.67, fortressisles2 -0.37 +/- 0.59 and constanine -0.01 +/- 0.34, none
+past two errors. By the rule, **team_rotate goes off by default**:
+`TEAM_ROTATE` defaults to false in `weights.rs` (the switch and its
+code stay; `caps = baseline, team_rotate` turns it on). The brain's
+tests pass. `make families`: every family holds but
+a-raid-on-a-guarded-base, 70.2% +/- 2.3% under its 75% floor, the same
+281 of 400 with team_rotate on or off. Bisected, it fell at 5899e8e
+(the front read off, LR 75): 81.8% at 0828d4a, 70.2% after. That
+commit kept the front scenario's front read on (`w_front` 0.5) but not
+this family's; backlog 62.
+
+## 77. The play styles' round robin, 24 October
+
+Backlog 60. Paul: "there is no single method that works", play styles
+"in a rock paper scissors like game". Four profiles as weights files
+(`profiles/`, d0c5a7a): **turtle** (the posture toward Defend and
+Fortify, a bigger castle, home sooner), **raider** (toward Expand,
+closes at even odds, picks off the wounded), **expander** and **navy**,
+with the defaults as a fifth. Are they ordered, or do they beat each
+other round a cycle on some maps? LR 74 found the posture's weights
+trade maps against each other, which is what a cycle by map would
+look like.
+
+**The rule, set before the run** (`build/rr/NOTES.txt`): a style is
+better than another if its row reads past two errors above zero against
+it. The styles are ordered if those relations have no cycle over every
+map; a cycle on every map, or on any one, is what backlog 61 builds on.
+A style past two errors above the defaults over every map, with no map
+past two errors the other way, is read again on 400 fresh seeds before
+it becomes a default.
+
+**The run**: `make roundrobin`, the fair census for every ordered pair,
+one team of the row's style against two of the column's: 20 censuses,
+the same 110 seeds each (60000 to 60109), every map (10 a map), 900 s,
+3 respawns, 24 jobs, a frozen binary each
+(`build/roundrobin/20261024-211723`), 21:17 to 23:18, 2 h 1 min.
+
+**The matrix** (the row's style less the column's, a seat; * past two
+errors):
+
+| | defaults | expander | navy | raider | turtle |
+| --- | --- | --- | --- | --- | --- |
+| **defaults** | . | +0.70 +/- 0.30* | -0.30 +/- 0.25 | +0.82 +/- 0.39* | -2.10 +/- 0.33* |
+| **expander** | -1.02 +/- 0.31* | . | -1.22 +/- 0.35* | +0.37 +/- 0.39 | -3.06 +/- 0.36* |
+| **navy** | -0.07 +/- 0.24 | +0.63 +/- 0.38 | . | +1.49 +/- 0.36* | -2.45 +/- 0.35* |
+| **raider** | -1.12 +/- 0.37* | +0.04 +/- 0.38 | -1.19 +/- 0.40* | . | -2.32 +/- 0.40* |
+| **turtle** | **+1.34 +/- 0.39*** | +2.22 +/- 0.41* | +2.22 +/- 0.43* | +1.83 +/- 0.36* | . |
+
+The two cells of a pair are two censuses (one team of A against two of
+B, and the other way); wherever either is past two errors, the other
+reads the same way round (A over B in one, B under A in the other).
+
+**No cycle.** The relations past two errors over every map: turtle
+over every other style; the defaults over expander and raider; navy
+over raider. An order, turtle first, raider and expander last. Map by
+map (10 seeds a map, so few relations pass: none on big-lizard, eight
+on generated), no map has a cycle of three, four or five either. The
+posture trades maps (LR 74), but no style trades them in a ring.
+
+**Turtle against the defaults**, by map: europe +2.28 +/- 0.99, the
+generated maps +3.25 +/- 1.28, industry +2.57 +/- 1.14, island +3.66
++/- 0.93, past two errors; naval -0.30 +/- 0.95 and fidos-airstrip
+-0.27 +/- 1.05 the only ones below zero, inside the noise. By the rule
+it is read again on 400 fresh seeds before it becomes a default:
+`build/census/20261025-075856`, seeds 80000 to 80399, the rule in
+`build/turtle/NOTES.txt`: **+1.40 +/- 0.18** a seat, 7.8 errors, every
+map above zero (naval, its lowest in the round robin, +1.58 +/- 0.58;
+the generated maps +3.56 +/- 0.55, island +2.44 +/- 0.50). By the rule
+turtle becomes the defaults.
+
+**The two changes together.** Turtle was read with team_rotate on;
+team_rotate's own re-read (LR 76) ends with it off. The pair against
+the old defaults (`build/newdefaults`, seeds 90000 to 90399, the rule
+in its NOTES.txt: past two errors, no map the other way, not below
+turtle alone by more than two errors): **+1.75 +/- 0.19**, 9 errors,
+no map below zero; atlantic +5.03 +/- 0.32, island +2.70 +/- 0.54,
+europe +2.25 +/- 0.48. Both go in.
+
+**The new defaults** (`weights.rs`): `w_posture` 0.5 to 0.95,
+`w_pos_defend` and `w_pos_fortify` 1 to 3, `w_pos_expand` 1 to 0.4,
+`w_defend_ground` 1 to 1.5, `castle_inside` 2 to 4, `castle_road` 1 to
+2, `posts_max` 4 to 6, `retreat_armor` 35 to 50, `press_odds` 1.5 to 2
+(and `Tactics::default`'s), `team_rotate` off. `profiles/turtle.weights`
+is gone, being the defaults; `profiles/classic.weights` is the old
+defaults, kept as a style. The other profiles name what they change
+"from the default", so raider, expander and navy now inherit
+turtle's values where they name none (`w_defend_ground` 1.5 in each,
+team_rotate off). Three tests of a mechanism pinned the old values
+they were written for (the posture's scores, the ladder's lean, the
+castle's cap); the tests pass, 87. `make families`: as before the
+change, every family holds but a-raid-on-a-guarded-base (backlog 62).
+
+**The verdict**: the styles are ordered, not a rock paper scissors.
+Holding what the base has beats going to fight, against every style
+here: the defaults leaned too far toward Expand, and now lean the
+other way. Backlog
+61 (rotation between styles) has no cycle to use; a mix can only do as
+well as its best member here, and is shelved until a style beats
+turtle somewhere.
+
 ## 78. Read sooner: a sequential census, replayed, 24 October
 
 Backlog 59. LR 72 noted the dodge was settled by seed 20 of 176: a

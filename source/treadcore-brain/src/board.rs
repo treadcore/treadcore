@@ -637,6 +637,12 @@ mod tests {
         let run = |obs: &Observation, home: Home, share: f32, scored: f32| {
             let mut s = Settings::default();
             s.w[W::PostureScored] = scored;
+            // The worths of LR 25, every posture even, before turtle's
+            // lean became the default (LR 77): the cases test the scores.
+            for k in [W::PostureDefend, W::PostureFortify, W::PostureExpand, W::DefendGround] {
+                s.w[k] = 1.0;
+            }
+            s.w[W::PressOdds] = 1.5;
             let mut b = TeamBoard::default();
             full(&mut b, share);
             b.rebuild(obs, Some(base), &s, home, 0);

@@ -56,3 +56,4 @@ report is what ties a conversation to them. Named
 | [041](CI-041-2026-10-22-the-method-and-a-machine.md) | 22 October 2026 | The method, a machine for it, and competitions | 0098 | LAB-REPORT-BRAIN.md section 72 |
 | [042](CI-042-2026-10-24-a-sequential-census-replayed.md) | 24 October 2026 | Read sooner: a sequential census, replayed | 0100 | LAB-REPORT-BRAIN.md section 78 |
 | [043](CI-043-2026-10-25-the-sequential-census-with-a-re-read.md) | 25 October 2026 | The sequential census with a re-read | 0100 | LAB-REPORT-BRAIN.md section 79 |
+| [044](CI-044-2026-10-25-the-styles-ordered-and-team-rotate-off.md) | 25 October 2026 | The styles ordered: turtle the defaults, team_rotate off | 0100 | LAB-REPORT-BRAIN.md sections 76 and 77 |

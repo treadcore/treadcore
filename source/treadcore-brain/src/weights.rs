@@ -92,7 +92,7 @@ weights! {
     PillboxWorth "pillbox_worth" 0.7, "odds: a hostile pillbox as a share of a tank";
     StrikeWorth "strike_worth" 0.35, "odds: a hostile strike drone as a share of a tank";
     EngageOdds "engage_odds" 0.7, "odds: below these, with help coming, mass";
-    PressOdds "press_odds" 1.5, "odds: above these, close in";
+    PressOdds "press_odds" 2.0, "odds: above these, close in";
     ComingR "coming_r" 45.0, "odds: teammates this near are coming, tiles";
     MassFor "mass_for" 12.0, "odds: seconds to hold off for them";
     AnswerCap "answer_cap" 3.0, "pings: this many nearer teammates answer instead (rounded)";
@@ -116,7 +116,7 @@ weights! {
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
     AdvanceBand "advance_band" 0.35, "smooth: the advance scalar presses above this and falls back below minus this";
     Jitter "jitter" 3.0, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
-    RetreatArmor "retreat_armor" 35.0, "survival: armour at or under this goes home";
+    RetreatArmor "retreat_armor" 50.0, "survival: armour at or under this goes home";
     RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home";
     // Memory (LR 5).
     ForgetFor "forget_for" 120.0, "memory: seconds a given-up target stays given up";
@@ -138,14 +138,14 @@ weights! {
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";
     // The team (LR 9).
     SwapGap "swap_gap" 0.3, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
-    Posture "w_posture" 0.5, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";
+    Posture "w_posture" 0.95, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
-    PostureDefend "w_pos_defend" 1.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
+    PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
-    PostureFortify "w_pos_fortify" 1.0, "posture: worth of Fortify's score, the share of the castle not yet built";
+    PostureFortify "w_pos_fortify" 3.0, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
-    DefendGround "w_defend_ground" 1.0, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
-    PostureExpand "w_pos_expand" 1.0, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
+    DefendGround "w_defend_ground" 1.5, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
+    PostureExpand "w_pos_expand" 0.4, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
     // The dodge (lib.rs `Dodge`, LR 27): its numbers, once constants.
     DodgeHorizon "dodge_horizon" 4.0, "dodge: seconds before a shell lands that the tank starts out from under it";
     DodgeMargin "dodge_margin" 0.8, "dodge: tiles past the splash a shell's landing still counts as on the tank";
@@ -172,10 +172,10 @@ weights! {
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
-    CastleInside "castle_inside" 2.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";
-    CastleRoad "castle_road" 1.0, "castle: pillboxes outside on its road (rounded)";
+    CastleInside "castle_inside" 4.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";
+    CastleRoad "castle_road" 2.0, "castle: pillboxes outside on its road (rounded)";
     PostSpacing "post_spacing" 10.0, "posts: tiles between pillboxes on a road between bases";
-    PostsMax "posts_max" 4.0, "posts: road posts a base fills at most (rounded)";
+    PostsMax "posts_max" 6.0, "posts: road posts a base fills at most (rounded)";
     JunctionClear "junction_clear" 3.0, "posts: no post this near a road junction, tiles";
     ConnectBases "connect_bases" 0.75, "connect: a base or castle preferred to a lone pillbox, 0 none, 1 its distance counted at nothing";
     BridgeKeep "bridge_keep" 180.0, "bridge jobs: seconds a part-laid bridge stays on the team board with no tile laid";
@@ -247,7 +247,7 @@ caps! {
     ROTATE 4 "rotate" true, "rotate between the push and defence points";
     FORGET 8 "forget" true, "given-up targets are tried again after forget_for (12b)";
     BOARD 10 "board" true, "the team board: one picture of the map per team (12e)";
-    TEAM_ROTATE 11 "team_rotate" true, "swap a hurt tank at a hot point for a fresh one at a cold point (12e)";
+    TEAM_ROTATE 11 "team_rotate" false, "swap a hurt tank at a hot point for a fresh one at a cold point (12e); off since LR 76, +0.55 +/- 0.15 a seat off over 400 fresh seeds";
     PRICED_CROSSING 12 "priced_crossing" true, "boat or bridge by price, long bridges and scarce trees costing more (12f2)";
     COLUMN 13 "column" true, "a fleet crosses a bridge in file (12f3)";
     CYCLE 14 "cycle" true, "after filling up, give the base an item and an improvement and road out (12f1)";

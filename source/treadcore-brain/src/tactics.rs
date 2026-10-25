@@ -143,7 +143,7 @@ impl Default for Tactics {
             pillbox_worth: 0.7,
             strike_worth: 0.35,
             engage_odds: 0.7,
-            press_odds: 1.5,
+            press_odds: 2.0,
             coming_r: 45.0,
             mass_for: 12.0,
             answer_cap: 3,

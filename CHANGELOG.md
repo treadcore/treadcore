@@ -6,6 +6,19 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the defaults lean toward holding what the base has, the
+  turtle style of the round robin: the posture at 0.95, Defend and
+  Fortify worth 3, Expand 0.4, a castle of four inside and two on the
+  road, six posts, home at 50 armour, closing in at odds of 2; and
+  team_rotate off. Against the old defaults +1.75 +/- 0.19 a seat over
+  400 fresh seeds, no map below zero. The old defaults are
+  `profiles/classic.weights`; turtle.weights is gone
+  (LAB-REPORT-BRAIN.md sections 76 and 77).
+
+- Added: the play styles' round robin read: the styles are ordered,
+  turtle first, with no cycle on any map (LAB-REPORT-BRAIN.md section
+  77).
+
 - Added: `LOOKS=8 make census`, the sequential census: read as it
   plays (`scripts/sequential.py watch`), stopped at the first look past
   the O'Brien-Fleming bound, an early stop read again on fresh seeds;

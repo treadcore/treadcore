@@ -1,0 +1,15 @@
+# Classic (LR 77): the defaults before turtle's lean was folded into
+# them, kept as a style to play against. Every posture even, a small
+# castle, team_rotate on, home at 35 armour, close in at 1.5. Every
+# weight not named here is the default.
+caps = baseline, team_rotate
+w_posture = 0.5
+w_pos_defend = 1.0
+w_pos_fortify = 1.0
+w_pos_expand = 1.0
+w_defend_ground = 1.0
+castle_inside = 2
+castle_road = 1
+posts_max = 4
+retreat_armor = 35
+press_odds = 1.5

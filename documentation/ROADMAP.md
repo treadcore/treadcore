@@ -1029,14 +1029,29 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     two errors on some maps. Proof: `make census` for each ordered
     pair, `MAP=all`, the matrix with its errors; a three-way census
     (three brains, one a team) as a second form. Cost: 12 censuses,
-    about 3 h on the machine. State: idea (LR 72).
+    about 3 h on the machine. State: done 25 October (LR 77): no cycle,
+    turtle first (+1.34 +/- 0.39 over the defaults, +1.40 +/- 0.18 on
+    400 fresh seeds), folded into the defaults with team_rotate off
+    (+1.75 +/- 0.19 together); the old defaults are
+    `profiles/classic.weights`.
 61. Rotation as a meta-strategy. (22 October; cause: Paul, "Perhaps a
     rotation to strategies is even a meta strategy".) Goal 4, 12h.
     Hypothesis: a brain that mixes the profiles by the matrix's solved
     shares (between matches), or switches on what it reads of the
     opponent (within one), ties or beats every fixed profile. Proof:
-    one more row in 60's matrix. Cost: a step after 60. State: idea
-    (LR 72).
+    one more row in 60's matrix. Cost: a step after 60. State:
+    shelved 25 October (LR 77): the styles are ordered, turtle first,
+    no cycle on any map, so a mix can do no better than its best
+    member; open again if a style beats turtle somewhere.
+62. The guarded-base family after the front read. (25 October; cause:
+    LR 76, `make families` at the team_rotate change.) Goal 4, 12e.
+    a-raid-on-a-guarded-base reads 70.2% under its 75% floor since
+    5899e8e (the front read off, LR 75; 81.8% before). Hypothesis: the
+    family's guard leaned out by the front read, as the front scenario
+    did, which LR 75 kept on (`w_front` 0.5) for that scenario alone.
+    Proof: the family with the old front weights in its toml back over
+    its floor, or the floor read again with the front read off. Cost: a
+    step. State: idea.
 
 ## Sequencing
 

@@ -3008,6 +3008,12 @@ mod tests {
         let mut c = Commander::new(17, "commander");
         c.set_goal(Goal::Auto);
         assert!(c.settings.caps.has(crate::weights::Caps::CASTLE_CAP), "the capped castle is the default");
+        // The cap of LR 61, two inside, one on the road, four posts, not
+        // turtle's (LR 77): the test is of the cap.
+        use crate::weights::W;
+        c.settings.w[W::CastleInside] = 2.0;
+        c.settings.w[W::CastleRoad] = 1.0;
+        c.settings.w[W::PostsMax] = 4.0;
         let mut lifted = 0;
         for _ in 0..(1200 * TICK_HZ) {
             let obs = w.observe(0);
@@ -3260,7 +3266,8 @@ mod tests {
     /// The posture leans the ladder (LR 24): with no posture or a
     /// weight of 0 the pick is the first rung that holds, for every one
     /// of the 4096 combinations; at 0.25 a leaned rung climbs one rung,
-    /// at the default 0.5 every rung; DefendBase is never passed.
+    /// at 0.5 (and the default 0.95, LR 77) every rung; DefendBase is
+    /// never passed.
     #[test]
     fn the_posture_leans_the_ladder() {
         use crate::board::Posture as P;
@@ -3278,7 +3285,7 @@ mod tests {
         }
         let all = [true; 6];
         let w = 0.25;
-        assert_eq!(crate::weights::W::Posture.default_value(), 0.5);
+        assert_eq!(crate::weights::W::Posture.default_value(), 0.95);
         // Fortify, Hunt, Expand and Guard hold; the team would expand.
         let holds = [false, true, false, true, true, true];
         assert_eq!(Rung::pick(&all, &holds, Some(P::Expand), 0.0), Rung::Fortify);

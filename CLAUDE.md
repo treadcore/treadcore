@@ -37,6 +37,9 @@ Richeson (he/him). Journals and commits are in his name.
 - **The rule before the run.** Write down what result would confirm a
   change before starting its census. Outside two standard errors is
   the bar.
+- **A default change runs `make families` too.** The census and the
+  brain's tests passed on 5899e8e while a family fell under its floor
+  (CI-044, backlog 62).
 - **The game is hard for a person.** `SKILL=0.6 make run` is the dial
   Paul liked (LR 67). Leave it unless he asks.
 
