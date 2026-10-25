@@ -4415,3 +4415,90 @@ have had 100 more seeds to recover. A form that keeps the saving and
 the rule: an early stop marks a reading for a re-read on fresh seeds
 (as LR 76 did for team_rotate) before any default changes on it. That
 is Paul's call; backlog 59 stays open with this reading.
+
+## 79. The sequential census with a re-read, 25 October
+
+LR 78's sequential census saved a quarter of the seeds, but its one
+false early stop (LR 73's `-column`) was final. The form LR 78 left
+open: an early stop is no verdict; the census is read again,
+sequentially, on fresh seeds, and is outside only if the re-read is
+outside the same way. A census that reaches its last look is the fixed
+census, read as before.
+
+**The rule, set before the build**: it holds if (a) the census's seed
+differences can be read as it plays, matching its own lists; (b) its
+false alarm rate, by simulation, is at or below the fixed census's
+4.55%; (c) over LR 78's 44 censuses, a re-read drawn from each
+census's own seeds (with replacement, 200 times) reaches the fixed
+verdict as often as not on every one, on fewer seeds than the fixed
+census.
+
+**The tool**: `LOOKS=8 make census`. `scripts/sequential.py watch`
+follows the jobs' match lines, rebuilds each finished seed's
+difference, and at each look writes the reading to
+`DIR/sequential.txt`; at an early stop the jobs are stopped and a
+second sequential census plays SEEDS fresh seeds from SEED0 + SEEDS
+into `DIR/reread`; `sequential.py verdict` writes `DIR/verdict.txt`.
+Without LOOKS, `make census` is as it was. `sequential.py twostage`
+runs (b) and (c).
+
+**(a) Read as it plays**: on four finished censuses (976 seeds), the
+seeds rebuilt from the match lines match each job's "a seed:" list to
+0.01, the rounding of the printed scores.
+
+**(b) and the power, simulated** (200 seeds a stage, 4 000 censuses a
+row; expected z is the fixed census's, the effect over its error):
+
+| Expected z | Fixed, outside | Two stages, outside | Seeds, two stages |
+| --- | --- | --- | --- |
+| 0 | 4.8% | **2.8%** | 102% |
+| 1 | 16.6% | 8.8% | 108% |
+| 2 | 50.6% | 34.4% | 123% |
+| 2.5 | 67.7% | 52.9% | 129% |
+| 3 | 84.7% | 74.9% | 130% |
+| 4 | 97.5% | 96.0% | 117% |
+| 6 | 100% | 100% | 85% |
+| 10 | 100% | 100% | 55% |
+
+The false alarm rate falls to 2.8%, below the fixed census's. The cost
+is power: a true effect at z 2.5 is read outside 53% of the time, not
+68%. And the seeds: an effect large enough to stop early but not large
+enough to stop at once pays for a whole second census.
+
+**(c) The 44 censuses**: every fixed verdict is reached as often as not
+(LR 73 `-column`, LR 78's false stop, now 81%), the closest LR 76
+`-team_rotate` at 52% and `-priced_crossing` at 68%. Seeds: 11 969
+against the fixed census's 11 304, **106%**. The dodge is read in 61
+to 81 seeds of 176 to 200; a mid-sized effect (front `nodepot`, z
+2.89) in 568 of 400.
+
+**The re-read's size** (explored after the verdict, not a rule; 3 000
+censuses a cell, outside and seeds):
+
+| Re-read | z 0 | z 2 | z 3 | z 4 | z 6 |
+| --- | --- | --- | --- | --- | --- |
+| a quarter | 2.3%, 100% | 21.8%, 98% | 38.8%, 92% | 53.3%, 82% | 84.3%, 61% |
+| a half | 2.7%, 101% | 26.7%, 106% | 53.6%, 107% | 79.8%, 98% | 98.9%, 71% |
+| whole | 2.4%, 102% | 34.8%, 122% | 74.0%, 129% | 96.2%, 118% | 100%, 86% |
+| fixed census | 4.8%, 100% | 50.4%, 100% | 84.8%, 100% | 97.3%, 100% | 100%, 100% |
+
+No size beats the fixed census on both counts at the effects the
+census mostly reads (z 2 to 4): fewer seeds buys less power.
+
+**The live test** (the Mac, naval.map, 120 s, 32 seeds from 900,
+`LOOKS=4 JOBS=8`; looks at 8, 16, 24 and 32 seeds). Every capability
+off (`caps =`) read +0.54, +1.15, +0.92 and +0.54 errors: no stop, the
+census to its end, its last reading the same as `pool.sh`'s (+0.11 +/-
+0.21). A rookie (`skill = 0`): z -11.80 at 8 seeds, past the first
+bound (4.14); the eight jobs stopped, none left; the re-read on seeds
+932 to 963, z -5.54 at 8 seeds, past it again; the verdict outside, in
+16 seeds of 32. Played again, it read the same to the digit. Defaults
+against defaults without LOOKS: 0.00 over 8 seeds, `make census` as it
+was.
+
+**The verdict**: by the rule, **not adopted as the default**: (a) and
+(b) hold, (c) does not (106% of the seeds). The fixed census stays the
+census. `LOOKS` stays as an option for a screen where a large effect
+is expected (z past 5: a part thought to carry the brain, a broken
+change), where it reads in a third to a half of the seeds and keeps
+the false alarm rate below the fixed one. Backlog 59 is done.

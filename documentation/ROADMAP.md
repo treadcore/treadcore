@@ -1015,8 +1015,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     step. State: replayed 24 October (LR 78; LR 63 and 71's logs gone,
     44 censuses of LR 72 to 76 in their place): O'Brien-Fleming, eight
     looks, 76% of the seeds, 43 verdicts of 44 (LR 73 `-column` stopped
-    out at 100 seeds, inside at 200); not adopted by its rule. Open: an
-    early stop as a mark for a re-read, Paul's call.
+    out at 100 seeds, inside at 200); not adopted by its rule. Done 25
+    October (LR 79): an early stop read again on fresh seeds,
+    `LOOKS=8 make census`; false alarms 2.8%, but 106% of the seeds
+    and less power on close calls, so an option for large effects,
+    not the default.
 60. Profiles and their round robin. (22 October; cause: Paul, "we can
     have competitions, and variations of game attitudes and game play
     style ... profiles in a rock paper scissors like game. Cause there

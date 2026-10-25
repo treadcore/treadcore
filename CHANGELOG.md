@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `LOOKS=8 make census`, the sequential census: read as it
+  plays (`scripts/sequential.py watch`), stopped at the first look past
+  the O'Brien-Fleming bound, an early stop read again on fresh seeds;
+  `sequential.txt`, `reread/`, `verdict.txt`. False alarms 2.8% against
+  the fixed census's 4.8%; it saves seeds only on large effects, so it
+  is an option and the fixed census stays the default
+  (LAB-REPORT-BRAIN.md section 79).
+
 - Added: `scripts/sequential.py DIR...` replays finished censuses under
   a group-sequential test (O'Brien-Fleming and Pocock, eight looks, the
   false alarm rate of two errors). Over 44 censuses it reached 43 of

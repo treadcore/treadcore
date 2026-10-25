@@ -65,6 +65,7 @@ tree can change while it runs. All of them take `MAP` (a file, a list,
 | `TRIAL=a.weights BASE=b.weights make census` | Is brain A better than brain B? Seeds split over `JOBS` (default: every core), pooled overall and by map |
 | `make parts` | What is each part worth? Each part off, against everything on |
 | `make switches` | What is each switch that is off worth when turned on alone? |
+| `LOOKS=8 TRIAL=a.weights make census` | The same, read as it plays; an early stop read again on fresh seeds (LR 79). For a large expected effect only |
 | `make spsa` | Which values for these weights? SPSA, a step at a time on the paired census |
 | `make tune` | The older evolutionary tuner, kept beside SPSA (LR 40) |
 | `make families` | Does each behaviour still do what it was built for? Scenario families, each held to its floor |
@@ -91,6 +92,16 @@ job (`g-SEED0.log`), and at the end `pooled.txt`.
 - The per-match lines in the logs carry the **meter**: dodges, kites,
   postures, the cost of a seat-tick. Use them to explain the number,
   not to replace it.
+
+**The sequential census** (`LOOKS=8`, LR 78 and 79) writes each look
+to `sequential.txt` as it plays and its verdict to `verdict.txt`. An
+early stop is read again on SEEDS fresh seeds from SEED0 + SEEDS, into
+`reread/`, and is outside only if the re-read is outside the same way.
+It reads a large effect (z past 5) in a third to a half of the seeds;
+on a close call it spends more than the fixed census and reads it
+outside less often, so the fixed census stays the default. It does not
+resume. `scripts/sequential.py replay DIR...` and `twostage DIR...`
+replay finished censuses under it.
 
 A census still running prints no pooled line until it ends. Its
 per-match `team N (trial): score` lines can be read early (LR 71 was

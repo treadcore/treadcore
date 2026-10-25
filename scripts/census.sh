@@ -24,6 +24,18 @@
 # kept; any other is set aside as g-SEED.log.partial and played again
 # whole (the sim is deterministic on one binary, so a seed replays as
 # it played). See documentation/CENSUS.md.
+#
+#   LOOKS=8 TRIAL=a.weights make census          the sequential census
+#
+# LOOKS (backlog 59, LR 79) reads the census as it plays at each LOOKS-th
+# of its seeds (scripts/sequential.py watch) and stops at the first look
+# past the O'Brien-Fleming bound. An early stop is no verdict: the jobs
+# are stopped and the census is read again, sequentially, on SEEDS fresh
+# seeds from SEED0 + SEEDS (DIR/reread); outside only if the re-read is
+# outside the same way. A census that reaches its last look is read as
+# without LOOKS. The verdict is DIR/verdict.txt. It saves seeds only on
+# large effects (z past 5 or so); on the close calls it costs more, and
+# reads fewer of them outside (LR 79).
 
 . "$(dirname "$0")/common.sh"
 if [ -n "${RESUME:-}" ]; then
@@ -53,23 +65,52 @@ fi
 MAPS="$(census_maps "$MAP")"
 [ -n "$MAPS" ] || die "no map in MAP=$MAP"
 
+[ -z "${LOOKS:-}" ] || [ -z "${RESUME:-}" ] || die "a sequential census (LOOKS) does not resume"
 say "census: $SEEDS seeds from $SEED0 of $SECS s on $MAP, respawns $RESPAWNS, $JOBS at once -> $OUT${RESUME:+ (resumed)}"
 if [ -n "${RESUME:-}" ]; then BIN="$OUT/census-bin"; else BIN="$(census_bin "$OUT")"; fi
 per=$(( (SEEDS + JOBS - 1) / JOBS ))
-s=$SEED0
-end=$(( SEED0 + SEEDS ))
-while [ "$s" -lt "$end" ]; do
-    n=$(( end - s < per ? end - s : per ))
-    log="$OUT/g-$s.log"
-    if [ -n "${RESUME:-}" ] && grep -q '^test result: ok' "$log" 2>/dev/null; then
-        s=$(( s + n )); continue
-    fi
-    [ -f "$log" ] && mv "$log" "$log.partial"
-    env CENSUS_MAP="$MAPS" CENSUS_RESPAWNS="$RESPAWNS" CENSUS_SEED0="$s" CENSUS_SEEDS="$n" CENSUS_SECS="$SECS" \
-        CENSUS_LEDGER=0 CENSUS_WEIGHTS="$OUT/trial.weights" CENSUS_BASE_WEIGHTS="$OUT/base.weights" \
-        "$BIN" --ignored brain_census --nocapture >"$log" 2>&1 \
-        || warn "the census of seeds $s on failed: see $log" &
-    s=$(( s + n ))
-done
-wait
-"$ROOT/scripts/pool.sh" "$OUT" | tee "$OUT/pooled.txt"
+# play DIR SEED0: the jobs over SEEDS seeds from SEED0 into DIR, in the
+# background.
+play() {
+    local dir="$1" s="$2" end=$(( $2 + SEEDS )) n log
+    while [ "$s" -lt "$end" ]; do
+        n=$(( end - s < per ? end - s : per ))
+        log="$dir/g-$s.log"
+        if [ -n "${RESUME:-}" ] && grep -q '^test result: ok' "$log" 2>/dev/null; then
+            s=$(( s + n )); continue
+        fi
+        [ -f "$log" ] && mv "$log" "$log.partial"
+        # Its stderr to nowhere, the warning to fd 3: a job stopped early
+        # (LOOKS) is otherwise reported "Terminated" by its subshell.
+        { env CENSUS_MAP="$MAPS" CENSUS_RESPAWNS="$RESPAWNS" CENSUS_SEED0="$s" CENSUS_SEEDS="$n" CENSUS_SECS="$SECS" \
+            CENSUS_LEDGER=0 CENSUS_WEIGHTS="$OUT/trial.weights" CENSUS_BASE_WEIGHTS="$OUT/base.weights" \
+            "$BIN" --ignored brain_census --nocapture >"$log" 2>&1 \
+            || [ -f "$dir/stopped" ] || warn "the census of seeds $s on failed: see $log" 2>&3; } 3>&2 2>/dev/null &
+        s=$(( s + n ))
+    done
+}
+if [ -z "${LOOKS:-}" ]; then
+    play "$OUT" "$SEED0"
+    wait
+    "$ROOT/scripts/pool.sh" "$OUT" | tee "$OUT/pooled.txt"
+    exit
+fi
+# stage DIR SEED0: one sequential census; status 3 at an early stop.
+stage() {
+    local dir="$1" rc=0
+    mkdir -p "$dir"
+    [ "$dir" = "$OUT" ] || sed "s/^SEED0=.*/SEED0=$2/" "$OUT/run.env" >"$dir/run.env"
+    play "$dir" "$2"
+    "$ROOT/scripts/sequential.py" watch "$dir" "$BIN" -k "$LOOKS" || rc=$?
+    if [ "$rc" = 3 ]; then touch "$dir/stopped"; pkill -f -- "$BIN" || true; fi
+    wait
+    "$ROOT/scripts/pool.sh" "$dir" >"$dir/pooled.txt" || true
+    return "$rc"
+}
+rc=0; stage "$OUT" "$SEED0" || rc=$?
+[ "$rc" = 0 ] || [ "$rc" = 3 ] || die "the sequential census of $OUT failed ($rc): see its sequential.txt"
+if [ "$rc" = 3 ]; then
+    say "census: stopped early; read again on $SEEDS fresh seeds from $(( SEED0 + SEEDS ))"
+    stage "$OUT/reread" $(( SEED0 + SEEDS )) || true
+fi
+"$ROOT/scripts/sequential.py" verdict "$OUT" | tee "$OUT/verdict.txt"
