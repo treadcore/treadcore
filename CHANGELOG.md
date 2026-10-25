@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `scripts/sequential.py DIR...` replays finished censuses under
+  a group-sequential test (O'Brien-Fleming and Pocock, eight looks, the
+  false alarm rate of two errors). Over 44 censuses it reached 43 of
+  their verdicts on 76% of the seeds; not adopted, one early stop the
+  full census undid (LAB-REPORT-BRAIN.md section 78).
+
 - Added: `RESUME=build/census/STAMP make census` finishes a stopped
   census on its own binary and settings (`run.env`); `JOBS` defaults to
   the machine's cores. `documentation/CENSUS.md`, the census's manual,

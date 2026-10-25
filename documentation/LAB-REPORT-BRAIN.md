@@ -4329,3 +4329,89 @@ queued behind the profiles' round robin (`build/rotate/NOTES.txt`).
 **The verdict, so far**: no default changes. The parts that pay are the
 dodge, the posture, the board and the priced crossing; the rest sit
 inside the noise.
+
+## 78. Read sooner: a sequential census, replayed, 24 October
+
+Backlog 59. LR 72 noted the dodge was settled by seed 20 of 176: a
+census of fixed length spends as many seeds on a clear call as on a
+close one. Chess engines' testing frameworks stop when the reading
+passes a bound. The question: does a sequential test reach the fixed
+census's verdicts with fewer seeds, its false alarm rate held where it
+is? (LR 77 is kept for the profiles' round robin, still running: its
+notes named the number before it started.)
+
+**The tool**: `scripts/sequential.py DIR...` reads a census's logs as
+`pool.sh` does, interleaves its jobs' seeds by round (the order in
+which parallel jobs finish them), and looks K = 8 times, at each eighth
+of the seeds, stopping at the first look past its bound. Two bounds,
+each with c found by simulation (200 000 paths) so that at a true
+difference of zero the chance of stopping at any look is P(|Z| > 2) =
+0.0455, the fixed census's own false alarm rate:
+
+| Test | Bound at look k of 8 | First look | Last |
+| --- | --- | --- | --- |
+| O'Brien-Fleming | 2.117 sqrt(8 / k) | 5.99 | 2.12 |
+| Pocock | 2.557 | 2.56 | 2.56 |
+
+**The rule, set before the replay**: the sequential census holds if it
+reaches the fixed census's verdict (outside or inside two errors, and
+the sign) on every census replayed, or differs only where the fixed
+reading is within 0.1 errors of the bar, with a clear saving of seeds.
+
+**The data**: LR 63 and LR 71's logs were on the Mac and are gone. In
+their place, every finished census on the PC, LR 72 to 76: LR 72's
+reading of the dodge on every map (176 seeds), the census of the SPSA
+point (528), the board, front and island site families (200 or 400
+each), and the switches of LR 73 and LR 76 (200 each). 44 censuses,
+11 304 seeds. Left out: the SPSA steps (a census each of a few seeds),
+the round robin under way, and LR 73's twelve switches turned on that
+were on already (every seed 0.00: the same brain on both sides). Two
+pairs repeat a census on the same seeds and binary and read the same,
+seed for seed (sitepoor `off`; board `noboard` and `noground`); they
+are counted as they ran.
+
+**The reading** (`z` the fixed census's difference over its error; a
+star past two):
+
+| Census | Seeds | Fixed z | O'Brien-Fleming stops | Pocock stops |
+| --- | --- | --- | --- | --- |
+| LR 72, the dodge on every map | 176 | +15.45* | 44, out | 22, out |
+| LR 76 `-dodge` | 200 | -16.80* | 25, out | 25, out |
+| LR 73 `-dodge` | 200 | -15.37* | 25, out | 25, out |
+| front2 `nofront` | 400 | +5.96* | 150, out | 100, out |
+| board `nofront` | 400 | +5.55* | 150, out | 50, out |
+| LR 76 `-posture` | 200 | -3.90* | 100, out | 75, out |
+| LR 76 `-board` | 200 | -2.72* | 125, out | 100, out |
+| front2 `nodepot` | 400 | +2.49* | 350, out | **400, in** |
+| LR 73 `-posture` | 200 | -2.31* | 200, out | **200, in** |
+| LR 76 `-priced_crossing` | 200 | -2.24* | 175, out | **200, in** |
+| LR 73 `-priced_crossing` | 200 | -2.16* | 200, out | **200, in** |
+| LR 76 `-team_rotate` | 200 | +2.08* | 75, out | 50, out |
+| **LR 73 `-column`** | 200 | -1.02 | **100, out** | **100, out** |
+| 21 more inside two errors | 5 328 | -1.90 to +1.87 | every seed, in | every seed, in |
+| 10 more outside (front, front2, sitepoor, smooth, LR 73 `-island_site`) | 2 800 | | 1 500, out | 925, out |
+| **Every census** | **11 304** | | **8 547 (76%)** | **7 800 (69%)** |
+
+**O'Brien-Fleming** agrees with the fixed census on 43 of 44 and spends
+76% of the seeds. Most of the saving is the large effects: the dodge is
+settled by seed 25 of 200 at either bound. **Pocock** spends 69% but
+loses four of the narrow calls past two errors (its last bound is 2.56,
+not 2.12) as well as `-column`.
+
+**`-column` (LR 73)**: at 100 seeds it read -0.39 +/- 0.13 a seat, z
+-3.08, past the bound at that look (2.99); by 200 it was back to -0.10,
+-1.02. A run of bad seeds early, then regression to the mean. Of the 22
+censuses inside two errors, about 1.0 would stop wrongly at this
+design's 4.55%; one did. The test did what it was built to do. The
+fixed census has the same chance of a false "out"; it pays it at the
+end, where the sequential one pays it early, and a single stop can't
+be told from a real one.
+
+**The verdict**: by the rule set before the replay, **not adopted**: one
+census of 44 got a different verdict, and its fixed reading (-1.02) is
+far from the bar. O'Brien-Fleming would save a quarter of the seeds;
+the cost is that an early "out" is final, where the fixed census would
+have had 100 more seeds to recover. A form that keeps the saving and
+the rule: an early stop marks a reading for a re-read on fresh seeds
+(as LR 76 did for team_rotate) before any default changes on it. That
+is Paul's call; backlog 59 stays open with this reading.

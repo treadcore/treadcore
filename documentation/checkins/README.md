@@ -54,3 +54,4 @@ report is what ties a conversation to them. Named
 | [039](CI-039-2026-10-21-the-brain-documented.md) | 21 October 2026 | The brain documented | 0096 | LAB-REPORT-BRAIN.md section 70 |
 | [040](CI-040-2026-10-21-the-dodge-on-every-map.md) | 21 October 2026 | The dodge on every map | 0097 | LAB-REPORT-BRAIN.md section 71 |
 | [041](CI-041-2026-10-22-the-method-and-a-machine.md) | 22 October 2026 | The method, a machine for it, and competitions | 0098 | LAB-REPORT-BRAIN.md section 72 |
+| [042](CI-042-2026-10-24-a-sequential-census-replayed.md) | 24 October 2026 | Read sooner: a sequential census, replayed | 0100 | LAB-REPORT-BRAIN.md section 78 |

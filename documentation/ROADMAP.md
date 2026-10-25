@@ -1012,7 +1012,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     engines' testing frameworks do) spends seeds on close calls only,
     and the rule set first stays honest. Proof: replayed on LR 63 and
     LR 71's logs, it reaches their verdicts with fewer seeds. Cost: a
-    step. State: idea.
+    step. State: replayed 24 October (LR 78; LR 63 and 71's logs gone,
+    44 censuses of LR 72 to 76 in their place): O'Brien-Fleming, eight
+    looks, 76% of the seeds, 43 verdicts of 44 (LR 73 `-column` stopped
+    out at 100 seeds, inside at 200); not adopted by its rule. Open: an
+    early stop as a mark for a re-read, Paul's call.
 60. Profiles and their round robin. (22 October; cause: Paul, "we can
     have competitions, and variations of game attitudes and game play
     style ... profiles in a rock paper scissors like game. Cause there
