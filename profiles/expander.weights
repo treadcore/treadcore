@@ -1,0 +1,13 @@
+# Expander (backlog 60): take ground and tie it together. The posture
+# leans toward Expand and Connect, away from Fortify; more road laid a
+# visit, more and closer road posts, a small castle. Every weight not
+# named here is the default.
+w_posture = 0.9
+w_pos_expand = 2.5
+w_pos_connect = 2.5
+w_pos_fortify = 0.5
+w_connect = 2.0
+connect_tiles = 8
+posts_max = 6
+post_spacing = 8
+castle_inside = 1

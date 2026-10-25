@@ -74,6 +74,9 @@
 #                    the census (scripts/parts.sh; PARTS, SEEDS, JOBS)
 #   make spsa        tune named weights by SPSA over the paired census
 #                    (scripts/spsa.sh; TUNE, STEPS, SEEDS, SET, START)
+#   make roundrobin  the census for every ordered pair of profiles/*.weights
+#                    and the defaults: the payoff matrix (scripts/roundrobin.sh;
+#                    PROFILES, SEEDS, SEED0, MAP)
 #   make brainmap    write documentation/BRAIN-MAP.md: every brain file and
 #                    function with its doc comment's first sentence
 #   make switches    each capability that is off, alone, over the fair census:
@@ -125,7 +128,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -281,6 +284,9 @@ census:
 
 spsa:
 	@scripts/spsa.sh
+
+roundrobin:
+	@scripts/roundrobin.sh
 
 scenario:
 	@test -n "$(S)" || { echo "make scenario S=scenarios/name.toml"; exit 1; }

@@ -1,0 +1,14 @@
+# Turtle (backlog 60): hold what the base has. The posture leans hard
+# toward Defend and Fortify and away from Expand; a bigger castle and
+# more road posts; a tank goes home sooner and closes in only at long
+# odds. Every weight not named here is the default.
+w_posture = 0.95
+w_pos_defend = 3.0
+w_pos_fortify = 3.0
+w_pos_expand = 0.4
+w_defend_ground = 1.5
+castle_inside = 4
+castle_road = 2
+posts_max = 6
+retreat_armor = 50
+press_odds = 2.0

@@ -45,7 +45,7 @@ if [ -z "${RESUME:-}" ]; then
     # Each side the defaults unless named: an empty TRIAL is the
     # defaults, not the baseline's file.
     for side in trial base; do
-        f="$(eval echo "\${${side^^}:-}")"
+        if [ "$side" = trial ]; then f="${TRIAL:-}"; else f="${BASE:-}"; fi
         if [ -n "$f" ]; then cp "$f" "$OUT/$side.weights"; else printf 'caps = baseline\n' >"$OUT/$side.weights"; fi
     done
     printf 'SEEDS=%q\nSEED0=%q\nSECS=%q\nMAP=%q\nRESPAWNS=%q\nJOBS=%q\n' "$SEEDS" "$SEED0" "$SECS" "$MAP" "$RESPAWNS" "$JOBS" >"$OUT/run.env"

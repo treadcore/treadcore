@@ -564,4 +564,20 @@ mod tests {
             assert!(w.step() > 0.0 && w.step() <= w.default_value().max(1.0), "{}: {}", w.name(), w.step());
         }
     }
+
+    #[test]
+    fn every_profile_reads_and_differs() {
+        // The play styles of backlog 60 (`profiles/`): each one parses,
+        // and each moves the defaults somewhere.
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../profiles");
+        let mut n = 0;
+        for e in std::fs::read_dir(&dir).unwrap() {
+            let path = e.unwrap().path();
+            if path.extension().and_then(|x| x.to_str()) != Some("weights") { continue; }
+            let s = Settings::parse(&std::fs::read_to_string(&path).unwrap()).unwrap_or_else(|e| panic!("{}: {}", path.display(), e));
+            assert!(W::ALL.iter().any(|&w| s.w[w] != w.default_value()), "{}: the defaults", path.display());
+            n += 1;
+        }
+        assert!(n >= 4, "{} profiles", n);
+    }
 }

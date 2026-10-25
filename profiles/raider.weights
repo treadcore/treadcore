@@ -1,0 +1,17 @@
+# Raider (backlog 60): go and fight. The posture leans toward Expand
+# (the team's odds against what it sees) and away from Defend and
+# Fortify; a tank closes in at even odds, stays out longer, and picks
+# off the wounded; a small castle, few posts. Every weight not named
+# here is the default.
+w_posture = 0.9
+w_pos_expand = 3.0
+w_pos_defend = 0.4
+w_pos_fortify = 0.4
+press_odds = 1.1
+engage_odds = 0.5
+retreat_armor = 25
+w_wounded = 1.6
+w_finish = 1.2
+castle_inside = 1
+castle_road = 0
+posts_max = 2

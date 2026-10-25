@@ -1,0 +1,13 @@
+# Navy (backlog 60): the sea is the road. Boats cheap against bridges
+# (a boat and its launch cost less, a long bridge more), boats worth
+# more as targets, a beach's island worth a longer run, and a bolder
+# landfall (less shy of guns on the run, a shorter wait off a covered
+# beach). Every weight not named here is the default.
+c_boat = 3.0
+t_launch = 2.0
+bridge_soft = 3
+k_long = 1.0
+w_boat = 1.5
+w_site_beach = 30
+landfall_shy = 0.5
+landfall_wait = 5
