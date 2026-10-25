@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `scripts/rungs.py`, a switch census read map by map: the trial
+  team's seconds a rung and its held ground, built and bridges against
+  the others. Why atlantic: rotation takes half its ladder time, and
+  the posture keeps it from building (LAB-REPORT-BRAIN.md section 82).
+
 - Added: each default off again on the new defaults: the dodge, the
   posture and priced_crossing pay, team_rotate on costs atlantic, no
   default changes (LAB-REPORT-BRAIN.md section 81).

@@ -1061,6 +1061,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     added. Cost: 2 h on the machine. State: done 25 October (LR 81):
     no row past two errors toward a change; the dodge, the posture and
     priced_crossing pay, the rest inside the noise; no default changes.
+64. Why atlantic. (25 October; cause: LR 81, atlantic where the board,
+    the posture and team_rotate each count most.) Goal 4. Proof: the
+    trial team's time a rung and score parts on atlantic against the
+    other maps, from LR 81's logs (`scripts/rungs.py`). Cost: an hour,
+    no run. State: done 25 October (LR 82): two mechanisms. Rotation
+    takes 48% of atlantic's ladder time (elsewhere 3% to 22%), and the
+    posture stops atlantic's teams spending on bridges and turrets; the
+    board's worth there is the posture's. No default changes.
 
 ## Sequencing
 

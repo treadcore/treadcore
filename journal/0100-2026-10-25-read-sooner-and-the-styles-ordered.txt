@@ -12,8 +12,9 @@ X-Session: the Mac and the census machine; Claude Code (Claude Opus
            computes. also. ..."; "its going well. thanks. continue.
            resume."; "commit and push. then build the re-read
            version"; "do it. start. yeah. start ."; "commit and push
-           when turtle lands. then fix backlog 62"; "keep testing."
-X-Commits: 732fde3 8062fb7 7c18851; this entry's commit follows
+           when turtle lands. then fix backlog 62"; "keep testing."; "any
+           more. commit .push. yeah? do it!"; "1"
+X-Commits: 732fde3 8062fb7 7c18851 ff2055d; this entry's commit follows
 
                READ SOONER, AND THE STYLES ORDERED
 
@@ -31,7 +32,8 @@ ABSTRACT
     turtle first. Turtle and team_rotate off became the defaults,
     +1.75 +/- 0.19 a seat against the old. A family that fell at
     5899e8e was found and fixed in its test (81.5%). On the new
-    defaults each part was read again: no default changes.
+    defaults each part was read again: no default changes. Atlantic
+    carries three switches through two mechanisms.
 
 INDEX TERMS
 
@@ -71,10 +73,14 @@ IV. CHRONOLOGY
        seeds. The dodge, posture and priced_crossing pay; team_rotate
        on costs atlantic; no default changes. Each scenario over 200
        seeds: ten at 100%, the two from the ready-gun family at 80%.
+       Committed (ff2055d).
+    7. LR 82: why atlantic, from LR 81's logs (scripts/rungs.py).
+       Rotation takes 48% of its ladder time; the posture keeps it
+       from building bridges and turrets. No default changes.
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md sections 76 to 81; CI-042 to CI-046.
+    LAB-REPORT-BRAIN.md sections 76 to 82; CI-042 to CI-047.
 
 VI. DISCUSSION
 
@@ -90,12 +96,12 @@ VII. OPEN PROBLEMS
 
 VIII. NEXT STEPS
 
-    1. Atlantic carries the board, the posture and team_rotate: a
-       meter line there on the new defaults.
+    1. A meter line for build time by kind: what a bridge costs on
+       atlantic.
 
 APPENDIX B. ARTIFACTS
 
-    scripts/sequential.py; census.sh LOOKS; profiles/classic.weights;
+    scripts/sequential.py; census.sh LOOKS; scripts/rungs.py; profiles/classic.weights;
     weights.rs defaults; build/{rr,rotate,turtle,newdefaults,b62}/
     NOTES.txt, build/switches/NOTES-lr81.txt on the machine and the Mac.
 

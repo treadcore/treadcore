@@ -4687,3 +4687,63 @@ turtle than on the old brain (-0.51 against -0.88, -0.37 against
 -0.67). Turtle's weights already hold the base, so the posture's lean
 toward holding adds less. Neither difference is past two errors of the
 pair. team_rotate off is confirmed a third time. Backlog 63 is done.
+
+## 82. Why atlantic: where the switches move the time, 25 October
+
+Backlog 64. In LR 81, atlantic is the map where the board (-1.80 +/-
+0.47 off), the posture (-1.90 +/- 0.47 off) and team_rotate (-4.13 +/-
+0.70 on) each count most. Why there? No new run: LR 81's census
+(`build/switches/20261025-131009`) prints for every match each team's
+score parts and the trial team's seat-seconds on each rung.
+`scripts/rungs.py` reads them: map by map, the trial team's Expand,
+Turrets, Hunt and Fortify seconds and its held ground, built and
+bridges less the other two teams'. `-forget` (+0.04 +/- 0.06 off)
+stands for the defaults. A reading only, set before reading: what the
+trial team does differently on atlantic. No default changes on it.
+
+**On atlantic** (54 matches a row):
+
+| Row | Expand s | Turrets s | Hunt s | Fortify s | Held | Built | Bridges |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| -forget (the defaults) | 309 | 67 | 1 | 94 | -0.12 | -0.5 | +0.0 |
+| -board | 211 | 194 | 29 | 97 | -1.33 | +20.2 | +4.6 |
+| -posture | 210 | 194 | 29 | 97 | -1.35 | +20.0 | +4.6 |
+| team_rotate on | 114 | 50 | 2 | 81 | -2.22 | -1.5 | -0.4 |
+
+**Two mechanisms, not three.** The board's row is the posture's to the
+second: the posture needs the board, so `-board` takes it too, and on
+atlantic all of the board's worth is the posture's.
+
+**Not that atlantic pays Expand more.** Over every row pooled, held
+ground a 100 Expand seconds is +0.69 +/- 0.05 on atlantic, in the
+middle (island +2.08, fidos-airstrip +1.86, europe +1.51; industry and
+generated about 0, where Expand runs 1000 s a match and the ground is
+already held).
+
+**team_rotate takes atlantic's seats off the ladder.** The trial team's
+seconds on the four rungs, the defaults against team_rotate on: atlantic
+471 to 247, **-48%**, Expand alone 309 to 114. Elsewhere -3% to -22%
+(big-lizard -22%, fidos-airstrip -19%, island -16%, the rest -13% or
+less). Rotation pulls a seat out to push toward the objective, and on
+atlantic, an ocean map, that seat is away from the ladder half the
+match. The held ground falls with it (-2.22). team_rotate is off by
+default since LR 76, so this is the why of a decision already made.
+
+**The posture keeps atlantic's teams from building.** Without it the
+trial team on atlantic builds 20 more things than the others and 4.6
+more bridges (elsewhere +2.5 at most, naval), and spends Turrets
+seconds (67 to 194) where it spent Expand (309 to 210). It loses 1.35
+held for 99 Expand seconds: more than the slope's 0.69, so the loss is
+not only the Expand time. On atlantic the bridges and turrets cost what
+they took. Elsewhere the posture moves more Expand time (generated 1114
+to 595 s) for less held (-0.65), because the ground there is held either
+way.
+
+**What the meter cannot say**: when in the match the seconds go, and
+what a bridge on atlantic costs in builders' time. A meter line for
+build time by kind would read the second.
+
+**The verdict**: a reading; no default changes. Atlantic carries the
+three switches through two mechanisms: rotation takes its seats off the
+ladder, and the posture stops it spending on bridges and turrets. The
+first is already off; the second already pays. Backlog 64 is done.
