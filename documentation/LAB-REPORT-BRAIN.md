@@ -4209,3 +4209,72 @@ read from it, could keep the gains without the losses. SPSA on one
 map at a time would find each map's point; a census of each against
 the defaults on its own map would say whether the maps differ past
 the noise.
+
+## 75. The board's parts, and the front read off, 24 October
+
+LR 73 read the team board off as +0.49 +/- 0.26 a seat, inside the
+noise but split by map. Three runs on the PC, each 400 fresh seeds,
+every map, 900 s, 3 respawns, a frozen binary.
+
+**The board study** (`build/board/20261024-070936`, seeds 30000 to
+30399). Each arm against the defaults, a seat:
+
+| Arm | Every map | Maps past two errors |
+| --- | --- | --- |
+| noboard (`caps -board`) | +0.30 +/- 0.18 | europe +1.97; constanine -0.95, fortressislesx -1.01 |
+| bare (board on, `team_rotate`, `bridge_jobs`, `posture` off) | -0.21 +/- 0.17 | fortressislesx -1.26, generated -1.04 |
+| **nofront** (`w_front`, `w_front_post`, `w_front_push` 0) | **+1.11 +/- 0.20** | island +3.14, generated +2.83, europe +2.22, industry +2.01 |
+| noground (`w_defend_ground` 0) | +0.15 +/- 0.09 | none |
+
+The board carries both a cost and a gain: its dependents (bare) are
+worth a little, and its front read costs more than a seat. The front
+read is the cause of the split.
+
+**The front read confirmed** (`build/front/20261024-105130`, seeds
+40000 to 40399). Which of the three weights does it:
+
+| Arm | Every map | Maps past two errors |
+| --- | --- | --- |
+| nofront | +0.88 +/- 0.19 | industry +2.56, europe +2.36, island +1.56, generated +0.93 |
+| nodepot (`w_front` 0) | +0.40 +/- 0.14 | europe +2.06, fortressisles2 +1.17, fortressislesx +0.64 |
+| nopost (`w_front_post` 0) | +0.30 +/- 0.18 | big-lizard +2.65 |
+| nopush (`w_front_push` 0) | +0.63 +/- 0.19 | industry +2.95, island +1.70 |
+
+**A fault under both runs.** Their binaries came before 0828d4a: the
+team board folded every map into a 128-tile 16 by 16 grid, so on the
+seven larger maps the front it read was the wrong place. The study
+read a broken front read, not the front read.
+
+**The front read on the fixed board** (`build/front2/20261024-140954`,
+seeds 41000 to 41399, a binary from 0828d4a, 14:09 to 16:13):
+
+| Arm | Every map | Maps past two errors |
+| --- | --- | --- |
+| **nofront** | **+1.13 +/- 0.19** | island +3.21, generated +2.62, europe +1.97, industry +1.80, atlantic +0.95 |
+| nodepot | +0.37 +/- 0.15 | fortressisles2 +2.21, europe +1.31, island +1.11 |
+| nopush | +0.58 +/- 0.18 | island +1.78, industry +1.77, generated +1.48 |
+
+No map in any arm reads past two errors the other way (nearest: naval
+-0.59 +/- 0.44 in nofront).
+
+**The rule, set before the run**: an arm passes past two errors over
+every map with no map past two errors the other way; of arms that pass,
+the fewest weights changed (the higher read breaks a tie) unless
+nofront reads past two errors above it, the error of the difference the
+two added in quadrature. All three pass; nopush beats nodepot on the
+tie; nofront less nopush is +0.55 +/- 0.26, past two errors.
+
+**The verdict**: `w_front`, `w_front_post` and `w_front_push` are 0 by
+default. The front read is still in the code and still tested: the
+scenario `an expanding tank takes the depot at the front` sets
+`w_front` to its old 0.5.
+
+**The reading.** Fixing the grid made the front read no better: off
+reads +1.13 on the fixed board against +0.88 on the broken one. The two
+single weights add to about nofront's gain, so neither part is the
+whole fault; aiming Expand and the rotation at the front draws tanks
+off cheap nearer depots and toward the enemy's strength. Of note: in
+the scenario, `w_front` at 1 takes no depot in 40 s, where 0 and 0.5
+each take one. A depot "kept until taken or given up" may hold a tank
+on a pick it cannot reach in time; worth a look before the front read
+comes back in any form.
