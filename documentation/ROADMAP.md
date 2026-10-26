@@ -1142,8 +1142,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     scripted and earlier networks; the network run in Rust (ONNX,
     `tract`) as a `Brain` and judged by the census. The sim on CPUs is
     the cost, not the network: more CPUs is the lever, a GPU (Metal or
-    CUDA) for the update step. State: a study (LR 90); Paul to choose
-    whether to start the bridge.
+    CUDA) for the update step. State: a study (LR 90); the design
+    redone in Rust with a sensor interface (LR 95: a compass of eight
+    sectors by ten channels of signal strength, the body, the brain's
+    conclusions as hints, about 100 senses; every action as six heads;
+    rewards from driving toward a target up; nine phases each gated
+    by a scenario family; evolution strategies on the CPUs first, Burn
+    on the 4060 Ti under Ubuntu 26.04 LTS second). Next: phase 0, the
+    senses and a NetBrain.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every
@@ -1152,8 +1158,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     changes routes and is read by a census (LR 92). State: 2.6 times
     faster, deployed to the census machine 26 October (LR 91). The
     dodge's forecast along the tank's own route (LR 93): 1.2 times
-    faster again, but -6.48 +/- 1.56 on big-lizard, so off; its cause
-    to find before it is tried again.
+    faster again, but -6.48 +/- 1.56 on big-lizard, so off; found (a
+    boat's own route parts from a search three times as often), fixed
+    (ashore only), read again (every map -0.18 +/- 0.37, big-lizard
+    +0.58 +/- 0.81, the generated maps +0.51 +/- 0.43) and on by
+    default (LR 94); the run restarted on the new defaults.
 
 ## Sequencing
 

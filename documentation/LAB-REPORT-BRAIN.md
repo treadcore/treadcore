@@ -5728,3 +5728,529 @@ The sim's own search for each `Move` (15% of a census, LR 91) is the
 same for every team, so the census's pairing cannot read a change to
 it; a change there would be read as two censuses of the same trial on
 two binaries, a weaker test, and is not started.
+
+Found and fixed the same day: the own route ashore only, read again on
+110 seeds every map, on big-lizard alone and on the generated maps,
+and on by default (LR 94, part C).
+
+## 94. How it works: a primer on the faster census, the route forecast and the run, 26 October
+
+Paul: "find why big-lizard costs and fix the route search. also give
+me a reading link to explain biglizard. also write out your
+implimentation in the lab report. be detailed, and also give me
+introductory information and teach the needed lessns."
+
+This section is for reading start to finish. Part A teaches the ideas
+the day's work rests on. Part B is the implementation, change by
+change, with what each one does in the code and how it was checked.
+Part C is big-lizard: why the forecast cost there, the fix, and the
+reads. Part D is the lessons. The map is drawn and explained at
+https://claude.ai/artifact/Mias4vtFMwmMM6Fqsd6wsa.
+
+### A. The ideas
+
+**A1. A tick, and why a match is quick.** The world advances in ticks,
+20 a second (`TICK_HZ`). A tick moves every tank and shell, fires
+every ready gun, and asks every bot what it wants (`run_bots`). A
+900 s match is 18,000 ticks. Nothing waits for a clock: with no window
+the census computes ticks as fast as the CPU goes, so a match takes a
+few seconds. "Fast" means fewer CPU instructions a tick, never a
+shorter match.
+
+**A2. The census, and what its numbers mean.** A census plays the
+trial team (the weights under test) against two baseline teams on the
+same map from the same start, three times a seed, so each team takes
+the trial seat once (the fair census, LR 24). Its reading is the trial
+team's score less the others', a seat, averaged over the seeds. The
+standard error (se) is how much that average would move if the census
+were run again on other seeds: the spread of the seeds' differences
+over the square root of their number. z is the reading over its se.
+"Past two errors" means |z| > 2: chance alone gives that about one
+time in twenty. Every census since LR 24 has been read this way.
+
+**A3. Determinism.** A seed fixes every random draw, so a seed plays
+the same match every time, to the bit, on one machine with one binary.
+That is what makes a pairing work (both sides meet the same luck), and
+it is the test for a speed-up: if the new binary's matches are the
+same, character for character, it computes the same game, only faster.
+Two machines of different kinds (the Mac's ARM, the census machine's
+x86) round some float operations differently, so the same seed can
+play a different match on each (CENSUS.md section 5).
+
+**A4. A profile.** A sampling profiler (macOS `sample`) stops the
+program about a thousand times a second and records which function it
+is in and who called it. Over 20 s that is a fair picture of where
+time goes. Two traps: the compiler inlines small functions into their
+callers, so their time shows under the caller's name; and the linker
+merges identical machine code, so some time shows under a merged name
+(`<deduplicated_symbol>`). The cure for both is the call tree: who
+called the unnamed thing.
+
+**A5. A route: A\* over tiles.** A tank told to move is given a route
+by `Map::route_by`, an A\* search. A\* keeps an "open list" of tiles to
+look at, always taking the one with the least f = g + h: g the cost of
+the cheapest way found to it, h an estimate of the rest (here the
+straight distance times 0.6, the cheapest terrain's cost, so it never
+overestimates and the route found is a cheapest one). It looks at a
+tile's eight neighbours, prices each step (terrain cost; 1.4142 for a
+diagonal; the world adds danger near hostile guns and on known mines),
+and stops at the goal. Two routes can cost the same; which one A\*
+returns depends on the order it looks at tiles. That is why a faster
+search that looks in another order can change a route, and with it a
+match.
+
+**A6. A cache, and its key.** A cache keeps an answer so the same
+question is not worked out twice. Its key must hold everything the
+answer depends on, or it returns a stale answer. The map's routes,
+pads and banks depend on its cells, which change in play (a wall
+built, a tree felled), so their key holds the map's identity and its
+count of edits (`Edits`): any edit makes a new key. A clone of a map
+gets a fresh identity, so two worlds never share an entry.
+
+**A7. The dodge's forecast.** When a hostile shell is coming, the dodge
+asks, for each shot and move the brain wants, where the tank will be
+when the shell lands (`drive_path`): it plays the tank's own motion
+forward, tick by tick, along a route (turning at `TANK_TURN`, braking
+for corners, the ground's cost), and checks the path against the
+splash (`clearance`). A shot turns the hull (a tank has no turret), so
+it can carry the tank into the splash (`hold_fire`, LR 57); a move can
+drive it there (`release`, LR 53). Until LR 93 the route it played
+along came from a fresh search (`route_kept`) that leaves the guns
+out.
+
+**A8. A response surface.** To learn from many censuses at once, each
+weight's effect is modelled as a curve: the reading d is the sum, over
+the weights a trial set, of a x + b x², where x = log2(value /
+default) (x = -1 at half, +1 at double). A weighted least-squares fit
+(each census counts by 1 / se²) finds a and b for every weight; a
+small ridge (a prior that a and b are near zero) keeps a weight read
+once from swinging wildly. The curve's top within half and double is
+that weight's best value, with an error of its own.
+
+**A9. Thompson sampling and successive halving.** To choose the next
+trials the fit draws each weight's curve at random from its
+uncertainty and takes the drawn curve's top: weights the census knows
+little about get tried, weights it knows well stay near their best
+(Thompson 1933). Successive halving reads many trials cheaply (55
+seeds) and reads again only those that look good (past 1.5 errors),
+on fresh seeds (Jamieson and Talwalkar 2016; Hyperband). A read past
+two errors is then read twice more, on 400 seeds each, before anyone
+believes it.
+
+### B. The implementation
+
+**B1. The eyes (`World::eyes`, `World::seen_by`; treadcore-sim).** The
+profile: `visible_to` 58% of busy time. `observe(p)` builds what player
+p may see; for each shell (twice: where it is, where it lands), drone,
+tank and boat it asked `visible_to(p, at)`, which walked every tank
+and drone asking `allied(owner, p)`, and `allied` searches the player
+list twice (`team_of`). With 16 players, 50 to 100 shells in flight
+under the cowboy's spending (LR 86), and every seat every tick, that
+is millions of list searches a second. Now `observe` first gathers p's
+eyes once: each living allied tank and each allied drone with its
+reach in the open and into forest (`Eye { pos, open, forest }`); then
+each point is tested against that short list. The arithmetic is the
+same (`TANK_VISION * 0.5`, `vision * 0.6`, the same `dist`), so every
+answer is the same. `visible_to` and `tank_visible_to` keep their
+signatures, now built on the eyes.
+
+**B2. The rings (`Map::nearest_tiles`).** `observe` asks each tick for
+the 8 nearest forest tiles within 20 (`forest_near`), the 32 nearest
+pads, and the 12 nearest launch sites within 16 (`launch_sites`). The
+old code read the whole square, (2r + 1)² tiles (1,681 at r = 20),
+kept those within the radius, and sorted them all by distance (a
+stable sort: equal distances in row order). The new code reads the
+square in rings outward from the tank's tile. A tile in ring k is at
+least k - 0.5 from the tank, because the tank is somewhere inside its
+own tile; so once n tiles are in hand and the n-th nearest is closer
+than k + 0.5, no tile further out can displace it, and the read stops.
+The n nearest are kept by (distance, row index), which is the old
+stable sort's order exactly, so the answer is the same list. In forest
+the read stops after a few rings instead of 1,681 tiles.
+
+**B3. Sites (`Map::sites`).** Pads and banks are few on most maps, so
+the rings find none to stop on and read the whole square anyway. Each
+is now also kept as a list of every such tile on the map, built once
+per map state (the cache of A6), and when the list is shorter than the
+square the read goes through the list instead. Again the same answer:
+the same tiles, kept by the same order.
+
+**B4. The radar.** For each drone not otherwise seen, `radar_sees`
+searched every structure for a working allied data centre in reach.
+Now `observe` gathers the side's data centres once and tests each
+drone against them.
+
+**B5. The heap.** `route_by`'s open list compared f values as floats.
+f is never negative, and for non-negative floats the order of their
+bit patterns, read as unsigned integers, is the order of the floats
+(IEEE 754), so the list now compares integers (`Open(u32, usize)`):
+the same comparisons, the same routes, a little cheaper. The heap's
+memory is kept between searches. 3%.
+
+**B6. Two that did not pay.** Regions (which tiles can reach which)
+were relabelled over the whole map whenever a tile changed whether it
+can be driven: 702 times in the test census. Joining regions in place
+as ground opens was exact (a test against a fresh labelling) but saved
+nothing measurable. Marking the danger of a move's route once instead
+of testing every gun at every tile was exact and saved nothing: the
+search's size, not its pricing, is its cost. Both were taken out. A
+profile says where time goes; only a timing says whether a change
+saves it.
+
+**B7. The checks.** (1) Identity: a census of 6 seeds from 170000,
+every map, 300 s (18 matches) compared with this morning's binary line
+by line, the timer apart. (2) The same on the census machine: one of
+the day's rows on the old and new binaries, 12 matches. (3) `make
+families`: every count the same. (4) Tests that compare the new code
+with the old scan over 3,000 random points, every terrain, the map
+edited under the cached lists. (5) Each test broken on purpose (the
+ring bound one tile looser; the cache key without the edits) to see it
+fail: a test that cannot fail checks nothing.
+
+**B8. The run.** `scripts/ledger.py` reads every census folder into a
+table (A8's data). `scripts/suggest.py` fits the surface and writes 12
+trials: the best point if a curve's top is past two errors, the best
+less one weight, reads again of trials past 1.5 errors on fewer than
+110 seeds, each weight's half and double not yet read alone, and
+Thompson draws of four weights each. `scripts/converge.sh` loops:
+ledger, suggest, a census of 55 fresh seeds each, and two held-out
+reads of 400 for any census past two errors with no map past two
+below. Two faults found in its first hour, both now fixed and both
+general lessons: `ls | head -1` under `set -o pipefail` dies with
+SIGPIPE once there are enough folders that `head` closes the pipe
+before `ls` finishes (exit 141; fixed with `sed -n 1p`, which reads
+everything); and the run's own setting `RESUME` leaked into each child
+census, which also reads `RESUME`, so every census tried to resume the
+run's folder and failed at once (fixed by unsetting it; the run now
+also stops after three failures in a row instead of spinning).
+
+**B9. The own route (`drive_path_by`, `dodge_own_route`).** The dodge's
+forecast searched a route every tick under fire: 25% of a census. The
+world has already planned the route the tank is driving (`Tank::goal`,
+the waypoint it is heading for, and `Tank::route`, the rest), and it
+ends where the tank is going. So when the forecast asks for a drive to
+exactly that end, it now plays the tank's motion along the tank's own
+route: no search, and the drive the world will really make, guns and
+mines priced in. Anywhere else (a dodge to a new point) it searches as
+before. The weight `dodge_own_route` (thresholded at 0.5, in the
+dodge's `tune` array as its ninth number) switches it; at 0 the code
+takes the old path exactly, so every match is the same.
+
+### C. Big-lizard
+
+**C1. The map.** 256 by 256 tiles, 94% water, 60 islands. One island
+of 2,615 tiles holds 13 of the 16 starts, 14 of the 16 depots and 12
+of the 16 pillboxes; three players start on islets and must cross by
+boat. Its matches mostly end in elimination (median 534 s, MAPS.md).
+A pillbox reaches 8 tiles, and the world prices every tile within 8.5
+of a hostile one at six times its cost, so on that island nearly every
+route bends round a gun.
+
+**C2. What the census read.** Own route everywhere, every map, 110
+seeds on the census machine: -0.53 +/- 0.48, but big-lizard's 10 seeds
+-6.48 +/- 1.56, every one of them below. Off, by the rule.
+
+**C3. Why.** A probe computed both forecasts at every ask on
+big-lizard and counted where they differ and where they turn the
+dodge's verdict (clear of the splash or not):
+
+| | Asks | Apart > 1 tile | Apart > 4 tiles | Verdict turned |
+| --- | --- | --- | --- | --- |
+| ashore | 148,887 | 14% | 1.8% | 0.6% (of 46,493 verdicts) |
+| afloat | 5,544 | 32% | 9.7% | 1.7% (of 2,036) |
+
+The forecasts part most at sea. There a boat's own route, planned when
+the move was given, and a fresh search from where the boat now is
+differ far more often than ashore (a boat's turns are slow and its
+routes long, and the landing is priced differently). Near guns ashore
+the own route is the truer one: the new test
+`the_own_route_foresees_a_drive_round_a_gun` puts a hostile pillbox
+two tiles beside a tank's straight way; after 3 s the own route's
+forecast is 0.00 tiles from the tank and the search's 7.85.
+
+**C4. How big the cost is.** Big-lizard alone on the Mac, own route
+everywhere, 120 seeds: -0.97 +/- 0.66 (z -1.46), inside the noise. A
+big-lizard seed swings about +/-7 a seat (elimination either way), and
+ten seeds estimate their own error poorly; with twelve maps read, the
+worst is drawn from the tail. So the first census's -6.48 was most
+likely a small real cost (about -1) on top of an unlucky draw; it is
+not, on 120 seeds, past two errors.
+
+**C5. The fix.** The own route ashore only (`!me.boat`); afloat the
+forecast searches as before. It keeps most of the saving (the test
+census at 1: 41.4 s against 47.8 s at 0 and 38.9 s with the own route
+everywhere) and removes the case where the forecasts part most.
+
+**C6. The reads** (census machine, rule in `build/route/NOTES2.txt`
+first; 110 fresh seeds from 400000 each):
+
+| Read | Seeds | Difference a seat |
+| --- | --- | --- |
+| A. every map | 110 | -0.18 +/- 0.37; generated -1.83 +/- 0.87 (10 seeds), the only map past two below |
+| B. big-lizard alone | 110 | +0.58 +/- 0.81 |
+| C. the generated maps alone (the rule's read of A's one map) | 110 | +0.51 +/- 0.43 |
+| make families at 1 | | all nine hold (the duel 75.2% against 78.5% at 0, inside the noise) |
+
+Each passes its rule. **dodge_own_route is on by default** (1). The
+expectations held: A and B inside the noise, B nearer zero than the
+expected -1. The generated maps' -1.83 on 10 seeds read +0.51 on 110:
+lesson 7 below, in action. The census is faster for it: the test
+census 47.8 s at 0, 41.4 s at 1 (ashore only), every team.
+
+The run (LR 92) reads its trials against the defaults, and the defaults
+moved: by CENSUS.md section 4a, a new run begins, its ledger from this
+change (`SINCE`). The rows before stay in the table for comparison.
+
+### D. Lessons
+
+1. **Measure, then change, then measure.** The profile found
+   `visible_to`; the timings showed two plausible changes saved
+   nothing. Both halves are needed.
+2. **An exact speed-up is proven by identity.** The same matches, to
+   the character, on every machine that runs the census, and families
+   with the same counts. Then no reading anywhere is in doubt.
+3. **A test must be able to fail.** Break the code it guards, once,
+   and watch it fail.
+4. **A cache's key is everything the answer depends on.** Leave the
+   edits out and the answer goes stale the first time a tree is felled.
+5. **A truer model can still change the game.** The own route is the
+   more accurate forecast; the dodge's numbers were tuned against the
+   old one. Accuracy is not the verdict; the census is.
+6. **Few seeds on a wild map mislead.** Ten big-lizard seeds read
+   -6.48 +/- 1.56; 120 read -0.97 +/- 0.66. A map that swings needs
+   many seeds before its error means what it says.
+7. **The worst of many is not chance-free.** Twelve maps give twelve
+   draws; one past two errors is a reason to read that map again on
+   its own.
+8. **A read that looks good shrinks when read again.** column_past at
+   half read +0.39, then -0.35 on fresh seeds (the run's first reread).
+   This is regression to the mean, and it is why the run rereads before
+   it believes.
+9. **Scripts are code.** `pipefail` and an inherited environment
+   variable each stopped the run once. Test a long-running script the
+   way it will run: with many folders, and resumed.
+
+## 95. The Tank Generational AI: senses, a small net, generations, in Rust, 26 October
+
+Backlog 70. Paul: "i want to be able to start converging the neural
+net as well. what kind of general sensors can we give to make the
+smallest reasonable neural net. Can we use thsee conclusions as
+inputs. Can we give a sensor like interface to give only reduced
+knowedge so we can minimze thenumebr of inputs in the transformer. I
+actually dont know all the AI terminology. I want a tank that has all
+the actions available to it. I know we need a million generaions , but
+can we conceptualize this in the lab report about what data is needed.
+perhaps direction indicators. signal striength. we want a sensor like
+interface so the tank can expieience its rewards and its decision. Do
+do this. Can we have a good test plan with milestones to move to the
+next phase. First the tanks need to be able to be reward to driving
+towards an enemy. or driving towards bases or pillboxes. Since we have
+a working Brainz, we also want a parallel system so we can have train
+the bots. We can baby step the training to with larger goals as we
+develop milestones of Tank Generational AI Neural Net. Is this a plan
+for some library. I read earlier I can convert a box to ubuntu. i can
+use an 1080TI or a 4060TI. I expect to install ubuntu 26.10 I heard
+its LTS. I also prefer Rust Neural Nets. I really hate python."
+
+A design, nothing built. It replaces LR 90's plan where they differ:
+all Rust, no Python; a sensor interface instead of raw positions;
+generations (evolution) first, on the CPUs we have, and gradient
+training on the GPU second.
+
+### A. The words, plainly
+
+| Word | Meaning here |
+| --- | --- |
+| neural net | a function from numbers in (the senses) to numbers out (the action's scores), built of layers; each layer multiplies by a table of weights, adds, and bends the result (`max(0, x)`) |
+| weights, parameters | the numbers in those tables: what training changes. A net of 100 inputs, two layers of 64, and 40 outputs has about 13,000 |
+| MLP | the plain kind of net above, layer after layer. The right size for this |
+| transformer | a net for long sequences (text) or sets of things; it weighs every item against every other. More than a tank needs while its senses are a fixed list |
+| policy | the net that chooses actions |
+| reward | a number the game gives the tank for what just happened |
+| episode | one try: a scenario or a match, from start to end |
+| generation | in evolution: a population of nets tried and the best bred into the next |
+| evolution strategies (ES) | training by trying many small random changes of the weights and moving toward those that scored better. No gradients; every try independent: made for many CPUs |
+| PPO, gradient training | training by working out, from many decisions and their rewards, which way each weight should move. Faster per decision; wants a GPU for the arithmetic |
+| behaviour cloning | training a net to copy a teacher (the scripted brain) decision by decision |
+| curriculum | easy tasks first, harder ones as each is passed |
+| action mask | actions that cannot be taken now (no shells: no shot) switched off, so the net never wastes a try on them |
+
+### B. The senses: a sensor interface, reduced knowledge
+
+The idea is Paul's: the tank does not see the world's lists of tanks
+and positions; it has senses, like a vehicle's instruments, each a
+direction and a strength. That keeps the inputs few and the same size
+on every map, and it is what the tank would feel.
+
+**The compass.** Eight sectors round the tank, relative to its heading
+(ahead, ahead-right, right, ... ahead-left), so "ahead" means the same
+thing facing any way. In each sector, each channel reads a **signal
+strength** from 0 (nothing) to 1 (touching): the strongest thing of
+that kind in the sector, as `1 / (1 + d / 8)` for something d tiles
+off (1 at 0 tiles, 0.5 at 8, 0.2 at 32). The channels:
+
+| Channel | What sets it |
+| --- | --- |
+| hostile tank | a hostile tank in sight (its armour scales it down when hurt: a weaker signal is an easier kill) |
+| allied tank | a teammate |
+| hostile pillbox | a live hostile pillbox; strength 1 inside its reach |
+| neutral pillbox | one to take |
+| our pillbox | one to keep, mend or stand by |
+| depot to take | a neutral or hostile depot |
+| our depot | where shells and armour come back |
+| shell coming | a hostile shell landing in that sector within 4 s, strength by how soon |
+| ground | how far the tank can drive that way before water or a wall (a ray), 1 at the tank, 0 at 16 tiles or more |
+| cover | forest that way, near |
+
+8 sectors by 10 channels: **80 senses**. (A 16-sector compass doubles
+it, for finer aim later.)
+
+**The body.** Armour, shells, mines, material (each 0 to 1 of full),
+the gun's reload (0 ready, 1 just fired), the mortar's, speed, afloat,
+the squad out, each drone kind ready, respawning: **about 14**.
+
+**The brain's conclusions, as senses.** Paul asked whether the
+scripted brain's conclusions can be inputs. Yes: it already works out
+things a small net would take long to learn. Each is a few numbers:
+
+| Conclusion | Where it comes from | Senses |
+| --- | --- | --- |
+| the team's posture | `commander`'s five scores (LR 24, 25) | 5 |
+| the odds here | `engage_odds` reading (tanks near the fight, ours against theirs) | 1 |
+| the base threatened | the team board's threat to the base | 1 |
+| the way to the errand | the bearing and distance to the brain's chosen goal, as a compass sector | 2 |
+
+**About 9.** They are hints, and they can be taken away later (sensed
+as 0 in some episodes, then always) so the net learns to stand without
+them: "hint dropout".
+
+**Memory.** A tank that loses sight of an enemy forgets it. The first
+nets get the last tick's senses beside this tick's (twice the inputs);
+a small recurrent layer (a GRU, which carries a few numbers from tick
+to tick) comes later if milestone 6 needs it.
+
+**In all: about 100 senses**, the same on every map and every size of
+map. A net of two layers of 64 is about 13,000 weights: small enough to
+run every tick on a CPU in microseconds and to evolve by ES.
+
+### C. The actions: everything the tank can do
+
+The net chooses five times a second, all heads at once, each from a
+short list (a "factored" action):
+
+| Head | Choices |
+| --- | --- |
+| drive | one of the 8 sectors (a Move 6 tiles that way, routed by the world), or stop |
+| gun | hold, or fire at the strongest hostile signal in one of the 8 sectors; with a lead of left, none or right |
+| mortar | hold, or fire into one of the 8 sectors at that sector's strongest target |
+| drone | hold, or launch recon, interceptor, strike or a longshot toward the strongest target |
+| squad | hold, capture the nearest pillbox to take, build (wall, pillbox, road, mine), mend, harvest, come home |
+| signal | none, or ping a sector for teammates |
+
+Masks switch off what cannot be done now. Early phases use only the
+first heads; the commander (the scripted brain) does the rest until a
+milestone hands it over. The net's outputs are scores, one for each
+choice; it takes the highest (or samples from them while it learns).
+
+### D. Rewards it can feel
+
+Each tick the tank's reward is the sum of what it earned. In the order
+the milestones turn them on:
+
+| Reward | Worth | Milestone |
+| --- | --- | --- |
+| closer to the target: the drop in distance to the nearest enemy, depot or pillbox | +0.05 a tile, as potential (never pays for circling: Ng, Harada and Russell 1999) | 1 |
+| a direct hit on a hostile tank | +1 (LR 84's count) | 3 |
+| a shell that hits nothing | -0.05 | 3 |
+| armour lost | -0.01 a point | 4 |
+| a kill, a death | +3, -3 | 5 |
+| a pillbox or depot taken; pillbox damage; a defence | LR 84's worths | 6 |
+| the match: a win | +10 | 7 |
+
+The shaping terms (closer, misses) fade to nothing over training, so
+what the net ends up chasing is the census's own score. The census,
+with the old score beside it, stays the check against a reward gamed.
+
+### E. Milestones: a test plan, each gate before the next
+
+Each phase has a scenario family (TOML in `scenarios/`, as the dodge's
+families are) and a floor, run by `make families`; the net moves on
+only when the floor holds over 1,000 seeds. The same rule as every
+change: the test is written before the training.
+
+| Phase | Task | Pass |
+| --- | --- | --- |
+| 0. Senses | the sensor interface, a `NetBrain` that drives by a net, a random net plays a census | sensor tests: an enemy placed due right lights "right" at the expected strength; every match the same twice; decisions a second measured |
+| 1. Go to | a lone tank on open ground; a target: an enemy, then a depot, then a pillbox | within 3 tiles inside 60 s on 95% of seeds |
+| 2. Go round | the same past water, walls and forest, on the prior-art maps | 90% |
+| 3. Aim | a still target, then a moving one, then one that shoots back | hits per shot at least the scripted brain's on `a-duel-in-the-open` |
+| 4. Live | the dodge's families (a tank under one or two shells) | their floors (99%) |
+| 5. Duel | one against one with the scripted brain at skill 0.3, then 0.6, then 1 | half the duels won at each |
+| 6. Supply and take | resupply at depots, capture neutral pillboxes | the raid families' floors |
+| 7. Team | four nets against the scripted teams | the census: a team of nets read against the defaults, by the usual rule |
+| 8. All of it | every head, the commander's work handed over a head at a time | the census, every map, two held-out reads |
+
+### F. Training: generations first, on CPUs, in Rust
+
+**Track A, evolution (now, the census machine).** Paul's "Tank
+Generational AI": a population of nets, each a weight vector. Each
+generation adds small random changes to the current best weights
+(a population of, say, 96), plays each on the phase's scenario seeds,
+scores them by reward, and moves the weights toward the changes that
+scored better (OpenAI's evolution strategies, Salimans and others
+2017). Every try is an independent episode, so the 24 threads (and any
+machine added) are filled; nothing needs a GPU or Python. The run
+(LR 92) already is a generational loop over weights; ES is the same
+loop over 13,000 numbers instead of 100.
+
+**Cost**, estimated from LR 91's speed and to be measured in phase 0:
+a phase-1 episode is one tank on a small map for 60 s (1,200 ticks),
+so tens of thousands of episodes an hour on the census machine at the
+least. A generation of 96 nets on 8 seeds each, about a minute. A phase is hundreds of generations: hours,
+not the million generations feared. Phases 5 to 8 play full matches
+(about 6 s each): a generation of 96 on 4 seeds is about 2 minutes; a
+thousand generations is a day or two.
+
+**Track B, gradients (the GPU, later).** For phases 5 to 8, if
+evolution slows: behaviour cloning from the scripted brain first (the
+senses and the brain's choice recorded from census matches, about 400
+MB a million decisions), then PPO. In Rust: **Burn** (tracel-ai/burn,
+0.21), whose CubeCL backends train on CUDA, Vulkan or the CPU, with
+`burn-rl` for building blocks. The net trained on the GPU is the same
+net `NetBrain` runs; its weights are saved to a file the census loads.
+
+**The parallel system.** The census and the run go on as now. The
+trainer is its own program (`make train PHASE=1`) on the cores the run
+leaves, or on the GPU machine; it writes each phase's best net to
+`nets/phaseN.bin`. A `NetBrain` reads such a file, and the census can
+seat a team of them as its trial (`CENSUS_NET=nets/phase7.bin`), so a
+net is judged exactly as every weight change is.
+
+### G. As a library
+
+Yes: three parts, each a crate or module of this workspace, in Rust.
+
+| Part | What it is |
+| --- | --- |
+| `treadcore-senses` | the sensor interface: an `Observation` (and the brain's conclusions) to the 100 numbers; the action heads to `Command`s, with masks. Usable by any learner, and testable alone |
+| `NetBrain` (in treadcore-brain) | a `Brain` whose choices come from a net: the MLP's forward pass, a few hundred lines, no framework, so the census needs nothing new |
+| `treadcore-learn` | the trainer: evolution strategies over `NetBrain` weights (std and threads only), and later Burn for gradients, behind a feature so the rest of the workspace never builds it |
+
+### H. The machine for track B
+
+The GTX 1080 Ti is a Pascal card: NVIDIA's 580 driver series is the
+last to support it, and CUDA 12 the last CUDA that targets it. The RTX
+4060 Ti (Ada) has neither limit: use it. Ubuntu 26.10 is an interim
+release with nine months of support; the long-term one is **26.04
+LTS** (April 2026, supported to 2031), and it is the one to install on
+the spare disk (LR 92's commands, with its own repository path).
+Track A needs none of this: it runs on the census machine as it is.
+
+### I. The first step
+
+Phase 0, in one sitting: `treadcore-senses` (the compass, the body,
+the conclusions, tests for each), a `NetBrain` with a random net, and a
+census of a random-net team against the defaults to measure decisions a
+second. Its rule, before it plays: every match the same twice; the
+random team reads far below the defaults (it should); the senses' tests
+pass.

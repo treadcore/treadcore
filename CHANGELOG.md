@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the dodge's forecast of a drive ashore follows the tank's
+  own route (`dodge_own_route` 1, the default now), with no search;
+  afloat it searches. The census is faster again, the play the same
+  within the noise on every map (LAB-REPORT-BRAIN.md sections 93, 94).
+
 - Added: the weight `dodge_own_route`, off by default: at 1 the dodge's
   forecast of a drive follows the tank's own route instead of a fresh
   search. Faster, but it read past two errors below on big-lizard, so

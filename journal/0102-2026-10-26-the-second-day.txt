@@ -64,10 +64,16 @@ IV. CHRONOLOGY
    10. dodge_own_route: 1.2 times more, -6.48 on big-lizard: off.
    11. CUDA on the census machine: not for the census; Paul set it
        aside.
+   12. Big-lizard: a probe (afloat the forecasts part three times as
+       often); 120 seeds on the Mac -0.97; the own route ashore only;
+       every map -0.18, big-lizard +0.58, generated +0.51: on. The
+       run restarted on the new defaults.
+   13. LR 94, the primer; LR 95, the learned tank in Rust; the
+       big-lizard page.
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md sections 89 to 93; CI-055, CI-056.
+    LAB-REPORT-BRAIN.md sections 89 to 95; CI-055 to CI-057.
 
 VI. DISCUSSION
 
@@ -82,8 +88,7 @@ VII. OPEN PROBLEMS
 VIII. NEXT STEPS
 
     1. The run's candidates, if any, through families with Paul.
-    2. Why the own route costs on big-lizard.
-    3. Paul to choose: the learned brain's bridge (backlog 70).
+    2. Phase 0 of the learned tank: the senses and a NetBrain (LR 95).
 
 APPENDIX B. ARTIFACTS
 
