@@ -6254,3 +6254,108 @@ census of a random-net team against the defaults to measure decisions a
 second. Its rule, before it plays: every match the same twice; the
 random team reads far below the defaults (it should); the senses' tests
 pass.
+
+## 96. Phase 0 of the learned tank: the senses and a NetBrain; and dodge_horizon 2, a candidate, 26 October
+
+Backlog 70 and 69. Paul: "yes. please. start." (phase 0, LR 95).
+
+### Phase 0
+
+**The senses** (`senses.rs`): `sense(obs, map, hints)` gives 101 numbers
+from 0 to 1, or none for a tank that is dead.
+
+- The compass: 8 sectors relative to the tank's heading (sector k
+  turns k eighths of a turn clockwise on the screen: 2 right, 4
+  behind, 6 left), each with 10 channels (`Channel`): hostile tank
+  (weaker when hurt), allied tank, hostile pillbox (1 inside its reach),
+  neutral pillbox, our pillbox, depot to take, our depot, shell coming
+  (landing within 4 s, by how soon and how near), ground (a ray: 1 if
+  the way is shut at once, 0 if open for 16 tiles), cover (forest
+  near). A channel's value is the strongest thing of its kind in the
+  sector, `1 / (1 + d / 8)`.
+- The body (12): armour, shells, fuel, reload, speed, afloat, the
+  squad out, its material, and each drone kind's share of a full bay.
+- The hints (9): the team's five posture scores, the odds, the base's
+  threat, the errand's sector and strength; zero when no brain gives
+  them (phase 0's nets have none).
+
+**The net** (`net.rs`): a multilayer perceptron in plain Rust, 101 in,
+two layers of 64 (`max(0, x)` between), 51 out: 14,068 weights. Its
+seed is mixed (SplitMix64) before the world's `Rng`, which takes 0 as
+1 and starts a small seed weakly: before that, seeds 0 and 1 made the
+same net (found by a probe of eight seeds). Glorot-uniform weights, 0
+biases. `save`/`load`: a magic, the sizes, the weights, little-endian.
+`flat`/`with_flat`: every weight as one vector, for a trainer.
+
+**The heads** (`Head`, `HEADS`): drive (hold, 8 sectors, stop), gun
+(hold, 8 sectors), lead (where it is, where it will be, between), mortar
+(hold, 8 sectors), drone (5), squad (7), signal (9). Each head takes its
+highest score among the choices allowed now (`choose`); hold always
+is. **NetBrain** decides five times a second: drive gives a Move 6
+tiles toward the sector, renewed every 2 s (a Move costs the world a
+route), or Stop; gun fires at the strongest hostile tank in the sector
+when the gun is ready and the tank in direct range, aimed by the lead
+head (the brain's `lead`); mortar fires at the strongest hostile tank or
+pillbox in the sector within the mortar's range. Drone, squad and
+signal are scored and held until their phases (LR 95, E).
+
+**The census** seats a team of nets in the trial seat with
+`CENSUS_NET` (a net's file, or `seed:N` for a random net);
+`run.env` records it as `NET`, the ledger as the trial `net=...`, and
+the run's fit leaves such rows out.
+
+**Checks.** Tests: a tank due right is felt in the right sector at its
+strength and nowhere else, at 8 headings (and fails with the compass
+turned the other way: checked); the body as shares, nothing for a dead
+tank; the ground ray finds a wall 4 tiles ahead; a net is its seed and
+its file; a masked choice is never taken; random nets drive (7 of 8
+seeds; one prefers to hold), each its own way, a seed the same match
+twice. The census without `CENSUS_NET` is the same as before to the
+character (HEAD against phase 0, 18 matches); a census with a random
+net is the same twice. On the Mac: **7.8 us a decision** (the senses
+and the forward pass, one tank in a world of sixteen), 128,000 a
+second a thread; a random team **-8.18 +/- 0.78** over 6 seeds of
+300 s: it does land direct hits (the gun's mask lets it fire only at a
+tank in range), and loses.
+
+**The census of record** (`build/net0/`, rule first): a random team
+(seed 1) against the defaults, 110 seeds from 500000, every map.
+**-19.30 +/- 0.36**, every map past two errors below (from -14.54 on
+fortressislesx to -24.64 on atlantic): further below than the Mac's
+300 s test, as full matches give the scripted teams longer to pull
+away. It ran to its end in 4 min 55 s. The rule's third part, a census
+no slower than the scripted brain's, cannot be read from it: it shared
+the machine with the run, and its timing with it. The decision's own
+cost (7.8 us on the Mac, against about 20 us a seat-tick for the
+scripted brain) says the net's seat is the cheaper. **Phase 0 passes**
+on the first two parts and on that measure; phase 1 (go to a target)
+is next.
+
+### dodge_horizon 2: a candidate for Paul
+
+The run's fit and the day's screen read it high three times on 55
+seeds (+2.71, +2.62, +2.12). By the rule Paul chose this morning (LR 88
+proposal), two held-out reads on today's defaults (dodge_own_route on),
+400 seeds each, rule in `build/horizon/NOTES.txt` first:
+
+| Read | Every map | Lowest map |
+| --- | --- | --- |
+| from 3500000 | **+1.82 +/- 0.27** (z 6.7) | constanine -0.32 +/- 0.60 |
+| from 3600000 | **+1.66 +/- 0.29** (z 5.7) | fidos-airstrip -0.63 +/- 1.07 |
+
+Both past two errors above, no map past two below. `make families` at
+dodge_horizon 2: all nine hold (a standing tank under one or two shells
+999 of 1000, floor 990). **A candidate**: the default (4 s) changes
+only with Paul. Expected about +1 and one chance in two of passing
+both: it read higher and passed both.
+
+What it means: the dodge starts out from under a shell 2 s before it
+lands instead of 4. A tank that starts later spends less of the fight
+running from shells that would have missed or that it could outrun at
+the last moment, and more of it shooting. The families say it still
+gets out from under nearly every shell.
+
+The run found the same weight on its own: its fit's best point at
+generation 2, from every census since the new defaults, is dodge_horizon
+2 alone. Read on 55 seeds at 12:28 (+1.61 +/- 0.76, past two errors), it
+went to its own two held-out reads, under way as this is written.

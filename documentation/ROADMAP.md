@@ -1131,7 +1131,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     from practice listed (LR 89). The day folded into the run, `make
     converge`, 10:57 (LR 92): a ledger of every census, each weight's
     curve fit to it, trials suggested generation after generation, any
-    read past two errors read twice more on fresh seeds.
+    read past two errors read twice more on fresh seeds. A candidate
+    (LR 96): dodge_horizon 2, held out +1.82 +/- 0.27 and +1.66 +/-
+    0.29 on 400 seeds each, no map below, families held; for Paul.
 
 70. A learned brain. (26 October; cause: Paul, "start training a
     normal AI neural network given our current reward system"; LR
@@ -1148,8 +1150,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     conclusions as hints, about 100 senses; every action as six heads;
     rewards from driving toward a target up; nine phases each gated
     by a scenario family; evolution strategies on the CPUs first, Burn
-    on the 4060 Ti under Ubuntu 26.04 LTS second). Next: phase 0, the
-    senses and a NetBrain.
+    on the 4060 Ti under Ubuntu 26.04 LTS second). Phase 0 done (LR 96):
+    the senses (101), a net of 14,068 weights in plain Rust, NetBrain,
+    CENSUS_NET; a random team -19.30 +/- 0.36 over 110 seeds; 7.8 us a
+    decision. Next: phase 1, go to a target, by evolution strategies.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

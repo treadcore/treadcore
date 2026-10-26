@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the learned tank's phase 0 (LAB-REPORT-BRAIN.md section 96):
+  `senses.rs`, what a tank feels as 101 numbers (a compass of eight
+  sectors by ten channels of signal strength, the body, the brain's
+  hints); `net.rs`, a small net in plain Rust and `NetBrain`, which
+  drives, aims and fires by it; `CENSUS_NET` seats a team of nets in
+  the census.
+
 - Changed: the dodge's forecast of a drive ashore follows the tank's
   own route (`dodge_own_route` 1, the default now), with no search;
   afloat it searches. The census is faster again, the play the same
