@@ -32,7 +32,9 @@ HELD="${HELD:-400}"
 MAP="${MAP:-all}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu)}"
 SINCE="${SINCE:-20261025-181300}"
+# RESUME is the run's, not its censuses': census.sh reads it too.
 if [ -n "${RESUME:-}" ]; then OUT="$RESUME"; else OUT="$BUILDDIR/converge/$STAMP"; fi
+unset RESUME
 mkdir -p "$OUT"
 log() { echo "$(date +%H:%M:%S) $*" | tee -a "$OUT/progress.txt"; }
 
@@ -98,6 +100,7 @@ sys.exit(0 if ok and not below else 1)' "$1" 2>/dev/null
 
 held=$(wc -l <"$OUT/candidates.txt" | tr -d " ")
 last=0
+failed=0  # censuses failed in a row: three stop the run
 g=$(find "$OUT" -maxdepth 1 -name "gen*" -type d | wc -l | tr -d " ")
 log "run ${UNTIL:+until $UNTIL }from generation $g, $GEN trials of $SEEDS seeds -> $OUT"
 while :; do
@@ -111,6 +114,13 @@ while :; do
         t0=$(date +%s)
         d="$(census "$f" "$SEEDS" $(( SEED0 + g * 10000 )))"
         last=$(( $(date +%s) - t0 ))
+        if [ ! -s "$d/pooled.txt" ] || [ "$(stat -c %Y "$d" 2>/dev/null || stat -f %m "$d")" -lt "$t0" ]; then
+            failed=$((failed + 1))
+            log "$name: no census read ($failed in a row)"
+            [ "$failed" -lt 3 ] || { log "three censuses failed in a row: the run stops (see census.log)"; break 2; }
+            continue
+        fi
+        failed=0
         echo "$name $d" >>"$OUT/censuses.txt"
         log "$name $(head -1 "$d/pooled.txt" 2>/dev/null)"
         ran=$((ran + 1))
