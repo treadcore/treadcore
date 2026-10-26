@@ -1128,7 +1128,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     two can act, a two-stage screen of the 68 weights left, bounded
     SPSA (`BOUND=2`) on the eight largest gaps, two held-out reads.
     The weight ledger, a dashboard of the weights over time. Ideas
-    from practice listed (LR 89).
+    from practice listed (LR 89). The day folded into the run, `make
+    converge`, 10:57 (LR 92): a ledger of every census, each weight's
+    curve fit to it, trials suggested generation after generation, any
+    read past two errors read twice more on fresh seeds.
 
 70. A learned brain. (26 October; cause: Paul, "start training a
     normal AI neural network given our current reward system"; LR
@@ -1147,8 +1150,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     match the same, checked by a census matching to the character and
     `make families`; then route search, about 40% of the time, which
     changes routes and is read by a census (LR 92). State: 2.6 times
-    faster, deployed to the census machine 26 October (LR 91); the
-    route search next.
+    faster, deployed to the census machine 26 October (LR 91). The
+    dodge's forecast along the tank's own route (LR 93): 1.2 times
+    faster again, but -6.48 +/- 1.56 on big-lizard, so off; its cause
+    to find before it is tried again.
 
 ## Sequencing
 

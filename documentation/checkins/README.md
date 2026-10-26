@@ -68,3 +68,4 @@ report is what ties a conversation to them. Named
 | [053](CI-053-2026-10-25-the-longest-run.md) | 25 October 2026 | The longest run: a night's plan, and what we expect | 0100 | LAB-REPORT-BRAIN.md section 88 |
 | [054](CI-054-2026-10-26-the-morning-read.md) | 26 October 2026 | The morning read: families, and the point read again | 0101 | LAB-REPORT-BRAIN.md section 88 |
 | [055](CI-055-2026-10-26-the-second-day.md) | 26 October 2026 | The second day: two inert weights explained, every weight screened, a learned brain studied | 0102 | LAB-REPORT-BRAIN.md sections 89 and 90 |
+| [056](CI-056-2026-10-26-faster-and-the-run.md) | 26 October 2026 | Faster, and the run: the census 3 times quicker with the same matches, and a learner that runs until stopped | 0102 | LAB-REPORT-BRAIN.md sections 91, 92 and 93 |

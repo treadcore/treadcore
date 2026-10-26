@@ -55,10 +55,19 @@ IV. CHRONOLOGY
     4. The weight ledger built from git and the machine's censuses.
     5. LR 89 and LR 90; backlog 70; CI-055.
     6. Arm w_exposure 0.15: -0.37 +/- 0.36.
+    7. Committed (fcbce9e). A profile: visible_to 58% of a census.
+    8. The eyes, rings, heap, sites and radar: 2.6 times, every match
+       the same on the Mac and the census machine; pushed (d4181b2),
+       pulled mid-day.
+    9. The ledger, the fit and the run (90ce415); the day folded in;
+       the run started 10:57, died at exit 141, fixed and resumed.
+   10. dodge_own_route: 1.2 times more, -6.48 on big-lizard: off.
+   11. CUDA on the census machine: not for the census; Paul set it
+       aside.
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md sections 89 and 90; CI-055.
+    LAB-REPORT-BRAIN.md sections 89 to 93; CI-055, CI-056.
 
 VI. DISCUSSION
 
@@ -72,8 +81,9 @@ VII. OPEN PROBLEMS
 
 VIII. NEXT STEPS
 
-    1. Read the day against its NOTES; update the ledger.
-    2. Paul to choose: the learned brain's bridge (backlog 70).
+    1. The run's candidates, if any, through families with Paul.
+    2. Why the own route costs on big-lizard.
+    3. Paul to choose: the learned brain's bridge (backlog 70).
 
 APPENDIX B. ARTIFACTS
 

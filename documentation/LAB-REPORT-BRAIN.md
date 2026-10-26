@@ -5682,3 +5682,49 @@ at 900 s" in each log).
 on the binary before LR 91 and the one after, 4 seeds of 300 s, 12
 matches: every team line the same. The speed-up is the same matches on
 x86 as on the Mac.
+
+## 93. The dodge's forecast along the tank's own route: off, for one map, 26 October
+
+Backlog 71. Paul: "faster route search with consusus", then "start
+the run and do the route search."
+
+The dodge forecasts a drive every tick a shell is coming
+(`Dodge::hold_fire`, `release`): `drive_path` asked `route_kept` for
+the route to where the tank is going, a fresh A* each time the tank
+crossed a tile: a quarter of a census (LR 91). `dodge_own_route`
+(thresholded at 0.5): at 1, a drive to where the tank's route already
+ends follows that route, its waypoint and the rest, as the world will
+drive it, with no search (`drive_path_by`). It ships at 0, against
+the habit since 20 October of shipping on: at 1 the defaults would
+move under the run (LR 92), whose table reads every census against
+them. At 0 every match is the same as before (the 18-match check).
+Every team at 1, the test census on the Mac: 47.8 s to 38.9 s, the
+bots 20.0 to 15.8 us a seat-tick.
+
+**The census** (`build/route/` on the census machine, rule in its
+NOTES first): 1 against the defaults, 110 seeds from 170000, every map:
+
+| | Read |
+| --- | --- |
+| every map | -0.53 +/- 0.48 |
+| big-lizard | **-6.48 +/- 1.56** |
+| atlantic | +1.26 +/- 0.85 |
+| generated | +1.43 +/- 1.82 |
+| europe | -1.26 +/- 0.89 |
+| the other seven | inside one error and a half |
+
+The rule kept it on unless the whole or any map read past two errors
+below. Big-lizard does, at z -4.2, more than chance among twelve maps
+gives. **It stays off; no default changes.** Expected inside the
+noise, a little above as likely as below: held for the whole, missed
+on big-lizard. Why big-lizard is not known: the own route is the
+world's, with pillboxes' reach priced in, so where the world's route
+and the plain one part (a detour round guns, or a boat's crossing),
+the forecast now sees a different drive, and the dodge decides
+differently. To look at before it is tried again: a scenario on
+big-lizard, and the forecast compared both ways where they part.
+
+The sim's own search for each `Move` (15% of a census, LR 91) is the
+same for every team, so the census's pairing cannot read a change to
+it; a change there would be read as two censuses of the same trial on
+two binaries, a weaker test, and is not started.

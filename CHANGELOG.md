@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the weight `dodge_own_route`, off by default: at 1 the dodge's
+  forecast of a drive follows the tank's own route instead of a fresh
+  search. Faster, but it read past two errors below on big-lizard, so
+  it stays off (LAB-REPORT-BRAIN.md section 93).
+
 - Added: `make converge`, the census as a learner until stopped: each
   generation fits every weight's curve to every census so far and
   plays the trials it suggests, reading any past two errors twice more
