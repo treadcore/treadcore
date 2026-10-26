@@ -18,8 +18,11 @@ X-Session: the Mac and the census machine; Claude Code (Claude Opus
            and rewards (CI-049); "ok. start with the reward system";
            "ok go"; "About a third"; "Commit and push";
            "more census. with the code changes. continue. resume";
-           "nice!. looks like its ending. pick up the results."
-X-Commits: 732fde3 8062fb7 7c18851 ff2055d a6c71f3 4c85d1b 3e55c83; this entry's commit follows
+           "nice!. looks like its ending. pick up the results.";
+           "...can we get a visual playtest..."; "merge. only on
+           main. i think we are ready. lab report about these new
+           methods and looking forward..."
+X-Commits: 732fde3 8062fb7 7c18851 ff2055d a6c71f3 4c85d1b 3e55c83 bd08f40; this entry's commit follows
 
                READ SOONER, AND THE STYLES ORDERED
 
@@ -98,11 +101,14 @@ IV. CHRONOLOGY
    11. LR 86: the cowboy's spending weights. +11.62 over 400 seeds;
        the longshots carry it; retreat weights barely act (w_smooth).
        The defaults spend; a pillbox shot waits under a shell (the
-       dodge families); the pair +11.64 +/- 0.43.
+       dodge families); the pair +11.64 +/- 0.43. Committed (bd08f40).
+   12. A visual playtest on the machine: 16 seats, two teams, two
+       windows, the new brain. LR 87: the methods so far, and the
+       census as a learner (backlog 69).
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md sections 76 to 86; CI-042 to CI-051.
+    LAB-REPORT-BRAIN.md sections 76 to 87; CI-042 to CI-052.
 
 VI. DISCUSSION
 
@@ -118,9 +124,11 @@ VII. OPEN PROBLEMS
 
 VIII. NEXT STEPS
 
-    1. A census reading the rewards, now about a third of the score.
-    2. Personalities (backlog 67); pillbox mechanics (68).
-    3. LR 82's rows on atlantic with the squad's line.
+    1. The retreat thresholds made to act; a slope screen of every
+       weight (backlog 69).
+    2. A league evaluation; MAP-Elites over the personalities.
+    3. Personalities still to build: collector, front line (67);
+       pillbox mechanics (68).
 
 APPENDIX B. ARTIFACTS
 

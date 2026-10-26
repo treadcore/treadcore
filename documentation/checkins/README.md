@@ -64,3 +64,4 @@ report is what ties a conversation to them. Named
 | [049](CI-049-2026-10-25-rewards-in-the-census-score.md) | 25 October 2026 | Rewards in the census score | 0100 | LAB-REPORT-BRAIN.md section 84 |
 | [050](CI-050-2026-10-25-personalities-step-1.md) | 25 October 2026 | Personalities, step 1: timid, aggressive, castle | 0100 | LAB-REPORT-BRAIN.md section 85 |
 | [051](CI-051-2026-10-25-the-cowboy-and-the-defaults-spend.md) | 25 October 2026 | The cowboy: the defaults spend | 0100 | LAB-REPORT-BRAIN.md section 86 |
+| [052](CI-052-2026-10-25-the-methods-and-the-census-as-a-learner.md) | 25 October 2026 | The methods so far, and the census as a learner | 0100 | LAB-REPORT-BRAIN.md section 87 |

@@ -1103,6 +1103,17 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     prompt.) Fire slower when damaged; still functional when highly
     damaged; repaired when dragged through forest; fight each other.
     Each a sim change, a rule and a census. State: idea, Paul to choose.
+69. The census as a learner. (25 October; cause: Paul, "running
+    census and using this like machine learning"; LR 87.) Goal 4.
+    In order: the retreat thresholds made to act and a slope screen of
+    every weight (dead weights out of every search); a league
+    evaluation (classic, steady, each adopted default; Elo from the
+    ledger); MAP-Elites over the personalities with `traits.py`'s
+    signature as the descriptor; batched search on the 24 threads with
+    a two-stage read; weights by map features. Guards: fresh seeds a
+    step, a held-out reading with its rule, `make families`, the old
+    score beside the rewarded one, every map. Cost: steps of a night
+    each. State: planned (LR 87).
 
 ## Sequencing
 

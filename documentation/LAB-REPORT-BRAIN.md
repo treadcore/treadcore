@@ -4986,3 +4986,107 @@ on the old score would have adopted it too, at half the size. The
 retreat weights barely act through `w_smooth` 0.05; a timid or
 aggressive personality that goes home sooner or later needs them to
 act, which is the next step's first change.
+
+## 87. The methods so far, and the census as a learner, 25 October
+
+Backlog 69. Paul: "lab report about these new methods and looking
+forward into running census and using this like machine learning."
+A review, no run: what the last ten sections added to the way the
+brain is measured, what they found about where gains come from, and a
+plan for running the census as a learning loop.
+
+### The instrument, as it stands
+
+| Method | Section | What it does |
+| --- | --- | --- |
+| The fair paired census | 24, 71 | A seed's difference: the trial team less the baseline's, a seat, each team in the trial seat once; the mean and its error over seeds. Outside two errors is the bar. |
+| The rule before the run | 24 on | What would confirm a change is written to the run's NOTES before it starts. |
+| Read again on fresh seeds | 76, 77, 86 | A style past two errors is read again on 400 seeds none read before before a default changes. |
+| The sequential census | 78, 79 | `LOOKS=8`: stops at an O'Brien-Fleming bound, an early stop read again. An option for large effects; it costs seeds on close calls. |
+| Families as a guard | 47; 80, 86 | `make families` at every default change: scenarios over many seeds with floors. It caught a front weight a family needed (LR 80) and a tank shooting itself into a splash on 4% of seeds (LR 86), neither visible to the census. |
+| Each part off | 73, 76, 81 | The switch census: every capability removed in turn. |
+| Taken apart | 86 | A winning profile's weights each alone: which part carries it. |
+| The meter | 5 on; 83, 86 | Per match and group: rungs, postures, dodges, kites, the squad's time by task, shots and launches. |
+| `rungs.py`, `traits.py` | 82, 85 | A census read by map and by behaviour: the trial team's counts less the others', paired by seed. A personality's signature. |
+| Rewards in the score | 84 | Direct hits, pillbox damage and captures, defences. `CENSUS_REWARDS=0` the old score. |
+| Worktrees on the machine | 86 | Uncommitted code measured on the census machine without touching its tree. |
+
+### Where the gains came from
+
+| Change | Kind | Reading, a seat |
+| --- | --- | --- |
+| The posture's seven weights by SPSA (LR 74) | continuous tuning | -0.00 +/- 0.14: a ridge, not a peak |
+| The dodge's numbers by SPSA (LR 43, 69) | continuous tuning | +0.88, not read again |
+| Turtle (LR 77) | a style, hand-set | +1.40 +/- 0.18 |
+| team_rotate off (LR 76) | a switch | +0.55 +/- 0.15 |
+| The cowboy (LR 86) | new behaviour, hand-set values | +11.62 +/- 0.45 |
+
+Tuning the weights of behaviour the brain already had found flat
+ground. The large gains came from behaviour the brain did not have:
+spending the drones and shells it carried. A learner over today's
+weights will polish. It will not find the next cowboy unless the
+behaviour exists to be weighted. Two other findings bear on any
+learner. A weight can be dead: the retreat weights act through
+`w_smooth` 0.05, a twentieth of the way (LR 86), and a search over
+them reads noise. And a score can be gamed: shelling pillboxes earned
++5.27 of its +7.19 from the pillbox-damage reward set an hour earlier
+(LR 84, 86).
+
+### The census as machine learning
+
+The census is a noisy, paired, black-box objective. One evaluation of
+a weight vector is a census of N seeds: about 7 minutes for 48 to 110
+seeds and 20 to 30 minutes for 400 on the machine's 24 threads. The
+pieces map onto a learning loop like this:
+
+| Learning | The census |
+| --- | --- |
+| The objective | The paired score difference, rewards on; the old score beside it as a check on reward hacking |
+| A training batch | A step's fresh seeds, never reused |
+| The test set | 400 seeds no step saw, read once, with the rule written before |
+| Constraints | Every family over its floor; no map past two errors below |
+| Regularisation | Few weights a search; a change must read on every map, not one |
+| Preregistration | The NOTES rule |
+
+**The plan**, in the order it pays:
+
+1. **Make the dead weights act.** The retreat thresholds direct (or
+   blended by their own weight, not `w_smooth`), so timid and
+   aggressive can differ and a search over survival reads something.
+   Check every weight's slope before tuning it: a one-census screen of
+   each weight at its range's ends, the switch census for weights.
+2. **A league, not a single opponent.** Every learner so far climbed
+   against today's defaults, which move. Keep fixed opponents
+   (`classic`, `steady`, each adopted default) and score a candidate
+   against the league: the round robin (LR 77) as the evaluation, Elo
+   from the ledger (`ledger::ratings`, LR 8) as its summary. A
+   candidate that beats today's defaults by losing to an old one is a
+   cycle (backlog 61) and is caught.
+3. **Quality-diversity over the personalities.** `traits.py`'s
+   signature (kills, deaths, built, pillboxes taken, spending, rung
+   seconds) is a behaviour descriptor. MAP-Elites keeps the best brain
+   in each cell of a grid over two or three of them: the best timid,
+   the best cowboy, the best castle. That is Paul's list of
+   personalities, found and tuned by the census instead of set by
+   hand, each guaranteed to be plain to see because its cell says so.
+4. **Batch search on the threads.** SPSA spends a census a step on two
+   points. With 24 threads a step can read 24 candidates on fewer
+   seeds each (CMA-ES or a batched Bayesian optimiser), then read the
+   best few again on more seeds: the two-stage census of LR 79, used
+   for selection, where it saves seeds.
+5. **Context, then policy.** Atlantic carries the posture and rotation
+   (LR 82); the cowboy pays +22 on island and +5.5 on europe. Weights
+   by map features (water share, depots, size) are the first step
+   from a weight vector toward a policy. A learned policy (the ladder
+   picked from the board's state by a trained scorer) is the far end.
+   The census and the families stay its judge.
+
+**Guards that do not change**: fresh seeds every step; a held-out
+reading with its rule before any default moves; `make families` at
+each default change; the old score reported beside the rewarded one;
+every map read, not only the pool. A learner that wins the pool by
+losing a map, games a reward, or breaks a family has not won.
+
+**Next** (backlog 69, step by step): the retreat thresholds made to
+act and the weight-slope screen; then the league evaluation; then
+MAP-Elites over the personalities, a night on the machine.
