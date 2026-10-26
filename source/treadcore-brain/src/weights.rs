@@ -116,8 +116,8 @@ weights! {
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
     AdvanceBand "advance_band" 0.35, "smooth: the advance scalar presses above this and falls back below minus this";
     Jitter "jitter" 3.0, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
-    RetreatArmor "retreat_armor" 50.0, "survival: armour at or under this goes home";
-    RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home";
+    RetreatArmor "retreat_armor" 50.0, "survival: armour at or under this goes home (blended from the constant by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
+    RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home (blended from the constant 4 by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
     // Memory (LR 5).
     ForgetFor "forget_for" 120.0, "memory: seconds a given-up target stays given up";
     // Crossings and islands (LR 6.2).
@@ -191,6 +191,10 @@ weights! {
     FrontMemory "front_memory" 30.0, "front: seconds a hostile tank out of sight still counts toward the board's front where it was last seen; 0 (before LR 58) counts only what is in sight";
     FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";
+    ShellBoxes "shell_boxes" 1.0, "spending (LR 86, the cowboy, the default since): 1 shells a hostile pillbox in the indirect gun's reach whenever the gun is ready and no tank is shot at, 0 only those guarding a stormed depot (before LR 86); thresholded at 0.5";
+    LongshotEvery "longshot_every" 5.0, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
+    LongshotAny "longshot_any" 1.0, "spending (1 since LR 86): 1 a longshot with no hostile structure to hit goes at the nearest hostile pillbox, else the target tank; 0 at structures only (before LR 86); thresholded at 0.5";
+    StrikesMax "strikes_max" 3.0, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
 }
 
@@ -433,6 +437,10 @@ impl Tactics {
             kite_in: w[W::KiteIn],
             kite_turn: w[W::KiteTurn],
             kite_spare: w[W::KiteSpare],
+            shell_boxes: w[W::ShellBoxes] >= 0.5,
+            longshot_every: w[W::LongshotEvery],
+            longshot_any: w[W::LongshotAny] >= 0.5,
+            strikes_max: w[W::StrikesMax].round().max(0.0) as usize,
         }
     }
 }

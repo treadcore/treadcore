@@ -1,0 +1,14 @@
+# Timid (backlog 67, LR 85): stay home and live. The posture leans hard
+# toward Defend and Fortify and away from Expand; a tank waits for twice
+# the odds before closing, masses longer for help, and goes home at
+# three-quarter armour or eight shells. Every weight not named here is
+# the default.
+w_posture = 1.0
+w_pos_defend = 5.0
+w_pos_fortify = 4.0
+w_pos_expand = 0.1
+press_odds = 4.0
+engage_odds = 1.5
+mass_for = 30
+retreat_armor = 75
+retreat_shells = 8

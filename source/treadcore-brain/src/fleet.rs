@@ -449,21 +449,31 @@ mod tests {
         let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
         let sc = Scenario { seed, players: names, map, respawns: 3, time_limit: 0, ..Scenario::default() }.with_teams(3);
         let mut w = World::new(sc);
-        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats)
-            .map(|i| {
-                let b: Box<dyn Brain> = if i == 0 {
-                    let mut c = Commander::new(seed, "me");
-                    c.set_goal(Goal::Auto);
-                    c.pings = true;
-                    c.answers_pings = true;
-                    Box::new(c)
-                } else {
-                    let t = team(i);
-                    team_brain(i, &t, seed ^ i as u64, t[0] == 0, &format!("s{}", i))
-                };
-                (i as PlayerId, b)
-            })
-            .collect();
+        // The spending before LR 86 (`profiles/steady.weights`): this one
+        // seed tests the team's mechanics, and with the cowboy's drones
+        // its pinging seat happens never to ping.
+        let mut steady = Settings::default();
+        use crate::weights::W;
+        for (k, v) in [(W::ShellBoxes, 0.0), (W::LongshotEvery, 30.0), (W::LongshotAny, 0.0), (W::StrikesMax, 1.0)] {
+            steady.w[k] = v;
+        }
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = with_settings(steady, || {
+            (0..seats)
+                .map(|i| {
+                    let b: Box<dyn Brain> = if i == 0 {
+                        let mut c = Commander::new(seed, "me");
+                        c.set_goal(Goal::Auto);
+                        c.pings = true;
+                        c.answers_pings = true;
+                        Box::new(c)
+                    } else {
+                        let t = team(i);
+                        team_brain(i, &t, seed ^ i as u64, t[0] == 0, &format!("s{}", i))
+                    };
+                    (i as PlayerId, b)
+                })
+                .collect()
+        });
         let (mut pings, mut boats, mut walls) = (0, 0, 0);
         let (mut musters, mut jobs, mut crew_built) = (0, 0, 0);
         let (mut downs, mut revives) = (0, 0);

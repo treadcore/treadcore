@@ -13,3 +13,8 @@ castle_road = 1
 posts_max = 4
 retreat_armor = 35
 press_odds = 1.5
+# The spending before LR 86's cowboy became the default.
+shell_boxes = 0
+longshot_every = 30
+longshot_any = 0
+strikes_max = 1

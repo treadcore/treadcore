@@ -2444,6 +2444,7 @@ impl Commander {
         if self.inner.skill < 1.0 {
             self.blunt(obs, &mut cmds);
         }
+        crate::meter::spend(&cmds);
         cmds
     }
 

@@ -1089,7 +1089,16 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     line.) Goal 4. Profiles in `profiles/`, and new weights where no
     weight carries the lean (shell and drone spending, neutral
     pillboxes). Proof: each profile's own behaviour visible in the
-    meter and its round robin row. Cost: several steps. State: idea.
+    meter and its round robin row. Cost: several steps. State: step 1
+    done 25 October (LR 85): castle plain to see (built +4.01);
+    aggressive dies more but kills no more; timid inside the noise,
+    the defaults being turtle already. Next: timid and aggressive made
+    stronger with code, the cowboy, the pillbox collector, the front
+    line. Step 2 done 25 October (LR 86): the cowboy's spending weights,
+    read at +11.64 +/- 0.43 against the old defaults over 400 seeds,
+    are the defaults; `steady.weights` keeps the old. The retreat
+    weights barely act (`w_smooth` 0.05): timid and aggressive need
+    that first.
 68. Pillboxes as Paul describes them. (25 October; cause: the same
     prompt.) Fire slower when damaged; still functional when highly
     damaged; repaired when dragged through forest; fight each other.

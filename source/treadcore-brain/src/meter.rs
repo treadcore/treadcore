@@ -67,6 +67,10 @@ pub struct Meter {
     /// Seconds alive with the squad out (LR 83), by group: by its task,
     /// in `SquadTask::ALL`'s order, and seconds alive in all (the last).
     pub squads: [[u64; 14]; 2],
+    /// Shots and launches asked for (LR 86), by group: direct shells,
+    /// indirect shells, then drones by kind (recon, interceptor,
+    /// strike, longshot).
+    pub spends: [[u64; 6]; 2],
 }
 
 /// What a squad out is doing, for the meter (LR 83): a Build by its
@@ -298,6 +302,25 @@ pub fn squad(task: Option<SquadTask>) {
         m.squads[g][13] += 1;
     });
 }
+/// The commands of a think: its shots and launches counted.
+pub fn spend(cmds: &[treadcore_sim::Command]) {
+    use treadcore_sim::{Command, DroneKind};
+    let g = group();
+    bump(|m| {
+        for c in cmds {
+            let i = match c {
+                Command::FireDirect { .. } => 0,
+                Command::FireIndirect { .. } => 1,
+                Command::Launch { kind: DroneKind::Recon, .. } => 2,
+                Command::Launch { kind: DroneKind::Interceptor, .. } => 3,
+                Command::Launch { kind: DroneKind::Strike, .. } => 4,
+                Command::Launch { kind: DroneKind::Longshot, .. } => 5,
+                _ => continue,
+            };
+            m.spends[g][i] += 1;
+        }
+    });
+}
 /// A board's second: an incursion on the held ground, and Defend held
 /// only for it.
 pub fn ground(incursion: bool, defended: bool) {
@@ -350,6 +373,11 @@ impl Meter {
             }
         }
         for (g, og) in self.grounds.iter_mut().zip(o.grounds) {
+            for (a, b) in g.iter_mut().zip(og) {
+                *a += b;
+            }
+        }
+        for (g, og) in self.spends.iter_mut().zip(o.spends) {
             for (a, b) in g.iter_mut().zip(og) {
                 *a += b;
             }
@@ -422,6 +450,7 @@ impl Meter {
             + &self.kites.iter().enumerate().filter(|(_, k)| k[8] > 0).map(|(g, k)| format!(", seconds kiting{}: {} of {} alive (massing {}, closing {}, stepping in {}, stepping out {}, holding {})", if g == 1 { " (trial)" } else { "" }, k[..8].iter().sum::<u64>(), k[8], k[0], k[1], k[2] + k[3], k[4], k[5] + k[6] + k[7])).collect::<String>()
             + &self.grounds.iter().enumerate().filter(|(_, k)| k[0] > 0).map(|(g, k)| format!(", seconds with a hostile on the held ground{}: {} ({} defended for it alone)", if g == 1 { " (trial)" } else { "" }, k[0], k[1])).collect::<String>()
             + &self.kite_kinds.iter().enumerate().filter(|(_, k)| k.iter().sum::<u64>() > 0).map(|(g, k)| format!(", seconds kiting by whom{}: an intruder {}, a wingman {}, a rally {}", if g == 1 { " (trial)" } else { "" }, k[0], k[1], k[2])).collect::<String>()
+            + &self.spends.iter().enumerate().filter(|(_, s)| s.iter().sum::<u64>() > 0).map(|(g, s)| format!(", spent{}: direct {}, indirect {}, recon {}, interceptor {}, strike {}, longshot {}", if g == 1 { " (trial)" } else { "" }, s[0], s[1], s[2], s[3], s[4], s[5])).collect::<String>()
             + &self.squads.iter().enumerate().filter(|(_, q)| q[13] > 0).map(|(g, q)| format!(", seconds the squad out{}: {} of {} alive ({})", if g == 1 { " (trial)" } else { "" }, q[..13].iter().sum::<u64>(), q[13], SquadTask::NAMES.iter().zip(&q[..13]).map(|(n, v)| format!("{} {}", n, v)).collect::<Vec<_>>().join(", "))).collect::<String>()
             + &self.leans.iter().enumerate().filter(|(_, l)| l.iter().sum::<u64>() > 0).map(|(g, l)| format!(", seconds leaned to the front{}: push {} of {}, post {} of {}", if g == 1 { " (trial)" } else { "" }, l[0], l[0] + l[1], l[2], l[2] + l[3])).collect::<String>()
             + &if self.postures.iter().sum::<u64>() > 0 {

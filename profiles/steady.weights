@@ -1,0 +1,9 @@
+# Steady (LR 86): the defaults from LR 77 to LR 85, turtle without the
+# cowboy's spending, kept as a style to play against. Shells only at a
+# tank or a stormed depot's guns, a longshot every 30 s at structures
+# only, one strike drone out. Every weight not named here is the
+# default.
+shell_boxes = 0
+longshot_every = 30
+longshot_any = 0
+strikes_max = 1

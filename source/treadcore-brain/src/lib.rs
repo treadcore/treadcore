@@ -1339,15 +1339,32 @@ impl RuleBot {
             }
             let their_team = obs.team_of(e.owner);
             let their_cover = obs.drones.iter().filter(|d| obs.team_of(d.owner) == their_team && d.kind == DroneKind::Interceptor && d.pos.dist(e.pos) <= BUBBLE_MAX + 2.0).count();
-            if their_cover < 2 && my_strikes == 0 && me.bay.strike > 0 && !late && range <= STRIKE_BATTERY * STRIKE_SPEED * 0.8 {
+            if their_cover < 2 && my_strikes < self.tactics.as_ref().map(|t| t.w.strikes_max).unwrap_or(1) && me.bay.strike > 0 && !late && range <= STRIKE_BATTERY * STRIKE_SPEED * 0.8 {
                 cmds.push(Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: e.id } });
+            }
+        }
+
+        // A ready gun with no tank to shoot at shells a hostile pillbox in
+        // its reach (`shell_boxes`, LR 86, the cowboy); not while a hostile
+        // shell is coming down near the tank, when the shot's turn of the
+        // hull could carry it into the splash (the dodge families fell
+        // from 100% to 91% without this).
+        let shelled = obs.shells.iter().any(|s| s.kind == ShellKind::Indirect && !obs.allied(s.owner) && s.impact_tick > obs.tick && s.impact.dist(me.pos) <= SPLASH_RADIUS + 3.0);
+        if self.tactics.as_ref().is_some_and(|t| t.w.shell_boxes) && !shelled && me.reload == 0 && me.shells > 0 && self.last_fire_tick != obs.tick {
+            let boxes = obs.pillboxes.iter().filter(hostile_box).filter(|p| (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&me.pos.dist(p.pos)));
+            if let Some(p) = boxes.min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+                cmds.push(Command::FireIndirect { at: p.pos });
+                self.last_fire_tick = obs.tick;
             }
         }
 
         // The longshot (step 10e): at a hostile structure every half
         // minute, a power plant first, because the rest of a side's
         // economy goes dark with it. None on the generated island.
-        if me.bay.longshot > 0 && !late && obs.tick.saturating_sub(self.last_longshot) as f32 * DT >= LONGSHOT_EVERY {
+        // `longshot_every` and `longshot_any` (LR 86) spend them faster
+        // and on pillboxes and tanks too.
+        let (longshot_every, longshot_any) = self.tactics.as_ref().map(|t| (t.w.longshot_every, t.w.longshot_any)).unwrap_or((LONGSHOT_EVERY, false));
+        if me.bay.longshot > 0 && !late && obs.tick.saturating_sub(self.last_longshot) as f32 * DT >= longshot_every {
             let target = obs
                 .structures
                 .iter()
@@ -1356,8 +1373,14 @@ impl RuleBot {
                     let rank = |x: &Structure| (x.kind != StructureKind::Power) as u8;
                     rank(a).cmp(&rank(b)).then(a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))
                 });
-            if let Some(x) = target {
-                cmds.push(Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at: x.pos } });
+            let at = target.map(|x| x.pos).or_else(|| {
+                if !longshot_any {
+                    return None;
+                }
+                obs.pillboxes.iter().filter(hostile_box).map(|p| p.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos))).or(enemy.map(|e| e.pos))
+            });
+            if let Some(at) = at {
+                cmds.push(Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at } });
                 self.last_longshot = obs.tick;
             }
         }

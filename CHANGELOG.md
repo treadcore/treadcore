@@ -6,6 +6,23 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the brain spends what it carries (the cowboy, LR 86): a
+  ready gun with no tank to shoot shells hostile pillboxes in reach, a
+  longshot every 5 s at structures, else pillboxes, else the target
+  tank, and three strike drones out at once. +11.64 +/- 0.43 a seat
+  against the old defaults over 400 fresh seeds, every map above zero
+  (+5.52 without the rewards). New weights `shell_boxes`,
+  `longshot_every`, `longshot_any`, `strikes_max`; the old spending is
+  `profiles/steady.weights`. A pillbox shot waits while a hostile
+  shell comes down near the tank. The meter counts shots and launches
+  (`spent`).
+
+- Added: three personalities, `profiles/timid.weights`,
+  `aggressive.weights` and `castle.weights`, and `scripts/traits.py`,
+  which reads how a census's trial team plays against the others.
+  Castle is plain to see; aggressive dies more without killing more;
+  timid reads as the defaults (LAB-REPORT-BRAIN.md section 85).
+
 - Added: rewards in the census score: direct hits on hostile tanks,
   damage to hostile pillboxes, neutral and hostile pillboxes taken,
   kills defending a pillbox, and a bonus for taking every neutral

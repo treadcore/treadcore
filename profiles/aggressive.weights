@@ -1,0 +1,20 @@
+# Aggressive (backlog 67, LR 85): out and fighting, past raider. The
+# posture leans hard toward Expand; a tank closes in below even odds,
+# never waits for help, stays out to a tenth of its armour and its last
+# shell, ducks only when nearly dead, and hunts the wounded; one
+# pillbox at home. Every weight not named here is the default.
+w_posture = 1.0
+w_pos_expand = 5.0
+w_pos_defend = 0.2
+w_pos_fortify = 0.2
+press_odds = 0.8
+engage_odds = 0.2
+mass_for = 0
+retreat_armor = 10
+retreat_shells = 1
+w_duck = 0.3
+w_wounded = 2.5
+w_finish = 2.0
+castle_inside = 1
+castle_road = 0
+posts_max = 1

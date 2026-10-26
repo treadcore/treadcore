@@ -62,3 +62,5 @@ report is what ties a conversation to them. Named
 | [047](CI-047-2026-10-25-why-atlantic.md) | 25 October 2026 | Why atlantic: where the switches move the time | 0100 | LAB-REPORT-BRAIN.md section 82 |
 | [048](CI-048-2026-10-25-the-squads-time-by-task.md) | 25 October 2026 | The squad's time by task: a meter line | 0100 | LAB-REPORT-BRAIN.md section 83 |
 | [049](CI-049-2026-10-25-rewards-in-the-census-score.md) | 25 October 2026 | Rewards in the census score | 0100 | LAB-REPORT-BRAIN.md section 84 |
+| [050](CI-050-2026-10-25-personalities-step-1.md) | 25 October 2026 | Personalities, step 1: timid, aggressive, castle | 0100 | LAB-REPORT-BRAIN.md section 85 |
+| [051](CI-051-2026-10-25-the-cowboy-and-the-defaults-spend.md) | 25 October 2026 | The cowboy: the defaults spend | 0100 | LAB-REPORT-BRAIN.md section 86 |

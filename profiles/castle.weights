@@ -1,0 +1,11 @@
+# Castle (backlog 67, LR 85): a tight grouping of pillboxes at the base.
+# Twice the defaults' castle inside the wall and on its road, the
+# posts close together, Fortify worth more and Expand less, the most
+# hurt pillbox mended first. Every weight not named here is the
+# default.
+w_pos_fortify = 5.0
+w_pos_expand = 0.2
+castle_inside = 8
+castle_road = 4
+post_spacing = 6
+w_mend = 2.0

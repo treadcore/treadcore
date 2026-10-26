@@ -4835,3 +4835,154 @@ material, which comes from forest (harvest), depots or the start; a
 pillbox of one's own side can be towed by two tanks or lifted, dead or
 alive; towing through forest does not repair it. Those differences are
 sim changes, each a step of its own.
+
+## 85. Personalities, step 1: timid, aggressive, castle, 25 October
+
+Backlog 67. Paul: "make sure these ambitions of personalities are
+obvious. Such that timid or agressive would be very vissible", and
+personalities "to want to get tight groupings of pillboxes". Three
+profiles from existing weights (`profiles/`): **timid** (the posture
+hard toward Defend and Fortify, Expand 0.1; close in at odds of 4,
+mass 30 s, home at 75 armour or 8 shells), **aggressive** (past
+raider: Expand 5; close in at 0.8, never mass, home at 10 armour or 1
+shell, duck only near dead, the wounded hunted, one pillbox at home),
+**castle** (castle 8 inside and 4 on the road, posts 6 apart, Fortify
+5, mending 2).
+
+**The rule, set before the run** (`build/personalities/NOTES.txt`): a
+personality is plain to see if its signature reads past two errors its
+own way, the trial team less the other two in the same match: timid,
+deaths and kills both below; aggressive, both above; castle, built
+above. The score reported, not judged.
+
+**The run**: each against the defaults, 110 seeds from 110000, every
+map, 900 s, 24 jobs, the rewards on, at 3e55c83; read by
+`scripts/traits.py` (a seed's mean of its three matches, then the mean
+and its error over the seeds).
+
+| Trial less the others | Timid | Aggressive | Castle |
+| --- | --- | --- | --- |
+| score | +0.06 +/- 0.54 | **-2.10 +/- 0.56** | -0.34 +/- 0.35 |
+| kills | +0.22 +/- 0.32 | -0.61 +/- 0.38 | -0.06 +/- 0.26 |
+| deaths | -0.14 +/- 0.27 | **+1.15 +/- 0.31** | -0.06 +/- 0.28 |
+| built | +1.13 +/- 0.97 | **-12.73 +/- 0.79** | **+4.01 +/- 0.60** |
+| held | -0.03 +/- 0.14 | **-0.70 +/- 0.14** | +0.10 +/- 0.08 |
+| rewards | -0.01 +/- 0.22 | -0.03 +/- 0.22 | **-0.45 +/- 0.19** |
+| pillbox damage | -0.26 +/- 0.26 | **+0.85 +/- 0.26** | **-0.61 +/- 0.27** |
+| neutral pillboxes taken | -0.07 +/- 0.09 | **+0.60 +/- 0.11** | **-0.18 +/- 0.08** |
+| hostile pillboxes taken | +0.06 +/- 0.06 | **-0.28 +/- 0.08** | -0.01 +/- 0.06 |
+| defends | **+0.39 +/- 0.15** | **-0.44 +/- 0.14** | -0.07 +/- 0.12 |
+| its Expand s a match | 167 | 252 | 158 |
+| its Fortify s a match | 133 | 36 | 146 |
+
+**The verdict, by the rule**: **castle is plain to see** (built +4.01,
+6.7 errors). **Aggressive is half**: it dies more (+1.15, 3.7 errors)
+but does not kill more (-0.61, inside); it is plain to see in all else,
+building 12.7 less, holding less, taking neutral pillboxes and
+damaging hostile ones more, and it loses (-2.10 a seat, five maps past
+two errors below). **Timid is not**: deaths and kills inside the
+noise, only its defences up (+0.39). The defaults are already turtle
+(LR 77): the posture at 0.95 toward Defend and Fortify, home at 50
+armour. A timid style is a turtle with louder weights, and these
+weights were near their ends already. By the rule, timid and
+aggressive are made stronger in a second step, not kept as they are.
+Castle stays as written.
+
+**What a stronger step needs**: timid, a lever the defaults do not
+already pull (a kiting ring farther out, no Hunt rung, the guard
+inside the castle); aggressive, more kills, not only more deaths (its
+closing in at odds of 0.8 trades a tank for less than one). Both are
+behaviour, not values, so they want code: backlog 67's later steps,
+with the cowboy and the pillbox collector.
+
+## 86. The cowboy: spending weights, and the defaults spend, 25 October
+
+Backlog 67, step 2. Paul: "coyboy tankers who always spend the
+expensive ammo with long shots and using all the resources as fast
+lauching like artillerty". Nothing in the brain weighed spending: the
+gun shot at its target tank, a stormed depot's guns, and nothing else;
+a longshot went every 30 s and only at a hostile structure; one strike
+drone out at a time. Four weights (`Tactics`, at their old behaviour
+by default when added): **shell_boxes** (a ready gun with no tank to
+shoot at shells the nearest hostile pillbox in the indirect gun's
+reach), **longshot_every** (30), **longshot_any** (with no hostile
+structure, a longshot at the nearest hostile pillbox, else the target
+tank), **strikes_max** (1). The meter's new `spent` clause counts the
+shots and launches asked for, by kind and group, and
+`scripts/traits.py` reads it. At the old values an atlantic census of
+four seeds reads the same to the digit as LR 84's.
+
+`profiles/cowboy.weights`: shell_boxes 1, longshot_every 5,
+longshot_any 1, strikes_max 3, retreat_shells 1. **Rule, set before
+the run** (`build/personalities/NOTES.txt` in the worktree
+`treadcore-lr86`): plain to see if indirect shells and longshots both
+read above the others past two errors.
+
+**The census** (110 seeds from 120000, every map, against the
+defaults): plain to see, and more. Indirect shells +172 a match,
+longshots +141, strikes +129; **+11.54 +/- 0.89 a seat**, ten maps
+past two errors above, none below. Without the rewards (score less
+rewards, LR 84's old score) +5.20 +/- 0.49.
+
+**Read again** (the rule for a style past two errors above the
+defaults, LR 77; 400 fresh seeds from 130000): **+11.62 +/- 0.45**,
+every map past two errors above (fortressisles2 the least, +5.23 +/-
+1.43; generated +22.82). Kills +6.58, deaths -2.09, held +1.40,
+pillbox damage +18.6 pillboxes' health, direct shells -23 (the gun
+busy at longer range).
+
+**Taken apart** (each alone, 110 seeds from 140000):
+
+| Alone | Score | Kills | Deaths | Held | Rewards | Pillbox damage |
+| --- | --- | --- | --- | --- | --- | --- |
+| shell_boxes 1 | +7.19 +/- 0.81 | -0.26 | +0.13 | +0.95 | +5.27 | +18.51 |
+| longshots (every 5, any) | +5.59 +/- 0.55 | +3.01 | -1.19 | +0.71 | +2.62 | +7.02 |
+| strikes_max 3 | +1.46 +/- 0.56 | +2.05 | -0.97 | +0.20 | +0.21 | +0.28 |
+| retreat_shells 1 | 0.00 exactly | 0 | 0 | 0 | 0 | 0 |
+
+The longshots carry the fighting (+3 kills, -1.2 deaths; +2.97 without
+the rewards). Shelling pillboxes is mostly the reward LR 84 set for
+pillbox damage (+5.27 of +7.19); without it +1.92, from ground held.
+Strikes kill more and die less. **retreat_shells does nothing**: the
+retreat thresholds blend from the constants (4 shells, `LOW_ARMOR`) to
+the weights by `w_smooth`, 0.05 by default, so 1 shell rounds back to
+4, and `retreat_armor` moves the real threshold a twentieth of the
+way. Turtle's "home at 50 armour" (LR 77) and timid's 75 (LR 85)
+barely acted: part of why timid read as the defaults.
+
+**The change**, by the rule: the spending weights at the cowboy's
+values are the defaults (`retreat_shells` left at 4, since it does
+nothing). `profiles/steady.weights` keeps the old spending (the
+defaults of LR 77 to 85) and `classic.weights` gains it. `make
+families` then found the four dodge families under their 99% floors
+(91.3% to 96.5%): with `shell_boxes`, a tank waiting out a shell shot
+at a neutral pillbox and turned its hull into the splash. **A pillbox
+shot now waits while a hostile shell is coming down within the splash
+and 3 tiles of the tank**: the four back to 100%, the duel family 63%
+to 78.5%, every family over its floor. `the_default_match_plays_as_
+teams` lost its pings: on its one seed the pinging seat, with the
+cowboy's drones, happened never to call; with longshots every 30 s it
+pings 12 times. The test builds its teams on steady's spending, as LR
+77 pinned the mechanism tests. The brain's tests, 89 passed.
+
+The fix came after the census, so the defaults as changed were read
+once more against steady (the old defaults).
+
+**The pair** (the rule in `build/NOTES3.txt` of the worktree
+`treadcore-lr86b`, set before: the new defaults stand if past two
+errors above zero with no map past two errors below; trial the
+defaults as changed, base `steady.weights`, 400 fresh seeds from
+150000): **+11.64 +/- 0.43 a seat**, every map past two errors above
+(europe the least, +5.54 +/- 0.43; island +21.91). Kills +6.77, deaths
+**-2.49** (-2.09 before the fix), held +1.35, pillbox damage +17.7.
+Without the rewards, **+5.52 +/- 0.25**: four times turtle's +1.40 on
+the old score alone.
+
+**The verdict**: by the rule, **the cowboy's spending is the
+defaults**: shell_boxes 1, longshot_every 5, longshot_any 1,
+strikes_max 3. The brain spends what it carries. Two notes for what
+follows. The rewards (LR 84) pay shelling pillboxes most, and a census
+on the old score would have adopted it too, at half the size. The
+retreat weights barely act through `w_smooth` 0.05; a timid or
+aggressive personality that goes home sooner or later needs them to
+act, which is the next step's first change.

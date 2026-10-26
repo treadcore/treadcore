@@ -120,6 +120,17 @@ pub struct Tactics {
     pub kite_turn: f32,
     /// Seconds of the target's reload to spare past the trip.
     pub kite_spare: f32,
+    // Spending (LR 86, the cowboy).
+    /// Shell a hostile pillbox in the indirect gun's reach when the gun
+    /// is ready and no tank is shot at.
+    pub shell_boxes: bool,
+    /// Seconds between longshots.
+    pub longshot_every: f32,
+    /// A longshot with no hostile structure to hit goes at a hostile
+    /// pillbox, else the target tank.
+    pub longshot_any: bool,
+    /// Strike drones out at once.
+    pub strikes_max: usize,
 }
 
 impl Default for Tactics {
@@ -155,6 +166,10 @@ impl Default for Tactics {
             kite_in: DIRECT_RANGE - 1.0,
             kite_turn: 0.8,
             kite_spare: 0.4,
+            shell_boxes: true,
+            longshot_every: 5.0,
+            longshot_any: true,
+            strikes_max: 3,
         }
     }
 }

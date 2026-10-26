@@ -16,8 +16,10 @@ X-Session: the Mac and the census machine; Claude Code (Claude Opus
            more. commit .push. yeah? do it!"; "1"; "commit and
            push. then add the build time meter"; Paul's ask for personalities
            and rewards (CI-049); "ok. start with the reward system";
-           "ok go"; "About a third"; "Commit and push"
-X-Commits: 732fde3 8062fb7 7c18851 ff2055d a6c71f3 4c85d1b; this entry's commit follows
+           "ok go"; "About a third"; "Commit and push";
+           "more census. with the code changes. continue. resume";
+           "nice!. looks like its ending. pick up the results."
+X-Commits: 732fde3 8062fb7 7c18851 ff2055d a6c71f3 4c85d1b 3e55c83; this entry's commit follows
 
                READ SOONER, AND THE STYLES ORDERED
 
@@ -89,11 +91,18 @@ IV. CHRONOLOGY
        damage and captures, defences, every neutral); off, the score
        is the old one to the digit. Personalities and Paul's pillbox
        mechanics logged as backlog 67 and 68. Paul chose rewards of
-       about a third of the score: each tripled.
+       about a third of the score: each tripled. Committed (3e55c83).
+   10. LR 85: personalities, step 1. Castle plain to see (built
+       +4.01); aggressive dies more, kills no more, loses 2.10;
+       timid reads as the turtle defaults.
+   11. LR 86: the cowboy's spending weights. +11.62 over 400 seeds;
+       the longshots carry it; retreat weights barely act (w_smooth).
+       The defaults spend; a pillbox shot waits under a shell (the
+       dodge families); the pair +11.64 +/- 0.43.
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md sections 76 to 84; CI-042 to CI-049.
+    LAB-REPORT-BRAIN.md sections 76 to 86; CI-042 to CI-051.
 
 VI. DISCUSSION
 
@@ -115,7 +124,7 @@ VIII. NEXT STEPS
 
 APPENDIX B. ARTIFACTS
 
-    scripts/sequential.py; census.sh LOOKS; scripts/rungs.py; meter.rs SquadTask; profiles/classic.weights;
+    scripts/sequential.py; census.sh LOOKS; scripts/rungs.py; scripts/traits.py; profiles timid, aggressive, castle, steady; the spending weights; meter.rs SquadTask; profiles/classic.weights;
     weights.rs defaults; build/{rr,rotate,turtle,newdefaults,b62}/
     NOTES.txt, build/switches/NOTES-lr81.txt on the machine and the Mac.
 
