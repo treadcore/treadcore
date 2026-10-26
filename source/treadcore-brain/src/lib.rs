@@ -342,9 +342,9 @@ pub struct Dodge {
     /// dropped (`keep_inner`).
     pub metered: bool,
     /// The weights' numbers (horizon s, margin, clear, hold; LR 27;
-    /// plan and release, LR 53; every, LR 56; fire, LR 57); None is the
-    /// constants, the RuleBot's.
-    pub tune: Option<[f32; 8]>,
+    /// plan and release, LR 53; every, LR 56; fire, LR 57; own route,
+    /// LR 93); None is the constants, the RuleBot's.
+    pub tune: Option<[f32; 9]>,
     /// When the shell dodge under way began, for `dodge_hold`.
     began: Tick,
     /// Where and when the shell dodged last lands, for `dodge_release`.
@@ -392,7 +392,7 @@ impl Dodge {
             if self.dodged.contains(&s.id) {
                 continue;
             }
-            let [horizon, margin, clear, _, _, _, _, _] = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0, 0.0, 0.0]);
+            let [horizon, margin, clear, _, _, _, _, _, _] = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
             let eta = s.impact_tick.saturating_sub(obs.tick);
             if eta < 2 || eta as f32 * DT > horizon {
                 continue;
@@ -446,7 +446,7 @@ impl Dodge {
     /// flight landing within the horizon, else `dodged` alone (the one
     /// it dodges; for the release, the last dodged, while in flight).
     fn threats(&self, obs: &Observation, dodged: Option<(V2, Tick)>) -> Vec<(V2, u32)> {
-        let t = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        let t = self.tune.unwrap_or([4.0, 0.8, 2.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         let mut out: Vec<(V2, u32)> = dodged.filter(|(_, lands)| *lands > obs.tick).map(|(at, lands)| (at, (lands - obs.tick) as u32)).into_iter().collect();
         if t[6] >= 0.5 {
             let hostile = |o: PlayerId| o != obs.player && !obs.allied(o);
@@ -517,7 +517,7 @@ impl Dodge {
         let Some(ticks) = threats.iter().map(|(_, e)| *e).max() else { return false };
         let before = cmds.len();
         cmds.retain(|c| match c {
-            Command::Move { to } => drive_path(me, *to, ticks, map).map(|p| Self::clearance(&p, &threats, t[1]) >= 0.0).unwrap_or(true),
+            Command::Move { to } => drive_path_by(me, *to, ticks, map, t[8] >= 0.5).map(|p| Self::clearance(&p, &threats, t[1]) >= 0.0).unwrap_or(true),
             _ => true,
         });
         cmds.len() < before
@@ -536,7 +536,7 @@ impl Dodge {
         let threats = self.threats(obs, self.landing);
         let Some(ticks) = threats.iter().map(|(_, e)| *e).max() else { return false };
         let to = cmds.iter().rev().find_map(|c| if let Command::Move { to } = c { Some(*to) } else { None }).or(me.route.last().copied()).or(me.goal).unwrap_or(me.pos);
-        let clear = |m: &Tank| drive_path(m, to, ticks, map).map(|p| Self::clearance(&p, &threats, t[1]) >= 0.0).unwrap_or(true);
+        let clear = |m: &Tank| drive_path_by(m, to, ticks, map, t[8] >= 0.5).map(|p| Self::clearance(&p, &threats, t[1]) >= 0.0).unwrap_or(true);
         if !clear(me) {
             return false;
         }
@@ -595,7 +595,18 @@ pub fn drive_to(me: &Tank, to: V2, ticks: u32, map: Option<&Map>) -> Option<V2> 
 /// k after k + 1 ticks. For shells landing at different ticks
 /// (`dodge_every`, LR 56).
 pub fn drive_path(me: &Tank, to: V2, ticks: u32, map: Option<&Map>) -> Option<Vec<V2>> {
+    drive_path_by(me, to, ticks, map, false)
+}
+
+/// `drive_path`; with `own` (`dodge_own_route`, LR 93), a drive to where
+/// the tank's route already ends follows that route, its waypoint and
+/// the rest: the way the world will drive it (pillboxes' reach and
+/// mines priced in), and no search. The dodge asks this every tick a
+/// shell is coming, and the search was a quarter of a census (LR 91).
+pub fn drive_path_by(me: &Tank, to: V2, ticks: u32, map: Option<&Map>, own: bool) -> Option<Vec<V2>> {
+    let going = me.route.last().copied().or(me.goal);
     let mut route = match map {
+        _ if own && going == Some(to) => me.goal.into_iter().chain(me.route.iter().copied()).collect(),
         Some(m) => m.route_kept(me.pos, to, me.boat),
         None => vec![to],
     };
@@ -2134,7 +2145,7 @@ mod tests {
         let mut old = Dodge::default();
         let first = old.order(&obs, &tank);
         for hold in [0.0, 1.0] {
-            let mut d = Dodge { tune: Some([4.0, 0.8, 2.5, hold, 0.0, 0.0, 0.0, 0.0]), ..Default::default() };
+            let mut d = Dodge { tune: Some([4.0, 0.8, 2.5, hold, 0.0, 0.0, 0.0, 0.0, 0.0]), ..Default::default() };
             assert_eq!(d.order(&obs, &tank), first, "the default numbers move as the constants do");
             let mut arrived = tank.clone();
             arrived.goal = None;

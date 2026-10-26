@@ -487,7 +487,7 @@ impl Commander {
         self.inner.landfall_shy = s.w[W::LandfallShy];
         self.inner.landfall_wait = s.w[W::LandfallWait];
         self.inner.landfall_memory = s.w[W::LandfallMemory];
-        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold], s.w[W::DodgePlan], s.w[W::DodgeRelease], s.w[W::DodgeEvery], s.w[W::DodgeFire]]);
+        self.dodge.tune = Some([s.w[W::DodgeHorizon], s.w[W::DodgeMargin], s.w[W::DodgeClear], s.w[W::DodgeHold], s.w[W::DodgePlan], s.w[W::DodgeRelease], s.w[W::DodgeEvery], s.w[W::DodgeFire], s.w[W::DodgeOwnRoute]]);
         // In place: a slider moved mid-match (backlog 15) keeps the
         // target and the team's calls.
         // How well it plays (LR 67): the doctrine's aim and drones, and
