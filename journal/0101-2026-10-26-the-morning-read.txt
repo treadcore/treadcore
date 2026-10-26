@@ -1,0 +1,94 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 26 Oct 2026 08:30:00 -0700
+Subject: [JOURNAL 0101] The morning read
+Message-ID: <0101.20261026@treadcore.org>
+In-Reply-To: <0100.20261025@treadcore.org>
+Organization: treadcore.org
+Keywords: census, SPSA, held-out read, slope screen, families
+X-Session: the iMac and the census machine (saskatchewan); Claude
+           Code (Claude Opus 5.5) as the pair. Paul's prompts: "good
+           morning. remember our last conversation. what do you
+           say>"; "yes. conenct and get reults."; "yes. start with
+           families"; "yes. i love the work you are doing. give
+           yourself a tip."
+X-Commits: this entry's commit
+
+                         THE MORNING READ
+
+                     Paul Richeson, treadcore.org
+                           26 October 2026
+
+
+ABSTRACT
+
+    The longest run's results fetched from the census machine and
+    scored against the expectations written before it. The slope
+    screen found no candidate: on sixteen weights the defaults are a
+    peak, each axis falling away. SPSA's point passed its held-out
+    read at z 2.002 and passed make families, then read +0.09 +/-
+    0.27 on 400 fresh seeds: not promoted. 12 of 19 expectations held.
+    A pass at the bar from a searched point needs a second read.
+
+INDEX TERMS
+
+    census, SPSA, replication, slope screen.
+
+
+I. INTRODUCTION
+
+    The first night of backlog 69 ended at 00:42; the morning read it.
+
+II. BACKGROUND
+
+    Journal 0100; LR 88 with its expectations; CI-053.
+
+III. METHOD
+
+    Each rule written before its run (build/night/NOTES.txt,
+    build/reread/NOTES.txt). Families on the Mac; censuses on the
+    census machine only.
+
+IV. CHRONOLOGY
+
+    1. The record read; the census machine found by its known host
+       (saskatchewan, 192.168.8.235).
+    2. Blocks 2 and 3 read: no candidate; seven rows below; w_exposure
+       and w_mine inert; SPSA's point +0.597 +/- 0.298 held out.
+    3. make families at the point and at the defaults: all nine hold;
+       the duel 73.5% against 78.5%.
+    4. The point read again on 400 seeds from 400000: +0.09 +/- 0.27.
+       Not promoted.
+    5. LR 88's morning part; CI-053's results; CI-054.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md section 88; CI-053, CI-054.
+
+VI. DISCUSSION
+
+    The held-out bar is weakest exactly where a search lands: on a
+    point chosen for reading high. The second read was the guard.
+
+VII. OPEN PROBLEMS
+
+    1. Why w_exposure and w_mine never act in a census.
+    2. Fortressislesx below both reads of the point (-1.33 +/- 0.66).
+    3. Journal 0100's open problems carried.
+
+VIII. NEXT STEPS
+
+    1. Paul to choose: two held-out reads for an SPSA point; SPSA
+       bounded to the screen's range.
+    2. The inert weights looked at; the retreat thresholds made to
+       act (backlog 69).
+
+APPENDIX B. ARTIFACTS
+
+    build/night-am/families-{spsa,defaults}.log on the Mac;
+    build/night/, build/reread/, build/census/20261026-073751 on the
+    census machine.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

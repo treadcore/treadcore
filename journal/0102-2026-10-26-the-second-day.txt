@@ -1,0 +1,85 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Mon, 26 Oct 2026 09:45:00 -0700
+Subject: [JOURNAL 0102] The second day
+Message-ID: <0102.20261026@treadcore.org>
+In-Reply-To: <0101.20261026@treadcore.org>
+Organization: treadcore.org
+Keywords: census, slope screen, SPSA, dashboard, neural network
+X-Session: the iMac and the census machine (saskatchewan); Claude
+           Code (Claude Opus 5.5) as the pair. Paul's prompts in
+           CI-055.
+X-Commits: this entry's commit
+
+                          THE SECOND DAY
+
+                     Paul Richeson, treadcore.org
+                           26 October 2026
+
+
+ABSTRACT
+
+    The two weights that never acted were read in the code: w_exposure
+    ties above w_flank, w_mine rarely beats a mend. The second day went
+    on the census machine: arms where they act, a two-stage screen of
+    the 68 weights left, SPSA bounded to half and double, two
+    held-out reads. A dashboard, the weight ledger, draws the weights
+    over time. A study of a learned brain: the sim's CPU time is the
+    cost, so more CPUs, with a GPU for the update step.
+
+INDEX TERMS
+
+    census, slope screen, successive halving, SPSA, reinforcement
+    learning.
+
+
+I. INTRODUCTION
+
+    Journal 0101's next steps, and Paul's two yeses.
+
+II. BACKGROUND
+
+    LR 87, LR 88; CI-054.
+
+III. METHOD
+
+    A probe on the Mac, removed after. The day's rule written before
+    it played (build/day/NOTES.txt).
+
+IV. CHRONOLOGY
+
+    1. The stand's cost read: w_exposure tied above 0.3.
+    2. The improvement probed over 24 games: w_mine decides 6 of 165.
+    3. scripts/spsa.sh given BOUND; the day's files written, copied,
+       started at 09:21.
+    4. The weight ledger built from git and the machine's censuses.
+    5. LR 89 and LR 90; backlog 70; CI-055.
+    6. Arm w_exposure 0.15: -0.37 +/- 0.36.
+
+V. RESULTS
+
+    LAB-REPORT-BRAIN.md sections 89 and 90; CI-055.
+
+VI. DISCUSSION
+
+    A weight behind a comparison acts only where the other number
+    lets it. A GPU would wait on the sim.
+
+VII. OPEN PROBLEMS
+
+    1. The retreat thresholds, still blended by w_smooth.
+    2. Fortressislesx (journal 0101).
+
+VIII. NEXT STEPS
+
+    1. Read the day against its NOTES; update the ledger.
+    2. Paul to choose: the learned brain's bridge (backlog 70).
+
+APPENDIX B. ARTIFACTS
+
+    build/day/ on the census machine; the weight ledger,
+    https://claude.ai/artifact/KdMP63zpmJVWgm4ChwgBpf.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

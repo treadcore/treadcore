@@ -66,3 +66,5 @@ report is what ties a conversation to them. Named
 | [051](CI-051-2026-10-25-the-cowboy-and-the-defaults-spend.md) | 25 October 2026 | The cowboy: the defaults spend | 0100 | LAB-REPORT-BRAIN.md section 86 |
 | [052](CI-052-2026-10-25-the-methods-and-the-census-as-a-learner.md) | 25 October 2026 | The methods so far, and the census as a learner | 0100 | LAB-REPORT-BRAIN.md section 87 |
 | [053](CI-053-2026-10-25-the-longest-run.md) | 25 October 2026 | The longest run: a night's plan, and what we expect | 0100 | LAB-REPORT-BRAIN.md section 88 |
+| [054](CI-054-2026-10-26-the-morning-read.md) | 26 October 2026 | The morning read: families, and the point read again | 0101 | LAB-REPORT-BRAIN.md section 88 |
+| [055](CI-055-2026-10-26-the-second-day.md) | 26 October 2026 | The second day: two inert weights explained, every weight screened, a learned brain studied | 0102 | LAB-REPORT-BRAIN.md sections 89 and 90 |

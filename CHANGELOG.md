@@ -6,6 +6,10 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: `make spsa` keeps each tuned weight within `BOUND` of where
+  it started, half to double by default (`BOUND=0` the old unbounded
+  walk; LAB-REPORT-BRAIN.md section 89).
+
 - Changed: the brain spends what it carries (the cowboy, LR 86): a
   ready gun with no tank to shoot shells hostile pillboxes in reach, a
   longshot every 5 s at structures, else pillboxes, else the target

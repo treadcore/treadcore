@@ -9,13 +9,16 @@
 # seed. The gradient is that difference over 2 c delta; the step moves
 # log theta along it by a, capped at MAXSTEP. The seeds are fresh every
 # step (SEED0 + k SEEDS), so no step is tuned to the last one's starts.
-# The census's standard error is printed with each step.
+# The census's standard error is printed with each step. Each tuned
+# weight stays within BOUND of where it started, half to double at the
+# default 2 (LR 89: the unbounded walk of LR 88 went to 15 times a
+# default, where no census had looked); BOUND=0 lifts it.
 #
 #   make spsa                          8 steps, 12 seeds a step, naval.map
 #   TUNE="dodge_horizon dodge_clear"   the weights to tune (positive)
 #   START=file.toml                    start from a file, not the defaults
 #   SET="landfall_memory=3"            values set on the start (a planted test)
-#   STEPS=10 SEEDS=12 SEED0=1000 A=0.6 C=0.4 MAXSTEP=0.5 SECS=900 JOBS=3
+#   STEPS=10 SEEDS=12 SEED0=1000 A=0.6 C=0.4 MAXSTEP=0.5 BOUND=2 SECS=900 JOBS=3
 #
 # Output under build/spsa/STAMP: each step's plus and minus files and
 # census logs, steps.tsv (k, the weights, d, its error), and theta.toml,
@@ -30,6 +33,7 @@ SECS="${SECS:-900}"
 A="${A:-0.6}"
 C="${C:-0.4}"
 MAXSTEP="${MAXSTEP:-0.5}"
+BOUND="${BOUND:-2}"
 JOBS="${JOBS:-3}"
 MAP="${MAP:-maps/naval.map}"
 RESPAWNS="${RESPAWNS:-3}"
@@ -49,6 +53,7 @@ for kv in ${SET:-}; do
     sed -i "s/^${kv%%=*} = [^ ]*/${kv%%=*} = ${kv#*=}/" "$THETA"
 done
 
+declare -A START_=()
 get() { # get FILE NAME
     sed -n "s/^$2 = \([^ ]*\).*/\1/p" "$1"
 }
@@ -59,6 +64,7 @@ for w in $TUNE; do
     v="$(get "$THETA" "$w")"
     [ -n "$v" ] || die "no weight $w"
     awk -v v="$v" 'BEGIN { exit !(v > 0) }' || die "$w is $v: SPSA here tunes positive weights only"
+    START_[$w]="$v"
 done
 
 # One census in JOBS ranges side by side; prints the mean difference a
@@ -80,7 +86,7 @@ census() { # census PLUS MINUS FIRST LOGPREFIX
         printf "%.4f %.4f\n", m, sqrt(v / n) }'
 }
 
-say "spsa: $STEPS steps over [$TUNE], $SEEDS fresh seeds a step from $SEED0, a $A c $C -> $OUT"
+say "spsa: $STEPS steps over [$TUNE], $SEEDS fresh seeds a step from $SEED0, a $A c $C, bound $BOUND -> $OUT"
 printf "k\t%s\td\tse\n" "$(echo $TUNE | tr ' ' '\t')" >"$OUT/steps.tsv"
 for k in $(seq 1 "$STEPS"); do
     ak="$(awk -v a="$A" -v k="$k" 'BEGIN { printf "%.5f", a / (k + 1) ^ 0.602 }')"
@@ -101,9 +107,10 @@ for k in $(seq 1 "$STEPS"); do
     row="$k"
     for w in $TUNE; do
         v="$(get "$THETA" "$w")"
-        nv="$(awk -v v="$v" -v d="$D" -v a="$ak" -v c="$ck" -v s="${SIGN[$w]}" -v m="$MAXSTEP" 'BEGIN {
+        nv="$(awk -v v="$v" -v d="$D" -v a="$ak" -v c="$ck" -v s="${SIGN[$w]}" -v m="$MAXSTEP" -v v0="${START_[$w]}" -v b="$BOUND" 'BEGIN {
             step = a * d / (2 * c * s); if (step > m) step = m; if (step < -m) step = -m
-            printf "%.4f", v * exp(step) }')"
+            x = v * exp(step); if (b > 0 && x > v0 * b) x = v0 * b; if (b > 0 && x < v0 / b) x = v0 / b
+            printf "%.4f", x }')"
         put "$THETA" "$w" "$nv"
         row="$row\t$nv"
     done

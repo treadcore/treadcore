@@ -66,7 +66,7 @@ tree can change while it runs. All of them take `MAP` (a file, a list,
 | `make parts` | What is each part worth? Each part off, against everything on |
 | `make switches` | What is each switch that is off worth when turned on alone? |
 | `LOOKS=8 TRIAL=a.weights make census` | The same, read as it plays; an early stop read again on fresh seeds (LR 79). For a large expected effect only |
-| `make spsa` | Which values for these weights? SPSA, a step at a time on the paired census |
+| `make spsa` | Which values for these weights? SPSA, a step at a time on the paired census, each weight kept within half and double (`BOUND`) |
 | `make tune` | The older evolutionary tuner, kept beside SPSA (LR 40) |
 | `make families` | Does each behaviour still do what it was built for? Scenario families, each held to its floor |
 | `S=scenarios/x.toml make scenario` | One described situation, played headless |

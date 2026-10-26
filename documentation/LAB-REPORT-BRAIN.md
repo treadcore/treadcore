@@ -5168,3 +5168,392 @@ spending, lost less than steady, turtle's lean with the old spending:
 without the cowboy's drones the turtle lean may cost, the reverse of
 LR 77. A census of turtle's lean on today's brain would say. Blocks 2
 and 3 are playing.
+
+**Blocks 2 and 3, read on the morning of 26 October** (written after
+they played; the expectations above stand as written). The night ended
+at 00:42, six hours in, not ten: a census of 110 seeds took about 6.5
+minutes, not 8.
+
+The screen, each end less the defaults, 110 seeds from 170000 (the
+same seeds for every row); the gap is pick.py's:
+
+| Weight | Half | Double | Gap |
+| --- | --- | --- | --- |
+| strikes_max | -1.19 +/- 0.53 | +0.76 +/- 0.39 | 2.96 |
+| longshot_every | +0.59 +/- 0.49 | -1.45 +/- 0.51 | 2.88 |
+| w_focus | +0.78 +/- 0.43 | -0.98 +/- 0.47 | 2.76 |
+| mass_for | +0.33 +/- 0.31 | -0.67 +/- 0.30 | 2.32 |
+| castle_inside | -1.17 +/- 0.36 | -0.05 +/- 0.34 | 2.26 |
+| w_pos_expand | +0.18 +/- 0.24 | -0.58 +/- 0.28 | 2.06 |
+| w_wounded | -0.36 +/- 0.48 | +0.96 +/- 0.49 | 1.92 |
+| w_finish | -1.07 +/- 0.47 | -0.34 +/- 0.39 | 1.20 |
+| w_stick | +0.34 +/- 0.48 | -0.50 +/- 0.53 | 1.17 |
+| w_in_range | -0.25 +/- 0.46 | +0.36 +/- 0.50 | 0.90 |
+| engage_odds | +0.56 +/- 0.44 | -0.01 +/- 0.51 | 0.85 |
+| strike_worth | +0.16 +/- 0.45 | +0.67 +/- 0.48 | 0.78 |
+| press_odds | -0.59 +/- 0.38 | -0.18 +/- 0.40 | 0.74 |
+| pillbox_worth | +0.27 +/- 0.22 | +0.28 +/- 0.19 | 0.03 |
+| w_mine | +0.00 +/- 0.00 | +0.00 +/- 0.06 | 0.00 |
+| w_exposure | +0.00 +/- 0.00 | +0.00 +/- 0.00 | 0.00 |
+
+No candidate: no end reads past two errors above the defaults. Seven
+rows read past two errors, every one below (strikes_max half,
+longshot_every double, w_focus double, mass_for double, castle_inside
+half, w_finish half, w_pos_expand double): the defaults sit at or
+near the top of each axis alone. Nine weights are flat at both ends.
+w_exposure and w_mine read exactly zero at both ends, every seed: in
+a census of every map they do not act at all. Why is not yet looked
+at (a gate, or a bug); they leave later searches either way.
+
+SPSA (`build/spsa/20261025-230519`, 24 steps of 48 seeds from 200000)
+over pick.py's five walked far past the screen's range:
+
+| Weight | Default | SPSA's point |
+| --- | --- | --- |
+| strikes_max | 3 | 46.68 (rounded, the cap gone in effect) |
+| longshot_every | 5 | 11.04 |
+| w_focus | 0.5 | 0.444 |
+| mass_for | 12 | 52.36 |
+| castle_inside | 4 | 18.66 |
+
+Its held-out read, 400 seeds from 300000: **+0.597 +/- 0.298, z
+2.002**, no map past two errors below (fortressislesx -0.94 +/- 0.97
+the lowest). Past the rule's bar by two thousandths of an error.
+
+The rule asked next for `make families`, in the morning with Paul. On
+the Mac, the point set on every family (`SET=`): all nine hold. Only
+the duel moves, 73.5% +/- 2.2% against 78.5% at the defaults, inside
+the noise and far over its 55% floor (`build/night-am/`).
+
+A pass by 0.002 errors, from a point no part of the night read alone,
+is LR 74's case again. One more census, its rule written first in
+`build/reread/NOTES.txt` on the machine: the point against the
+defaults on 400 fresh seeds from 400000, promoted only past two errors
+above with no map past two below; we expected +0.3 +/- 0.3.
+
+| Map | Held-out (300000) | Read again (400000) |
+| --- | --- | --- |
+| every map | +0.60 +/- 0.30 | **+0.09 +/- 0.27** |
+| industry | +0.91 +/- 0.85 | -0.05 +/- 0.88 |
+| island | +1.06 +/- 0.82 | -0.94 +/- 0.84 |
+| naval | +2.37 +/- 1.28 | -0.09 +/- 1.03 |
+| big-lizard | -0.47 +/- 1.48 | -0.66 +/- 1.29 |
+| constanine | +0.63 +/- 0.76 | +1.47 +/- 0.54 |
+| fidos-airstrip | +1.65 +/- 1.06 | +1.27 +/- 1.09 |
+| fortressisles2 | +0.14 +/- 1.03 | -0.29 +/- 0.93 |
+| fortressislesx | -0.94 +/- 0.97 | -1.71 +/- 0.91 |
+| atlantic | +0.97 +/- 0.84 | +0.86 +/- 0.66 |
+| europe | +0.13 +/- 0.56 | +1.00 +/- 0.48 |
+| generated | +0.13 +/- 0.96 | +0.10 +/- 0.79 |
+
+Inside the noise (z 0.33): **not promoted; no default changes.** The
+two reads pooled, 800 seeds: +0.34 +/- 0.20, z 1.71. Fortressislesx
+reads below both times, -1.33 +/- 0.66 pooled, just under two errors;
+constanine and europe above both times. A point that trades maps, if
+anything, and a small one.
+
+**The expectations scored**, blocks 2 and 3:
+
+| Expected | Read | |
+| --- | --- | --- |
+| 10 to 12 of 16 flat | 9 | missed by one |
+| about 1.5 rows outside by chance | 7, all below | missed: the slopes are real, and fall away |
+| longshot_every half flat or better, double worse by 1 to 3 | +0.59 inside; -1.45 | held |
+| strikes_max double flat or better, half worse | +0.76 inside; -1.19 | held |
+| castle_inside double a little worse | -0.05; half lost instead | missed |
+| at most two candidates | none | held |
+| pick.py's five hold longshot_every and strikes_max | both, first and second | held |
+| SPSA: longshot_every down, strikes_max up, the rest little | 11.0 up; 46.7 up; mass_for and castle_inside x4 | one of three |
+| the held-out point +0.3 to +1.5, more likely inside | +0.60, past by 0.002 | held, at the edge |
+| promotion about one chance in three | not promoted, on the second read | held |
+
+Six of ten held; with block 1, 12 of 19. The misses share a cause:
+we thought the defaults sat on a flat ridge (LR 74), and on these
+sixteen they sit on a peak, each axis falling away both ways. SPSA,
+started on that peak, walked out along a direction where the score
+barely moves, and one census on 400 seeds read a little high. The held-out read was meant to catch that, and on its own it
+did not: a single read at the bar, the bar is a coin with a two per
+cent edge. The guard that caught it was the second read.
+
+Proposed, for Paul: an SPSA point is promoted only after two
+held-out reads (or one of 800 seeds), and SPSA is bounded to the
+screen's range, half to double, so it does not wander where no census
+has looked. Next for backlog 69: why w_exposure and w_mine never act;
+the retreat thresholds made to act; then the screen over the rest of
+the weights.
+
+## 89. The second day: why two weights never acted, every weight screened, 26 October
+
+Backlog 69. Paul, on the morning read: "1. yes. yes." (the two arms
+below, and LR 88's proposal: an SPSA point promoted only after two
+held-out reads, SPSA bounded to half and double), then "I want you
+nest ideas to improve in best industry practices. Start again. We got
+another day. ... we have been adding more variables. Please start
+more analysis and converge into good values. Start on remote."
+
+### Why w_exposure and w_mine read exactly zero
+
+Read on the Mac with a probe in `Cycle::improvement`, removed after.
+
+**w_exposure is tied.** `Tactician::stand` (`tactics.rs`) prices each
+of seven points on the arc as `guns * w_exposure + (|k| / 3) *
+w_flank`, the cheapest taken. The flank term is at most `w_flank`,
+0.3. Any `w_exposure` over 0.3 makes one gun dearer than any bearing,
+so the order is always fewest guns, then bearing: 0.5, 1 and 2 pick
+the same point every time and play the same match to the bit. The
+weight acts only under 0.3, where a tank takes one more gun to keep
+its bearing. The same tie makes **w_flank** inert anywhere under
+`w_exposure`: its half and double (0.15, 0.6) are predicted to read
+exactly zero.
+
+**w_mine almost never decides.** An improvement takes the largest of
+a mend (`w_mend` times the most hurt pillbox's hurt, offered once a
+pillbox is a tenth hurt), a mine (`w_mine * 0.5`, 0.25) and works
+(`w_works * 0.5`). The probe priced each improvement step at half,
+the default and double, over 24 census games (every map, seeds from
+500000):
+
+| Improvement steps, 165 | Count |
+| --- | --- |
+| the same pick at all three | 159 |
+| a mine at double, a mend otherwise | 6 |
+| a different pick at half | 0 |
+| works offered at all | 0 |
+
+A mine is built when nothing needs mending, at any weight. A mend
+loses to a mine only when the most hurt pillbox is under w_mine / 2
+hurt, between a tenth and a quarter at the default: rare. Works were
+never on offer (no free pad by the base, or not the material).
+Neither is a bug; both are weights whose range of action lies outside
+half to double.
+
+### The day (`build/day/` on the census machine, started 09:21)
+
+Rule and expectations written first in `build/day/NOTES.txt`. Every
+census: every map, 900 s, 3 respawns, 24 jobs, rewards on.
+
+**A. Arms** where the three can act, 110 seeds from 170000 (the
+screen's): w_exposure 0.15, w_mine 2 (a mine before any mend), w_flank
+1.5.
+
+**B. The screen of every remaining scalar weight**, in two stages
+(successive halving, as in algorithm configuration: irace, Hyperband):
+68 weights at half and double (a weight bounded by 1 at halfway to 1
+instead; w_duck, at 1, half only), 135 censuses of 55 seeds from
+170000. Any weight with an end past 1.5 errors or a gap past 1.5 is
+read again on all 110. Left out: the switches (thresholded 0/1), the
+skill dial, `long_game` (it changes the score itself), `assist`,
+`upgrade_vs_mend` (no upgrades yet), the front weights (off since LR
+75), `dodge_hold` (0), and the retreat thresholds (blended by w_smooth
+0.05; making them act is a change to the brain).
+
+**C. Bounded SPSA** (`scripts/spsa.sh`, `BOUND=2`, new): the eight
+largest gaps over both screens, none inert, each kept within half and
+double of its default; 24 steps of 48 seeds from 800000.
+
+**D. Two held-out reads** of SPSA's point: 400 seeds from 900000 and
+400 from 1000000.
+
+**Rules.** An arm or screen end is a candidate only on a 110-seed read
+past two errors above the defaults with no map past two errors below;
+a candidate goes to Paul, and no default changes from a screen alone.
+SPSA's point is promoted only if both held-out reads pass that bar and
+`make families` then holds on the Mac.
+
+**Expected.** w_flank's two ends exactly zero. The three arms act and
+read inside the noise, w_exposure 0.15 more likely below. Stage 1:
+about 7 of 135 ends past two errors by chance alone, more below than
+above (the defaults a peak, LR 88); 5 to 15 weights inert. At most
+three candidates after stage 2. SPSA's point within the bounds by
+construction; the held-out reads +0.0 to +0.5 each; promotion about
+one chance in five. Cost: about 13 hours.
+
+### The weight ledger
+
+A dashboard of the weights over time, as Paul asked: the count of
+weights at each commit of `weights.rs` (68 on 18 October, 109 on 25
+October), the sixteen default changes, every weight's range tried (as
+a default, in a census, or in the screen) as a share of today's
+default, the screen's two ends a weight, and every census on the
+census machine (70) with its two errors. Its data are files built from
+git and from `build/census` on the machine; the day's rows are added
+as they read. https://claude.ai/artifact/KdMP63zpmJVWgm4ChwgBpf
+
+### Next ideas from practice
+
+What LR 87 did not already list, from algorithm configuration, A/B
+testing at scale, and engine testing (Stockfish's fishtest):
+
+1. **Correct for many comparisons.** A screen of 135 ends at two
+   errors expects seven passes from chance; LR 88's SPSA point passed
+   its held-out read at z 2.002 and then read +0.09. Read a screen with
+   a false discovery rate (Benjamini-Hochberg at 10%) and shrink each
+   end toward zero by its error (empirical Bayes) before ranking. The
+   winner's curse is the reason a searched point needs its second read.
+2. **SPRT for promotion.** Fishtest promotes a patch by a sequential
+   probability ratio test between two hypotheses (no gain against a
+   gain worth having), which stops early both ways. The census's
+   O'Brien-Fleming looks (LR 78) stop only for large effects. An SPRT
+   with bounds 0 and +0.3 a seat would end most held-out reads well
+   before 400 seeds.
+3. **Variance reduction.** The pairs already share seeds (common random
+   numbers). Two more: stratify by map (each map's difference weighted
+   by a fixed share, so a run's draw of maps adds no noise), and CUPED
+   (regress the paired difference on what is known before the match:
+   the map, the start's distance to the nearest depot, the team's
+   neutral pillboxes in reach). Either can cut the seeds a reading
+   needs; how much is itself a census to run.
+4. **One results ledger.** Every census's commit, binary hash,
+   `run.env`, trial and pooled result in one table on the machine, as
+   experiment trackers keep (MLflow, Weights & Biases), read by the
+   weight ledger. Today the record is spread over `build/` folders and
+   NOTES files.
+5. **A canary census.** Each brain commit read against the last tagged
+   defaults on a fixed 110 seeds, nightly: drift seen the day it comes,
+   as performance tests gate a build.
+6. **Screening designs.** A definitive screening design reads k weights
+   in about 2k + 1 censuses, every census moving every weight, and
+   separates main effects from curvature (Jones and Nachtsheim 2011).
+   Against one weight at a time it shares each census's noise across
+   all weights, so each estimate needs fewer seeds.
+7. **More machines, one census each.** Paul can add CPUs. A census
+   stays on one machine (CENSUS.md section 5); a queue of censuses can
+   be dealt to several, each read against its own defaults, as fishtest
+   deals games to its workers. The screen's 135 rows would split
+   across two machines in half the time.
+8. **A learned brain.** LR 90.
+
+## 90. A learned brain: a study, 26 October
+
+Paul: "If we were to use Cuda, or some sort of Mac or PC based hardware
+acceleration. Is there a way to define this such that we start
+training a normal AI neural network given our current reward system.
+Perhaps we need some simple low effort rewards, like moving to the
+center of the map. and shooting ammo with hits. It needs rewards in
+order to find how to aim. Write a lab report about this. Perhaps we can
+consider training this faster on a GPU." Then: "I can slo spin up some more
+CPUs." A study; nothing built or run.
+
+### Yes, and the pieces are mostly here
+
+| A learning setup needs | treadcore has |
+| --- | --- |
+| an environment that steps without a window | `treadcore-sim`'s `World`, headless and deterministic by seed (the census plays it) |
+| an observation | `Observation` (`treadcore-sim`): the tank, every tank in sight, shells in flight, depots, pillboxes, mines, structures, boats, nearest forest and pads, the map's size |
+| actions | `Command`: `Move { to }`, `FireDirect { at }`, `FireIndirect { at }`, `Launch`, `Deploy`, `Stop`, `Respawn`, and the rest |
+| rewards | `ledger::Tally::hear` counts direct hits, pillbox damage and captures, defences, kills and deaths from the sim's events, tick by tick (LR 84) |
+| opponents | the scripted brain at any weights, the personalities, the skill dial (LR 67) |
+| a judge | the census and `make families`, unchanged |
+
+What is missing: a bridge from the Rust sim to a trainer, the
+observation turned into a fixed array, the actions into a fixed set,
+and a `Brain` that runs a trained network.
+
+### Where the time goes: the CPU, not the GPU
+
+The census machine plays about 625 ticks a second a thread with
+sixteen seats, scripted brains thinking included (110 seeds, three
+matches a seed, 18000 ticks a match, in 6.6 minutes on 24 threads).
+At a decision every 4 ticks (5 a second), 24 threads give about 60,000
+seat decisions a second, roughly 200 million an hour if every seat
+learns.
+
+A network for this game is small: a few hundred inputs, two layers of
+256, a few outputs. Its forward pass is microseconds on a CPU. The
+training update (PPO over a batch of a few hundred thousand decisions)
+is where a GPU helps: a few times faster than the CPU for a network
+this size. On a Mac, PyTorch runs on the Apple GPU through Metal (the
+`mps` device); on a PC with an NVIDIA card, CUDA. Either is enough.
+GPU simulators (Isaac Gym, Brax) are fast because the game itself runs
+on the GPU; that would mean writing the sim again, and is not worth it.
+
+So the speed of training is the speed of the sim: **more CPUs is the
+lever, and it scales nearly linearly.** A GPU is a convenience for the
+update step. Paul's extra CPUs help both the census and training.
+
+### The rewards: dense and simple first, the census's score last
+
+A network starting from nothing fires at random and almost never hits,
+so a hit reward alone teaches nothing for a long time. Paul's
+instinct is the standard answer: shaped rewards that pay small steps.
+Proposed, each a scalar (the weights rule), all per seat per decision:
+
+| Reward | Worth | Why |
+| --- | --- | --- |
+| a direct hit on a hostile tank | +1 | the aim; from `Tally::hear` as LR 84 counts it |
+| a shell fired that hits nothing | -0.05 | ammunition has a price, so it learns when not to fire |
+| closer to the objective | potential-based: +0.01 times the drop in distance to the nearest neutral or hostile pillbox (or the map's centre) | Paul's "move to the center"; potential-based (Ng, Harada and Russell 1999), so it cannot pay for circling and does not change what is best in the end |
+| armour lost | -0.01 a point | stay alive |
+| a kill | +3; a death -3 | |
+| the LR 84 rewards | as the census scores them | pillboxes, defences, every neutral |
+| the match | +10 a win | the census's own objective |
+
+The shaping terms are annealed to zero over training, so what the
+network ends up optimising is the census's score. LR 86 showed a
+reward can be gamed (shelling pillboxes earned most of a +7.19); the
+census with `CENSUS_REWARDS=0` beside it stays the check.
+
+### Aim: learn it from the scripted brain first
+
+The scripted brain already aims, leads, dodges and kites. Behaviour
+cloning (supervised learning of its command from its observation) over
+a few million decisions from census games gives a network that moves
+and shoots like today's bot in an hour or two of training. Reinforcement
+learning (PPO) then starts from that network, not from random. AlphaStar
+began this way; it saves most of the cold start, and aiming above all.
+
+For aim itself, the action is a target from a short list (the k
+nearest hostile tanks and pillboxes, or none) and a lead: an offset in
+the target's own frame, two numbers, which is what a gunner learns.
+A hit is then a reward the network can find.
+
+### The observation and the actions
+
+- **Observation**, egocentric and fixed: the tank (armour, shells,
+  mines, reload, heading, speed, afloat); the 8 nearest hostile tanks
+  and the 4 nearest allies (offset, velocity, armour, reload); the 8
+  nearest pillboxes (offset, owner, health); shells landing within 4 s
+  (offset, time to land); a 32 x 32 tile window of terrain around the
+  tank (a small convolution); the direction to the map's centre and to
+  the base. About 300 numbers and the window.
+- **Actions**, at 5 a second: a move (8 headings, or hold), a gun
+  (target from the list, or hold) and its lead, the indirect gun the
+  same way. Building, drones and the squad stay with the scripted
+  brain at first: the network drives and shoots, the commander
+  decides the rest. Later the network can pick the commander's goal.
+
+### The plan, in steps (each recorded as usual)
+
+1. **A bridge**: a Rust crate (`treadcore-gym`) with PyO3 bindings, a
+   vectorised environment of many worlds a process, each seat's
+   observation as a NumPy array, actions in, rewards out (the
+   Gymnasium and PettingZoo interfaces). Measure decisions a second.
+2. **Behaviour cloning** from census games of the scripted brain.
+   Check: the cloned brain, as a `Brain` in Rust (the network exported
+   to ONNX and run by `tract`, pure Rust), against the defaults in a
+   census. Expected: below, by little.
+3. **PPO**, against a pool of opponents: the scripted brain at the
+   skill dial's 0.3, then 0.6, then 1, then the personalities and
+   earlier copies of itself (self-play with a league, so it cannot
+   win by beating only its last self). Sample Factory or CleanRL as the
+   trainer.
+4. **Judged by the census**, the same rule as any change: two held-out
+   reads past two errors above, no map past two below, the families
+   held, the old score beside the new.
+
+**Costs.** Step 1, a day of code. Step 2, an hour of games to collect
+and an hour to train. Step 3 at 60,000 decisions a second: 100 million
+decisions in about half an hour on the census machine, a billion in
+about five hours, if the bridge keeps the sim's pace (a network called
+from Python each decision may halve it; step 1 measures it). Games of
+this kind have needed billions of decisions to pass a hand-built bot:
+a day or more of the machine, less with more CPUs.
+
+**What could go wrong.** A network that games a reward (the reason the
+old score stays beside the new). One that beats the defaults on a map
+or two and loses the rest (every map read). One too strong or strange
+for a person (the skill dial, LR 67, must still apply). And the
+scripted brain's strengths may be hard to pass: ninety sections of
+measured behaviour. The census will say.
+
+**Next**: Paul to choose whether to start step 1, and on which machine.

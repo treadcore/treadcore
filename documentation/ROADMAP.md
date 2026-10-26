@@ -1115,7 +1115,32 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     score beside the rewarded one, every map. Cost: steps of a night
     each. State: planned (LR 87); the first night queued 25 October
     (LR 88): the league row, a slope screen of 16 weights, SPSA on
-    the five it ranks first, a held-out read.
+    the five it ranks first, a held-out read. Read 26 October (LR 88,
+    CI-054): no candidate in the screen, the defaults a peak on each
+    axis; w_exposure and w_mine never act; SPSA's point passed its
+    held-out read at z 2.002 and families, then read +0.09 +/- 0.27
+    on fresh seeds: not promoted. Next: why w_exposure and w_mine
+    never act; the retreat thresholds; a second held-out read and
+    SPSA bounded to the screen's range (proposed, Paul to choose).
+    26 October (LR 89, CI-055): Paul chose both. w_exposure is tied
+    above w_flank and w_mine rarely beats a mend: neither a bug. The
+    second day queued on the census machine (09:21): arms where the
+    two can act, a two-stage screen of the 68 weights left, bounded
+    SPSA (`BOUND=2`) on the eight largest gaps, two held-out reads.
+    The weight ledger, a dashboard of the weights over time. Ideas
+    from practice listed (LR 89).
+
+70. A learned brain. (26 October; cause: Paul, "start training a
+    normal AI neural network given our current reward system"; LR
+    90.) Goal 4. A Rust-to-Python bridge (`treadcore-gym`, PyO3), an
+    egocentric observation and a small action set (drive, gun and its
+    lead), shaped rewards annealed to the census's score, behaviour
+    cloning from the scripted brain, then PPO against a league of
+    scripted and earlier networks; the network run in Rust (ONNX,
+    `tract`) as a `Brain` and judged by the census. The sim on CPUs is
+    the cost, not the network: more CPUs is the lever, a GPU (Metal or
+    CUDA) for the update step. State: a study (LR 90); Paul to choose
+    whether to start the bridge.
 
 ## Sequencing
 

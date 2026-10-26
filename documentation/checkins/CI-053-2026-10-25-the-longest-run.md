@@ -64,7 +64,19 @@ Each census's directory in `build/night/NAME.dir`; a line a census in
 
 ## IV. Results
 
-To come: LR 88's morning part.
+The night ran 18:40 to 00:42, six hours, not ten. Read in full in
+LR 88's morning part; the morning's steps are CI-054.
+
+- Block 1: six of nine expectations held (read at 19:33).
+- Block 2: no candidate; seven rows outside two errors, every one
+  below the defaults; nine weights flat; w_exposure and w_mine read
+  exactly zero.
+- Block 3: pick.py chose strikes_max, longshot_every, w_focus,
+  mass_for, castle_inside. SPSA's point read +0.597 +/- 0.298 (z
+  2.002) on 400 held-out seeds, no map past two errors below.
+- Expectations: 12 of 19 held across the night.
+
+Errors: the plan's timing (a census of 110 seeds 6.5 min, not 8).
 
 ---
 
