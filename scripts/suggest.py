@@ -150,6 +150,7 @@ def main():
 
     os.makedirs(o.out, exist_ok=True)
     plan = []
+    seen = set()  # a trial once a generation
 
     def value(w, v):
         """A weight's value at x = v; a weight of 0 to 1 stops halfway
@@ -163,8 +164,10 @@ def main():
         if len(plan) >= o.n:
             return
         x = {w: v for w, v in x.items() if value(w, v) != base[w]}
-        if not x:
+        key = tuple(sorted((w, round(value(w, v), 6)) for w, v in x.items()))
+        if not x or key in seen:
             return
+        seen.add(key)
         path = os.path.join(o.out, name + '.weights')
         with open(path, 'w') as f:
             f.write(f'# suggest.py: {why}\n')

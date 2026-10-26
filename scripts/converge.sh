@@ -78,7 +78,7 @@ fi
 # The census's line and its directory, for a trial file and seeds.
 census() { # census FILE SEEDS SEED0 -> prints the census dir
     TRIAL="$1" SEEDS="$2" SEED0="$3" MAP="$MAP" JOBS="$JOBS" "$ROOT/scripts/census.sh" >>"$OUT/census.log" 2>&1 || log "$(basename "$1"): census failed"
-    ls -td "$BUILDDIR"/census/*/ | head -1
+    ls -td "$BUILDDIR"/census/*/ | sed -n 1p  # sed reads it all: no SIGPIPE under pipefail
 }
 # Past two errors above, with no map past two below.
 passes() { # passes DIR
