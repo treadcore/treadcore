@@ -151,6 +151,7 @@ def main():
     os.makedirs(o.out, exist_ok=True)
     plan = []
     seen = set()  # a trial once a generation
+    read_before = {tuple(sorted((w, round(value(w, v), 6)) for w, v in x.items())) for _, x, _, _ in reads}
 
     def value(w, v):
         """A weight's value at x = v; a weight of 0 to 1 stops halfway
@@ -205,9 +206,10 @@ def main():
             x, g = top(a, b, -span, span)
             if g > 0 and abs(x) > 1e-9:
                 draw[w] = x
-        # A few weights at a time, so a census can tell what it read.
+        # A few weights at a time, so a census can tell what it read; a
+        # draw already read is not read again here (reads again are 2a's).
         pick = dict(rng.sample(sorted(draw.items()), min(4, len(draw)))) if draw else {}
-        if pick:
+        if pick and tuple(sorted((w, round(value(w, v), 6)) for w, v in pick.items())) not in read_before:
             emit(f'sample-{s}', 'a draw from the fit\'s uncertainty, its top', pick)
         s += 1
     for w, hi in unexplored:
