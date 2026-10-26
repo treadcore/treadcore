@@ -109,7 +109,8 @@ def main():
 
     rows, reads = [], []
     for r in csv.DictReader(open(o.ledger), delimiter='\t'):
-        if r['stamp'] < o.since or r['base'].replace(' ', '') != 'caps=baseline' or 'caps=' in r['trial']:
+        # Weights against the defaults only: not a caps census, not a net's (LR 96).
+        if r['stamp'] < o.since or r['base'].replace(' ', '') != 'caps=baseline' or 'caps=' in r['trial'] or r['trial'].startswith('net='):
             continue
         t = trial(r['trial'])
         x = {w: math.log2(v / base[w]) for w, v in t.items() if w in base and base[w] > 0 and v > 0}

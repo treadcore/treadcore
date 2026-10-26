@@ -62,6 +62,8 @@ if [ -z "${RESUME:-}" ]; then
     done
     printf 'SEEDS=%q\nSEED0=%q\nSECS=%q\nMAP=%q\nRESPAWNS=%q\nJOBS=%q\n' "$SEEDS" "$SEED0" "$SECS" "$MAP" "$RESPAWNS" "$JOBS" >"$OUT/run.env"
     # What it was built from and where, for the ledger (LR 92).
+    # A team of learned tanks in the trial seat (LR 96), if any.
+    printf 'NET=%q\n' "${CENSUS_NET:-}" >>"$OUT/run.env"
     printf 'COMMIT=%q\nHOST=%q\n' "$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)$(git -C "$ROOT" diff --quiet HEAD -- source 2>/dev/null || echo +)" "$(hostname)" >>"$OUT/run.env"
 fi
 MAPS="$(census_maps "$MAP")"

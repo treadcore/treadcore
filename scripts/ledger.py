@@ -85,7 +85,10 @@ def row(d, host):
         'commit': e.get('COMMIT', ''), 'binary': binary(os.path.join(d, 'census-bin')),
         'seeds': e.get('SEEDS', str(n)), 'seed0': e.get('SEED0', ''), 'secs': e.get('SECS', ''),
         'map': e.get('MAP', ''), 'respawns': e.get('RESPAWNS', ''),
-        'trial': weights(os.path.join(d, 'trial.weights')), 'base': weights(os.path.join(d, 'base.weights')),
+        # A net in the trial seat (LR 96) is the trial; its weights file is
+        # the defaults' and says nothing.
+        'trial': f"net={e['NET']}" if e.get('NET') else weights(os.path.join(d, 'trial.weights')),
+        'base': weights(os.path.join(d, 'base.weights')),
         'd': f'{dd:+.2f}', 'se': f'{se:.2f}', 'z': f'{dd / se:+.2f}' if se > 0 else '0.00',
         'maps': '|'.join(maps),
     }

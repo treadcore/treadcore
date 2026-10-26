@@ -854,6 +854,15 @@ mod tests {
         // as before them.
         let k = if std::env::var("CENSUS_REWARDS").map(|v| v == "0").unwrap_or(false) { k.without_rewards() } else { k };
         eprintln!("brain_census: rewards {}", if k.direct_hit > 0.0 { "on" } else { "off (CENSUS_REWARDS=0)" });
+        // A team of learned tanks in the trial seat (LR 96): `CENSUS_NET`
+        // is a net's file, or `seed:N` for a random net of that seed.
+        let net: Option<crate::net::Net> = std::env::var("CENSUS_NET").ok().filter(|v| !v.is_empty()).map(|v| match v.strip_prefix("seed:") {
+            Some(n) => crate::net::Net::tank(n.parse().expect("CENSUS_NET=seed:N")),
+            None => crate::net::Net::load(std::path::Path::new(&v)).unwrap_or_else(|e| panic!("CENSUS_NET: {}", e)),
+        });
+        if let Some(n) = &net {
+            eprintln!("brain_census: the trial team is a net ({}, {} weights)", std::env::var("CENSUS_NET").unwrap_or_default(), n.parameters());
+        }
         eprintln!("brain_census: trial caps [{}], {} weights changed {:?}; baseline caps [{}], {} weights changed {:?}", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>(), base.caps.names(), base.diff().len(), base.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>());
         let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
         // A seed's sums, trial and baseline, for the difference a seed
@@ -924,6 +933,9 @@ mod tests {
             new_match();
             let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS)
                 .map(|i| {
+                    if let Some(n) = net.as_ref().filter(|_| teams()[i] == lucky) {
+                        return (i as PlayerId, Box::new(crate::net::NetBrain::new(n.clone(), &name(i))) as Box<dyn Brain>);
+                    }
                     let s = if teams()[i] == lucky { trial.clone() } else { base.clone() };
                     (i as PlayerId, with_settings(s, || brain(i, seed ^ i as u64, false)))
                 })
