@@ -598,15 +598,18 @@ pub fn drive_path(me: &Tank, to: V2, ticks: u32, map: Option<&Map>) -> Option<Ve
     drive_path_by(me, to, ticks, map, false)
 }
 
-/// `drive_path`; with `own` (`dodge_own_route`, LR 93), a drive to where
-/// the tank's route already ends follows that route, its waypoint and
-/// the rest: the way the world will drive it (pillboxes' reach and
-/// mines priced in), and no search. The dodge asks this every tick a
-/// shell is coming, and the search was a quarter of a census (LR 91).
+/// `drive_path`; with `own` (`dodge_own_route`, LR 93), a drive ashore
+/// to where the tank's route already ends follows that route, its
+/// waypoint and the rest: the way the world will drive it (pillboxes'
+/// reach and mines priced in), and no search. The dodge asks this every
+/// tick a shell is coming, and the search was a quarter of a census (LR
+/// 91). Afloat it searches still: a boat's own route and the searched
+/// one part three times as often as ashore and turn the dodge's verdict
+/// three times as often, and few of the forecasts are afloat (LR 93).
 pub fn drive_path_by(me: &Tank, to: V2, ticks: u32, map: Option<&Map>, own: bool) -> Option<Vec<V2>> {
     let going = me.route.last().copied().or(me.goal);
     let mut route = match map {
-        _ if own && going == Some(to) => me.goal.into_iter().chain(me.route.iter().copied()).collect(),
+        _ if own && !me.boat && going == Some(to) => me.goal.into_iter().chain(me.route.iter().copied()).collect(),
         Some(m) => m.route_kept(me.pos, to, me.boat),
         None => vec![to],
     };
@@ -2190,6 +2193,40 @@ mod tests {
         // pivots and returns, and can end where it began.
         assert!(driven / n as f32 > 1.5, "the tanks drove");
         assert!(worst < 0.1, "drive_to was {:.2} tiles off", worst);
+    }
+
+    /// `dodge_own_route` (LR 93): with a hostile pillbox beside the way,
+    /// the world's route goes round its reach, and the forecast along
+    /// the tank's own route says where the tank is after 3 s; a searched
+    /// route, which leaves the pillbox out, goes straight past it.
+    #[test]
+    fn the_own_route_foresees_a_drive_round_a_gun() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        w.pillboxes.truncate(1);
+        let (start, heading) = (w.tanks[0].pos, w.tanks[0].heading);
+        let to = start + V2::from_heading(heading).scale(24.0);
+        assert!(w.map.in_bounds(to) && w.map.at(to).passable(), "open ground ahead");
+        // The gun beside the middle of the straight way, two tiles off it.
+        let mid = start + (to - start).scale(0.5) + V2::from_heading(heading + std::f32::consts::FRAC_PI_2).scale(2.0);
+        w.pillboxes[0].pos = mid;
+        w.pillboxes[0].owner = Some(1);
+        w.pillboxes[0].shells = 0;
+        w.step(&[Order { player: 0, cmd: Command::Move { to } }]);
+        let me = w.tanks[0].clone();
+        assert!(!me.route.is_empty() || me.goal.is_some(), "the world routed the move");
+        let own = drive_path_by(&me, to, 60, Some(&w.map), true).expect("a way").last().copied().unwrap();
+        let searched = drive_path_by(&me, to, 60, Some(&w.map), false).expect("a way").last().copied().unwrap();
+        for _ in 0..60 {
+            w.step(&[]);
+        }
+        let at = w.tanks[0].pos;
+        eprintln!("own route {:.2} tiles off, searched {:.2}", own.dist(at), searched.dist(at));
+        assert!(own.dist(at) < 0.3, "the own route forecast {:.2} tiles off", own.dist(at));
+        assert!(searched.dist(at) > own.dist(at) + 0.5, "the searched route {:.2} tiles off: the gun changed nothing", searched.dist(at));
+        // Afloat it searches still: the same forecast either way.
+        let mut boat = me.clone();
+        boat.boat = true;
+        assert_eq!(drive_path_by(&boat, to, 60, Some(&w.map), true), drive_path_by(&boat, to, 60, Some(&w.map), false));
     }
 
     /// `landfall_shy` (backlog 30, LR 31): of two beaches, the nearer

@@ -154,7 +154,7 @@ weights! {
     DodgeRelease "dodge_release" 1.0, "dodge: once at its point before the shell lands, an errand that would drive the tank back into the splash waits (1, the default since LR 54, Paul's choice), against every errand at once (0, before LR 53); thresholded at 0.5";
     DodgeEvery "dodge_every" 1.0, "dodge: the plan and the release against every hostile shell landing within the horizon, each at its own landing (1, LR 56), against the one shell dodged (0, LR 53); thresholded at 0.5";
     DodgeFire "dodge_fire" 1.0, "dodge: with a hostile shell landing within the horizon, a shot whose turn of the hull (a tank has no turret) would carry the tank into the splash waits (1, LR 57), against the guns free (0); thresholded at 0.5";
-    DodgeOwnRoute "dodge_own_route" 0.0, "dodge: the forecast of a drive (`drive_path`) to where the tank is already going follows the tank's own route, the one the world will drive, with no search (1, LR 93), against a route searched afresh every tick under fire (0, before LR 93); thresholded at 0.5";
+    DodgeOwnRoute "dodge_own_route" 0.0, "dodge: the forecast of a drive (`drive_path`) ashore to where the tank is already going follows the tank's own route, the one the world will drive, with no search (1, LR 93; afloat it searches), against a route searched afresh every tick under fire (0, before LR 93); thresholded at 0.5";
     DodgePlan "dodge_plan" 1.0, "dodge: the point by where the tank's own turn and speed will have it when the shell lands (1, the default since LR 54, Paul's choice), against across the shell's line always (0, before LR 53); thresholded at 0.5";
     // The run for the beach (lib.rs `RuleBot::landfall_order`, LR 31).
     // On by default since LR 38 (Paul, 19 October: "yes all three on"):
