@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the census runs 2.6 times faster with every match the same:
+  each observation gathers its side's eyes, data centres, pads and
+  banks once; forest and water are read outward in rings that stop
+  early; the route search's heap compares integers
+  (LAB-REPORT-BRAIN.md section 91).
+
 - Changed: `make spsa` keeps each tuned weight within `BOUND` of where
   it started, half to double by default (`BOUND=0` the old unbounded
   walk; LAB-REPORT-BRAIN.md section 89).

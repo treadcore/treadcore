@@ -1093,6 +1093,16 @@ impl Default for Scenario {
 
 // -------------------------------------------------------------------- world
 
+
+/// One of a side's eyes (`World::eyes`): where it is and how far it sees
+/// a point in the open and a point in forest.
+#[derive(Clone, Copy, Debug)]
+pub struct Eye {
+    pub pos: V2,
+    pub open: f32,
+    pub forest: f32,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct World {
     pub tick: Tick,
@@ -1367,18 +1377,27 @@ impl World {
     /// The shared, all-seeing world is the host's; what a player gets is
     /// `observe()`.
     pub fn visible_to(&self, p: PlayerId, at: V2) -> bool {
-        let in_forest = self.map.at(at) == Terrain::Forest;
-        for t in self.tanks.iter().filter(|t| t.alive && self.allied(t.owner, p)) {
-            let r = if in_forest { TANK_VISION * 0.5 } else { TANK_VISION };
-            if t.pos.dist(at) <= r {
-                return true;
-            }
-        }
-        self.drones.iter().filter(|d| self.allied(d.owner, p)).any(|d| {
+        self.seen_by(&self.eyes(p), at)
+    }
+
+    /// The eyes of `p` and its allies, for `seen_by`: each living allied
+    /// tank and each allied drone with its reach in the open and into
+    /// forest. `observe` asks hundreds of points a tick of one player;
+    /// gathered once, the allies are not looked up for each.
+    pub fn eyes(&self, p: PlayerId) -> Vec<Eye> {
+        let side = |o: PlayerId| self.allied(o, p);
+        let tanks = self.tanks.iter().filter(|t| t.alive && side(t.owner)).map(|t| Eye { pos: t.pos, open: TANK_VISION, forest: TANK_VISION * 0.5 });
+        let drones = self.drones.iter().filter(|d| side(d.owner)).map(|d| {
             let r = d.spec().vision;
-            let r = if in_forest { r * 0.6 } else { r };
-            d.pos.dist(at) <= r
-        })
+            Eye { pos: d.pos, open: r, forest: r * 0.6 }
+        });
+        tanks.chain(drones).collect()
+    }
+
+    /// `visible_to` over eyes gathered by `eyes`.
+    pub fn seen_by(&self, eyes: &[Eye], at: V2) -> bool {
+        let in_forest = self.map.at(at) == Terrain::Forest;
+        eyes.iter().any(|e| e.pos.dist(at) <= if in_forest { e.forest } else { e.open })
     }
 
     /// Does a recon drone of `p`, or of an ally, have `at` in view right
@@ -1407,6 +1426,11 @@ impl World {
     /// Can `p` see this tank? Its own always; a concealed one only from
     /// inside `CONCEAL_RANGE`; otherwise by the ordinary discs.
     pub fn tank_visible_to(&self, p: PlayerId, t: &Tank) -> bool {
+        self.tank_seen_by(p, &self.eyes(p), t)
+    }
+
+    /// `tank_visible_to` over eyes gathered by `eyes(p)`.
+    pub fn tank_seen_by(&self, p: PlayerId, eyes: &[Eye], t: &Tank) -> bool {
         if t.owner == p {
             return true;
         }
@@ -1418,7 +1442,7 @@ impl World {
         if self.concealed(t.pos) {
             return self.tanks.iter().any(|o| o.alive && self.allied(o.owner, p) && o.pos.dist(t.pos) <= CONCEAL_RANGE) || self.drones.iter().any(|d| self.allied(d.owner, p) && d.pos.dist(t.pos) <= CONCEAL_RANGE);
         }
-        self.visible_to(p, t.pos)
+        self.seen_by(eyes, t.pos)
     }
 
     // ------------------------------------------------------------ stepping
@@ -3799,11 +3823,14 @@ impl World {
             .filter(|t| t.alive && !t.boat)
             .map(|t| self.map.launch_sites(t.pos, LAUNCH_SIGHT, 12).into_iter().filter(|s| !self.depots.iter().any(|d| d.pos.dist(*s) <= DEPOT_RADIUS) && !self.boats.iter().any(|b| b.pos.tile() == s.tile())).collect())
             .unwrap_or_default();
-        let boats = self.boats.iter().filter(|b| self.allied(b.owner, p) || self.visible_to(p, b.pos)).cloned().collect();
+        let eyes = self.eyes(p);
+        let boats = self.boats.iter().filter(|b| self.allied(b.owner, p) || self.seen_by(&eyes, b.pos)).cloned().collect();
         let advantage = self.scenario.advantage && self.players.iter().any(|x| x.id == p && x.is_bot);
-        let tanks = self.tanks.iter().filter(|t| self.tank_visible_to(p, t) || (advantage && t.alive)).cloned().collect();
-        let drones = self.drones.iter().filter(|d| d.owner == p || self.visible_to(p, d.pos) || self.radar_sees(p, d.pos)).cloned().collect();
-        let shells = self.shells.iter().filter(|s| s.owner == p || self.visible_to(p, s.pos_at(self.tick)) || self.visible_to(p, s.impact)).cloned().collect();
+        let tanks = self.tanks.iter().filter(|t| self.tank_seen_by(p, &eyes, t) || (advantage && t.alive)).cloned().collect();
+        // `radar_sees`, its data centres gathered once (LR 91).
+        let radars: Vec<V2> = self.structures.iter().filter(|s| s.kind == StructureKind::DataCentre && s.working() && self.allied_opt(s.owner, p)).map(|s| s.pos).collect();
+        let drones = self.drones.iter().filter(|d| d.owner == p || self.seen_by(&eyes, d.pos) || radars.iter().any(|r| r.dist(d.pos) <= DATACENTRE_RADAR)).cloned().collect();
+        let shells = self.shells.iter().filter(|s| s.owner == p || self.seen_by(&eyes, s.pos_at(self.tick)) || self.seen_by(&eyes, s.impact)).cloned().collect();
         Observation {
             tick: self.tick,
             player: p,

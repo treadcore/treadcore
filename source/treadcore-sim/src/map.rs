@@ -254,7 +254,44 @@ thread_local! {
     static ROUTES: std::cell::RefCell<std::collections::HashMap<RouteKey, Vec<V2>>> = std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
+/// The tiles `Map::terrain_near` (pads) and `Map::launch_sites` (water
+/// by a bank) can answer with, per thread: (map id, edits, which) to the
+/// tiles, in row order. Both are few on most maps, so a scan of the
+/// square round a tank finds none to stop on, and every bot's
+/// observation asks every tick (LR 91).
+type SitesKey = (u64, u64, u8);
+const SITES_LAUNCH: u8 = u8::MAX;
+thread_local! {
+    static SITES: std::cell::RefCell<std::collections::HashMap<SitesKey, std::rc::Rc<Vec<u32>>>> = std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
 impl Map {
+    /// The tiles `keep` takes, in row order, kept under `which` until
+    /// the map changes.
+    fn sites(&self, which: u8, keep: impl Fn(i32, i32) -> bool) -> std::rc::Rc<Vec<u32>> {
+        let key = (self.edits.id, self.edits.n, which);
+        if let Some(l) = SITES.with(|c| c.borrow().get(&key).cloned()) {
+            return l;
+        }
+        let mut l = Vec::new();
+        for y in 0..self.h as i32 {
+            for x in 0..self.w as i32 {
+                if keep(x, y) {
+                    l.push(y as u32 * self.w as u32 + x as u32);
+                }
+            }
+        }
+        let l = std::rc::Rc::new(l);
+        SITES.with(|c| {
+            let mut c = c.borrow_mut();
+            if c.len() >= 64 {
+                c.clear();
+            }
+            c.insert(key, l.clone());
+        });
+        l
+    }
+
     /// `route_by` with no danger, kept: the same route for the same
     /// tiles on the same cells, without the search again. The brain's
     /// look ahead (`drive_path`) asks the route to a move's end several
@@ -648,27 +685,15 @@ impl Map {
     /// no map: water tiles beside a bank a squad can stand on (land, not
     /// a bridge), within `radius`, the `n` nearest as tile centres.
     pub fn launch_sites(&self, around: V2, radius: f32, n: usize) -> Vec<V2> {
-        let (cx, cy) = around.tile();
-        let r = radius.ceil() as i32;
-        let mut out: Vec<(f32, V2)> = Vec::new();
-        for y in (cy - r).max(0)..(cy + r + 1).min(self.h as i32) {
-            for x in (cx - r).max(0)..(cx + r + 1).min(self.w as i32) {
-                if self.at_tile(x as usize, y as usize) != Terrain::Water {
-                    continue;
-                }
-                let bank = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|(dx, dy)| {
+        let bank = |x: i32, y: i32| {
+            self.at_tile(x as usize, y as usize) == Terrain::Water
+                && [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|(dx, dy)| {
                     let (nx, ny) = (x + dx, y + dy);
                     self.in_tile(nx, ny) && { let t = self.at_tile(nx as usize, ny as usize); t.passable() && t != Terrain::Bridge }
-                });
-                let c = V2::new(x as f32 + 0.5, y as f32 + 0.5);
-                let d = c.dist(around);
-                if bank && d <= radius {
-                    out.push((d, c));
-                }
-            }
-        }
-        out.sort_by(|a, b| a.0.total_cmp(&b.0));
-        out.into_iter().take(n).map(|(_, c)| c).collect()
+                })
+        };
+        let sites = self.sites(SITES_LAUNCH, bank);
+        self.nearest_tiles(around, radius, n, bank, Some(&sites))
     }
 
     pub fn forest_near(&self, around: V2, radius: f32, n: usize) -> Vec<V2> {
@@ -678,22 +703,83 @@ impl Map {
     /// The `n` nearest tiles of one terrain within `radius`, as tile
     /// centres, nearest first.
     pub fn terrain_near(&self, terrain: Terrain, around: V2, radius: f32, n: usize) -> Vec<V2> {
+        let keep = |x: i32, y: i32| self.at_tile(x as usize, y as usize) == terrain;
+        // Pads are few: their list. Forest and the rest are many: the
+        // rings, which stop early among them.
+        let sites = (terrain == Terrain::Pad).then(|| self.sites(terrain as u8, keep));
+        self.nearest_tiles(around, radius, n, keep, sites.as_deref().map(|l| l.as_slice()))
+    }
+
+    /// The `n` nearest tiles that `keep` takes within `radius` of
+    /// `around`, as tile centres, nearest first, ties in row order: as a
+    /// scan of the whole square sorted by distance would give them. The
+    /// square is read in rings outward from `around`'s tile and the read
+    /// stops once no further ring can hold a nearer tile: a tile k rings
+    /// out is at least k - 0.5 off. Every bot's observation asks this
+    /// each tick (LR 91). Given `sites`, every tile `keep` takes in row
+    /// order, the read is of those in the square instead when they are
+    /// fewer than its tiles.
+    fn nearest_tiles(&self, around: V2, radius: f32, n: usize, keep: impl Fn(i32, i32) -> bool, sites: Option<&[u32]>) -> Vec<V2> {
         let (cx, cy) = around.tile();
         let r = radius.ceil() as i32;
-        let mut out: Vec<(f32, V2)> = Vec::new();
-        for y in (cy - r).max(0)..(cy + r + 1).min(self.h as i32) {
-            for x in (cx - r).max(0)..(cx + r + 1).min(self.w as i32) {
-                if self.at_tile(x as usize, y as usize) == terrain {
-                    let c = V2::new(x as f32 + 0.5, y as f32 + 0.5);
-                    let d = c.dist(around);
+        let (x0, x1) = ((cx - r).max(0), (cx + r).min(self.w as i32 - 1));
+        let (y0, y1) = ((cy - r).max(0), (cy + r).min(self.h as i32 - 1));
+        let mut out: Vec<(f32, usize)> = Vec::new();
+        let order = |a: &(f32, usize), b: &(f32, usize)| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1));
+        let square = ((x1 - x0 + 1).max(0) * (y1 - y0 + 1).max(0)) as usize;
+        if let Some(sites) = sites.filter(|l| l.len() < square) {
+            for &i in sites {
+                let (x, y) = ((i as usize % self.w) as i32, (i as usize / self.w) as i32);
+                if (x0..=x1).contains(&x) && (y0..=y1).contains(&y) {
+                    let d = V2::new(x as f32 + 0.5, y as f32 + 0.5).dist(around);
                     if d <= radius {
-                        out.push((d, c));
+                        out.push((d, i as usize));
                     }
                 }
             }
+            out.sort_by(order);
+            return out.into_iter().take(n).map(|(_, i)| V2::new((i % self.w) as f32 + 0.5, (i / self.w) as f32 + 0.5)).collect();
         }
-        out.sort_by(|a, b| a.0.total_cmp(&b.0));
-        out.into_iter().take(n).map(|(_, c)| c).collect()
+        let take = |x: i32, y: i32, out: &mut Vec<(f32, usize)>| {
+            if keep(x, y) {
+                let d = V2::new(x as f32 + 0.5, y as f32 + 0.5).dist(around);
+                if d <= radius {
+                    out.push((d, y as usize * self.w + x as usize));
+                }
+            }
+        };
+        for k in 0..=r {
+            if k == 0 {
+                if (x0..=x1).contains(&cx) && (y0..=y1).contains(&cy) {
+                    take(cx, cy, &mut out);
+                }
+            } else {
+                // The ring's top and bottom rows, then its two sides.
+                for y in [cy - k, cy + k] {
+                    if (y0..=y1).contains(&y) {
+                        for x in (cx - k).max(x0)..=(cx + k).min(x1) {
+                            take(x, y, &mut out);
+                        }
+                    }
+                }
+                for x in [cx - k, cx + k] {
+                    if (x0..=x1).contains(&x) {
+                        for y in (cy - k + 1).max(y0)..=(cy + k - 1).min(y1) {
+                            take(x, y, &mut out);
+                        }
+                    }
+                }
+            }
+            if n > 0 && out.len() >= n && k < r {
+                out.select_nth_unstable_by(n - 1, order);
+                out.truncate(n);
+                if out[n - 1].0 < k as f32 + 0.5 {
+                    break;
+                }
+            }
+        }
+        out.sort_by(order);
+        out.into_iter().take(n).map(|(_, i)| V2::new((i % self.w) as f32 + 0.5, (i / self.w) as f32 + 0.5)).collect()
     }
 
 
@@ -870,21 +956,6 @@ impl Map {
     }
 
     pub fn route_by(&self, a: V2, b: V2, afloat: bool, danger: impl Fn(V2) -> f32) -> Vec<V2> {
-        use std::cmp::Ordering;
-        use std::collections::BinaryHeap;
-        #[derive(PartialEq)]
-        struct Node(f32, usize);
-        impl Eq for Node {}
-        impl PartialOrd for Node {
-            fn partial_cmp(&self, o: &Self) -> Option<Ordering> {
-                Some(self.cmp(o))
-            }
-        }
-        impl Ord for Node {
-            fn cmp(&self, o: &Self) -> Ordering {
-                o.0.partial_cmp(&self.0).unwrap_or(Ordering::Equal)
-            }
-        }
         let (ax, ay) = a.tile();
         let (bx, by) = b.tile();
         if !self.in_tile(ax, ay) || !self.in_tile(bx, by) || !(self.at(b).passable() || afloat && self.at(b) == Terrain::Water) {
@@ -905,15 +976,17 @@ impl Map {
         SCRATCH.with(|sc| {
         let sc = &mut *sc.borrow_mut();
         sc.begin(n);
-        let mut open = BinaryHeap::new();
+        let mut open = std::mem::take(&mut sc.open);
+        open.clear();
         sc.set(start, 0.0, usize::MAX);
-        open.push(Node(0.0, start));
+        open.push(Open::new(0.0, start));
         let h = |i: usize| {
             let (x, y) = ((i % self.w) as f32, (i / self.w) as f32);
             ((x - bx as f32).powi(2) + (y - by as f32).powi(2)).sqrt() * 0.6
         };
         let mut found = false;
-        while let Some(Node(f, cur)) = open.pop() {
+        while let Some(node) = open.pop() {
+            let (f, cur) = (node.f(), node.1);
             // An entry pushed before a cheaper way here was found: its
             // neighbours were already seen at the cheaper cost, so it
             // can change nothing (the same routes as before, sooner).
@@ -925,6 +998,7 @@ impl Map {
                 break;
             }
             let (cx, cy) = ((cur % self.w) as i32, (cur / self.w) as i32);
+            let here = Terrain::from_u8(self.cells[cur]);
             for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)] {
                 let (nx, ny) = (cx + dx, cy + dy);
                 if !self.in_tile(nx, ny) {
@@ -932,7 +1006,6 @@ impl Map {
                 }
                 let ni = idx(nx, ny);
                 let t = Terrain::from_u8(self.cells[ni]);
-                let here = Terrain::from_u8(self.cells[cur]);
                 let cost = if afloat {
                     if !Map::afloat_step(here, t) {
                         continue;
@@ -971,10 +1044,11 @@ impl Map {
                 let ng = sc.g(cur) + step;
                 if ng < sc.g(ni) {
                     sc.set(ni, ng, cur);
-                    open.push(Node(ng + h(ni), ni));
+                    open.push(Open::new(ng + h(ni), ni));
                 }
             }
         }
+        sc.open = open;
         if !found {
             return vec![];
         }
@@ -1017,6 +1091,36 @@ struct Scratch {
     came: Vec<usize>,
     stamp: Vec<u32>,
     now: u32,
+    /// `route_by`'s open list, kept between searches for its memory.
+    open: std::collections::BinaryHeap<Open>,
+}
+
+/// An entry of `route_by`'s open list: f, the cost so far and the
+/// estimate on, and the tile. f is never negative, so its bits order as
+/// it does, and the heap pops least f first by comparing integers: the
+/// same order, so the same routes, as comparing the floats (LR 91).
+#[derive(PartialEq, Eq)]
+struct Open(u32, usize);
+
+impl Open {
+    fn new(f: f32, i: usize) -> Open {
+        Open(f.to_bits(), i)
+    }
+    fn f(&self) -> f32 {
+        f32::from_bits(self.0)
+    }
+}
+
+impl PartialOrd for Open {
+    fn partial_cmp(&self, o: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(o))
+    }
+}
+
+impl Ord for Open {
+    fn cmp(&self, o: &Self) -> std::cmp::Ordering {
+        o.0.cmp(&self.0)
+    }
 }
 
 impl Scratch {
@@ -1047,7 +1151,7 @@ impl Scratch {
 }
 
 thread_local! {
-    static SCRATCH: std::cell::RefCell<Scratch> = const { std::cell::RefCell::new(Scratch { g: Vec::new(), came: Vec::new(), stamp: Vec::new(), now: 0 }) };
+    static SCRATCH: std::cell::RefCell<Scratch> = const { std::cell::RefCell::new(Scratch { g: Vec::new(), came: Vec::new(), stamp: Vec::new(), now: 0, open: std::collections::BinaryHeap::new() }) };
 }
 
 // ---------------------------------------------------------------- files
@@ -1272,6 +1376,60 @@ impl Noise {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The ring read (`nearest_tiles`) and the read of a list of sites
+    /// give what a scan of the whole square sorted by distance gave, ties
+    /// in row order: every terrain, pads and banks, points anywhere on an
+    /// industrial generated map (edges and corners too), radii to past
+    /// the map, counts from none to all.
+    #[test]
+    fn the_ring_read_finds_what_the_whole_square_did() {
+        let mut m = Map::generate(5);
+        m.industrialise();
+        assert!(m.cells.iter().any(|&c| c == Terrain::Pad as u8), "pads to find");
+        let square = |m: &Map, around: V2, radius: f32, n: usize, keep: &dyn Fn(i32, i32) -> bool| -> Vec<V2> {
+            let (cx, cy) = around.tile();
+            let r = radius.ceil() as i32;
+            let mut out: Vec<(f32, V2)> = Vec::new();
+            for y in (cy - r).max(0)..(cy + r + 1).min(m.h as i32) {
+                for x in (cx - r).max(0)..(cx + r + 1).min(m.w as i32) {
+                    let c = V2::new(x as f32 + 0.5, y as f32 + 0.5);
+                    let d = c.dist(around);
+                    if keep(x, y) && d <= radius {
+                        out.push((d, c));
+                    }
+                }
+            }
+            out.sort_by(|a, b| a.0.total_cmp(&b.0));
+            out.into_iter().take(n).map(|(_, c)| c).collect()
+        };
+        let mut rng = Rng::new(3);
+        let mut f = || (rng.next_u64() % 1_000_000) as f32 / 1_000_000.0;
+        for k in 0..3000 {
+            // The map changes under the kept lists: a pad laid, water
+            // dug, ground cleared.
+            if k % 50 == 0 {
+                let at = V2::new(f() * m.w as f32, f() * m.h as f32);
+                m.set(at, [Terrain::Pad, Terrain::Water, Terrain::Grass][(k / 50) % 3]);
+            }
+            let around = match k % 5 {
+                0 => V2::new(0.2, f() * m.h as f32),
+                1 => V2::new(m.w as f32 - 0.1, m.h as f32 - 0.3),
+                _ => V2::new(f() * m.w as f32, f() * m.h as f32),
+            };
+            let radius = [0.4, 1.0, 3.5, 16.0, 20.0, 200.0][k % 6];
+            let n = [0, 1, 8, 12, 32, 100_000][(k / 6) % 6];
+            for t in [Terrain::Forest, Terrain::Water, Terrain::Grass, Terrain::Road, Terrain::Pad] {
+                let keep = |x: i32, y: i32| m.at_tile(x as usize, y as usize) == t;
+                assert_eq!(m.terrain_near(t, around, radius, n), square(&m, around, radius, n, &keep), "{:?} at {:?} r {} n {}", t, around, radius, n);
+            }
+            let bank = |x: i32, y: i32| {
+                m.at_tile(x as usize, y as usize) == Terrain::Water
+                    && [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|(dx, dy)| m.in_tile(x + dx, y + dy) && { let t = m.at_tile((x + dx) as usize, (y + dy) as usize); t.passable() && t != Terrain::Bridge })
+            };
+            assert_eq!(m.launch_sites(around, radius, n), square(&m, around, radius, n, &bank), "launch at {:?} r {} n {}", around, radius, n);
+        }
+    }
 
     #[test]
     fn generation_is_deterministic_and_starts_are_dry() {

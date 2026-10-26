@@ -1142,6 +1142,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     CUDA) for the update step. State: a study (LR 90); Paul to choose
     whether to start the bridge.
 
+71. A faster census. (26 October; cause: Paul, "adjust the brain to
+    simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every
+    match the same, checked by a census matching to the character and
+    `make families`; then route search, about 40% of the time, which
+    changes routes and is read by a census (LR 92). State: 2.6 times
+    faster, deployed to the census machine 26 October (LR 91); the
+    route search next.
+
 ## Sequencing
 
 ```

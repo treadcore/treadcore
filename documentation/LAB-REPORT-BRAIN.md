@@ -5557,3 +5557,65 @@ scripted brain's strengths may be hard to pass: ninety sections of
 measured behaviour. The census will say.
 
 **Next**: Paul to choose whether to start step 1, and on which machine.
+
+## 91. The census 2.6 times faster, every match the same, 26 October
+
+Paul: "We have CPU . but we can also install some CUDA on Copal and
+perhaps adjust the brain to simulate much faster. If it won't be
+faster, then just keep with CPU", then "nice findings and reductions.
+Continue to refactor. I like these speedups."
+
+**Where the time went.** macOS `sample` on a census on the Mac (every
+map, 300 s): `World::visible_to` took 58% of the busy time. It is
+asked for every shell (twice), drone, tank and boat each seat's
+observation holds, each tick, and each time walked every tank and
+drone asking `allied`, itself two searches of the player list.
+
+**The rule for a speed-up**: the same matches. The check is a census
+of 6 seeds from 170000, every map, 300 s, 3 respawns (18 matches),
+whose every team line and meter line (scores, kills, hits, dodges,
+spending, the squad's seconds by task, postures) must match this
+morning's binary to the character, the meter's own timing alone apart.
+Every step below passed it; `make families` then held with every count
+as this morning (the duel 314 of 400, the guarded base 326 of 400, the
+ready gun 836 of 1000); the sim's and brain's tests pass.
+
+| Step | What | Bots' time a seat-tick |
+| --- | --- | --- |
+| before | | 64.5 us |
+| the eyes | `World::eyes`: a side's tanks and drones with their reach, gathered once an observation; `seen_by` tests a point against them | 26.9 us |
+| the rings | `Map::nearest_tiles`: forest and water read in rings outward, stopping once no further ring can hold a nearer tile (a tile k rings out is at least k - 0.5 off); the n nearest by (distance, row order), which is the old stable sort | 22.5 us |
+| the heap | `route_by`'s open list: f as its bits (never negative, so the same order), the heap kept between searches | 21.9 us |
+| sites and radar | pads and banks (few on most maps) kept as a list per map state (`Map::sites`, keyed as the route cache is); a seat's data centres gathered once | 20.2 us |
+
+The test census: 125.8 s before, **48.7 s after, 2.6 times**; the
+bots' part 3.19 times. Two tries changed nothing measurable and were
+taken out: regions joined in place as ground opens (702 flood fills a
+census, not the cost), and the danger of a `Move`'s route marked once
+(the search's size, not its pricing, is the cost).
+
+New tests: `the_ring_read_finds_what_the_whole_square_did` (3000
+points against the old scan, every terrain, pads, banks, edges, radii
+to past the map, n from 0 to all, the map edited under the kept
+lists). Each check was itself checked by breaking the code it guards
+(the ring bound a tile looser; the site key without the edits): the
+test failed both times.
+
+**Where it goes now**: route search, about 40%. 25% is the dodge's
+forecast (`Dodge::hold_fire` asks `drive_path`, which asks the full
+route to the errand's end to use its first seconds), 15% the sim's
+route for each `Move`. Neither can be made cheaper without sometimes
+another route of the same cost, which changes matches (a recorded
+replay depends on them): that is a change to play, read by a census
+(LR 92).
+
+**CUDA**: the census machine's GPU is an RTX 4060 Ti on Alpine with
+NVK. CUDA needs NVIDIA's driver and glibc; Alpine has neither. And
+the census would not use it: its time is branching logic, routes and
+per-tank rules, not arithmetic over arrays. The GPU is for training a
+network (LR 90), from a glibc system on that card.
+
+**Deployed**: the census machine moved onto this code between two of
+the day's censuses. Every census builds its own binary, and the
+matches are the same, so the day's results are unchanged; only its
+hours are fewer.
