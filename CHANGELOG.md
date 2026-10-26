@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `make converge`, the census as a learner until stopped: each
+  generation fits every weight's curve to every census so far and
+  plays the trials it suggests, reading any past two errors twice more
+  on fresh seeds; `make ledger`, every census in one table; each
+  census's `run.env` records its commit and host (LAB-REPORT-BRAIN.md
+  section 92).
+
 - Changed: the census runs 2.6 times faster with every match the same:
   each observation gathers its side's eyes, data centres, pads and
   banks once; forest and water are read outward in rings that stop

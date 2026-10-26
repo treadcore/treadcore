@@ -74,6 +74,13 @@
 #                    the census (scripts/parts.sh; PARTS, SEEDS, JOBS)
 #   make spsa        tune named weights by SPSA over the paired census
 #                    (scripts/spsa.sh; TUNE, STEPS, SEEDS, SET, START)
+#   make converge    the census as a learner, until stopped: each generation
+#                    of trials suggested from every census so far, each
+#                    read past two errors read twice on fresh seeds; no
+#                    default changed (scripts/converge.sh; UNTIL, GEN,
+#                    SEEDS, SEED0, HELD, RESUME)
+#   make ledger      every census on this machine, one row each
+#                    (scripts/ledger.py > build/ledger.tsv)
 #   make roundrobin  the census for every ordered pair of profiles/*.weights
 #                    and the defaults: the payoff matrix (scripts/roundrobin.sh;
 #                    PROFILES, SEEDS, SEED0, MAP)
@@ -128,7 +135,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa converge ledger roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -284,6 +291,12 @@ census:
 
 spsa:
 	@scripts/spsa.sh
+
+converge:
+	@scripts/converge.sh
+
+ledger:
+	@python3 -I scripts/ledger.py build/census > build/ledger.tsv && echo "build/ledger.tsv: $$(($$(wc -l < build/ledger.tsv) - 1)) censuses"
 
 roundrobin:
 	@scripts/roundrobin.sh

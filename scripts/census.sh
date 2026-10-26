@@ -61,6 +61,8 @@ if [ -z "${RESUME:-}" ]; then
         if [ -n "$f" ]; then cp "$f" "$OUT/$side.weights"; else printf 'caps = baseline\n' >"$OUT/$side.weights"; fi
     done
     printf 'SEEDS=%q\nSEED0=%q\nSECS=%q\nMAP=%q\nRESPAWNS=%q\nJOBS=%q\n' "$SEEDS" "$SEED0" "$SECS" "$MAP" "$RESPAWNS" "$JOBS" >"$OUT/run.env"
+    # What it was built from and where, for the ledger (LR 92).
+    printf 'COMMIT=%q\nHOST=%q\n' "$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)$(git -C "$ROOT" diff --quiet HEAD -- source 2>/dev/null || echo +)" "$(hostname)" >>"$OUT/run.env"
 fi
 MAPS="$(census_maps "$MAP")"
 [ -n "$MAPS" ] || die "no map in MAP=$MAP"

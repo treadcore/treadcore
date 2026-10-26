@@ -5619,3 +5619,66 @@ network (LR 90), from a glibc system on that card.
 the day's censuses. Every census builds its own binary, and the
 matches are the same, so the day's results are unchanged; only its
 hours are fewer.
+
+## 92. The run: a ledger, a fit, and the census until stopped, 26 October
+
+Backlog 69. Paul: "Is there a way to write the make census write lots
+that give suggestions that can be picked up and used to adjsut the
+next generation of runs. We essentially want a method to just start
+computing at night time which runs concenus to converge the values",
+then "so night and day need to be consolidated. we just want to have
+a run. a way for it to choose eventually from all of the variables .
+doing your methods of analyzing them".
+
+**The ledger** (`scripts/ledger.py`, `make ledger`): every census on a
+machine, one row: host, stamp, commit (new in `run.env` from today,
+a + for uncommitted source), the frozen binary's hash, seeds, first
+seed, seconds, map, respawns, the trial's and baseline's weights, the
+difference a seat, its error, z, and each map's. `--merge` joins
+machines' ledgers without pooling a census across them. On the census
+machine at 10:45: 87 censuses since 22 October.
+
+**The fit** (`scripts/suggest.py`): each census against today's
+defaults (since their last change, 18:13 on 25 October) gives d and
+se for the weights it set. A weight at v is x = log2(v / default),
+-1 at half and +1 at double. d is fit as the sum over weights of
+a x + b x^2, weighted by 1 / se^2, with a ridge of one: a response
+surface, each weight's curve read from the screens and searches alone
+and in company. Each generation, 12 trials: every weight at its
+curve's top where that is past two errors (none yet: the defaults sit
+at the top, LR 88), with it less one weight; trials past 1.5 errors on
+55 seeds read again on fresh seeds (successive halving); each weight's
+half and double not yet read alone (up to half the generation);
+draws from the fit's uncertainty (Thompson sampling), four weights a
+draw. Weights from 0 to 1 stop halfway to 1; switches, the skill dial
+and the score's own blend are left out. Its first fit, at 10:45: 59
+censuses, 51 weights; it asked again for coming_r at half (z +1.80),
+column_past at half (+1.77) and bridge_soft at half (+1.60).
+
+**The run** (`scripts/converge.sh`, `make converge`): generation after
+generation until stopped or `UNTIL`, fresh seeds each (SEED0 + g *
+10000). Any census past two errors above with no map past two below
+is read at once twice more, 400 seeds each on seeds no step saw; both
+must pass, then `make families`, then Paul. Its rule is written to
+NOTES before it plays; it changes no default. Tested on the Mac (two
+seeds of 60 s, four minutes, 36 generations): the ledger, the fit,
+the reads, the held-out pairs and the stop all ran; its censuses were
+removed after.
+
+**The day folded in.** The day's queue (LR 89) stopped after stage 1's
+half ends; its rows are in the ledger, and the run takes up the rest:
+the double ends, the reads again (stage 2), and the search (in place
+of SPSA, whose single direction the fit replaces).
+
+**Why a census is quick** (Paul: "why would a simulation go so fast").
+The matches are simulated, not played in real time: a 900 s match is
+18000 ticks computed as fast as the CPU goes, with no window, about
+6 s each on the census machine since LR 91. A census of 55 seeds is
+165 matches over 24 threads; a job of one seed (55 split 24 ways)
+ends in 18 s. Every match still runs its 900 game seconds ("over false
+at 900 s" in each log).
+
+**Checked on the census machine**: one of the day's rows played again
+on the binary before LR 91 and the one after, 4 seeds of 300 s, 12
+matches: every team line the same. The speed-up is the same matches on
+x86 as on the Mac.

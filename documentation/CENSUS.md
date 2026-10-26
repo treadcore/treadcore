@@ -147,6 +147,31 @@ new one, from a fresh clone, paste:
 `CLAUDE.md` at the top of the tree carries the working rules a new
 session needs, so the clone is enough to resume from.
 
+## 4a. The run: the census as a learner
+
+`make converge` (LAB-REPORT-BRAIN.md section 92) runs until stopped,
+or until `UNTIL=06:30`. Each generation it reads every census on the
+machine into a table (`make ledger`, `scripts/ledger.py`), fits each
+weight's curve to it (`scripts/suggest.py`), and plays the trials the
+fit suggests: the best point where a curve's top is past two errors,
+reads again of trials past 1.5 errors, each weight's half and double
+not yet read, draws from what is uncertain. A trial past two errors is
+read twice more on 400 seeds no step saw. Its rule is written to
+`build/converge/STAMP/NOTES.txt` before it plays; candidates are in
+`candidates.txt`, every census in `censuses.txt`, the fit in each
+generation's `curves.tsv`. It changes no default.
+
+    nohup setsid make converge > build/converge.out 2>&1 &   # start
+    tail -f build/converge/*/progress.txt                    # watch
+    pkill -f converge.sh; pkill -f census-bin                # stop
+    RESUME=build/converge/STAMP make converge                # go on
+
+Each census builds its binary from the tree as it starts, so the tree
+on the machine stays as it is while a run goes: a brain change that
+moves the defaults starts a new run with `SINCE` set to its first
+census. Rows from another machine join the table with
+`scripts/ledger.py --merge`; a census is never pooled across machines.
+
 ## 5. A dedicated machine
 
 A census is many single-threaded matches side by side, each using
