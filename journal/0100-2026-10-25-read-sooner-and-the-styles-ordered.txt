@@ -21,8 +21,10 @@ X-Session: the Mac and the census machine; Claude Code (Claude Opus
            "nice!. looks like its ending. pick up the results.";
            "...can we get a visual playtest..."; "merge. only on
            main. i think we are ready. lab report about these new
-           methods and looking forward..."
-X-Commits: 732fde3 8062fb7 7c18851 ff2055d a6c71f3 4c85d1b 3e55c83 bd08f40; this entry's commit follows
+           methods and looking forward..."; "so good. can you plan
+           about 10 hours a census."; "yes. please. and write about
+           our expectations. the longest run."
+X-Commits: 732fde3 8062fb7 7c18851 ff2055d a6c71f3 4c85d1b 3e55c83 bd08f40 7c97aa9; this entry's commit follows
 
                READ SOONER, AND THE STYLES ORDERED
 
@@ -104,11 +106,14 @@ IV. CHRONOLOGY
        dodge families); the pair +11.64 +/- 0.43. Committed (bd08f40).
    12. A visual playtest on the machine: 16 seats, two teams, two
        windows, the new brain. LR 87: the methods so far, and the
-       census as a learner (backlog 69).
+       census as a learner (backlog 69). Committed (7c97aa9).
+   13. LR 88: the longest run queued at 18:40, about ten hours: the
+       league row, a slope screen of 16 weights, SPSA on five, a
+       held-out read; our expectations written before.
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md sections 76 to 87; CI-042 to CI-052.
+    LAB-REPORT-BRAIN.md sections 76 to 88; CI-042 to CI-053.
 
 VI. DISCUSSION
 

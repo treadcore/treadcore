@@ -1113,7 +1113,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     a two-stage read; weights by map features. Guards: fresh seeds a
     step, a held-out reading with its rule, `make families`, the old
     score beside the rewarded one, every map. Cost: steps of a night
-    each. State: planned (LR 87).
+    each. State: planned (LR 87); the first night queued 25 October
+    (LR 88): the league row, a slope screen of 16 weights, SPSA on
+    the five it ranks first, a held-out read.
 
 ## Sequencing
 

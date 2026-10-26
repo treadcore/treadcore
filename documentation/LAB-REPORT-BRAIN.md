@@ -5090,3 +5090,81 @@ losing a map, games a reward, or breaks a family has not won.
 **Next** (backlog 69, step by step): the retreat thresholds made to
 act and the weight-slope screen; then the league evaluation; then
 MAP-Elites over the personalities, a night on the machine.
+
+## 88. The longest run: a night's plan, and what we expect, 25 October
+
+Backlog 69, its first night. Paul: "can you plan about 10 hours a
+census", then "write about our expectations. the longest run." Three
+blocks queued on the census machine at 7c97aa9 (`build/night/run.sh`,
+started 18:40), each with its rule written before it, and our
+expectations written here before any of it plays, to be scored against
+what the night reads. Every census: every map, 900 s, 3 respawns, 24
+jobs, a frozen binary, the rewards on.
+
+**Block 1, the league row** (8 censuses, 110 seeds from 160000, about
+65 min): each profile as the trial against the new defaults: classic,
+steady, timid, aggressive, castle, raider, expander, navy. A reading,
+no default changes; timid, aggressive and castle read against LR 85's
+signatures again.
+
+**Block 2, the slope screen** (32 censuses, 110 seeds from 170000, the
+same seeds for every row, about 4 h 20 min): sixteen weights each at
+half and double the default (longshot_every, strikes_max,
+pillbox_worth, strike_worth, engage_odds, press_odds, mass_for,
+w_wounded, w_finish, w_focus, w_in_range, w_exposure, w_stick,
+w_pos_expand, castle_inside, w_mine; the retreat weights left out, LR
+86). Rule: an end past two errors above the defaults with no map past
+two errors below is a candidate for a 400-seed re-read in a later
+step; a weight inside the noise at both ends is flat here and leaves
+later searches.
+
+**Block 3, SPSA on what the screen finds** (about 3 h 15 min):
+`build/night/pick.py` takes the five weights with the largest gap
+between their ends (|double - half| over the root of the squared
+errors), set before the screen so no one picks by eye. SPSA from the
+defaults over them, 24 steps of 48 fresh seeds from 200000, then its
+point against the defaults on 400 held-out seeds from 300000. Rule:
+promoted only if past two errors above zero with no map past two
+errors below, and only after `make families`, in the morning.
+
+**What we expect** (to be scored in the morning):
+
+| Run | Expected |
+| --- | --- |
+| steady | about -11 (LR 86's pair from the other side; -10 to -13) |
+| classic | about -13: the spending and turtle's lean both lost |
+| timid, castle | -1 to +1; castle's signature passes again, timid's fails again (its retreat weights barely act) |
+| aggressive | -1 to -3, dying more |
+| raider, expander, navy | -0.5 to -2.5 each, as against turtle in LR 77 |
+| any profile above the defaults | none |
+| the screen | 10 to 12 of 16 flat at both ends; about 1.5 of 32 rows outside by chance |
+| longshot_every | half flat or a little better; double worse by 1 to 3 |
+| strikes_max | double flat or a little better; 2 a little worse |
+| castle_inside double | a little worse |
+| candidates for a re-read | at most two |
+| pick.py's five | longshot_every and strikes_max among them |
+| SPSA | longshot_every down, strikes_max up, the rest little |
+| the held-out point | +0.3 to +1.5, more likely inside the noise; promotion about one chance in three (LR 74 read -0.00 on fresh seeds) |
+
+If the night says otherwise, the night is right.
+
+**Block 1, read at 19:33** (written after it played; the expectations
+above stand as written). Each profile less the new defaults, a seat,
+110 seeds from 160000:
+
+| Profile | Reading | Expected | |
+| --- | --- | --- | --- |
+| steady | -9.24 +/- 0.64 | -10 to -13 | missed: a smaller loss |
+| classic | -8.73 +/- 0.55 | about -13, below steady | missed: above steady |
+| timid | +0.70 +/- 0.52 | -1 to +1, signature fails | held, held |
+| aggressive | -1.86 +/- 0.53 | -1 to -3 | held; deaths +0.18 (inside), kills -0.91 |
+| castle | +0.32 +/- 0.34 | -1 to +1, signature passes | held (built +1.85), held |
+| raider | -1.41 +/- 0.51 | -0.5 to -2.5 | held |
+| expander | -1.24 +/- 0.47 | -0.5 to -2.5 | held |
+| navy | -0.23 +/- 0.40 | -0.5 to -2.5 | missed narrowly, inside the noise |
+
+Six of nine held. Classic, the old even-handed style with the old
+spending, lost less than steady, turtle's lean with the old spending:
+without the cowboy's drones the turtle lean may cost, the reverse of
+LR 77. A census of turtle's lean on today's brain would say. Blocks 2
+and 3 are playing.

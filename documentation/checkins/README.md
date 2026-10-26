@@ -65,3 +65,4 @@ report is what ties a conversation to them. Named
 | [050](CI-050-2026-10-25-personalities-step-1.md) | 25 October 2026 | Personalities, step 1: timid, aggressive, castle | 0100 | LAB-REPORT-BRAIN.md section 85 |
 | [051](CI-051-2026-10-25-the-cowboy-and-the-defaults-spend.md) | 25 October 2026 | The cowboy: the defaults spend | 0100 | LAB-REPORT-BRAIN.md section 86 |
 | [052](CI-052-2026-10-25-the-methods-and-the-census-as-a-learner.md) | 25 October 2026 | The methods so far, and the census as a learner | 0100 | LAB-REPORT-BRAIN.md section 87 |
+| [053](CI-053-2026-10-25-the-longest-run.md) | 25 October 2026 | The longest run: a night's plan, and what we expect | 0100 | LAB-REPORT-BRAIN.md section 88 |
