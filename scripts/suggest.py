@@ -151,7 +151,6 @@ def main():
     os.makedirs(o.out, exist_ok=True)
     plan = []
     seen = set()  # a trial once a generation
-    read_before = {tuple(sorted((w, round(value(w, v), 6)) for w, v in x.items())) for _, x, _, _ in reads}
 
     def value(w, v):
         """A weight's value at x = v; a weight of 0 to 1 stops halfway
@@ -182,6 +181,7 @@ def main():
         emit('best', 'every weight at its curve\'s top where the top is past two errors', best)
         for w in sorted(best, key=lambda w: -curve[w][4])[:2]:
             emit(f'best-less-{w}', f'best with {w} back at its default', {u: v for u, v in best.items() if u != w})
+    read_before = {tuple(sorted((w, round(value(w, v), 6)) for w, v in x.items())) for _, x, _, _ in reads}
     # Read again: a trial past 1.5 errors above on fewer than 110 seeds,
     # read once (successive halving, LR 89): fresh seeds, pooled by the fit.
     times = {}
