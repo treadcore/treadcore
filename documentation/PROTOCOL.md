@@ -1,8 +1,11 @@
 # treadcore protocol
 
-Version 14 (13 until roadmap step 11h let the squad carry a pillbox;
-12 until roadmap step 10 gave the sim structures, the longshot and two
-terrains). One UDP socket per process, default port 47296. Every datagram
+Version 16 (15 until a destroyed tank could go down and be revived,
+`Event::Revived` and `DOWNED_TICKS`; 14 until respawns,
+`Command::Respawn` and `Event::Respawned`; 13 until roadmap step 11h
+let the squad carry a pillbox; 12 until roadmap step 10 gave the sim
+structures, the longshot and two terrains). Release 0.2.0 speaks 16
+and does not meet 0.1.0-rc.6, which speaks 12. One UDP socket per process, default port 47296. Every datagram
 is `TRDC`, a little-endian u16 version, then a bincode `Packet`
 (`source/treadcore-proto`). Anything else is dropped at the first byte.
 

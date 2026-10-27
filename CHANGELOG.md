@@ -4,7 +4,37 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
-## Unreleased
+## 0.2.0 (2026-10-26): the first release: the brain on weights, and the learned tank
+
+The next minor version after six candidates of 0.1.0, and the first
+not marked a candidate. Wire version 16: it does not play with
+0.1.0-rc.6 (wire 12). Since rc.6: rotation, the yard, boats, bridges
+and island hops, down and revived, respawns, the Commander's ladder on
+a team board with 110 census-tuned weights, a census 2.6 to 3 times
+faster, `make converge`, and the learned tank. The release page:
+`reports/2026-10-26-the-learned-tank.html`.
+
+- Changed: the dodge starts out from under a shell 2 s before it lands
+  (`dodge_horizon` 2, was 4). The run found it on its own and read it
+  held out ten times on 400 seeds each, +1.09 to +2.66, each past two
+  errors; `make families` holds (LAB-REPORT-BRAIN.md section 97).
+
+- Added: the learned tank drives and shoots (LAB-REPORT-BRAIN.md
+  section 97, `documentation/AI-BRAINZ-PLAN.md`). The senses gain
+  instruments (place, heading, the nearest edge, a hit just taken), a
+  periscope (the exact bearing and strength of the nearest enemy, with
+  its closing speed and aspect; of the nearest thing to take; of our
+  nearest depot; of a friend's call) and a Call channel: 133 senses.
+  `calls.rs`: a team's shared queue of calls to friends (help, attack,
+  take), each also a ping that scripted teammates answer. `learn.rs`
+  and `make train`: training grounds and evolution strategies on every
+  core. `nets/phase1.bin` drives to an enemy, a depot or a pillbox
+  (999 of 999 held-out grounds); `nets/phase3.bin` also kills a still
+  enemy with the direct gun (999 of 999). In the census a team of it
+  reads -23.52 +/- 0.38, below a random net (-20.35 +/- 0.25): it
+  charges what a match defends. Next: teach it to live.
+
+- Changed: PROTOCOL.md describes wire version 16.
 
 - Added: the learned tank's phase 0 (LAB-REPORT-BRAIN.md section 96):
   `senses.rs`, what a tank feels as 101 numbers (a compass of eight

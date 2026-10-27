@@ -47,8 +47,10 @@ Richeson (he/him). Journals and commits are in his name.
 
 - Commit or push only when Paul asks. The remote is
   `git@github.com:treadcore/treadcore.git`.
-- **GitHub Actions are paused** (since 13 October): push no `v*` tag
-  and trigger no workflow by hand. Commits to main start no run.
+- **A `v*` tag starts GitHub Actions** (the packages workflow). They
+  were paused 13 to 26 October; Paul lifted the pause for 0.2.0 ("Tag
+  it"). Push a tag or trigger a workflow only when he asks for that
+  release. Commits to main start no run.
 - **Publish to crates.io at least a day after a tag** (`make publish`
   enforces it). Hand the publish back to Paul.
 - A census is one machine's (CENSUS.md section 5): never pool jobs from
