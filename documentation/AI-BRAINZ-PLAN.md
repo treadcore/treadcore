@@ -270,6 +270,10 @@ turn. An episode is 60 s at most.
 | Phase 3, shoot only, from phase 1 | a direct hit on 999 of 999, 0 lobbed; but forgot the going (depot 9.3%, pillbox 23.7%) |
 | Phase 3, drive and shoot, all three grounds, 400 generations | enemy shot 333 of 333 (3 direct hits each, killed), depot 333 of 333, pillbox 333 of 333 |
 | A team of the phase 3 net in the census, 110 seeds | **-23.52 +/- 0.38**, against a random net of its shape -20.35 +/- 0.25: worse by 3.17 +/- 0.45 |
+| Map 4, the guarded depot, with phases 1 and 3 rehearsed (LR 99) | 93.7% of 300 held out (scripted 100%, untrained 0%); phases kept |
+| Map 5, under a shell | 92.9% (scripted 99.8%, untrained 79.3%; floor 99%): not yet |
+| Map 6, an enemy that fires back | 0% won (scripted 20.3%); the trades better, reward -2.08 to -1.08: not yet |
+| A team of the map 4 net in the census | -24.29 +/- 0.45. Every net team dies 18 to 19 times of 20 a match and kills about once |
 
 The last row is the plan's most useful result. On the grounds the net
 drives straight at its target and nothing shoots back; in a match the
@@ -342,16 +346,22 @@ last's, and is read on every earlier map before it moves on):
 | 1 | open ground (done) | a target 10 to 20 tiles off: enemy, depot, pillbox | closer, reached | 95% each (999 of 999) |
 | 2 | the gun (done) | a still enemy 12 to 20 off | direct hits | 95% (999 of 999) |
 | 3 | a lake between | the target across water or round a wall | closer by route, reached | 90% |
-| 4 | the guarded depot | a depot inside a hostile pillbox's ring | taken; armour lost costs | 80%, no death |
-| 5 | under a shell | a shell landing on the tank in 1.5 to 3.5 s (the dodge families' situations) | not hit | 99% (the families' floor) |
-| 6 | an enemy that fires back | a scripted RuleBot at skill 0.3, then 0.6, then 1 | hits given less hits taken; a kill | half the duels won |
+| 4 | the guarded depot (done) | a depot inside a hostile pillbox's ring | taken; armour lost costs | 80%, no death (93.7%) |
+| 5 | under a shell (built; 92.9%) | a shell landing on the tank in 1.5 to 3.5 s (the dodge families' situations) | not hit | 99% (the families' floor) |
+| 6 | an enemy that fires back (built; 0%) | a RuleBot 16 tiles off | damage given less taken; a kill | half the duels won |
 | 7 | low and far from home | shells or armour low, a depot of ours and an enemy both near | resupplied, alive | 90% |
 | 8 | a friend calls | a teammate under fire 15 tiles off calls for help | arrived inside 20 s | 80% |
 | 9 | a call answered | two nets; only one sees the enemy | the blind one arrives sooner than alone | faster, by two errors |
 | 10 | the pillbox held | an enemy comes for our pillbox | the pillbox stands at 60 s | 70% |
 
-Maps 4 to 6 are the ones the census asks for now: the drive-and-shoot
-net dies charging defended ground (section 7). Each map's file is
+Maps 4 to 6 are built (`scenarios/training/`, LR 99). Map 4 is
+learned; maps 5 and 6 are not yet. The census of the map 4 net shows
+what a match asks for first: every net team dies nearly every time it
+can. So maps 7 (low and far from home) and a retreat come next, one
+map at a time beside its rehearsal. Beside the curriculum, LR 99
+proposes putting one net head inside the scripted brain (the dodge's
+drive, or the gun's lead), so the census reads a learned skill in real
+matches while the scripted brain keeps the team alive. Each map's file is
 written, and read on the scripted brain and the untrained net, before
 any training on it.
 

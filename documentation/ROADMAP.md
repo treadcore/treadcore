@@ -1170,6 +1170,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     scenarios/training/, read by make families (the scripted brain)
     and make train GROUND= (the net) on the same seeds; ten training
     maps in order, maps 4 to 6 next.
+    Built 26 October (LR 99): training maps from scenario files, make
+    train GROUND=; map 4 learned (93.7%), maps 5 and 6 not yet (92.9%,
+    0%); a census of the map 4 net -24.29: every net team dies 18 to
+    19 times of 20. Next: survival maps one at a time; or one net head
+    inside the scripted brain (proposed, Paul to choose).
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

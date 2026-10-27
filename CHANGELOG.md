@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: training maps from scenario files (LAB-REPORT-BRAIN.md
+  section 99). A scenario's `[reward]` and `kind = "net"` brains;
+  `make train GROUND=phase1,phase3,scenarios/training/...` trains on a
+  mix, rehearsing what was learned; `BASELINE=1` reads the scripted
+  brain on the same seeds. Maps 4 to 6 in `scenarios/training/`.
+  `nets/map4.bin` takes a depot behind a hostile pillbox on 93.7% of
+  held-out seeds. The learned tank's gun also takes a hostile
+  pillbox.
+
 - Added: `documentation/PROCESS.md`, how treadcore is made: the pair,
   from a prompt to a commit, where every conversation is kept, the
   brain designed by families and the census. The shared pages are now

@@ -102,6 +102,16 @@ IV. CHRONOLOGY
        big-lizard pages as reports; PROCESS.md, how treadcore is made;
        guided training and ten training maps planned (LR 98, CI-060).
        The run left on the census machine all day.
+   24. "lets continue to develop. impliment": training maps from
+       scenario files ([reward], kind = "net", make train GROUND=).
+       Maps 4 to 6 read first: scripted 100%, 99.8%, 20.3%;
+       untrained 0%, 79.3%, 0%.
+   25. Map 4 learned with rehearsal: 93.7%, phases kept. Maps 5 and 6
+       not: 92.9% and no duel won, a plateau over 800 more
+       generations.
+   26. A census of the map 4 net beside the run: -24.29. Every net
+       team dies 18 to 19 times of 20 a match: survival first, or one
+       net head inside the scripted brain (LR 99, CI-061).
 
 V. RESULTS
 

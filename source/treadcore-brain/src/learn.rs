@@ -293,6 +293,8 @@ impl Course {
         Ok(Course::File { name, doc })
     }
 
+    /// The course's name in the trainer's lines: the task, or the
+    /// file's stem.
     pub fn name(&self) -> String {
         match self {
             Course::Built(t) => format!("{:?}", t),
@@ -682,7 +684,9 @@ mod harness {
     /// held-out seeds.
     fn report_all(courses: &[Course], held: u64, threads: usize, net: Option<&Net>) -> bool {
         let mut all = true;
-        for c in courses {
+        let mut seen = std::collections::BTreeSet::new();
+        // A course listed twice (to weight it) is read once.
+        for c in courses.iter().filter(|c| seen.insert(c.name())) {
             let seeds = 9_000_000..9_000_000 + held;
             all &= match (c, net) {
                 (Course::Built(t), Some(n)) => report(*t, seeds, threads, n),

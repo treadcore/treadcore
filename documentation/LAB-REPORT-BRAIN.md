@@ -6601,3 +6601,120 @@ scripted brain and the untrained net before any training on it.
 **The run** stays on the census machine all day on the new defaults
 (`build/converge/20261026-181011/`, generation 1 at 18:34), reading
 the coefficients; the morning read takes what it found.
+
+## 99. Training maps from scenario files: the guarded depot learned, the duel not yet, and what a match says, 26 October
+
+Backlog 70. Paul: "ok. and for this dev version. lets continue to
+develop. impliment ." The plan of LR 98 (AI-BRAINZ-PLAN.md section 9),
+built: one scenario file a behaviour, read by the scripted brain and
+by the trainer on the same seeds.
+
+### A. One file, three readings
+
+`scenario.rs`:
+- a `[reward]` section;
+- `kind = "net"` brains (the net in `file`, else the trainer's; a
+  team's nets share one queue of calls);
+- `alive` and `dead` checks;
+- `run_net`;
+- `reward`, which sums the file's terms for the learner's seat:
+  `pass`, `alive`, `damage_taken`, `damage_given`, `killed`,
+  `depot_taken`, `pillbox_taken`, `pillbox_killed`, and `closer` (the
+  share of the way to a point closed, a potential).
+
+A term the trainer does not know is refused when the file is read.
+
+`learn.rs`: a `Course` is a built phase or a training map. A
+generation's episodes take the courses in turn, so a mix rehearses
+what was learned before (LR 97's lesson, built in).
+- `make train GROUND=phase1,phase3,scenarios/training/....toml` trains
+  on a mix.
+- `BASELINE=1` reads the scripted brain first, with a Commander on
+  Auto in the net's seat.
+- `CHECK=net` reads a net on every course's held-out seeds.
+
+`net.rs`: the gun head also takes a live hostile pillbox in direct
+reach when no tank is in its sector. A net could not kill a guard
+before.
+
+Tests:
+- every training map reads as a course;
+- a net plays one the same way twice;
+- the scripted reading has no net seat;
+- an unknown reward term is refused;
+- the gun takes a hostile pillbox in reach, and never a neutral one,
+  a dead one, or one out of reach.
+
+### B. Maps 4 to 6, read before training
+
+Rules in `build/train/NOTES-maps.txt` (the Mac), before any training.
+Held-out seeds from 9,000,000:
+
+| Map | Scripted brain | Untrained net | Floor |
+| --- | --- | --- | --- |
+| 4. the guarded depot: a hostile pillbox 3 tiles before a neutral depot, the tank 18 off; pass: the depot taken, alive, in 60 s | 100% (300) | 0% | 80% |
+| 5. under a shell: rolling at full speed, a shell within 2.5 tiles in 1.5 to 3.5 s; pass: not hit | 99.8% (1,000) | 79.3% | 99% |
+| 6. an enemy that fires back: a RuleBot 16 tiles off; pass: it destroyed, alive, in 60 s | 20.3% (300) | 0% | 50% |
+
+Each untrained reading is under its floor, so each map is a test. Map
+6's floor is above the scripted brain's own reading, on purpose: the
+plan's "half the duels won".
+
+### C. Training, with rehearsal
+
+| Run | Courses | Generations | Result on held-out seeds |
+| --- | --- | --- | --- |
+| map4 (from nets/phase3.bin) | phase 1, phase 3, map 4 | 400 (7 min) | map 4 **93.7% +/- 1.4 (281 of 300): passes**; phase 1 99.1 to 100%, phase 3 99.7 to 100%: kept |
+| map6 (from map4) | phase 1, 3, maps 4, 5, 6 | 500 (12 min) | map 4 98.7%; map 5 92.1% +/- 0.9 (floor 99); map 6 0% (reward -1.12, untrained -2.08); phases 1 and 3 97.3 to 100% |
+| map6b (from map6) | the same, maps 5 and 6 twice each | 800 (22 min) | a plateau: map 5 92.9% +/- 0.8, map 6 0% (reward -1.08), map 4 99.3%; phase 1's enemy ground fell to 89.2%: not kept |
+
+`nets/map4.bin` passes every course it trained on. Maps 5 and 6 did
+not pass. Map 5 rose from 79% to 93% and stopped short of the scripted
+dodge's 99%. On map 6 the trades improved (reward -2.08 to -1.08) but
+no duel was won. Evolution on a mix of five courses with a flat score
+moved slowly, then not at all. The lesson for the next maps: one new
+map at a time beside its rehearsal, as map 4 was, rather than two
+hard maps at once.
+
+### D. The census: a match is about staying alive
+
+On the census machine, in a worktree beside the run
+(`~/code/treadcore-net/build/net4/NOTES.txt` before it played), a team
+of `nets/map4.bin` on LR 97's seeds: **-24.29 +/- 0.45**. The rule
+(above the random net's -20.35 and phase 3's -23.52 by two errors)
+fails.
+
+Every match's log (`g-*.log`) says why, the same for every net:
+
+| Team in the trial seat | Deaths a match (of 20) | Kills | Held | Score |
+| --- | --- | --- | --- | --- |
+| a random net | 18.3 | 0.8 | 1.8 | 4.7 |
+| nets/phase3.bin | 19.0 | 1.0 | 1.9 | 2.8 |
+| nets/map4.bin | 18.6 | 0.9 | 1.9 | 2.2 |
+| (the scripted teams beside them, one match's log) | 11 to 28 | 21 to 40 | 5.5 to 10.6 | about 27 a seat |
+
+Five tanks with three respawns each can die 20 times. Every net team
+uses up nearly all of them and kills about once a match. It never
+builds and never revives. The census reads all three nets as nearly
+the same tank. The differences between them, a few points of score,
+are in the parts of a match no net does yet.
+
+**So the census cannot tell these nets apart until one survives.**
+The next maps are those that teach survival in a real match:
+- low and far from home (resupply, map 7);
+- a hurt tank's retreat;
+- an episode that is a real match's first minutes, scored on staying
+  alive.
+
+An alternative is proposed beside the curriculum (section E).
+
+### E. A proposal: one head inside the scripted brain
+
+Phase 8 of LR 95 hands the Commander's work to a net one head at a
+time, at the end. The census suggests doing it the other way first.
+Put a net inside the Commander for one narrow skill: the dodge's
+choice of where to drive, or the gun's lead. The scripted brain keeps
+everything that keeps a team alive, and the census reads the net's one
+skill in real matches now. It would read in the census as any weight
+change does, because everything else is the defaults. For Paul to
+choose.

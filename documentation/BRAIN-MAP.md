@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-22 files, 480 functions (1 with no doc comment; 37 more are a trait's, documented by it), 118 tests.
+22 files, 480 functions (0 with no doc comment; 37 more are a trait's, documented by it), 118 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ structure as built is `checkins/`.
 | [`fortify.rs`](#fortifyrs) | 679 | 25 | 0 | 2 | Fortification to a plan (roadmap step 11b): a castle's gate. |
 | [`hop.rs`](#hoprs) | 938 | 25 | 0 | 1 | Island hopping: a bot that has taken everything it can reach goes for what it cannot, across the water. |
 | [`intent.rs`](#intentrs) | 186 | 9 | 0 | 3 | Holding a decision (roadmap step 12d, LAB-REPORT-BRAIN.md section 7). |
-| [`learn.rs`](#learnrs) | 758 | 31 | 1 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
+| [`learn.rs`](#learnrs) | 762 | 31 | 0 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
 | [`ledger.rs`](#ledgerrs) | 489 | 13 | 0 | 4 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
 | [`lib.rs`](#librs) | 2940 | 66 | 0 | 20 | treadcore-brain -- the controller interface, and one controller. |
 | [`memory.rs`](#memoryrs) | 101 | 10 | 0 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
@@ -432,33 +432,33 @@ Training the learned tank (LR 95, 97): the phases' training grounds and evolutio
 | 242 | `direction` |  |  | The noise of one pair of a generation: a direction, from its seed. |
 | 248 | `spread` |  | yes | Run `jobs` jobs on `threads` threads, results in order. |
 | 280 | `parse` | Course | yes | `phase1`, `phase3`, or a scenario file's path. |
-| 296 | `name` | Course | yes |  |
-| 305 | `floor` | Course | yes | The share of held-out episodes it must pass: a file's `floor`, else 95%. |
-| 315 | `scripted` | Course | yes | The same file with its net seats given to the scripted brain (`kind = "commander"`, on Auto): what the scripted brain does on the same situations. |
-| 336 | `prepare` |  | yes | Episode `k` of a generation: the courses in turn. |
-| 344 | `episode` |  | yes | A net on one episode: its score, and whether it passed. |
-| 359 | `judge` |  | yes | A net on episodes: the mean score, and the share passed. |
-| 395 | `new` | Adam | yes | Moments at zero for `n` weights. |
-| 400 | `step` | Adam | yes | Move `theta` up the gradient `g`. |
-| 428 | `generation` |  | yes | One generation: pairs of directions played forward and back on `seeds` episodes drawn from `gen_seed` (the courses in turn, so a mix rehearses what was learned before), ranked, and the weights moved. |
-| 473 | `check` |  | yes | A brain's reading on held-out grounds: for each target, the share passed and its standard error, and the mean score. |
-| 525 | `name` |  |  | *(the `Brain` trait's)* |
-| 528 | `think` |  |  | *(the `Brain` trait's)* |
-| 539 | `name` |  |  | *(the `Brain` trait's)* |
-| 542 | `think` |  |  | *(the `Brain` trait's)* |
-| 613 | `env` |  |  | A setting from the environment, or `d` when unset, empty or unread. |
-| 619 | `report` |  |  | Prints a net's reading on held-out grounds, each target's share passed with its standard error. |
-| 642 | `baseline` |  |  | The scripted bot on the same held-out grounds: its share passed and, shooting, its hits a shot (a reference, LR 97). |
-| 657 | `report_file` |  |  | A training map read on held-out seeds, by a net or (with none) by the scripted brain in its seats: the share passed with its error, the mean reward, and whether it reaches the map's floor. |
-| 683 | `report_all` |  |  | A net (or with none, the scripted brain) on every course's held-out seeds. |
+| 298 | `name` | Course | yes | The course's name in the trainer's lines: the task, or the file's stem. |
+| 307 | `floor` | Course | yes | The share of held-out episodes it must pass: a file's `floor`, else 95%. |
+| 317 | `scripted` | Course | yes | The same file with its net seats given to the scripted brain (`kind = "commander"`, on Auto): what the scripted brain does on the same situations. |
+| 338 | `prepare` |  | yes | Episode `k` of a generation: the courses in turn. |
+| 346 | `episode` |  | yes | A net on one episode: its score, and whether it passed. |
+| 361 | `judge` |  | yes | A net on episodes: the mean score, and the share passed. |
+| 397 | `new` | Adam | yes | Moments at zero for `n` weights. |
+| 402 | `step` | Adam | yes | Move `theta` up the gradient `g`. |
+| 430 | `generation` |  | yes | One generation: pairs of directions played forward and back on `seeds` episodes drawn from `gen_seed` (the courses in turn, so a mix rehearses what was learned before), ranked, and the weights moved. |
+| 475 | `check` |  | yes | A brain's reading on held-out grounds: for each target, the share passed and its standard error, and the mean score. |
+| 527 | `name` |  |  | *(the `Brain` trait's)* |
+| 530 | `think` |  |  | *(the `Brain` trait's)* |
+| 541 | `name` |  |  | *(the `Brain` trait's)* |
+| 544 | `think` |  |  | *(the `Brain` trait's)* |
+| 615 | `env` |  |  | A setting from the environment, or `d` when unset, empty or unread. |
+| 621 | `report` |  |  | Prints a net's reading on held-out grounds, each target's share passed with its standard error. |
+| 644 | `baseline` |  |  | The scripted bot on the same held-out grounds: its share passed and, shooting, its hits a shot (a reference, LR 97). |
+| 659 | `report_file` |  |  | A training map read on held-out seeds, by a net or (with none) by the scripted brain in its seats: the share passed with its error, the mean reward, and whether it reaches the map's floor. |
+| 685 | `report_all` |  |  | A net (or with none, the scripted brain) on every course's held-out seeds. |
 
 Tests (5):
 
-- `a_ground_is_open_and_its_target_is_there` (line 500): The grounds: the tank at the centre on grass, the target where the ground says and of its kind, open ground between, and a seed the same ground twice.
-- `a_straight_drive_reaches_and_a_still_tank_does_not` (line 522): The ground is fair: a brain that drives straight at the target reaches each kind well inside the minute; one that holds never does; and an enemy shot at from inside the gun's reach is hit.
-- `a_training_map_is_a_course` (line 565): The training maps (LR 99): every file under `scenarios/training/` reads as a course (a net seat, known reward terms); a net plays one the same way twice; its scripted reading puts a Commander in the net's seat; a rewa...
-- `evolution_moves_the_weights_the_same_way_twice` (line 592): Evolution moves the weights: on a few grounds, a handful of generations raise the score, and a generation's seed gives the same move twice.
-- `train` (line 713): The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a comma list of courses (`phase1`, `phase3`, training maps' paths) trained together, each episode the next course in turn.
+- `a_ground_is_open_and_its_target_is_there` (line 502): The grounds: the tank at the centre on grass, the target where the ground says and of its kind, open ground between, and a seed the same ground twice.
+- `a_straight_drive_reaches_and_a_still_tank_does_not` (line 524): The ground is fair: a brain that drives straight at the target reaches each kind well inside the minute; one that holds never does; and an enemy shot at from inside the gun's reach is hit.
+- `a_training_map_is_a_course` (line 567): The training maps (LR 99): every file under `scenarios/training/` reads as a course (a net seat, known reward terms); a net plays one the same way twice; its scripted reading puts a Commander in the net's seat; a rewa...
+- `evolution_moves_the_weights_the_same_way_twice` (line 594): Evolution moves the weights: on a few grounds, a handful of generations raise the score, and a generation's seed gives the same move twice.
+- `train` (line 717): The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a comma list of courses (`phase1`, `phase3`, training maps' paths) trained together, each episode the next course in turn.
 
 ## ledger.rs
 
