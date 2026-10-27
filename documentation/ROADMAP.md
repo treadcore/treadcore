@@ -1144,6 +1144,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     104, E): Copal workers pull whole censuses from a queue of files
     on saskatchewan, joined by an identity check; built when the first
     machine is on the network.
+    A second machine (LR 105): columbia, i3-N300, 8 threads; the
+    identity check passed (the run's binary replays a run's job
+    identically apart from timing).
 
 70. A learned brain. (26 October; cause: Paul, "start training a
     normal AI neural network given our current reward system"; LR
