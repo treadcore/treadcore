@@ -92,6 +92,12 @@ IV. CHRONOLOGY
    21. AI-BRAINZ-PLAN.md with diagrams; the learned-tank page; INDEX
        section 7; LR 97; CI-059. Release 0.2.0 prepared: the version,
        PROTOCOL.md at wire 16, the changelog, the frames.
+   22. make shoot on the census machine, in a worktree beside the
+       run: its window check still wanted rc.6's flat bezel and
+       refused the brushed one (fixed, 199e9e9); 18 frames. make
+       release passed there: tests, a build with no warnings, every
+       frame shown, the crates package. The release commit, signed
+       tag v0.2.0, pushed: the packages workflow builds a draft.
 
 V. RESULTS
 
@@ -114,7 +120,8 @@ VIII. NEXT STEPS
 
     1. Phase 4 of the learned tank: live (hostile pillboxes and an
        enemy that fires back on the grounds), then a census.
-    2. Paul: make publish and the draft release, a day after the tag.
+    2. Paul, on 27 October or later: the draft release published,
+       make publish, then make builds (DEPLOY.md, day 1).
 
 APPENDIX B. ARTIFACTS
 
