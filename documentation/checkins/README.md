@@ -74,3 +74,4 @@ report is what ties a conversation to them. Named
 | [059](CI-059-2026-10-26-the-learned-tank-drives-and-shoots.md) | 26 October 2026 | The learned tank drives and shoots: periscope senses, calls to friends, evolution in Rust, the census's verdict, and release 0.2.0 | 0102 | LAB-REPORT-BRAIN.md section 97 |
 | [060](CI-060-2026-10-26-the-record-as-source.md) | 26 October 2026 | The record as source: how treadcore is made, the pages kept in the repository, and guided training planned | 0102 | LAB-REPORT-BRAIN.md section 98 |
 | [061](CI-061-2026-10-26-training-maps.md) | 26 October 2026 | Training maps: scenario files teach the learned tank, a guarded depot taken, and a census that asks for survival | 0102 | LAB-REPORT-BRAIN.md section 99 |
+| [062](CI-062-2026-10-26-survival-maps.md) | 26 October 2026 | Survival maps: low armour means home, the missing drones found, and the first net off the bottom of the census | 0102 | LAB-REPORT-BRAIN.md section 100 |

@@ -6718,3 +6718,128 @@ everything that keeps a team alive, and the census reads the net's one
 skill in real matches now. It would read in the census as any weight
 change does, because everything else is the defaults. For Paul to
 choose.
+
+## 100. Survival maps: low armour means home, the drones were missing, and the first net to climb off the bottom, 26 October
+
+Backlog 70. Paul: "survival maps. implimment". The census of LR 99
+said every net team dies nearly every time it can; these maps teach
+staying alive, one at a time beside the rehearsal.
+
+### A. The maps and the format
+
+Scenario `[[tank]]`s now start hurt and short: `armor` (a share) and
+`shells`. The outcome keeps each tank's armour at the start and the
+end and when it first went down. New reward terms: `alive_time` (the
+share of the run alive) and `armor_gained`. New check:
+`armor_at_least`. Rules were written in `build/train/NOTES-maps.txt`
+before each run.
+
+| Map | The situation | Pass | Scripted | Untrained |
+| --- | --- | --- | --- | --- |
+| 7. low and far from home | 30% armour, 2 shells, home 18 tiles off, a RuleBot 12 off | alive at 60 s, armour >= 60% | 53.3% | 0% |
+| 7a. low, go home (added after 7's first run) | map 7 with no enemy | alive at 30 s, armour >= 90% | 100% | 0% |
+| 8. outnumbered (amended before training) | half armour, home 8 off with its pillbox, two RuleBots 14 off | alive at 45 s | 74.7% | 0.7% |
+
+Map 8 as first drawn (home 10, enemies 9) was lived by the scripted
+brain on 5% of 300. No retreat was possible, so it taught nothing; it
+was amended before any training.
+
+### B. What happened, in order
+
+1. **Map 7 from the map 4 net: 0 of 300**, no progress in 400
+   generations.
+2. **Map 7a first** (low armour means home, no enemy): **99.7%**, with
+   every rehearsed course kept. The split worked.
+3. **Map 7 from 7a: still 0.** Traced: every death came 2.7 to 4.2 s
+   in, from a 35-damage hit.
+4. **Map 5 stalled** at 90 to 93% against the scripted dodge's 99.8%.
+   Probes followed:
+   - an oracle with the net's drive actions and a straight-line model
+     dodged 88.5%;
+   - the same nine actions played forward in a copy of the world
+     dodged **300 of 300**, renewed every decision, every 2 s (as
+     NetBrain does) or near the point.
+
+   The actions were enough; the senses were not. The compass's
+   ShellComing folds how soon and how near into one number at 45
+   degrees. **The shell contact** (5 senses: the impact's bearing as a
+   sine and cosine, nearness, how soon, inside the splash) took map 5
+   to **95.9%** (959 of 1,000), and a further 400 generations held
+   there (95.5%).
+5. **The 35-damage hit was a strike drone** (`STRIKE_DAMAGE`), not the
+   mortar (70). A scripted tank keeps interceptors up, the bubble the
+   game is built round. The net's drone head had been held since phase
+   0, and it had no sense of the air. So two changes:
+   - **the drone head is on**: an interceptor while fewer than four are
+     up; a recon orbiting 8 tiles ahead while none is up; a strike at
+     the nearest hostile tank within a strike's reach; a longshot at
+     the nearest hostile structure, pillbox or tank; each masked to a
+     bay with one and something to do;
+   - **the air contact** (5 senses: the nearest hostile drone's bearing
+     and nearness, whether it dives, the tank's own bubble as a share
+     of four).
+
+   Both new blocks go last, so an older net is widened with zero
+   weights (`Net::widen`) and computes exactly what it did (a test).
+6. **Map 7 from the map 5 net, drones on: 44.3% +/- 2.9** (133 of 300,
+   from 0; the scripted brain 53.3%). Map 4 98.3%, map 7a 99.0%, map 5
+   94.3%, phase 3 passes. Phase 1's enemy ground fell to 64.9%. The
+   failures were read before anything was changed: in 114 of the 117
+   the net had destroyed the enemy before reaching it (its drones and
+   gun). As written, phase 1 fails there. Counting a destroyed enemy as
+   reached, 99.1%; that reading was chosen after the result and is
+   marked so. `nets/map7.bin`.
+
+### C. The match reading
+
+`make train CHECK=net MATCH=40`: seat 9 of a dealt match (a ranger of
+team 0; nobody follows it), the net or its own scripted brain, first 3
+minutes, 40 seeds from 8,000,000, three respawns. It sits between the
+maps and the census:
+
+| Seat 9 | First down (s of 180) | Deaths in 3 min | Never down |
+| --- | --- | --- | --- |
+| nets/map4.bin | 96 +/- 10 | 1.77 | 11 of 40 |
+| nets/map7a.bin (home when low) | 64 +/- 9 | 3.08 | 5 of 40 |
+| nets/map5.bin (the shell contact, no drones) | 100 +/- 9 | 1.73 | 9 of 40 |
+| **nets/map7.bin (drones on)** | **129 +/- 9** | **0.82** | **16 of 40** |
+| the scripted ranger | 163 +/- 5 | 0.33 | 28 of 40 |
+
+Going home when low made a net worse in a match: what killed it there
+was not low armour. The bubble halved the deaths.
+
+### D. The census
+
+On the census machine at 814d601, in a worktree beside the run (rule
+in `build/net7/NOTES.txt` first): a team of `nets/map7.bin`, LR 97's
+seeds. **-20.33 +/- 0.27.** The rule asks for more than two errors
+above the random net (-20.35 +/- 0.25); it is level: **the rule
+fails**. Against LR 99's map 4 net (-24.29 +/- 0.45) it is **+3.96 +/-
+0.53**, the first net to climb off the bottom.
+
+| Team in the trial seat | Deaths a match (of 20) | Kills | Held | Score |
+| --- | --- | --- | --- | --- |
+| a random net (LR 97) | 18.3 | 0.8 | 1.8 | 4.7 |
+| nets/map4.bin (LR 99) | 18.6 | 0.9 | 1.9 | 2.2 |
+| **nets/map7.bin** | **16.6** | **3.7** | **2.1** | **5.3** |
+
+Four times the kills, two fewer deaths, and the highest score of any
+net team. Still far under the scripted teams, about 27 a seat.
+
+### E. Next
+
+- Map 8 (outnumbered, 15.7% untrained on it) and map 6 (the duel) with
+  the drones on.
+- Map 5's last 3% (where the misses are).
+- Phase 1's enemy ground rewritten so destroying the enemy counts,
+  with its rule written before the next read.
+- Then the census again on these seeds.
+
+### Lessons
+
+- **Trace a death before training against it.** Four runs trained
+  against "dodge the mortar"; the killer was a drone.
+- **Probe the bound before blaming the learner.** The oracle said the
+  actions could dodge everything; that pointed at the senses.
+- **A step map teaches what a hard map cannot.** Map 7a went from 0
+  to 99.7% where map 7 alone never moved.

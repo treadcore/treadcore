@@ -1174,7 +1174,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     train GROUND=; map 4 learned (93.7%), maps 5 and 6 not yet (92.9%,
     0%); a census of the map 4 net -24.29: every net team dies 18 to
     19 times of 20. Next: survival maps one at a time; or one net head
-    inside the scripted brain (proposed, Paul to choose).
+    inside the scripted brain (proposed, Paul to choose). Paul chose
+    the survival maps (LR 100): 7a learned (99.7%); the shell and air
+    contacts; the drone head on (the killer was a strike drone); map 7
+    44.3%; in a match 0.82 deaths in 3 minutes (was 1.73); the census
+    -20.33, level with a random net, +3.96 over the map 4 net. Next:
+    maps 8 and 6 with drones, map 5's last 3%.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

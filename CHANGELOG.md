@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: survival maps (LAB-REPORT-BRAIN.md section 100): 7a (low, go
+  home), 7 (low and far from home), 8 (outnumbered); scenario tanks
+  that start hurt and short. The learned tank's shell contact and air
+  contact, and its drone head (interceptors, recon, strikes,
+  longshots). `make train CHECK=net MATCH=n`: a net in one seat of n
+  dealt matches. `nets/map7.bin` dies half as often in a real match's
+  first minutes, and a team of it reads level with a random net in
+  the census, +3.96 over the last net, with four times the kills.
+
 - Added: training maps from scenario files (LAB-REPORT-BRAIN.md
   section 99). A scenario's `[reward]` and `kind = "net"` brains;
   `make train GROUND=phase1,phase3,scenarios/training/...` trains on a

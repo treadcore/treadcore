@@ -274,6 +274,11 @@ turn. An episode is 60 s at most.
 | Map 5, under a shell | 92.9% (scripted 99.8%, untrained 79.3%; floor 99%): not yet |
 | Map 6, an enemy that fires back | 0% won (scripted 20.3%); the trades better, reward -2.08 to -1.08: not yet |
 | A team of the map 4 net in the census | -24.29 +/- 0.45. Every net team dies 18 to 19 times of 20 a match and kills about once |
+| Map 7a, low: go home (LR 100) | 99.7% (scripted 100%, untrained 0%) |
+| Map 5 with the shell contact | 95.9% (was 90 to 93%) |
+| Map 7, low and far from home, with the drone head on | 44.3% (scripted 53.3%, untrained 0%) |
+| One seat in a real match, first 3 minutes (nets/map7.bin) | first down at 129 +/- 9 s, 0.82 deaths (scripted ranger 163 s, 0.33; the map 4 net 96 s, 1.77) |
+| A team of the map 7 net in the census | **-20.33 +/- 0.27**: level with the random net, +3.96 +/- 0.53 over the map 4 net; 3.7 kills and 16.6 deaths a match |
 
 The last row is the plan's most useful result. On the grounds the net
 drives straight at its target and nothing shoots back; in a match the
@@ -346,10 +351,12 @@ last's, and is read on every earlier map before it moves on):
 | 1 | open ground (done) | a target 10 to 20 tiles off: enemy, depot, pillbox | closer, reached | 95% each (999 of 999) |
 | 2 | the gun (done) | a still enemy 12 to 20 off | direct hits | 95% (999 of 999) |
 | 3 | a lake between | the target across water or round a wall | closer by route, reached | 90% |
+| 8 | outnumbered (15.7%) | half armour, home 8 off with its pillbox, two RuleBots 14 off | alive at 45 s | 80% |
 | 4 | the guarded depot (done) | a depot inside a hostile pillbox's ring | taken; armour lost costs | 80%, no death (93.7%) |
 | 5 | under a shell (built; 92.9%) | a shell landing on the tank in 1.5 to 3.5 s (the dodge families' situations) | not hit | 99% (the families' floor) |
 | 6 | an enemy that fires back (built; 0%) | a RuleBot 16 tiles off | damage given less taken; a kill | half the duels won |
-| 7 | low and far from home | shells or armour low, a depot of ours and an enemy both near | resupplied, alive | 90% |
+| 7a | low, go home (done) | map 7 without the enemy | home and repaired | 95% (99.7%) |
+| 7 | low and far from home (44.3%) | 30% armour, home 18 off, a RuleBot 12 off | resupplied, alive | 80% |
 | 8 | a friend calls | a teammate under fire 15 tiles off calls for help | arrived inside 20 s | 80% |
 | 9 | a call answered | two nets; only one sees the enemy | the blind one arrives sooner than alone | faster, by two errors |
 | 10 | the pillbox held | an enemy comes for our pillbox | the pillbox stands at 60 s | 70% |
