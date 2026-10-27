@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-23 files, 512 functions (0 with no doc comment; 39 more are a trait's, documented by it), 123 tests.
+23 files, 515 functions (0 with no doc comment; 39 more are a trait's, documented by it), 123 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -21,7 +21,7 @@ structure as built is `checkins/`.
 | [`fortify.rs`](#fortifyrs) | 679 | 25 | 0 | 2 | Fortification to a plan (roadmap step 11b): a castle's gate. |
 | [`hop.rs`](#hoprs) | 938 | 25 | 0 | 1 | Island hopping: a bot that has taken everything it can reach goes for what it cannot, across the water. |
 | [`intent.rs`](#intentrs) | 186 | 9 | 0 | 3 | Holding a decision (roadmap step 12d, LAB-REPORT-BRAIN.md section 7). |
-| [`learn.rs`](#learnrs) | 1254 | 43 | 0 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
+| [`learn.rs`](#learnrs) | 1403 | 46 | 0 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
 | [`ledger.rs`](#ledgerrs) | 489 | 13 | 0 | 4 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
 | [`lib.rs`](#librs) | 2941 | 66 | 0 | 20 | treadcore-brain -- the controller interface, and one controller. |
 | [`memory.rs`](#memoryrs) | 101 | 10 | 0 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
@@ -450,51 +450,54 @@ Training the learned tank (LR 95, 97): the phases' training grounds and evolutio
 | 75 | `distance` | Task |  | The target's distance at the start, tiles. |
 | 95 | `ground` |  | yes | The ground for a task and seed: the seed's generated map with a square of grass `GROUND` tiles each way round its centre, the tank at the centre facing a way the seed draws, the target 10 to 20 tiles off in a directio... |
 | 171 | `score` | Task | yes | An episode's score, the reward summed. |
-| 188 | `passed` | Task | yes | Whether an episode passed its phase's test: within `REACH` inside the minute; a direct hit on the enemy inside the minute. |
-| 195 | `play` |  | yes | One episode of a brain on a ground. |
-| 200 | `play_on` |  | yes | As `play`, recording frames into `rec` (the clips, LR 102). |
-| 247 | `normal` |  |  | A normal draw (Box and Muller). |
-| 254 | `direction` |  |  | The noise of one pair of a generation: a direction, from its seed. |
-| 260 | `spread` |  | yes | Run `jobs` jobs on `threads` threads, results in order. |
-| 292 | `parse` | Course | yes | `phase1`, `phase3`, or a scenario file's path. |
-| 310 | `name` | Course | yes | The course's name in the trainer's lines: the task, or the file's stem. |
-| 319 | `floor` | Course | yes | The share of held-out episodes it must pass: a file's `floor`, else 95%. |
-| 329 | `scripted` | Course | yes | The same file with its net seats given to the scripted brain (`kind = "commander"`, on Auto): what the scripted brain does on the same situations. |
-| 350 | `prepare` |  | yes | Episode `k` of a generation: the courses in turn. |
-| 358 | `episode` |  | yes | A net on one episode: its score, and whether it passed. |
-| 373 | `judge` |  | yes | A net on episodes: the mean score, and the share passed. |
-| 409 | `new` | Adam | yes | Moments at zero for `n` weights. |
-| 414 | `step` | Adam | yes | Move `theta` up the gradient `g`. |
-| 442 | `generation` |  | yes | One generation: pairs of directions played forward and back on `seeds` episodes drawn from `gen_seed` (the courses in turn, so a mix rehearses what was learned before), ranked, and the weights moved. |
-| 487 | `check` |  | yes | A brain's reading on held-out grounds: for each target, the share passed and its standard error, and the mean score. |
-| 539 | `name` |  |  | *(the `Brain` trait's)* |
-| 542 | `think` |  |  | *(the `Brain` trait's)* |
-| 553 | `name` |  |  | *(the `Brain` trait's)* |
-| 556 | `think` |  |  | *(the `Brain` trait's)* |
-| 628 | `env` |  |  | A setting from the environment, or `d` when unset, empty or unread. |
-| 634 | `report` |  |  | Prints a net's reading on held-out grounds, each target's share passed with its standard error. |
-| 663 | `baseline` |  |  | The scripted bot on the same held-out grounds: its share passed and, shooting, its hits a shot (a reference, LR 97). |
-| 678 | `report_file` |  |  | A training map read on held-out seeds, by a net or (with none) by the scripted brain in its seats: the share passed with its error, the mean reward, and whether it reaches the map's floor. |
-| 704 | `report_all` |  |  | A net (or with none, the scripted brain) on every course's held-out seeds. |
-| 731 | `match_minutes` |  |  | The match reading (LR 100): seat 9 of a dealt match (a ranger of team 0, whom nobody follows) given to the net, or kept by its scripted brain, on a map from the seed, three respawns, for `secs`: when the seat first we... |
-| 770 | `match_reading` |  |  | `MATCH=n`: the match reading over n seeds from 8,000,000, the net (`CHECK`) and the scripted ranger on the same seeds. |
-| 794 | `name` |  |  | *(the `Brain` trait's)* |
-| 797 | `think` |  |  | *(the `Brain` trait's)* |
-| 831 | `sim_dodge` |  |  | The bound by simulation (LR 100): map 5's situation built here (the tank rolling at full speed on a heading the seed draws, a shell landing within 2.5 tiles of it in 1.5 to 3.5 s), and every 0.2 s each of the nine dri... |
-| 915 | `probe` |  |  | `PROBE=oracle GROUND=map`: the oracle in the net's seat on the held-out seeds. |
-| 932 | `gauntlet` |  |  | `make gauntlet` (LR 102): every file in `scenarios/gauntlet/`, for the scripted brain, the untrained net and each milestone net, on the same `GAUNTLET_RUNS` seeds (200) from 9,500,000: the share passed with its error,... |
-| 974 | `gif` |  |  | A recording drawn and made a GIF (LR 102): each frame to a PPM, then `ffmpeg` with a palette of its own. |
-| 999 | `match_clip` |  |  | The match clip (LR 102): seat 9 of a dealt match given to `net`, recorded round its start for `secs`. |
-| 1043 | `clips` |  |  | `make clips` (LR 102): a short GIF of each milestone at work, on its defining test, the first held-out seed it passes (the untrained net on the first seed), and the newest net in a real match. |
-| 1111 | `timing` |  |  | `TIMING=1` (LR 102): what the learned tank costs alone, on one thread: a decision (the senses and the forward pass); a one-tank episode of phase 3's ground; and 120 s of a 16-seat match with every seat a net against e... |
+| 191 | `passed` | Task | yes | Whether an episode passed its phase's test: within `REACH` inside the minute; a direct hit on the enemy inside the minute. |
+| 198 | `play` |  | yes | One episode of a brain on a ground. |
+| 203 | `play_on` |  | yes | As `play`, recording frames into `rec` (the clips, LR 102). |
+| 250 | `normal` |  |  | A normal draw (Box and Muller). |
+| 257 | `direction` |  |  | The noise of one pair of a generation: a direction, from its seed. |
+| 263 | `spread` |  | yes | Run `jobs` jobs on `threads` threads, results in order. |
+| 295 | `parse` | Course | yes | `phase1`, `phase3`, or a scenario file's path. |
+| 313 | `name` | Course | yes | The course's name in the trainer's lines: the task, or the file's stem. |
+| 322 | `floor` | Course | yes | The share of held-out episodes it must pass: a file's `floor`, else 95%. |
+| 332 | `scripted` | Course | yes | The same file with its net seats given to the scripted brain (`kind = "commander"`, on Auto): what the scripted brain does on the same situations. |
+| 353 | `prepare` |  | yes | Episode `k` of a generation: the courses in turn. |
+| 361 | `episode` |  | yes | A net on one episode: its score, and whether it passed. |
+| 376 | `judge` |  | yes | A net on episodes: the mean score, and the share passed. |
+| 412 | `new` | Adam | yes | Moments at zero for `n` weights. |
+| 417 | `step` | Adam | yes | Move `theta` up the gradient `g`. |
+| 445 | `generation` |  | yes | One generation: pairs of directions played forward and back on `seeds` episodes drawn from `gen_seed` (the courses in turn, so a mix rehearses what was learned before), ranked, and the weights moved. |
+| 490 | `check` |  | yes | A brain's reading on held-out grounds: for each target, the share passed and its standard error, and the mean score. |
+| 542 | `name` |  |  | *(the `Brain` trait's)* |
+| 545 | `think` |  |  | *(the `Brain` trait's)* |
+| 556 | `name` |  |  | *(the `Brain` trait's)* |
+| 559 | `think` |  |  | *(the `Brain` trait's)* |
+| 631 | `env` |  |  | A setting from the environment, or `d` when unset, empty or unread. |
+| 637 | `report` |  |  | Prints a net's reading on held-out grounds, each target's share passed with its standard error. |
+| 666 | `baseline` |  |  | The scripted bot on the same held-out grounds: its share passed and, shooting, its hits a shot (a reference, LR 97). |
+| 681 | `report_file` |  |  | A training map read on held-out seeds, by a net or (with none) by the scripted brain in its seats: the share passed with its error, the mean reward, and whether it reaches the map's floor. |
+| 707 | `report_all` |  |  | A net (or with none, the scripted brain) on every course's held-out seeds. |
+| 734 | `match_minutes` |  |  | The match reading (LR 100): seat 9 of a dealt match (a ranger of team 0, whom nobody follows) given to the net, or kept by its scripted brain, on a map from the seed, three respawns, for `secs`: when the seat first we... |
+| 773 | `match_reading` |  |  | `MATCH=n`: the match reading over n seeds from 8,000,000, the net (`CHECK`) and the scripted ranger on the same seeds. |
+| 797 | `name` |  |  | *(the `Brain` trait's)* |
+| 800 | `think` |  |  | *(the `Brain` trait's)* |
+| 834 | `sim_dodge` |  |  | The bound by simulation (LR 100): map 5's situation built here (the tank rolling at full speed on a heading the seed draws, a shell landing within 2.5 tiles of it in 1.5 to 3.5 s), and every 0.2 s each of the nine dri... |
+| 918 | `probe` |  |  | `PROBE=oracle GROUND=map`: the oracle in the net's seat on the held-out seeds. |
+| 935 | `gauntlet` |  |  | `make gauntlet` (LR 102): every file in `scenarios/gauntlet/`, for the scripted brain, the untrained net and each milestone net, on the same `GAUNTLET_RUNS` seeds (200) from 9,500,000: the share passed with its error,... |
+| 948 | `gauntlet_of` |  |  | The gauntlet for these brains (None the scripted brain), to `out/file`. |
+| 983 | `gif` |  |  | A recording drawn and made a GIF (LR 102): each frame to a PPM, then `ffmpeg` with a palette of its own. |
+| 1008 | `match_clip` |  |  | The match clip (LR 102): seat 9 of a dealt match given to `net`, recorded round its start for `secs`. |
+| 1052 | `clips` |  |  | `make clips` (LR 102): a short GIF of each milestone at work, on its defining test, the first held-out seed it passes (the untrained net on the first seed), and the newest net in a real match. |
+| 1120 | `timing` |  |  | `TIMING=1` (LR 102): what the learned tank costs alone, on one thread: a decision (the senses and the forward pass); a one-tank episode of phase 3's ground; and 120 s of a 16-seat match with every seat a net against e... |
+| 1172 | `read_course` |  |  | A course read on its held-out seeds by a net: the share passed (for a built ground the lowest of its targets'), its error, and the course's floor (LR 103). |
+| 1202 | `school` |  |  | `make school` (LR 103): the learned tank's curriculum, run until stopped, as `make converge` runs the scripted brain's census. |
 
 Tests (5):
 
-- `a_ground_is_open_and_its_target_is_there` (line 514): The grounds: the tank at the centre on grass, the target where the ground says and of its kind, open ground between, and a seed the same ground twice.
-- `a_straight_drive_reaches_and_a_still_tank_does_not` (line 536): The ground is fair: a brain that drives straight at the target reaches each kind well inside the minute; one that holds never does; and an enemy shot at from inside the gun's reach is hit.
-- `a_training_map_is_a_course` (line 579): The training maps (LR 99): every file under `scenarios/training/` reads as a course (a net seat, known reward terms); a net plays one the same way twice; its scripted reading puts a Commander in the net's seat; a rewa...
-- `evolution_moves_the_weights_the_same_way_twice` (line 607): Evolution moves the weights: on a few grounds, a handful of generations raise the score, and a generation's seed gives the same move twice.
-- `train` (line 1171): The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a comma list of courses (`phase1`, `phase3`, training maps' paths) trained together, each episode the next course in turn.
+- `a_ground_is_open_and_its_target_is_there` (line 517): The grounds: the tank at the centre on grass, the target where the ground says and of its kind, open ground between, and a seed the same ground twice.
+- `a_straight_drive_reaches_and_a_still_tank_does_not` (line 539): The ground is fair: a brain that drives straight at the target reaches each kind well inside the minute; one that holds never does; and an enemy shot at from inside the gun's reach is hit.
+- `a_training_map_is_a_course` (line 582): The training maps (LR 99): every file under `scenarios/training/` reads as a course (a net seat, known reward terms); a net plays one the same way twice; its scripted reading puts a Commander in the net's seat; a rewa...
+- `evolution_moves_the_weights_the_same_way_twice` (line 610): Evolution moves the weights: on a few grounds, a handful of generations raise the score, and a generation's seed gives the same move twice.
+- `train` (line 1316): The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a comma list of courses (`phase1`, `phase3`, training maps' paths) trained together, each episode the next course in turn.
 
 ## ledger.rs
 

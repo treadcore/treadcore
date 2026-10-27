@@ -1,0 +1,40 @@
+# Training map 10 (LAB-REPORT-BRAIN.md section 103): an unguarded
+# depot. The gauntlet's G6 found the map 4 net taking a depot behind a
+# pillbox 98% of the time and one standing alone 0% (LR 102): it had
+# learned the scene, not the depot. A neutral depot 14 tiles off in any
+# direction, nothing else; the tank must sit on it the 10 s it takes.
+# Passed: the depot is the tank's within 30 s. (G6 asks the same at 8
+# tiles in 20 s: the gauntlet stays a test.)
+name = "an unguarded depot"
+floor = 0.9
+held = 300
+players = 2
+seconds = 30
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-30, 30]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [14, 0]
+around = true
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 60]
+[[depot]]
+at = "centre"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+depot_owned_by = { seat = 0, depot = 0 }
+[reward]
+closer = { at = "depot:0", worth = 0.5 }
+depot_taken = 2
+pass = 1

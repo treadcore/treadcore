@@ -97,6 +97,11 @@
 #   make clips       a short GIF of each milestone net at work, and the
 #                    newest in a real match (needs ffmpeg; build/train/
 #                    clips/, LR 102)
+#   make school      the learned tank's curriculum until stopped (LR 103):
+#                    each round trains the next map not yet passed beside
+#                    the passed ones, keeps the net only on a real gain
+#                    with nothing broken, gauntlets it; build/school/
+#                    (touch build/school/STOP to end; it resumes)
 #   make roundrobin  the census for every ordered pair of profiles/*.weights
 #                    and the defaults: the payoff matrix (scripts/roundrobin.sh;
 #                    PROFILES, SEEDS, SEED0, MAP)
@@ -151,7 +156,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa converge ledger train gauntlet clips roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa converge ledger train gauntlet clips school roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -324,6 +329,10 @@ gauntlet:
 
 clips:
 	@CLIPS=1 OUT="$(abspath $(or $(OUT),build/train))" THREADS="$(THREADS)" \
+		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
+
+school:
+	@SCHOOL=1 OUT="$(abspath $(or $(OUT),build/school))" START="$(if $(START),$(abspath $(START)))" GENS="$(GENS)" THREADS="$(THREADS)" \
 		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
 
 roundrobin:

@@ -184,9 +184,12 @@ impl Task {
     }
 
     /// Whether an episode passed its phase's test: within `REACH` inside
-    /// the minute; a direct hit on the enemy inside the minute.
+    /// the minute; a direct hit on the enemy inside the minute. On the
+    /// go-to ground an enemy destroyed counts as reached (LR 103: since
+    /// the drone head, a net that kills its target on the way is not
+    /// failing to go to it; LR 100 found 114 of 117 such "failures").
     pub fn passed(self, p: &Played) -> bool {
-        if self.shoots(p.target.unwrap_or(Target::Depot)) { p.hits > 0 } else { p.reached.is_some() }
+        if self.shoots(p.target.unwrap_or(Target::Depot)) { p.hits > 0 } else { p.reached.is_some() || (p.target == Some(Target::Enemy) && p.killed) }
     }
 }
 
@@ -930,10 +933,6 @@ mod harness {
     /// passed with its error, and the median reaction where it came.
     /// Written to `OUT/gauntlet.tsv` as well.
     fn gauntlet(out: &std::path::Path, threads: usize) {
-        let dir = crate::scenario::find("scenarios/gauntlet");
-        let mut files: Vec<_> = std::fs::read_dir(&dir).expect("scenarios/gauntlet/").filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
-        files.sort();
-        let runs: u64 = env("GAUNTLET_RUNS", 200);
         let mut who: Vec<(String, Option<Net>)> = vec![("scripted".into(), None), ("untrained".into(), Some(Net::tank(1)))];
         for m in MILESTONES {
             let f = crate::scenario::find(&format!("nets/{}.bin", m));
@@ -941,12 +940,22 @@ mod harness {
                 who.push((m.to_string(), Some(n.widen(crate::senses::SENSES))));
             }
         }
+        gauntlet_of(&who, out, "gauntlet.tsv", threads);
+    }
+
+    /// The gauntlet for these brains (None the scripted brain), to
+    /// `out/file`.
+    fn gauntlet_of(who: &[(String, Option<Net>)], out: &std::path::Path, file: &str, threads: usize) {
+        let dir = crate::scenario::find("scenarios/gauntlet");
+        let mut files: Vec<_> = std::fs::read_dir(&dir).expect("scenarios/gauntlet/").filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
+        files.sort();
+        let runs: u64 = env("GAUNTLET_RUNS", 200);
         let mut tsv = String::from("item\tbrain\tpassed\truns\tshare\tse\treaction_median\treaction_n\n");
         for f in &files {
             let c = Course::parse(&f.to_string_lossy()).unwrap_or_else(|e| panic!("{}", e));
             let Course::File { name, doc } = &c else { continue };
             let title = doc.top.get("name").and_then(crate::scenario::Value::str).unwrap_or(name).to_string();
-            for (w, net) in &who {
+            for (w, net) in who {
                 let d = if net.is_some() { doc.clone() } else { c.scripted().expect("a file") };
                 let seeds: Vec<u64> = (9_500_000..9_500_000 + runs).collect();
                 let res = spread(seeds.len(), threads, &|k| {
@@ -964,8 +973,8 @@ mod harness {
             }
         }
         std::fs::create_dir_all(out).ok();
-        std::fs::write(out.join("gauntlet.tsv"), tsv).unwrap();
-        println!("gauntlet: written {}", out.join("gauntlet.tsv").display());
+        std::fs::write(out.join(file), tsv).unwrap();
+        println!("gauntlet: written {}", out.join(file).display());
     }
 
     /// A recording drawn and made a GIF (LR 102): each frame to a PPM,
@@ -1157,6 +1166,142 @@ mod harness {
         }
     }
 
+    /// A course read on its held-out seeds by a net: the share passed
+    /// (for a built ground the lowest of its targets'), its error, and
+    /// the course's floor (LR 103).
+    fn read_course(c: &Course, net: &Net, held: u64, threads: usize) -> (f64, f64, f64) {
+        match c {
+            Course::Built(t) => {
+                let rows = check(*t, 9_000_000..9_000_000 + held, threads, &|| Box::new(NetBrain::new(net.clone(), "net")));
+                let worst = rows.iter().map(|(_, p, n, _)| (*p as f64 / *n as f64, *n as f64)).min_by(|a, b| a.0.total_cmp(&b.0)).unwrap_or((0.0, 1.0));
+                (worst.0, (worst.0 * (1.0 - worst.0) / worst.1).sqrt(), c.floor() as f64)
+            }
+            Course::File { name, doc } => {
+                let h = doc.top.get("held").and_then(crate::scenario::Value::num).map(|h| h as u64).unwrap_or(held);
+                let seeds: Vec<u64> = (9_000_000..9_000_000 + h).collect();
+                let runs = spread(seeds.len(), threads, &|k| crate::scenario::run_net(doc, Some(seeds[k]), Some(net)).map(|(_, f)| f.is_empty()).unwrap_or_else(|e| panic!("{}: {}", name, e)));
+                let p = runs.iter().filter(|r| **r).count() as f64 / h as f64;
+                (p, (p * (1.0 - p) / h as f64).sqrt(), c.floor() as f64)
+            }
+        }
+    }
+
+    /// `make school` (LR 103): the learned tank's curriculum, run until
+    /// stopped, as `make converge` runs the scripted brain's census.
+    /// Each round trains the next map not yet passed (listed twice)
+    /// beside every map passed (rehearsed once), from the best net so
+    /// far, for `GENS` generations (300); then reads every course on its
+    /// held-out seeds. The new net is kept only if the target rose by
+    /// more than two errors over the best's reading of it and no passed
+    /// course fell under its floor; a target at its floor is passed and
+    /// joins the rehearsal. A kept net gets the gauntlet. Everything to
+    /// `OUT` (build/school): `log.txt`, `rounds.tsv`, `best.bin`, each
+    /// kept round's net, and the gauntlet's table. A file `STOP` there
+    /// ends it after the round in hand; it resumes from `best.bin` and
+    /// `state.txt`.
+    fn school(out: &std::path::Path, threads: usize) {
+        std::fs::create_dir_all(out).unwrap();
+        let log = |l: String| {
+            println!("school: {}", l);
+            let mut f = std::fs::OpenOptions::new().create(true).append(true).open(out.join("log.txt")).unwrap();
+            use std::io::Write;
+            writeln!(f, "{} {}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0), l).ok();
+        };
+        let t = "scenarios/training/";
+        // Passed when the school began (LR 97 to 100), and the queue in order.
+        let mut passed: Vec<String> = vec!["phase1".into(), "phase3".into(), format!("{}04-the-guarded-depot.toml", t), format!("{}07a-low-go-home.toml", t)];
+        let queue: Vec<String> = ["09-low-armour-full-shells", "10-an-unguarded-depot", "05-under-a-shell", "07-low-and-far-from-home", "08-outnumbered", "06-an-enemy-that-fires-back"].iter().map(|m| format!("{}{}.toml", t, m)).collect();
+        let state = out.join("state.txt");
+        let mut round: usize = 0;
+        if let Ok(s) = std::fs::read_to_string(&state) {
+            for l in s.lines() {
+                if let Some(r) = l.strip_prefix("round ") {
+                    round = r.trim().parse().unwrap_or(0);
+                } else if let Some(p) = l.strip_prefix("passed ") {
+                    if !passed.iter().any(|x| x == p.trim()) {
+                        passed.push(p.trim().to_string());
+                    }
+                }
+            }
+        }
+        let best_file = out.join("best.bin");
+        let start = std::env::var("START").ok().filter(|f| !f.is_empty()).unwrap_or_else(|| crate::scenario::find("nets/map7.bin").to_string_lossy().into_owned());
+        let mut best = Net::load(if best_file.exists() { &best_file } else { std::path::Path::new(&start) }).expect("a net to begin from").widen(crate::senses::SENSES);
+        let gens: usize = env("GENS", 300);
+        let es = Es { pairs: env("PAIRS", 48), seeds: env("SEEDS", 0), sigma: env("SIGMA", 0.05), rate: env("RATE", 0.02), decay: env("DECAY", 0.0005), threads };
+        let held: u64 = env("HELD", 999);
+        log(format!("begins at round {}, from {}, {} passed, queue of {}", round, if best_file.exists() { best_file.display().to_string() } else { start.clone() }, passed.len(), queue.len()));
+        if !out.join("rounds.tsv").exists() {
+            std::fs::write(out.join("rounds.tsv"), "round\ttarget\tbefore\tafter\tse\tkept\tpassed\tbroke\tseconds\n").unwrap();
+        }
+        let mut misses = 0;
+        loop {
+            if out.join("STOP").exists() {
+                log("STOP found: ends".into());
+                break;
+            }
+            let open: Vec<&String> = queue.iter().filter(|q| !passed.contains(q)).collect();
+            if open.is_empty() {
+                log("every map passed: ends".into());
+                break;
+            }
+            let target = open[round % open.len()].clone();
+            let mut specs: Vec<String> = passed.clone();
+            specs.push(target.clone());
+            specs.push(target.clone());
+            let courses: Vec<Course> = specs.iter().map(|c| Course::parse(c).unwrap_or_else(|e| panic!("{}", e))).collect();
+            let tc = Course::parse(&target).unwrap();
+            let t0 = std::time::Instant::now();
+            let before = read_course(&tc, &best, held, threads);
+            let es = Es { seeds: if es.seeds > 0 { es.seeds } else { 3 * specs.len() }, ..es.clone() };
+            let shape = best.clone();
+            let mut theta = shape.flat();
+            let mut adam = Adam::new(theta.len());
+            for n in 0..gens {
+                let g = generation(&courses, &es, &mut theta, &mut adam, &shape, n, 1 + (round * 10_000 + n) as u64);
+                if n % 50 == 49 {
+                    log(format!("round {} {}: gen {} mean {:.3} net {:.3} passed {:.2}", round, tc.name(), n + 1, g.mean, g.score, g.passed));
+                }
+            }
+            let cand = shape.with_flat(&theta);
+            let after = read_course(&tc, &cand, held, threads);
+            let mut broke = Vec::new();
+            for p in &passed {
+                let c = Course::parse(p).unwrap();
+                let r = read_course(&c, &cand, held, threads);
+                if r.0 + 1e-9 < r.2 {
+                    broke.push(format!("{} {:.3}", c.name(), r.0));
+                }
+            }
+            let rose = after.0 - before.0 > 2.0 * (after.1 * after.1 + before.1 * before.1).sqrt();
+            let keep = rose && broke.is_empty();
+            let now_passed = keep && after.0 + 1e-9 >= after.2;
+            log(format!("round {} {}: {:.3} -> {:.3} +/- {:.3} (floor {:.2}); {}{}{}", round, tc.name(), before.0, after.0, after.1, after.2, if keep { "KEPT" } else { "not kept" }, if now_passed { ", PASSED" } else { "" }, if broke.is_empty() { String::new() } else { format!("; broke {}", broke.join(", ")) }));
+            std::fs::OpenOptions::new().append(true).open(out.join("rounds.tsv")).and_then(|mut f| {
+                use std::io::Write;
+                writeln!(f, "{}\t{}\t{:.4}\t{:.4}\t{:.4}\t{}\t{}\t{}\t{:.0}", round, tc.name(), before.0, after.0, after.1, keep, now_passed, broke.join("; "), t0.elapsed().as_secs_f64())
+            }).unwrap();
+            if keep {
+                best = cand;
+                best.save(&best_file).unwrap();
+                best.save(&out.join(format!("round{}.bin", round))).unwrap();
+                if now_passed {
+                    passed.push(target.clone());
+                }
+                gauntlet_of(&[(format!("round{}", round), Some(best.clone()))], out, &format!("gauntlet-round{}.tsv", round), threads);
+                misses = 0;
+            } else {
+                misses += 1;
+            }
+            round += 1;
+            std::fs::write(&state, format!("round {}\n{}", round, passed.iter().map(|p| format!("passed {}\n", p)).collect::<String>())).unwrap();
+            if misses >= 3 * open.len().max(1) {
+                log(format!("{} rounds without a kept net: ends", misses));
+                break;
+            }
+        }
+    }
+
     /// The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a
     /// comma list of courses (`phase1`, `phase3`, training maps' paths)
     /// trained together, each episode the next course in turn. With
@@ -1178,6 +1323,10 @@ mod harness {
         let name = env("NAME", if ground.is_some() { "ground".to_string() } else { format!("phase{}", phase) });
         let threads: usize = env("THREADS", std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4));
         let held: u64 = env("HELD", 999);
+        if !std::env::var("SCHOOL").unwrap_or_default().is_empty() {
+            school(&std::path::PathBuf::from(env("OUT", "build/school".to_string())), threads);
+            return;
+        }
         if !std::env::var("TIMING").unwrap_or_default().is_empty() {
             timing();
             return;
