@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `make school`, the learned tank's curriculum run until stopped
+  beside `make converge`; training maps 9 (low armour, full shells) and
+  10 (an unguarded depot) against the gauntlet's shortcuts; CENSUS.md
+  section 5a, more than one census machine (LAB-REPORT-BRAIN.md
+  section 103).
+
 - Added: the gauntlet (`scenarios/gauntlet/`, `make gauntlet`), nine
   single-decision tests for every milestone net and the scripted
   brain; clips (`clip.rs`, `make clips`), a GIF of each generation at

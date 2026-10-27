@@ -74,6 +74,11 @@ IV. CHRONOLOGY
        +0.84 then +0.37); the fit sees no weight with a gain of two
        errors (largest w_threat +0.60 +/- 0.34, w_smooth +0.51 +/-
        0.26). No candidate (LR 101).
+   10. Both brains training: make school built (the curriculum until
+       stopped) with maps 9 and 10 against the shortcuts; read first
+       (scripted 100%, untrained 0%, map 7 net 11%); started on the
+       Mac from nets/map7.bin. More than one census machine: by whole
+       censuses from a shared queue, planned (CENSUS.md 5a, LR 103).
 
 V. RESULTS
 

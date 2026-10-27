@@ -7039,3 +7039,88 @@ seeds, a share and its error.
   with full shells; an unguarded depot).
 - Map 8 and the duel with the drones.
 - The census again on the same seeds.
+
+## 103. The school: the learned tank trains until stopped; and more than one census machine, 27 October
+
+Paul: "we will continue to test. are we training both brainz and net
+ai." Then: "yes. build it and start it on the mac. please. also if I
+get more CPU. is there a way to have multiple census machines."
+
+### A. Both brains training at once
+
+| Brain | Loop | Where |
+| --- | --- | --- |
+| The scripted brain's 110 weights | `make converge` (LR 92), since 26 October 18:10 | the census machine, 24 threads |
+| The learned tank | `make school` (here), since 27 October | the Mac, 8 threads |
+
+**`make school`** runs the curriculum as `make converge` runs the
+census.
+- **Each round:** the next map not yet passed, listed twice beside
+  every passed course; 300 generations from the best net so far.
+  Then every course is read on its held-out seeds.
+- **Keeping a net:** only if the target rose by more than two combined
+  errors and no passed course fell under its floor. A target at its
+  floor joins the passed.
+- **The gauntlet:** a kept net gets it, and its table is saved by
+  round.
+- **Logs:** `build/school/` holds `log.txt`, `rounds.tsv`, `best.bin`,
+  each kept round's net and `state.txt`.
+- **Stopping:** `touch build/school/STOP` ends it after the round in
+  hand, and it resumes from `best.bin` and `state.txt`. It also ends
+  when every map is passed, or after rounds with nothing kept (three
+  times the open maps' count).
+
+The rule is in `build/school/NOTES.txt`, written before it played.
+
+**Two new training maps against the gauntlet's shortcuts** (LR 102):
+- **map 9:** low armour with full shells, home 15 tiles off (G5 asks
+  at 10);
+- **map 10:** an unguarded depot 14 tiles off, 30 s (G6 asks at 8 in
+  20 s).
+
+Read first:
+
+| Map | Scripted | Untrained | nets/map7.bin |
+| --- | --- | --- | --- |
+| 9 | 100% | 0% | 11.3% |
+| 10 | 100% | 0% | 11.7% |
+
+**An amendment, written before the school's first read.** Phase 1's
+enemy ground counts an enemy destroyed as reached. LR 100 found 114
+of 117 of the map 7 net's "failures" there were targets it had killed
+on the way.
+
+**Started** from `nets/map7.bin`, with phases 1 and 3 and maps 4 and
+7a passed. The queue: 9, 10, 5, 7, 8, 6.
+
+### B. More than one census machine
+
+Yes, within the rule that a census is one machine's (CENSUS.md
+section 5). The census is many independent matches, and the run is
+many independent censuses, so machines scale it at the level of whole
+censuses, never of jobs within one:
+
+1. **More cores in one machine.** Nothing to build: `JOBS` is `nproc`.
+   A census's time falls with cores until the machine's memory
+   bandwidth is the limit.
+2. **Several machines, one run.** Each machine plays whole censuses
+   from one shared queue: the run writes each generation's trials as
+   files, each machine takes the next trial, plays it on its own
+   frozen binary, and returns its census folder, with `HOST` in
+   `run.env`. The ledger already joins machines' rows without pooling
+   them (`ledger.py --merge`, LR 92). The fit can use every row, since
+   each is a complete paired reading on one machine. A held-out read is
+   one census, so it too stays on one machine. Machines of different
+   architectures (an ARM Mac beside the x86 census machine) play
+   different matches; their rows are still each a valid paired
+   reading. A trial that passes on one machine is read held out on
+   that machine. The work is a small worker script and the run reading
+   a queue directory; it is planned (CENSUS.md section 5a), to build
+   when a second machine arrives.
+3. **The learned tank on several machines.** Evolution's episodes are
+   independent, but a generation waits on all of them, so splitting
+   one generation across a network costs more than it gains. Instead,
+   each machine runs its own school on its own seeds (an island
+   model), and the best net by the gauntlet and the match reading is
+   carried to the others each night. On a GPU machine, gradient
+   training (Burn, AI-BRAINZ-PLAN.md section 8) is the other road.

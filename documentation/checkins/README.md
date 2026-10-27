@@ -77,3 +77,4 @@ report is what ties a conversation to them. Named
 | [062](CI-062-2026-10-26-survival-maps.md) | 26 October 2026 | Survival maps: low armour means home, the missing drones found, and the first net off the bottom of the census | 0102 | LAB-REPORT-BRAIN.md section 100 |
 | [063](CI-063-2026-10-27-the-third-morning.md) | 27 October 2026 | The third morning: thirty generations of the run, and no candidate | 0103 | LAB-REPORT-BRAIN.md section 101 |
 | [064](CI-064-2026-10-27-generations-watched.md) | 27 October 2026 | Generations watched: clips of each learned tank, a gauntlet of single decisions, and what the AI costs | 0103 | LAB-REPORT-BRAIN.md section 102 |
+| [065](CI-065-2026-10-27-the-school.md) | 27 October 2026 | The school: both brains training at once, and how more machines would help | 0103 | LAB-REPORT-BRAIN.md section 103 |
