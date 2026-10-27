@@ -7374,3 +7374,60 @@ address on the LAN; enable sshd; add saskatchewan's key. Then `make
 fleet-join HOST=<address>` from saskatchewan does the rest. The
 fleet's code is built when the first such machine is on the network,
 and the identity check is its first test.
+
+## 105. A second census machine: columbia, and the identity check, 27 October
+
+Paul: "we got another online at 192.168.8.224. can we get it running
+census in along with the other already running. gather . whats its
+ip." Then, after its rename: "yes go ahead with the identity check."
+
+### A. The machine
+
+| | saskatchewan (the census machine) | columbia (new) |
+| --- | --- | --- |
+| Address | 192.168.8.235 | 192.168.8.224 |
+| Hardware | Intel Core i7-13700F, 24 threads | MINIX NEO Z300-0dB, Intel Core i3-N300, 8 threads, 32 GB, 467 GB NVMe |
+| System | Copal, Alpine 3.24.3 | Copal, Alpine 3.24.3, kernel 6.18.59-lts |
+
+It arrived named `saskatchewan` too (a Copal card written before that
+day's hostname fix) and was renamed `columbia` (Copal's
+`docs/renaming-a-machine-lab-report.md`). treadcore was cloned at
+221b2ff and built (`cargo build --release -p treadcore-brain`, 36 s).
+
+### B. The identity check (LR 104, E.5)
+
+Rule 1 of CENSUS.md section 5 is that a census is one machine's: two
+machines may play one seed differently. Before columbia plays censuses
+whose rows sit beside saskatchewan's, it plays one of saskatchewan's
+jobs and must match it to the character apart from timing.
+
+**Method.**
+- The reference: census `build/census/20261027-150756` of the run of 26
+  October, job `g-2470000.log`: 3 seeds from 2470000, every map (`MAP=all`,
+  11), 900 s, respawns 3, the run's trial weights (`w_called=0.475898`,
+  `w_in_range=1.4`, `pillbox_worth=1.4`, `w_pos_expand=0.8`) against the
+  defaults, played by the run's frozen binary.
+- The binary: that same `census-bin`, copied (sha256 `cfd62aeb...71fd`
+  on both machines), not one built on columbia.
+- The maps: a worktree of 7d0af54, the run's commit, on columbia, and
+  `census_maps all` from its `scripts/common.sh`.
+- The command: `census.sh`'s own job line (`CENSUS_MAP`, `CENSUS_RESPAWNS=3`,
+  `CENSUS_SEED0=2470000`, `CENSUS_SEEDS=3`, `CENSUS_SECS=900`,
+  `CENSUS_LEDGER=0`, the two weights files, `--ignored brain_census
+  --nocapture`).
+- The comparison: both logs with the two timing figures masked (`N us a
+  seat-tick` in each meter line, and `finished in`), then `cmp`.
+
+**Result.** **Identical**: 77 lines each, every score, kill, death,
+revive, posture count and meter count the same. Unmasked, 22 lines differ,
+11 a side, and they are exactly the timing ones: the ten meter lines and
+`finished in` (41.17 s on columbia, 51.66 s on saskatchewan, busy with its
+run).
+
+### C. What it means
+
+The same binary on the same Alpine and musl gives the same matches on two
+different Intel CPUs, so a census played on columbia is a reading
+saskatchewan would have made. The fleet's first condition (LR 104, E.5)
+is met. What columbia plays next is LR 106: the candidates' families, or
+the fleet worker (LR 104, E).

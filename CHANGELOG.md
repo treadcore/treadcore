@@ -6,6 +6,10 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Measured: a second census machine, columbia, plays the census
+  machine's job identically with the run's frozen binary
+  (LAB-REPORT-BRAIN.md section 105).
+
 - Documented: how the two loops' reports are read and what a read may
   adjust; the school's first eight rounds (maps 9 and 10 learned; open
   maps and the gauntlet slip, two guards proposed); the run's second

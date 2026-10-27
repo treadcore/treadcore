@@ -89,6 +89,13 @@ IV. CHRONOLOGY
    13. How the reports are read and what a read may adjust, and a
        fleet of Copal machines designed: workers pull whole censuses
        from a queue of files over ssh (LR 104, CI-066).
+   14. A second census machine, columbia (192.168.8.224, i3-N300, 8
+       threads), renamed from a second "saskatchewan". The identity
+       check: the run's frozen census-bin and commit, one of the run's
+       jobs replayed, identical apart from timing (LR 105, CI-067).
+       The school had ended at round 25 (12 rounds with nothing kept);
+       the run at generation 47 had two more candidates, gen44 and
+       gen45.
 
 V. RESULTS
 
