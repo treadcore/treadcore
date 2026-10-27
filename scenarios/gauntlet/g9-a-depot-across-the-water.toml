@@ -1,0 +1,38 @@
+# The gauntlet (LAB-REPORT-BRAIN.md section 102): one decision, little
+# else on the map. A neutral depot 14 tiles off across a strip of water 3 tiles wide and 15 long, set square between them. Decision: go round. Passed: the depot taken within 30 s. The only gauntlet item on terrain: no net has trained on any (phase 2, AI-BRAINZ-PLAN.md section 8).
+# Read by `make gauntlet` for the scripted brain, the untrained net and
+# every net in nets/, on the same seeds; the reaction it times is
+# `reaction`.
+name = "G9 a depot across the water"
+reaction = "move"
+floor = 0.8
+players = 2
+seconds = 30
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-24, 24]
+y = [-24, 24]
+[[terrain]]
+near = "centre"
+kind = "water"
+x = [6, 8]
+y = [-7, 7]
+[[tank]]
+seat = 0
+at = "centre"
+heading = 0
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 40]
+[[depot]]
+at = "centre"
+offset = [14, 0]
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+depot_owned_by = { seat = 0, depot = 0 }

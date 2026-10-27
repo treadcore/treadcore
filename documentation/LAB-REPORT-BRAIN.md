@@ -6872,3 +6872,149 @@ worth reading apart if the fit keeps pointing there. The run goes on.
 Release 0.2.0: the draft waits, as it should (tagged 18:34 on 26
 October; day 1 opens at 18:34 today). The site serves the new report
 pages.
+
+## 102. Generations watched: clips, a gauntlet of single decisions, the match reading, and the cost, 27 October
+
+Paul: "Can I get a short GIF of every generation of the tank AI
+battling. Show reaction measurements and progress on census. For each
+generation (or major milestone), show the capability of the tank AI
+during its action. Write a lab report in html. Describe out methods of
+using training based of recently designed brainz, which we are using
+as a basis to help develop the sandbox for testing and training.
+Descibe the quality of improvements. Describe the computation time of
+using the tank with its AI and only its AI. We want to watch, short
+clips of action. Please create a set gauntlets of test with maps for
+testing, and single decision with little distractions for testing."
+
+The report as a page: `reports/2026-10-27-generations.html` (with
+`reports/clips/`), https://claude.ai/artifact/Vg35Adn3MmqibS7k69HLW7.
+
+### A. The tools
+
+**Reactions in the scenario format.** The outcome records, for each
+seat: the first direct shot, the first indirect shot, the first move
+of more than a tile, and the first launch of each drone kind.
+
+- New checks: `fires_within` and `launched`.
+- A file's `reaction` (`fire`, `lob`, `move`, `launch:interceptor`)
+  names the reaction it times.
+- `[[drone]]` puts a hostile drone in the air (a strike at a seat, a
+  longshot, a recon), so a test can send a strike with nothing else on
+  the map.
+
+**The gauntlet** (`scenarios/gauntlet/`, `make gauntlet`): nine
+single-decision tests, each on open grass with nothing else, 3.5 to
+30 s. Each brain plays the same 200 seeds from 9,500,000: the scripted
+brain (a Commander in the net's seat), the untrained net, and every
+milestone net in `nets/`. The output is the share passed and the
+median reaction, also written to `build/train/gauntlet.tsv`.
+
+**Clips** (`clip.rs`, `make clips`):
+- A recording (`scenario::Recording`, `run_record`; `learn::play_on`
+  for built grounds) keeps the map's tiles round the learner once and
+  a frame every 0.1 s.
+- `clip::render` draws a frame in plain Rust: the site's night field,
+  the learner in blue with an armour bar, the enemy in red, shells
+  with their landing marked, drones as diamonds, hits as white rings,
+  and a caption in a 3 by 5 pixel font.
+- Each frame goes out as a PPM; `ffmpeg` with a palette of its own
+  makes the GIF.
+- Each milestone plays its defining test on the first held-out seed it
+  passes; the untrained net plays its first seed. Ten clips, 852 KB, in
+  8 s.
+
+**The match reading** now counts damage dealt and kills by seat 9,
+besides its deaths.
+
+**Timing** (`TIMING=1`): one thread, nets/map7.bin.
+
+### B. The gauntlet
+
+Share passed of 200, with the median reaction in seconds:
+
+| Test | Scripted | Untrained | P1 | P3 | Map 4 | Map 7a | Map 5 | Map 7 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| G1 fire at an enemy in reach | 100 (0.05) | 100 | 98 | 100 | 100 | 100 | 100 | 100 (0.65) |
+| G2 an enemy behind | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 (1.05) |
+| G3 a shell on a standing tank | 100 (1.30) | 41.5 | 82 | 100 | 86 | 92.5 | 100 (0.70) | 69.5 |
+| G4 a strike drone coming | 95.5 (0.30) | 96 | 75 | 44 | 88.5 | 98.5 | 96.5 | 70 |
+| G5 low armour, home in sight | 100 | 0 | 0 | 2 | 32 | 50 | 10.5 | 25.5 |
+| G6 a depot to take | 100 | 3.5 | 0 | 20 | 0 | 0 | 0 | 2 |
+| G7 a pillbox from outside its ring | 88.5 | 53.5 | 52.5 | 57 | 60.5 | 62 | 53 | 26 |
+| G8 out of a pillbox's ring | **0** | 77.5 | 87.5 | 88 | **100** | 89 | 94 | 43 |
+| G9 a depot across the water | 100 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+The gauntlet shows four things the training maps did not:
+
+- **Shortcuts.** The map 7a net went home 99.7% when low on armour and
+  shells (its map) but 50% when only armour is low (G5): it learned
+  "few shells, go home". The map 4 net takes a guarded depot 98% but
+  an unguarded one 0% (G6): it learned the scene, not the depot.
+- **The scripted brain's blind spot** (G8). Inside a hostile pillbox's
+  ring at 40% armour it fights and dies every time; every net does
+  better, and the map 4 net escapes on all 200.
+- **Terrain is untrained** (G9: every net 0%).
+- **Trade-offs.** The map 7 net, the best in matches, is worse than the
+  map 5 net at G3, G7 and G8.
+
+Two tests are easier than meant. G1 and G2 pass for the untrained net
+because the gun fires into any sector without turning, and the
+drone's strike counts as a hit; G2 tests no turning.
+
+### C. The match reading, every generation
+
+Seat 9, 40 matches from 8,000,000, first 3 minutes, all on today's
+code (the drone head on for every net; phase 1 and 3 never trained
+with it):
+
+| Seat 9 | First down (s) | Deaths | Never down | Damage dealt | Kills |
+| --- | --- | --- | --- | --- | --- |
+| untrained | 155 +/- 7 | 0.42 | 29 | 11 +/- 4 | 0.07 |
+| phase 1 | 48 +/- 5 | 3.40 | 0 | 54 +/- 7 | 0.50 |
+| phase 3 | 50 +/- 5 | 2.75 | 0 | 49 +/- 11 | 0.35 |
+| map 4 | 88 +/- 10 | 1.95 | 11 | 33 +/- 8 | 0.23 |
+| map 7a | 67 +/- 9 | 2.05 | 6 | 28 +/- 9 | 0.28 |
+| map 5 | 100 +/- 10 | 1.57 | 13 | 29 +/- 8 | 0.12 |
+| map 7 | 129 +/- 9 | 0.82 | 16 | 27 +/- 8 | 0.20 |
+| the scripted ranger | 163 +/- 5 | 0.33 | 28 | 63 +/- 8 | 0.70 |
+
+Living and fighting pull apart. The untrained net lives because it
+does nothing. The first nets fight and die three times in three
+minutes. The survival maps moved the map 7 net toward the scripted
+ranger's corner on deaths, at half its damage. LR 100's readings of
+the map 4 and 7a nets (96 s, 64 s) were taken before the drone head
+was on; these are on today's code.
+
+### D. The cost of the AI alone
+
+Apple M1, one thread unless said:
+
+| Measure | Result |
+| --- | --- |
+| A decision: 143 senses and the forward pass, 16,431 weights | 10.6 us (94,000 a second) |
+| A phase 3 episode (one tank and its target) | 2.1 ms |
+| 120 s of a 16-seat match, every seat a net | 0.61 s, 197 times real time; brains 10.9 us a seat-tick, the world 80 us a tick |
+| The same, every seat scripted | 0.68 s, 177 times real time; brains 13.3 us a seat-tick, the world 69 us a tick |
+| Phase 1, 500 generations of 1,164 episodes, 8 threads | 130 s |
+| Map 7 with rehearsal, 400 generations of 2,037 episodes | 705 s |
+
+### E. Method: the sandbox is the scripted brain's
+
+Every tool built for the scripted brain became a tool for the learned
+one:
+- the deterministic world and its `Observation`;
+- the scenario files of the families (now with a `[reward]` and a net
+  seat), read for both brains on the same seeds;
+- the rule written first, read on the untrained net and the scripted
+  brain before any training;
+- the census as the last judge.
+
+The gauntlet is the families' idea made small: one decision, many
+seeds, a share and its error.
+
+### F. Next
+
+- G5 and G6 become training maps against the shortcuts (low armour
+  with full shells; an unguarded depot).
+- Map 8 and the duel with the drones.
+- The census again on the same seeds.

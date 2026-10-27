@@ -90,6 +90,13 @@
 #                    net on the held-out seeds only; BASELINE=1 reads the
 #                    scripted brain first; with CHECK, MATCH=n reads the
 #                    net in one seat of n dealt matches' first 3 minutes
+#   make gauntlet    single-decision tests (scenarios/gauntlet/, LR 102):
+#                    the scripted brain, the untrained net and every
+#                    milestone net in nets/, pass share and reaction time
+#                    (RUNS a test, 200; build/train/gauntlet.tsv)
+#   make clips       a short GIF of each milestone net at work, and the
+#                    newest in a real match (needs ffmpeg; build/train/
+#                    clips/, LR 102)
 #   make roundrobin  the census for every ordered pair of profiles/*.weights
 #                    and the defaults: the payoff matrix (scripts/roundrobin.sh;
 #                    PROFILES, SEEDS, SEED0, MAP)
@@ -144,7 +151,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa converge ledger train roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa converge ledger train gauntlet clips roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -309,6 +316,14 @@ ledger:
 
 train:
 	@PHASE="$(or $(PHASE),1)" OUT="$(abspath $(or $(OUT),build/train))" START="$(if $(START),$(abspath $(START)))" CHECK="$(if $(CHECK),$(abspath $(CHECK)))" GROUND="$(GROUND)" PROBE="$(PROBE)" MATCH="$(MATCH)" NAME="$(NAME)" HELD="$(HELD)" GENS="$(GENS)" PAIRS="$(PAIRS)" SEEDS="$(SEEDS)" THREADS="$(THREADS)" BASELINE="$(BASELINE)" \
+		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
+
+gauntlet:
+	@GAUNTLET=1 OUT="$(abspath $(or $(OUT),build/train))" GAUNTLET_RUNS="$(RUNS)" THREADS="$(THREADS)" \
+		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
+
+clips:
+	@CLIPS=1 OUT="$(abspath $(or $(OUT),build/train))" THREADS="$(THREADS)" \
 		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
 
 roundrobin:

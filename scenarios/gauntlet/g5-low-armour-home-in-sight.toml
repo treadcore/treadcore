@@ -1,0 +1,36 @@
+# The gauntlet (LAB-REPORT-BRAIN.md section 102): one decision, little
+# else on the map. The tank at 30% armour, a depot of its own 10 tiles off on any side; nothing else. Decision: go home. Passed: 60% armour within 15 s.
+# Read by `make gauntlet` for the scripted brain, the untrained net and
+# every net in nets/, on the same seeds; the reaction it times is
+# `reaction`.
+name = "G5 low armour, home in sight"
+reaction = "move"
+floor = 0.9
+players = 2
+seconds = 15
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-20, 20]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [10, 0]
+around = true
+heading = "any"
+armor = 0.3
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 40]
+[[depot]]
+at = "centre"
+owner = 0
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+armor_at_least = { seat = 0, share = 0.6 }

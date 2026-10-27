@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the gauntlet (`scenarios/gauntlet/`, `make gauntlet`), nine
+  single-decision tests for every milestone net and the scripted
+  brain; clips (`clip.rs`, `make clips`), a GIF of each generation at
+  work, drawn in Rust; reactions, `[[drone]]`, `fires_within` and
+  `launched` in scenario files; the match reading counts damage and
+  kills. The report: `reports/2026-10-27-generations.html`
+  (LAB-REPORT-BRAIN.md section 102).
+
 - Added: survival maps (LAB-REPORT-BRAIN.md section 100): 7a (low, go
   home), 7 (low and far from home), 8 (outnumbered); scenario tanks
   that start hurt and short. The learned tank's shell contact and air

@@ -20,6 +20,7 @@ use treadcore_sim::*;
 
 pub mod board;
 pub mod calls;
+pub mod clip;
 pub mod commander;
 pub mod crew;
 pub mod cycle;

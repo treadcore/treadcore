@@ -1,0 +1,31 @@
+# The gauntlet (LAB-REPORT-BRAIN.md section 102): one decision, little
+# else on the map. An enemy tank stands 8 tiles off on any side, inside the gun's reach (10). Decision: shoot. Passed: a direct hit within 4 s.
+# Read by `make gauntlet` for the scripted brain, the untrained net and
+# every net in nets/, on the same seeds; the reaction it times is
+# `reaction`.
+name = "G1 fire at an enemy in reach"
+reaction = "fire"
+floor = 0.9
+players = 2
+seconds = 4
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-20, 20]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [8, 0]
+around = true
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+hits = { by = 0, on = 1, at_least = 1 }

@@ -178,6 +178,72 @@ fn value_of(s: &str) -> Result<(Value, &str), String> {
     Ok((v, &s[end..]))
 }
 
+/// One frame of a recorded run (LR 102, the clips): what is drawn.
+#[derive(Clone, Debug, Default)]
+pub struct Frame {
+    pub t: f64,
+    /// Tanks: owner, position, heading, armour share, alive.
+    pub tanks: Vec<(PlayerId, V2, f32, f32, bool)>,
+    /// Shells in flight: where now, where they land, direct or not.
+    pub shells: Vec<(V2, V2, bool)>,
+    /// Drones: owner, position, kind.
+    pub drones: Vec<(PlayerId, V2, DroneKind)>,
+    /// Pillboxes: position, owner, alive; depots: position, owner.
+    pub pillboxes: Vec<(V2, Option<PlayerId>, bool)>,
+    pub depots: Vec<(V2, Option<PlayerId>)>,
+    /// Hits this frame: where.
+    pub hits: Vec<V2>,
+}
+
+/// A recorded run: the map's tiles round the action once, a frame
+/// every `every` ticks.
+#[derive(Clone, Debug, Default)]
+pub struct Recording {
+    pub every: Tick,
+    /// The window drawn: its top-left tile and size, and each tile's
+    /// terrain there (row-major).
+    pub origin: (i32, i32),
+    pub size: (i32, i32),
+    pub tiles: Vec<Terrain>,
+    pub frames: Vec<Frame>,
+}
+
+/// A frame of the world as it stands (the clips, LR 102).
+pub fn snap(w: &World) -> Frame {
+    let hits = w.events.iter().filter_map(|e| match e {
+        Event::TankDamaged { tank, .. } => w.tanks.iter().find(|t| t.id == *tank).map(|t| t.pos),
+        Event::ShellImpact { at, .. } => Some(*at),
+        _ => None,
+    });
+    Frame {
+        t: w.tick as f64 / TICK_HZ as f64,
+        tanks: w.tanks.iter().map(|t| (t.owner, t.pos, t.heading, t.armor / TANK_ARMOR, t.alive)).collect(),
+        shells: w.shells.iter().map(|s| (s.pos_at(w.tick), s.impact, s.kind == ShellKind::Direct)).collect(),
+        drones: w.drones.iter().map(|d| (d.owner, d.pos, d.kind)).collect(),
+        pillboxes: w.pillboxes.iter().map(|p| (p.pos, p.owner, p.alive())).collect(),
+        depots: w.depots.iter().map(|d| (d.pos, d.owner)).collect(),
+        hits: hits.collect(),
+    }
+}
+
+impl Recording {
+    /// A recording of `half` tiles each way round `centre`, the map's
+    /// tiles there kept once.
+    pub fn round(w: &World, centre: V2, half: i32, every: Tick) -> Recording {
+        let c = centre.tile();
+        let origin = (c.0 - half, c.1 - half);
+        let size = (2 * half + 1, 2 * half + 1);
+        let mut tiles = Vec::with_capacity((size.0 * size.1) as usize);
+        for y in 0..size.1 {
+            for x in 0..size.0 {
+                let p = V2::new((origin.0 + x) as f32 + 0.5, (origin.1 + y) as f32 + 0.5);
+                tiles.push(if w.map.in_bounds(p) { w.map.at(p) } else { Terrain::Water });
+            }
+        }
+        Recording { every: every.max(1), origin, size, tiles, frames: Vec::new() }
+    }
+}
+
 /// What a run saw, for the checks and the trace.
 #[derive(Debug, Default)]
 pub struct Outcome {
@@ -198,6 +264,13 @@ pub struct Outcome {
     pub died_at: BTreeMap<PlayerId, f64>,
     /// The run's length, seconds (the file's, or when it ended).
     pub seconds: f64,
+    /// Reactions (LR 102), seconds: each seat's first direct shot, first
+    /// indirect shot, first move of more than a tile from its start, and
+    /// first launch of each drone kind (`"interceptor"`, ...).
+    pub first_fire: BTreeMap<PlayerId, f64>,
+    pub first_lob: BTreeMap<PlayerId, f64>,
+    pub first_move: BTreeMap<PlayerId, f64>,
+    pub first_launch: BTreeMap<(PlayerId, String), f64>,
     /// Each placed pillbox: the damage it did, the tick each seat first
     /// owned it, and whether it stands at the end.
     pub pillbox_damage: Vec<f32>,
@@ -244,6 +317,19 @@ pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> R
 /// As `run_net`, with `make` giving the brain for each `kind = "net"`
 /// seat instead (a probe of the net's actions, LR 100).
 pub fn run_with(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: Option<&dyn Fn() -> Box<dyn Brain>>) -> Result<(Outcome, Vec<String>), String> {
+    run_inner(doc, seed, net, make, None)
+}
+
+/// As `run_net`, recording a frame every `every` ticks round the
+/// learner's start (LR 102, the clips).
+pub fn run_record(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, every: Tick) -> Result<(Outcome, Vec<String>, Recording), String> {
+    let mut rec = Recording { every: every.max(1), ..Default::default() };
+    let (o, f) = run_inner(doc, seed, net, None, Some(&mut rec))?;
+    Ok((o, f, rec))
+}
+
+/// Every run's body: `run_with`'s, recording into `rec` when given.
+fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: Option<&dyn Fn() -> Box<dyn Brain>>, mut rec: Option<&mut Recording>) -> Result<(Outcome, Vec<String>), String> {
     let seed = seed.or(doc.top.get("seed").and_then(Value::num).map(|s| s as u64));
     let num = |t: &BTreeMap<String, Value>, k: &str, d: f64| t.get(k).and_then(Value::num).unwrap_or(d);
     let players = num(&doc.top, "players", 2.0) as usize;
@@ -425,6 +511,29 @@ pub fn run_with(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, mak
         let lands = (lands_in * TICK_HZ as f64) as Tick;
         w.shells.push(Shell { id, owner: num(s, "owner", 1.0) as PlayerId, kind: ShellKind::Indirect, from, aim: at, impact: at, launch_tick: tick, impact_tick: tick + lands, spotted: true });
     }
+    // `[[drone]]` (LR 102, the gauntlet): a hostile drone put in the
+    // air at an anchor and offset (`around = true` turns it), owned by
+    // `owner`, flying as `kind`: a strike at `target` seat's tank, a
+    // longshot at its place, a recon orbiting there.
+    for d in list("drone") {
+        let anchor = place(&w, &depots, &pillboxes, d.get("at").and_then(Value::str).unwrap_or("seat:0"), None)?;
+        let mut off = offset(d.get("offset"))?;
+        if d.get("around") == Some(&Value::Bool(true)) {
+            off = V2::from_heading(dice.range(-std::f32::consts::PI, std::f32::consts::PI)).scale(off.len());
+        }
+        let target = num(d, "target", 0.0) as PlayerId;
+        let tank = w.tanks.iter().find(|t| t.owner == target).ok_or(format!("drone: no seat {}", target))?;
+        let (kind, task) = match d.get("kind").and_then(Value::str).unwrap_or("strike") {
+            "strike" => (DroneKind::Strike, DroneTask::Strike { target: tank.id }),
+            "longshot" => (DroneKind::Longshot, DroneTask::Attack { at: tank.pos }),
+            "recon" => (DroneKind::Recon, DroneTask::Orbit { center: tank.pos, radius: 2.0 }),
+            k => return Err(format!("drone: no kind {}", k)),
+        };
+        let id = w.next_id;
+        w.next_id += 1;
+        let pos = anchor + off;
+        w.drones.push(Drone { id, owner: num(d, "owner", 1.0) as PlayerId, kind, pos, heading: (tank.pos - pos).heading(), battery: 120.0, tether: None, task, link: 1.0, phase: 0.0, jammed: false, mark: 1 });
+    }
     let mut brains: Vec<(PlayerId, Box<dyn Brain>)> = Vec::new();
     // `board = true`: each team's Commanders share one team board, as a
     // dealt match gives them (fleet.rs `equip`); by its first seat.
@@ -544,6 +653,11 @@ pub fn run_with(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, mak
         }
     }
     let mut afloat: BTreeMap<PlayerId, bool> = w.tanks.iter().map(|t| (t.owner, t.boat)).collect();
+    if let Some(r) = rec.as_deref_mut() {
+        let me = doc.top.get("learner").and_then(Value::num).unwrap_or(0.0) as PlayerId;
+        let c = w.tanks.iter().find(|t| t.owner == me).map(|t| t.pos).unwrap_or(w.map.center());
+        *r = Recording::round(&w, c, num(&doc.top, "view", 22.0) as i32, r.every);
+    }
     let events = list("event");
     // `trace_every`: seconds between trace lines (5).
     let every = ((num(&doc.top, "trace_every", 5.0) * TICK_HZ as f64) as Tick).max(1);
@@ -599,6 +713,13 @@ pub fn run_with(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, mak
                 Event::Rejected { player, why, .. } if brains.iter().any(|(s, _)| s == player) => {
                     out.refused.push((w.tick as f64 / TICK_HZ as f64, *player, why.to_string()));
                 }
+                Event::ShellLaunched { owner, kind, .. } => {
+                    let at = w.tick as f64 / TICK_HZ as f64;
+                    if *kind == ShellKind::Direct { out.first_fire.entry(*owner).or_insert(at) } else { out.first_lob.entry(*owner).or_insert(at) };
+                }
+                Event::DroneLaunched { owner, kind, .. } => {
+                    out.first_launch.entry((*owner, format!("{:?}", kind).to_lowercase())).or_insert(w.tick as f64 / TICK_HZ as f64);
+                }
                 Event::PillboxFired { pillbox, damage, .. } => {
                     if let Some(k) = pillboxes.iter().position(|p| p == pillbox) {
                         out.pillbox_damage[k] += damage;
@@ -609,6 +730,16 @@ pub fn run_with(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, mak
         }
         for t in w.tanks.iter().filter(|t| !t.alive) {
             out.died_at.entry(t.owner).or_insert(w.tick as f64 / TICK_HZ as f64);
+        }
+        for t in w.tanks.iter().filter(|t| t.alive) {
+            if out.start.get(&t.owner).map(|s| s.0.dist(t.pos) > 1.0).unwrap_or(false) {
+                out.first_move.entry(t.owner).or_insert(w.tick as f64 / TICK_HZ as f64);
+            }
+        }
+        if let Some(r) = rec.as_deref_mut() {
+            if w.tick % r.every == 0 {
+                r.frames.push(snap(&w));
+            }
         }
         for t in &w.tanks {
             if afloat.get(&t.owner) == Some(&true) && !t.boat && t.alive {
@@ -791,6 +922,28 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                     failed.push(format!("seat {} {} at the end", s, if up { "alive" } else { "dead" }));
                 }
             }
+            // `fires_within = { seat = 0, seconds = 3 }`: a direct shot by
+            // then; `launched = { seat = 0, kind = "interceptor", within =
+            // 2 }`: that drone launched by then (LR 102, the gauntlet).
+            "fires_within" => {
+                let s = seat.ok_or("fires_within: a seat")?;
+                let by = field(t, "seconds").unwrap_or(f64::INFINITY);
+                match out.first_fire.get(&s) {
+                    Some(at) if *at <= by => {}
+                    Some(at) => failed.push(format!("seat {} fired first at {:.1} s, by {} s expected", s, at, by)),
+                    None => failed.push(format!("seat {} never fired", s)),
+                }
+            }
+            "launched" => {
+                let s = seat.ok_or("launched: a seat")?;
+                let kind = t.get("kind").and_then(Value::str).unwrap_or("interceptor").to_string();
+                let by = field(t, "within").unwrap_or(f64::INFINITY);
+                match out.first_launch.get(&(s, kind.clone())) {
+                    Some(at) if *at <= by => {}
+                    Some(at) => failed.push(format!("seat {} launched a {} first at {:.1} s, by {} s expected", s, kind, at, by)),
+                    None => failed.push(format!("seat {} launched no {}", s, kind)),
+                }
+            }
             // `armor_at_least = { seat = 0, share = 0.6 }`: alive at the
             // end with at least that share of full armour (LR 100).
             "armor_at_least" => {
@@ -812,6 +965,19 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
         }
     }
     Ok(failed)
+}
+
+/// The reaction a file measures (`reaction = "fire"`, `"lob"`,
+/// `"move"`, or `"launch:interceptor"`), for the learner, seconds; none
+/// when it never came (LR 102, the gauntlet).
+pub fn reaction(doc: &Doc, out: &Outcome) -> Option<f64> {
+    let me = doc.top.get("learner").and_then(Value::num).unwrap_or(0.0) as PlayerId;
+    match doc.top.get("reaction").and_then(Value::str)? {
+        "fire" => out.first_fire.get(&me).copied(),
+        "lob" => out.first_lob.get(&me).copied(),
+        "move" => out.first_move.get(&me).copied(),
+        r => r.strip_prefix("launch:").and_then(|k| out.first_launch.get(&(me, k.to_string())).copied()),
+    }
 }
 
 /// What a training episode earned (LR 99): the sum of the file's

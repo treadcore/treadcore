@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Seven generations of treadcore's learned tank: clips of each at work, a gauntlet of single-decision tests, real matches, the census, and the cost of running it.">
+<title>Generations of the Learned Tank</title>
+<style>
+/* A periscope console: the game's black phosphor screens set in its
+   brushed-metal frame (treadcore.org's assets/site.css), one dark look.
+   Phosphor for what the tank senses, amber for what it decides, sky for
+   what its friends say. System monospace and sans, as the site: no fonts. */
+:root{
+  color-scheme:dark;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --bg:#0b0d0c; --plate:#2a2c2e; --plate-hi:#4a4c4e; --edge:#0c0d0e;
+  --scr:#050605; --scr-2:#0c100d; --grid:#16301b; --rule:#1d261e;
+  --phos:#33f24d; --phos-dim:#1d8a2c; --ink:#e6ede6; --ink-soft:#9fb0a2;
+  --amber:#ffbf4d; --red:#f2554a; --sky:#73c7ff; --tan:#d4b07a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans)}
+.page{max-width:68rem;margin:0 auto;padding-block:1.2rem 3rem;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bezel{background:linear-gradient(180deg,var(--plate-hi),var(--plate) 40%,#1e2022);border:1px solid var(--edge);border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
+.screen{background:radial-gradient(ellipse at 50% 30%,var(--scr-2),var(--scr) 70%);border-radius:10px;border:1px solid #000;padding:clamp(1rem,3.5vw,2.2rem);position:relative;overflow:hidden}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
+header .kicker{font:600 .72rem/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 .8rem}
+h1{font:900 clamp(2rem,6vw,3.6rem)/1.02 var(--sans);letter-spacing:.04em;text-transform:uppercase;margin:0;text-wrap:balance}
+h1 span{color:var(--phos);text-shadow:0 0 14px rgba(51,242,77,.45)}
+.lede{max-width:44rem;margin:1rem 0 0;color:var(--ink-soft);font-size:1.05rem}
+h2{font:800 .95rem/1.3 var(--mono);margin:0 0 .9rem;color:var(--phos);text-shadow:0 0 6px rgba(51,242,77,.35);letter-spacing:.16em;text-transform:uppercase;text-wrap:balance}
+h3{font:700 .8rem/1.3 var(--mono);margin:1.2rem 0 .4rem;color:var(--amber);letter-spacing:.1em;text-transform:uppercase}
+p{margin:0 0 .8rem;max-width:42rem}
+code{font-family:var(--mono);color:var(--phos);font-size:.92em}
+a{color:var(--sky)}
+section{margin-top:1.4rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem;margin:1.4rem 0 0}
+.stat{border:1px solid var(--rule);border-radius:6px;padding:.7rem .8rem;background:rgba(51,242,77,.03)}
+.stat b{display:block;font:800 1.6rem/1.1 var(--mono);color:var(--phos);font-variant-numeric:tabular-nums}
+.stat span{font:600 .68rem/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.stat.warn b{color:var(--red)}
+/* the scope */
+.scope{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:1.4rem;align-items:start}
+@media (max-width:52rem){.scope{grid-template-columns:minmax(0,1fr)}}
+.scope svg{width:100%;max-width:30rem;height:auto;display:block;margin:0 auto;touch-action:none}
+.scope .hint{font:.78rem/1.4 var(--mono);color:var(--ink-soft);text-align:center;margin:.4rem 0 0}
+.contact{cursor:grab}.contact:focus-visible{outline:none}.contact:focus-visible circle{stroke:#fff;stroke-width:2}
+.read{min-width:0}
+.read table{width:100%;border-collapse:collapse;font:.8rem/1.3 var(--mono);font-variant-numeric:tabular-nums}
+.read th,.read td{padding:.32rem .4rem;border-bottom:1px solid var(--rule);text-align:right}
+.read th:first-child,.read td:first-child{text-align:left}
+.read th{color:var(--ink-soft);font-weight:600;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase}
+.bar{display:inline-block;height:.55rem;background:var(--phos);vertical-align:middle;border-radius:0 2px 2px 0;box-shadow:0 0 6px rgba(51,242,77,.5)}
+.scroll{overflow-x:auto}
+/* the sense strip */
+.strip{display:grid;grid-template-columns:repeat(133,minmax(0,1fr));height:2.2rem;gap:1px;margin:.6rem 0 .4rem}
+.strip i{display:block;border-radius:1px}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;font:.75rem/1.3 var(--mono);color:var(--ink-soft)}
+.legend span::before{content:"";display:inline-block;width:.7rem;height:.7rem;border-radius:2px;margin-right:.4rem;vertical-align:-1px;background:var(--c)}
+/* flow */
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:.5rem;font:.78rem/1.35 var(--mono)}
+.flow .box{flex:1 1 9rem;border:1px solid var(--rule);border-radius:6px;padding:.6rem .7rem;min-width:0}
+.flow .box b{display:block;color:var(--amber);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.25rem}
+.flow .arrow{align-self:center;color:var(--phos-dim);font-size:1.1rem}
+@media (max-width:40rem){.flow .arrow{display:none}}
+/* charts */
+.chart{width:100%;height:auto;display:block}
+.chart text{font:11px var(--mono);fill:var(--ink-soft)}
+.keys{display:flex;flex-wrap:wrap;gap:.3rem 1.2rem;font:.75rem var(--mono);color:var(--ink-soft);margin:.2rem 0 .6rem}
+.keys span::before{content:"";display:inline-block;width:1rem;height:2px;background:var(--c);vertical-align:3px;margin-right:.4rem}
+.tip{position:absolute;pointer-events:none;background:#000;border:1px solid var(--phos-dim);color:var(--ink);font:.72rem/1.35 var(--mono);padding:.35rem .5rem;border-radius:4px;white-space:nowrap;z-index:2}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:1.4rem}
+table.plain{width:100%;border-collapse:collapse;font:.82rem/1.4 var(--sans)}
+table.plain th,table.plain td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--rule);vertical-align:top}
+table.plain th{font:600 .68rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--phos)}
+table.plain td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pull{border-left:3px solid var(--amber);padding:.6rem .9rem;background:rgba(255,191,77,.06);color:var(--amber);max-width:46rem;margin:.6rem 0 1rem}
+.dim{color:var(--ink-soft)}
+footer{margin-top:1.6rem;font:.75rem/1.5 var(--mono);color:var(--ink-soft)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style>
+.gens{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,19rem),1fr));gap:1rem;margin-top:.8rem}
+.gen{border:1px solid var(--rule);border-radius:8px;padding:.7rem;min-width:0;background:rgba(51,242,77,.02)}
+.gen img{width:100%;height:auto;display:block;border-radius:4px;image-rendering:pixelated;background:#000}
+.gen h3{margin:.6rem 0 .25rem}
+.gen p{font-size:.86rem;margin:0 0 .4rem}
+.gen dl{display:grid;grid-template-columns:auto 1fr;gap:.15rem .7rem;margin:.4rem 0 0;font:.76rem/1.35 var(--mono)}
+.gen dt{color:var(--ink-soft)} .gen dd{margin:0;font-variant-numeric:tabular-nums}
+.gen .tag{display:inline-block;font:700 .62rem var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:.1rem .4rem;border-radius:3px;border:1px solid var(--phos-dim);color:var(--phos)}
+.gen .tag.fail{border-color:#6a2a24;color:var(--red)}
+.heat td.cell{text-align:center;font:600 .76rem/1.2 var(--mono);font-variant-numeric:tabular-nums;padding:.35rem .3rem;min-width:4.2rem}
+.heat td.cell small{display:block;font-weight:400;font-size:.64rem;opacity:.8}
+.heat th{text-align:center} .heat th:first-child,.heat td:first-child{text-align:left}
+.wide{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:1.2rem;align-items:start}
+.wide img{width:100%;height:auto;image-rendering:pixelated;border-radius:4px;border:1px solid var(--rule)}
+.key{font:.74rem var(--mono);color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="bezel"><div class="screen">
+
+<header>
+<p class="kicker">Treadcore &middot; LAB-REPORT-BRAIN.md section 102 &middot; 27 October 2026</p>
+<h1>Generations of the <span>Learned</span> Tank</h1>
+<p class="lede">Seven nets, each the kept result of one stage of training, watched in short clips, put through nine single-decision tests, dropped into real matches, and read by the census. What each one learned, what it costs to run, and where it still falls short of the scripted brain it trains beside.</p>
+<div class="stats">
+  <div class="stat"><b>7</b><span>milestone nets, untrained to map 7</span></div>
+  <div class="stat"><b>9</b><span>gauntlet tests, 200 seeds each</span></div>
+  <div class="stat"><b>10.6&nbsp;&micro;s</b><span>to sense and decide, one thread</span></div>
+  <div class="stat"><b>197&times;</b><span>real time, a 16-seat match of nets</span></div>
+</div>
+</header>
+
+<section aria-labelledby="s-watch">
+<h2 id="s-watch">Watch each generation</h2>
+<p>Each clip is the net on its own defining test, on the first held-out seed it passes, so it shows what the net can do; the untrained net is shown on its first seed. Blue is the learner and its drones, red the enemy, orange the shells with their landing marked, cyan the learner's interceptors. The bar over the tank is its armour.</p>
+<div class="gens" id="gens"></div>
+</section>
+
+<section aria-labelledby="s-battle">
+<h2 id="s-battle">In battle</h2>
+<div class="wide">
+  <figure style="margin:0"><img src="clips/7-map7-duel.gif" alt="The map 7 net duelling a scripted RuleBot that fires back" loading="lazy"><figcaption class="key">The map 7 net against a RuleBot that fires back (map 6). No net has won this duel yet: 0 of 300 held out, the scripted brain 20%.</figcaption></figure>
+  <figure style="margin:0"><img src="clips/9-map7-match.gif" alt="The map 7 net in seat 9 of a 16-seat match" loading="lazy"><figcaption class="key">The map 7 net in seat 9 of a real 16-seat match, its teammates scripted, the first 30 s. Its team in blue.</figcaption></figure>
+</div>
+</section>
+
+<section aria-labelledby="s-gauntlet">
+<h2 id="s-gauntlet">The gauntlet: one decision at a time</h2>
+<p>Nine short tests, each on open grass with nothing else on the map, each asking one decision. Every brain plays the same 200 seeds. The cell is the share passed; below it, the median reaction time (the first shot, the first move, or the first interceptor, as the test times it).</p>
+<div class="scroll"><table class="plain heat" id="heat"></table></div>
+<p class="key">Green deepens with the share passed. A dash: that reaction never came.</p>
+<h3>What the gauntlet found</h3>
+<ul>
+<li><b>Shortcuts.</b> The map 7a net goes home 99.7% of the time when low on armour <i>and</i> shells (its training map), but only 50% when only armour is low (G5): it learned "few shells, go home". The map 4 net takes a guarded depot 98% of the time but an unguarded one 0% (G6): it learned the scene, not the depot. Neither shortcut showed on the training maps.</li>
+<li><b>The scripted brain's blind spot.</b> Inside a hostile pillbox's ring at 40% armour (G8), the scripted brain fights and dies every time; every trained net does better, and the map 4 net escapes on all 200.</li>
+<li><b>No terrain yet.</b> A depot across a strip of water (G9): the scripted brain 100%, every net 0%. No net has trained on terrain.</li>
+<li><b>Gains traded away.</b> The map 7 net, the best in matches, is worse than the map 5 net on several single decisions (G3 a shell, G7 a pillbox, G8 its ring): what it learned for map 7 cost it there.</li>
+</ul>
+</section>
+
+<section aria-labelledby="s-match">
+<h2 id="s-match">In a real match: living versus fighting</h2>
+<p>Seat 9 of a dealt 16-seat match (a ranger whom nobody follows) given to each net, the scripted ranger in the same seat on the same 40 seeds, first 3 minutes.</p>
+<div style="position:relative"><svg class="chart" id="scatter" viewBox="0 0 720 330" role="img" aria-label="Deaths in three minutes against damage dealt, one dot a brain"></svg></div>
+<div class="scroll"><table class="plain" id="matchtab"></table></div>
+<p>The two measures pull apart. The untrained net lives as long as the scripted ranger because it does almost nothing (11 damage dealt). Phase 1 and 3 nets fight (54 and 49) and die three times in three minutes. The survival maps moved the map 7 net toward the corner the scripted ranger holds, to 0.82 deaths, at the cost of half its damage. The scripted ranger does both: 0.33 deaths and 63 damage.</p>
+</section>
+
+<section aria-labelledby="s-census">
+<h2 id="s-census">The census</h2>
+<p>A team of five nets in one team's seats against the scripted defaults, 110 seeds, 11 maps, three matches a seed; zero is the scripted brain.</p>
+<div style="position:relative"><svg class="chart" id="census" viewBox="0 0 720 250" role="img" aria-label="Census readings by net with two standard errors"></svg></div>
+<p>The map 7 net is the first to climb off the bottom: +3.96 &plusmn; 0.53 over the map 4 net, with four times the kills a match (3.7) and two fewer deaths (16.6 of 20). It is level with a random net, so its rule (two errors above random) fails. The census asks the most of a net: the whole game, supply, capture, building and teams, none of which a net does yet.</p>
+</section>
+
+<section aria-labelledby="s-method">
+<h2 id="s-method">Method: a sandbox built on the scripted brain</h2>
+<p>The learned tank did not get a world of its own. It trains inside the one the scripted brain (the "brainz": the Commander, its team board and 110 census-tuned weights) was built and measured in, and every tool made for the scripted brain became a tool for training it:</p>
+<div class="flow">
+  <div class="box"><b>The world</b>the deterministic sim; the same <code>Observation</code> and <code>Command</code>s as any bot</div><div class="arrow">&rarr;</div>
+  <div class="box"><b>Scenario files</b>the format of the scripted brain's families; now with a <code>[reward]</code> and a net seat</div><div class="arrow">&rarr;</div>
+  <div class="box"><b>Read both brains</b>the scripted brain and the untrained net on the same seeds, before any training</div><div class="arrow">&rarr;</div>
+  <div class="box"><b>Train</b>evolution strategies over the 16,431 weights, the courses in turn so old skills are rehearsed</div><div class="arrow">&rarr;</div>
+  <div class="box"><b>Judge</b>held-out seeds, the gauntlet, one seat in a match, then the census</div>
+</div>
+<ul style="margin-top:1rem">
+<li><b>One file, two brains.</b> A training map is a scenario file. With its net seat swapped for a Commander it is a test of the scripted brain; with a net, a training course. Both read on identical seeds.</li>
+<li><b>The rule first.</b> Each map's pass bar is written down before it trains, and read on the untrained net and the scripted brain first. Twice a bar was found empty that way (an untrained net "passing" by mortar; a map no brain could survive) and changed before training.</li>
+<li><b>Probe the bound.</b> When the dodge stalled at 93%, an oracle playing the net's own nine drive actions forward in a copy of the world dodged 300 of 300: the actions sufficed, the senses did not. A shell contact took the net to 96%.</li>
+<li><b>Trace the death.</b> A net that never survived map 7 was dying to strike drones, not shells; the drone head and an air contact took it from 0 to 44%.</li>
+<li><b>Step maps.</b> Map 7 alone never moved; map 7a (the same without the enemy) taught "low means home" in 300 generations, and map 7 followed.</li>
+</ul>
+</section>
+
+<section aria-labelledby="s-cost">
+<h2 id="s-cost">What it costs to run the tank on its AI alone</h2>
+<div class="scroll"><table class="plain">
+<tr><th>Measure (Apple M1)</th><th>Result</th></tr>
+<tr><td>One decision: 143 senses and the forward pass, 16,431 weights, one thread</td><td class="n">10.6 &micro;s (94,000 a second)</td></tr>
+<tr><td>Decisions a second a tank in play</td><td class="n">5 (every 0.2 s)</td></tr>
+<tr><td>A one-tank training episode (drive in and kill a still enemy)</td><td class="n">2.1 ms</td></tr>
+<tr><td>A 16-seat match, every seat a net: brains a seat-tick / the world a tick</td><td class="n">10.9 &micro;s / 80 &micro;s; 197&times; real time</td></tr>
+<tr><td>The same match, every seat scripted</td><td class="n">13.3 &micro;s / 69 &micro;s; 177&times; real time</td></tr>
+<tr><td>Phase 1, 500 generations of 1,164 episodes (8 threads)</td><td class="n">130 s, about 4,500 episodes a second</td></tr>
+<tr><td>Map 7 with rehearsal, 400 generations of 2,037 episodes</td><td class="n">705 s</td></tr>
+<tr><td>Every clip on this page, drawn in Rust and packed by ffmpeg</td><td class="n">8 s</td></tr>
+</table></div>
+<p>The net is cheaper to think than the scripted brain, and the world's own step is most of a match's cost either way. No GPU is involved: training is as fast as the CPUs can play episodes.</p>
+</section>
+
+<section aria-labelledby="s-quality">
+<h2 id="s-quality">The quality of the improvements</h2>
+<div class="scroll"><table class="plain">
+<tr><th>Improved, and held</th><th>Not yet</th></tr>
+<tr><td>Go to a target (999 of 999); drive in and kill with the gun (999 of 999); take a guarded depot (94 to 99%); go home when low (99.7%); dodge a shell (96%); survive low and far from home (44%, scripted 53%); deaths in a match halved (1.73 to 0.82); the first census climb (+3.96)</td><td>A duel won (0%); outnumbered (16%); terrain (G9 0%); the last 3% of the dodge; damage dealt in a match (27, scripted 63); the census above a random team; shortcuts (G5, G6) that each training map hid</td></tr>
+</table></div>
+<p>Every gain was measured on seeds no generation trained on; every loss is in the same tables. The next stage is set by them: gauntlet items G5 and G6 become training maps against the shortcuts, map 8 and the duel get the drones, and the census is read again on the same seeds.</p>
+</section>
+
+<section aria-labelledby="s-cmd">
+<h2 id="s-cmd">Run it yourself</h2>
+<pre style="background:#000;padding:.8rem 1rem;border:1px solid var(--rule);border-left:4px solid var(--phos);overflow-x:auto;font:.8rem/1.5 var(--mono);color:var(--phos)">make gauntlet                 # 9 tests x every net, 200 seeds: build/train/gauntlet.tsv
+make clips                    # these GIFs: build/train/clips/
+make train CHECK=nets/map7.bin MATCH=40      # one seat in 40 real matches
+make train GROUND=phase1,phase3,scenarios/training/04-the-guarded-depot.toml START=nets/phase3.bin
+CENSUS_NET=nets/map7.bin SEEDS=110 make census</pre>
+</section>
+
+<footer><a href="../index.html">treadcore.org</a> &middot; LAB-REPORT-BRAIN.md sections 96 to 102 &middot; documentation/AI-BRAINZ-PLAN.md &middot; Paul Richeson, with Claude. Every number here is from a run recorded in the lab report.</footer>
+</div></div>
+</div>
+
+<script>
+(function(){
+var D={"gauntlet": [{"item": "G1 fire at an enemy in reach", "brain": "scripted", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.05", "reaction_n": "200"}, {"item": "G1 fire at an enemy in reach", "brain": "untrained", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.05", "reaction_n": "196"}, {"item": "G1 fire at an enemy in reach", "brain": "phase1", "passed": "196", "runs": "200", "share": "0.9800", "se": "0.0099", "reaction_median": "", "reaction_n": "0"}, {"item": "G1 fire at an enemy in reach", "brain": "phase3", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.25", "reaction_n": "165"}, {"item": "G1 fire at an enemy in reach", "brain": "map4", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.65", "reaction_n": "159"}, {"item": "G1 fire at an enemy in reach", "brain": "map7a", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.45", "reaction_n": "101"}, {"item": "G1 fire at an enemy in reach", "brain": "map5", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.25", "reaction_n": "117"}, {"item": "G1 fire at an enemy in reach", "brain": "map7", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.65", "reaction_n": "155"}, {"item": "G2 an enemy behind", "brain": "scripted", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.05", "reaction_n": "200"}, {"item": "G2 an enemy behind", "brain": "untrained", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.05", "reaction_n": "200"}, {"item": "G2 an enemy behind", "brain": "phase1", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "", "reaction_n": "0"}, {"item": "G2 an enemy behind", "brain": "phase3", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.45", "reaction_n": "200"}, {"item": "G2 an enemy behind", "brain": "map4", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.45", "reaction_n": "200"}, {"item": "G2 an enemy behind", "brain": "map7a", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.45", "reaction_n": "200"}, {"item": "G2 an enemy behind", "brain": "map5", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "", "reaction_n": "0"}, {"item": "G2 an enemy behind", "brain": "map7", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "1.05", "reaction_n": "200"}, {"item": "G3 a shell on a standing tank", "brain": "scripted", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "1.30", "reaction_n": "200"}, {"item": "G3 a shell on a standing tank", "brain": "untrained", "passed": "83", "runs": "200", "share": "0.4150", "se": "0.0348", "reaction_median": "0.75", "reaction_n": "164"}, {"item": "G3 a shell on a standing tank", "brain": "phase1", "passed": "164", "runs": "200", "share": "0.8200", "se": "0.0272", "reaction_median": "1.00", "reaction_n": "200"}, {"item": "G3 a shell on a standing tank", "brain": "phase3", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.70", "reaction_n": "200"}, {"item": "G3 a shell on a standing tank", "brain": "map4", "passed": "172", "runs": "200", "share": "0.8600", "se": "0.0245", "reaction_median": "0.95", "reaction_n": "200"}, {"item": "G3 a shell on a standing tank", "brain": "map7a", "passed": "185", "runs": "200", "share": "0.9250", "se": "0.0186", "reaction_median": "0.90", "reaction_n": "200"}, {"item": "G3 a shell on a standing tank", "brain": "map5", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.70", "reaction_n": "200"}, {"item": "G3 a shell on a standing tank", "brain": "map7", "passed": "139", "runs": "200", "share": "0.6950", "se": "0.0326", "reaction_median": "0.90", "reaction_n": "200"}, {"item": "G4 a strike drone coming", "brain": "scripted", "passed": "191", "runs": "200", "share": "0.9550", "se": "0.0147", "reaction_median": "0.30", "reaction_n": "200"}, {"item": "G4 a strike drone coming", "brain": "untrained", "passed": "192", "runs": "200", "share": "0.9600", "se": "0.0139", "reaction_median": "0.05", "reaction_n": "200"}, {"item": "G4 a strike drone coming", "brain": "phase1", "passed": "150", "runs": "200", "share": "0.7500", "se": "0.0306", "reaction_median": "1.45", "reaction_n": "200"}, {"item": "G4 a strike drone coming", "brain": "phase3", "passed": "88", "runs": "200", "share": "0.4400", "se": "0.0351", "reaction_median": "1.25", "reaction_n": "149"}, {"item": "G4 a strike drone coming", "brain": "map4", "passed": "177", "runs": "200", "share": "0.8850", "se": "0.0226", "reaction_median": "0.65", "reaction_n": "200"}, {"item": "G4 a strike drone coming", "brain": "map7a", "passed": "197", "runs": "200", "share": "0.9850", "se": "0.0086", "reaction_median": "0.65", "reaction_n": "200"}, {"item": "G4 a strike drone coming", "brain": "map5", "passed": "193", "runs": "200", "share": "0.9650", "se": "0.0130", "reaction_median": "0.05", "reaction_n": "200"}, {"item": "G4 a strike drone coming", "brain": "map7", "passed": "140", "runs": "200", "share": "0.7000", "se": "0.0324", "reaction_median": "1.45", "reaction_n": "166"}, {"item": "G5 low armour, home in sight", "brain": "scripted", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.75", "reaction_n": "200"}, {"item": "G5 low armour, home in sight", "brain": "untrained", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.75", "reaction_n": "116"}, {"item": "G5 low armour, home in sight", "brain": "phase1", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.90", "reaction_n": "200"}, {"item": "G5 low armour, home in sight", "brain": "phase3", "passed": "4", "runs": "200", "share": "0.0200", "se": "0.0099", "reaction_median": "0.70", "reaction_n": "200"}, {"item": "G5 low armour, home in sight", "brain": "map4", "passed": "64", "runs": "200", "share": "0.3200", "se": "0.0330", "reaction_median": "0.75", "reaction_n": "200"}, {"item": "G5 low armour, home in sight", "brain": "map7a", "passed": "100", "runs": "200", "share": "0.5000", "se": "0.0354", "reaction_median": "1.00", "reaction_n": "200"}, {"item": "G5 low armour, home in sight", "brain": "map5", "passed": "21", "runs": "200", "share": "0.1050", "se": "0.0217", "reaction_median": "0.90", "reaction_n": "200"}, {"item": "G5 low armour, home in sight", "brain": "map7", "passed": "51", "runs": "200", "share": "0.2550", "se": "0.0308", "reaction_median": "0.85", "reaction_n": "200"}, {"item": "G6 a depot to take", "brain": "scripted", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.75", "reaction_n": "200"}, {"item": "G6 a depot to take", "brain": "untrained", "passed": "7", "runs": "200", "share": "0.0350", "se": "0.0130", "reaction_median": "0.75", "reaction_n": "86"}, {"item": "G6 a depot to take", "brain": "phase1", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.80", "reaction_n": "200"}, {"item": "G6 a depot to take", "brain": "phase3", "passed": "40", "runs": "200", "share": "0.2000", "se": "0.0283", "reaction_median": "0.75", "reaction_n": "200"}, {"item": "G6 a depot to take", "brain": "map4", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.85", "reaction_n": "200"}, {"item": "G6 a depot to take", "brain": "map7a", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.80", "reaction_n": "200"}, {"item": "G6 a depot to take", "brain": "map5", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.80", "reaction_n": "200"}, {"item": "G6 a depot to take", "brain": "map7", "passed": "4", "runs": "200", "share": "0.0200", "se": "0.0099", "reaction_median": "0.90", "reaction_n": "200"}, {"item": "G7 a pillbox from outside its ring", "brain": "scripted", "passed": "177", "runs": "200", "share": "0.8850", "se": "0.0226", "reaction_median": "0.05", "reaction_n": "193"}, {"item": "G7 a pillbox from outside its ring", "brain": "untrained", "passed": "107", "runs": "200", "share": "0.5350", "se": "0.0353", "reaction_median": "0.05", "reaction_n": "197"}, {"item": "G7 a pillbox from outside its ring", "brain": "phase1", "passed": "105", "runs": "200", "share": "0.5250", "se": "0.0353", "reaction_median": "", "reaction_n": "0"}, {"item": "G7 a pillbox from outside its ring", "brain": "phase3", "passed": "114", "runs": "200", "share": "0.5700", "se": "0.0350", "reaction_median": "0.25", "reaction_n": "191"}, {"item": "G7 a pillbox from outside its ring", "brain": "map4", "passed": "121", "runs": "200", "share": "0.6050", "se": "0.0346", "reaction_median": "0.25", "reaction_n": "199"}, {"item": "G7 a pillbox from outside its ring", "brain": "map7a", "passed": "124", "runs": "200", "share": "0.6200", "se": "0.0343", "reaction_median": "0.25", "reaction_n": "196"}, {"item": "G7 a pillbox from outside its ring", "brain": "map5", "passed": "106", "runs": "200", "share": "0.5300", "se": "0.0353", "reaction_median": "0.25", "reaction_n": "167"}, {"item": "G7 a pillbox from outside its ring", "brain": "map7", "passed": "52", "runs": "200", "share": "0.2600", "se": "0.0310", "reaction_median": "0.25", "reaction_n": "192"}, {"item": "G8 out of a pillbox's ring", "brain": "scripted", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.75", "reaction_n": "200"}, {"item": "G8 out of a pillbox's ring", "brain": "untrained", "passed": "155", "runs": "200", "share": "0.7750", "se": "0.0295", "reaction_median": "1.10", "reaction_n": "184"}, {"item": "G8 out of a pillbox's ring", "brain": "phase1", "passed": "175", "runs": "200", "share": "0.8750", "se": "0.0234", "reaction_median": "0.85", "reaction_n": "200"}, {"item": "G8 out of a pillbox's ring", "brain": "phase3", "passed": "176", "runs": "200", "share": "0.8800", "se": "0.0230", "reaction_median": "0.75", "reaction_n": "200"}, {"item": "G8 out of a pillbox's ring", "brain": "map4", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "2.00", "reaction_n": "200"}, {"item": "G8 out of a pillbox's ring", "brain": "map7a", "passed": "178", "runs": "200", "share": "0.8900", "se": "0.0221", "reaction_median": "0.85", "reaction_n": "200"}, {"item": "G8 out of a pillbox's ring", "brain": "map5", "passed": "188", "runs": "200", "share": "0.9400", "se": "0.0168", "reaction_median": "1.00", "reaction_n": "200"}, {"item": "G8 out of a pillbox's ring", "brain": "map7", "passed": "86", "runs": "200", "share": "0.4300", "se": "0.0350", "reaction_median": "0.95", "reaction_n": "200"}, {"item": "G9 a depot across the water", "brain": "scripted", "passed": "200", "runs": "200", "share": "1.0000", "se": "0.0000", "reaction_median": "0.70", "reaction_n": "200"}, {"item": "G9 a depot across the water", "brain": "untrained", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.75", "reaction_n": "200"}, {"item": "G9 a depot across the water", "brain": "phase1", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "", "reaction_n": "0"}, {"item": "G9 a depot across the water", "brain": "phase3", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "", "reaction_n": "0"}, {"item": "G9 a depot across the water", "brain": "map4", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "", "reaction_n": "0"}, {"item": "G9 a depot across the water", "brain": "map7a", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "", "reaction_n": "0"}, {"item": "G9 a depot across the water", "brain": "map5", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.75", "reaction_n": "200"}, {"item": "G9 a depot across the water", "brain": "map7", "passed": "0", "runs": "200", "share": "0.0000", "se": "0.0000", "reaction_median": "0.90", "reaction_n": "200"}], "match": {"untrained": {"first": 155, "first_se": 7, "deaths": 0.42, "never": 29, "dealt": 11, "dealt_se": 4, "kills": 0.07}, "scripted": {"first": 163, "first_se": 5, "deaths": 0.33, "never": 28, "dealt": 63, "dealt_se": 8, "kills": 0.7}, "phase1": {"first": 48, "first_se": 5, "deaths": 3.4, "never": 0, "dealt": 54, "dealt_se": 7, "kills": 0.5}, "phase3": {"first": 50, "first_se": 5, "deaths": 2.75, "never": 0, "dealt": 49, "dealt_se": 11, "kills": 0.35}, "map4": {"first": 88, "first_se": 10, "deaths": 1.95, "never": 11, "dealt": 33, "dealt_se": 8, "kills": 0.23}, "map7a": {"first": 67, "first_se": 9, "deaths": 2.05, "never": 6, "dealt": 28, "dealt_se": 9, "kills": 0.28}, "map5": {"first": 100, "first_se": 10, "deaths": 1.57, "never": 13, "dealt": 29, "dealt_se": 8, "kills": 0.12}, "map7": {"first": 129, "first_se": 9, "deaths": 0.82, "never": 16, "dealt": 27, "dealt_se": 8, "kills": 0.2}}};
+var NS="http://www.w3.org/2000/svg";
+function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+var G=[
+ {id:"untrained",gif:"0-untrained",t:"Untrained",tag:"random weights",learned:"Nothing: 16,431 weights drawn from a seed. It wanders.",dl:[["go to (held out)","enemy 13%, depot 2%, pillbox 0.3%"]]},
+ {id:"phase1",gif:"1-phase1",t:"Phase 1: go to",tag:"500 generations, 130 s",learned:"Drive to an enemy, a depot or a pillbox 10 to 20 tiles off, with the periscope's exact bearing.",dl:[["go to (held out)","999 of 999"]]},
+ {id:"phase3",gif:"2-phase3",t:"Phase 3: drive and shoot",tag:"400 generations, 98 s",learned:"Close on an enemy and kill it with three direct hits, no mortar wasted; still go to depots and pillboxes.",dl:[["held out","999 of 999"],["census","-23.52 \u00b1 0.38"]]},
+ {id:"map4",gif:"3-map4",t:"Map 4: the guarded depot",tag:"400 generations, rehearsed",learned:"Kill the pillbox from outside its ring, then take the depot it guards.",dl:[["held out","93.7% (scripted 100%)"],["census","-24.29 \u00b1 0.45"]]},
+ {id:"map7a",gif:"4-map7a",t:"Map 7a: low, go home",tag:"300 generations",learned:"With low armour and shells, drive home and sit on the depot until repaired.",dl:[["held out","99.7% (scripted 100%)"]]},
+ {id:"map5",gif:"5-map5",t:"Map 5: under a shell",tag:"the shell contact",learned:"Read where and when a shell lands, and drive out from under it.",dl:[["held out","95.9% (scripted 99.8%)"]]},
+ {id:"map7",gif:"6-map7",t:"Map 7: low and far from home",tag:"the drone head on",learned:"Put up interceptors against strike drones, dodge, and get home under fire.",dl:[["held out","44.3% (scripted 53.3%)"],["census","-20.33 \u00b1 0.27"]]}
+];
+var M=D.match;
+document.getElementById("gens").innerHTML=G.map(function(g){var m=M[g.id];var rows=g.dl.slice();if(m)rows.push(["in a match","first down "+m.first+" s, "+m.deaths.toFixed(2)+" deaths, "+m.dealt+" damage"]);
+ return '<article class="gen"><img src="clips/'+g.gif+'.gif" alt="'+g.t+' in action" loading="lazy"><h3>'+g.t+'</h3><span class="tag">'+g.tag+'</span><p style="margin-top:.4rem">'+g.learned+'</p><dl>'+rows.map(function(r){return "<dt>"+r[0]+"</dt><dd>"+r[1]+"</dd>";}).join("")+'</dl></article>';}).join("");
+// gauntlet heatmap
+var brains=["scripted","untrained","phase1","phase3","map4","map7a","map5","map7"];
+var items=[];D.gauntlet.forEach(function(r){if(items.indexOf(r.item)<0)items.push(r.item);});
+function cell(p){var a=0.08+0.62*p;return "background:rgba(51,242,77,"+a.toFixed(2)+");color:"+(p>0.55?"#031":"var(--ink)");}
+var h="<tr><th>Test</th>"+brains.map(function(b){return "<th>"+b+"</th>";}).join("")+"</tr>";
+items.forEach(function(it){h+="<tr><td>"+it+"</td>"+brains.map(function(b){var r=D.gauntlet.filter(function(x){return x.item===it&&x.brain===b;})[0];if(!r)return "<td></td>";var p=+r.share;return "<td class=cell style='"+cell(p)+"'>"+Math.round(100*p)+"%<small>"+(r.reaction_median?r.reaction_median+" s":"\u2013")+"</small></td>";}).join("")+"</tr>";});
+document.getElementById("heat").innerHTML=h;
+// scatter
+(function(){var s=document.getElementById("scatter"),L=60,R=690,T=16,B=286;var xmax=3.6,ymax=75;
+ function X(v){return L+(R-L)*v/xmax;}function Y(v){return B-(B-T)*v/ymax;}
+ for(var v=0;v<=3.5;v+=0.5){el("line",{x1:X(v),x2:X(v),y1:T,y2:B,stroke:"#13221a"},s);var t=el("text",{x:X(v),y:B+18,"text-anchor":"middle"},s);t.textContent=v;}
+ for(var v=0;v<=70;v+=10){el("line",{x1:L,x2:R,y1:Y(v),y2:Y(v),stroke:"#13221a"},s);var t=el("text",{x:L-8,y:Y(v)+4,"text-anchor":"end"},s);t.textContent=v;}
+ var xl=el("text",{x:R,y:B+34,"text-anchor":"end"},s);xl.textContent="deaths in the first 3 minutes (fewer is better)";
+ var yl=el("text",{x:L,y:T-4},s);yl.textContent="damage dealt";
+ var order=["untrained","phase1","phase3","map4","map7a","map5","map7","scripted"];
+ var pts=order.filter(function(k){return M[k];}).map(function(k){return [k,M[k]];});
+ var path=pts.filter(function(p){return p[0]!=="scripted"&&p[0]!=="untrained";}).map(function(p,i){return (i?"L":"M")+X(p[1].deaths).toFixed(1)+" "+Y(p[1].dealt).toFixed(1);}).join("");
+ el("path",{d:path,fill:"none",stroke:"#1d8a2c","stroke-dasharray":"3 4"},s);
+ pts.forEach(function(p){var k=p[0],m=p[1],x=X(m.deaths),y=Y(m.dealt);var c=k==="scripted"?"#ffbf4d":k==="untrained"?"#9fb0a2":"#33f24d";
+  el("line",{x1:x,x2:x,y1:Y(m.dealt-2*m.dealt_se),y2:Y(Math.min(ymax,m.dealt+2*m.dealt_se)),stroke:c,"stroke-opacity":".5"},s);
+  el("circle",{cx:x,cy:y,r:6,fill:c,stroke:"#050605","stroke-width":2},s);
+  var t=el("text",{x:x+9,y:y-8,style:"fill:"+c},s);t.textContent=k;});
+})();
+var mt="<tr><th>Seat 9</th><th>First down (s of 180)</th><th>Deaths in 3 min</th><th>Never down (of 40)</th><th>Damage dealt</th><th>Kills</th></tr>";
+["untrained","phase1","phase3","map4","map7a","map5","map7","scripted"].forEach(function(k){var m=M[k];if(!m)return;mt+="<tr><td>"+(k==="scripted"?"the scripted ranger":k)+"</td><td class=n>"+m.first+" \u00b1 "+m.first_se+"</td><td class=n>"+m.deaths.toFixed(2)+"</td><td class=n>"+m.never+"</td><td class=n>"+m.dealt+" \u00b1 "+m.dealt_se+"</td><td class=n>"+m.kills.toFixed(2)+"</td></tr>";});
+document.getElementById("matchtab").innerHTML=mt;
+// census
+(function(){var s=document.getElementById("census"),L=230,R=700,T=8,row=40;
+ var rows=[["random net (phase 0 shape)",-19.30,0.36,"#9fb0a2"],["random net (the shape since)",-20.35,0.25,"#9fb0a2"],["phase 3: drive and shoot",-23.52,0.38,"#f2554a"],["map 4: the guarded depot",-24.29,0.45,"#f2554a"],["map 7: drones, survival",-20.33,0.27,"#33f24d"]];
+ var xmin=-26,xmax=1;function X(v){return L+(R-L)*(v-xmin)/(xmax-xmin);}
+ var H=T+rows.length*row;
+ for(var v=-25;v<=0;v+=5){el("line",{x1:X(v),x2:X(v),y1:T,y2:H,stroke:v===0?"#2b4a30":"#13221a"},s);var t=el("text",{x:X(v),y:H+16,"text-anchor":"middle"},s);t.textContent=v;}
+ var z=el("text",{x:X(0),y:H+32,"text-anchor":"end"},s);z.textContent="0 = the scripted brain";
+ rows.forEach(function(r,i){var y=T+i*row+row/2;var l=el("text",{x:L-10,y:y+4,"text-anchor":"end"},s);l.textContent=r[0];
+  el("rect",{x:X(r[1]),y:y-8,width:X(0)-X(r[1]),height:16,rx:3,fill:r[3],"fill-opacity":".7"},s);
+  el("line",{x1:X(r[1]-2*r[2]),x2:X(r[1]+2*r[2]),y1:y,y2:y,stroke:"#e6ede6","stroke-width":2},s);
+  var v=el("text",{x:X(r[1])+8,y:y+4,style:"fill:#000;font-weight:700"},s);v.textContent=r[1].toFixed(2)+" \u00b1 "+r[2].toFixed(2);});
+})();
+})();
+</script>
+</body>
+</html>

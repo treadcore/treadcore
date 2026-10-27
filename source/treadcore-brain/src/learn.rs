@@ -193,6 +193,11 @@ impl Task {
 /// One episode of a brain on a ground. Going to ends when the target is
 /// reached; shooting when the enemy is destroyed; both at `EPISODE`.
 pub fn play(task: Task, g: &Ground, brain: &mut dyn Brain) -> Played {
+    play_on(task, g, brain, None)
+}
+
+/// As `play`, recording frames into `rec` (the clips, LR 102).
+pub fn play_on(task: Task, g: &Ground, brain: &mut dyn Brain, mut rec: Option<&mut crate::scenario::Recording>) -> Played {
     let mut w = g.world.clone();
     let enemy = w.tanks.get(1).map(|t| t.id);
     let from = w.tanks[0].pos.dist(g.at);
@@ -206,6 +211,11 @@ pub fn play(task: Task, g: &Ground, brain: &mut dyn Brain) -> Played {
             orders = brain.think_on(&obs, Some(&w.map)).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
         }
         w.step(&orders);
+        if let Some(r) = rec.as_deref_mut() {
+            if w.tick % r.every == 0 {
+                r.frames.push(crate::scenario::snap(&w));
+            }
+        }
         for e in &w.events {
             match e {
                 Event::ShellLaunched { shell, owner: 0, kind: ShellKind::Direct, .. } => {
@@ -567,10 +577,11 @@ mod tests {
     /// the net's seat; a reward term that does not exist is refused.
     #[test]
     fn a_training_map_is_a_course() {
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios/training");
-        let mut files: Vec<_> = std::fs::read_dir(&dir).expect("scenarios/training/").filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
+        // The training maps and the gauntlet (LR 102) alike.
+        let mut files: Vec<_> = ["training", "gauntlet"].iter().flat_map(|d| std::fs::read_dir(root.join(d)).expect("scenarios/").filter_map(|e| e.ok().map(|e| e.path()))).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
         files.sort();
-        assert!(files.len() >= 3, "{} training maps", files.len());
+        assert!(files.len() >= 12, "{} training maps and gauntlet tests", files.len());
         let net = Net::tank(1);
         for f in &files {
             let c = Course::parse(&f.to_string_lossy()).unwrap_or_else(|e| panic!("{}", e));
@@ -717,7 +728,7 @@ mod harness {
     /// `secs`: when the seat first went down (`secs` if never) and how
     /// often. Between the training maps and the census: does the seat
     /// live in a real match's opening minutes?
-    fn match_minutes(net: Option<&Net>, seed: u64, secs: u64) -> (f64, u32) {
+    fn match_minutes(net: Option<&Net>, seed: u64, secs: u64) -> (f64, u32, f32, u32) {
         const SEAT: usize = 9;
         let names: Vec<(String, bool)> = (0..crate::fleet::SEATS).map(|i| (crate::fleet::name(i), true)).collect();
         let sc = Scenario { seed, players: names, teams: Some(crate::fleet::teams()), time_limit: 0, respawns: 3, ..Scenario::default() };
@@ -729,10 +740,18 @@ mod harness {
                 None => (i as PlayerId, crate::fleet::brain(i, seed ^ i as u64, false)),
             })
             .collect();
-        let (mut first, mut deaths, mut up) = (None, 0u32, true);
+        let (mut first, mut deaths, mut up, mut given, mut kills) = (None, 0u32, true, 0f32, 0u32);
         for _ in 0..secs * TICK_HZ as u64 {
             let orders = crate::run_bots(&w, &mut bots);
             w.step(&orders);
+            for e in &w.events {
+                if let Event::TankDamaged { by: Some(b), damage, armor_left, .. } = e {
+                    if *b == SEAT as PlayerId {
+                        given += damage;
+                        kills += (*armor_left <= 0.0) as u32;
+                    }
+                }
+            }
             let alive = w.tanks.iter().find(|t| t.owner == SEAT as PlayerId).map(|t| t.alive).unwrap_or(false);
             if up && !alive {
                 deaths += 1;
@@ -743,7 +762,7 @@ mod harness {
                 break;
             }
         }
-        (first.unwrap_or(secs as f64), deaths)
+        (first.unwrap_or(secs as f64), deaths, given, kills)
     }
 
     /// `MATCH=n`: the match reading over n seeds from 8,000,000, the net
@@ -756,7 +775,10 @@ mod harness {
             let se = (runs.iter().map(|r| (r.0 - m).powi(2)).sum::<f64>() / (n as f64 * (n as f64 - 1.0).max(1.0))).sqrt();
             let d = runs.iter().map(|r| r.1 as f64).sum::<f64>() / n as f64;
             let lived = runs.iter().filter(|r| r.1 == 0).count();
-            println!("train: match, {}: first down at {:.0} +/- {:.0} s of {}, {:.2} deaths, never down in {} of {} matches", who, m, se, secs, d, lived, n);
+            let g = runs.iter().map(|r| r.2 as f64).sum::<f64>() / n as f64;
+            let gse = (runs.iter().map(|r| (r.2 as f64 - g).powi(2)).sum::<f64>() / (n as f64 * (n as f64 - 1.0).max(1.0))).sqrt();
+            let k = runs.iter().map(|r| r.3 as f64).sum::<f64>() / n as f64;
+            println!("train: match, {}: first down at {:.0} +/- {:.0} s of {}, {:.2} deaths, never down in {} of {} matches; damage dealt {:.0} +/- {:.0}, kills {:.2}", who, m, se, secs, d, lived, n, g, gse, k);
         }
     }
 
@@ -898,6 +920,243 @@ mod harness {
         println!("train: probe {} by the oracle (the net's drive actions, the world's shells): {:.3} +/- {:.3} of {}", name, p, (p * (1.0 - p) / runs.len() as f64).sqrt(), runs.len());
     }
 
+    /// The milestone nets in order (LR 102): each phase's or map's net
+    /// as it was kept.
+    pub const MILESTONES: [&str; 6] = ["phase1", "phase3", "map4", "map7a", "map5", "map7"];
+
+    /// `make gauntlet` (LR 102): every file in `scenarios/gauntlet/`, for
+    /// the scripted brain, the untrained net and each milestone net, on
+    /// the same `GAUNTLET_RUNS` seeds (200) from 9,500,000: the share
+    /// passed with its error, and the median reaction where it came.
+    /// Written to `OUT/gauntlet.tsv` as well.
+    fn gauntlet(out: &std::path::Path, threads: usize) {
+        let dir = crate::scenario::find("scenarios/gauntlet");
+        let mut files: Vec<_> = std::fs::read_dir(&dir).expect("scenarios/gauntlet/").filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
+        files.sort();
+        let runs: u64 = env("GAUNTLET_RUNS", 200);
+        let mut who: Vec<(String, Option<Net>)> = vec![("scripted".into(), None), ("untrained".into(), Some(Net::tank(1)))];
+        for m in MILESTONES {
+            let f = crate::scenario::find(&format!("nets/{}.bin", m));
+            if let Ok(n) = Net::load(&f) {
+                who.push((m.to_string(), Some(n.widen(crate::senses::SENSES))));
+            }
+        }
+        let mut tsv = String::from("item\tbrain\tpassed\truns\tshare\tse\treaction_median\treaction_n\n");
+        for f in &files {
+            let c = Course::parse(&f.to_string_lossy()).unwrap_or_else(|e| panic!("{}", e));
+            let Course::File { name, doc } = &c else { continue };
+            let title = doc.top.get("name").and_then(crate::scenario::Value::str).unwrap_or(name).to_string();
+            for (w, net) in &who {
+                let d = if net.is_some() { doc.clone() } else { c.scripted().expect("a file") };
+                let seeds: Vec<u64> = (9_500_000..9_500_000 + runs).collect();
+                let res = spread(seeds.len(), threads, &|k| {
+                    let (o, failed) = crate::scenario::run_net(&d, Some(seeds[k]), net.as_ref()).unwrap_or_else(|e| panic!("{}: {}", name, e));
+                    (failed.is_empty(), crate::scenario::reaction(&d, &o))
+                });
+                let passed = res.iter().filter(|r| r.0).count();
+                let p = passed as f64 / runs as f64;
+                let se = (p * (1.0 - p) / runs as f64).sqrt();
+                let mut re: Vec<f64> = res.iter().filter_map(|r| r.1).collect();
+                re.sort_by(|a, b| a.total_cmp(b));
+                let med = re.get(re.len() / 2).copied();
+                println!("gauntlet: {:<36} {:<10} {:>5.1}% +/- {:>4.1}  reaction {}", title, w, 100.0 * p, 100.0 * se, med.map(|m| format!("{:.2} s ({} of {})", m, re.len(), runs)).unwrap_or("none".into()));
+                tsv += &format!("{}\t{}\t{}\t{}\t{:.4}\t{:.4}\t{}\t{}\n", title, w, passed, runs, p, se, med.map(|m| format!("{:.2}", m)).unwrap_or_default(), re.len());
+            }
+        }
+        std::fs::create_dir_all(out).ok();
+        std::fs::write(out.join("gauntlet.tsv"), tsv).unwrap();
+        println!("gauntlet: written {}", out.join("gauntlet.tsv").display());
+    }
+
+    /// A recording drawn and made a GIF (LR 102): each frame to a PPM,
+    /// then `ffmpeg` with a palette of its own. Frames past `secs` are
+    /// left out.
+    fn gif(rec: &crate::scenario::Recording, label: &str, secs: f64, path: &std::path::Path) -> usize {
+        let dir = path.with_extension("frames");
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut n = 0;
+        for f in rec.frames.iter().filter(|f| f.t <= secs) {
+            let armor = f.tanks.iter().find(|t| t.0 == 0).map(|t| if t.4 { (100.0 * t.3).round() as i32 } else { 0 }).unwrap_or(0);
+            let cap = format!("{} T{:.1} A{}%", label, f.t, armor);
+            std::fs::write(dir.join(format!("f{:04}.ppm", n)), crate::clip::render(rec, f, 0, &cap).ppm()).unwrap();
+            n += 1;
+        }
+        let fps = (TICK_HZ as u64 / rec.every.max(1)).max(1);
+        let st = std::process::Command::new("ffmpeg")
+            .args(["-y", "-loglevel", "error", "-framerate", &fps.to_string(), "-i"])
+            .arg(dir.join("f%04d.ppm"))
+            .args(["-vf", "split[a][b];[a]palettegen=max_colors=48:stats_mode=diff[p];[b][p]paletteuse=dither=none", "-loop", "0"])
+            .arg(path)
+            .status()
+            .expect("ffmpeg");
+        assert!(st.success(), "ffmpeg failed for {}", path.display());
+        std::fs::remove_dir_all(&dir).ok();
+        n
+    }
+
+    /// The match clip (LR 102): seat 9 of a dealt match given to `net`,
+    /// recorded round its start for `secs`.
+    fn match_clip(net: &Net, seed: u64, secs: u64) -> crate::scenario::Recording {
+        const SEAT: usize = 9;
+        let names: Vec<(String, bool)> = (0..crate::fleet::SEATS).map(|i| (crate::fleet::name(i), true)).collect();
+        let sc = Scenario { seed, players: names, teams: Some(crate::fleet::teams()), time_limit: 0, respawns: 3, ..Scenario::default() };
+        let mut w = World::new(sc);
+        crate::fleet::new_match();
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..crate::fleet::SEATS)
+            .map(|i| if i == SEAT { (i as PlayerId, Box::new(NetBrain::new(net.clone(), "net")) as Box<dyn Brain>) } else { (i as PlayerId, crate::fleet::brain(i, seed ^ i as u64, false)) })
+            .collect();
+        let start = w.tanks.iter().find(|t| t.owner == SEAT as PlayerId).map(|t| t.pos).unwrap();
+        let mut rec = crate::scenario::Recording::round(&w, start, 26, 2);
+        for _ in 0..secs * TICK_HZ as u64 {
+            let orders = crate::run_bots(&w, &mut bots);
+            w.step(&orders);
+            if w.tick % rec.every == 0 {
+                let mut f = crate::scenario::snap(&w);
+                // Seen from seat 9's side: its tank drawn as the learner's.
+                for t in f.tanks.iter_mut() {
+                    t.0 = if t.0 == SEAT as PlayerId { 0 } else if crate::fleet::teams()[t.0 as usize] == crate::fleet::teams()[SEAT] { 0 } else { t.0.max(1) };
+                }
+                for d in f.drones.iter_mut() {
+                    d.0 = if crate::fleet::teams().get(d.0 as usize) == Some(&crate::fleet::teams()[SEAT]) { 0 } else { d.0.max(1) };
+                }
+                for p in f.pillboxes.iter_mut().chain(std::iter::empty()) {
+                    p.1 = p.1.map(|o| if crate::fleet::teams().get(o as usize) == Some(&crate::fleet::teams()[SEAT]) { 0 } else { o.max(1) });
+                }
+                for d in f.depots.iter_mut() {
+                    d.1 = d.1.map(|o| if crate::fleet::teams().get(o as usize) == Some(&crate::fleet::teams()[SEAT]) { 0 } else { o.max(1) });
+                }
+                // The learner's own tank first, so its armour heads the caption.
+                if let Some(k) = w.tanks.iter().position(|t| t.owner == SEAT as PlayerId) {
+                    f.tanks.swap(0, k);
+                    f.tanks[0].0 = 0;
+                }
+                rec.frames.push(f);
+            }
+        }
+        rec
+    }
+
+    /// `make clips` (LR 102): a short GIF of each milestone at work, on
+    /// its defining test, the first held-out seed it passes (the
+    /// untrained net on the first seed), and the newest net in a real
+    /// match. `OUT/clips/`, and `clips.tsv` for the report.
+    fn clips(out: &std::path::Path, threads: usize) {
+        let dir = out.join("clips");
+        std::fs::create_dir_all(&dir).unwrap();
+        let load = |m: &str| -> Net {
+            if m == "untrained" {
+                return Net::tank(1);
+            }
+            Net::load(&crate::scenario::find(&format!("nets/{}.bin", m))).expect("a net").widen(crate::senses::SENSES)
+        };
+        // name, the net, the course, the label.
+        let specs: [(&str, &str, &str, &str); 9] = [
+            ("0-untrained", "untrained", "phase1", "UNTRAINED"),
+            ("1-phase1", "phase1", "phase1", "P1 GO TO"),
+            ("2-phase3", "phase3", "phase3", "P3 SHOOT"),
+            ("3-map4", "map4", "scenarios/training/04-the-guarded-depot.toml", "M4 GUARDED DEPOT"),
+            ("4-map7a", "map7a", "scenarios/training/07a-low-go-home.toml", "M7A GO HOME"),
+            ("5-map5", "map5", "scenarios/training/05-under-a-shell.toml", "M5 SHELL"),
+            ("6-map7", "map7", "scenarios/training/07-low-and-far-from-home.toml", "M7 LOW AND FAR"),
+            ("7-map7-duel", "map7", "scenarios/training/06-an-enemy-that-fires-back.toml", "M7 NET: DUEL"),
+            ("8-map7-gauntlet-g4", "map7", "scenarios/gauntlet/g4-strike-drone-coming.toml", "G4 STRIKE DRONE"),
+        ];
+        let mut tsv = String::from("clip\tbrain\tcourse\tseed\tpassed\tframes\tseconds\n");
+        let made = spread(specs.len(), threads, &|i| {
+            let (name, m, course, label) = specs[i];
+            let net = load(m);
+            let c = Course::parse(course).unwrap_or_else(|e| panic!("{}", e));
+            let tries: u64 = if m == "untrained" { 1 } else { 60 };
+            let mut pick = None;
+            for k in 0..tries {
+                let seed = 9_000_000 + k;
+                let (passed, rec) = match &c {
+                    Course::Built(t) => {
+                        // Phase 1's clip shows the pillbox ground; phase 3's the enemy.
+                        let seed = if *t == Task::GoTo { 9_000_000 + 3 * k + 2 } else { 9_000_000 + 3 * k };
+                        let g = ground(*t, seed);
+                        let mut rec = crate::scenario::Recording::round(&g.world, g.world.tanks[0].pos, 20, 2);
+                        let p = play_on(*t, &g, &mut NetBrain::new(net.clone(), "net"), Some(&mut rec));
+                        (t.passed(&p), (seed, rec))
+                    }
+                    Course::File { doc, .. } => {
+                        let (_, failed, rec) = crate::scenario::run_record(doc, Some(seed), Some(&net), 2).unwrap();
+                        (failed.is_empty(), (seed, rec))
+                    }
+                };
+                if passed || k + 1 == tries {
+                    pick = Some((passed, rec));
+                    break;
+                }
+            }
+            let (passed, (seed, rec)) = pick.unwrap();
+            let n = gif(&rec, label, 15.0, &dir.join(format!("{}.gif", name)));
+            format!("{}\t{}\t{}\t{}\t{}\t{}\t{:.1}\n", name, m, course, seed, passed, n, n as f64 / 10.0)
+        });
+        for l in made {
+            tsv += &l;
+        }
+        let rec = match_clip(&load("map7"), 8_000_001, 30);
+        let n = gif(&rec, "M7 NET IN A MATCH", 30.0, &dir.join("9-map7-match.gif"));
+        tsv += &format!("9-map7-match\tmap7\tmatch\t8000001\t\t{}\t{:.1}\n", n, n as f64 / 10.0);
+        std::fs::write(dir.join("clips.tsv"), tsv).unwrap();
+        println!("clips: written {}", dir.display());
+    }
+
+    /// `TIMING=1` (LR 102): what the learned tank costs alone, on one
+    /// thread: a decision (the senses and the forward pass); a one-tank
+    /// episode of phase 3's ground; and 120 s of a 16-seat match with
+    /// every seat a net against every seat scripted, the world's step
+    /// and every brain's think together.
+    fn timing() {
+        let net = Net::load(&crate::scenario::find("nets/map7.bin")).expect("nets/map7.bin").widen(crate::senses::SENSES);
+        let w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(16) });
+        let obs = w.observe(0);
+        let n = 20_000;
+        let t0 = std::time::Instant::now();
+        let mut sum = 0.0;
+        for _ in 0..n {
+            let x = crate::senses::sense(&obs, Some(&w.map), None, &[]).unwrap();
+            sum += net.forward(&x)[0];
+        }
+        let dec = t0.elapsed().as_secs_f64() / n as f64;
+        println!("timing: a decision (senses {} and forward pass, {} weights): {:.1} us, {:.0} a second ({})", crate::senses::SENSES, net.parameters(), dec * 1e6, 1.0 / dec, sum.is_finite());
+        let t0 = std::time::Instant::now();
+        let mut ticks = 0;
+        for k in 0..50 {
+            let g = ground(Task::Shoot, 9_000_000 + 3 * k);
+            let p = play(Task::Shoot, &g, &mut NetBrain::new(net.clone(), "net"));
+            ticks += if p.killed { 1 } else { 0 };
+        }
+        let ep = t0.elapsed().as_secs_f64() / 50.0;
+        println!("timing: a phase 3 episode (one tank and its target): {:.2} ms ({} of 50 killed)", ep * 1e3, ticks);
+        let _ = ticks;
+        for (who, nets) in [("every seat a net", true), ("every seat scripted", false)] {
+            let names: Vec<(String, bool)> = (0..crate::fleet::SEATS).map(|i| (crate::fleet::name(i), true)).collect();
+            let sc = Scenario { seed: 8_000_001, players: names, teams: Some(crate::fleet::teams()), time_limit: 0, respawns: 3, ..Scenario::default() };
+            let mut w = World::new(sc);
+            crate::fleet::new_match();
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..crate::fleet::SEATS)
+                .map(|i| if nets { (i as PlayerId, Box::new(NetBrain::new(net.clone(), "net")) as Box<dyn Brain>) } else { (i as PlayerId, crate::fleet::brain(i, 8_000_001 ^ i as u64, false)) })
+                .collect();
+            let (mut think, mut step) = (std::time::Duration::ZERO, std::time::Duration::ZERO);
+            let secs = 120;
+            for _ in 0..secs * TICK_HZ as u64 {
+                let a = std::time::Instant::now();
+                let orders = crate::run_bots(&w, &mut bots);
+                let b = std::time::Instant::now();
+                w.step(&orders);
+                think += b - a;
+                step += b.elapsed();
+                if w.over {
+                    break;
+                }
+            }
+            let st = w.tick as f64;
+            println!("timing: a 16-seat match, {}: {:.1} s of play in {:.2} s ({:.0} times real time); brains {:.1} us a seat-tick, the world {:.1} us a tick", who, st / TICK_HZ as f64, (think + step).as_secs_f64(), st / TICK_HZ as f64 / (think + step).as_secs_f64(), think.as_secs_f64() * 1e6 / (st * 16.0), step.as_secs_f64() * 1e6 / st);
+        }
+    }
+
     /// The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a
     /// comma list of courses (`phase1`, `phase3`, training maps' paths)
     /// trained together, each episode the next course in turn. With
@@ -919,6 +1178,18 @@ mod harness {
         let name = env("NAME", if ground.is_some() { "ground".to_string() } else { format!("phase{}", phase) });
         let threads: usize = env("THREADS", std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4));
         let held: u64 = env("HELD", 999);
+        if !std::env::var("TIMING").unwrap_or_default().is_empty() {
+            timing();
+            return;
+        }
+        if !std::env::var("CLIPS").unwrap_or_default().is_empty() {
+            clips(&std::path::PathBuf::from(env("OUT", "build/train".to_string())), threads);
+            return;
+        }
+        if !std::env::var("GAUNTLET").unwrap_or_default().is_empty() {
+            gauntlet(&std::path::PathBuf::from(env("OUT", "build/train".to_string())), threads);
+            return;
+        }
         if std::env::var("PROBE").map(|p| p == "sim").unwrap_or(false) {
             let n: u64 = env("HELD", 300);
             for renew in [Renew::Always, Renew::TwoSeconds, Renew::Near] {

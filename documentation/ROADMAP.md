@@ -1179,7 +1179,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     contacts; the drone head on (the killer was a strike drone); map 7
     44.3%; in a match 0.82 deaths in 3 minutes (was 1.73); the census
     -20.33, level with a random net, +3.96 over the map 4 net. Next:
-    maps 8 and 6 with drones, map 5's last 3%.
+    maps 8 and 6 with drones, map 5's last 3%. The gauntlet and clips
+    (LR 102): nine single decisions read for every net; shortcuts found
+    (G5, G6) to become maps; the match reading with damage dealt.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

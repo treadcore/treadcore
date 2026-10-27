@@ -1,0 +1,30 @@
+# The gauntlet (LAB-REPORT-BRAIN.md section 102): one decision, little
+# else on the map. The enemy is behind: 8 tiles off, directly behind the tank. Decision: turn and shoot. Passed: a direct hit within 6 s.
+# Read by `make gauntlet` for the scripted brain, the untrained net and
+# every net in nets/, on the same seeds; the reaction it times is
+# `reaction`.
+name = "G2 an enemy behind"
+reaction = "fire"
+floor = 0.9
+players = 2
+seconds = 6
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-20, 20]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+heading = 0
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [-8, 0]
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+hits = { by = 0, on = 1, at_least = 1 }

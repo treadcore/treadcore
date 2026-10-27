@@ -76,3 +76,4 @@ report is what ties a conversation to them. Named
 | [061](CI-061-2026-10-26-training-maps.md) | 26 October 2026 | Training maps: scenario files teach the learned tank, a guarded depot taken, and a census that asks for survival | 0102 | LAB-REPORT-BRAIN.md section 99 |
 | [062](CI-062-2026-10-26-survival-maps.md) | 26 October 2026 | Survival maps: low armour means home, the missing drones found, and the first net off the bottom of the census | 0102 | LAB-REPORT-BRAIN.md section 100 |
 | [063](CI-063-2026-10-27-the-third-morning.md) | 27 October 2026 | The third morning: thirty generations of the run, and no candidate | 0103 | LAB-REPORT-BRAIN.md section 101 |
+| [064](CI-064-2026-10-27-generations-watched.md) | 27 October 2026 | Generations watched: clips of each learned tank, a gauntlet of single decisions, and what the AI costs | 0103 | LAB-REPORT-BRAIN.md section 102 |

@@ -526,6 +526,7 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/INDEX.md | this |
 | documentation/HOW-TO-PLAY.md | the player's guide with pictures, every key |
 | journal/0001 to 0017 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes; sub-cubes |
+| reports/2026-10-27-generations.html | the learned tank's generations: a clip of each, the gauntlet, real matches, the census, the cost (reports/clips/) |
 | reports/2026-10-26-the-weight-ledger.html | every weight over time, every default changed and why, the screen, the censuses |
 | reports/2026-10-26-big-lizard.html | the big-lizard map from its file, the route forecast's cost there and its fix |
 | reports/2026-10-26-the-learned-tank.html | the learned tank, for 0.2.0: a periscope to drag, the 133 senses, the training curves, the census |
@@ -683,7 +684,9 @@ The learned tank's files:
 | treadcore-brain/src/net.rs | `Net` (an MLP in plain Rust, its file), `HEADS`, `choose` with a mask, `NetBrain` |
 | treadcore-brain/src/calls.rs | `Calls`: a team's shared queue of requests (help, attack, take), each also a ping |
 | treadcore-brain/src/learn.rs | the training grounds, `play`, evolution strategies (`generation`, `Adam`, `spread` over threads), `check`; `make train` |
-| nets/phase1.bin, nets/phase3.bin | trained nets: go to; drive and shoot |
+| treadcore-brain/src/clip.rs | a recorded run drawn into pixels, PPM frames for `make clips` |
+| scenarios/training/, scenarios/gauntlet/ | training maps (a `[reward]` and a net seat) and single-decision tests |
+| nets/*.bin | the milestone nets: phase1, phase3, map4, map7a, map5, map7 |
 
 New words:
 

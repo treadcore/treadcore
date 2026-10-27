@@ -231,3 +231,4 @@ Each page is a report of the site (`reports/`, linked from
 | [The weight ledger](../reports/2026-10-26-the-weight-ledger.html) | every weight: how many over time, every default changed and why, the half-and-double screen, the censuses |
 | [The big-lizard map](../reports/2026-10-26-big-lizard.html) | a map drawn from its file, why the route forecast cost there, how it was fixed, four lessons |
 | [The learned tank](../reports/2026-10-26-the-learned-tank.html) | the periscope senses to drag, the training curves, the census's verdict |
+| [Generations of the learned tank](../reports/2026-10-27-generations.html) | a clip of each generation at work, the gauntlet, real matches, the census, the cost |

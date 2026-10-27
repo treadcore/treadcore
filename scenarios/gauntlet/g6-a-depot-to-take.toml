@@ -1,0 +1,34 @@
+# The gauntlet (LAB-REPORT-BRAIN.md section 102): one decision, little
+# else on the map. A neutral depot 8 tiles off on any side; nothing else. Decision: take it. Passed: it is the tank's within 20 s.
+# Read by `make gauntlet` for the scripted brain, the untrained net and
+# every net in nets/, on the same seeds; the reaction it times is
+# `reaction`.
+name = "G6 a depot to take"
+reaction = "move"
+floor = 0.9
+players = 2
+seconds = 20
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-20, 20]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [8, 0]
+around = true
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 40]
+[[depot]]
+at = "centre"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+depot_owned_by = { seat = 0, depot = 0 }

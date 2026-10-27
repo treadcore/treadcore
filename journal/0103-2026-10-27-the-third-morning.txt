@@ -58,6 +58,17 @@ IV. CHRONOLOGY
     3. The release: v0.2.0's draft still a draft (as it should be);
        the tag 18:34 on 26 October, so day 1 opens at 18:34 today.
     4. The site: the three new report pages answer 200.
+    5. Paul asked for a GIF of every generation, reaction measurements,
+       a gauntlet of single decisions, and a report in html. Reactions,
+       [[drone]] and a recorder in scenario files; clip.rs draws
+       frames in Rust, ffmpeg makes the GIFs.
+    6. make gauntlet: nine tests, eight brains, 200 seeds: shortcuts
+       found (map 7a: "few shells, go home"; map 4: the guarded scene),
+       and the scripted brain's blind spot in a pillbox's ring.
+    7. The match reading with damage dealt: living and fighting pull
+       apart; the untrained net lives by doing nothing.
+    8. Timing: 10.6 us a decision; a 16-seat match of nets at 197
+       times real time. The report published (LR 102, CI-064).
 
 V. RESULTS
 

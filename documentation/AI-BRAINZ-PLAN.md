@@ -372,6 +372,14 @@ matches while the scripted brain keeps the team alive. Each map's file is
 written, and read on the scripted brain and the untrained net, before
 any training on it.
 
+**The gauntlet** (`scenarios/gauntlet/`, LR 102) is the other side of
+the maps: nine single decisions with nothing else on the map, read for
+every net and the scripted brain on the same 200 seeds, with the
+reaction each times. It found what the maps hid: the map 7a net learned
+"few shells, go home" (G5, 50%), the map 4 net the guarded scene and
+not the depot (G6, 0%). Gauntlet items that expose a shortcut become
+training maps.
+
 ---
 
 ## 10. Commands
@@ -381,6 +389,9 @@ make train PHASE=1                      # train going to, 200 generations (GENS=
 make train PHASE=3 START=nets/phase1.bin GENS=400   # drive and shoot, from phase 1
 make train PHASE=3 CHECK=nets/phase3.bin            # read a net on the 999 held-out grounds
 make train PHASE=3 GENS=0 BASELINE=rulebot          # the scripted bot on the same grounds
+make gauntlet                                       # nine single decisions, every net and the scripted brain
+make clips                                          # a GIF of each generation at work
+make train CHECK=nets/map7.bin MATCH=40             # one seat in 40 real matches
 CENSUS_NET=nets/phase3.bin SEEDS=110 make census    # a team of nets against the defaults
 make converge                                       # the scripted brain's weights, until stopped
 ```
