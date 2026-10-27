@@ -79,6 +79,16 @@ IV. CHRONOLOGY
        (scripted 100%, untrained 0%, map 7 net 11%); started on the
        Mac from nets/map7.bin. More than one census machine: by whole
        censuses from a shared queue, planned (CENSUS.md 5a, LR 103).
+   11. 11:03, the school read: eight rounds, seven kept; maps 9 and 10
+       learned in a round each; open maps slip between turns (map 8
+       78% to 55%) and the unguarded gauntlet swings (G8 93% to
+       32.5%). Two guards proposed for Paul.
+   12. 11:05, the run: generation 39; a candidate in generation 36
+       (dodge_horizon 1.08, w_in_range 1.4; held out +1.20 +/- 0.30
+       and +1.34 +/- 0.27): families, then Paul.
+   13. How the reports are read and what a read may adjust, and a
+       fleet of Copal machines designed: workers pull whole censuses
+       from a queue of files over ssh (LR 104, CI-066).
 
 V. RESULTS
 
@@ -111,6 +121,9 @@ VIII. NEXT STEPS
        make builds (DEPLOY.md, day 1).
     2. The run goes on.
     3. The learned tank's next maps, if Paul says.
+    4. The candidate of generation 36: make families, then Paul.
+    5. The school's two guards, if Paul says.
+    6. The fleet's code when the first Copal worker is on the network.
 
 ACKNOWLEDGMENTS
 

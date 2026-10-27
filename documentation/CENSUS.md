@@ -204,7 +204,7 @@ Three rules:
    third of a core during LR 71. In `top`, `%st` (steal) above a few
    percent means the host is holding the cores back.
 
-## 5a. More than one machine (planned, LR 103)
+## 5a. More than one machine (planned, LR 103; the fleet's design, LR 104)
 
 A census stays one machine's. The run scales across machines by whole
 censuses:
@@ -226,3 +226,10 @@ censuses:
 - **The learned tank:** a school on each machine on its own seeds,
   the best net carried to the others each night (an island model).
   Splitting one generation over a network costs more than it gains.
+- **The fleet** (LR 104, section E): saskatchewan coordinates;
+  each Copal worker pulls a trial from `build/fleet/<run>/queue/` with
+  an atomic `mv` over ssh, plays it on the coordinator's frozen binary
+  (copied by hash), returns it to `done/<host>/`, and beats a
+  heartbeat; a stale claim goes back to the queue. A machine joins
+  only after a reference census matches saskatchewan's to the
+  character (`make fleet-join HOST=`).

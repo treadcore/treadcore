@@ -7124,3 +7124,253 @@ censuses, never of jobs within one:
    model), and the best net by the gauntlet and the match reading is
    carried to the others each night. On a GPU machine, gradient
    training (Burn, AI-BRAINZ-PLAN.md section 8) is the other road.
+
+## 104. Reading the reports: what is read, what is adjusted; and a fleet of census machines, 27 October
+
+Paul: "write a lab report describing what you read and adjsut when
+reading these reports. if I was to install copal on more CPUs, Can I
+get a fleet of these working tandom. How do we orchestrate this."
+
+### A. What is read, in order
+
+Two loops are running (LR 103), so a read covers two machines. Each
+is read the same way: first whether the loop is alive, then what it
+decided, then whether what it decided is true, and last what it
+costs.
+
+**The school** (the Mac, `build/school/`):
+
+| Step | File | What is asked of it |
+| --- | --- | --- |
+| 1 | `pgrep -fl school`, `run.log`'s last line | alive, which round, which map, and whether `caffeinate` still holds the Mac awake |
+| 2 | `rounds.tsv` | each round's target, its share before and after on held-out seeds, the error, kept or not, passed or not, and the seconds it took |
+| 3 | `rounds.tsv`, a map's rows read together | a map's "before" against its own last "after": an open map can slip while the others train |
+| 4 | `state.txt` | the passed courses; every one held its floor (the rule guards them) |
+| 5 | `gauntlet-round*.tsv`, every kept round side by side | each single decision against round 0's net: what was learned, what was lost |
+| 6 | the reaction columns | a share passed with a reaction far later than before is a different skill |
+| 7 | the seconds column | the cost: each passed map adds courses to every generation |
+| 8 | `NOTES.txt` | the rule as written before the run, to judge each decision by it and not by hindsight |
+
+**The run** (the census machine, `build/converge/<run>/`, over ssh):
+
+| Step | File | What is asked of it |
+| --- | --- | --- |
+| 1 | `pgrep -af census-bin`, `uptime` | alive, its load |
+| 2 | `progress.txt`'s tail | the generation, censuses in the ledger, failures |
+| 3 | `candidates.txt` | any trial through both held-out reads |
+| 4 | `progress.txt`, the candidate's lines | its 55-seed reading, both 400-seed reads, and the "best-less" reads that take one weight out at a time |
+| 5 | the trial's `.weights` against `defaults.toml` | what exactly changed |
+| 6 | the fit's largest expected gains | where the run is looking next |
+
+### B. What the school's reports said at 11:03
+
+Started 09:30 from `nets/map7.bin`; round 8 in hand; 7 of 8 rounds
+kept.
+
+| Round | Map | Before | After +/- error | Floor | Result | Seconds |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | 09 low armour, full shells | 11.3% | 100.0% +/- 0.0 | 95% | kept, passed | 460 |
+| 1 | 05 under a shell | 93.7% | 95.2% +/- 0.7 | 99% | not kept | 435 |
+| 2 | 07 low and far from home | 15.3% | 51.3% +/- 2.9 | 80% | kept | 622 |
+| 3 | 08 outnumbered | 56.7% | 78.3% +/- 2.4 | 80% | kept | 739 |
+| 4 | 06 an enemy that fires back | 0.0% | 16.0% +/- 2.1 | 50% | kept | 822 |
+| 5 | 10 an unguarded depot | 10.7% | 97.7% +/- 0.9 | 90% | kept, passed | 569 |
+| 6 | 08 outnumbered | 54.7% | 77.0% +/- 2.4 | 80% | kept | 897 |
+| 7 | 06 an enemy that fires back | 2.0% | 29.7% +/- 2.6 | 50% | kept | 909 |
+
+The gauntlet of every kept net, share passed of 200 seeds (%):
+
+| Test | r0 | r2 | r3 | r4 | r5 | r6 | r7 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| G1 fire in reach | 100.0 | 100.0 | 99.5 | 99.0 | 99.0 | 81.0 | 86.5 |
+| G2 an enemy behind | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 |
+| G3 a shell on a standing tank | 100.0 | 100.0 | 99.5 | 99.5 | 100.0 | 100.0 | 100.0 |
+| G4 a strike drone coming | 95.0 | 72.0 | 34.0 | 92.0 | 90.5 | 92.0 | 97.5 |
+| G5 low armour, home in sight | 98.5 | 87.5 | 90.0 | 90.0 | 99.5 | 99.5 | 96.0 |
+| G6 a depot to take | 70.0 | 0.0 | 81.0 | 6.5 | 79.0 | 78.0 | 70.0 |
+| G7 a pillbox from outside its ring | 43.0 | 49.0 | 12.5 | 23.5 | 27.5 | 25.5 | 27.0 |
+| G8 out of a pillbox's ring | 93.0 | 86.0 | 43.0 | 57.0 | 12.5 | 48.5 | 32.5 |
+| G9 a depot across the water | 7.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+
+Findings:
+
+1. **Two maps learned in one round each:** 9 (11% to 100%) and 10
+   (11% to 98%). The shortcut maps did their job: G5 and G6 recovered
+   with them (G6 0% in round 2, 79% after map 10).
+2. **What is passed stays passed.** All six passed courses held their
+   floors through every round, as the rule requires.
+3. **What is open slips.** Map 8 reached 78.3% in round 3 and read
+   54.7% when its turn came again in round 6; map 6 went 16.0% to
+   2.0%. Nothing guards an open map, so each round on one map spends
+   part of the next round on another winning it back. The net still
+   climbs (map 6 ended round 7 at 29.7%), more slowly than it could.
+4. **The gauntlet is not guarded, and it swings.** G4 went 95, 72,
+   34, 92; G6 70, 0, 81, 6.5, 79. G8 (leave a pillbox's ring) fell from
+   93% to 32.5% and has not come back: the net has learned to stand
+   in rings, probably because maps 6 and 8 reward staying to fight.
+   G9 (a depot across water) is 0% for every net; no map teaches
+   water.
+5. **Map 5 is stuck at its last few percent.** 93.7% to 95.2% is a
+   gain of two errors' width, but not more, against a 99% floor.
+6. **The cost grows:** rounds went from 460 to 909 seconds as passed
+   courses joined each generation; about four rounds an hour now.
+
+### C. What is adjusted, and what is not
+
+The rule of the run is fixed when it starts (the rule before the
+run). A read never changes a loop's rule on its own; it proposes, and
+Paul decides. What a read may do, and what it may not:
+
+| A read may | A read may not |
+| --- | --- |
+| keep a machine awake (`caffeinate -i -w <pid>`, done for the school) | change the keep rule mid-run |
+| stop a loop that is broken (three failed censuses; a crash) and say so | change a default (a candidate goes to families, then Paul) |
+| add logging that changes no decision | pool two machines' jobs into one census |
+| write down an amendment for Paul, with its cause | move a floor after seeing a result |
+
+**Two amendments proposed for the school, waiting on Paul:**
+
+1. **A high-water mark for each open map.** Keep a net only if,
+   besides the present rule, no open map falls more than two combined
+   errors below its best reading so far. Cause: finding 3.
+2. **The gauntlet as a guard.** No test falls more than two combined
+   errors below its round 0 share (G1, G2, G3, G5 at their best;
+   G7 and G8 from their round 0 share). Cause: finding 4. G9 stays a
+   test, not a guard, until a map teaches water.
+
+Both cost one read of every open course a round (already made, only
+not logged) and the gauntlet before the keep instead of after (about
+40 seconds). If Paul says yes: the amendment goes into `NOTES.txt`
+first, the school is stopped after its round with `build/school/STOP`,
+built, and resumed from `best.bin`; the record notes the round at
+which the rule changed.
+
+**Not adjusted:** map 5's floor stays 99% (finding 5): lowering it
+after seeing 95% is the mistake the rule exists to prevent. A map
+that teaches water (G9) is a new map, for a later step.
+
+### D. Found on this read: the run's first candidate
+
+`build/converge/20261026-181011/`, generation 36,
+`again-dodge_horizon--w_in_range+`:
+
+| Weight | Default | Trial |
+| --- | --- | --- |
+| dodge_horizon | 2 | 1.08 |
+| w_in_range | 0.7 | 1.4 |
+
+| Reading | Seeds | Result |
+| --- | --- | --- |
+| the trial | 55 | +1.92 +/- 0.71 |
+| held out from 4800000 | 400 | +1.20 +/- 0.30 |
+| held out from 4900000 | 400 | +1.34 +/- 0.27 |
+
+Both held-out reads past two errors: the first candidate in 39
+generations and about 540 censuses. Taking one weight out at a time
+(generation 36's "best-less" reads, 55 seeds each) left both halves
+inside the noise (w_in_range alone -0.02 +/- 0.61; dodge_horizon
+alone +0.42 +/- 0.77), so the gain may need both. dodge_horizon goes
+back toward 1 from the 2 the run found on 26 October (LR 96, 97): with
+w_in_range doubled the tank stays in range longer, and a shorter
+horizon keeps it there until later before it dodges. That is a
+reading, not yet a finding. Next, by the rule: `make families` on the
+trial, then Paul. It is not a default.
+
+### E. A fleet of census machines
+
+**Yes.** Each Copal machine is a worker; saskatchewan is the
+coordinator. The rule that a census is one machine's holds: a fleet
+plays more whole censuses at once, never one census over many
+machines.
+
+**How it is orchestrated: a queue of files over ssh, pulled by the
+workers.** Nothing to install beyond Copal, sshd and a key.
+
+```
+saskatchewan (coordinator)                      worker k (Copal, x86)
+build/fleet/<run>/
+  queue/      gen40-sample-3/  <- run writes    loop:
+  claimed/k/  gen40-sample-3/  <- ssh mv        claim:  ssh coord mv queue/T claimed/k/T
+  done/k/     gen40-sample-3/  <- rsync back    play:   census-bin on T's weights, its seeds
+  hosts/k     heartbeat, binary hash, threads   return: rsync result to done/k/T
+  census-bin  the frozen binary, by hash        beat:   touch hosts/k every minute
+                                                stop:   hosts/k.STOP
+```
+
+1. **The coordinator** is the run (`make converge`). Instead of
+   playing a generation's trials itself, it writes each one (weights,
+   seeds, the binary's hash) as a folder in `queue/`, waits for them
+   in `done/`, and reads them into the ledger with the worker's name
+   as `HOST`. Saskatchewan runs a worker too, so with one machine
+   nothing changes. A generation's size grows with the fleet (one
+   trial for each 24 threads free), so more machines read more
+   weights each hour, not the same twelve sooner.
+2. **A worker** pulls: `mv` within one filesystem is atomic, so of
+   two workers claiming the same trial exactly one wins. A fast
+   machine takes more; a slow one takes fewer; a machine joins by
+   starting its worker and leaves by `hosts/k.STOP` after the trial
+   in hand. On Copal (Alpine) the worker is an OpenRC service, so it
+   restarts with the machine.
+3. **A dead worker:** a claim whose heartbeat is older than ten
+   minutes goes back to `queue/`, and its partial result is
+   discarded. A census is a whole, so nothing is lost but its time.
+4. **Held-out reads** go through the same queue as single censuses;
+   each is one machine's complete paired reading (CENSUS.md 5a). The
+   two reads of one trial may fall on two machines, and that is a
+   stronger test, not a weaker one.
+5. **Joining: the identity check.** A new machine first plays a
+   reference census (fixed seeds, the defaults) on the coordinator's
+   frozen binary, and its result must match saskatchewan's to the
+   character apart from timing lines, as the frozen binary's check
+   already does (journal 0073). The binary is built once on
+   saskatchewan and copied by hash; workers never build. The build
+   uses no `target-cpu=native` (`.cargo/config.toml`), so one x86
+   binary runs the same on every x86 CPU; Copal's musl is linked
+   dynamically, so every worker must run the same Copal release
+   (the check catches a mismatch).
+6. **What it adds to the code:** `scripts/fleet-worker.sh` (about 60
+   lines: claim, play, return, beat), the run's generation step
+   reading `done/` instead of its own jobs, `make fleet-join
+   HOST=<addr>` (copy the binary, run the identity check, start the
+   service), and `make fleet` (each worker's state, trials an hour
+   and heartbeats).
+
+**What it gains.** Saskatchewan plays a 55-seed census in about 100
+seconds and a 400-seed read in about 9 minutes, about 28 minutes a
+generation of twelve. Workers share nothing during a census, so a
+fleet of n machines of its size plays n times the censuses; the fit
+and the ledger take seconds. The limit is the coordinator's disk and
+the network: a census folder is a few hundred kilobytes.
+
+**The learned tank on a fleet**, in three stages, each only when the
+one before has plateaued:
+
+1. **Islands** (LR 103): each worker runs `make school` on its own
+   seed stream. Each night the coordinator collects every island's
+   `best.bin`, reads them all on its own seeds (held out, the
+   gauntlet, the match reading), and sends the best to every island
+   as its next start. Needs a seed offset for the school and a sync
+   script.
+2. **Specialists:** islands on different open maps at once (one on
+   8, one on 6, one on 5), each guarded on the passed maps; the best
+   all-round net carried at night. Trains several maps in parallel
+   rather than in turn, and finding 3 above is the reason to try it.
+3. **One evolution over the fleet** (Salimans et al., 2017): every
+   worker holds the same net and draws its share of a generation's
+   perturbations from a shared seed; only the scores (a few bytes
+   each) cross the network, and each worker applies the same update.
+   A generation takes about 1.5 seconds on the Mac, and a LAN round
+   trip about a millisecond, so this works over one long-lived
+   connection, not over ssh a generation; every machine waits for the
+   slowest. It needs bit-identical updates, so one architecture only.
+
+**Not taken:** Slurm, Nomad or Kubernetes: a scheduler for many users
+and many kinds of job, which knows nothing of the census's rules,
+for a fleet of a few machines that a folder of files serves; Ray: a
+Python runtime beside a Rust project.
+
+**What Paul does for each machine:** install Copal; give it a fixed
+address on the LAN; enable sshd; add saskatchewan's key. Then `make
+fleet-join HOST=<address>` from saskatchewan does the rest. The
+fleet's code is built when the first such machine is on the network,
+and the identity check is its first test.

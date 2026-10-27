@@ -1138,6 +1138,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Adopted 26 October (LR 97): the run read it held out ten more
     times (+1.09 to +2.66); Paul accepted; the default is 2 and the run
     restarted on it (18:10).
+    A second candidate (LR 104), generation 36 of that run:
+    dodge_horizon 1.08 and w_in_range 1.4, held out +1.20 +/- 0.30
+    and +1.34 +/- 0.27; families, then Paul. The fleet designed (LR
+    104, E): Copal workers pull whole censuses from a queue of files
+    on saskatchewan, joined by an identity check; built when the first
+    machine is on the network.
 
 70. A learned brain. (26 October; cause: Paul, "start training a
     normal AI neural network given our current reward system"; LR
@@ -1182,6 +1188,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     maps 8 and 6 with drones, map 5's last 3%. The gauntlet and clips
     (LR 102): nine single decisions read for every net; shortcuts found
     (G5, G6) to become maps; the match reading with damage dealt.
+    The school (LR 103, 104): maps 9 and 10 learned in a round each;
+    passed maps hold, open maps slip between turns (map 8 78% to 55%),
+    the gauntlet unguarded (G8 93% to 32.5%); a high-water mark for
+    open maps and the gauntlet as a guard proposed, Paul to decide.
+    A fleet: islands, then specialists, then one evolution over the
+    fleet (LR 104, E).
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Documented: how the two loops' reports are read and what a read may
+  adjust; the school's first eight rounds (maps 9 and 10 learned; open
+  maps and the gauntlet slip, two guards proposed); the run's second
+  candidate (dodge_horizon 1.08, w_in_range 1.4); a fleet of census
+  machines, designed (LAB-REPORT-BRAIN.md section 104, CENSUS.md 5a).
+
 - Added: `make school`, the learned tank's curriculum run until stopped
   beside `make converge`; training maps 9 (low armour, full shells) and
   10 (an unguarded depot) against the gauntlet's shortcuts; CENSUS.md
