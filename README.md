@@ -229,6 +229,7 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/ROADMAP.md](documentation/ROADMAP.md): the goals, the steps still between here and each, and the backlog.
 - [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
+- [documentation/PROCESS.md](documentation/PROCESS.md): how treadcore is made, by Paul and an AI pair: from a prompt to a commit, where every conversation is kept, the brain designed with scenario families and the census, and the pages of the record.
 - [documentation/AI-BRAINZ-PLAN.md](documentation/AI-BRAINZ-PLAN.md): the two brains, scripted and learned; the learned tank's senses, its calls to friends and its training; what is proven and what comes next, with diagrams. The page: [reports/2026-10-26-the-learned-tank.html](https://treadcore.org/reports/2026-10-26-the-learned-tank.html).
 - [documentation/LAB-REPORT-BRAIN.md](documentation/LAB-REPORT-BRAIN.md): the bot AI: the baseline of 17 October (archived), the research, the step 12 design, the record of building it, and the brain now, an improved prototype on weights, switches and a team board.
 - [documentation/PROPOSAL-UPGRADES.md](documentation/PROPOSAL-UPGRADES.md): the proposal for supply, sixteen base upgrades and how they are bought.

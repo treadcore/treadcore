@@ -508,6 +508,7 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/MAPS.md | the map file format; converting prior-art maps |
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
 | documentation/LAB-REPORT-BRAIN.md | the bot AI: the baseline of 17 October (section 2, archived), the research, the step 12 design, the record of building it (sections 11 to 19, 21 to 24) and the brain now (section 20) |
+| documentation/PROCESS.md | how treadcore is made: the pair, from a prompt to a commit, the record, the brain designed by measurement, the pages |
 | documentation/AI-BRAINZ-PLAN.md | the two brains (scripted and learned), the senses, calls to friends, training, what is proven, the upgrades proposed; with diagrams |
 | documentation/CENSUS.md | the brain census: running, reading and resuming it, and a dedicated machine for it |
 | documentation/BRAIN-MAP.md | every brain file and function with its doc comment's first sentence, written by `make brainmap` |
@@ -525,6 +526,8 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/INDEX.md | this |
 | documentation/HOW-TO-PLAY.md | the player's guide with pictures, every key |
 | journal/0001 to 0017 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes; sub-cubes |
+| reports/2026-10-26-the-weight-ledger.html | every weight over time, every default changed and why, the screen, the censuses |
+| reports/2026-10-26-big-lizard.html | the big-lizard map from its file, the route forecast's cost there and its fix |
 | reports/2026-10-26-the-learned-tank.html | the learned tank, for 0.2.0: a periscope to drag, the 133 senses, the training curves, the census |
 | reports/images/ | the playtest frames, playtest-01 to 18, 256-colour PNG |
 

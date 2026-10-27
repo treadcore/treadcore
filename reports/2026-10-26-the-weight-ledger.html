@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Every weight that steers treadcore's scripted brain: how many, which defaults changed and why, the half-and-double screen, and every census.">
+<title>The Weight Ledger</title>
+<style>
+/* A periscope console: the game's black phosphor screens set in its
+   brushed-metal frame (treadcore.org's assets/site.css), one dark look.
+   Phosphor for what the tank senses, amber for what it decides, sky for
+   what its friends say. System monospace and sans, as the site: no fonts. */
+:root{
+  color-scheme:dark;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --bg:#0b0d0c; --plate:#2a2c2e; --plate-hi:#4a4c4e; --edge:#0c0d0e;
+  --scr:#050605; --scr-2:#0c100d; --grid:#16301b; --rule:#1d261e;
+  --phos:#33f24d; --phos-dim:#1d8a2c; --ink:#e6ede6; --ink-soft:#9fb0a2;
+  --amber:#ffbf4d; --red:#f2554a; --sky:#73c7ff; --tan:#d4b07a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans)}
+.page{max-width:68rem;margin:0 auto;padding-block:1.2rem 3rem;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bezel{background:linear-gradient(180deg,var(--plate-hi),var(--plate) 40%,#1e2022);border:1px solid var(--edge);border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
+.screen{background:radial-gradient(ellipse at 50% 30%,var(--scr-2),var(--scr) 70%);border-radius:10px;border:1px solid #000;padding:clamp(1rem,3.5vw,2.2rem);position:relative;overflow:hidden}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
+header .kicker{font:600 .72rem/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 .8rem}
+h1{font:900 clamp(2rem,6vw,3.6rem)/1.02 var(--sans);letter-spacing:.04em;text-transform:uppercase;margin:0;text-wrap:balance}
+h1 span{color:var(--phos);text-shadow:0 0 14px rgba(51,242,77,.45)}
+.lede{max-width:44rem;margin:1rem 0 0;color:var(--ink-soft);font-size:1.05rem}
+h2{font:800 .95rem/1.3 var(--mono);margin:0 0 .9rem;color:var(--phos);text-shadow:0 0 6px rgba(51,242,77,.35);letter-spacing:.16em;text-transform:uppercase;text-wrap:balance}
+h3{font:700 .8rem/1.3 var(--mono);margin:1.2rem 0 .4rem;color:var(--amber);letter-spacing:.1em;text-transform:uppercase}
+p{margin:0 0 .8rem;max-width:42rem}
+code{font-family:var(--mono);color:var(--phos);font-size:.92em}
+a{color:var(--sky)}
+section{margin-top:1.4rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem;margin:1.4rem 0 0}
+.stat{border:1px solid var(--rule);border-radius:6px;padding:.7rem .8rem;background:rgba(51,242,77,.03)}
+.stat b{display:block;font:800 1.6rem/1.1 var(--mono);color:var(--phos);font-variant-numeric:tabular-nums}
+.stat span{font:600 .68rem/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.stat.warn b{color:var(--red)}
+/* the scope */
+.scope{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:1.4rem;align-items:start}
+@media (max-width:52rem){.scope{grid-template-columns:minmax(0,1fr)}}
+.scope svg{width:100%;max-width:30rem;height:auto;display:block;margin:0 auto;touch-action:none}
+.scope .hint{font:.78rem/1.4 var(--mono);color:var(--ink-soft);text-align:center;margin:.4rem 0 0}
+.contact{cursor:grab}.contact:focus-visible{outline:none}.contact:focus-visible circle{stroke:#fff;stroke-width:2}
+.read{min-width:0}
+.read table{width:100%;border-collapse:collapse;font:.8rem/1.3 var(--mono);font-variant-numeric:tabular-nums}
+.read th,.read td{padding:.32rem .4rem;border-bottom:1px solid var(--rule);text-align:right}
+.read th:first-child,.read td:first-child{text-align:left}
+.read th{color:var(--ink-soft);font-weight:600;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase}
+.bar{display:inline-block;height:.55rem;background:var(--phos);vertical-align:middle;border-radius:0 2px 2px 0;box-shadow:0 0 6px rgba(51,242,77,.5)}
+.scroll{overflow-x:auto}
+/* the sense strip */
+.strip{display:grid;grid-template-columns:repeat(133,minmax(0,1fr));height:2.2rem;gap:1px;margin:.6rem 0 .4rem}
+.strip i{display:block;border-radius:1px}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;font:.75rem/1.3 var(--mono);color:var(--ink-soft)}
+.legend span::before{content:"";display:inline-block;width:.7rem;height:.7rem;border-radius:2px;margin-right:.4rem;vertical-align:-1px;background:var(--c)}
+/* flow */
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:.5rem;font:.78rem/1.35 var(--mono)}
+.flow .box{flex:1 1 9rem;border:1px solid var(--rule);border-radius:6px;padding:.6rem .7rem;min-width:0}
+.flow .box b{display:block;color:var(--amber);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.25rem}
+.flow .arrow{align-self:center;color:var(--phos-dim);font-size:1.1rem}
+@media (max-width:40rem){.flow .arrow{display:none}}
+/* charts */
+.chart{width:100%;height:auto;display:block}
+.chart text{font:11px var(--mono);fill:var(--ink-soft)}
+.keys{display:flex;flex-wrap:wrap;gap:.3rem 1.2rem;font:.75rem var(--mono);color:var(--ink-soft);margin:.2rem 0 .6rem}
+.keys span::before{content:"";display:inline-block;width:1rem;height:2px;background:var(--c);vertical-align:3px;margin-right:.4rem}
+.tip{position:absolute;pointer-events:none;background:#000;border:1px solid var(--phos-dim);color:var(--ink);font:.72rem/1.35 var(--mono);padding:.35rem .5rem;border-radius:4px;white-space:nowrap;z-index:2}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:1.4rem}
+table.plain{width:100%;border-collapse:collapse;font:.82rem/1.4 var(--sans)}
+table.plain th,table.plain td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--rule);vertical-align:top}
+table.plain th{font:600 .68rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--phos)}
+table.plain td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pull{border-left:3px solid var(--amber);padding:.6rem .9rem;background:rgba(255,191,77,.06);color:var(--amber);max-width:46rem;margin:.6rem 0 1rem}
+.dim{color:var(--ink-soft)}
+footer{margin-top:1.6rem;font:.75rem/1.5 var(--mono);color:var(--ink-soft)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style>
+.dots text{font:10.5px var(--mono);fill:var(--ink-soft)}
+.cen td.n.pos{color:var(--phos)} .cen td.n.neg{color:var(--red)}
+.cen{max-height:28rem;overflow:auto;border:1px solid var(--rule);border-radius:6px}
+.cen table{margin:0}
+.cen th{position:sticky;top:0;background:#050605}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="bezel"><div class="screen">
+
+<header>
+<p class="kicker">Treadcore &middot; the brain's numbers &middot; 18 to 26 October 2026</p>
+<h1>The <span>Weight</span> Ledger</h1>
+<p class="lede">Every number that steers the scripted brain is a named weight in <code>weights.rs</code>. This page is their record: how many there are, which defaults changed and on what evidence, and what each census read. It is the same data as the live dashboard of 26 October, kept here so the record ships with the code.</p>
+<div class="stats" id="tiles"></div>
+</header>
+
+<section aria-labelledby="s-count">
+<h2 id="s-count">The weights, commit by commit</h2>
+<p>Every either/or in the brain became a weight that blends the two, defaulting to Paul's preference; the census then reads the value. The count only grows: a weight that acts nowhere is kept, and screened.</p>
+<div style="position:relative"><svg class="chart" id="count" viewBox="0 0 720 230" role="img" aria-label="Number of weights at each commit"></svg></div>
+</section>
+
+<section aria-labelledby="s-changes">
+<h2 id="s-changes">Every default changed, and why</h2>
+<p>A default moves only on a census past two standard errors, with no map past two below, held-out reads where the rule asks, and <code>make families</code> holding.</p>
+<div class="scroll"><table class="plain" id="changes"></table></div>
+</section>
+
+<section aria-labelledby="s-screen">
+<h2 id="s-screen">The screen: each weight at half and at double</h2>
+<p>Each dot is a census of one weight moved to half or double its default, everything else at the defaults; the bar is two standard errors. Right of zero, the move helped. Most bars cross zero: the defaults sit at or near the top of each weight read so far. A dot on zero with no bar is a weight whose move left every match the same: it never acted (LR 89).</p>
+<div class="keys"><span style="--c:#73c7ff">half</span><span style="--c:#ffbf4d">double</span></div>
+<div style="position:relative" class="scroll"><svg class="chart dots" id="screen" role="img" aria-label="Screen results by weight"></svg></div>
+</section>
+
+<section aria-labelledby="s-cen">
+<h2 id="s-cen">The censuses</h2>
+<p>Each row is one census on the census machine: the trial (weights changed from the defaults), its reading a seat against the defaults with its standard error, and its seeds. Green past two errors above, red past two below.</p>
+<div class="cen"><table class="plain" id="censuses"></table></div>
+</section>
+
+<footer><a href="../index.html">treadcore.org</a> &middot; data: git history of <code>weights.rs</code>, the census machine's <code>build/census/</code> (scripts/ledger.py) &middot; LAB-REPORT-BRAIN.md sections 87 to 97 &middot; Paul Richeson, with Claude.</footer>
+</div></div>
+</div>
+
+<script>
+(function(){
+var D={"timeline":[["2026-10-18T12:26","de0aa97","step 12, the brain on weights; the capped castle; the upgrades proposa",68],["2026-10-18T13:43","41c9ebf","a fair census; smoothing measured; the escort",70],["2026-10-18T14:02","1c495b1","the sliders, the coordination screen's weights page",70],["2026-10-18T14:33","01a8261","bridge jobs on the team board",73],["2026-10-18T15:13","c2451b9","the duck, direct fire denied before it is fired",76],["2026-10-18T17:16","45641fc","each switch alone; the posture read",77],["2026-10-18T18:06","61d0c41","the posture as scores",83],["2026-10-19T10:53","89090bf","what kills half the team",87],["2026-10-19T11:26","6cc8a8d","the run for the beach",88],["2026-10-19T11:51","57382d4","standing off a covered beach",89],["2026-10-19T12:19","1aa76c1","guns remembered for the landfall",90],["2026-10-19T12:56","8144f5e","the landfall's three on by default",90],["2026-10-19T18:25","49841b9","smooth as a weight",91],["2026-10-20T09:27","61c368b","the dodge planned by the tank's own motion",93],["2026-10-20T09:46","845d465","every part on; a dodge against every shell",94],["2026-10-20T10:13","347b087","the duck foreseen; a shot that waits",96],["2026-10-21T06:25","c61ea8a","the front read; the families held to floors",98],["2026-10-21T06:56","d14ffbf","the guard posts at the front",100],["2026-10-21T08:07","45f68ce","island sites where a naval start chooses",101],["2026-10-21T15:36","949035b","the bot skill dial",102],["2026-10-21T16:47","d930513","the territory read, the held ground",103],["2026-10-21T19:07","f18315c","the brain documented",103],["2026-10-23T22:07","fd381ad","the island site within reach of the nearest depot",105],["2026-10-24T19:02","5899e8e","the front read off by default (LR 75)",105],["2026-10-24T19:11","d0c5a7a","four play styles and their round robin (backlog 60)",105],["2026-10-25T12:22","7c18851","LR 77, the styles ordered; turtle the defaults, team_rotate off",105],["2026-10-25T18:12","bd08f40","LR 85 and 86, personalities; the defaults spend (the cowboy)",109],["2026-10-26T18:05","7fc7809","dodge_horizon 2 by default (LR 97)",110]],"changes":[{"commit":"8144f5e","at":"2026-10-19T12:56:12-07:00","step":"the landfall's three on by default","weight":"landfall_shy","before":0.0,"after":1.0},{"commit":"8144f5e","at":"2026-10-19T12:56:12-07:00","step":"the landfall's three on by default","weight":"landfall_wait","before":0.0,"after":10.0},{"commit":"8144f5e","at":"2026-10-19T12:56:12-07:00","step":"the landfall's three on by default","weight":"landfall_memory","before":0.0,"after":30.0},{"commit":"5899e8e","at":"2026-10-24T19:02:56-07:00","step":"the front read off by default (LR 75)","weight":"w_front","before":0.5,"after":0.0},{"commit":"5899e8e","at":"2026-10-24T19:02:56-07:00","step":"the front read off by default (LR 75)","weight":"w_front_post","before":0.5,"after":0.0},{"commit":"5899e8e","at":"2026-10-24T19:02:56-07:00","step":"the front read off by default (LR 75)","weight":"w_front_push","before":0.75,"after":0.0},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"press_odds","before":1.5,"after":2.0},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"retreat_armor","before":35.0,"after":50.0},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"w_posture","before":0.5,"after":0.95},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"w_pos_defend","before":1.0,"after":3.0},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"w_pos_fortify","before":1.0,"after":3.0},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"w_defend_ground","before":1.0,"after":1.5},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"w_pos_expand","before":1.0,"after":0.4},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"castle_inside","before":2.0,"after":4.0},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"castle_road","before":1.0,"after":2.0},{"commit":"7c18851","at":"2026-10-25T12:22:05-07:00","step":"LR 77, the styles ordered; turtle the defaults, team_rotate off","weight":"posts_max","before":4.0,"after":6.0},{"commit":"c61ad61","at":"2026-10-26T11:38:50-07:00","step":"the own route on by default (LR 94)","weight":"dodge_own_route","before":0.0,"after":1.0},{"commit":"7fc7809","at":"2026-10-26T18:05:20-07:00","step":"dodge_horizon 2 by default (LR 97)","weight":"dodge_horizon","before":4.0,"after":2.0}],"screen":[{"weight":"strikes_max","end":"half","default":3.0,"value":1.5,"d":-1.19,"se":0.53,"seeds":110,"run":"25 Oct night"},{"weight":"strikes_max","end":"double","default":3.0,"value":6.0,"d":0.76,"se":0.39,"seeds":110,"run":"25 Oct night"},{"weight":"longshot_every","end":"half","default":5.0,"value":2.5,"d":0.59,"se":0.49,"seeds":110,"run":"25 Oct night"},{"weight":"longshot_every","end":"double","default":5.0,"value":10.0,"d":-1.45,"se":0.51,"seeds":110,"run":"25 Oct night"},{"weight":"w_focus","end":"half","default":0.5,"value":0.25,"d":0.78,"se":0.43,"seeds":110,"run":"25 Oct night"},{"weight":"w_focus","end":"double","default":0.5,"value":1.0,"d":-0.98,"se":0.47,"seeds":110,"run":"25 Oct night"},{"weight":"mass_for","end":"half","default":12.0,"value":6.0,"d":0.33,"se":0.31,"seeds":110,"run":"25 Oct night"},{"weight":"mass_for","end":"double","default":12.0,"value":24.0,"d":-0.67,"se":0.3,"seeds":110,"run":"25 Oct night"},{"weight":"castle_inside","end":"half","default":4.0,"value":2.0,"d":-1.17,"se":0.36,"seeds":110,"run":"25 Oct night"},{"weight":"castle_inside","end":"double","default":4.0,"value":8.0,"d":-0.05,"se":0.34,"seeds":110,"run":"25 Oct night"},{"weight":"w_pos_expand","end":"half","default":0.4,"value":0.2,"d":0.18,"se":0.24,"seeds":110,"run":"25 Oct night"},{"weight":"w_pos_expand","end":"double","default":0.4,"value":0.8,"d":-0.58,"se":0.28,"seeds":110,"run":"25 Oct night"},{"weight":"w_wounded","end":"half","default":1.2,"value":0.6,"d":-0.36,"se":0.48,"seeds":110,"run":"25 Oct night"},{"weight":"w_wounded","end":"double","default":1.2,"value":2.4,"d":0.96,"se":0.49,"seeds":110,"run":"25 Oct night"},{"weight":"w_finish","end":"half","default":0.8,"value":0.4,"d":-1.07,"se":0.47,"seeds":110,"run":"25 Oct night"},{"weight":"w_finish","end":"double","default":0.8,"value":1.6,"d":-0.34,"se":0.39,"seeds":110,"run":"25 Oct night"},{"weight":"w_stick","end":"half","default":0.4,"value":0.2,"d":0.34,"se":0.48,"seeds":110,"run":"25 Oct night"},{"weight":"w_stick","end":"double","default":0.4,"value":0.8,"d":-0.5,"se":0.53,"seeds":110,"run":"25 Oct night"},{"weight":"w_in_range","end":"half","default":0.7,"value":0.35,"d":-0.25,"se":0.46,"seeds":110,"run":"25 Oct night"},{"weight":"w_in_range","end":"double","default":0.7,"value":1.4,"d":0.36,"se":0.5,"seeds":110,"run":"25 Oct night"},{"weight":"engage_odds","end":"half","default":0.7,"value":0.35,"d":0.56,"se":0.44,"seeds":110,"run":"25 Oct night"},{"weight":"engage_odds","end":"double","default":0.7,"value":1.4,"d":-0.01,"se":0.51,"seeds":110,"run":"25 Oct night"},{"weight":"strike_worth","end":"half","default":0.35,"value":0.175,"d":0.16,"se":0.45,"seeds":110,"run":"25 Oct night"},{"weight":"strike_worth","end":"double","default":0.35,"value":0.7,"d":0.67,"se":0.48,"seeds":110,"run":"25 Oct night"},{"weight":"press_odds","end":"half","default":2.0,"value":1.0,"d":-0.59,"se":0.38,"seeds":110,"run":"25 Oct night"},{"weight":"press_odds","end":"double","default":2.0,"value":4.0,"d":-0.18,"se":0.4,"seeds":110,"run":"25 Oct night"},{"weight":"pillbox_worth","end":"half","default":0.7,"value":0.35,"d":0.27,"se":0.22,"seeds":110,"run":"25 Oct night"},{"weight":"pillbox_worth","end":"double","default":0.7,"value":1.4,"d":0.28,"se":0.19,"seeds":110,"run":"25 Oct night"},{"weight":"w_mine","end":"half","default":0.5,"value":0.25,"d":0.0,"se":0.0,"seeds":110,"run":"25 Oct night"},{"weight":"w_mine","end":"double","default":0.5,"value":1.0,"d":0.0,"se":0.06,"seeds":110,"run":"25 Oct night"},{"weight":"w_exposure","end":"half","default":1.0,"value":0.5,"d":0.0,"se":0.0,"seeds":110,"run":"25 Oct night"},{"weight":"w_exposure","end":"double","default":1.0,"value":2.0,"d":0.0,"se":0.0,"seeds":110,"run":"25 Oct night"},{"weight":"advance_band","end":"half","default":0.35,"value":0.175,"d":0.0,"se":0.0,"seeds":55,"run":"26 Oct day"},{"weight":"alpha","end":"half","default":0.4,"value":0.2,"d":0.59,"se":0.66,"seeds":55,"run":"26 Oct day"},{"weight":"answer_cap","end":"half","default":3.0,"value":1.5,"d":0.16,"se":0.53,"seeds":55,"run":"26 Oct day"},{"weight":"base_r","end":"half","default":16.0,"value":8.0,"d":0.37,"se":0.41,"seeds":55,"run":"26 Oct day"},{"weight":"beta","end":"half","default":0.3,"value":0.15,"d":0.0,"se":0.0,"seeds":55,"run":"26 Oct day"},{"weight":"bridge_keep","end":"half","default":180.0,"value":90.0,"d":-0.05,"se":0.06,"seeds":55,"run":"26 Oct day"},{"weight":"bridge_reach","end":"half","default":40.0,"value":20.0,"d":-0.1,"se":0.15,"seeds":55,"run":"26 Oct day"},{"weight":"bridge_soft","end":"half","default":6.0,"value":3.0,"d":-0.03,"se":0.15,"seeds":55,"run":"26 Oct run"},{"weight":"c_boat","end":"half","default":5.0,"value":2.5,"d":0.19,"se":0.17,"seeds":55,"run":"26 Oct day"},{"weight":"called_for","end":"half","default":15.0,"value":7.5,"d":-0.57,"se":0.61,"seeds":55,"run":"26 Oct day"},{"weight":"castle_road","end":"half","default":2.0,"value":1.0,"d":-0.17,"se":0.21,"seeds":55,"run":"26 Oct day"},{"weight":"column_gap","end":"half","default":2.0,"value":1.0,"d":0.34,"se":0.3,"seeds":55,"run":"26 Oct day"},{"weight":"column_past","end":"half","default":2.0,"value":1.0,"d":0.39,"se":0.22,"seeds":55,"run":"26 Oct day"},{"weight":"coming_r","end":"half","default":45.0,"value":22.5,"d":1.44,"se":0.8,"seeds":55,"run":"26 Oct day"},{"weight":"commit","end":"half","default":0.1,"value":0.05,"d":0.0,"se":0.0,"seeds":55,"run":"26 Oct day"},{"weight":"confirm","end":"half","default":2.0,"value":1.0,"d":0.0,"se":0.0,"seeds":55,"run":"26 Oct day"},{"weight":"confirm_turret","end":"half","default":3.0,"value":1.5,"d":0.0,"se":0.0,"seeds":55,"run":"26 Oct day"},{"weight":"connect_bases","end":"half","default":0.75,"value":0.375,"d":0.0,"se":0.0,"seeds":55,"run":"26 Oct day"},{"weight":"connect_tiles","end":"half","default":4.0,"value":2.0,"d":0.16,"se":0.2,"seeds":55,"run":"26 Oct day"},{"weight":"crew_reach","end":"half","default":40.0,"value":20.0,"d":-0.01,"se":0.08,"seeds":55,"run":"26 Oct day"},{"weight":"dodge_clear","end":"half","default":2.5,"value":1.25,"d":1.8,"se":1.0,"seeds":55,"run":"26 Oct day"},{"weight":"dodge_horizon","end":"half","default":4.0,"value":2.0,"d":2.71,"se":0.82,"seeds":55,"run":"26 Oct day"},{"weight":"dodge_margin","end":"half","default":0.8,"value":0.4,"d":0.19,"se":0.78,"seeds":55,"run":"26 Oct day"},{"weight":"duck_memory","end":"half","default":5.0,"value":2.5,"d":0.47,"se":0.63,"seeds":55,"run":"26 Oct day"}],"censuses":[["20261022-200008","caps=baseline",1,5.94,0.38,176],["20261024-053657","caps=kite, pings, dodge, bridges, rotate, forget, board, team_rotate, ",106,-0.0,0.14,528],["20261024-211723","caps=baseline",1,0.7,0.3,110],["20261024-212334","caps=baseline",1,-0.3,0.25,110],["20261024-212930","caps=baseline",1,0.82,0.39,110],["20261024-213528","caps=baseline",1,-2.1,0.33,110],["20261024-214135","w_posture=0.9; w_pos_expand=2.5; w_pos_connect=2.5 \u2026",9,-1.02,0.31,110],["20261024-214730","w_posture=0.9; w_pos_expand=2.5; w_pos_connect=2.5 \u2026",9,-1.22,0.35,110],["20261024-215329","w_posture=0.9; w_pos_expand=2.5; w_pos_connect=2.5 \u2026",9,0.37,0.39,110],["20261024-215933","w_posture=0.9; w_pos_expand=2.5; w_pos_connect=2.5 \u2026",9,-3.06,0.36,110],["20261024-220543","c_boat=3.0; t_launch=2.0; bridge_soft=3 \u2026",8,-0.07,0.24,110],["20261024-221143","c_boat=3.0; t_launch=2.0; bridge_soft=3 \u2026",8,0.63,0.38,110],["20261024-221738","c_boat=3.0; t_launch=2.0; bridge_soft=3 \u2026",8,1.49,0.36,110],["20261024-222340","c_boat=3.0; t_launch=2.0; bridge_soft=3 \u2026",8,-2.45,0.35,110],["20261024-222953","w_posture=0.9; w_pos_expand=3.0; w_pos_defend=0.4 \u2026",12,-1.12,0.37,110],["20261024-223557","w_posture=0.9; w_pos_expand=3.0; w_pos_defend=0.4 \u2026",12,0.04,0.38,110],["20261024-224151","w_posture=0.9; w_pos_expand=3.0; w_pos_defend=0.4 \u2026",12,-1.19,0.4,110],["20261024-224755","w_posture=0.9; w_pos_expand=3.0; w_pos_defend=0.4 \u2026",12,-2.32,0.4,110],["20261024-225408","w_posture=0.95; w_pos_defend=3.0; w_pos_fortify=3.0 \u2026",10,1.34,0.39,110],["20261024-230006","w_posture=0.95; w_pos_defend=3.0; w_pos_fortify=3.0 \u2026",10,2.22,0.41,110],["20261024-230608","w_posture=0.95; w_pos_defend=3.0; w_pos_fortify=3.0 \u2026",10,2.22,0.43,110],["20261024-231217","w_posture=0.95; w_pos_defend=3.0; w_pos_fortify=3.0 \u2026",10,1.83,0.36,110],["20261024-231844","caps=baseline, -team_rotate",1,0.55,0.15,400],["20261025-075856","w_posture=0.95; w_pos_defend=3.0; w_pos_fortify=3.0 \u2026",10,1.4,0.18,400],["20261025-082143","caps=baseline, -team_rotate; w_posture=0.95; w_pos_defend=3.0 \u2026",11,1.75,0.19,400],["20261025-162406","personalities/timid",9,0.06,0.54,110],["20261025-163033","personalities/aggressive",15,-2.1,0.56,110],["20261025-163634","personalities/castle",6,-0.34,0.35,110],["20261025-184013","night/league-classic",15,-8.73,0.55,110],["20261025-184656","night/league-steady",4,-9.24,0.64,110],["20261025-185319","night/league-timid",9,0.7,0.52,110],["20261025-190009","night/league-aggressive",15,-1.86,0.53,110],["20261025-190638","night/league-castle",6,0.32,0.34,110],["20261025-191332","night/league-raider",12,-1.41,0.51,110],["20261025-192004","night/league-expander",9,-1.24,0.47,110],["20261025-192646","night/league-navy",8,-0.23,0.4,110],["20261025-193328","night/screen-castle_inside.hi",1,-0.05,0.34,110],["20261025-194000","night/screen-castle_inside.lo",1,-1.17,0.36,110],["20261025-194636","night/screen-engage_odds.hi",1,-0.01,0.51,110],["20261025-195323","night/screen-engage_odds.lo",1,0.56,0.44,110],["20261025-195958","night/screen-longshot_every.hi",1,-1.45,0.51,110],["20261025-200628","night/screen-longshot_every.lo",1,0.59,0.49,110],["20261025-201312","night/screen-mass_for.hi",1,-0.67,0.3,110],["20261025-201937","night/screen-mass_for.lo",1,0.33,0.31,110],["20261025-202614","night/screen-pillbox_worth.hi",1,0.28,0.19,110],["20261025-203243","night/screen-pillbox_worth.lo",1,0.27,0.22,110],["20261025-203918","night/screen-press_odds.hi",1,-0.18,0.4,110],["20261025-204557","night/screen-press_odds.lo",1,-0.59,0.38,110],["20261025-205249","night/screen-strike_worth.hi",1,0.67,0.48,110],["20261025-205926","night/screen-strike_worth.lo",1,0.16,0.45,110],["20261025-210559","night/screen-strikes_max.hi",1,0.76,0.39,110],["20261025-211238","night/screen-strikes_max.lo",1,-1.19,0.53,110],["20261025-211915","night/screen-w_exposure.hi",1,0.0,0.0,110],["20261025-212551","night/screen-w_exposure.lo",1,0.0,0.0,110],["20261025-213231","night/screen-w_finish.hi",1,-0.34,0.39,110],["20261025-213908","night/screen-w_finish.lo",1,-1.07,0.47,110],["20261025-214544","night/screen-w_focus.hi",1,-0.98,0.47,110],["20261025-215216","night/screen-w_focus.lo",1,0.78,0.43,110],["20261025-215855","night/screen-w_in_range.hi",1,0.36,0.5,110],["20261025-220540","night/screen-w_in_range.lo",1,-0.25,0.46,110],["20261025-221212","night/screen-w_mine.hi",1,0.0,0.06,110],["20261025-221853","night/screen-w_mine.lo",1,0.0,0.0,110],["20261025-222541","night/screen-w_pos_expand.hi",1,-0.58,0.28,110],["20261025-223225","night/screen-w_pos_expand.lo",1,0.18,0.24,110],["20261025-223902","night/screen-w_stick.hi",1,-0.5,0.53,110],["20261025-224541","night/screen-w_stick.lo",1,0.34,0.48,110],["20261025-225203","night/screen-w_wounded.hi",1,0.96,0.49,110],["20261025-225844","night/screen-w_wounded.lo",1,-0.36,0.48,110],["20261026-002042","night/heldout",110,0.6,0.3,400],["20261026-073751","caps=kite, pings, dodge, bridges, rotate, forget, board, priced_crossi",110,0.09,0.27,400],["20261026-092104","w_exposure=0.15",1,-0.37,0.36,110],["20261026-092741","w_mine=2",1,0.04,0.14,110],["20261026-093421","w_flank=1.5",1,0.17,0.41,110],["20261026-094047","advance_band=0.175",1,0.0,0.0,55],["20261026-094447","alpha=0.2",1,0.59,0.66,55],["20261026-094843","answer_cap=1.5",1,0.16,0.53,55],["20261026-095237","base_r=8",1,0.37,0.41,55],["20261026-095630","beta=0.15",1,0.0,0.0,55],["20261026-100016","bridge_keep=90",1,-0.05,0.06,55],["20261026-100417","bridge_reach=20",1,-0.1,0.15,55],["20261026-100759","bridge_soft=3",1,0.24,0.15,55],["20261026-101138","c_boat=2.5",1,0.19,0.17,55],["20261026-101521","called_for=7.5",1,-0.57,0.61,55],["20261026-101913","castle_road=1",1,-0.17,0.21,55],["20261026-102253","column_gap=1",1,0.34,0.3,55],["20261026-102652","column_past=1",1,0.39,0.22,55],["20261026-103043","coming_r=22.5",1,1.44,0.8,55],["20261026-103432","commit=0.05",1,0.0,0.0,55],["20261026-103634","confirm=1",1,0.0,0.0,55],["20261026-103823","confirm_turret=1.5",1,0.0,0.0,55],["20261026-104003","connect_bases=0.375",1,0.0,0.0,55],["20261026-104153","connect_tiles=2",1,0.16,0.2,55],["20261026-104342","crew_reach=20",1,-0.01,0.08,55],["20261026-104534","dodge_clear=1.25",1,1.8,1.0,55],["20261026-104720","dodge_horizon=2",1,2.71,0.82,55],["20261026-104906","dodge_margin=0.4",1,0.19,0.78,55],["20261026-105054","duck_memory=2.5",1,0.47,0.63,55],["20261026-105730","bridge_soft=3",1,-0.03,0.15,55]]};
+var NS="http://www.w3.org/2000/svg";
+function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
+var last=D.timeline[D.timeline.length-1][3];
+document.getElementById("tiles").innerHTML=[[last,"weights now"],[D.timeline[0][3],"on 18 October"],[D.changes.length,"defaults changed"],[D.censuses.length,"censuses in the ledger"]].map(function(t){return '<div class="stat"><b>'+t[0]+'</b><span>'+t[1]+'</span></div>';}).join("");
+// count over time, by commit order
+(function(){var s=document.getElementById("count"),L=46,R=706,T=12,B=196,n=D.timeline.length,ymax=120;
+ function X(i){return L+(R-L)*i/(n-1);} function Y(v){return B-(B-T)*v/ymax;}
+ for(var v=0;v<=120;v+=20){el("line",{x1:L,x2:R,y1:Y(v),y2:Y(v),stroke:"#13221a"},s);var t=el("text",{x:L-8,y:Y(v)+4,"text-anchor":"end"},s);t.textContent=v;}
+ var d=D.timeline.map(function(r,i){return (i?"L":"M")+X(i).toFixed(1)+" "+Y(r[3]).toFixed(1);}).join("");
+ el("path",{d:d,fill:"none",stroke:"#33f24d","stroke-width":2},s);
+ var shown={},lastX=-99;D.timeline.forEach(function(r,i){var day=r[0].slice(5,10);if(!shown[day]&&X(i)-lastX>44){shown[day]=1;lastX=X(i);var t=el("text",{x:X(i),y:B+18,"text-anchor":"middle"},s);t.textContent=day;}});
+ var box=s.parentNode,tip=document.createElement("div");tip.className="tip";tip.hidden=true;box.appendChild(tip);
+ D.timeline.forEach(function(r,i){var c=el("circle",{cx:X(i),cy:Y(r[3]),r:4,fill:"#33f24d"},s);var hit=el("circle",{cx:X(i),cy:Y(r[3]),r:12,fill:"transparent"},s);
+  hit.addEventListener("pointermove",function(e){tip.innerHTML=esc(r[0].replace("T"," "))+" "+r[1]+"<br>"+r[3]+" weights<br>"+esc(r[2]);tip.hidden=false;var bb=s.getBoundingClientRect();tip.style.left=Math.min(e.clientX-bb.left+12,bb.width-260)+"px";tip.style.top=(e.clientY-bb.top+10)+"px";});
+  hit.addEventListener("pointerleave",function(){tip.hidden=true;});});
+})();
+// changes
+document.getElementById("changes").innerHTML="<tr><th>When</th><th>Weight</th><th>Before</th><th>After</th><th>Step</th></tr>"+D.changes.map(function(c){return "<tr><td class=n>"+c.at.slice(5,16).replace("T"," ")+"</td><td><code>"+esc(c.weight)+"</code></td><td class=n>"+c.before+"</td><td class=n>"+c.after+"</td><td>"+esc(c.step)+" <span class=dim>("+c.commit+")</span></td></tr>";}).join("");
+// screen dot plot
+(function(){var s=document.getElementById("screen");var by={};D.screen.forEach(function(r){(by[r.weight]=by[r.weight]||[]).push(r);});
+ var ws=Object.keys(by).sort(function(a,b){var m=function(w){return Math.max.apply(null,by[w].map(function(r){return r.d;}));};return m(b)-m(a);});
+ var L=170,R=700,row=20,T=8,H=T+ws.length*row+28;s.setAttribute("viewBox","0 0 720 "+H);s.style.minWidth="560px";
+ var xmin=-4,xmax=4;function X(v){return L+(R-L)*(Math.max(xmin,Math.min(xmax,v))-xmin)/(xmax-xmin);}
+ for(var v=-4;v<=4;v+=1){el("line",{x1:X(v),x2:X(v),y1:T,y2:H-24,stroke:v===0?"#2b4a30":"#13221a"},s);var t=el("text",{x:X(v),y:H-8,"text-anchor":"middle"},s);t.textContent=(v>0?"+":"")+v;}
+ ws.forEach(function(w,i){var y=T+i*row+row/2;var t=el("text",{x:L-8,y:y+4,"text-anchor":"end"},s);t.textContent=w;
+  by[w].forEach(function(r){var c=r.end==="half"?"#73c7ff":"#ffbf4d",o=r.end==="half"?-3:3;
+   el("line",{x1:X(r.d-2*r.se),x2:X(r.d+2*r.se),y1:y+o,y2:y+o,stroke:c,"stroke-opacity":".6","stroke-width":2},s);
+   var dot=el("circle",{cx:X(r.d),cy:y+o,r:3.5,fill:c},s);var ti=el("title",{},dot);ti.textContent=w+" "+r.end+" ("+r.value+"): "+r.d.toFixed(2)+" ± "+r.se.toFixed(2)+", "+r.seeds+" seeds, "+r.run;});});
+})();
+// censuses
+document.getElementById("censuses").innerHTML="<tr><th>Census</th><th>Trial</th><th>Changed</th><th>Reading</th><th>Seeds</th></tr>"+D.censuses.slice().reverse().map(function(c){var z=c[4]>0?c[3]/c[4]:0,cl=z>=2?"pos":z<=-2?"neg":"";return "<tr><td class=n>"+c[0]+"</td><td>"+esc(c[1])+"</td><td class=n>"+c[2]+"</td><td class='n "+cl+"'>"+(c[3]>=0?"+":"")+c[3].toFixed(2)+" ± "+c[4].toFixed(2)+"</td><td class=n>"+c[5]+"</td></tr>";}).join("");
+})();
+</script>
+</body>
+</html>

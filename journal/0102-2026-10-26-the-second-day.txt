@@ -98,6 +98,10 @@ IV. CHRONOLOGY
        release passed there: tests, a build with no warnings, every
        frame shown, the crates package. The release commit, signed
        tag v0.2.0, pushed: the packages workflow builds a draft.
+   23. The record made part of the source: the weight ledger and
+       big-lizard pages as reports; PROCESS.md, how treadcore is made;
+       guided training and ten training maps planned (LR 98, CI-060).
+       The run left on the census machine all day.
 
 V. RESULTS
 

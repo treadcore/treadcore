@@ -6555,3 +6555,49 @@ go down fast).
   to go to a depot in 300 generations. A curriculum rehearses.
 - **The right sense is worth hundreds of generations.** The periscope
   turned a 500-generation pass into a 67-generation one.
+
+## 98. The record made part of the source; guided training and training maps planned, 26 October
+
+Backlog 70. Paul: "ok. all these artifacts make sure they are reports
+in the documentation and the process of project createion is part of
+the MIT open source expieience of developing this. . Describe the
+process, our interactions. Document our converstaions and deveopment
+of design using census testing families ... we need to always be
+testing on and imporving those coefficients. We want to have our
+gruided training to reward being training along with our design of
+our functions. We might need to create a series of training maps to
+assit and place certain situations in a predictable occurance to test
+predictabily."
+
+**The pages, in the repository.** Three pages had been published only
+as shared links; each is now a report of the site (`reports/`), so
+it ships with the code under the MIT licence:
+
+- `2026-10-26-the-weight-ledger.html`: rebuilt as a static page from
+  the dashboard's data (the dashboard's framework is not
+  redistributable), with the day's two default changes added
+  (dodge_own_route 1, dodge_horizon 2): 110 weights (68 on 18
+  October), 18 defaults changed, the 56 screen reads, 98 censuses.
+- `2026-10-26-big-lizard.html`: the map page of LR 93 and 94.
+- `2026-10-26-the-learned-tank.html`: already there (LR 97).
+
+**The process** (`PROCESS.md`): who does what, how a prompt becomes a
+commit (with a diagram), where every conversation is kept (the
+prompts verbatim in the check-ins; their consequences in the decision
+logs and the journal), how the brain is designed by measurement
+(weights, families, the census, held-out reads, the run), the fifteen
+days, what the process caught, the daily rhythm, and the pages.
+
+**Guided training and training maps** (`AI-BRAINZ-PLAN.md` section 9):
+one scenario file in `scenarios/training/` a behaviour, read three
+ways: its `[expect]` and floor by `make families` (the scripted
+brain), its `[reward]` by `make train GROUND=file` (the net), its
+held-out seeds by both. A series of ten training maps, in curriculum
+order, the first two done (open ground, the gun); maps 4 to 6 (the
+guarded depot, under a shell, an enemy that fires back) next, as the
+census of LR 97 asks. Each file is to be written and read on the
+scripted brain and the untrained net before any training on it.
+
+**The run** stays on the census machine all day on the new defaults
+(`build/converge/20261026-181011/`, generation 1 at 18:34), reading
+the coefficients; the morning read takes what it found.

@@ -15,6 +15,10 @@ Richeson (he/him). Journals and commits are in his name.
   (section 4).**
 - History: `journal/` (one entry a session, `journal/TEMPLATE.txt`),
   `documentation/checkins/` (one report a check-in), `CHANGELOG.md`.
+- How it is made: `documentation/PROCESS.md`. The learned tank:
+  `documentation/AI-BRAINZ-PLAN.md`. A page published as a shared
+  link is also kept as a report of the site in `reports/` (MIT, with
+  the code).
 
 ## How Paul works
 

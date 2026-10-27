@@ -4,6 +4,16 @@ What changed, by date. For what happened, in order, and why, see the
 creation journal in `journal/`: one entry per working session, in a
 fixed form (`journal/TEMPLATE.txt`).
 
+## Unreleased
+
+- Added: `documentation/PROCESS.md`, how treadcore is made: the pair,
+  from a prompt to a commit, where every conversation is kept, the
+  brain designed by families and the census. The shared pages are now
+  reports of the site: the weight ledger and the big-lizard map
+  (LAB-REPORT-BRAIN.md section 98). The AI Brainz plan's section 9:
+  guided training, one scenario file a behaviour read by the families
+  and the trainer, and a series of ten training maps.
+
 ## 0.2.0 (2026-10-26): the first release: the brain on weights, and the learned tank
 
 The next minor version after six candidates of 0.1.0, and the first

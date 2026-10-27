@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="The big-lizard map, drawn from its file: why the dodge's route forecast cost there, how it was found and fixed, and four lessons.">
+<title>The Big-Lizard Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: one reading column beside a sea chart, the chart first on a phone. */
+:root {
+  --paper: #eef1ee; --ink: #1d2a2c; --muted: #56676a; --rule: #c9d3d1;
+  --sea: #bfd3d8; --sea-deep: #a9c2c9; --land: #c9c08f; --forest: #5f7a4a; --rubble: #b49a76;
+  --gun: #a8402e; --depot: #2b4a6e; --start: #1d2a2c; --accent: #a8402e; --card: #f7f9f7;
+  --display: "Fraunces", Georgia, serif; --body: "Source Sans 3", "Helvetica Neue", Arial, sans-serif; --mono: "JetBrains Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121a1c; --ink: #e3e9e7; --muted: #9aaaa9; --rule: #2c3a3c;
+  --sea: #1c3138; --sea-deep: #17282e; --land: #8a8458; --forest: #4d6a3a; --rubble: #8c7658;
+  --gun: #e27a62; --depot: #8fb4dd; --start: #f2f4f0; --accent: #e27a62; --card: #182224; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121a1c; --ink: #e3e9e7; --muted: #9aaaa9; --rule: #2c3a3c;
+  --sea: #1c3138; --sea-deep: #17282e; --land: #8a8458; --forest: #4d6a3a; --rubble: #8c7658;
+  --gun: #e27a62; --depot: #8fb4dd; --start: #f2f4f0; --accent: #e27a62; --card: #182224; color-scheme: dark }
+body { background: var(--paper); color: var(--ink); font: 17px/1.55 var(--body); margin: 0; }
+.page { max-width: 72rem; margin: 0 auto; padding-block: 2.5rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 2.5rem; }
+header h1 { font: 600 clamp(2rem, 5vw, 3.2rem)/1.05 var(--display); margin: 0 0 .6rem; text-wrap: balance; }
+header p { margin: 0; max-width: 62ch; color: var(--muted); font-size: 1.1rem; }
+.eyebrow { font: 400 .78rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: .8rem; }
+.split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+figure { margin: 0; }
+.chart { background: var(--sea); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.chart canvas { display: block; width: 100%; height: auto; }
+figcaption { font-size: .85rem; color: var(--muted); margin-top: .6rem; }
+.legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font-size: .85rem; color: var(--muted); margin-top: .7rem; }
+.legend span { display: inline-flex; align-items: center; gap: .4rem; }
+.sw { width: .8rem; height: .8rem; border-radius: 2px; display: inline-block; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 1rem 1.5rem; margin: 0; }
+.facts div { border-top: 2px solid var(--ink); padding-top: .5rem; }
+.facts dt { font: 600 1.7rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.facts dd { margin: .2rem 0 0; font-size: .9rem; color: var(--muted); }
+section h2 { font: 600 1.55rem/1.2 var(--display); margin: 0 0 .7rem; text-wrap: balance; }
+section p, section li { max-width: 65ch; }
+section p { margin: 0 0 .9rem; }
+.read { display: grid; gap: .9rem; }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; font-variant-numeric: tabular-nums; }
+.tbl { overflow-x: auto; }
+th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; }
+td.num { text-align: right; white-space: nowrap; font-family: var(--mono); font-size: .85rem; }
+.bad { color: var(--gun); font-weight: 600; }
+.lesson { background: var(--card); border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.2rem; }
+.lesson h3 { font: 600 1.05rem/1.3 var(--display); margin: 0 0 .35rem; }
+.lesson p { margin: 0; font-size: .95rem; }
+.lessons { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+code { font: .86em var(--mono); }
+.diagram svg { width: 100%; height: auto; display: block; }
+.diagram text { font: 12px var(--body); fill: var(--muted); }
+.pending { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="eyebrow">treadcore · maps/prior-art/big-lizard.map</div>
+    <h1>The Big-Lizard Map</h1>
+    <p>A converted prior-art map: a 256 × 256 sea with one crowded island at its heart. It is where the dodge's faster forecast (LR 93) first read a cost, and this page explains why that happened there.</p>
+  </header>
+
+  <div class="split">
+    <figure>
+      <div class="chart"><canvas id="map" width="840" height="900" aria-label="Chart of the big-lizard map: sea, islands, forest, depots, pillboxes with their reach, and starts"></canvas></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--land)"></i>open ground</span>
+        <span><i class="sw" style="background:var(--forest)"></i>forest</span>
+        <span><i class="sw" style="background:var(--rubble)"></i>rubble</span>
+        <span><i class="sw" style="background:var(--depot)"></i>depot</span>
+        <span><i class="sw" style="background:var(--gun)"></i>pillbox, ring = 8-tile reach</span>
+        <span><i class="sw" style="background:var(--start)"></i>start</span>
+      </div>
+      <figcaption>Drawn from the map file, tile by tile; the frame is cropped to the land (columns 30 to 240, rows 12 to 240).</figcaption>
+    </figure>
+
+    <div class="read">
+      <dl class="facts">
+        <div><dt>94%</dt><dd>of 65,536 tiles are water</dd></div>
+        <div><dt>60</dt><dd>islands, most of them a few tiles</dd></div>
+        <div><dt>2,615</dt><dd>tiles in the main island</dd></div>
+        <div><dt>12 of 16</dt><dd>pillboxes on the main island</dd></div>
+      </dl>
+      <section>
+        <h2>One island, sixteen players</h2>
+        <p>Thirteen of the sixteen starts, fourteen of the sixteen depots and twelve of the sixteen pillboxes sit on the one island of 2,615 tiles. A second island of 855 tiles holds a single depot and no start. Three players begin on islets of 9 to 174 tiles and have to cross by boat.</p>
+        <p>Everything begins neutral. With the depots and the guns packed so close, fights start early and end early: in the census, big-lizard's matches mostly end by elimination, at a median of 534 seconds of the 900.</p>
+        <p>The name was a film monster's. It was dropped when the map was converted, and only the file name remembers it.</p>
+      </section>
+    </div>
+  </div>
+
+  <section>
+    <h2>Why routes bend here</h2>
+    <p>When a tank is told to move, the world plans its route with A*, a search over the tiles. A tile within 8.5 tiles of a hostile pillbox costs six times as much to cross (the step's cost times one plus 5), so a route goes round a gun's reach when it can. On the main island the twelve guns' rings cover most of the ground, as the chart shows. Almost every route there bends round one.</p>
+    <p>The brain's dodge also forecasts the tank's drive, every tick a shell is coming, to decide whether a shot or a move would carry the tank into the splash. Until LR 93 it searched a route of its own for that, and its search leaves the guns out. So on big-lizard it often foresaw a straight drive the world was never going to make.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 640 220" role="img" aria-label="Diagram: a tank's searched route goes straight past a gun; the world's own route bends round the gun's reach; after 3 seconds the searched forecast is 7.85 tiles from the tank, the own route's 0.00">
+        <rect x="0" y="0" width="640" height="220" rx="6" style="fill:var(--card);stroke:var(--rule)"/>
+        <circle cx="330" cy="140" r="78" style="fill:var(--gun);fill-opacity:.12;stroke:var(--gun);stroke-dasharray:5 4"/>
+        <circle cx="330" cy="140" r="7" style="fill:var(--gun)"/>
+        <text x="345" y="160">hostile pillbox, 8-tile reach</text>
+        <path d="M 60 110 L 600 110" style="fill:none;stroke:var(--muted);stroke-width:2;stroke-dasharray:6 5"/>
+        <path d="M 60 110 C 180 110 230 40 330 40 C 430 40 480 110 600 110" style="fill:none;stroke:var(--depot);stroke-width:3"/>
+        <polygon points="52,102 68,110 52,118" style="fill:var(--start)"/>
+        <circle cx="600" cy="110" r="6" style="fill:var(--ink)"/>
+        <text x="575" y="132">the goal</text>
+        <circle cx="236" cy="110" r="5" style="fill:var(--muted)"/>
+        <text x="150" y="132">searched forecast, 7.85 tiles off</text>
+        <circle cx="224" cy="62" r="6" style="fill:var(--depot)"/>
+        <text x="120" y="52">own-route forecast, 0.00 off</text>
+        <text x="420" y="34">the world's route round the reach</text>
+        <text x="420" y="104">the search, guns left out</text>
+      </svg>
+      <figcaption>The test <code>the_own_route_foresees_a_drive_round_a_gun</code>: where each forecast puts the tank after 3 seconds, against where the world actually drives it. Not to scale.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>What the census read</h2>
+    <p><code>dodge_own_route</code> makes the forecast follow the tank's own route (the world's, guns priced in) when the tank is already going where the forecast asks, with no search. It is faster and, near guns, more truthful. A more truthful forecast still changes what the dodge decides, and every changed decision changes the match.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Read</th><th>Where</th><th>Seeds</th><th class="num">Difference a seat</th></tr></thead>
+      <tbody>
+        <tr><td>Own route everywhere, every map</td><td>census machine</td><td>110</td><td class="num">−0.53 ± 0.48</td></tr>
+        <tr><td>…its big-lizard seeds</td><td>census machine</td><td>10</td><td class="num bad">−6.48 ± 1.56</td></tr>
+        <tr><td>Own route everywhere, big-lizard alone</td><td>Mac</td><td>120</td><td class="num">−0.97 ± 0.66</td></tr>
+        <tr><td>Ashore only, every map</td><td>census machine</td><td>110</td><td class="num">−0.18 ± 0.37</td></tr>
+        <tr><td>Ashore only, big-lizard alone</td><td>census machine</td><td>110</td><td class="num">+0.58 ± 0.81</td></tr>
+        <tr><td>Ashore only, the generated maps alone (the one map below in the read above)</td><td>census machine</td><td>110</td><td class="num">+0.51 ± 0.43</td></tr>
+      </tbody>
+    </table></div>
+    <p>A probe on big-lizard compared the two forecasts at every ask. Ashore they parted by more than a tile 14% of the time and flipped the dodge's verdict 0.6% of the time. Afloat it was 32% and 1.7%: three times as often. Few forecasts are afloat, so the fix keeps the own route ashore and the search afloat.</p>
+    <p>Ashore only, every read passed its rule, written before it played, and <code>make families</code> held. The own route is on by default since LR 94, and the census runs faster for it.</p>
+  </section>
+
+  <section>
+    <h2>Four lessons from one map</h2>
+    <div class="lessons">
+      <div class="lesson"><h3>A wild map needs many seeds</h3><p>A big-lizard seed swings by about ±7 points a seat, because a match can end in elimination either way. Ten seeds estimate their own error poorly; 120 gave a steadier −0.97.</p></div>
+      <div class="lesson"><h3>Twelve maps, one worst</h3><p>Read twelve maps and the lowest is drawn from the tail by chance. A map past two errors is a reason to read that map again on its own, not yet a verdict.</p></div>
+      <div class="lesson"><h3>Truer is not the same as better</h3><p>The own route foresees the drive exactly, yet the dodge's numbers were tuned against the old forecast. A change that makes one part more accurate can still change the game, and only the census says whether it costs.</p></div>
+      <div class="lesson"><h3>A machine is its own world</h3><p>The Mac (ARM) and the census machine (x86) round floats differently, so the same seed plays a different match on each: −13.86 against −16.48 for seed 170063. Each census stays on one machine.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const BL = {"rows": ["256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "191~1.64~", "190~2.64~", "190~4T62~", "189~1.4T1.61~", "190~5T1.60~", "191~5T60~", "191~5T1.59~", "192~5T1.58~", "192~1.4T1.58~", "193~5T1.57~", "193~1.5T1.56~", "193~1.5T1.56~", "193~1.6T2.54~", "193~2.5T3.53~", "193~3.5T4.51~", "192~2.2T1.5T5.49~", "191~4.9T4.17~1.30~", "191~2.12T5.14~2.30~", "191~1.14T6.11~2T31~", "190~2.16T8.6~1.2T31~", "190~2.6T1%4T1%7T7.3~1.2T32~", "189~2.7T1%2T3%8T10.1T1.32~", "188~3.10T2%9T3.1~5.2T1.32~", "187~5.5T1%1T4%10T1.2~3.4T2.31~", "178~1.9~2.8T5%11T3.1~1.4T2.2~1.28~", "178~3.7~1.8T4%2T2%6T1~2T5.4T4.29~", "179~4.5~1.7T2%1T3%2T1%9T1.2T3.2T4.30~", "180~4.3~2.7T2%3T1%12T1.3T7.31~", "180~10.6T1%3T3%11T7.35~", "180~2.1T5.1D1.11T2%10T3.2~4.34~", "177~5.2T7.3T1%15T4.42~", "176~6.3T2.7T2%13T2.45~", "174~2.4T2.13T1%3T2%6T2.47~", "173~2.6T3.4T6.6T2%4T2.48~", "172~2.6T10.3~2.6T2%4.49~", "172~2.5T2.3~4.8~5.2%3.50~", "170~1.1~3.3T2.5~2.11~4.1%3.50~", "170~1.2~3.2T2.20~3.1%2.50~", "175~2.2T2.20~4.51~", "176~2.2T4.19~2.51~", "176~2.2T5.19~1.51~", "176~2.2T2.2~3.69~", "176~4.9~1.66~", "175~3.6~1.3~2.66~", "176~2.6~2T2.2T66~", "183~3T1.2~2T65~", "179~2T2~2T4~2T65~", "178~4T7~2T65~", "179~3T7~2T65~", "179~3T3~1.2~1.2T65~", "179~4T1~5.2T65~", "177~4.1T5.3T1.65~", "174~8.5T5.64~", "173~9.4T6.64~", "174~6.7T5.64~", "174~5.9T4.64~", "174~2.13T4.63~", "174~2.14T3.63~", "174~1.16T2.63~", "173~3.1T1.13T2.63~", "172~4.12T1%2T3.62~", "174~3.4T3%3T2%2T3.62~", "175~2.5T2%3T2%3T2.62~", "175~2.5T1%3T1%1T2%1T4.61~", "175~2.5T1%9T3.61~", "175~2.14T3.62~", "174~3.3T1.10T3.62~", "174~2.15T2.63~", "173~1.2%7T1%7T1.64~", "173~1.2%7T2%5T1.65~", "172~2.15T2.65~", "172~2.14T2.66~", "171~2.8T1%5T3.66~", "170~2.8T2%4T4.66~", "170~1.3T2%10T4.66~", "158~1.11~1.2T2%10T6.65~", "157~1.12~1.2T2%9T1D1.4~1.65~", "157~1.12~3T2%9T1.6~1.64~", "156~2.11~4T3%8T1.71~", "156~3.9~6T2%8T72~", "157~2.7~17T1.72~", "156~2.6~18T2.72~", "156~1.6~18T4.71~", "162~18T5.71~", "162~15T1~1T3.2T1.71~", "162~14T2~1T3.2T1.71~", "145~1.15~18T3.2T1.71~", "143~1.1T14~21T5.71~", "141~1.2T1.12~10T1%3T1%9T5.70~", "141~1.1T1.11~11T2%3T3%5T1.1T3.72~", "141~2.10~11T3%3T3%6T1.1T3.72~", "140~1.1T3.4~6T1%7T5%1T3%7T4.73~", "140~1.2T3.2~5T4%5T3%1T5%10T2.73~", "140~1.2T2.7T3%6T3%4T1%12T2.73~", "107~1T32~1.2T2.6T2%8T1%5T2%12T1.74~", "106~3T30~3.1T2.6T2%1T2%5T3%16T2.74~", "106~3T28~3.1T3.5T1.2%2T3%6T3%15T1.74~", "107~1T28~2.2T3.5T10%4T1%2T4%10T1~2T74~", "104~2T29~2.1T3.6T16%3T6%6T3~1T1.73~", "134~1T3.9T6%1~10%3T6%7T1~1T1.73~", "105~1T28~1T2.9T19%17T2.72~", "135~1.10T6%1T8%2T3%7T2.7T2.72~", "124~1T8~1.1~1.11T5%1T2%3T2%9T1.1D4.5T5.71~", "123~3T7~1.3T1.3T2.6T2%2T4%11T2.1D3~2.3T2.4~1.70~", "119~3.2T8~1.2T2~1.2T3.6T2%1T6%7T4.1D5~1.2T2.76~", "105~2.5~2.3~2.1T1.3T8.2T3~2.1T5.7T4%6T2%2.1T1.2T5~1.2T1.77~", "101~17.7T2.6T1.3~2.1T2.1D3.7T4%4T1.2%1.1T4~1T3~4.78~", "100~4.28T1.3~6.1~5.11T5.1T5~1T2~2T81~", "99~2.8T4%2T2%12T3%2~4.1%1T1.3~4.10T1.4~1.1T8~2T81~", "98~1.4T7%3T3%13T1%1D1.1~5.1%2.3~1.1~6.3T3.4~3.8~1.82~", "65~1T31~1.2T5%25T5.1T1.2%2.2~1.4~9.5~2.92~", "65~1T27~1.2~1.1T3%29T3.4T2%1.4~1.4~1.3T1.2T6~2T4~1T87~", "64~2T23~2.7T1.23T5.1D5.4T1%2.9~2T1~1T1.2T6~2T4~1T87~", "64~2T22~1.2T2%6T1.12T1D4T4~1.1D3.3~1D2.7T3.5~4T3.8~1T93~", "64~2T20~2.3T3%3T1.1D2.8T7.7~2.4~2.9T1.1T1.2~2T109~", "64~1T17~4.3T4%2.2T1.3~1.2T6.3~1.3~2.10~2.8T4.113~", "82~8T3.3T1.2~1.2~4.12~1.4~2.4~1.7T4.115~", "82~6T1.7T1.2~1.7~1.1~1.2~4.6~2.4~1.1T1.6T1.118~", "81~2.2~2T1.3~1.3T1.9~1.5~1.3T5.3~1.2~2.3T3%3.34~1T84~", "69~1.11~1.4~1.6~1.1T1.4~1.1~2.5~2.8T3.3~2.3T3%2T1.120~", "69~2T8~1.1D1.12~2.1~1.4~1.2T3~2.11T1.4~1.2T3%3T1.120~", "70~1T4~1T2~4.13~1.5~1.3T1.5T6%4T1.4~1.1T4%3T37~1T83~", "75~9.6~1.10~1.5T5%1T2%6T2.3~1.1T1%5T1.121~", "68~1T4~1.2~1D1.6T3.2~3.8~1.3T5%2T1%3T1%3T1.7~7T122~", "67~1T1~1.3~5.9T1.2T2.5~2.3T3%13T1.9~2.4T122~", "66~1.2~3.1~1.16T2.3~2.3~3T1%4T2.2~2.4T11~4.123~", "64~1T5~2T2.2T2.3T1%7T1.10~1.5T1.8~3T138~", "63~1T6~1.2~2T1.2~3T3%6T2~1.8~2.3T10~1.139~", "63~1T5~2.3~1T1.3~3T3%5T2.9~2.3T10~1.139~", "61~2T7~1T1.2~1.4~4T3%5T2.9~3.151~", "60~2T9~3T3.1T2~4T2%6T2.8~3.151~", "71~1.4~1T4~4T1%6T1.12~1.150~", "70~1T10~4T1%6T1.163~", "75~1.2~1.1~1.5T1%5T1.163~", "74~4.3~4T2%5T164~", "74~2.1~1.3~5T1%3T2.164~", "74~1.5~1.9T1.165~", "76~1.3~9T1.166~", "77~2.3T2%4T2.166~", "77~1.4T2%4T2.166~", "77~6T1%4T2.166~", "76~1.11T2.166~", "77~3T2.2~4T1.167~", "77~3T1D3~1.2T2.167~", "77~1.2T1.1~1.1~1.1T3.167~", "76~2.2T1.2~1.2T1.169~", "75~2.2~2.2~1.2T1.169~", "80~2.2~2T2.168~", "84~1.1T1.169~", "84~2.170~", "83~1.172~", "256~", "256~", "85~1T170~", "85~1T170~", "84~2T170~", "84~1T171~", "77~1T6~1T171~", "80~2T174~", "79~4T173~", "80~2T174~", "74~1T181~", "256~", "256~", "69~1T186~", "256~", "256~", "64~1.191~", "256~", "256~", "256~", "62~1.193~", "61~1.194~", "60~2.194~", "59~2.195~", "59~2.195~", "256~", "256~", "256~", "256~", "256~", "54~1.201~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "50~1.205~", "50~1T1.204~", "41~2T6~2T1.204~", "44~1T1.2~1.2T205~", "44~2T1~1.1T207~", "46~2.208~", "46~1T1.208~", "45~1.1T209~", "44~1T211~", "42~2T1.211~", "43~1T1.211~", "43~1.1~1T210~", "42~1.213~", "41~1D1.1T212~", "41~2T213~", "41~2T213~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~", "256~"], "starts": [[193.5, 82.5], [184.5, 107.5], [168.5, 101.5], [155.5, 111.5], [178.5, 127.5], [153.5, 135.5], [134.5, 121.5], [137.5, 139.5], [115.5, 148.5], [108.5, 118.5], [98.5, 131.5], [126.5, 143.5], [93.5, 152.5], [81.5, 140.5], [74.5, 158.5], [80.5, 169.5]], "depots": [[188.5, 51.5], [184.5, 98.5], [170.5, 124.5], [170.5, 125.5], [169.5, 126.5], [142.5, 128.5], [130.5, 131.5], [129.5, 135.5], [127.5, 134.5], [122.5, 135.5], [112.5, 135.5], [98.5, 136.5], [80.5, 142.5], [76.5, 145.5], [80.5, 165.5], [41.5, 228.5]], "pillboxes": [[187.5, 97.5], [185.5, 125.5], [173.5, 131.5], [162.5, 131.5], [173.5, 121.5], [165.5, 126.5], [144.5, 131.5], [140.5, 120.5], [118.5, 137.5], [122.5, 131.5], [133.5, 128.5], [130.5, 139.5], [99.5, 139.5], [82.5, 166.5], [73.5, 145.5], [82.5, 140.5]]};
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function draw() {
+  const c = document.getElementById('map');
+  const x0 = 30, y0 = 12, w = 210, h = 228, k = 4;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = w * k * dpr; c.height = h * k * dpr;
+  const g = c.getContext('2d');
+  g.setTransform(k * dpr, 0, 0, k * dpr, -x0 * k * dpr, -y0 * k * dpr);
+  g.fillStyle = css('--sea'); g.fillRect(x0, y0, w, h);
+  const col = { '.': css('--land'), 'T': css('--forest'), '%': css('--rubble'), '=': css('--land'), '+': css('--land'), 'D': css('--land'), 'W': css('--ink') };
+  BL.rows.forEach((row, y) => {
+    let x = 0;
+    for (const m of row.matchAll(/(\d+)(\D)/g)) {
+      const n = +m[1], ch = m[2];
+      if (ch !== '~') { g.fillStyle = col[ch] || css('--land'); g.fillRect(x, y, n, 1); }
+      x += n;
+    }
+  });
+  g.lineWidth = 0.35;
+  for (const [x, y] of BL.pillboxes) {
+    g.beginPath(); g.arc(x, y, 8.5, 0, Math.PI * 2);
+    g.fillStyle = css('--gun') + '22'; g.fill();
+    g.strokeStyle = css('--gun'); g.setLineDash([1.2, 0.9]); g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.arc(x, y, 1.4, 0, Math.PI * 2); g.fillStyle = css('--gun'); g.fill();
+  }
+  for (const [x, y] of BL.depots) { g.fillStyle = css('--depot'); g.fillRect(x - 1.2, y - 1.2, 2.4, 2.4); }
+  for (const [x, y] of BL.starts) {
+    g.beginPath(); g.moveTo(x, y - 2); g.lineTo(x + 1.8, y + 1.4); g.lineTo(x - 1.8, y + 1.4); g.closePath();
+    g.fillStyle = css('--start'); g.fill();
+  }
+}
+draw();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>
+</body>
+</html>

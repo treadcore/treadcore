@@ -10,7 +10,7 @@ Contents: 1. The two brains at a glance. 2. The scripted brain. 3. The
 census: how any brain is judged. 4. The learned tank: senses, net,
 heads. 5. Calls to friends: a shared request queue. 6. Training:
 generations on the CPUs. 7. What has been proven. 8. Proposed
-upgrades. 9. Commands.
+upgrades. 9. Guided training and training maps. 10. Commands.
 
 ---
 
@@ -304,7 +304,60 @@ is written down before it is run.
 
 ---
 
-## 9. Commands
+## 9. Guided training and training maps
+
+Paul, 26 October: "we want to have our gruided training to reward
+being training along with our design of our functions. We might need
+to create a series of training maps to assit and place certain
+situations in a predictable occurance to test predictabily."
+
+**One file, three uses.** A behaviour of the brain is designed with
+its training. Each gets one scenario file in `scenarios/training/`
+that places the situation (the same TOML as the families: tanks,
+pillboxes, depots, shells, terrain, each with ranges the seed draws
+from) and says three things:
+
+| Section | For | Read by |
+| --- | --- | --- |
+| `[expect]` and `floor` | what must hold, how often | `make families`: the scripted brain against its floor |
+| `[reward]` | the terms that teach it, each a worth: closer, a hit, armour lost, a capture, a call answered | `make train GROUND=file`: the net's episodes |
+| `held` | the held-out seeds and the pass share | both, on the same seeds |
+
+So a new function in `weights.rs` arrives with a family (does the
+scripted brain do it?), a ground (can a net learn it?) and one
+comparison on identical situations (which does it better, and how
+often?). The census stays the judge of whether it wins matches.
+
+**Predictable on purpose.** A training map fixes what matters and
+draws the rest from the seed within stated ranges: the same seed is
+the same situation every time, and the result's spread over seeds is a
+measurement with a standard error, not an accident. A map is passed
+only on held-out seeds no generation trained on.
+
+**The series, in order** (a curriculum: each map's net starts from the
+last's, and is read on every earlier map before it moves on):
+
+| # | Training map | The situation | Reward | Pass |
+| --- | --- | --- | --- | --- |
+| 1 | open ground (done) | a target 10 to 20 tiles off: enemy, depot, pillbox | closer, reached | 95% each (999 of 999) |
+| 2 | the gun (done) | a still enemy 12 to 20 off | direct hits | 95% (999 of 999) |
+| 3 | a lake between | the target across water or round a wall | closer by route, reached | 90% |
+| 4 | the guarded depot | a depot inside a hostile pillbox's ring | taken; armour lost costs | 80%, no death |
+| 5 | under a shell | a shell landing on the tank in 1.5 to 3.5 s (the dodge families' situations) | not hit | 99% (the families' floor) |
+| 6 | an enemy that fires back | a scripted RuleBot at skill 0.3, then 0.6, then 1 | hits given less hits taken; a kill | half the duels won |
+| 7 | low and far from home | shells or armour low, a depot of ours and an enemy both near | resupplied, alive | 90% |
+| 8 | a friend calls | a teammate under fire 15 tiles off calls for help | arrived inside 20 s | 80% |
+| 9 | a call answered | two nets; only one sees the enemy | the blind one arrives sooner than alone | faster, by two errors |
+| 10 | the pillbox held | an enemy comes for our pillbox | the pillbox stands at 60 s | 70% |
+
+Maps 4 to 6 are the ones the census asks for now: the drive-and-shoot
+net dies charging defended ground (section 7). Each map's file is
+written, and read on the scripted brain and the untrained net, before
+any training on it.
+
+---
+
+## 10. Commands
 
 ```sh
 make train PHASE=1                      # train going to, 200 generations (GENS=)

@@ -1166,6 +1166,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     +/- 0.38, below a random net's -20.35 +/- 0.25: it charges what a
     match defends. Next: phase 4, live (hostile pillboxes and an enemy
     that fires back on the grounds), AI-BRAINZ-PLAN.md section 8.
+    Guided training planned (LR 98): one scenario file a behaviour in
+    scenarios/training/, read by make families (the scripted brain)
+    and make train GROUND= (the net) on the same seeds; ten training
+    maps in order, maps 4 to 6 next.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every
