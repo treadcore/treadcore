@@ -147,7 +147,7 @@ weights! {
     DefendGround "w_defend_ground" 1.5, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
     PostureExpand "w_pos_expand" 0.4, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
     // The dodge (lib.rs `Dodge`, LR 27): its numbers, once constants.
-    DodgeHorizon "dodge_horizon" 4.0, "dodge: seconds before a shell lands that the tank starts out from under it";
+    DodgeHorizon "dodge_horizon" 2.0, "dodge: seconds before a shell lands that the tank starts out from under it";
     DodgeMargin "dodge_margin" 0.8, "dodge: tiles past the splash a shell's landing still counts as on the tank";
     DodgeClear "dodge_clear" 2.5, "dodge: tiles past the splash the tank drives to, across the shell's line";
     DodgeHold "dodge_hold" 0.0, "dodge: the share of the shell's flight the tank stays out, arrived or not (1), against only while it drives (0, before LR 27)";
