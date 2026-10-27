@@ -218,9 +218,11 @@ pub fn play(task: Task, g: &Ground, brain: &mut dyn Brain) -> Played {
             }
         }
         p.to = w.tanks[0].pos.dist(at(&w));
+        if g.target == Target::Enemy && !w.tanks[1].alive {
+            p.killed = true;
+        }
         if task.shoots(g.target) {
-            if !w.tanks[1].alive {
-                p.killed = true;
+            if p.killed {
                 break;
             }
         } else if p.to <= REACH {
@@ -273,7 +275,7 @@ pub enum Course {
 }
 
 /// The `[reward]` terms a training map may use (`scenario::reward`).
-pub const REWARDS: [&str; 9] = ["pass", "alive", "damage_taken", "damage_given", "killed", "depot_taken", "pillbox_taken", "pillbox_killed", "closer"];
+pub const REWARDS: [&str; 11] = ["pass", "alive", "damage_taken", "damage_given", "killed", "depot_taken", "pillbox_taken", "pillbox_killed", "closer", "alive_time", "armor_gained"];
 
 impl Course {
     /// `phase1`, `phase3`, or a scenario file's path.
@@ -628,6 +630,12 @@ mod harness {
             println!("train: held out net {:?}: {} direct hits of {} direct shots ({:.3} a shot), {} lobbed, {} killed", task, hits, shots, hits as f64 / shots.max(1) as f64, runs.iter().map(|p| p.lobbed).sum::<u32>(), runs.iter().filter(|p| p.killed).count());
         }
         let rows = check(task, seeds.clone(), threads, &|| Box::new(NetBrain::new(net.clone(), "net")));
+        if task == Task::GoTo {
+            let list: Vec<u64> = seeds.clone().filter(|s| task.target(*s) == Target::Enemy).collect();
+            let runs = spread(list.len(), threads, &|k| play(task, &ground(task, list[k]), &mut NetBrain::new(net.clone(), "net")));
+            let failed: Vec<&Played> = runs.iter().filter(|p| !task.passed(p)).collect();
+            println!("train: held out net GoTo, the enemy ground: {} failed, the enemy destroyed in {} of them", failed.len(), failed.iter().filter(|p| p.killed).count());
+        }
         let mut all = true;
         for (t, passed, n, score) in rows {
             let p = passed as f64 / n as f64;
@@ -703,6 +711,193 @@ mod harness {
         all
     }
 
+    /// The match reading (LR 100): seat 9 of a dealt match (a ranger of
+    /// team 0, whom nobody follows) given to the net, or kept by its
+    /// scripted brain, on a map from the seed, three respawns, for
+    /// `secs`: when the seat first went down (`secs` if never) and how
+    /// often. Between the training maps and the census: does the seat
+    /// live in a real match's opening minutes?
+    fn match_minutes(net: Option<&Net>, seed: u64, secs: u64) -> (f64, u32) {
+        const SEAT: usize = 9;
+        let names: Vec<(String, bool)> = (0..crate::fleet::SEATS).map(|i| (crate::fleet::name(i), true)).collect();
+        let sc = Scenario { seed, players: names, teams: Some(crate::fleet::teams()), time_limit: 0, respawns: 3, ..Scenario::default() };
+        let mut w = World::new(sc);
+        crate::fleet::new_match();
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..crate::fleet::SEATS)
+            .map(|i| match net.filter(|_| i == SEAT) {
+                Some(n) => (i as PlayerId, Box::new(NetBrain::new(n.clone(), "net")) as Box<dyn Brain>),
+                None => (i as PlayerId, crate::fleet::brain(i, seed ^ i as u64, false)),
+            })
+            .collect();
+        let (mut first, mut deaths, mut up) = (None, 0u32, true);
+        for _ in 0..secs * TICK_HZ as u64 {
+            let orders = crate::run_bots(&w, &mut bots);
+            w.step(&orders);
+            let alive = w.tanks.iter().find(|t| t.owner == SEAT as PlayerId).map(|t| t.alive).unwrap_or(false);
+            if up && !alive {
+                deaths += 1;
+                first.get_or_insert(w.tick as f64 / TICK_HZ as f64);
+            }
+            up = alive;
+            if w.over {
+                break;
+            }
+        }
+        (first.unwrap_or(secs as f64), deaths)
+    }
+
+    /// `MATCH=n`: the match reading over n seeds from 8,000,000, the net
+    /// (`CHECK`) and the scripted ranger on the same seeds.
+    fn match_reading(net: &Net, n: u64, secs: u64, threads: usize) {
+        let seeds: Vec<u64> = (8_000_000..8_000_000 + n).collect();
+        for (who, net) in [("the net", Some(net)), ("the scripted ranger", None)] {
+            let runs = spread(seeds.len(), threads, &|k| match_minutes(net, seeds[k], secs));
+            let m = runs.iter().map(|r| r.0).sum::<f64>() / n as f64;
+            let se = (runs.iter().map(|r| (r.0 - m).powi(2)).sum::<f64>() / (n as f64 * (n as f64 - 1.0).max(1.0))).sqrt();
+            let d = runs.iter().map(|r| r.1 as f64).sum::<f64>() / n as f64;
+            let lived = runs.iter().filter(|r| r.1 == 0).count();
+            println!("train: match, {}: first down at {:.0} +/- {:.0} s of {}, {:.2} deaths, never down in {} of {} matches", who, m, se, secs, d, lived, n);
+        }
+    }
+
+    /// A dodger with the net's drive actions only (LR 100): five times
+    /// a second, for a shell coming, each of the nine (a Move of
+    /// `DRIVE_STEP` toward a sector, or Stop) is scored by where it
+    /// leaves the tank when the shell lands, straight at full speed from
+    /// now (turning not counted), and the farthest from the impact taken.
+    /// It reads the world's shells, as no net can: an upper bound on
+    /// what the actions allow.
+    struct Oracle;
+    impl Brain for Oracle {
+        fn name(&self) -> &str {
+            "oracle"
+        }
+        fn think(&mut self, obs: &Observation) -> Vec<Command> {
+            if obs.tick % DECIDE_EVERY != 0 {
+                return Vec::new();
+            }
+            let Some(me) = obs.me.as_ref().filter(|t| t.alive) else { return Vec::new() };
+            let Some(sh) = obs.shells.iter().filter(|s| !obs.allied(s.owner) && s.impact_tick >= obs.tick).min_by_key(|s| s.impact_tick) else { return Vec::new() };
+            let left = (sh.impact_tick - obs.tick) as f32 / TICK_HZ as f32;
+            let go = |k: usize| me.pos + V2::from_heading(crate::senses::sector_heading(me.heading, k)).scale((treadcore_sim::rules::TANK_SPEED * left).min(crate::net::DRIVE_STEP));
+            let best = (0..crate::senses::SECTORS).max_by(|a, b| go(*a).dist(sh.impact).total_cmp(&go(*b).dist(sh.impact))).unwrap();
+            if me.pos.dist(sh.impact) >= go(best).dist(sh.impact) {
+                return vec![Command::Stop];
+            }
+            vec![Command::Move { to: obs.clamp(me.pos + V2::from_heading(crate::senses::sector_heading(me.heading, best)).scale(crate::net::DRIVE_STEP)) }]
+        }
+    }
+
+    /// When a drive one way is given again: every decision; as
+    /// `NetBrain` did (a new choice, or 2 s); or a new choice, 2 s, or
+    /// within half a step of its point (LR 100).
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    enum Renew {
+        Always,
+        TwoSeconds,
+        Near,
+    }
+
+    /// The bound by simulation (LR 100): map 5's situation built here
+    /// (the tank rolling at full speed on a heading the seed draws, a
+    /// shell landing within 2.5 tiles of it in 1.5 to 3.5 s), and every
+    /// 0.2 s each of the nine drive actions (a Move of `step` tiles
+    /// toward a sector, renewed every decision, or Stop) played forward
+    /// in a copy of the world to the landing; the one ending farthest
+    /// from the impact is taken. Whether the tank is hit, with the
+    /// world's own turning and speed.
+    fn sim_dodge(seed: u64, step: f32, renew: Renew) -> bool {
+        let mut w = World::new(Scenario { seed, swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let mut dice = Rng::new(seed ^ 0x5ce4_a210);
+        let c = Map::tile_centre(w.map.center());
+        for dy in -20..=20 {
+            for dx in -20..=20 {
+                let p = c + V2::new(dx as f32, dy as f32);
+                if w.map.in_bounds(p) {
+                    w.map.set(p, Terrain::Grass);
+                }
+            }
+        }
+        let h = dice.range(-std::f32::consts::PI, std::f32::consts::PI);
+        let t = &mut w.tanks[0];
+        t.pos = c;
+        t.heading = h;
+        t.speed = treadcore_sim::rules::TANK_SPEED;
+        t.goal = Some(c + V2::from_heading(h).scale(20.0));
+        t.route.clear();
+        t.boat = false;
+        w.tanks[1].pos = c + V2::new(0.0, 60.0);
+        w.pillboxes.clear();
+        w.depots.clear();
+        let at = c + dice.disc().scale(2.5);
+        let from = at + V2::from_heading(dice.range(-std::f32::consts::PI, std::f32::consts::PI)).scale(30.0);
+        let lands = (dice.range(1.5, 3.5) * TICK_HZ as f32) as Tick;
+        let id = w.next_id;
+        w.next_id += 1;
+        w.shells.push(Shell { id, owner: 1, kind: ShellKind::Indirect, from, aim: at, impact: at, launch_tick: 0, impact_tick: lands, spotted: true });
+        let order = |w: &World, k: usize| -> Command {
+            let me = &w.tanks[0];
+            if k == crate::senses::SECTORS {
+                Command::Stop
+            } else {
+                Command::Move { to: me.pos + V2::from_heading(crate::senses::sector_heading(me.heading, k)).scale(step) }
+            }
+        };
+        let mut hit = false;
+        let mut last: Option<(usize, Tick, V2)> = None;
+        while w.tick < lands + 2 {
+            let mut orders = Vec::new();
+            if w.tick % DECIDE_EVERY == 0 && w.tick < lands {
+                let best = (0..=crate::senses::SECTORS)
+                    .max_by(|a, b| {
+                        let end = |k: usize| {
+                            let mut v = w.clone();
+                            let mut first = true;
+                            while v.tick < lands {
+                                let o = if first || v.tick % DECIDE_EVERY == 0 { vec![Order { player: 0, cmd: order(&v, k) }] } else { Vec::new() };
+                                first = false;
+                                v.step(&o);
+                            }
+                            v.tanks[0].pos.dist(at)
+                        };
+                        end(*a).total_cmp(&end(*b))
+                    })
+                    .unwrap();
+                let fresh = match (renew, last) {
+                    (Renew::Always, _) | (_, None) => true,
+                    (_, Some((k, _, _))) if k != best => true,
+                    (_, Some((_, at_, _))) if w.tick >= at_ + crate::net::DRIVE_RENEW => true,
+                    (Renew::Near, Some((_, _, to))) => w.tanks[0].pos.dist(to) < step / 2.0,
+                    _ => false,
+                };
+                if fresh {
+                    let cmd = order(&w, best);
+                    let to = if let Command::Move { to } = cmd { to } else { w.tanks[0].pos };
+                    orders.push(Order { player: 0, cmd });
+                    last = Some((best, w.tick, to));
+                }
+            }
+            w.step(&orders);
+            if std::env::var("PROBE_DEBUG").is_ok() {
+                for e in &w.events {
+                    eprintln!("probe: tick {} pos ({:.1},{:.1}) speed {:.1} impact ({:.1},{:.1}) at {}: {:?}", w.tick, w.tanks[0].pos.x, w.tanks[0].pos.y, w.tanks[0].speed, at.x, at.y, lands, e);
+                }
+            }
+            hit |= w.events.iter().any(|e| matches!(e, Event::ShellImpact { shell, hits, .. } if *shell == id && hits.contains(&w.tanks[0].id)));
+        }
+        !hit
+    }
+
+    /// `PROBE=oracle GROUND=map`: the oracle in the net's seat on the
+    /// held-out seeds.
+    fn probe(c: &Course, held: u64, threads: usize) {
+        let Course::File { name, doc } = c else { return };
+        let list: Vec<u64> = (9_000_000..9_000_000 + held).collect();
+        let runs = spread(list.len(), threads, &|k| crate::scenario::run_with(doc, Some(list[k]), None, Some(&|| Box::new(Oracle) as Box<dyn Brain>)).map(|(_, f)| f.is_empty()).unwrap_or(false));
+        let p = runs.iter().filter(|r| **r).count() as f64 / runs.len() as f64;
+        println!("train: probe {} by the oracle (the net's drive actions, the world's shells): {:.3} +/- {:.3} of {}", name, p, (p * (1.0 - p) / runs.len() as f64).sqrt(), runs.len());
+    }
+
     /// The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a
     /// comma list of courses (`phase1`, `phase3`, training maps' paths)
     /// trained together, each episode the next course in turn. With
@@ -724,11 +919,36 @@ mod harness {
         let name = env("NAME", if ground.is_some() { "ground".to_string() } else { format!("phase{}", phase) });
         let threads: usize = env("THREADS", std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4));
         let held: u64 = env("HELD", 999);
+        if std::env::var("PROBE").map(|p| p == "sim").unwrap_or(false) {
+            let n: u64 = env("HELD", 300);
+            for renew in [Renew::Always, Renew::TwoSeconds, Renew::Near] {
+                let step = crate::net::DRIVE_STEP;
+                let runs = spread(n as usize, threads, &|k| sim_dodge(9_000_000 + k as u64, step, renew));
+                let p = runs.iter().filter(|r| **r).count() as f64 / n as f64;
+                println!("train: probe sim, under a shell, drive step {} tiles, renewed {:?}: not hit {:.3} +/- {:.3} of {}", step, renew, p, (p * (1.0 - p) / n as f64).sqrt(), n);
+            }
+            return;
+        }
+        if std::env::var("PROBE").map(|p| p == "oracle").unwrap_or(false) {
+            for c in &courses {
+                let h = match c {
+                    Course::File { doc, .. } => doc.top.get("held").and_then(crate::scenario::Value::num).map(|h| h as u64).unwrap_or(held),
+                    _ => held,
+                };
+                probe(c, h, threads);
+            }
+            return;
+        }
         if !std::env::var("BASELINE").unwrap_or_default().is_empty() {
             report_all(&courses, held, threads, None);
         }
         if let Some(f) = std::env::var("CHECK").ok().filter(|f| !f.is_empty()) {
             let net = Net::load(std::path::Path::new(&f)).expect("a net");
+            let m: u64 = env("MATCH", 0);
+            if m > 0 {
+                match_reading(&net, m, env("MATCH_SECS", 180), threads);
+                return;
+            }
             report_all(&courses, held, threads, Some(&net));
             return;
         }
@@ -736,7 +956,8 @@ mod harness {
         let out = std::path::PathBuf::from(env("OUT", "build/train".to_string()));
         std::fs::create_dir_all(&out).unwrap();
         let shape = match std::env::var("START") {
-            Ok(f) if !f.is_empty() => Net::load(std::path::Path::new(&f)).expect("START: a net"),
+            // A net of the senses before the shell contact, widened (LR 100).
+            Ok(f) if !f.is_empty() => Net::load(std::path::Path::new(&f)).expect("START: a net").widen(crate::senses::SENSES),
             _ => Net::tank(env("NET_SEED", 1)),
         };
         let gens: usize = env("GENS", 200);

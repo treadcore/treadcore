@@ -18,7 +18,7 @@
 
 use treadcore_sim::map::{Map, Terrain};
 use crate::calls::{Call, CALL_KINDS, CALL_LIFE};
-use treadcore_sim::rules::{BAY_FULL, DIRECT_RANGE, PILLBOX_RANGE, PILLBOY_MATERIAL_MAX, RELOAD_TICKS, TANK_ARMOR, TANK_SHELLS, TANK_SPEED};
+use treadcore_sim::rules::{BAY_FULL, DIRECT_RANGE, PILLBOX_RANGE, SPLASH_RADIUS, PILLBOY_MATERIAL_MAX, RELOAD_TICKS, TANK_ARMOR, TANK_SHELLS, TANK_SPEED};
 use treadcore_sim::*;
 
 /// The compass's sectors.
@@ -34,15 +34,29 @@ pub const NAV: usize = 6;
 pub const CONTACTS: usize = 6 + 3 + 3 + 6;
 /// The hints' numbers (`Hints`).
 pub const HINTS: usize = 9;
+/// The shell contact's numbers (`ShellContact`, LR 100).
+pub const SHELL: usize = 5;
+/// The air contact's numbers (`AirContact`, LR 100).
+pub const AIR: usize = 5;
 /// Every sense: the compass, the body, the instruments, the periscope,
-/// the hints.
-pub const SENSES: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS;
+/// the hints, the shell contact, the air contact. Each block added since
+/// LR 97 goes last, so an older net is widened with zeros
+/// (`Net::widen`) and computes what it did.
+pub const SENSES: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS + SHELL + AIR;
+/// The senses before the shell contact (LR 97 to 99).
+pub const SENSES_BEFORE_SHELL: usize = SENSES - SHELL - AIR;
 /// Where the instruments start.
 pub const AT_NAV: usize = SECTORS * CHANNELS + BODY;
 /// Where the periscope starts.
 pub const AT_CONTACTS: usize = AT_NAV + NAV;
 /// Where the hints start.
 pub const AT_HINTS: usize = AT_CONTACTS + CONTACTS;
+/// Where the shell contact starts.
+pub const AT_SHELL: usize = AT_HINTS + HINTS;
+/// Where the air contact starts.
+pub const AT_AIR: usize = AT_SHELL + SHELL;
+/// Interceptors up that read as a full bubble.
+pub const BUBBLE_FULL: usize = 4;
 /// Ticks a hit is felt after it lands: 2 s.
 pub const HURT_FOR: Tick = 2 * TICK_HZ as Tick;
 
@@ -126,6 +140,42 @@ pub enum Contact {
 /// The dot product.
 fn dot(a: V2, b: V2) -> f32 {
     a.x * b.x + a.y * b.y
+}
+
+/// The shell contact, in order from `AT_SHELL` (LR 100): the soonest
+/// hostile shell landing within `SHELL_HORIZON`. The compass's
+/// ShellComing channel folds how soon and how near into one number at
+/// 45 degrees; a dodge wants both apart, and exactly.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShellContact {
+    /// The impact's bearing from the heading, sine (right +) and cosine
+    /// (ahead +).
+    Sin,
+    Cos,
+    /// The impact's distance: 1 on the tank, 0 at `GROUND_REACH` or more.
+    Near,
+    /// How soon: 1 landing now, 0 at `SHELL_HORIZON`.
+    Soon,
+    /// 1 if the tank stands inside the splash now.
+    Inside,
+}
+
+/// The air contact, in order from `AT_AIR` (LR 100): the nearest
+/// hostile drone seen, and the tank's own bubble. A strike drone does
+/// 35 and a tank with no interceptors up has nothing to stop it: on the
+/// survival maps it was what killed the net.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AirContact {
+    /// Its bearing from the heading, sine (right +) and cosine (ahead +).
+    Sin,
+    Cos,
+    /// Its distance: 1 on the tank, 0 at `GROUND_REACH` or more.
+    Near,
+    /// 1 for a strike or a longshot (it dives), 0 for a recon or an
+    /// interceptor.
+    Threat,
+    /// The tank's own interceptors up, a share of `BUBBLE_FULL`.
+    Bubble,
 }
 
 /// A periscope bearing: the sine and cosine of `to`'s bearing from the
@@ -291,6 +341,21 @@ pub fn sense(obs: &Observation, map: Option<&Map>, hints: Option<&Hints>, calls:
         s[c + 12..c + 15].copy_from_slice(&[sn, cs, st * fresh(call)]);
         s[c + 15 + CALL_KINDS.iter().position(|k| *k == call.kind).unwrap_or(0)] = 1.0;
     }
+    if let Some(sh) = obs.shells.iter().filter(|sh| !obs.allied(sh.owner) && sh.impact_tick >= obs.tick && sh.impact_tick - obs.tick <= SHELL_HORIZON).min_by_key(|sh| sh.impact_tick) {
+        let (sn, cs, _) = bearing(me, sh.impact);
+        let d = sh.impact.dist(me.pos);
+        let soon = 1.0 - (sh.impact_tick - obs.tick) as f32 / SHELL_HORIZON as f32;
+        s[AT_SHELL..AT_SHELL + SHELL].copy_from_slice(&[sn, cs, (1.0 - d / GROUND_REACH).clamp(0.0, 1.0), soon, if d <= SPLASH_RADIUS { 1.0 } else { 0.0 }]);
+    }
+    if let Some(d) = obs.drones.iter().filter(|d| !obs.allied(d.owner)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+        let (sn, cs, _) = bearing(me, d.pos);
+        s[AT_AIR] = sn;
+        s[AT_AIR + 1] = cs;
+        s[AT_AIR + 2] = (1.0 - d.pos.dist(me.pos) / GROUND_REACH).clamp(0.0, 1.0);
+        s[AT_AIR + 3] = if matches!(d.kind, DroneKind::Strike | DroneKind::Longshot) { 1.0 } else { 0.0 };
+    }
+    let mine = obs.drones.iter().filter(|d| d.owner == obs.player && d.kind == DroneKind::Interceptor).count();
+    s[AT_AIR + 4] = (mine as f32 / BUBBLE_FULL as f32).min(1.0);
     if let Some(h) = hints {
         let k = AT_HINTS;
         s[k..k + 5].copy_from_slice(&h.posture.map(|v| v.clamp(0.0, 1.0)));
@@ -420,5 +485,44 @@ mod tests {
         assert_eq!(s[AT_CONTACTS + Contact::CallTake as usize], 1.0);
         assert_eq!(s[AT_CONTACTS + Contact::CallHelp as usize], 0.0);
         assert!((s[AT_CONTACTS + Contact::CallSin as usize] + 1.0).abs() < 1e-3);
+    }
+
+    /// The shell contact (LR 100): a shell landing 4 tiles dead ahead in
+    /// 1 s reads sine 0, cosine 1, nearness 1 - 4/16, soon 0.75, and
+    /// outside the splash; nothing for a shell of a friend.
+    #[test]
+    fn the_shell_contact_reads_where_and_when() {
+        let mut w = world();
+        w.tanks[0].heading = 0.0;
+        let me = w.tanks[0].pos;
+        let at_ = me + V2::new(4.0, 0.0);
+        w.shells.push(Shell { id: 90_001, owner: 1, kind: ShellKind::Indirect, from: at_ + V2::new(30.0, 0.0), aim: at_, impact: at_, launch_tick: 0, impact_tick: TICK_HZ as Tick, spotted: true });
+        let s = sense(&w.observe(0), None, None, &[]).expect("a tank");
+        let c = |k: ShellContact| s[AT_SHELL + k as usize];
+        assert!(c(ShellContact::Sin).abs() < 1e-3 && (c(ShellContact::Cos) - 1.0).abs() < 1e-3);
+        assert!((c(ShellContact::Near) - (1.0 - 4.0 / GROUND_REACH)).abs() < 1e-4);
+        assert!((c(ShellContact::Soon) - 0.75).abs() < 1e-4 && c(ShellContact::Inside) == 0.0);
+        w.shells[0].owner = 0;
+        let s = sense(&w.observe(0), None, None, &[]).expect("a tank");
+        assert!(s[AT_SHELL..AT_SHELL + SHELL].iter().all(|v| *v == 0.0));
+    }
+
+    /// The air contact (LR 100): a hostile strike drone 4 tiles to the
+    /// right reads sine 1, cosine 0, nearness 1 - 4/16, a threat; the
+    /// tank's own interceptors read as its bubble, a share of four.
+    #[test]
+    fn the_air_contact_reads_a_strike_and_the_bubble() {
+        let mut w = world();
+        w.tanks[0].heading = 0.0;
+        let me = w.tanks[0].pos;
+        let mk = |id: EntityId, owner: PlayerId, kind: DroneKind, pos: V2| Drone { id, owner, kind, pos, heading: 0.0, battery: 60.0, tether: None, task: DroneTask::Return, link: 1.0, phase: 0.0, jammed: false, mark: 1 };
+        w.drones.push(mk(91_001, 1, DroneKind::Strike, me + V2::new(0.0, 4.0)));
+        w.drones.push(mk(91_002, 0, DroneKind::Interceptor, me + V2::new(1.0, 0.0)));
+        w.drones.push(mk(91_003, 0, DroneKind::Interceptor, me + V2::new(-1.0, 0.0)));
+        let s = sense(&w.observe(0), None, None, &[]).expect("a tank");
+        let c = |k: AirContact| s[AT_AIR + k as usize];
+        assert!((c(AirContact::Sin) - 1.0).abs() < 1e-3 && c(AirContact::Cos).abs() < 1e-3, "right: {} {}", c(AirContact::Sin), c(AirContact::Cos));
+        assert!((c(AirContact::Near) - (1.0 - 4.0 / GROUND_REACH)).abs() < 1e-4 && c(AirContact::Threat) == 1.0);
+        assert!((c(AirContact::Bubble) - 0.5).abs() < 1e-6);
     }
 }

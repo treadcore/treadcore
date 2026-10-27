@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-22 files, 480 functions (0 with no doc comment; 37 more are a trait's, documented by it), 118 tests.
+22 files, 489 functions (0 with no doc comment; 39 more are a trait's, documented by it), 122 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -20,15 +20,15 @@ structure as built is `checkins/`.
 | [`fortify.rs`](#fortifyrs) | 679 | 25 | 0 | 2 | Fortification to a plan (roadmap step 11b): a castle's gate. |
 | [`hop.rs`](#hoprs) | 938 | 25 | 0 | 1 | Island hopping: a bot that has taken everything it can reach goes for what it cannot, across the water. |
 | [`intent.rs`](#intentrs) | 186 | 9 | 0 | 3 | Holding a decision (roadmap step 12d, LAB-REPORT-BRAIN.md section 7). |
-| [`learn.rs`](#learnrs) | 762 | 31 | 0 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
+| [`learn.rs`](#learnrs) | 983 | 37 | 0 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
 | [`ledger.rs`](#ledgerrs) | 489 | 13 | 0 | 4 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
 | [`lib.rs`](#librs) | 2940 | 66 | 0 | 20 | treadcore-brain -- the controller interface, and one controller. |
 | [`memory.rs`](#memoryrs) | 101 | 10 | 0 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
 | [`meter.rs`](#meterrs) | 558 | 30 | 0 | 4 | What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure first"). |
-| [`net.rs`](#netrs) | 499 | 19 | 0 | 5 | A learned tank (LR 95, 96): a small net from the senses (senses.rs) to an action, and the Brain that drives by it. |
+| [`net.rs`](#netrs) | 593 | 21 | 0 | 7 | A learned tank (LR 95, 96): a small net from the senses (senses.rs) to an action, and the Brain that drives by it. |
 | [`rotation.rs`](#rotationrs) | 301 | 7 | 0 | 3 | Rotation (Paul, 17 October: "every bot should have a push point, and a defense point. |
-| [`scenario.rs`](#scenariors) | 995 | 17 | 0 | 6 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
-| [`senses.rs`](#sensesrs) | 424 | 8 | 0 | 5 | The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map. |
+| [`scenario.rs`](#scenariors) | 1040 | 18 | 0 | 6 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
+| [`senses.rs`](#sensesrs) | 528 | 8 | 0 | 7 | The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map. |
 | [`status.rs`](#statusrs) | 357 | 9 | 0 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
 | [`tactics.rs`](#tacticsrs) | 694 | 16 | 0 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
 | [`weights.rs`](#weightsrs) | 592 | 28 | 0 | 6 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
@@ -428,37 +428,43 @@ Training the learned tank (LR 95, 97): the phases' training grounds and evolutio
 | 171 | `score` | Task | yes | An episode's score, the reward summed. |
 | 188 | `passed` | Task | yes | Whether an episode passed its phase's test: within `REACH` inside the minute; a direct hit on the enemy inside the minute. |
 | 195 | `play` |  | yes | One episode of a brain on a ground. |
-| 235 | `normal` |  |  | A normal draw (Box and Muller). |
-| 242 | `direction` |  |  | The noise of one pair of a generation: a direction, from its seed. |
-| 248 | `spread` |  | yes | Run `jobs` jobs on `threads` threads, results in order. |
-| 280 | `parse` | Course | yes | `phase1`, `phase3`, or a scenario file's path. |
-| 298 | `name` | Course | yes | The course's name in the trainer's lines: the task, or the file's stem. |
-| 307 | `floor` | Course | yes | The share of held-out episodes it must pass: a file's `floor`, else 95%. |
-| 317 | `scripted` | Course | yes | The same file with its net seats given to the scripted brain (`kind = "commander"`, on Auto): what the scripted brain does on the same situations. |
-| 338 | `prepare` |  | yes | Episode `k` of a generation: the courses in turn. |
-| 346 | `episode` |  | yes | A net on one episode: its score, and whether it passed. |
-| 361 | `judge` |  | yes | A net on episodes: the mean score, and the share passed. |
-| 397 | `new` | Adam | yes | Moments at zero for `n` weights. |
-| 402 | `step` | Adam | yes | Move `theta` up the gradient `g`. |
-| 430 | `generation` |  | yes | One generation: pairs of directions played forward and back on `seeds` episodes drawn from `gen_seed` (the courses in turn, so a mix rehearses what was learned before), ranked, and the weights moved. |
-| 475 | `check` |  | yes | A brain's reading on held-out grounds: for each target, the share passed and its standard error, and the mean score. |
-| 527 | `name` |  |  | *(the `Brain` trait's)* |
-| 530 | `think` |  |  | *(the `Brain` trait's)* |
-| 541 | `name` |  |  | *(the `Brain` trait's)* |
-| 544 | `think` |  |  | *(the `Brain` trait's)* |
-| 615 | `env` |  |  | A setting from the environment, or `d` when unset, empty or unread. |
-| 621 | `report` |  |  | Prints a net's reading on held-out grounds, each target's share passed with its standard error. |
-| 644 | `baseline` |  |  | The scripted bot on the same held-out grounds: its share passed and, shooting, its hits a shot (a reference, LR 97). |
-| 659 | `report_file` |  |  | A training map read on held-out seeds, by a net or (with none) by the scripted brain in its seats: the share passed with its error, the mean reward, and whether it reaches the map's floor. |
-| 685 | `report_all` |  |  | A net (or with none, the scripted brain) on every course's held-out seeds. |
+| 237 | `normal` |  |  | A normal draw (Box and Muller). |
+| 244 | `direction` |  |  | The noise of one pair of a generation: a direction, from its seed. |
+| 250 | `spread` |  | yes | Run `jobs` jobs on `threads` threads, results in order. |
+| 282 | `parse` | Course | yes | `phase1`, `phase3`, or a scenario file's path. |
+| 300 | `name` | Course | yes | The course's name in the trainer's lines: the task, or the file's stem. |
+| 309 | `floor` | Course | yes | The share of held-out episodes it must pass: a file's `floor`, else 95%. |
+| 319 | `scripted` | Course | yes | The same file with its net seats given to the scripted brain (`kind = "commander"`, on Auto): what the scripted brain does on the same situations. |
+| 340 | `prepare` |  | yes | Episode `k` of a generation: the courses in turn. |
+| 348 | `episode` |  | yes | A net on one episode: its score, and whether it passed. |
+| 363 | `judge` |  | yes | A net on episodes: the mean score, and the share passed. |
+| 399 | `new` | Adam | yes | Moments at zero for `n` weights. |
+| 404 | `step` | Adam | yes | Move `theta` up the gradient `g`. |
+| 432 | `generation` |  | yes | One generation: pairs of directions played forward and back on `seeds` episodes drawn from `gen_seed` (the courses in turn, so a mix rehearses what was learned before), ranked, and the weights moved. |
+| 477 | `check` |  | yes | A brain's reading on held-out grounds: for each target, the share passed and its standard error, and the mean score. |
+| 529 | `name` |  |  | *(the `Brain` trait's)* |
+| 532 | `think` |  |  | *(the `Brain` trait's)* |
+| 543 | `name` |  |  | *(the `Brain` trait's)* |
+| 546 | `think` |  |  | *(the `Brain` trait's)* |
+| 617 | `env` |  |  | A setting from the environment, or `d` when unset, empty or unread. |
+| 623 | `report` |  |  | Prints a net's reading on held-out grounds, each target's share passed with its standard error. |
+| 652 | `baseline` |  |  | The scripted bot on the same held-out grounds: its share passed and, shooting, its hits a shot (a reference, LR 97). |
+| 667 | `report_file` |  |  | A training map read on held-out seeds, by a net or (with none) by the scripted brain in its seats: the share passed with its error, the mean reward, and whether it reaches the map's floor. |
+| 693 | `report_all` |  |  | A net (or with none, the scripted brain) on every course's held-out seeds. |
+| 720 | `match_minutes` |  |  | The match reading (LR 100): seat 9 of a dealt match (a ranger of team 0, whom nobody follows) given to the net, or kept by its scripted brain, on a map from the seed, three respawns, for `secs`: when the seat first we... |
+| 751 | `match_reading` |  |  | `MATCH=n`: the match reading over n seeds from 8,000,000, the net (`CHECK`) and the scripted ranger on the same seeds. |
+| 772 | `name` |  |  | *(the `Brain` trait's)* |
+| 775 | `think` |  |  | *(the `Brain` trait's)* |
+| 809 | `sim_dodge` |  |  | The bound by simulation (LR 100): map 5's situation built here (the tank rolling at full speed on a heading the seed draws, a shell landing within 2.5 tiles of it in 1.5 to 3.5 s), and every 0.2 s each of the nine dri... |
+| 893 | `probe` |  |  | `PROBE=oracle GROUND=map`: the oracle in the net's seat on the held-out seeds. |
 
 Tests (5):
 
-- `a_ground_is_open_and_its_target_is_there` (line 502): The grounds: the tank at the centre on grass, the target where the ground says and of its kind, open ground between, and a seed the same ground twice.
-- `a_straight_drive_reaches_and_a_still_tank_does_not` (line 524): The ground is fair: a brain that drives straight at the target reaches each kind well inside the minute; one that holds never does; and an enemy shot at from inside the gun's reach is hit.
-- `a_training_map_is_a_course` (line 567): The training maps (LR 99): every file under `scenarios/training/` reads as a course (a net seat, known reward terms); a net plays one the same way twice; its scripted reading puts a Commander in the net's seat; a rewa...
-- `evolution_moves_the_weights_the_same_way_twice` (line 594): Evolution moves the weights: on a few grounds, a handful of generations raise the score, and a generation's seed gives the same move twice.
-- `train` (line 717): The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a comma list of courses (`phase1`, `phase3`, training maps' paths) trained together, each episode the next course in turn.
+- `a_ground_is_open_and_its_target_is_there` (line 504): The grounds: the tank at the centre on grass, the target where the ground says and of its kind, open ground between, and a seed the same ground twice.
+- `a_straight_drive_reaches_and_a_still_tank_does_not` (line 526): The ground is fair: a brain that drives straight at the target reaches each kind well inside the minute; one that holds never does; and an enemy shot at from inside the gun's reach is hit.
+- `a_training_map_is_a_course` (line 569): The training maps (LR 99): every file under `scenarios/training/` reads as a course (a net seat, known reward terms); a net plays one the same way twice; its scripted reading puts a Commander in the net's seat; a rewa...
+- `evolution_moves_the_weights_the_same_way_twice` (line 596): Evolution moves the weights: on a few grounds, a handful of generations raise the score, and a generation's seed gives the same move twice.
+- `train` (line 912): The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a comma list of courses (`phase1`, `phase3`, training maps' paths) trained together, each episode the next course in turn.
 
 ## ledger.rs
 
@@ -654,33 +660,37 @@ A learned tank (LR 95, 96): a small net from the senses (senses.rs) to an action
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 100 | `random` | Net | yes | A net of the given sizes (inputs, hidden..., outputs), its weights drawn from a seed: uniform within +/- sqrt(6 / (in + out)), so a layer's outputs start the size of its inputs (Glorot and Bengio 2010); biases 0. |
-| 120 | `tank` | Net | yes | The first nets' shape: the senses, `HIDDEN`, the heads. |
-| 128 | `parameters` | Net | yes | Its weights and biases in one count. |
-| 133 | `forward` | Net | yes | The outputs for these inputs. |
-| 151 | `flat` | Net | yes | Every weight and bias, layer by layer, as one vector (for a trainer that moves them all at once). |
-| 156 | `with_flat` | Net | yes | The same shape with these weights (`flat`'s order). |
-| 175 | `save` | Net | yes | Written as: the magic, the count of sizes, the sizes (u32), then each layer's weights and biases (f32), all little-endian. |
-| 192 | `load` | Net | yes | A net read from `save`'s form; an error for a file that is not one, or whose weights do not fit its sizes. |
-| 216 | `choose` |  | yes | Each head's choice: the highest score among those `allowed`. |
-| 248 | `new` | NetBrain | yes | A brain driven by `net`, which must take the senses and score the heads; its own queue of calls until `with_calls`. |
-| 255 | `with_calls` | NetBrain | yes | The same, sharing a team's queue of calls (one a team a match). |
-| 263 | `call_at` | NetBrain |  | Where a call of this kind would point: me for help, the nearest enemy seen (tank, else live hostile pillbox) for attack, the nearest thing to take for take. |
-| 273 | `tank_in` | NetBrain |  | The strongest hostile tank in sector k, if any. |
-| 280 | `gun_target` | NetBrain |  | What the gun fires at in sector k: its nearest hostile tank in the direct gun's reach (with the tank, for the lead), else its nearest live hostile pillbox in reach (a pillbox sits still). |
-| 293 | `mortar_target` | NetBrain |  | The strongest hostile in sector k the mortar can reach: a tank, else a live hostile pillbox. |
-| 302 | `name` | NetBrain |  | *(the `Brain` trait's)* |
-| 306 | `think` | NetBrain |  | *(the `Brain` trait's)* |
-| 310 | `think_on` | NetBrain |  | *(the `Brain` trait's)* |
-| 378 | `status` | NetBrain |  | *(the `Brain` trait's)* |
+| 103 | `random` | Net | yes | A net of the given sizes (inputs, hidden..., outputs), its weights drawn from a seed: uniform within +/- sqrt(6 / (in + out)), so a layer's outputs start the size of its inputs (Glorot and Bengio 2010); biases 0. |
+| 123 | `tank` | Net | yes | The first nets' shape: the senses, `HIDDEN`, the heads. |
+| 133 | `widen` | Net | yes | The same net taking `inputs` inputs, the new ones last with zero weights: it computes exactly what it did on the inputs it had (LR 100: a net of the 133 senses before the shell contact). |
+| 149 | `parameters` | Net | yes | Its weights and biases in one count. |
+| 154 | `forward` | Net | yes | The outputs for these inputs. |
+| 172 | `flat` | Net | yes | Every weight and bias, layer by layer, as one vector (for a trainer that moves them all at once). |
+| 177 | `with_flat` | Net | yes | The same shape with these weights (`flat`'s order). |
+| 196 | `save` | Net | yes | Written as: the magic, the count of sizes, the sizes (u32), then each layer's weights and biases (f32), all little-endian. |
+| 213 | `load` | Net | yes | A net read from `save`'s form; an error for a file that is not one, or whose weights do not fit its sizes. |
+| 237 | `choose` |  | yes | Each head's choice: the highest score among those `allowed`. |
+| 269 | `new` | NetBrain | yes | A brain driven by `net`, which must take the senses and score the heads; its own queue of calls until `with_calls`. |
+| 279 | `with_calls` | NetBrain | yes | The same, sharing a team's queue of calls (one a team a match). |
+| 287 | `call_at` | NetBrain |  | Where a call of this kind would point: me for help, the nearest enemy seen (tank, else live hostile pillbox) for attack, the nearest thing to take for take. |
+| 297 | `tank_in` | NetBrain |  | The strongest hostile tank in sector k, if any. |
+| 304 | `gun_target` | NetBrain |  | What the gun fires at in sector k: its nearest hostile tank in the direct gun's reach (with the tank, for the lead), else its nearest live hostile pillbox in reach (a pillbox sits still). |
+| 322 | `launch` | NetBrain |  | A drone launch for the drone head's choice c (1 interceptor, 2 recon, 3 strike, 4 longshot), if the bay has one and it has something to do: an interceptor while fewer than `BUBBLE_FULL` are up; a recon while none of m... |
+| 347 | `mortar_target` | NetBrain |  | The strongest hostile in sector k the mortar can reach: a tank, else a live hostile pillbox. |
+| 356 | `name` | NetBrain |  | *(the `Brain` trait's)* |
+| 360 | `think` | NetBrain |  | *(the `Brain` trait's)* |
+| 364 | `think_on` | NetBrain |  | *(the `Brain` trait's)* |
+| 436 | `status` | NetBrain |  | *(the `Brain` trait's)* |
 
-Tests (5):
+Tests (7):
 
-- `a_net_is_its_seed_and_its_file` (line 391): The net: its shape (about 13,000 weights), the same outputs for the same seed, other outputs for another, and a file that reads back as the same net.
-- `the_gun_takes_a_hostile_pillbox_in_reach` (line 411): The gun's target (LR 99): a live hostile pillbox in reach and in the sector when no tank is; never a neutral one, a dead one, or one out of reach.
-- `a_masked_choice_is_never_taken` (line 433): The mask: a head's choice is never one not allowed; hold always is.
-- `a_random_net_drives_a_tank_the_same_way_twice` (line 449): A net drives a tank: random nets seated in a world give orders the world takes (most seeds drive; a net that prefers to hold may not), each its own way, and a seed plays the same match twice.
-- `net_decisions_a_second` (line 485): Decisions a second (phase 0, LR 96): the senses and the net's forward pass for one tank in a world of sixteen, on one thread.
+- `a_net_is_its_seed_and_its_file` (line 449): The net: its shape (about 13,000 weights), the same outputs for the same seed, other outputs for another, and a file that reads back as the same net.
+- `the_gun_takes_a_hostile_pillbox_in_reach` (line 469): The gun's target (LR 99): a live hostile pillbox in reach and in the sector when no tank is; never a neutral one, a dead one, or one out of reach.
+- `a_widened_net_is_the_same_net` (line 492): A widened net (LR 100) computes what it did: the old inputs with zeros after give the old outputs.
+- `the_drone_head_launches_what_it_can` (line 506): The drone head (LR 100): an interceptor while the bubble is short and the bay has one; none with the bay empty; a strike only at a hostile tank in reach; a recon only while none is up.
+- `a_masked_choice_is_never_taken` (line 527): The mask: a head's choice is never one not allowed; hold always is.
+- `a_random_net_drives_a_tank_the_same_way_twice` (line 543): A net drives a tank: random nets seated in a world give orders the world takes (most seeds drive; a net that prefers to hold may not), each its own way, and a seed plays the same match twice.
+- `net_decisions_a_second` (line 579): Decisions a second (phase 0, LR 96): the senses and the net's forward pass for one tank in a world of sixteen, on one thread.
 
 ## rotation.rs
 
@@ -714,26 +724,27 @@ Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48
 | 85 | `parse` |  | yes | Read the TOML subset; an error names its line. |
 | 125 | `strip_comment` |  |  | A line without its `#` comment (a `#` inside a string stays). |
 | 138 | `value_of` |  |  | One value from the front of `s`, and what is left after it. |
-| 218 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
-| 227 | `run_seeded` |  | yes | As `run`, on a seed: the world's (`Scenario::seed`, so its map outside what the file carves) and every brain's (theirs xor it), so a run over many seeds samples the scenario's chances (`many`). |
-| 234 | `run_net` |  | yes | As `run_seeded`, with a net for each `kind = "net"` brain that names no `file` (the trainer's, LR 99). |
-| 636 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
-| 645 | `check` |  |  | Every expectation that failed, in words. |
-| 789 | `reward` |  | yes | What a training episode earned (LR 99): the sum of the file's `[reward]` terms for the learner's seat (`learner`, 0). |
-| 816 | `many` |  | yes | A scenario over `runs` seeds (`first`, `first + 1`, ...): how many held, the share, and its standard error, sqrt(p (1 - p) / n). |
-| 834 | `set_weights` |  | yes | `SCENARIO_SET="name=value ..."`: those weights set on every brain in the file that holds them (a RuleBot, only the landfall's three), added to its `weights` or a new one, so two settings run on the same seeds. |
-| 855 | `find` |  | yes | A path as given, or from the top of the tree when it is not found there (`cargo test` runs in the crate's folder). |
-| 864 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
-| 874 | `dir` |  |  | The scenarios, at the top of the tree. |
+| 224 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
+| 233 | `run_seeded` |  | yes | As `run`, on a seed: the world's (`Scenario::seed`, so its map outside what the file carves) and every brain's (theirs xor it), so a run over many seeds samples the scenario's chances (`many`). |
+| 240 | `run_net` |  | yes | As `run_seeded`, with a net for each `kind = "net"` brain that names no `file` (the trainer's, LR 99). |
+| 246 | `run_with` |  | yes | As `run_net`, with `make` giving the brain for each `kind = "net"` seat instead (a probe of the net's actions, LR 100). |
+| 666 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
+| 675 | `check` |  |  | Every expectation that failed, in words. |
+| 832 | `reward` |  | yes | What a training episode earned (LR 99): the sum of the file's `[reward]` terms for the learner's seat (`learner`, 0). |
+| 861 | `many` |  | yes | A scenario over `runs` seeds (`first`, `first + 1`, ...): how many held, the share, and its standard error, sqrt(p (1 - p) / n). |
+| 879 | `set_weights` |  | yes | `SCENARIO_SET="name=value ..."`: those weights set on every brain in the file that holds them (a RuleBot, only the landfall's three), added to its `weights` or a new one, so two settings run on the same seeds. |
+| 900 | `find` |  | yes | A path as given, or from the top of the tree when it is not found there (`cargo test` runs in the crate's folder). |
+| 909 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
+| 919 | `dir` |  |  | The scenarios, at the top of the tree. |
 
 Tests (6):
 
-- `a_weight_is_set_on_every_brain` (line 883): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
-- `the_subset_reads_values_tables_and_lists` (line 894)
-- `every_scenario_holds` (line 906): Every file under `scenarios/` holds.
-- `scenario_many` (line 926): One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with `SCENARIO_SET` applied: how often it holds.
-- `every_family_holds_its_floor` (line 947): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
-- `scenario_one` (line 978): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
+- `a_weight_is_set_on_every_brain` (line 928): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
+- `the_subset_reads_values_tables_and_lists` (line 939)
+- `every_scenario_holds` (line 951): Every file under `scenarios/` holds.
+- `scenario_many` (line 971): One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with `SCENARIO_SET` applied: how often it holds.
+- `every_family_holds_its_floor` (line 992): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
+- `scenario_one` (line 1023): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
 
 ## senses.rs
 
@@ -741,22 +752,24 @@ The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers fr
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 127 | `dot` |  |  | The dot product. |
-| 133 | `bearing` |  |  | A periscope bearing: the sine and cosine of `to`'s bearing from the tank's heading, and its strength. |
-| 162 | `strength` |  | yes | A signal's strength from its distance. |
-| 167 | `sector` |  | yes | The sector a bearing falls in, relative to `heading`. |
-| 173 | `sector_heading` |  | yes | The heading at the middle of a sector. |
-| 178 | `at` |  | yes | The index of a sector's channel in the senses. |
-| 184 | `sense` |  | yes | Everything the tank feels this tick, or None when it has no tank. |
-| 313 | `world` |  |  | Two tanks on a generated map, no pillbox, depot or swarm. |
+| 141 | `dot` |  |  | The dot product. |
+| 183 | `bearing` |  |  | A periscope bearing: the sine and cosine of `to`'s bearing from the tank's heading, and its strength. |
+| 212 | `strength` |  | yes | A signal's strength from its distance. |
+| 217 | `sector` |  | yes | The sector a bearing falls in, relative to `heading`. |
+| 223 | `sector_heading` |  | yes | The heading at the middle of a sector. |
+| 228 | `at` |  | yes | The index of a sector's channel in the senses. |
+| 234 | `sense` |  | yes | Everything the tank feels this tick, or None when it has no tank. |
+| 378 | `world` |  |  | Two tanks on a generated map, no pillbox, depot or swarm. |
 
-Tests (5):
+Tests (7):
 
-- `a_tank_to_the_right_is_felt_to_the_right` (line 324): The compass: a hostile tank set due right of a tank facing any way lights the right sector's hostile channel at its strength, and nothing else lights.
-- `the_body_reads_as_shares` (line 349): The body: armour, shells and reload read as shares; a dead tank feels nothing.
-- `the_ground_ray_finds_a_wall` (line 365): The ground ray: open ground ahead reads 0; a wall 4 tiles ahead (its tile begins 3 to 4 tiles off, the ray's last open step half a tile short of it) reads between 1 - 3.5 / 16 and 1 - 2.5 / 16.
-- `the_periscope_reads_an_enemy_exactly` (line 388): The periscope: an enemy dead right of the tank reads bearing sine 1 and cosine 0 at its strength, in reach at 6 tiles; driving at the tank it closes, pointing at it its aspect is 1; turned away, 0.
-- `a_friends_call_is_felt_where_it_points` (line 413): A friend's call: felt in its sector's Call channel and as the call contact, with its kind.
+- `a_tank_to_the_right_is_felt_to_the_right` (line 389): The compass: a hostile tank set due right of a tank facing any way lights the right sector's hostile channel at its strength, and nothing else lights.
+- `the_body_reads_as_shares` (line 414): The body: armour, shells and reload read as shares; a dead tank feels nothing.
+- `the_ground_ray_finds_a_wall` (line 430): The ground ray: open ground ahead reads 0; a wall 4 tiles ahead (its tile begins 3 to 4 tiles off, the ray's last open step half a tile short of it) reads between 1 - 3.5 / 16 and 1 - 2.5 / 16.
+- `the_periscope_reads_an_enemy_exactly` (line 453): The periscope: an enemy dead right of the tank reads bearing sine 1 and cosine 0 at its strength, in reach at 6 tiles; driving at the tank it closes, pointing at it its aspect is 1; turned away, 0.
+- `a_friends_call_is_felt_where_it_points` (line 478): A friend's call: felt in its sector's Call channel and as the call contact, with its kind.
+- `the_shell_contact_reads_where_and_when` (line 494): The shell contact (LR 100): a shell landing 4 tiles dead ahead in 1 s reads sine 0, cosine 1, nearness 1 - 4/16, soon 0.75, and outside the splash; nothing for a shell of a friend.
+- `the_air_contact_reads_a_strike_and_the_bubble` (line 514): The air contact (LR 100): a hostile strike drone 4 tiles to the right reads sine 1, cosine 0, nearness 1 - 4/16, a threat; the tank's own interceptors read as its bubble, a share of four.
 
 ## status.rs
 

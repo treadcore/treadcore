@@ -88,7 +88,8 @@
 #                    GENS, PAIRS, SEEDS, THREADS, START (a net to begin
 #                    from), OUT (build/train), NAME; CHECK=net.bin reads a
 #                    net on the held-out seeds only; BASELINE=1 reads the
-#                    scripted brain first
+#                    scripted brain first; with CHECK, MATCH=n reads the
+#                    net in one seat of n dealt matches' first 3 minutes
 #   make roundrobin  the census for every ordered pair of profiles/*.weights
 #                    and the defaults: the payoff matrix (scripts/roundrobin.sh;
 #                    PROFILES, SEEDS, SEED0, MAP)
@@ -307,7 +308,7 @@ ledger:
 	@python3 -I scripts/ledger.py build/census > build/ledger.tsv && echo "build/ledger.tsv: $$(($$(wc -l < build/ledger.tsv) - 1)) censuses"
 
 train:
-	@PHASE="$(or $(PHASE),1)" OUT="$(abspath $(or $(OUT),build/train))" START="$(if $(START),$(abspath $(START)))" CHECK="$(if $(CHECK),$(abspath $(CHECK)))" GROUND="$(GROUND)" NAME="$(NAME)" HELD="$(HELD)" GENS="$(GENS)" PAIRS="$(PAIRS)" SEEDS="$(SEEDS)" THREADS="$(THREADS)" BASELINE="$(BASELINE)" \
+	@PHASE="$(or $(PHASE),1)" OUT="$(abspath $(or $(OUT),build/train))" START="$(if $(START),$(abspath $(START)))" CHECK="$(if $(CHECK),$(abspath $(CHECK)))" GROUND="$(GROUND)" PROBE="$(PROBE)" MATCH="$(MATCH)" NAME="$(NAME)" HELD="$(HELD)" GENS="$(GENS)" PAIRS="$(PAIRS)" SEEDS="$(SEEDS)" THREADS="$(THREADS)" BASELINE="$(BASELINE)" \
 		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
 
 roundrobin:

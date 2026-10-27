@@ -192,6 +192,12 @@ pub struct Outcome {
     pub hit_damage: Vec<f32>,
     /// Each seat's tank alive at the end.
     pub alive: BTreeMap<PlayerId, bool>,
+    /// Each seat's armour at the start and the end (LR 100).
+    pub armor: BTreeMap<PlayerId, (f32, f32)>,
+    /// When each seat's tank first went down, seconds.
+    pub died_at: BTreeMap<PlayerId, f64>,
+    /// The run's length, seconds (the file's, or when it ended).
+    pub seconds: f64,
     /// Each placed pillbox: the damage it did, the tick each seat first
     /// owned it, and whether it stands at the end.
     pub pillbox_damage: Vec<f32>,
@@ -232,6 +238,12 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
 /// no `file` (the trainer's, LR 99). A team's nets share one queue of
 /// calls.
 pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> Result<(Outcome, Vec<String>), String> {
+    run_with(doc, seed, net, None)
+}
+
+/// As `run_net`, with `make` giving the brain for each `kind = "net"`
+/// seat instead (a probe of the net's actions, LR 100).
+pub fn run_with(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: Option<&dyn Fn() -> Box<dyn Brain>>) -> Result<(Outcome, Vec<String>), String> {
     let seed = seed.or(doc.top.get("seed").and_then(Value::num).map(|s| s as u64));
     let num = |t: &BTreeMap<String, Value>, k: &str, d: f64| t.get(k).and_then(Value::num).unwrap_or(d);
     let players = num(&doc.top, "players", 2.0) as usize;
@@ -333,6 +345,14 @@ pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> R
             _ => num(t, "reload", 0.0),
         };
         tank.reload = (reload * TICK_HZ as f64) as u16;
+        // `armor` (a share of full) and `shells` (a count): a tank that
+        // starts hurt and short (LR 100, the survival maps).
+        if let Some(a) = t.get("armor").and_then(Value::num) {
+            tank.armor = TANK_ARMOR * a as f32;
+        }
+        if let Some(n) = t.get("shells").and_then(Value::num) {
+            tank.shells = n as u16;
+        }
         if tank.speed > 0.0 {
             tank.goal = Some(tank.pos + V2::from_heading(tank.heading).scale(num(t, "drive", 20.0) as f32));
         }
@@ -486,6 +506,7 @@ pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> R
             }
             // `kind = "net"`: a learned tank (LR 99), the net in `file`,
             // else the one the trainer gives.
+            "net" if make.is_some() => make.expect("a maker")(),
             "net" => {
                 let n = match b.get("file").and_then(Value::str) {
                     Some(f) => crate::net::Net::load(&find(f)).map_err(|e| e.to_string())?,
@@ -509,7 +530,9 @@ pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> R
     let mut out = Outcome { pillbox_damage: vec![0.0; pillboxes.len()], pillbox_owned: vec![BTreeMap::new(); pillboxes.len()], depot_owned: vec![BTreeMap::new(); depots.len()], ..Default::default() };
     for t in &w.tanks {
         out.start.insert(t.owner, (t.pos, t.shells));
+        out.armor.insert(t.owner, (t.armor, t.armor));
     }
+    out.seconds = seconds;
     if let Some(Value::Table(t)) = doc.reward.get("closer") {
         let at = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("centre"), t.get("offset"))?;
         out.points.insert("closer".into(), at);
@@ -584,6 +607,9 @@ pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> R
                 _ => {}
             }
         }
+        for t in w.tanks.iter().filter(|t| !t.alive) {
+            out.died_at.entry(t.owner).or_insert(w.tick as f64 / TICK_HZ as f64);
+        }
         for t in &w.tanks {
             if afloat.get(&t.owner) == Some(&true) && !t.boat && t.alive {
                 out.landed.entry(t.owner).or_insert(t.pos);
@@ -602,6 +628,7 @@ pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> R
         }
         if w.over {
             out.over = Some(w.tick as f64 / TICK_HZ as f64);
+            out.seconds = w.tick as f64 / TICK_HZ as f64;
             out.trace.push(format!("{:>5.1} s  the match is over", w.tick as f64 / TICK_HZ as f64));
             break;
         }
@@ -624,6 +651,9 @@ pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> R
     for t in &w.tanks {
         out.end.insert(t.owner, (t.pos, t.shells));
         out.alive.insert(t.owner, t.alive);
+        if let Some(a) = out.armor.get_mut(&t.owner) {
+            a.1 = if t.alive { t.armor } else { 0.0 };
+        }
     }
     for id in &pillboxes {
         out.pillbox_alive.push(w.pillboxes.iter().find(|p| p.id == *id).map(|p| p.alive()).unwrap_or(false));
@@ -761,6 +791,16 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                     failed.push(format!("seat {} {} at the end", s, if up { "alive" } else { "dead" }));
                 }
             }
+            // `armor_at_least = { seat = 0, share = 0.6 }`: alive at the
+            // end with at least that share of full armour (LR 100).
+            "armor_at_least" => {
+                let s = seat.ok_or("armor_at_least: a seat")?;
+                let want = field(t, "share").unwrap_or(1.0) as f32;
+                let have = out.armor.get(&s).map(|a| a.1 / TANK_ARMOR).unwrap_or(0.0);
+                if have + 1e-4 < want {
+                    failed.push(format!("seat {} ended with {:.0}% armour, {:.0}% expected", s, 100.0 * have, 100.0 * want));
+                }
+            }
             "pillbox_alive" => {
                 let k = field(t, "pillbox").unwrap_or(0.0) as usize;
                 let want = t.get("alive") != Some(&Value::Bool(false));
@@ -785,7 +825,10 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
 /// - `depot_taken`, `pillbox_taken`: each placed one the learner owned;
 /// - `pillbox_killed`: each placed pillbox dead at the end;
 /// - `closer = { at = "depot:0", worth = 1 }`: the share of the way to
-///   the point closed, start to end (a potential: no pay for circling).
+///   the point closed, start to end (a potential: no pay for circling);
+/// - `alive_time`: the share of the run the learner's tank lived;
+/// - `armor_gained`: its armour at the end less at the start, a share
+///   of full (dead is none).
 pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
     let me = doc.top.get("learner").and_then(Value::num).unwrap_or(0.0) as PlayerId;
     let mut r = 0.0f32;
@@ -800,6 +843,8 @@ pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
             "depot_taken" => out.depot_owned.iter().filter(|o| o.contains_key(&me)).count() as f32,
             "pillbox_taken" => out.pillbox_owned.iter().filter(|o| o.contains_key(&me)).count() as f32,
             "pillbox_killed" => out.pillbox_alive.iter().filter(|a| !**a).count() as f32,
+            "alive_time" => (out.died_at.get(&me).copied().unwrap_or(out.seconds) / out.seconds.max(1e-6)) as f32,
+            "armor_gained" => out.armor.get(&me).map(|a| (a.1 - a.0) / TANK_ARMOR).unwrap_or(0.0),
             "closer" => match (out.points.get("closer"), out.start.get(&me), out.end.get(&me)) {
                 (Some(p), Some(a), Some(b)) => ((a.0.dist(*p) - b.0.dist(*p)) / a.0.dist(*p).max(1.0)).clamp(-1.0, 1.0),
                 _ => 0.0,

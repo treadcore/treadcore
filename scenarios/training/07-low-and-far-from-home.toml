@@ -1,0 +1,52 @@
+# Training map 7 (AI-BRAINZ-PLAN.md section 9, LAB-REPORT-BRAIN.md
+# section 100): low and far from home. The tank at 30% armour with 2
+# shells, 18 tiles from a depot of its own in any direction; a hostile
+# RuleBot 12 tiles from the tank on any side, drones recalled at half a
+# second. A depot resupplies its own side's tank within 2 tiles.
+# Passed: alive at 60 s with at least 60% armour: it went home.
+name = "low and far from home"
+floor = 0.8
+held = 300
+players = 2
+seconds = 60
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-34, 34]
+y = [-34, 34]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [18, 0]
+around = true
+heading = "any"
+armor = 0.3
+shells = 2
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [12, 0]
+around = true
+[[depot]]
+at = "centre"
+owner = 0
+[[event]]
+at = 0.5
+drones = "recall"
+[[brain]]
+seat = 0
+kind = "net"
+[[brain]]
+seat = 1
+kind = "rulebot"
+[expect]
+alive = { seat = 0 }
+armor_at_least = { seat = 0, share = 0.6 }
+[reward]
+closer = { at = "depot:0", worth = 0.5 }
+armor_gained = 2
+alive_time = 1
+damage_taken = -0.01
+pass = 1

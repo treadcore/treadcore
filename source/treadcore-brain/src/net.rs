@@ -13,7 +13,7 @@ use crate::senses::{self, SECTORS, SENSES};
 use crate::Brain;
 use std::io::{Read, Write};
 use treadcore_sim::map::Map;
-use treadcore_sim::rules::{DIRECT_RANGE, INDIRECT_MAX_RANGE, INDIRECT_MIN_RANGE};
+use treadcore_sim::rules::{DIRECT_RANGE, DRONE_LINK, INDIRECT_MAX_RANGE, INDIRECT_MIN_RANGE};
 use treadcore_sim::*;
 
 /// The action heads, in the order of the net's outputs, each a short
@@ -31,7 +31,10 @@ pub enum Head {
     Lead,
     /// Hold, or an indirect shot at the strongest hostile in a sector.
     Mortar,
-    /// Hold, or launch recon, interceptor, strike, longshot (phase 8).
+    /// Hold, or launch an interceptor (the bubble), a recon (orbiting
+    /// ahead), a strike (at the nearest hostile tank in a strike's reach)
+    /// or a longshot (at the nearest hostile structure, pillbox or tank).
+    /// On since LR 100: without its bubble a tank is killed by drones.
     Drone,
     /// Hold, capture, build, mend, harvest, mine, home (phase 8).
     Squad,
@@ -122,6 +125,24 @@ impl Net {
         sizes.extend(HIDDEN);
         sizes.push(OUTPUTS);
         Net::random(&sizes, seed)
+    }
+
+    /// The same net taking `inputs` inputs, the new ones last with zero
+    /// weights: it computes exactly what it did on the inputs it had
+    /// (LR 100: a net of the 133 senses before the shell contact).
+    pub fn widen(&self, inputs: usize) -> Net {
+        let mut n = self.clone();
+        let l = &mut n.layers[0];
+        if inputs > l.inp {
+            let mut w = Vec::with_capacity(inputs * l.out);
+            for o in 0..l.out {
+                w.extend_from_slice(&l.w[o * l.inp..(o + 1) * l.inp]);
+                w.extend(std::iter::repeat(0.0).take(inputs - l.inp));
+            }
+            l.w = w;
+            l.inp = inputs;
+        }
+        n
     }
 
     /// Its weights and biases in one count.
@@ -246,6 +267,9 @@ impl NetBrain {
     /// A brain driven by `net`, which must take the senses and score
     /// the heads; its own queue of calls until `with_calls`.
     pub fn new(net: Net, name: &str) -> NetBrain {
+        // A net of the senses before the shell contact reads them as it
+        // did, the contact at zero weight (LR 100).
+        let net = if net.layers.first().map(|l| l.inp).map(|i| i >= senses::SENSES_BEFORE_SHELL && i < SENSES).unwrap_or(false) { net.widen(SENSES) } else { net };
         assert_eq!(net.layers.first().map(|l| l.inp), Some(SENSES), "a tank's net takes the senses");
         assert_eq!(net.layers.last().map(|l| l.out), Some(OUTPUTS), "a tank's net scores the heads");
         NetBrain { net, name: name.into(), drive: None, last: Vec::new(), calls: Calls::new(), called: None }
@@ -288,6 +312,36 @@ impl NetBrain {
             .map(|b| (b.pos, None))
     }
 
+    /// A drone launch for the drone head's choice c (1 interceptor, 2
+    /// recon, 3 strike, 4 longshot), if the bay has one and it has
+    /// something to do: an interceptor while fewer than `BUBBLE_FULL` are
+    /// up; a recon while none of mine is up, orbiting 8 tiles ahead; a
+    /// strike at the nearest hostile tank within `DRONE_LINK`; a
+    /// longshot at the nearest hostile structure, else live pillbox,
+    /// else tank seen.
+    fn launch(obs: &Observation, me: &Tank, c: usize) -> Option<Command> {
+        let mine = |k: DroneKind| obs.drones.iter().filter(|d| d.owner == obs.player && d.kind == k).count();
+        let near = |a: &V2, b: &V2| a.dist(me.pos).total_cmp(&b.dist(me.pos));
+        match c {
+            1 if me.bay.interceptor > 0 && mine(DroneKind::Interceptor) < senses::BUBBLE_FULL => Some(Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return }),
+            2 if me.bay.recon > 0 && mine(DroneKind::Recon) == 0 => {
+                let center = obs.clamp(me.pos + V2::from_heading(me.heading).scale(8.0));
+                Some(Command::Launch { kind: DroneKind::Recon, task: DroneTask::Orbit { center, radius: 2.0 } })
+            }
+            3 if me.bay.strike > 0 => obs.hostile_tanks().filter(|t| t.pos.dist(me.pos) <= DRONE_LINK).min_by(|a, b| near(&a.pos, &b.pos)).map(|t| Command::Launch { kind: DroneKind::Strike, task: DroneTask::Strike { target: t.id } }),
+            4 if me.bay.longshot > 0 => obs
+                .structures
+                .iter()
+                .filter(|x| x.alive() && x.owner.map(|o| !obs.allied(o)).unwrap_or(false))
+                .map(|x| x.pos)
+                .min_by(near)
+                .or_else(|| obs.pillboxes.iter().filter(|b| b.alive() && b.owner.map(|o| !obs.allied(o)).unwrap_or(false)).map(|b| b.pos).min_by(near))
+                .or_else(|| obs.hostile_tanks().map(|t| t.pos).min_by(near))
+                .map(|at| Command::Launch { kind: DroneKind::Longshot, task: DroneTask::Attack { at } }),
+            _ => None,
+        }
+    }
+
     /// The strongest hostile in sector k the mortar can reach: a tank,
     /// else a live hostile pillbox.
     fn mortar_target(obs: &Observation, me: &Tank, k: usize) -> Option<V2> {
@@ -323,8 +377,9 @@ impl Brain for NetBrain {
             Head::Lead => true,
             Head::Mortar => ready && Self::mortar_target(obs, &me, c - 1).is_some(),
             Head::Signal => self.called.map(|t| obs.tick >= t + CALL_EVERY).unwrap_or(true) && Self::call_at(obs, &me, CALL_KINDS[c - 1]).is_some(),
-            // Their phases: held until then.
-            Head::Drone | Head::Squad => false,
+            Head::Drone => Self::launch(obs, &me, c).is_some(),
+            // Its phase: held until then.
+            Head::Squad => false,
         };
         let picks = choose(&scores, &allowed);
         let pick = |h: Head| picks.iter().find(|(g, _)| *g == h).map(|p| p.1).unwrap_or(0);
@@ -363,6 +418,9 @@ impl Brain for NetBrain {
             }
         } else if let Some(at) = Some(pick(Head::Mortar)).filter(|m| *m > 0).and_then(|m| Self::mortar_target(obs, &me, m - 1)) {
             cmds.push(Command::FireIndirect { at });
+        }
+        if let Some(cmd) = Some(pick(Head::Drone)).filter(|c| *c > 0).and_then(|c| Self::launch(obs, &me, c)) {
+            cmds.push(cmd);
         }
         if let Some(kind) = Some(pick(Head::Signal)).filter(|c| *c > 0).map(|c| CALL_KINDS[c - 1]) {
             if let Some(at) = Self::call_at(obs, &me, kind) {
@@ -428,6 +486,42 @@ mod tests {
         }
     }
 
+    /// A widened net (LR 100) computes what it did: the old inputs
+    /// with zeros after give the old outputs.
+    #[test]
+    fn a_widened_net_is_the_same_net() {
+        let old = Net::random(&[senses::SENSES_BEFORE_SHELL, 64, 64, OUTPUTS], 3);
+        let wide = old.widen(SENSES);
+        let x: Vec<f32> = (0..senses::SENSES_BEFORE_SHELL).map(|i| (i % 5) as f32 / 5.0).collect();
+        let mut xw = x.clone();
+        xw.extend(std::iter::repeat(0.0).take(SENSES - x.len()));
+        assert_eq!(old.forward(&x), wide.forward(&xw));
+        assert_eq!(NetBrain::new(old, "old").net, wide);
+    }
+
+    /// The drone head (LR 100): an interceptor while the bubble is
+    /// short and the bay has one; none with the bay empty; a strike only
+    /// at a hostile tank in reach; a recon only while none is up.
+    #[test]
+    fn the_drone_head_launches_what_it_can() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let me = w.tanks[0].pos;
+        w.tanks[1].pos = me + V2::new(30.0, 0.0);
+        let obs = w.observe(0);
+        let t = w.tanks[0].clone();
+        assert!(matches!(NetBrain::launch(&obs, &t, 1), Some(Command::Launch { kind: DroneKind::Interceptor, .. })));
+        assert!(matches!(NetBrain::launch(&obs, &t, 2), Some(Command::Launch { kind: DroneKind::Recon, .. })));
+        assert!(NetBrain::launch(&obs, &t, 3).is_none(), "no hostile tank within a strike's reach");
+        let mut empty = t.clone();
+        empty.bay.interceptor = 0;
+        assert!(NetBrain::launch(&obs, &empty, 1).is_none(), "an empty bay");
+        w.tanks[1].pos = me + V2::new(8.0, 0.0);
+        let obs = w.observe(0);
+        if t.bay.strike > 0 {
+            assert!(matches!(NetBrain::launch(&obs, &t, 3), Some(Command::Launch { kind: DroneKind::Strike, .. })));
+        }
+    }
+
     /// The mask: a head's choice is never one not allowed; hold always is.
     #[test]
     fn a_masked_choice_is_never_taken() {
@@ -455,7 +549,7 @@ mod tests {
             for _ in 0..600 {
                 let obs = w.observe(0);
                 let cmds = b.think_on(&obs, Some(&w.map));
-                assert!(cmds.len() <= 3, "{:?}", cmds);
+                assert!(cmds.len() <= 4, "{:?}", cmds);
                 orders += cmds.len();
                 let o: Vec<Order> = cmds.into_iter().map(|cmd| Order { player: 0, cmd }).collect();
                 w.step(&o);
