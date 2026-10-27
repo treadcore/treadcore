@@ -1,0 +1,105 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paulr@sdf.org>
+Date: Tue, 27 Oct 2026 13:50:00 +0000
+Subject: [JOURNAL 0103] The third morning: the night's run read
+Message-ID: <0103.20261027@treadcore.org>
+In-Reply-To: <0102.20261026@treadcore.org>
+Organization: treadcore.org
+Keywords: census, held-out reads, converge, release, morning read
+X-Session: the Mac (M1) and the census machine (saskatchewan);
+           Claude Code (Claude Opus 5.5) as the pair
+X-Commits: e24ccc1
+
+                      THE THIRD MORNING: THE NIGHT'S RUN READ
+
+                      Paul Richeson, treadcore.org
+                            27 October 2026
+
+
+ABSTRACT
+
+    The run of 26 October (build/converge/20261026-181011/, on the
+    defaults with dodge_horizon 2) played 30 generations overnight:
+    380 censuses, none failed. Seven trials read past two errors on
+    55 seeds and were read held out on 400 fresh seeds twice; none
+    passed both, and one passed one (gen25/sample-2, +0.58 +/- 0.26
+    then +0.35 +/- 0.27). No candidate: the defaults sit at or near
+    the top of every weight read so far, as the run's EXPECTED said.
+    The release draft of 0.2.0 waits for Paul; the site serves the
+    new pages.
+
+INDEX TERMS
+
+    census, held-out replication, regression to the mean, release.
+
+
+I. INTRODUCTION
+
+    Paul: "goodmorning. please check". The morning read (CENSUS.md
+    section 4): what the night's run found, and the release's state
+    on its day 1.
+
+II. BACKGROUND
+
+    Journal 0102 closed with LR 100 written but its check-in not; that
+    was finished first (CI-062, e24ccc1). The run restarted at 18:10
+    on 26 October on the new defaults.
+
+III. METHOD
+
+    Over ssh: the run's progress.txt and candidates.txt; gh for the
+    release and the site's deploys; curl for the pages.
+
+IV. CHRONOLOGY
+
+    1. CI-062 written, LR 100's records committed (e24ccc1).
+    2. The run: alive at generation 30, load 12; 380 censuses; seven
+       trials held out, none through both reads.
+    3. The release: v0.2.0's draft still a draft (as it should be);
+       the tag 18:34 on 26 October, so day 1 opens at 18:34 today.
+    4. The site: the three new report pages answer 200.
+
+V. RESULTS
+
+    Trial                        Held out (400 seeds each)
+    gen5/sample-1                +0.01 +/- 0.25, +0.18 +/- 0.26
+    gen6/sample-1                -0.18 +/- 0.19, -0.00 +/- 0.20
+    gen13/sample-0               -0.02 +/- 0.28, -0.04 +/- 0.26
+    gen19/screen-w_called.lo     +0.17 +/- 0.29, -0.25 +/- 0.27
+    gen24/sample-0               +0.09 +/- 0.10, -0.02 +/- 0.11
+    gen25/sample-2               +0.58 +/- 0.26, +0.35 +/- 0.27
+    gen26/screen-w_site_small.hi -0.10 +/- 0.09, -0.01 +/- 0.09
+
+VI. DISCUSSION
+
+    Seven readings past two errors on 55 seeds, seven back to the
+    noise on 400: the held-out rule doing its job. dodge_horizon 2
+    was the one real gain this run had to find.
+
+VII. OPEN PROBLEMS
+
+    1. gen25/sample-2 (connect_bases 0.375, kite_in 4.5, site_area
+       800, w_pos_connect 2): one read past two errors, one inside.
+       Its four weights apart, if the fit keeps pointing there.
+    2. The learned tank: maps 8 and 6 with drones, map 5's last 3%
+       (LR 100, E).
+
+VIII. NEXT STEPS
+
+    1. Paul, 18:34 or later: publish the draft release, make publish,
+       make builds (DEPLOY.md, day 1).
+    2. The run goes on.
+    3. The learned tank's next maps, if Paul says.
+
+ACKNOWLEDGMENTS
+
+    The census machine, which played all night.
+
+REFERENCES
+
+    [1] LAB-REPORT-BRAIN.md sections 92, 97, 100, 101.
+    [2] build/converge/20261026-181011/ on the census machine.
+
+--
+Paul Richeson <paulr@sdf.org>
+treadcore.org

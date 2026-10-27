@@ -6843,3 +6843,32 @@ net team. Still far under the scripted teams, about 27 a seat.
   actions could dodge everything; that pointed at the senses.
 - **A step map teaches what a hard map cannot.** Map 7a went from 0
   to 99.7% where map 7 alone never moved.
+
+## 101. The morning read of 27 October: thirty generations, no candidate
+
+Paul: "goodmorning. please check". The run of 26 October
+(`build/converge/20261026-181011/`, on the defaults with
+dodge_horizon 2, from 18:10) played 30 generations overnight: 380
+censuses, none failed. Seven trials read past two errors on 55 seeds;
+each was read on 400 fresh seeds twice:
+
+| Trial | Held out |
+| --- | --- |
+| gen5/sample-1 | +0.01 +/- 0.25, +0.18 +/- 0.26 |
+| gen6/sample-1 | -0.18 +/- 0.19, -0.00 +/- 0.20 |
+| gen13/sample-0 | -0.02 +/- 0.28, -0.04 +/- 0.26 |
+| gen19/screen-w_called.lo | +0.17 +/- 0.29, -0.25 +/- 0.27 |
+| gen24/sample-0 | +0.09 +/- 0.10, -0.02 +/- 0.11 |
+| gen25/sample-2 | +0.58 +/- 0.26, +0.35 +/- 0.27 |
+| gen26/screen-w_site_small.hi | -0.10 +/- 0.09, -0.01 +/- 0.09 |
+
+No candidate: the run's EXPECTED (LR 92) holds. The defaults sit at or
+near the top of every weight read so far. Seven lucky 55-seed reads
+fell back into the noise on 400 seeds; the held-out rule kept them
+out. gen25/sample-2 (connect_bases 0.375, kite_in 4.5, site_area 800,
+w_pos_connect 2) passed one read and not the other; its weights are
+worth reading apart if the fit keeps pointing there. The run goes on.
+
+Release 0.2.0: the draft waits, as it should (tagged 18:34 on 26
+October; day 1 opens at 18:34 today). The site serves the new report
+pages.
