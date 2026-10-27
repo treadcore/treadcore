@@ -203,3 +203,26 @@ Three rules:
 3. **Check the CPU is really yours.** The guest VM gave each job a
    third of a core during LR 71. In `top`, `%st` (steal) above a few
    percent means the host is holding the cores back.
+
+## 5a. More than one machine (planned, LR 103)
+
+A census stays one machine's. The run scales across machines by whole
+censuses:
+
+- **One machine, more cores:** nothing to do (`JOBS` is `nproc`).
+- **Several machines, one run:**
+  - The run writes each generation's trials into a queue folder. A
+    worker on each machine (`scripts/census-worker.sh`, to build when
+    a second machine arrives) takes the next trial, runs `make census`
+    on it with its own frozen binary, and copies the census folder
+    back.
+  - `run.env` names the `HOST`, and `ledger.py --merge` joins every
+    machine's rows without pooling them.
+  - Each held-out read is one census on one machine. A trial's two
+    held-out reads may fall on two machines; each is still a complete
+    paired reading.
+  - Compare within a machine (rule 2 above) when two censuses are read
+    against each other rather than against their own baselines.
+- **The learned tank:** a school on each machine on its own seeds,
+  the best net carried to the others each night (an island model).
+  Splitting one generation over a network costs more than it gains.
