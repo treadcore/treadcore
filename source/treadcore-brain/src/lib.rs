@@ -19,6 +19,7 @@ use std::io::{BufRead, Write};
 use treadcore_sim::*;
 
 pub mod board;
+pub mod calls;
 pub mod commander;
 pub mod crew;
 pub mod cycle;
@@ -30,6 +31,7 @@ pub mod intent;
 pub mod ledger;
 pub mod memory;
 pub mod meter;
+pub mod learn;
 pub mod net;
 pub mod rotation;
 pub mod scenario;

@@ -81,6 +81,11 @@
 #                    SEEDS, SEED0, HELD, RESUME)
 #   make ledger      every census on this machine, one row each
 #                    (scripts/ledger.py > build/ledger.tsv)
+#   make train       train the learned tank by evolution strategies, a
+#                    phase at a time (LR 97): PHASE=1 go to, PHASE=3
+#                    shoot; GENS, PAIRS, SEEDS, THREADS, START (a net to
+#                    begin from), OUT (build/train); CHECK=net.bin reads a
+#                    net on the held-out grounds only
 #   make roundrobin  the census for every ordered pair of profiles/*.weights
 #                    and the defaults: the payoff matrix (scripts/roundrobin.sh;
 #                    PROFILES, SEEDS, SEED0, MAP)
@@ -135,7 +140,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa converge ledger roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa converge ledger train roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -297,6 +302,10 @@ converge:
 
 ledger:
 	@python3 -I scripts/ledger.py build/census > build/ledger.tsv && echo "build/ledger.tsv: $$(($$(wc -l < build/ledger.tsv) - 1)) censuses"
+
+train:
+	@PHASE="$(or $(PHASE),1)" OUT="$(abspath $(or $(OUT),build/train))" START="$(if $(START),$(abspath $(START)))" CHECK="$(if $(CHECK),$(abspath $(CHECK)))" GENS="$(GENS)" PAIRS="$(PAIRS)" SEEDS="$(SEEDS)" THREADS="$(THREADS)" BASELINE="$(BASELINE)" \
+		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
 
 roundrobin:
 	@scripts/roundrobin.sh

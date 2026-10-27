@@ -931,10 +931,12 @@ mod tests {
             let sc = Scenario { seed, players: names, teams: Some(teams()), time_limit: 0, map, respawns: std::env::var("CENSUS_RESPAWNS").ok().and_then(|s| s.parse().ok()).unwrap_or(0), ..Scenario::default() };
             let mut w = World::new(sc);
             new_match();
+            // The net team's queue of calls (LR 97): one a match.
+            let calls = crate::calls::Calls::new();
             let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS)
                 .map(|i| {
                     if let Some(n) = net.as_ref().filter(|_| teams()[i] == lucky) {
-                        return (i as PlayerId, Box::new(crate::net::NetBrain::new(n.clone(), &name(i))) as Box<dyn Brain>);
+                        return (i as PlayerId, Box::new(crate::net::NetBrain::new(n.clone(), &name(i)).with_calls(calls.clone())) as Box<dyn Brain>);
                     }
                     let s = if teams()[i] == lucky { trial.clone() } else { base.clone() };
                     (i as PlayerId, with_settings(s, || brain(i, seed ^ i as u64, false)))

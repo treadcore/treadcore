@@ -8,6 +8,7 @@
 //! now (the mask) is taken. Plain Rust, no framework: the census and
 //! the trainer run it on any machine.
 
+use crate::calls::{Call, CallKind, Calls, CALL_EVERY, CALL_KINDS};
 use crate::senses::{self, SECTORS, SENSES};
 use crate::Brain;
 use std::io::{Read, Write};
@@ -33,7 +34,8 @@ pub enum Head {
     Drone,
     /// Hold, capture, build, mend, harvest, mine, home (phase 8).
     Squad,
-    /// Hold, or ping a sector (phase 7).
+    /// Hold, or call friends (calls.rs): help (come to me), attack (the
+    /// nearest enemy), take (the nearest thing to take).
     Signal,
 }
 
@@ -45,7 +47,7 @@ pub const HEADS: [(Head, usize); 7] = [
     (Head::Mortar, 1 + SECTORS),
     (Head::Drone, 5),
     (Head::Squad, 7),
-    (Head::Signal, 1 + SECTORS),
+    (Head::Signal, 1 + crate::calls::CALL_KINDS.len()),
 ];
 
 /// The net's outputs: every head's choices.
@@ -232,13 +234,34 @@ pub struct NetBrain {
     drive: Option<(usize, Tick)>,
     /// What it chose last, for the status line.
     last: Vec<(Head, usize)>,
+    /// The team's queue of calls, and when it last called.
+    calls: Calls,
+    called: Option<Tick>,
 }
 
 impl NetBrain {
     pub fn new(net: Net, name: &str) -> NetBrain {
         assert_eq!(net.layers.first().map(|l| l.inp), Some(SENSES), "a tank's net takes the senses");
         assert_eq!(net.layers.last().map(|l| l.out), Some(OUTPUTS), "a tank's net scores the heads");
-        NetBrain { net, name: name.into(), drive: None, last: Vec::new() }
+        NetBrain { net, name: name.into(), drive: None, last: Vec::new(), calls: Calls::new(), called: None }
+    }
+
+    /// The same, sharing a team's queue of calls (one a team a match).
+    pub fn with_calls(mut self, calls: Calls) -> NetBrain {
+        self.calls = calls;
+        self
+    }
+
+    /// Where a call of this kind would point: me for help, the nearest
+    /// enemy seen (tank, else live hostile pillbox) for attack, the
+    /// nearest thing to take for take.
+    fn call_at(obs: &Observation, me: &Tank, kind: CallKind) -> Option<V2> {
+        let near = |a: &V2, b: &V2| a.dist(me.pos).total_cmp(&b.dist(me.pos));
+        match kind {
+            CallKind::Help => Some(me.pos),
+            CallKind::Attack => obs.hostile_tanks().map(|t| t.pos).min_by(near).or_else(|| obs.pillboxes.iter().filter(|b| b.alive() && b.owner.map(|o| !obs.allied(o)).unwrap_or(false)).map(|b| b.pos).min_by(near)),
+            CallKind::Take => obs.depots.iter().filter(|p| !p.owner.map(|o| obs.allied(o)).unwrap_or(false)).map(|p| p.pos).chain(obs.pillboxes.iter().filter(|b| b.owner.is_none()).map(|b| b.pos)).min_by(near),
+        }
     }
 
     /// The strongest hostile tank in sector k, if any.
@@ -269,8 +292,10 @@ impl Brain for NetBrain {
         if obs.tick % DECIDE_EVERY != 0 {
             return Vec::new();
         }
+        self.calls.hear(obs);
         let Some(me) = obs.me.clone().filter(|t| t.alive) else { return Vec::new() };
-        let Some(x) = senses::sense(obs, map, None) else { return Vec::new() };
+        let heard = self.calls.heard(obs.player, obs.tick);
+        let Some(x) = senses::sense(obs, map, None, &heard) else { return Vec::new() };
         let scores = self.net.forward(&x);
         let ready = me.reload == 0 && me.shells > 0;
         let allowed = |h: Head, c: usize| match h {
@@ -278,8 +303,9 @@ impl Brain for NetBrain {
             Head::Gun => ready && Self::tank_in(obs, &me, c - 1).map(|t| t.pos.dist(me.pos) <= DIRECT_RANGE).unwrap_or(false),
             Head::Lead => true,
             Head::Mortar => ready && Self::mortar_target(obs, &me, c - 1).is_some(),
+            Head::Signal => self.called.map(|t| obs.tick >= t + CALL_EVERY).unwrap_or(true) && Self::call_at(obs, &me, CALL_KINDS[c - 1]).is_some(),
             // Their phases: held until then.
-            Head::Drone | Head::Squad | Head::Signal => false,
+            Head::Drone | Head::Squad => false,
         };
         let picks = choose(&scores, &allowed);
         let pick = |h: Head| picks.iter().find(|(g, _)| *g == h).map(|p| p.1).unwrap_or(0);
@@ -314,6 +340,13 @@ impl Brain for NetBrain {
             }
         } else if let Some(at) = Some(pick(Head::Mortar)).filter(|m| *m > 0).and_then(|m| Self::mortar_target(obs, &me, m - 1)) {
             cmds.push(Command::FireIndirect { at });
+        }
+        if let Some(kind) = Some(pick(Head::Signal)).filter(|c| *c > 0).map(|c| CALL_KINDS[c - 1]) {
+            if let Some(at) = Self::call_at(obs, &me, kind) {
+                self.calls.post(Call { from: obs.player, kind, at, tick: obs.tick });
+                cmds.push(Command::Ping { at });
+                self.called = Some(obs.tick);
+            }
         }
         self.last = picks;
         cmds
@@ -375,7 +408,7 @@ mod tests {
             for _ in 0..600 {
                 let obs = w.observe(0);
                 let cmds = b.think_on(&obs, Some(&w.map));
-                assert!(cmds.len() <= 2, "{:?}", cmds);
+                assert!(cmds.len() <= 3, "{:?}", cmds);
                 orders += cmds.len();
                 let o: Vec<Order> = cmds.into_iter().map(|cmd| Order { player: 0, cmd }).collect();
                 w.step(&o);
@@ -410,7 +443,7 @@ mod speed {
         let t0 = std::time::Instant::now();
         let mut sum = 0.0;
         for _ in 0..n {
-            let x = senses::sense(&obs, Some(&w.map), None).unwrap();
+            let x = senses::sense(&obs, Some(&w.map), None, &[]).unwrap();
             sum += net.forward(&x)[0];
         }
         let per = t0.elapsed().as_secs_f64() / n as f64;
