@@ -181,7 +181,10 @@ def is_game(path, size=(1200, 740)):
     im = Image.open(path).convert("RGB")
     if abs(im.width - size[0]) > 2 or abs(im.height - size[1]) > 2:
         return f"{os.path.basename(path)} is {im.width}x{im.height}, not the window's {size[0]}x{size[1]}"
-    greys = sum(1 for y in range(100, 600, 25) for r, g, b in [im.getpixel((2, y))] if abs(r - g) < 12 and abs(g - b) < 12 and 90 < r < 150)
+    # The bezel is brushed metal since e3a2289 (17 October): a neutral
+    # grey from about 210 at the top to 165 at the foot, where rc.6's
+    # was a flat 120; any neutral grey between counts.
+    greys = sum(1 for y in range(100, 600, 25) for r, g, b in [im.getpixel((2, y))] if abs(r - g) < 12 and abs(g - b) < 12 and 90 < r < 230)
     if greys < 15:
         return f"{os.path.basename(path)} has no bezel down its left edge: not the game window"
     return None
