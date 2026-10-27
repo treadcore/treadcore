@@ -69,6 +69,11 @@ IV. CHRONOLOGY
        apart; the untrained net lives by doing nothing.
     8. Timing: 10.6 us a decision; a 16-seat match of nets at 197
        times real time. The report published (LR 102, CI-064).
+    9. 08:42, the run again: generation 35, 432 censuses, none failed;
+       two more trials held out, neither through both (gen34/sample-10
+       +0.84 then +0.37); the fit sees no weight with a gain of two
+       errors (largest w_threat +0.60 +/- 0.34, w_smooth +0.51 +/-
+       0.26). No candidate (LR 101).
 
 V. RESULTS
 

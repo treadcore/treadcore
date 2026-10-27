@@ -6873,6 +6873,27 @@ Release 0.2.0: the draft waits, as it should (tagged 18:34 on 26
 October; day 1 opens at 18:34 today). The site serves the new report
 pages.
 
+**Read again at 08:42.** The run is at generation 35: 432 censuses in
+this run, 680 in the machine's ledger (`make ledger`), none failed.
+Two more trials were read held out:
+
+| Trial | Held out |
+| --- | --- |
+| gen33/sample-6 (bridge_soft 6.9, castle_inside 5.0, commit 0.2, landfall_wait 20) | +0.27 +/- 0.18, -0.05 +/- 0.17 |
+| gen34/sample-10 (bridge_reach 80, fetch_gather 40, junction_clear 3.4, w_in_range 1.4) | +0.84 +/- 0.25, +0.37 +/- 0.25 |
+
+There is still no candidate. The fit of generation 34 covers 87
+weights, and none has an expected gain at its fitted best of two
+errors or more. The largest:
+- w_stick +0.71 +/- 0.63;
+- w_threat +0.60 +/- 0.34;
+- press_odds +0.59 +/- 0.40;
+- w_near +0.55 +/- 0.47;
+- w_smooth +0.51 +/- 0.26.
+
+Each sits at the end of its searched range (double its default). They
+are where the run's draws go next.
+
 ## 102. Generations watched: clips, a gauntlet of single decisions, the match reading, and the cost, 27 October
 
 Paul: "Can I get a short GIF of every generation of the tank AI
