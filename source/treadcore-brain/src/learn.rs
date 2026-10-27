@@ -263,17 +263,108 @@ pub fn spread<T: Send>(jobs: usize, threads: usize, f: &(dyn Fn(usize) -> T + Sy
     out.into_iter().map(|m| m.into_inner().unwrap().expect("every job ran")).collect()
 }
 
-/// A net on grounds: the mean score, and the share passed.
-pub fn judge(task: Task, net: &Net, grounds: &[Ground]) -> (f32, f32) {
+/// What a net trains on (LR 99): a ground built here (`Task`), or a
+/// training map, a scenario file with a `kind = "net"` brain and a
+/// `[reward]` (`scenarios/training/`): the same file the scripted brain
+/// is read on.
+pub enum Course {
+    Built(Task),
+    File { name: String, doc: crate::scenario::Doc },
+}
+
+/// The `[reward]` terms a training map may use (`scenario::reward`).
+pub const REWARDS: [&str; 9] = ["pass", "alive", "damage_taken", "damage_given", "killed", "depot_taken", "pillbox_taken", "pillbox_killed", "closer"];
+
+impl Course {
+    /// `phase1`, `phase3`, or a scenario file's path.
+    pub fn parse(spec: &str) -> Result<Course, String> {
+        if let Some(t) = spec.strip_prefix("phase").and_then(|n| n.parse().ok()).and_then(Task::phase) {
+            return Ok(Course::Built(t));
+        }
+        let text = std::fs::read_to_string(crate::scenario::find(spec)).map_err(|e| format!("{}: {}", spec, e))?;
+        let doc = crate::scenario::parse(&text).map_err(|e| format!("{}: {}", spec, e))?;
+        if !doc.lists.get("brain").map(|l| l.iter().any(|b| b.get("kind").and_then(crate::scenario::Value::str) == Some("net"))).unwrap_or(false) {
+            return Err(format!("{}: no kind = \"net\" brain to train", spec));
+        }
+        if let Some(k) = doc.reward.keys().find(|k| !REWARDS.contains(&k.as_str())) {
+            return Err(format!("{}: no reward term {} (one of {:?})", spec, k, REWARDS));
+        }
+        let name = std::path::Path::new(spec).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| spec.into());
+        Ok(Course::File { name, doc })
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            Course::Built(t) => format!("{:?}", t),
+            Course::File { name, .. } => name.clone(),
+        }
+    }
+
+    /// The share of held-out episodes it must pass: a file's `floor`,
+    /// else 95%.
+    pub fn floor(&self) -> f32 {
+        match self {
+            Course::File { doc, .. } => doc.top.get("floor").and_then(crate::scenario::Value::num).unwrap_or(0.95) as f32,
+            Course::Built(_) => 0.95,
+        }
+    }
+
+    /// The same file with its net seats given to the scripted brain
+    /// (`kind = "commander"`, on Auto): what the scripted brain does on
+    /// the same situations.
+    pub fn scripted(&self) -> Option<crate::scenario::Doc> {
+        let Course::File { doc, .. } = self else { return None };
+        let mut d = doc.clone();
+        for b in d.lists.get_mut("brain").into_iter().flatten() {
+            if b.get("kind").and_then(crate::scenario::Value::str) == Some("net") {
+                b.insert("kind".into(), crate::scenario::Value::Str("commander".into()));
+                b.remove("file");
+            }
+        }
+        Some(d)
+    }
+}
+
+/// One episode made ready: a built ground (made once a generation, then
+/// played by every net), or a file's seed.
+pub enum Episode {
+    Ground(Task, Ground),
+    File(usize, u64),
+}
+
+/// Episode `k` of a generation: the courses in turn.
+pub fn prepare(courses: &[Course], seed: u64, k: usize) -> Episode {
+    match &courses[k % courses.len()] {
+        Course::Built(t) => Episode::Ground(*t, ground(*t, seed)),
+        Course::File { .. } => Episode::File(k % courses.len(), seed),
+    }
+}
+
+/// A net on one episode: its score, and whether it passed.
+pub fn episode(courses: &[Course], e: &Episode, net: &Net) -> (f32, bool) {
+    match e {
+        Episode::Ground(t, g) => {
+            let p = play(*t, g, &mut NetBrain::new(net.clone(), "net"));
+            (t.score(&p), t.passed(&p))
+        }
+        Episode::File(c, seed) => {
+            let Course::File { name, doc } = &courses[*c] else { unreachable!("a file's episode") };
+            let (out, failed) = crate::scenario::run_net(doc, Some(*seed), Some(net)).unwrap_or_else(|e| panic!("{}: {}", name, e));
+            (crate::scenario::reward(doc, &out, &failed), failed.is_empty())
+        }
+    }
+}
+
+/// A net on episodes: the mean score, and the share passed.
+pub fn judge(courses: &[Course], net: &Net, episodes: &[Episode]) -> (f32, f32) {
     let mut score = 0.0;
     let mut passed = 0;
-    for g in grounds {
-        let mut b = NetBrain::new(net.clone(), "net");
-        let p = play(task, g, &mut b);
-        score += task.score(&p);
-        passed += task.passed(&p) as usize;
+    for e in episodes {
+        let (s, p) = episode(courses, e, net);
+        score += s;
+        passed += p as usize;
     }
-    (score / grounds.len().max(1) as f32, passed as f32 / grounds.len().max(1) as f32)
+    (score / episodes.len().max(1) as f32, passed as f32 / episodes.len().max(1) as f32)
 }
 
 /// Evolution strategies' settings.
@@ -331,9 +422,11 @@ pub struct Generation {
 }
 
 /// One generation: pairs of directions played forward and back on
-/// `seeds` grounds drawn from `gen_seed`, ranked, and the weights moved.
-pub fn generation(task: Task, es: &Es, theta: &mut Vec<f32>, adam: &mut Adam, shape: &Net, n: usize, gen_seed: u64) -> Generation {
-    let grounds: Vec<Ground> = spread(es.seeds, es.threads, &|k| ground(task, gen_seed.wrapping_mul(1_000).wrapping_add(k as u64)));
+/// `seeds` episodes drawn from `gen_seed` (the courses in turn, so a
+/// mix rehearses what was learned before), ranked, and the weights
+/// moved.
+pub fn generation(courses: &[Course], es: &Es, theta: &mut Vec<f32>, adam: &mut Adam, shape: &Net, n: usize, gen_seed: u64) -> Generation {
+    let grounds: Vec<Episode> = spread(es.seeds, es.threads, &|k| prepare(courses, gen_seed.wrapping_mul(1_000).wrapping_add(k as u64), k));
     let dim = theta.len();
     let base = &*theta;
     // Job 2i is pair i forward, 2i + 1 back; the last job the weights
@@ -346,7 +439,7 @@ pub fn generation(task: Task, es: &Es, theta: &mut Vec<f32>, adam: &mut Adam, sh
             let s = if j % 2 == 0 { es.sigma } else { -es.sigma };
             base.iter().zip(&e).map(|(t, e)| t + s * e).collect()
         };
-        judge(task, &shape.with_flat(&w), &grounds)
+        judge(courses, &shape.with_flat(&w), &grounds)
     });
     let (score, passed) = scores[2 * es.pairs];
     let pop: Vec<f32> = scores[..2 * es.pairs].iter().map(|s| s.0).collect();
@@ -464,6 +557,34 @@ mod tests {
         assert!(p.hits > 0 && Task::Shoot.passed(&p), "{:?}", p);
     }
 
+    /// The training maps (LR 99): every file under `scenarios/training/`
+    /// reads as a course (a net seat, known reward terms); a net plays
+    /// one the same way twice; its scripted reading puts a Commander in
+    /// the net's seat; a reward term that does not exist is refused.
+    #[test]
+    fn a_training_map_is_a_course() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios/training");
+        let mut files: Vec<_> = std::fs::read_dir(&dir).expect("scenarios/training/").filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
+        files.sort();
+        assert!(files.len() >= 3, "{} training maps", files.len());
+        let net = Net::tank(1);
+        for f in &files {
+            let c = Course::parse(&f.to_string_lossy()).unwrap_or_else(|e| panic!("{}", e));
+            let courses = [c];
+            let a = episode(&courses, &Episode::File(0, 7), &net);
+            let b = episode(&courses, &Episode::File(0, 7), &net);
+            assert_eq!(a, b, "{}: the same episode twice", f.display());
+            assert!(a.0.is_finite());
+            let d = courses[0].scripted().unwrap();
+            assert!(d.lists["brain"].iter().all(|b| b.get("kind").and_then(crate::scenario::Value::str) != Some("net")), "{}", f.display());
+        }
+        let bad = std::env::temp_dir().join(format!("treadcore-bad-reward-{}.toml", std::process::id()));
+        std::fs::write(&bad, "[[brain]]\nseat = 0\nkind = \"net\"\n[reward]\nluck = 1\n").unwrap();
+        let e = Course::parse(&bad.to_string_lossy()).err().expect("refused");
+        std::fs::remove_file(&bad).ok();
+        assert!(e.contains("luck"), "{}", e);
+    }
+
     /// Evolution moves the weights: on a few grounds, a handful of
     /// generations raise the score, and a generation's seed gives the
     /// same move twice.
@@ -474,7 +595,7 @@ mod tests {
         let run = || {
             let mut theta = shape.flat();
             let mut adam = Adam::new(theta.len());
-            let g = generation(Task::GoTo, &es, &mut theta, &mut adam, &shape, 0, 11);
+            let g = generation(&[Course::Built(Task::GoTo)], &es, &mut theta, &mut adam, &shape, 0, 11);
             (theta, g.score)
         };
         let (a, _) = run();
@@ -530,25 +651,81 @@ mod harness {
         println!("train: baseline rulebot {:?}: passed {} of {}, {} direct hits of {} direct shots ({:.3} a shot), {} lobbed", task, passed, runs.len(), hits, shots, hits as f64 / shots.max(1) as f64, runs.iter().map(|p| p.lobbed).sum::<u32>());
     }
 
-    /// The trainer (LR 97): `make train PHASE=1`, or with `CHECK=file`
-    /// a net read on the held-out seeds only. Settings from the
+    /// A training map read on held-out seeds, by a net or (with none)
+    /// by the scripted brain in its seats: the share passed with its
+    /// error, the mean reward, and whether it reaches the map's floor.
+    fn report_file(c: &Course, seeds: std::ops::Range<u64>, threads: usize, net: Option<&Net>) -> bool {
+        let Course::File { name, doc } = c else { return false };
+        let doc = if net.is_some() { doc.clone() } else { c.scripted().expect("a file") };
+        let list: Vec<u64> = seeds.clone().collect();
+        let runs = spread(list.len(), threads, &|k| {
+            let (out, failed) = crate::scenario::run_net(&doc, Some(list[k]), net).unwrap_or_else(|e| panic!("{}: {}", name, e));
+            (crate::scenario::reward(&doc, &out, &failed), failed.is_empty(), failed.first().cloned())
+        });
+        let n = runs.len() as f64;
+        let passed = runs.iter().filter(|r| r.1).count();
+        let p = passed as f64 / n;
+        let se = (p * (1.0 - p) / n).sqrt();
+        let ok = p >= c.floor() as f64;
+        let why: std::collections::BTreeMap<String, usize> = runs.iter().filter_map(|r| r.2.clone()).map(|w| w.split(" at ").next().unwrap_or("").chars().filter(|c| !c.is_ascii_digit()).collect::<String>()).fold(Default::default(), |mut m, w| {
+            *m.entry(w).or_insert(0) += 1;
+            m
+        });
+        println!("train: held out {} by {}: {:.3} +/- {:.3} passed ({} of {}), reward {:.2}, floor {:.2}: {}", name, if net.is_some() { "the net" } else { "the scripted brain" }, p, se, passed, runs.len(), runs.iter().map(|r| r.0).sum::<f32>() / n as f32, c.floor(), if ok { "PASS" } else { "not yet" });
+        for (w, k) in why.iter().take(4) {
+            println!("train:   failed {}: {}", k, w.trim());
+        }
+        ok
+    }
+
+    /// A net (or with none, the scripted brain) on every course's
+    /// held-out seeds.
+    fn report_all(courses: &[Course], held: u64, threads: usize, net: Option<&Net>) -> bool {
+        let mut all = true;
+        for c in courses {
+            let seeds = 9_000_000..9_000_000 + held;
+            all &= match (c, net) {
+                (Course::Built(t), Some(n)) => report(*t, seeds, threads, n),
+                (Course::Built(t), None) => {
+                    baseline(*t, seeds, threads);
+                    true
+                }
+                (Course::File { doc, .. }, _) => {
+                    let h = doc.top.get("held").and_then(crate::scenario::Value::num).map(|h| h as u64).unwrap_or(held);
+                    report_file(c, 9_000_000..9_000_000 + h, threads, net)
+                }
+            };
+        }
+        all
+    }
+
+    /// The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a
+    /// comma list of courses (`phase1`, `phase3`, training maps' paths)
+    /// trained together, each episode the next course in turn. With
+    /// `CHECK=file` a net is read on the held-out seeds only; with
+    /// `BASELINE=1` the scripted brain is read first. Settings from the
     /// environment: GENS, PAIRS, SEEDS, SIGMA, RATE, DECAY, THREADS,
     /// START (a net to begin from, else `Net::tank(NET_SEED)`), OUT (the
-    /// folder for `phaseN.bin` and the log), HELD (held-out grounds).
+    /// folder for the net and the log), NAME (the net's file name),
+    /// HELD (held-out episodes a course; a file's `held` wins).
     #[test]
     #[ignore]
     fn train() {
         let phase: u32 = env("PHASE", 1);
-        let task = Task::phase(phase).unwrap_or_else(|| panic!("no phase {} to train", phase));
+        let ground = std::env::var("GROUND").ok().filter(|g| !g.is_empty());
+        let courses: Vec<Course> = match &ground {
+            Some(g) => g.split(',').map(|c| Course::parse(c.trim()).unwrap_or_else(|e| panic!("{}", e))).collect(),
+            None => vec![Course::Built(Task::phase(phase).unwrap_or_else(|| panic!("no phase {} to train", phase)))],
+        };
+        let name = env("NAME", if ground.is_some() { "ground".to_string() } else { format!("phase{}", phase) });
         let threads: usize = env("THREADS", std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4));
         let held: u64 = env("HELD", 999);
-        let held = 9_000_000..9_000_000 + held;
-        if std::env::var("BASELINE").map(|v| v == "rulebot").unwrap_or(false) {
-            baseline(task, held.clone(), threads);
+        if !std::env::var("BASELINE").unwrap_or_default().is_empty() {
+            report_all(&courses, held, threads, None);
         }
         if let Some(f) = std::env::var("CHECK").ok().filter(|f| !f.is_empty()) {
             let net = Net::load(std::path::Path::new(&f)).expect("a net");
-            report(task, held, threads, &net);
+            report_all(&courses, held, threads, Some(&net));
             return;
         }
         let es = Es { pairs: env("PAIRS", 48), seeds: env("SEEDS", 12), sigma: env("SIGMA", 0.05), rate: env("RATE", 0.02), decay: env("DECAY", 0.0005), threads };
@@ -560,13 +737,13 @@ mod harness {
         };
         let gens: usize = env("GENS", 200);
         let first: usize = env("GEN0", 0);
-        println!("train: phase {} {:?}, {} weights, {:?}, {} generations from {}", phase, task, shape.parameters(), es, gens, first);
+        println!("train: {} on [{}], {} weights, {:?}, {} generations from {}", name, courses.iter().map(|c| c.name()).collect::<Vec<_>>().join(", "), shape.parameters(), es, gens, first);
         let mut theta = shape.flat();
         let mut adam = Adam::new(theta.len());
-        let file = out.join(format!("phase{}.bin", phase));
+        let file = out.join(format!("{}.bin", name));
         let t0 = std::time::Instant::now();
         for n in first..first + gens {
-            let g = generation(task, &es, &mut theta, &mut adam, &shape, n, 1 + n as u64);
+            let g = generation(&courses, &es, &mut theta, &mut adam, &shape, n, 1 + n as u64);
             println!("train: gen {:>4} mean {:>6.3} best {:>6.3} net {:>6.3} passed {:.2} ({:.0} s)", g.n, g.mean, g.best, g.score, g.passed, t0.elapsed().as_secs_f64());
             if (n + 1) % 10 == 0 {
                 shape.with_flat(&theta).save(&file).unwrap();
@@ -575,6 +752,7 @@ mod harness {
         let net = shape.with_flat(&theta);
         net.save(&file).unwrap();
         println!("train: saved {}", file.display());
-        report(task, held, threads, &net);
+        let all = report_all(&courses, held, threads, Some(&net));
+        println!("train: every course: {}", if all { "PASS" } else { "not yet" });
     }
 }

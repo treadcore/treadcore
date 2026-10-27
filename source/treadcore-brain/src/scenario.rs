@@ -58,15 +58,15 @@ pub enum Value {
 
 impl Value {
     /// A number, or None.
-    fn num(&self) -> Option<f64> {
+    pub fn num(&self) -> Option<f64> {
         if let Value::Num(n) = self { Some(*n) } else { None }
     }
     /// A string, or None.
-    fn str(&self) -> Option<&str> {
+    pub fn str(&self) -> Option<&str> {
         if let Value::Str(s) = self { Some(s) } else { None }
     }
     /// An inline table, or None.
-    fn table(&self) -> Option<&BTreeMap<String, Value>> {
+    pub fn table(&self) -> Option<&BTreeMap<String, Value>> {
         if let Value::Table(t) = self { Some(t) } else { None }
     }
 }
@@ -76,13 +76,16 @@ impl Value {
 pub struct Doc {
     pub top: BTreeMap<String, Value>,
     pub expect: BTreeMap<String, Value>,
+    /// `[reward]`: what a training episode earns (LR 99, `reward`).
+    pub reward: BTreeMap<String, Value>,
     pub lists: BTreeMap<String, Vec<BTreeMap<String, Value>>>,
 }
 
 /// Read the TOML subset; an error names its line.
 pub fn parse(text: &str) -> Result<Doc, String> {
     let mut doc = Doc::default();
-    // Where a key goes: the top, [expect], or the last [[name]].
+    // Where a key goes: the top, [expect] or [reward], or the last
+    // [[name]].
     let mut into: Option<(String, bool)> = None;
     for (i, raw) in text.lines().enumerate() {
         let line = strip_comment(raw).trim().to_string();
@@ -96,10 +99,10 @@ pub fn parse(text: &str) -> Result<Doc, String> {
             continue;
         }
         if let Some(name) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
-            if name.trim() != "expect" {
+            if name.trim() != "expect" && name.trim() != "reward" {
                 return Err(at(format!("no section [{}]", name.trim())));
             }
-            into = Some(("expect".into(), false));
+            into = Some((name.trim().to_string(), false));
             continue;
         }
         let (key, value) = line.split_once('=').ok_or_else(|| at("not key = value".into()))?;
@@ -110,6 +113,7 @@ pub fn parse(text: &str) -> Result<Doc, String> {
         let key = key.trim().to_string();
         match &into {
             None => doc.top.insert(key, v),
+            Some((name, false)) if name == "reward" => doc.reward.insert(key, v),
             Some((_, false)) => doc.expect.insert(key, v),
             Some((name, true)) => doc.lists.get_mut(name).and_then(|l| l.last_mut()).expect("a table begun").insert(key, v),
         };
@@ -184,6 +188,10 @@ pub struct Outcome {
     pub hits: Vec<(Option<PlayerId>, PlayerId)>,
     /// Where the tank hit was, for each of `hits`.
     pub hit_at: Vec<V2>,
+    /// The damage of each of `hits`.
+    pub hit_damage: Vec<f32>,
+    /// Each seat's tank alive at the end.
+    pub alive: BTreeMap<PlayerId, bool>,
     /// Each placed pillbox: the damage it did, the tick each seat first
     /// owned it, and whether it stands at the end.
     pub pillbox_damage: Vec<f32>,
@@ -217,6 +225,13 @@ pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
 /// is the file's own world, as `run`: its `seed = n` if it has one, so a
 /// family's case found by `many` is kept as a test (LR 53).
 pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>), String> {
+    run_net(doc, seed, None)
+}
+
+/// As `run_seeded`, with a net for each `kind = "net"` brain that names
+/// no `file` (the trainer's, LR 99). A team's nets share one queue of
+/// calls.
+pub fn run_net(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>) -> Result<(Outcome, Vec<String>), String> {
     let seed = seed.or(doc.top.get("seed").and_then(Value::num).map(|s| s as u64));
     let num = |t: &BTreeMap<String, Value>, k: &str, d: f64| t.get(k).and_then(Value::num).unwrap_or(d);
     let players = num(&doc.top, "players", 2.0) as usize;
@@ -395,6 +410,7 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
     // dealt match gives them (fleet.rs `equip`); by its first seat.
     let board = doc.top.get("board") == Some(&Value::Bool(true));
     let mut boards: Vec<(TeamId, crate::board::Shared)> = Vec::new();
+    let mut calls: Vec<(TeamId, crate::calls::Calls)> = Vec::new();
     for b in list("brain") {
         let seat = num(b, "seat", 0.0) as PlayerId;
         let seed = num(b, "seed", 5.0) as u64 ^ seed.unwrap_or(0);
@@ -468,6 +484,24 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
                 });
                 Box::new(c)
             }
+            // `kind = "net"`: a learned tank (LR 99), the net in `file`,
+            // else the one the trainer gives.
+            "net" => {
+                let n = match b.get("file").and_then(Value::str) {
+                    Some(f) => crate::net::Net::load(&find(f)).map_err(|e| e.to_string())?,
+                    None => net.cloned().ok_or("a net brain: no file, and no net given (make train GROUND=)")?,
+                };
+                let team = w.players.iter().find(|p| p.id == seat).map(|p| p.team).ok_or(format!("no seat {}", seat))?;
+                let q = match calls.iter().find(|(t, _)| *t == team) {
+                    Some((_, q)) => q.clone(),
+                    None => {
+                        let q = crate::calls::Calls::new();
+                        calls.push((team, q.clone()));
+                        q
+                    }
+                };
+                Box::new(crate::net::NetBrain::new(n, "scenario").with_calls(q))
+            }
             k => return Err(format!("no brain kind {}", k)),
         };
         brains.push((seat, brain));
@@ -475,6 +509,10 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
     let mut out = Outcome { pillbox_damage: vec![0.0; pillboxes.len()], pillbox_owned: vec![BTreeMap::new(); pillboxes.len()], depot_owned: vec![BTreeMap::new(); depots.len()], ..Default::default() };
     for t in &w.tanks {
         out.start.insert(t.owner, (t.pos, t.shells));
+    }
+    if let Some(Value::Table(t)) = doc.reward.get("closer") {
+        let at = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("centre"), t.get("offset"))?;
+        out.points.insert("closer".into(), at);
     }
     for key in ["ends_near", "lands_near", "met_beyond"] {
         if let Some(Value::Table(t)) = doc.expect.get(key) {
@@ -530,6 +568,7 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
                     if let Some(t) = w.tanks.iter().find(|t| t.id == *tank) {
                         out.hits.push((*by, t.owner));
                         out.hit_at.push(t.pos);
+                        out.hit_damage.push(*damage);
                         let drones: Vec<String> = w.drones.iter().map(|d| format!("{:?} of {} at ({:.1},{:.1})", d.kind, d.owner, d.pos.x, d.pos.y)).collect();
                         out.trace.push(format!("{:>5.2} s  seat {} hit by {:?} for {:.0}; drones: {}", w.tick as f64 / TICK_HZ as f64, t.owner, by, damage, drones.join(", ")));
                     }
@@ -584,6 +623,7 @@ pub fn run_seeded(doc: &Doc, seed: Option<u64>) -> Result<(Outcome, Vec<String>)
     }
     for t in &w.tanks {
         out.end.insert(t.owner, (t.pos, t.shells));
+        out.alive.insert(t.owner, t.alive);
     }
     for id in &pillboxes {
         out.pillbox_alive.push(w.pillboxes.iter().find(|p| p.id == *id).map(|p| p.alive()).unwrap_or(false));
@@ -712,6 +752,15 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                     failed.push(format!("pillbox {} did {} damage, at most {} expected", k, d, m));
                 }
             }
+            // `alive = { seat = 0 }`, `dead = { seat = 1 }`: the tank's
+            // state at the end (LR 99).
+            "alive" | "dead" => {
+                let s = seat.ok_or("alive, dead: a seat")?;
+                let up = out.alive.get(&s).copied().unwrap_or(false);
+                if up != (key == "alive") {
+                    failed.push(format!("seat {} {} at the end", s, if up { "alive" } else { "dead" }));
+                }
+            }
             "pillbox_alive" => {
                 let k = field(t, "pillbox").unwrap_or(0.0) as usize;
                 let want = t.get("alive") != Some(&Value::Bool(false));
@@ -723,6 +772,42 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
         }
     }
     Ok(failed)
+}
+
+/// What a training episode earned (LR 99): the sum of the file's
+/// `[reward]` terms for the learner's seat (`learner`, 0). Each term's
+/// value is its worth:
+///
+/// - `pass`: when every expectation held;
+/// - `alive`: the learner's tank alive at the end;
+/// - `damage_taken`, `damage_given`: a point of damage to or by it;
+/// - `killed`: each other seat's tank dead at the end;
+/// - `depot_taken`, `pillbox_taken`: each placed one the learner owned;
+/// - `pillbox_killed`: each placed pillbox dead at the end;
+/// - `closer = { at = "depot:0", worth = 1 }`: the share of the way to
+///   the point closed, start to end (a potential: no pay for circling).
+pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
+    let me = doc.top.get("learner").and_then(Value::num).unwrap_or(0.0) as PlayerId;
+    let mut r = 0.0f32;
+    for (k, v) in &doc.reward {
+        let w = v.num().or_else(|| v.table().and_then(|t| t.get("worth")).and_then(Value::num)).unwrap_or(0.0) as f32;
+        r += w * match k.as_str() {
+            "pass" => failed.is_empty() as u8 as f32,
+            "alive" => out.alive.get(&me).copied().unwrap_or(false) as u8 as f32,
+            "damage_taken" => out.hits.iter().zip(&out.hit_damage).filter(|((_, on), _)| *on == me).map(|(_, d)| *d).sum(),
+            "damage_given" => out.hits.iter().zip(&out.hit_damage).filter(|((by, on), _)| *by == Some(me) && *on != me).map(|(_, d)| *d).sum(),
+            "killed" => out.alive.iter().filter(|(s, up)| **s != me && !**up).count() as f32,
+            "depot_taken" => out.depot_owned.iter().filter(|o| o.contains_key(&me)).count() as f32,
+            "pillbox_taken" => out.pillbox_owned.iter().filter(|o| o.contains_key(&me)).count() as f32,
+            "pillbox_killed" => out.pillbox_alive.iter().filter(|a| !**a).count() as f32,
+            "closer" => match (out.points.get("closer"), out.start.get(&me), out.end.get(&me)) {
+                (Some(p), Some(a), Some(b)) => ((a.0.dist(*p) - b.0.dist(*p)) / a.0.dist(*p).max(1.0)).clamp(-1.0, 1.0),
+                _ => 0.0,
+            },
+            _ => 0.0,
+        };
+    }
+    r
 }
 
 /// A scenario over `runs` seeds (`first`, `first + 1`, ...): how many
@@ -763,6 +848,16 @@ pub fn set_weights(doc: &mut Doc, set: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// A path as given, or from the top of the tree when it is not found
+/// there (`cargo test` runs in the crate's folder).
+pub fn find(path: &str) -> std::path::PathBuf {
+    let p = std::path::PathBuf::from(path);
+    if p.exists() || p.is_absolute() {
+        return p;
+    }
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..").join(path)
 }
 
 /// Read and run a file: its failures, or the error that stopped it.

@@ -23,7 +23,8 @@ pub enum Head {
     /// Hold, then a Move 6 tiles toward each of the 8 sectors (1 to 8);
     /// 9 is stop.
     Drive,
-    /// Hold, or a direct shot at the strongest hostile tank in a sector.
+    /// Hold, or a direct shot into a sector: at its nearest hostile tank
+    /// in reach, else its nearest live hostile pillbox in reach (LR 99).
     Gun,
     /// Where the shot aims: where the target is, where it will be when
     /// the shell lands (`lead`), or between.
@@ -273,6 +274,20 @@ impl NetBrain {
         obs.hostile_tanks().filter(|t| senses::sector(me.heading, (t.pos - me.pos).heading()) == k).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))).cloned()
     }
 
+    /// What the gun fires at in sector k: its nearest hostile tank in
+    /// the direct gun's reach (with the tank, for the lead), else its
+    /// nearest live hostile pillbox in reach (a pillbox sits still).
+    fn gun_target(obs: &Observation, me: &Tank, k: usize) -> Option<(V2, Option<Tank>)> {
+        if let Some(t) = Self::tank_in(obs, me, k).filter(|t| t.pos.dist(me.pos) <= DIRECT_RANGE) {
+            return Some((t.pos, Some(t)));
+        }
+        obs.pillboxes
+            .iter()
+            .filter(|b| b.alive() && b.owner.map(|o| !obs.allied(o)).unwrap_or(false) && b.pos.dist(me.pos) <= DIRECT_RANGE && senses::sector(me.heading, (b.pos - me.pos).heading()) == k)
+            .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))
+            .map(|b| (b.pos, None))
+    }
+
     /// The strongest hostile in sector k the mortar can reach: a tank,
     /// else a live hostile pillbox.
     fn mortar_target(obs: &Observation, me: &Tank, k: usize) -> Option<V2> {
@@ -304,7 +319,7 @@ impl Brain for NetBrain {
         let ready = me.reload == 0 && me.shells > 0;
         let allowed = |h: Head, c: usize| match h {
             Head::Drive => true,
-            Head::Gun => ready && Self::tank_in(obs, &me, c - 1).map(|t| t.pos.dist(me.pos) <= DIRECT_RANGE).unwrap_or(false),
+            Head::Gun => ready && Self::gun_target(obs, &me, c - 1).is_some(),
             Head::Lead => true,
             Head::Mortar => ready && Self::mortar_target(obs, &me, c - 1).is_some(),
             Head::Signal => self.called.map(|t| obs.tick >= t + CALL_EVERY).unwrap_or(true) && Self::call_at(obs, &me, CALL_KINDS[c - 1]).is_some(),
@@ -333,14 +348,18 @@ impl Brain for NetBrain {
         }
         let gun = pick(Head::Gun);
         if gun > 0 {
-            if let Some(t) = Self::tank_in(obs, &me, gun - 1) {
-                let lead = crate::lead(&me, &t);
-                let at = match pick(Head::Lead) {
-                    0 => t.pos,
-                    1 => lead,
-                    _ => t.pos + (lead - t.pos).scale(0.5),
-                };
-                cmds.push(Command::FireDirect { at });
+            match Self::gun_target(obs, &me, gun - 1) {
+                Some((_, Some(t))) => {
+                    let lead = crate::lead(&me, &t);
+                    let at = match pick(Head::Lead) {
+                        0 => t.pos,
+                        1 => lead,
+                        _ => t.pos + (lead - t.pos).scale(0.5),
+                    };
+                    cmds.push(Command::FireDirect { at });
+                }
+                Some((at, None)) => cmds.push(Command::FireDirect { at }),
+                None => {}
             }
         } else if let Some(at) = Some(pick(Head::Mortar)).filter(|m| *m > 0).and_then(|m| Self::mortar_target(obs, &me, m - 1)) {
             cmds.push(Command::FireIndirect { at });
@@ -383,6 +402,30 @@ mod tests {
         std::fs::remove_file(&path).ok();
         assert_eq!(a, b);
         assert_eq!(a.with_flat(&a.flat()), a);
+    }
+
+    /// The gun's target (LR 99): a live hostile pillbox in reach and in
+    /// the sector when no tank is; never a neutral one, a dead one, or
+    /// one out of reach.
+    #[test]
+    fn the_gun_takes_a_hostile_pillbox_in_reach() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        w.pillboxes.clear();
+        w.tanks[0].heading = 0.0;
+        let me = w.tanks[0].pos;
+        w.tanks[1].pos = me + V2::new(0.0, 40.0);
+        let at = me + V2::new(9.0, 0.0);
+        let pb = |owner: Option<PlayerId>, health: f32, pos: V2| Pillbox { id: 70_001, pos, owner, health, reload: 0, capture: 0, capturer: None, shells: 0 };
+        let me_t = w.tanks[0].clone();
+        for (owner, health, pos, want) in [(Some(1), 60.0, at, true), (None, 60.0, at, false), (Some(1), 0.0, at, false), (Some(1), 60.0, me + V2::new(14.0, 0.0), false)] {
+            w.pillboxes = vec![pb(owner, health, pos)];
+            let obs = w.observe(0);
+            let got = NetBrain::gun_target(&obs, &me_t, 0);
+            assert_eq!(got.is_some(), want, "{:?} {} at {:.0}", owner, health, pos.dist(me));
+            if let Some((p, t)) = got {
+                assert!(t.is_none() && p == at);
+            }
+        }
     }
 
     /// The mask: a head's choice is never one not allowed; hold always is.

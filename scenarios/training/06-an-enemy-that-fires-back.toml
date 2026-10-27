@@ -1,0 +1,44 @@
+# Training map 6 (AI-BRAINZ-PLAN.md section 9, LAB-REPORT-BRAIN.md
+# section 99): an enemy that fires back. The duel family's ground (a
+# RuleBot 16 tiles off in any direction, open grass, no pillboxes or
+# depots, drones recalled at half a second), the learner in seat 0.
+# Passed: the RuleBot destroyed and the tank alive inside 60 s.
+name = "an enemy that fires back"
+floor = 0.5
+held = 300
+players = 2
+seconds = 60
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-42, 42]
+y = [-42, 42]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [16, 0]
+around = true
+[[event]]
+at = 0.5
+drones = "recall"
+[[brain]]
+seat = 0
+kind = "net"
+[[brain]]
+seat = 1
+kind = "rulebot"
+[expect]
+dead = { seat = 1 }
+alive = { seat = 0 }
+[reward]
+damage_given = 0.02
+damage_taken = -0.02
+killed = 2
+alive = 1
+pass = 1

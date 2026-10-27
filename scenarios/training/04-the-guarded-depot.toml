@@ -1,0 +1,53 @@
+# Training map 4 (AI-BRAINZ-PLAN.md section 9, LAB-REPORT-BRAIN.md
+# section 99): the guarded depot. A neutral depot at the map's centre,
+# a hostile pillbox 3 tiles in front of it on the tank's side, the tank
+# 18 tiles off in any direction facing any way, on open grass. The
+# depot is inside the pillbox's ring (8 tiles), so the tank must kill
+# the pillbox from outside its ring (two direct shots from 8 to 10
+# tiles take none back) or take its fire for the 10 s the depot takes.
+# Passed: the depot is the tank's, and the tank is alive, inside 60 s.
+# One file, read three ways: `make train GROUND=this` (the net in seat
+# 0), `make train GROUND=this BASELINE=1` (the scripted brain in its
+# place), and the held-out seeds for both.
+name = "the guarded depot"
+floor = 0.8
+held = 300
+players = 2
+seconds = 60
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-30, 30]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [18, 0]
+around = true
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 60]
+[[depot]]
+at = "centre"
+[[pillbox]]
+near = "depot:0"
+toward = "seat:0"
+away = 3
+owner = 1
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+depot_owned_by = { seat = 0, depot = 0 }
+alive = { seat = 0 }
+[reward]
+closer = { at = "depot:0", worth = 0.5 }
+pillbox_killed = 1
+depot_taken = 2
+damage_taken = -0.01
+alive = 0.5
+pass = 1

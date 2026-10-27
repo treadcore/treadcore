@@ -1,0 +1,30 @@
+# Training map 5 (AI-BRAINZ-PLAN.md section 9, LAB-REPORT-BRAIN.md
+# section 99): under a shell, the dodge families' situation. The tank
+# rolling at full speed on any heading; a shell from any side lands
+# within 2.5 tiles of it in 1.5 to 3.5 s. Passed: not hit. The scripted
+# brain's family (a-rolling-tank-under-a-shell) holds 99%; that is the
+# floor here too.
+name = "under a shell"
+floor = 0.99
+held = 1000
+players = 2
+seconds = 4.5
+[[tank]]
+seat = 0
+heading = "any"
+speed = 4
+[[brain]]
+seat = 0
+kind = "net"
+[[shell]]
+owner = 1
+at = "seat:0"
+scatter = 2.5
+from = [30, 0]
+from_any = true
+lands_in = [1.5, 3.5]
+[expect]
+hits_on = { seat = 0, max = 0 }
+[reward]
+pass = 1
+damage_taken = -0.01
