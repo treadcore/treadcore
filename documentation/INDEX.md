@@ -508,6 +508,7 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/MAPS.md | the map file format; converting prior-art maps |
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
 | documentation/LAB-REPORT-BRAIN.md | the bot AI: the baseline of 17 October (section 2, archived), the research, the step 12 design, the record of building it (sections 11 to 19, 21 to 24) and the brain now (section 20) |
+| documentation/AI-BRAINZ-PLAN.md | the two brains (scripted and learned), the senses, calls to friends, training, what is proven, the upgrades proposed; with diagrams |
 | documentation/CENSUS.md | the brain census: running, reading and resuming it, and a dedicated machine for it |
 | documentation/BRAIN-MAP.md | every brain file and function with its doc comment's first sentence, written by `make brainmap` |
 | documentation/checkins/ | check-in reports in IEEE form: the prompts, the decisions they caused, methods, results (CI-001: each switch alone, the posture, a review of the brain) |
@@ -524,6 +525,7 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/INDEX.md | this |
 | documentation/HOW-TO-PLAY.md | the player's guide with pictures, every key |
 | journal/0001 to 0017 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes; sub-cubes |
+| reports/2026-10-26-the-learned-tank.html | the learned tank, for 0.2.0: a periscope to drag, the 133 senses, the training curves, the census |
 | reports/images/ | the playtest frames, playtest-01 to 18, 256-colour PNG |
 
 ## 5. Keyword cross-reference
@@ -629,3 +631,64 @@ New words:
 - **team board**: a team's one shared picture, rebuilt once a second.
 - **archived**: replaced as the default and kept as the record
   (`archive/`).
+
+## 7. The whole of it, at 0.2.0 (26 October 2026)
+
+```mermaid
+flowchart TB
+    subgraph play [the game]
+      CL[treadcore-client<br/>the window, HUD, sound]
+      SV[treadcore-server<br/>a headless host]
+      NT[treadcore-net<br/>lockstep, election, relay]
+      PR[treadcore-proto<br/>the wire]
+    end
+    SIM[treadcore-sim<br/>the world: rules, maps, replay hash]
+    subgraph brainz [treadcore-brain]
+      CMD[Commander + team board<br/>110 weights]
+      NB[NetBrain<br/>senses.rs, net.rs, calls.rs]
+      LRN[learn.rs<br/>grounds, evolution]
+      FL[fleet.rs<br/>the census]
+      SC[scenario.rs<br/>families]
+    end
+    CL --> NT --> PR
+    SV --> NT
+    CL --> SIM
+    SV --> SIM
+    CL --> CMD
+    CMD --> SIM
+    NB --> SIM
+    LRN --> NB
+    FL --> CMD
+    FL --> NB
+    SC --> CMD
+    WARM[treadcore-warm<br/>the engine prebuilt] -.-> CL
+    subgraph tools [scripts and make]
+      CEN[make census / converge / ledger]
+      TR[make train]
+      FAM[make families]
+    end
+    CEN --> FL
+    TR --> LRN
+    FAM --> SC
+```
+
+The learned tank's files:
+
+| file | what |
+| --- | --- |
+| treadcore-brain/src/senses.rs | what a tank feels: a compass of 8 sectors by 11 channels, the body, the instruments, the periscope's contacts, the hints; 133 numbers |
+| treadcore-brain/src/net.rs | `Net` (an MLP in plain Rust, its file), `HEADS`, `choose` with a mask, `NetBrain` |
+| treadcore-brain/src/calls.rs | `Calls`: a team's shared queue of requests (help, attack, take), each also a ping |
+| treadcore-brain/src/learn.rs | the training grounds, `play`, evolution strategies (`generation`, `Adam`, `spread` over threads), `check`; `make train` |
+| nets/phase1.bin, nets/phase3.bin | trained nets: go to; drive and shoot |
+
+New words:
+
+- **sense**: one number of what a learned tank feels, 0 to 1.
+- **periscope contact**: the exact bearing (sine, cosine) and strength
+  of one thing that matters, beside the compass's sectors.
+- **ground**: a training scene; **episode**: one try on it.
+- **evolution strategies**: training by nudging all the weights at
+  random, both ways, and moving toward the nudges that scored better.
+- **call**: a request to a team's learned tanks, kept in its queue.
+

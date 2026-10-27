@@ -53,6 +53,7 @@ pub struct Call {
 pub struct Calls(Arc<Mutex<Vec<Call>>>);
 
 impl Calls {
+    /// An empty queue, for one team's match.
     pub fn new() -> Calls {
         Calls::default()
     }

@@ -17,9 +17,11 @@ Website: [treadcore.org](https://treadcore.org). Repository:
 Crates: [treadcore-client](https://crates.io/crates/treadcore-client)
 (the window, installed as `treadcore`), [treadcore-server](https://crates.io/crates/treadcore-server),
 and the libraries they are built from, `treadcore-sim`, `treadcore-proto`,
-`treadcore-net`, `treadcore-brain`. The current release is 0.1.0-rc.6,
-the sixth candidate (`documentation/RELEASE.md`), the first with
-packages; it is offered for playtesting, and the player's guide is
+`treadcore-net`, `treadcore-brain`. The current release is 0.2.0
+(`documentation/RELEASE.md`), the first release after six candidates:
+the bots on a team board and 110 census-tuned weights, and the first
+learned tank ([documentation/AI-BRAINZ-PLAN.md](documentation/AI-BRAINZ-PLAN.md));
+the player's guide is
 [documentation/HOW-TO-PLAY.md](documentation/HOW-TO-PLAY.md).
 
 ```
@@ -227,6 +229,7 @@ journal/                  the creation journal: one plain-text entry per session
 - [documentation/ROADMAP.md](documentation/ROADMAP.md): the goals, the steps still between here and each, and the backlog.
 - [documentation/BUILD.md](documentation/BUILD.md): how the build is designed for a small machine; `make warm`.
 - [documentation/LAB-REPORT.md](documentation/LAB-REPORT.md): a walk through the code, crate by crate, and the Rust technique in it.
+- [documentation/AI-BRAINZ-PLAN.md](documentation/AI-BRAINZ-PLAN.md): the two brains, scripted and learned; the learned tank's senses, its calls to friends and its training; what is proven and what comes next, with diagrams. The page: [reports/2026-10-26-the-learned-tank.html](https://treadcore.org/reports/2026-10-26-the-learned-tank.html).
 - [documentation/LAB-REPORT-BRAIN.md](documentation/LAB-REPORT-BRAIN.md): the bot AI: the baseline of 17 October (archived), the research, the step 12 design, the record of building it, and the brain now, an improved prototype on weights, switches and a team board.
 - [documentation/PROPOSAL-UPGRADES.md](documentation/PROPOSAL-UPGRADES.md): the proposal for supply, sixteen base upgrades and how they are bought.
 - [documentation/archive/](documentation/archive/README.md): the development record: the roadmap of steps 0 to 11, and the register of the brain's methods, archived and current.

@@ -123,6 +123,7 @@ pub enum Contact {
     CallTake,
 }
 
+/// The dot product.
 fn dot(a: V2, b: V2) -> f32 {
     a.x * b.x + a.y * b.y
 }
@@ -308,6 +309,7 @@ pub fn sense(obs: &Observation, map: Option<&Map>, hints: Option<&Hints>, calls:
 mod tests {
     use super::*;
 
+    /// Two tanks on a generated map, no pillbox, depot or swarm.
     fn world() -> World {
         let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
         w.pillboxes.clear();

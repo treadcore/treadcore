@@ -52,6 +52,7 @@ pub enum Task {
 }
 
 impl Task {
+    /// The task a phase trains (`make train PHASE=`), if it has one yet.
     pub fn phase(p: u32) -> Option<Task> {
         match p {
             1 => Some(Task::GoTo),
@@ -299,6 +300,7 @@ pub struct Adam {
 }
 
 impl Adam {
+    /// Moments at zero for `n` weights.
     pub fn new(n: usize) -> Adam {
         Adam { m: vec![0.0; n], v: vec![0.0; n], t: 0 }
     }
@@ -486,6 +488,7 @@ mod tests {
 mod harness {
     use super::*;
 
+    /// A setting from the environment, or `d` when unset, empty or unread.
     fn env<T: std::str::FromStr>(k: &str, d: T) -> T {
         std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d)
     }

@@ -74,15 +74,36 @@ IV. CHRONOLOGY
        team -19.30 over 110 seeds; 7.8 us a decision.
    15. dodge_horizon 2: held out +1.82 and +1.66 on 400 seeds each;
        families hold: a candidate for Paul.
+   16. The trainer: grounds and evolution strategies (learn.rs, make
+       train). Phase 1 on the first senses: 95.2% on the pillbox
+       after 500 generations, 4 minutes on the Mac.
+   17. Paul accepted the new defaults: the run's ten held-out reads
+       of dodge_horizon 2 (+1.09 to +2.66); the default is 2,
+       families hold, the run restarted on it at 18:10.
+   18. The senses to 133: instruments, a periscope, a Call channel;
+       calls.rs, a team's shared queue of calls to friends. Phase 1
+       again: 999 of 999, every ground passed by generation 67.
+   19. Phase 3: the first rule met by the untrained net's mortar; the
+       second by physics (a still tank is never missed); the
+       shoot-only net forgot the going; drive and shoot on all three
+       grounds: 999 of 999.
+   20. The census of the trained team: -23.52 against a random net's
+       -20.35: it charges what a match defends. The rule fails.
+   21. AI-BRAINZ-PLAN.md with diagrams; the learned-tank page; INDEX
+       section 7; LR 97; CI-059. Release 0.2.0 prepared: the version,
+       PROTOCOL.md at wire 16, the changelog, the frames.
 
 V. RESULTS
 
-    LAB-REPORT-BRAIN.md sections 89 to 96; CI-055 to CI-058.
+    LAB-REPORT-BRAIN.md sections 89 to 97; CI-055 to CI-059;
+    AI-BRAINZ-PLAN.md.
 
 VI. DISCUSSION
 
     A weight behind a comparison acts only where the other number
-    lets it. A GPU would wait on the sim.
+    lets it. A GPU would wait on the sim. A rule read on the untrained
+    net first is a rule tested; a skill trained where nothing shoots
+    back is a skill that gets a tank killed.
 
 VII. OPEN PROBLEMS
 
@@ -91,13 +112,16 @@ VII. OPEN PROBLEMS
 
 VIII. NEXT STEPS
 
-    1. Paul: dodge_horizon 2 to the default?
-    2. Phase 1 of the learned tank: go to a target, by evolution.
+    1. Phase 4 of the learned tank: live (hostile pillboxes and an
+       enemy that fires back on the grounds), then a census.
+    2. Paul: make publish and the draft release, a day after the tag.
 
 APPENDIX B. ARTIFACTS
 
     build/day/ on the census machine; the weight ledger,
-    https://claude.ai/artifact/KdMP63zpmJVWgm4ChwgBpf.
+    https://claude.ai/artifact/KdMP63zpmJVWgm4ChwgBpf; the learned
+    tank, https://claude.ai/artifact/2vzTNKcmB71GYLodeZLTjS and
+    reports/2026-10-26-the-learned-tank.html; nets/.
 
 --
 Paul Richeson <paulr@sdf.org>

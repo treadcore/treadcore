@@ -6,28 +6,32 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-18 files, 403 functions (0 with no doc comment; 29 more are a trait's, documented by it), 98 tests.
+22 files, 468 functions (0 with no doc comment; 37 more are a trait's, documented by it), 116 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
-| [`board.rs`](#boardrs) | 768 | 23 | 0 | 8 | The team board (roadmap step 12e, LAB-REPORT-BRAIN.md sections 5 and 9). |
-| [`commander.rs`](#commanderrs) | 4114 | 78 | 0 | 24 | The Commander (roadmap step 11a): a Brain for the player's own seat. |
+| [`board.rs`](#boardrs) | 811 | 28 | 0 | 8 | The team board (roadmap step 12e, LAB-REPORT-BRAIN.md sections 5 and 9). |
+| [`calls.rs`](#callsrs) | 117 | 4 | 0 | 1 | Calls to friends (LR 97): a team's shared queue of requests, so a learned tank can ask its teammates for something and hear what they ask of it. |
+| [`commander.rs`](#commanderrs) | 4143 | 78 | 0 | 24 | The Commander (roadmap step 11a): a Brain for the player's own seat. |
 | [`crew.rs`](#crewrs) | 584 | 18 | 0 | 1 | The fleet commander and its crews (Paul, 16 October: "each side has a fleet commander and they request and organize fort construction"). |
 | [`cycle.rs`](#cyclers) | 441 | 9 | 0 | 4 | The base cycle (roadmap step 12f1, LAB-REPORT-BRAIN.md section 6.1; Paul, 18 October: "after they fill up on base resources, add to the base 1 item, 1 improvement, and attempt to build roads to other established bases... |
-| [`facts.rs`](#factsrs) | 215 | 10 | 0 | 2 | What the map says, worked out once (roadmap steps 12b and 12f2, LAB-REPORT-BRAIN.md sections 5 and 6.2). |
-| [`fleet.rs`](#fleetrs) | 1317 | 20 | 0 | 9 | Fleets (Paul, 15 October: "can we start a game with ... 3 teams of base building, 5 on each, and 1 random aggro bot"): sixteen seats dealt into three teams of five neighbours round the map's edge and one RuleBot alone... |
+| [`facts.rs`](#factsrs) | 222 | 10 | 0 | 2 | What the map says, worked out once (roadmap steps 12b and 12f2, LAB-REPORT-BRAIN.md sections 5 and 6.2). |
+| [`fleet.rs`](#fleetrs) | 1381 | 20 | 0 | 9 | Fleets (Paul, 15 October: "can we start a game with ... 3 teams of base building, 5 on each, and 1 random aggro bot"): sixteen seats dealt into three teams of five neighbours round the map's edge and one RuleBot alone... |
 | [`fortify.rs`](#fortifyrs) | 679 | 25 | 0 | 2 | Fortification to a plan (roadmap step 11b): a castle's gate. |
 | [`hop.rs`](#hoprs) | 938 | 25 | 0 | 1 | Island hopping: a bot that has taken everything it can reach goes for what it cannot, across the water. |
 | [`intent.rs`](#intentrs) | 186 | 9 | 0 | 3 | Holding a decision (roadmap step 12d, LAB-REPORT-BRAIN.md section 7). |
-| [`ledger.rs`](#ledgerrs) | 326 | 11 | 0 | 3 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
-| [`lib.rs`](#librs) | 2865 | 65 | 0 | 19 | treadcore-brain -- the controller interface, and one controller. |
+| [`learn.rs`](#learnrs) | 580 | 23 | 0 | 4 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
+| [`ledger.rs`](#ledgerrs) | 489 | 13 | 0 | 4 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
+| [`lib.rs`](#librs) | 2940 | 66 | 0 | 20 | treadcore-brain -- the controller interface, and one controller. |
 | [`memory.rs`](#memoryrs) | 101 | 10 | 0 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
-| [`meter.rs`](#meterrs) | 404 | 26 | 0 | 3 | What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure first"). |
+| [`meter.rs`](#meterrs) | 558 | 30 | 0 | 4 | What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure first"). |
+| [`net.rs`](#netrs) | 456 | 18 | 0 | 4 | A learned tank (LR 95, 96): a small net from the senses (senses.rs) to an action, and the Brain that drives by it. |
 | [`rotation.rs`](#rotationrs) | 301 | 7 | 0 | 3 | Rotation (Paul, 17 October: "every bot should have a push point, and a defense point. |
 | [`scenario.rs`](#scenariors) | 900 | 14 | 0 | 6 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
+| [`senses.rs`](#sensesrs) | 424 | 8 | 0 | 5 | The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map. |
 | [`status.rs`](#statusrs) | 357 | 9 | 0 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
-| [`tactics.rs`](#tacticsrs) | 679 | 16 | 0 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
-| [`weights.rs`](#weightsrs) | 565 | 28 | 0 | 5 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
+| [`tactics.rs`](#tacticsrs) | 694 | 16 | 0 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
+| [`weights.rs`](#weightsrs) | 592 | 28 | 0 | 6 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
 
 ## board.rs
 
@@ -38,37 +42,57 @@ The team board (roadmap step 12e, LAB-REPORT-BRAIN.md sections 5 and 9). One per
 | 40 | `shared` |  | yes | A new, empty board for a team. |
 | 95 | `word` | Posture | yes | The posture's name, for the screen and the census. |
 | 130 | `of` | PostureScores | yes | The score of one posture. |
-| 202 | `worth` |  |  | A tank's worth in a fight, for the influence: its armour share, at least a tenth; none dead or out of shells. |
-| 211 | `readiness` |  | yes | A tank's readiness: armour times shells, as shares of full. |
-| 220 | `sector_of` |  | yes | The sector a point is in, row-major; off the map, the nearest. |
-| 227 | `sector_centre` |  | yes | The middle of a sector. |
-| 234 | `post` | TeamBoard | yes | Every think of a member: where it is and what it is doing, and the jobs it heard given out. |
-| 260 | `post_bridge` | TeamBoard | yes | A member laying a bridge says so every think: the same bridge (a tile or the target in common) is updated, a new one posted. |
-| 278 | `prune_bridges` | TeamBoard | yes | The tiles laid since, by anyone, off the jobs; a bridge laid, or untouched for `keep`, off the board. |
-| 291 | `take_bridge` | TeamBoard | yes | A part-laid bridge nobody is laying, its next tile within `reach` of `at`, that `ok` takes: the nearest, now `p`'s. |
-| 303 | `due` | TeamBoard | yes | A rebuild is due: never built, or `REBUILD` since the last. |
-| 308 | `job_for` | TeamBoard | yes | The job given to `p` lately, if any. |
-| 313 | `order_for` | TeamBoard | yes | What the board orders `p` now, if anything. |
-| 318 | `done` | TeamBoard | yes | The order is carried out (home and full, or relieved): drop it. |
-| 323 | `influence_at` | TeamBoard | yes | Ours minus theirs at a point's sector, as last seen. |
-| 328 | `threat_at` | TeamBoard | yes | Hostile strength at a point's sector, as last seen. |
-| 334 | `front` | TeamBoard | yes | The front: our sectors with a neighbour that is theirs, on the influence with the hostiles remembered (`known`), else as seen. |
-| 352 | `front_dist` | TeamBoard | yes | Tiles from `p` to the nearest front sector's centre (LR 58); none with no front (no hostile seen at the last rebuild). |
-| 357 | `territory` | TeamBoard | yes | The share of the map that is ours. |
-| 365 | `rebuild` | TeamBoard | yes | Once a second: the maps, the points, the posture, the swaps. |
-| 508 | `rotate` | TeamBoard |  | Rotation across the team (LR 9): the hottest point's least ready member against the most ready member elsewhere. |
-| 547 | `placed` |  |  | Four seats, two teams (0 and 2, 1 and 3), placed; every tank seen. |
+| 208 | `worth` |  |  | A tank's worth in a fight, for the influence: its armour share, at least a tenth; none dead or out of shells. |
+| 217 | `readiness` |  | yes | A tank's readiness: armour times shells, as shares of full. |
+| 227 | `sector_of` |  | yes | The sector a point is in on a 128-tile map, row-major; off the map, the nearest. |
+| 232 | `sector_centre` |  | yes | The middle of a sector of a 128-tile map. |
+| 237 | `sector_in` |  | yes | The sector a point is in on a grid `cols` by `rows`. |
+| 244 | `centre_in` |  | yes | The middle of sector `s` of a grid `cols` across. |
+| 250 | `dims` | TeamBoard | yes | Sectors across and down. |
+| 255 | `sector_of` | TeamBoard | yes | The sector a point is in, on this board's grid. |
+| 261 | `sector_centre` | TeamBoard | yes | The middle of a sector, on this board's grid. |
+| 267 | `post` | TeamBoard | yes | Every think of a member: where it is and what it is doing, and the jobs it heard given out. |
+| 293 | `post_bridge` | TeamBoard | yes | A member laying a bridge says so every think: the same bridge (a tile or the target in common) is updated, a new one posted. |
+| 311 | `prune_bridges` | TeamBoard | yes | The tiles laid since, by anyone, off the jobs; a bridge laid, or untouched for `keep`, off the board. |
+| 324 | `take_bridge` | TeamBoard | yes | A part-laid bridge nobody is laying, its next tile within `reach` of `at`, that `ok` takes: the nearest, now `p`'s. |
+| 336 | `due` | TeamBoard | yes | A rebuild is due: never built, or `REBUILD` since the last. |
+| 341 | `job_for` | TeamBoard | yes | The job given to `p` lately, if any. |
+| 346 | `order_for` | TeamBoard | yes | What the board orders `p` now, if anything. |
+| 351 | `done` | TeamBoard | yes | The order is carried out (home and full, or relieved): drop it. |
+| 356 | `influence_at` | TeamBoard | yes | Ours minus theirs at a point's sector, as last seen. |
+| 361 | `threat_at` | TeamBoard | yes | Hostile strength at a point's sector, as last seen. |
+| 367 | `front` | TeamBoard | yes | The front: our sectors with a neighbour that is theirs, on the influence with the hostiles remembered (`known`), else as seen. |
+| 386 | `front_dist` | TeamBoard | yes | Tiles from `p` to the nearest front sector's centre (LR 58); none with no front (no hostile seen at the last rebuild). |
+| 391 | `territory` | TeamBoard | yes | The share of the map that is ours. |
+| 399 | `rebuild` | TeamBoard | yes | Once a second: the maps, the points, the posture, the swaps. |
+| 545 | `rotate` | TeamBoard |  | Rotation across the team (LR 9): the hottest point's least ready member against the most ready member elsewhere. |
+| 584 | `placed` |  |  | Four seats, two teams (0 and 2, 1 and 3), placed; every tank seen. |
 
 Tests (8):
 
-- `the_team_defends_a_threat_at_the_base_not_far_off` (line 564): Defend is a threat at the base, not the map's hostile tanks summed (LR 24): eight of them 80 tiles off read 0.73 on the sector threat, over its 0.5, and sent the team home in 94% of a match's picks.
-- `each_posture_scores_its_own_case` (line 586): Each posture wins on its own case (LR 25), and `posture_scored` 0 is the threshold ladder in every case.
-- `a_hostile_on_the_held_ground_is_an_incursion` (line 636)
-- `the_front_is_where_influence_crosses_zero` (line 665)
-- `a_front_seen_is_remembered` (line 684): The front's memory (LR 58): the hostiles seen at one rebuild and out of sight at the next still make the front where they were, for `front_memory` seconds; at 0 the front goes with the sighting.
-- `a_hurt_tank_swaps_out` (line 708)
-- `a_part_laid_bridge_waits_for_the_next_tank` (line 728)
-- `a_missed_job_is_still_on_the_board` (line 757)
+- `the_team_defends_a_threat_at_the_base_not_far_off` (line 601): Defend is a threat at the base, not the map's hostile tanks summed (LR 24): eight of them 80 tiles off read 0.73 on the sector threat, over its 0.5, and sent the team home in 94% of a match's picks.
+- `each_posture_scores_its_own_case` (line 623): Each posture wins on its own case (LR 25), and `posture_scored` 0 is the threshold ladder in every case.
+- `a_hostile_on_the_held_ground_is_an_incursion` (line 679)
+- `the_front_is_where_influence_crosses_zero` (line 708)
+- `a_front_seen_is_remembered` (line 727): The front's memory (LR 58): the hostiles seen at one rebuild and out of sight at the next still make the front where they were, for `front_memory` seconds; at 0 the front goes with the sighting.
+- `a_hurt_tank_swaps_out` (line 751)
+- `a_part_laid_bridge_waits_for_the_next_tank` (line 771)
+- `a_missed_job_is_still_on_the_board` (line 800)
+
+## calls.rs
+
+Calls to friends (LR 97): a team's shared queue of requests, so a learned tank can ask its teammates for something and hear what they ask of it.  A call is a kind, a place and a time. The team's learned tanks share one `Calls` (one queue a team a match, as a team board is shared, LR 58); each posts with its Signal head and feels the others' calls as senses (senses.rs: the compass's Call channel and the call contact). Every call is also said in the world as a `Command::Ping`, so scripted teammates answer it as they answer one another, and a teammate's ping heard in the world is taken into the queue as an attack call: nets and scripted brains share one language.  The brains of a match think in seat order on one thread, so the queue is read and written in the same order every time: a match is the same twice.
+
+| Line | Function | Of | Pub | What it does (its doc comment) |
+| --- | --- | --- | --- | --- |
+| 57 | `new` | Calls | yes | An empty queue, for one team's match. |
+| 63 | `post` | Calls | yes | Post a call; calls past their life and the oldest past `CALLS_KEPT` go. |
+| 74 | `heard` | Calls | yes | The calls a tank hears now: live, and not its own; newest last. |
+| 80 | `hear` | Calls | yes | Take a tick's teammates' pings from the world (`Event::Pinged`) as attack calls, once each. |
+
+Tests (1):
+
+- `a_call_is_heard_by_friends_for_its_life` (line 102): The queue: a call is heard by the others and not by its caller, for `CALL_LIFE` and no longer, and it keeps the newest `CALLS_KEPT`.
 
 ## commander.rs
 
@@ -103,84 +127,84 @@ The Commander (roadmap step 11a): a Brain for the player's own seat.  A person c
 | 1080 | `alliances` | Commander |  | A bot seat's sides: answer what is put to it (yes to the leader and its side, yes to anyone who has not shot at it); ask to join the leader's side while not on it; and leave the side, keeping what it took, only once e... |
 | 1116 | `fortify` | Commander |  | Build the castle: guard the point as `defend` does, and keep the squad on the plan whenever it is aboard and nothing threatens. |
 | 1178 | `base_of` | Commander |  | The base's centre: the castle's, else the depot of my side nearest the tank when first asked, else where the tank is. |
-| 1215 | `post` | Commander |  | Where the tank waits at the base: behind the gate when there is a castle, else beside the centre. |
-| 1225 | `beach_worth` | Commander |  | Each beach in sight with what its island is worth as a base, in tiles of the run (`w_site_beach` times `site_score`), while afloat and the side holds no depot; none otherwise. |
-| 1240 | `front_points` | Commander |  | The centres of the team board's front sectors (LR 58), with the board on; none without a board or with no hostile known. |
-| 1251 | `guard_post` | Commander |  | The guard's post (backlog 51, LR 61): the post moved `w_front_post` of the way toward the nearest front sector, `FRONT_POST_REACH` at most, so an attack is met before it reaches the base and the base stays inside the... |
-| 1275 | `base_threat` | Commander |  | The threat to the base, if any: the hostile tank nearest it within BASE_ALARM, and the alarm a pillbox of the base shot at raises (by a gun it may not see: indirect fire, a longshot). |
-| 1301 | `neediest` | Commander |  | The base's pillbox that most wants the squad: one dead first (ours to mend, theirs to take back), then the most hurt of ours. |
-| 1313 | `defend_base` | Commander |  | Defend the base: out to meet the threat as far as BASE_ALARM, else on guard at the post; the squad mends or takes back the neediest pillbox of the base whenever no hostile tank is in the leash. |
-| 1352 | `raided` | Commander |  | A raid on the held ground (LR 68, `w_defend_ground`): the board's incursion, a hostile on the side's works' ground beyond the base's alarm; the side's pillbox or depot nearest it, where the guard goes, if that is an o... |
-| 1368 | `outlying` | Commander |  | An outlying pillbox of mine, nearest the base: one to bring in. |
-| 1380 | `turrets` | Commander |  | Turrets: fetch an outlying pillbox of mine and set it down in the next bastion. |
-| 1467 | `auto` | Commander |  | The ladder: each rung's condition, top down; the first that holds (and is on) is done this tick. |
-| 1589 | `slot_point` | Commander |  | My place in the leader's wedge (`WEDGE`), where it will be in a second at the leader's speed. |
-| 1611 | `bridge_near` | Commander |  | A bridge under the leader, on its next three route tiles, or on the line behind it within `back` tiles (its file still on it). |
-| 1628 | `helpers` | Commander |  | A fleet leader's wingmen near enough to lay its bridge. |
-| 1641 | `bridge_jobs` | Commander |  | A fleet's leader, about to travel: half its wingmen within `GATHER_R`, or it holds for them (`GATHER_FOR` at most). |
-| 1677 | `duck` | Commander |  | The duck (roadmap 12d, LR 19): a hostile tank with shells in direct range and line, its gun ready within `duck_ready` and before mine, and my armour share at or under `w_duck`: where to go, out of its range or line, a... |
-| 1754 | `gathering` | Commander |  | The leader waits for its fleet before going out: stopped, "form up on me", for up to `GATHER_FOR`, then on with a cool-down. |
-| 1789 | `expand` | Commander |  | Expand: the nearest depot not of my side to the base, its guards first; with none to be had, any pillbox on the map. |
-| 1855 | `flush_say` | Commander |  | Team chat, oldest first, one line a second; a backlog of more than three is stale and dropped. |
-| 1872 | `revive` | Commander |  | Revive (Paul, 16 October: "can we have an ally repair a fallen tank"): an allied tank down, not yet dead, inside `REVIVE_REACH`, with time left for the drive, the squad's walk and the work. |
-| 1969 | `help_chain` | Commander |  | Chain help (Paul: "tell the bots to prioritize chain help"). |
-| 2043 | `chain_target` | Commander |  | Where a chain's work is: the pillbox or depot of that id, if seen. |
-| 2051 | `flank` | Commander |  | A seat's flank in a group attack: seats taken three ways, left, centre and right, each coming in sixty degrees round from the way it was coming, so three bots answering one ping close from three sides. |
-| 2058 | `flank_word` | Commander |  | The seat's flank in a word, as `flank` takes it. |
-| 2064 | `called` | Commander |  | What a ping marks, in a word or two: the hostile tank by it, or the place. |
-| 2072 | `hear_pings` | Commander |  | A teammate's ping within `RALLY_REACH`, if this bot answers them. |
-| 2122 | `call_enemy` | Commander |  | A hostile tank in sight that nobody of the side has called: ping it, and go for it too. |
-| 2154 | `rallying` | Commander |  | Answering a ping: to it, and onto any hostile tank near it, with the doctrine's gun free. |
-| 2258 | `fire_word` | Commander |  | The target the doctrine's gun is on and why, for `status`. |
-| 2267 | `blocked` | Commander |  | No line from here: round the target to the next firing point; a whole circle and a half without one, and it is given up. |
-| 2279 | `defend` | Commander |  | Hold by a point, fight what comes, mend what is ours there. |
-| 2287 | `defend_within` | Commander |  | Defend `at` within `leash`: the nearest hostile tank inside it kited from the defended side, shot in direct reach or met between it and `at`; with none, to the post and on guard. |
-| 2359 | `name` | Commander |  | *(the `Brain` trait's)* |
-| 2363 | `settings` | Commander |  | *(the `Brain` trait's)* |
-| 2367 | `set_settings` | Commander |  | *(the `Brain` trait's)* |
-| 2371 | `rung` | Commander |  | *(the `Brain` trait's)* |
-| 2375 | `beach` | Commander |  | The inner RuleBot's: the doctrine runs the landfall. |
-| 2378 | `dead` | Commander |  | *(the `Brain` trait's)* |
-| 2383 | `act` | Commander |  | *(the `Brain` trait's)* |
-| 2387 | `status` | Commander |  | *(the `Brain` trait's)* |
-| 2396 | `think` | Commander |  | *(the `Brain` trait's)* |
-| 2400 | `think_on` | Commander |  | *(the `Brain` trait's)* |
-| 2412 | `think_released` | Commander |  | The think, then `dodge_release` (lib.rs `Dodge::release`, LR 53): an errand that would drive back under a dodged shell before it lands waits, and is asked for again (`last_move` cleared); and `dodge_fire` (`Dodge::hol... |
-| 2434 | `blunt` | Commander |  | Under full skill (LR 67), what the Commander says, made worse where every path to the gun and the hangar meets: a shell's aim off by up to (1 - skill) of a rookie's scatter (a direct shot a quarter of that), and no dr... |
-| 2452 | `think_map` | Commander |  | The think: the inner doctrine every tick, then the goal (Auto's ladder, or the person's), and of the doctrine's orders only what the goal leaves it (`keep_inner`). |
-| 3349 | `bastions` |  |  | The settings with the castle of 11b and 11h: three towers and two bastions, no cap. |
-| 3357 | `one_pillbox` |  |  | Two seats, no swarm, no time limit, no pillboxes but one placed `away` tiles from seat 0 toward the middle, owned by `owner`. |
-| 3375 | `run` |  |  | Run seat 0 under `goal` for `seconds`; the other seat sits still. |
-| 3440 | `a_pair` |  |  | Three seats: 0 the leader, 1 its wingman on the same side, 2 the enemy; the wingman starts beside the leader, nobody else moves. |
-| 3459 | `fly` |  |  | Step `w` for `ticks` with seat 1 thinking, `each` after a step. |
-| 3679 | `free_near` |  |  | A free tile about `r` from `from`: open ground, off depots and pillboxes' spacing. |
+| 1225 | `post` | Commander |  | Where the tank waits at the base: behind the gate when there is a castle, else beside the centre. |
+| 1235 | `beach_worth` | Commander |  | Each beach in sight with what its island is worth as a base, in tiles of the run (`w_site_beach` times `site_score`), while afloat and the side holds no depot; none otherwise. |
+| 1250 | `front_points` | Commander |  | The centres of the team board's front sectors (LR 58), with the board on; none without a board or with no hostile known. |
+| 1261 | `guard_post` | Commander |  | The guard's post (backlog 51, LR 61): the post moved `w_front_post` of the way toward the nearest front sector, `FRONT_POST_REACH` at most, so an attack is met before it reaches the base and the base stays inside the... |
+| 1285 | `base_threat` | Commander |  | The threat to the base, if any: the hostile tank nearest it within BASE_ALARM, and the alarm a pillbox of the base shot at raises (by a gun it may not see: indirect fire, a longshot). |
+| 1311 | `neediest` | Commander |  | The base's pillbox that most wants the squad: one dead first (ours to mend, theirs to take back), then the most hurt of ours. |
+| 1323 | `defend_base` | Commander |  | Defend the base: out to meet the threat as far as BASE_ALARM, else on guard at the post; the squad mends or takes back the neediest pillbox of the base whenever no hostile tank is in the leash. |
+| 1362 | `raided` | Commander |  | A raid on the held ground (LR 68, `w_defend_ground`): the board's incursion, a hostile on the side's works' ground beyond the base's alarm; the side's pillbox or depot nearest it, where the guard goes, if that is an o... |
+| 1378 | `outlying` | Commander |  | An outlying pillbox of mine, nearest the base: one to bring in. |
+| 1390 | `turrets` | Commander |  | Turrets: fetch an outlying pillbox of mine and set it down in the next bastion. |
+| 1477 | `auto` | Commander |  | The ladder: each rung's condition, top down; the first that holds (and is on) is done this tick. |
+| 1599 | `slot_point` | Commander |  | My place in the leader's wedge (`WEDGE`), where it will be in a second at the leader's speed. |
+| 1621 | `bridge_near` | Commander |  | A bridge under the leader, on its next three route tiles, or on the line behind it within `back` tiles (its file still on it). |
+| 1638 | `helpers` | Commander |  | A fleet leader's wingmen near enough to lay its bridge. |
+| 1651 | `bridge_jobs` | Commander |  | A fleet's leader, about to travel: half its wingmen within `GATHER_R`, or it holds for them (`GATHER_FOR` at most). |
+| 1687 | `duck` | Commander |  | The duck (roadmap 12d, LR 19): a hostile tank with shells in direct range and line, its gun ready within `duck_ready` and before mine, and my armour share at or under `w_duck`: where to go, out of its range or line, a... |
+| 1764 | `gathering` | Commander |  | The leader waits for its fleet before going out: stopped, "form up on me", for up to `GATHER_FOR`, then on with a cool-down. |
+| 1799 | `expand` | Commander |  | Expand: the nearest depot not of my side to the base, its guards first; with none to be had, any pillbox on the map. |
+| 1865 | `flush_say` | Commander |  | Team chat, oldest first, one line a second; a backlog of more than three is stale and dropped. |
+| 1882 | `revive` | Commander |  | Revive (Paul, 16 October: "can we have an ally repair a fallen tank"): an allied tank down, not yet dead, inside `REVIVE_REACH`, with time left for the drive, the squad's walk and the work. |
+| 1979 | `help_chain` | Commander |  | Chain help (Paul: "tell the bots to prioritize chain help"). |
+| 2053 | `chain_target` | Commander |  | Where a chain's work is: the pillbox or depot of that id, if seen. |
+| 2061 | `flank` | Commander |  | A seat's flank in a group attack: seats taken three ways, left, centre and right, each coming in sixty degrees round from the way it was coming, so three bots answering one ping close from three sides. |
+| 2068 | `flank_word` | Commander |  | The seat's flank in a word, as `flank` takes it. |
+| 2074 | `called` | Commander |  | What a ping marks, in a word or two: the hostile tank by it, or the place. |
+| 2082 | `hear_pings` | Commander |  | A teammate's ping within `RALLY_REACH`, if this bot answers them. |
+| 2132 | `call_enemy` | Commander |  | A hostile tank in sight that nobody of the side has called: ping it, and go for it too. |
+| 2164 | `rallying` | Commander |  | Answering a ping: to it, and onto any hostile tank near it, with the doctrine's gun free. |
+| 2268 | `fire_word` | Commander |  | The target the doctrine's gun is on and why, for `status`. |
+| 2277 | `blocked` | Commander |  | No line from here: round the target to the next firing point; a whole circle and a half without one, and it is given up. |
+| 2289 | `defend` | Commander |  | Hold by a point, fight what comes, mend what is ours there. |
+| 2297 | `defend_within` | Commander |  | Defend `at` within `leash`: the nearest hostile tank inside it kited from the defended side, shot in direct reach or met between it and `at`; with none, to the post and on guard. |
+| 2369 | `name` | Commander |  | *(the `Brain` trait's)* |
+| 2373 | `settings` | Commander |  | *(the `Brain` trait's)* |
+| 2377 | `set_settings` | Commander |  | *(the `Brain` trait's)* |
+| 2381 | `rung` | Commander |  | *(the `Brain` trait's)* |
+| 2385 | `beach` | Commander |  | The inner RuleBot's: the doctrine runs the landfall. |
+| 2388 | `dead` | Commander |  | *(the `Brain` trait's)* |
+| 2393 | `act` | Commander |  | *(the `Brain` trait's)* |
+| 2397 | `status` | Commander |  | *(the `Brain` trait's)* |
+| 2406 | `think` | Commander |  | *(the `Brain` trait's)* |
+| 2410 | `think_on` | Commander |  | *(the `Brain` trait's)* |
+| 2422 | `think_released` | Commander |  | The think, then `dodge_release` (lib.rs `Dodge::release`, LR 53): an errand that would drive back under a dodged shell before it lands waits, and is asked for again (`last_move` cleared); and `dodge_fire` (`Dodge::hol... |
+| 2456 | `blunt` | Commander |  | Under full skill (LR 67), what the Commander says, made worse where every path to the gun and the hangar meets: a shell's aim off by up to (1 - skill) of a rookie's scatter (a direct shot a quarter of that), and no dr... |
+| 2474 | `think_map` | Commander |  | The think: the inner doctrine every tick, then the goal (Auto's ladder, or the person's), and of the doctrine's orders only what the goal leaves it (`keep_inner`). |
+| 3378 | `bastions` |  |  | The settings with the castle of 11b and 11h: three towers and two bastions, no cap. |
+| 3386 | `one_pillbox` |  |  | Two seats, no swarm, no time limit, no pillboxes but one placed `away` tiles from seat 0 toward the middle, owned by `owner`. |
+| 3404 | `run` |  |  | Run seat 0 under `goal` for `seconds`; the other seat sits still. |
+| 3469 | `a_pair` |  |  | Three seats: 0 the leader, 1 its wingman on the same side, 2 the enemy; the wingman starts beside the leader, nobody else moves. |
+| 3488 | `fly` |  |  | Step `w` for `ticks` with seat 1 thinking, `each` after a step. |
+| 3708 | `free_near` |  |  | A free tile about `r` from `from`: open ground, off depots and pillboxes' spacing. |
 
 Tests (24):
 
-- `skill_spoils_the_aim_and_holds_the_drones` (line 2956): LR 67: under full skill the Commander's shells land off its aim and its drones wait; in full, nothing it says is touched; under half, no kite.
-- `a_capped_castle_fills_then_lines_the_road` (line 2983): Paul's castle in play (roadmap 12h): alone, the capped castle goes up with two pillboxes inside, the first outlying pillbox is carried to the slot on its road, and the rest to posts on the road toward the side's secon...
-- `a_far_fetch_gathers_the_fleet` (line 3033): The escort (roadmap 12f): with `escort` on, a leader whose fetch trip runs past `fetch_gather` waits at the base for its wingman before it goes, and the pillbox still comes home.
-- `a_nan_does_not_panic_the_brain` (line 3082): Backlog 19 (LR 23): a NaN anywhere in what a tank sees used to panic the brain at the first `partial_cmp().unwrap()` that met it.
-- `a_tank_ducks_a_gun_ready_before_its_own` (line 3114): The duck (roadmap 12d, LR 19): a hostile gun in range and line, ready before mine, is ducked out of range; not when my gun is ready first, not with `w_duck` at 0, not with the switch off.
-- `a_teammate_finishes_a_part_laid_bridge` (line 3198): A part-laid bridge on the team board (roadmap 12f, LR 6.2): a teammate on Auto with material, nothing to do but guard, takes it and lays the rest, and it comes off the board.
-- `the_posture_leans_the_ladder` (line 3255): The posture leans the ladder (LR 24): with no posture or a weight of 0 the pick is the first rung that holds, for every one of the 4096 combinations; at 0.25 a leaned rung climbs one rung, at the default 0.5 every run...
-- `a_fleet_crosses_a_bridge_in_file` (line 3292): On a bridge a wingman's slot is in file straight behind the leader (roadmap 12f3); off it, the wedge; without the capability, the wedge on the bridge too.
-- `a_switch_comes_back_and_a_slider_keeps_the_target` (line 3326): The sliders (backlog 15): a switch off and on again mid-match gives the role's own setting back, and a weight moved keeps the turret's target.
-- `a_commander_takes_a_pillbox` (line 3409): 11a's proof: a live pillbox of the enemy's, 25 tiles off, is shot dead from outside its ring and taken by the squad inside ninety seconds, and it never lands a shell on the tank.
-- `a_commander_walks_round_a_wall_to_a_line` (line 3420): A wall on the near side of the pillbox: the first firing point has no line, so the hunter walks round to one that has.
-- `a_wingman_covers_its_leader` (line 3471): The wingman's first rule: a hostile tank that comes up to the leader is hit, and the wingman never leaves the leash to do it.
-- `a_wingman_takes_the_pillbox_by_its_leader` (line 3520): The pillbox by the leader is the wingman's to take; one far from the leader is not.
-- `a_wingman_leaves_only_at_one_hundred_percent` (line 3557): The defection gate: with one pillbox not the side's, never; with all of them and every depot, after `TOTAL_HOLD` and not before.
-- `a_commander_fortifies_its_depot` (line 3593): 11b's proof: alone on the island for five minutes, the squad builds the castle round the home depot: the towers and the rear pillbox, most of the wall, the gate left open, and a route from the front into the depot com...
-- `a_commander_defends_its_base` (line 3690): Defend the base: a tank parked 12 tiles out is a threat (beyond DefendDepot's leash, inside the base's alarm); it is met under the base's guns and shot, and the hurt pillbox is mended once it is gone.
-- `a_commander_scoots_from_unseen_fire` (line 3735): Shelled from twenty tiles, beyond sight: the tank scoots off the spot inside a second, puts a recon up, and so sees the shooter.
-- `a_bot_answers_a_chain` (line 3795): Chain help: a person who chains a pillbox alone is answered by the nearest bot of the side, which hitches on and hauls beside them, so the pillbox moves when the person drives off.
-- `a_bot_revives_a_downed_ally` (line 3841): Revive: a bot whose ally goes down twelve tiles off drives over, sends its squad and has the ally back at half armour inside the twenty seconds.
-- `two_crews_haul_a_pillbox` (line 3882): Haul: two crews given the same job chain an ally's pillbox and drag it to the spot, then let go.
-- `a_commander_climbs_the_ladder` (line 3938): Auto, alone: fortify first; once the castle stands and the base has been quiet, the two outlying pillboxes of ours are lifted and set down in the turrets; a tank at the base sends it to defend.
-- `the_ladder_in_a_match` (line 4021): The window's solo match, headless: the map in LADDER_MAP, seat 0 on Auto against three RuleBots seeded as the window seeds them.
-- `a_commander_takes_a_neutral_pillbox_without_a_shot` (line 4064): A neutral pillbox is not shot at all: the squad takes it live.
-- `a_commander_defends_its_depot` (line 4078): Defend depot: an intruder that drives up to the depot is engaged, and the defender never strays past the leash.
+- `skill_spoils_the_aim_and_holds_the_drones` (line 2978): LR 67: under full skill the Commander's shells land off its aim and its drones wait; in full, nothing it says is touched; under half, no kite.
+- `a_capped_castle_fills_then_lines_the_road` (line 3005): Paul's castle in play (roadmap 12h): alone, the capped castle goes up with two pillboxes inside, the first outlying pillbox is carried to the slot on its road, and the rest to posts on the road toward the side's secon...
+- `a_far_fetch_gathers_the_fleet` (line 3061): The escort (roadmap 12f): with `escort` on, a leader whose fetch trip runs past `fetch_gather` waits at the base for its wingman before it goes, and the pillbox still comes home.
+- `a_nan_does_not_panic_the_brain` (line 3110): Backlog 19 (LR 23): a NaN anywhere in what a tank sees used to panic the brain at the first `partial_cmp().unwrap()` that met it.
+- `a_tank_ducks_a_gun_ready_before_its_own` (line 3142): The duck (roadmap 12d, LR 19): a hostile gun in range and line, ready before mine, is ducked out of range; not when my gun is ready first, not with `w_duck` at 0, not with the switch off.
+- `a_teammate_finishes_a_part_laid_bridge` (line 3226): A part-laid bridge on the team board (roadmap 12f, LR 6.2): a teammate on Auto with material, nothing to do but guard, takes it and lays the rest, and it comes off the board.
+- `the_posture_leans_the_ladder` (line 3284): The posture leans the ladder (LR 24): with no posture or a weight of 0 the pick is the first rung that holds, for every one of the 4096 combinations; at 0.25 a leaned rung climbs one rung, at 0.5 (and the default 0.95...
+- `a_fleet_crosses_a_bridge_in_file` (line 3321): On a bridge a wingman's slot is in file straight behind the leader (roadmap 12f3); off it, the wedge; without the capability, the wedge on the bridge too.
+- `a_switch_comes_back_and_a_slider_keeps_the_target` (line 3355): The sliders (backlog 15): a switch off and on again mid-match gives the role's own setting back, and a weight moved keeps the turret's target.
+- `a_commander_takes_a_pillbox` (line 3438): 11a's proof: a live pillbox of the enemy's, 25 tiles off, is shot dead from outside its ring and taken by the squad inside ninety seconds, and it never lands a shell on the tank.
+- `a_commander_walks_round_a_wall_to_a_line` (line 3449): A wall on the near side of the pillbox: the first firing point has no line, so the hunter walks round to one that has.
+- `a_wingman_covers_its_leader` (line 3500): The wingman's first rule: a hostile tank that comes up to the leader is hit, and the wingman never leaves the leash to do it.
+- `a_wingman_takes_the_pillbox_by_its_leader` (line 3549): The pillbox by the leader is the wingman's to take; one far from the leader is not.
+- `a_wingman_leaves_only_at_one_hundred_percent` (line 3586): The defection gate: with one pillbox not the side's, never; with all of them and every depot, after `TOTAL_HOLD` and not before.
+- `a_commander_fortifies_its_depot` (line 3622): 11b's proof: alone on the island for five minutes, the squad builds the castle round the home depot: the towers and the rear pillbox, most of the wall, the gate left open, and a route from the front into the depot com...
+- `a_commander_defends_its_base` (line 3719): Defend the base: a tank parked 12 tiles out is a threat (beyond DefendDepot's leash, inside the base's alarm); it is met under the base's guns and shot, and the hurt pillbox is mended once it is gone.
+- `a_commander_scoots_from_unseen_fire` (line 3764): Shelled from twenty tiles, beyond sight: the tank scoots off the spot inside a second, puts a recon up, and so sees the shooter.
+- `a_bot_answers_a_chain` (line 3824): Chain help: a person who chains a pillbox alone is answered by the nearest bot of the side, which hitches on and hauls beside them, so the pillbox moves when the person drives off.
+- `a_bot_revives_a_downed_ally` (line 3870): Revive: a bot whose ally goes down twelve tiles off drives over, sends its squad and has the ally back at half armour inside the twenty seconds.
+- `two_crews_haul_a_pillbox` (line 3911): Haul: two crews given the same job chain an ally's pillbox and drag it to the spot, then let go.
+- `a_commander_climbs_the_ladder` (line 3967): Auto, alone: fortify first; once the castle stands and the base has been quiet, the two outlying pillboxes of ours are lifted and set down in the turrets; a tank at the base sends it to defend.
+- `the_ladder_in_a_match` (line 4050): The window's solo match, headless: the map in LADDER_MAP, seat 0 on Auto against three RuleBots seeded as the window seeds them.
+- `a_commander_takes_a_neutral_pillbox_without_a_shot` (line 4093): A neutral pillbox is not shot at all: the squad takes it live.
+- `a_commander_defends_its_depot` (line 4107): Defend depot: an intruder that drives up to the depot is engaged, and the defender never strays past the leash.
 
 ## crew.rs
 
@@ -240,21 +264,21 @@ What the map says, worked out once (roadmap steps 12b and 12f2, LAB-REPORT-BRAIN
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 42 | `refresh` | MapFacts | yes | Label the islands if they are older than `REFRESH`. |
-| 82 | `island_at` | MapFacts | yes | The island under a point, if it is land and labelled. |
-| 92 | `islands` | MapFacts | yes | Every island of the map, in id order (an id is its index and 1). |
-| 98 | `crossing` | MapFacts | yes | `Map::crossing`, its answers kept for `CROSSING_FOR`, the failures with them. |
-| 112 | `forget_crossings` | MapFacts | yes | Forget the crossings: the map changed under them (a bridge laid). |
-| 118 | `scarcity` | MapFacts | yes | Trees are scarce here: what a base will ask for over what the island holds (LR 6.2's s). |
-| 124 | `site_score` | MapFacts | yes | A base site's worth (LR 6.2): enough trees, less a small island. |
-| 134 | `crossing_prices` |  | yes | What a crossing of `len` water tiles costs as a bridge and as a boat, with trees `scarcity` dear (LR 6.2). |
-| 144 | `bridge_it` |  | yes | Bridge it (true) or sail it (false). |
-| 155 | `island_map` |  |  | A map of water with two islands: a big forested one west, a small bare one east. |
+| 47 | `refresh` | MapFacts | yes | Label the islands if they are older than `REFRESH`. |
+| 89 | `island_at` | MapFacts | yes | The island under a point, if it is land and labelled. |
+| 99 | `islands` | MapFacts | yes | Every island of the map, in id order (an id is its index and 1). |
+| 105 | `crossing` | MapFacts | yes | `Map::crossing`, its answers kept for `CROSSING_FOR`, the failures with them. |
+| 119 | `forget_crossings` | MapFacts | yes | Forget the crossings: the map changed under them (a bridge laid). |
+| 125 | `scarcity` | MapFacts | yes | Trees are scarce here: what a base will ask for over what the island holds (LR 6.2's s). |
+| 131 | `site_score` | MapFacts | yes | A base site's worth (LR 6.2): enough trees, less a small island. |
+| 141 | `crossing_prices` |  | yes | What a crossing of `len` water tiles costs as a bridge and as a boat, with trees `scarcity` dear (LR 6.2). |
+| 151 | `bridge_it` |  | yes | Bridge it (true) or sail it (false). |
+| 162 | `island_map` |  |  | A map of water with two islands: a big forested one west, a small bare one east. |
 
 Tests (2):
 
-- `the_islands_are_counted` (line 179)
-- `a_small_island_takes_a_boat` (line 194)
+- `the_islands_are_counted` (line 186)
+- `a_small_island_takes_a_boat` (line 201)
 
 ## fleet.rs
 
@@ -280,8 +304,8 @@ Fleets (Paul, 15 October: "can we start a game with ... 3 teams of base building
 | 217 | `brain` |  | yes | The brain for a bot seat. |
 | 230 | `brain_as` |  | yes | A role's brain. |
 | 242 | `commander_as` |  | yes | A role's Commander, to change before it plays (a test's tactics); None for the aggro seat, a RuleBot. |
-| 749 | `rung_line` |  |  | Seat-seconds a rung, in the ladder's order, for a census line. |
-| 756 | `killed_by` |  |  | What took a tank, read from the events of the tick it died in (backlog 28): the weapon whose hit names it, whether it sank in a boat, and whether the shooter was the lone RuleBot. |
+| 759 | `rung_line` |  |  | Seat-seconds a rung, in the ladder's order, for a census line. |
+| 766 | `killed_by` |  |  | What took a tank, read from the events of the tick it died in (backlog 28): the weapon whose hit names it, whether it sank in a boat, and whether the shooter was the lone RuleBot. |
 
 Tests (9):
 
@@ -290,10 +314,10 @@ Tests (9):
 - `tactics_pay` (line 330): The window's default match: the naval map, sixteen seats dealt into three teams (seat i on team i % 3), every bot in a team role and seat 0 on Auto as a person on the autopilot would be.
 - `kiting_pays` (line 387): Does kiting pay (tactics.rs `kite`)? As `tactics_pay`, every team with the weights, one of the three kiting and two not, the kiting team turned round the seats over the seeds.
 - `the_default_match_plays_as_teams` (line 443)
-- `quad_census` (line 522): The quad match headless (scripts/quad.sh): fifteen seats, three teams, each led by a window's autopilot (a fleet commander on Auto), respawns without limit.
-- `brain_census` (line 801): The brain census (roadmap 12a and 12g): sixteen seats dealt as `--fleets` deals them, one team on the trial settings and the other two on the baseline, the trial team turned round the three over the seeds so no start...
-- `three_fleets_build` (line 1136): Sixteen seats as the window deals them with `--fleets`, seat 0 on Auto as a person under the coordination screen would be.
-- `supply_trace` (line 1199): Trace 1 of PROPOSAL-UPGRADES.md section 6 (goal 5, 11g): supply counted and nothing bought.
+- `quad_census` (line 532): The quad match headless (scripts/quad.sh): fifteen seats, three teams, each led by a window's autopilot (a fleet commander on Auto), respawns without limit.
+- `brain_census` (line 811): The brain census (roadmap 12a and 12g): sixteen seats dealt as `--fleets` deals them, one team on the trial settings and the other two on the baseline, the trial team turned round the three over the seeds so no start...
+- `three_fleets_build` (line 1200): Sixteen seats as the window deals them with `--fleets`, seat 0 on Auto as a person under the coordination screen would be.
+- `supply_trace` (line 1263): Trace 1 of PROPOSAL-UPGRADES.md section 6 (goal 5, 11g): supply counted and nothing bought.
 
 ## fortify.rs
 
@@ -390,6 +414,43 @@ Tests (3):
 - `a_dodge_skips_confirmation` (line 166)
 - `the_advance_holds_between_its_bands` (line 178)
 
+## learn.rs
+
+Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads.  A ground is one tank on an open square of grass with a target: an enemy tank standing still, a neutral depot, or a neutral pillbox (phase 1, go to), or an enemy tank to hit (phase 3, aim). An episode is 60 s at most; its score is what the tank earned (`Task::score`).  Evolution strategies (Salimans and others 2017): each generation draws pairs of random directions in weight space, plays the weights a little way along each and a little way back on the same seeds, ranks every score, and moves the weights toward the directions that scored better (Adam). No gradients and no GPU: every episode is its own, so every core is filled.  `make train PHASE=1` runs `train` (an ignored test, as the census is); `make train PHASE=1 CHECK=nets/phase1.bin` reads a net on held- out seeds against its phase's pass (`check`).
+
+| Line | Function | Of | Pub | What it does (its doc comment) |
+| --- | --- | --- | --- | --- |
+| 56 | `phase` | Task | yes | The task a phase trains (`make train PHASE=`), if it has one yet. |
+| 65 | `target` | Task | yes | The target a seed's ground has: the three in turn. |
+| 70 | `shoots` | Task | yes | Whether this target is shot (else gone to). |
+| 75 | `distance` | Task |  | The target's distance at the start, tiles. |
+| 95 | `ground` |  | yes | The ground for a task and seed: the seed's generated map with a square of grass `GROUND` tiles each way round its centre, the tank at the centre facing a way the seed draws, the target 10 to 20 tiles off in a directio... |
+| 171 | `score` | Task | yes | An episode's score, the reward summed. |
+| 188 | `passed` | Task | yes | Whether an episode passed its phase's test: within `REACH` inside the minute; a direct hit on the enemy inside the minute. |
+| 195 | `play` |  | yes | One episode of a brain on a ground. |
+| 235 | `normal` |  |  | A normal draw (Box and Muller). |
+| 242 | `direction` |  |  | The noise of one pair of a generation: a direction, from its seed. |
+| 248 | `spread` |  | yes | Run `jobs` jobs on `threads` threads, results in order. |
+| 267 | `judge` |  | yes | A net on grounds: the mean score, and the share passed. |
+| 304 | `new` | Adam | yes | Moments at zero for `n` weights. |
+| 309 | `step` | Adam | yes | Move `theta` up the gradient `g`. |
+| 335 | `generation` |  | yes | One generation: pairs of directions played forward and back on `seeds` grounds drawn from `gen_seed`, ranked, and the weights moved. |
+| 380 | `check` |  | yes | A brain's reading on held-out grounds: for each target, the share passed and its standard error, and the mean score. |
+| 432 | `name` |  |  | *(the `Brain` trait's)* |
+| 435 | `think` |  |  | *(the `Brain` trait's)* |
+| 446 | `name` |  |  | *(the `Brain` trait's)* |
+| 449 | `think` |  |  | *(the `Brain` trait's)* |
+| 492 | `env` |  |  | A setting from the environment, or `d` when unset, empty or unread. |
+| 498 | `report` |  |  | Prints a net's reading on held-out grounds, each target's share passed with its standard error. |
+| 521 | `baseline` |  |  | The scripted bot on the same held-out grounds: its share passed and, shooting, its hits a shot (a reference, LR 97). |
+
+Tests (4):
+
+- `a_ground_is_open_and_its_target_is_there` (line 407): The grounds: the tank at the centre on grass, the target where the ground says and of its kind, open ground between, and a seed the same ground twice.
+- `a_straight_drive_reaches_and_a_still_tank_does_not` (line 429): The ground is fair: a brain that drives straight at the target reaches each kind well inside the minute; one that holds never does; and an enemy shot at from inside the gun's reach is hit.
+- `evolution_moves_the_weights_the_same_way_twice` (line 471): Evolution moves the weights: on a few grounds, a handful of generations raise the score, and a generation's seed gives the same move twice.
+- `train` (line 540): The trainer (LR 97): `make train PHASE=1`, or with `CHECK=file` a net read on the held-out seeds only.
+
 ## ledger.rs
 
 The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). Every census match writes one JSON line per seat: the genome (the weights, the capabilities, the seed, the role) beside what the seat did, so a high score can be played again (the sim is deterministic: the line and the map are the match) and its weights bred from (`scripts/tune.sh`).  `Tally` counts as the match runs, from the world's events and, once a second, from what each team holds; `records` writes the lines. Ratings are Elo over the ledger's matches: a genome's team placed above another's in a match counts as a win against it, so a lucky score against weak opponents counts for less than a steady one against strong ones.
@@ -397,22 +458,25 @@ The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). Every census match
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
 | 33 | `of` | Genome | yes | The genome of these Settings in this role, its id their hash. |
-| 89 | `default` | ScoreWeights |  | *(the `Default` trait's)* |
-| 99 | `from_long_game` | ScoreWeights | yes | The score between elimination and holding ground (`long_game`, roadmap 12h): 0 weighs the win and kills half as much again and the holdings not at all; 1 the win and kills half as much and the holdings twice; 0.5 is t... |
-| 108 | `score` |  | yes | A seat's match score: the win, kills less deaths, ground held over the match's length, works built and road laid, each at its weight. |
-| 121 | `new` | Tally | yes | An empty count for each seat of the world, with its team. |
-| 126 | `hear` | Tally | yes | After each `step`: the tick's events; once a second, the holdings. |
-| 176 | `records` | Tally | yes | The match is over (or out of time): a line per seat with a genome. |
-| 193 | `write` |  | yes | Append records to `dir/ledger.jsonl`. |
-| 204 | `read` |  | yes | Read a ledger; bad lines are skipped. |
-| 211 | `mean_se` |  | yes | The mean of a sample and its standard error (the sample's standard deviation over the root of its size); the error is 0 for fewer than two. |
-| 227 | `ratings` |  | yes | Elo ratings by genome over the ledger's matches: within a match, each genome's best seat score against every other genome's, a win for the higher. |
+| 125 | `default` | ScoreWeights |  | *(the `Default` trait's)* |
+| 148 | `from_long_game` | ScoreWeights | yes | The score between elimination and holding ground (`long_game`, roadmap 12h): 0 weighs the win and kills half as much again and the holdings not at all; 1 the win and kills half as much and the holdings twice; 0.5 is t... |
+| 155 | `without_rewards` | ScoreWeights | yes | The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`. |
+| 161 | `rewards` |  | yes | The rewards' part of a seat's score (LR 84). |
+| 168 | `score` |  | yes | A seat's match score: the win, kills less deaths, ground held over the match's length, works built and road laid, and the rewards, each at its weight. |
+| 188 | `new` | Tally | yes | An empty count for each seat of the world, with its team. |
+| 198 | `hear` | Tally | yes | After each `step`: the tick's events; once a second, the holdings. |
+| 293 | `records` | Tally | yes | The match is over (or out of time): a line per seat with a genome. |
+| 310 | `write` |  | yes | Append records to `dir/ledger.jsonl`. |
+| 321 | `read` |  | yes | Read a ledger; bad lines are skipped. |
+| 328 | `mean_se` |  | yes | The mean of a sample and its standard error (the sample's standard deviation over the root of its size); the error is 0 for fewer than two. |
+| 344 | `ratings` |  | yes | Elo ratings by genome over the ledger's matches: within a match, each genome's best seat score against every other genome's, a win for the higher. |
 
-Tests (3):
+Tests (4):
 
-- `ledger_ratings` (line 279): The hall of fame: the ledger's genomes by Elo, best first, with the weights each changed (`LEDGER`, default reports/ledger/ledger.jsonl).
-- `the_standard_error_of_a_sample` (line 291)
-- `a_ledger_line_round_trips_and_rates` (line 301)
+- `ledger_ratings` (line 396): The hall of fame: the ledger's genomes by Elo, best first, with the weights each changed (`LEDGER`, default reports/ledger/ledger.jsonl).
+- `the_standard_error_of_a_sample` (line 408)
+- `a_ledger_line_round_trips_and_rates` (line 418)
+- `the_rewards_count_their_events` (line 448): Each reward counts what it says, for the seat that did it, and only against a hostile (LR 84); `without_rewards` is the score before them.
 
 ## lib.rs
 
@@ -420,93 +484,95 @@ treadcore-brain -- the controller interface, and one controller.  The prior art 
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 44 | `name` |  |  | The seat's name, as the scoreboard and the logs show it. |
-| 48 | `think` |  |  | One tick's orders for the seat from what it can see: called every tick the tank is alive (`run_bots`); a brain that thinks less often answers with nothing in between. |
-| 52 | `think_on` |  |  | `think` with the map (the host's world map, or a window's copy): public, as every window draws it, and what plans a bridge or a road needs (hop.rs). |
-| 57 | `status` |  |  | What it is doing, in a line, for a window that shows its fleet. |
-| 62 | `settings` |  |  | Its weights and capabilities, for the ledger (weights.rs); None for a brain without them. |
-| 67 | `act` |  |  | What it is doing, as a code (status.rs): for logic and the census, where `status` is for people. |
-| 72 | `rung` |  |  | The Auto rung this think took, if it reached the ladder (the census, LR 26); None for a brain without one. |
-| 77 | `beach` |  |  | Afloat: the beach it is running for, if any (the census's read of where the gun stands, backlog 34). |
-| 82 | `dead` |  |  | Each tick the seat is dead, in place of a think: what a brain counts of its fall (the dodge's meter, LR 27). |
-| 85 | `set_settings` |  |  | New weights mid-match (the coordination screen's sliders, backlog 15); a brain without them ignores it. |
-| 92 | `retire_taken` |  | yes | A person took a bot's seat (roadmap step 8): that bot stops, from the tick the world said so. |
-| 103 | `run_bots` |  | yes | Run every bot seat for one tick: each seat's own Observation, a `think_on` with the world's map if alive, `dead` and a respawn when due if not. |
-| 156 | `update` | Grace |  | Note every hostile tank seen below full fuel or reloading: it has moved or fired. |
-| 169 | `fair` | Grace |  | A fair target: the first minute is over, or the tank has been seen to move or fire. |
-| 358 | `watch` | Dodge | yes | The meter's reading of the dodge under way: hit (or killed) between its start and its shell's landing, or clear of it. |
-| 370 | `order` | Dodge | yes | The dodge's order this tick, if any: out of a seen shell's way, or a jink after a hit. |
-| 377 | `order_with` | Dodge | yes | `jink`: answer a hit with a jink too. |
-| 387 | `order_on` | Dodge | yes | As `order_with`, with the map: the dodge point is one the tank can reach (passable ground; afloat, water or a beach). |
-| 448 | `threats` | Dodge |  | The landings a dodge plans against, each where and in how many ticks: with `dodge_every` (LR 56) every hostile indirect shell in flight landing within the horizon, else `dodged` alone (the one it dodges; for the relea... |
-| 466 | `clearance` | Dodge |  | The least clearance of a drive over the landings: at each, its distance from that impact less the splash and the margin; below 0, inside one. |
-| 481 | `planned` | Dodge |  | `dodge_plan` (LR 53): the dodge point by where the tank will be when the shell lands. |
-| 514 | `release` | Dodge | yes | `dodge_release` (LR 53): a tank at its dodge point before the shell lands is let go to its errand at once (`dodge_hold` 0), and errands often drove it straight back under the shell. |
-| 534 | `hold_fire` | Dodge | yes | `dodge_fire` (LR 57): a tank has no turret; a shot turns the hull to face it (treadcore-sim, `FireDirect` and `FireIndirect`), and at speed the tank runs on that way. |
-| 559 | `holding` | Dodge | yes | A dodge under way: hold it while the tank drives to its point, and, by `dodge_hold`, that share of the shell's flight once there (standing out of the splash rather than back to its errand under the shell). |
-| 570 | `lead` |  | yes | Where to aim a direct shot at a moving tank: where it will be when the shell lands (40 tiles a second, 0.8 tiles of hit radius; a tank at full speed moves a tile in the flight from 10 tiles off, so a shot at where it... |
-| 590 | `drive_to` |  | yes | Where a tank will be after `ticks` sent to `to`, by the sim's own rules of motion (treadcore-sim `drive_tank`): the route the world will plan (`Map::route_by`: eight ways from tile to tile, a waypoint at each turn, so... |
-| 597 | `drive_path` |  | yes | As `drive_to`, where the tank is after each of the `ticks`: element k after k + 1 ticks. |
-| 690 | `update` | Form |  | Look again if it is time. |
-| 719 | `patience` | Form | yes | The patience, scaled: bold waits less. |
-| 723 | `standoff` | Form | yes | The firing position's distance, scaled: careful stands further off. |
-| 727 | `home_armor` | Form | yes | The armour below which the bot goes home: careful goes sooner. |
-| 761 | `hurt_by_player` | RuleBot | yes | Has this player's fire hit the bot's tank this match? |
-| 768 | `new` | RuleBot | yes | A RuleBot at full skill, every part on: `seed` deals its own randomness (its patience among it), so two bots of one seed play alike. |
-| 778 | `remember_guns` | RuleBot |  | Hostile tanks kept where last seen, for `landfall_memory` seconds (backlog 36): one seen now is kept where it is; a memory goes when its time is up, or when its spot is in the team's sight and the tank is not there. |
-| 794 | `known_guns` | RuleBot |  | The hostile tanks the landfall prices: those seen now and those remembered (`landfall_memory`). |
-| 799 | `standing_off` | RuleBot | yes | Afloat and standing off a covered beach (`landfall_wait`). |
-| 809 | `landfall_order` | RuleBot |  | Afloat (SPEC TNK-08): run for land. |
-| 899 | `is_rookie` | RuleBot | yes | The same doctrine, badly (PLAYABILITY item 9): thinks half as often, launches nothing for `ROOKIE_LATE` seconds and then keeps one interceptor up, aims where the tank is with `ROOKIE_SCATTER` tiles of error and no lea... |
-| 906 | `aim_skill` | RuleBot |  | The skill its aim is spoiled by: a Commander's doctrine (with `tactics`) aims in full, its Commander spoiling every shot once (`Commander::blunt`). |
-| 916 | `rookie` | RuleBot | yes | A RuleBot at skill 0 (`is_rookie`): no dodge, kite or storm, one interceptor up and late, a slower think, its shells scattered. |
-| 921 | `without_pillboys` | RuleBot | yes | The same doctrine without the squad: the control group. |
-| 927 | `nearest_enemy` | RuleBot |  | The nearest hostile tank in sight that the first minute lets it shoot (`Grace::fair`). |
-| 940 | `works_order` | RuleBot |  | The squad's works (steps 10i and 10j), in this order: a power plant when a structure of this bot's stands dark with no plant of the side in reach (everything else of the economy is dead without one); a jammer once a s... |
-| 966 | `works_need` | RuleBot |  | What this bot's structures within `reach` want built beside them, first want first: a power plant for a dark one with no plant of the side in reach; a jammer, once the side has been hit, for one no jammer covers; a wo... |
-| 985 | `fell` | RuleBot |  | Scrap: the nearest forest in reach, if the squad has room for it. |
-| 994 | `nearest_depot` | RuleBot |  | The nearest depot of the side (or not), of those the world has not refused a drive to as over the water. |
-| 1003 | `name` | RuleBot |  | *(the `Brain` trait's)* |
-| 1008 | `beach` | RuleBot |  | The beach `landfall_order` chose, while afloat. |
-| 1012 | `status` | RuleBot |  | *(the `Brain` trait's)* |
-| 1020 | `think` | RuleBot |  | *(the `Brain` trait's)* |
-| 1024 | `think_on` | RuleBot |  | *(the `Brain` trait's)* |
-| 1034 | `think_map` | RuleBot | yes | The think, with the map when there is one: every tick, what it hears (hurt, refused, guns seen); then the dodge, and on its think tick the doctrine's ladder from fighting to resupply. |
-| 1636 | `new` | Defender | yes | A Defender of the depot it starts on; `fortify` false is the control (holds and fights, builds nothing). |
-| 1664 | `ring` | Defender |  | The ring of tiles at `r` round `c`, in the order to lay them: the far side first. |
-| 1687 | `mouth_sites` | Defender |  | Candidate sites for the mouth pillbox: along the gate direction at `MOUTH`, then a little to either side, then further out. |
-| 1700 | `approach_sites` | Defender |  | The approach mines: three across the gate direction at `APPROACH`, the road's tile in the middle. |
-| 1707 | `name` | Defender |  | *(the `Brain` trait's)* |
-| 1710 | `think` | Defender |  | *(the `Brain` trait's)* |
-| 1992 | `spawn` | JsonBrain | yes | Start `program` with `args` and read its answers on a thread of their own, so a slow program never holds up a tick. |
-| 2016 | `name` | JsonBrain |  | *(the `Brain` trait's)* |
-| 2019 | `think` | JsonBrain |  | *(the `Brain` trait's)* |
-| 2036 | `drop` | JsonBrain |  | *(the `Drop` trait's)* |
-| 2042 | `schema_examples` |  | yes | Example documents for the JSON brain, printed by the server. |
-| 2573 | `name` |  |  | *(the `Brain` trait's)* |
-| 2576 | `think` |  |  | *(the `Brain` trait's)* |
+| 48 | `name` |  |  | The seat's name, as the scoreboard and the logs show it. |
+| 52 | `think` |  |  | One tick's orders for the seat from what it can see: called every tick the tank is alive (`run_bots`); a brain that thinks less often answers with nothing in between. |
+| 56 | `think_on` |  |  | `think` with the map (the host's world map, or a window's copy): public, as every window draws it, and what plans a bridge or a road needs (hop.rs). |
+| 61 | `status` |  |  | What it is doing, in a line, for a window that shows its fleet. |
+| 66 | `settings` |  |  | Its weights and capabilities, for the ledger (weights.rs); None for a brain without them. |
+| 71 | `act` |  |  | What it is doing, as a code (status.rs): for logic and the census, where `status` is for people. |
+| 76 | `rung` |  |  | The Auto rung this think took, if it reached the ladder (the census, LR 26); None for a brain without one. |
+| 81 | `beach` |  |  | Afloat: the beach it is running for, if any (the census's read of where the gun stands, backlog 34). |
+| 86 | `dead` |  |  | Each tick the seat is dead, in place of a think: what a brain counts of its fall (the dodge's meter, LR 27). |
+| 89 | `set_settings` |  |  | New weights mid-match (the coordination screen's sliders, backlog 15); a brain without them ignores it. |
+| 96 | `retire_taken` |  | yes | A person took a bot's seat (roadmap step 8): that bot stops, from the tick the world said so. |
+| 107 | `run_bots` |  | yes | Run every bot seat for one tick: each seat's own Observation, a `think_on` with the world's map if alive, `dead` and a respawn when due if not. |
+| 160 | `update` | Grace |  | Note every hostile tank seen below full fuel or reloading: it has moved or fired. |
+| 173 | `fair` | Grace |  | A fair target: the first minute is over, or the tank has been seen to move or fire. |
+| 362 | `watch` | Dodge | yes | The meter's reading of the dodge under way: hit (or killed) between its start and its shell's landing, or clear of it. |
+| 374 | `order` | Dodge | yes | The dodge's order this tick, if any: out of a seen shell's way, or a jink after a hit. |
+| 381 | `order_with` | Dodge | yes | `jink`: answer a hit with a jink too. |
+| 391 | `order_on` | Dodge | yes | As `order_with`, with the map: the dodge point is one the tank can reach (passable ground; afloat, water or a beach). |
+| 452 | `threats` | Dodge |  | The landings a dodge plans against, each where and in how many ticks: with `dodge_every` (LR 56) every hostile indirect shell in flight landing within the horizon, else `dodged` alone (the one it dodges; for the relea... |
+| 470 | `clearance` | Dodge |  | The least clearance of a drive over the landings: at each, its distance from that impact less the splash and the margin; below 0, inside one. |
+| 485 | `planned` | Dodge |  | `dodge_plan` (LR 53): the dodge point by where the tank will be when the shell lands. |
+| 518 | `release` | Dodge | yes | `dodge_release` (LR 53): a tank at its dodge point before the shell lands is let go to its errand at once (`dodge_hold` 0), and errands often drove it straight back under the shell. |
+| 538 | `hold_fire` | Dodge | yes | `dodge_fire` (LR 57): a tank has no turret; a shot turns the hull to face it (treadcore-sim, `FireDirect` and `FireIndirect`), and at speed the tank runs on that way. |
+| 563 | `holding` | Dodge | yes | A dodge under way: hold it while the tank drives to its point, and, by `dodge_hold`, that share of the shell's flight once there (standing out of the splash rather than back to its errand under the shell). |
+| 574 | `lead` |  | yes | Where to aim a direct shot at a moving tank: where it will be when the shell lands (40 tiles a second, 0.8 tiles of hit radius; a tank at full speed moves a tile in the flight from 10 tiles off, so a shot at where it... |
+| 594 | `drive_to` |  | yes | Where a tank will be after `ticks` sent to `to`, by the sim's own rules of motion (treadcore-sim `drive_tank`): the route the world will plan (`Map::route_by`: eight ways from tile to tile, a waypoint at each turn, so... |
+| 601 | `drive_path` |  | yes | As `drive_to`, where the tank is after each of the `ticks`: element k after k + 1 ticks. |
+| 613 | `drive_path_by` |  | yes | `drive_path`; with `own` (`dodge_own_route`, LR 93), a drive ashore to where the tank's route already ends follows that route, its waypoint and the rest: the way the world will drive it (pillboxes' reach and mines pri... |
+| 708 | `update` | Form |  | Look again if it is time. |
+| 737 | `patience` | Form | yes | The patience, scaled: bold waits less. |
+| 741 | `standoff` | Form | yes | The firing position's distance, scaled: careful stands further off. |
+| 745 | `home_armor` | Form | yes | The armour below which the bot goes home: careful goes sooner. |
+| 779 | `hurt_by_player` | RuleBot | yes | Has this player's fire hit the bot's tank this match? |
+| 786 | `new` | RuleBot | yes | A RuleBot at full skill, every part on: `seed` deals its own randomness (its patience among it), so two bots of one seed play alike. |
+| 796 | `remember_guns` | RuleBot |  | Hostile tanks kept where last seen, for `landfall_memory` seconds (backlog 36): one seen now is kept where it is; a memory goes when its time is up, or when its spot is in the team's sight and the tank is not there. |
+| 812 | `known_guns` | RuleBot |  | The hostile tanks the landfall prices: those seen now and those remembered (`landfall_memory`). |
+| 817 | `standing_off` | RuleBot | yes | Afloat and standing off a covered beach (`landfall_wait`). |
+| 827 | `landfall_order` | RuleBot |  | Afloat (SPEC TNK-08): run for land. |
+| 917 | `is_rookie` | RuleBot | yes | The same doctrine, badly (PLAYABILITY item 9): thinks half as often, launches nothing for `ROOKIE_LATE` seconds and then keeps one interceptor up, aims where the tank is with `ROOKIE_SCATTER` tiles of error and no lea... |
+| 924 | `aim_skill` | RuleBot |  | The skill its aim is spoiled by: a Commander's doctrine (with `tactics`) aims in full, its Commander spoiling every shot once (`Commander::blunt`). |
+| 934 | `rookie` | RuleBot | yes | A RuleBot at skill 0 (`is_rookie`): no dodge, kite or storm, one interceptor up and late, a slower think, its shells scattered. |
+| 939 | `without_pillboys` | RuleBot | yes | The same doctrine without the squad: the control group. |
+| 945 | `nearest_enemy` | RuleBot |  | The nearest hostile tank in sight that the first minute lets it shoot (`Grace::fair`). |
+| 958 | `works_order` | RuleBot |  | The squad's works (steps 10i and 10j), in this order: a power plant when a structure of this bot's stands dark with no plant of the side in reach (everything else of the economy is dead without one); a jammer once a s... |
+| 984 | `works_need` | RuleBot |  | What this bot's structures within `reach` want built beside them, first want first: a power plant for a dark one with no plant of the side in reach; a jammer, once the side has been hit, for one no jammer covers; a wo... |
+| 1003 | `fell` | RuleBot |  | Scrap: the nearest forest in reach, if the squad has room for it. |
+| 1012 | `nearest_depot` | RuleBot |  | The nearest depot of the side (or not), of those the world has not refused a drive to as over the water. |
+| 1021 | `name` | RuleBot |  | *(the `Brain` trait's)* |
+| 1026 | `beach` | RuleBot |  | The beach `landfall_order` chose, while afloat. |
+| 1030 | `status` | RuleBot |  | *(the `Brain` trait's)* |
+| 1038 | `think` | RuleBot |  | *(the `Brain` trait's)* |
+| 1042 | `think_on` | RuleBot |  | *(the `Brain` trait's)* |
+| 1052 | `think_map` | RuleBot | yes | The think, with the map when there is one: every tick, what it hears (hurt, refused, guns seen); then the dodge, and on its think tick the doctrine's ladder from fighting to resupply. |
+| 1677 | `new` | Defender | yes | A Defender of the depot it starts on; `fortify` false is the control (holds and fights, builds nothing). |
+| 1705 | `ring` | Defender |  | The ring of tiles at `r` round `c`, in the order to lay them: the far side first. |
+| 1728 | `mouth_sites` | Defender |  | Candidate sites for the mouth pillbox: along the gate direction at `MOUTH`, then a little to either side, then further out. |
+| 1741 | `approach_sites` | Defender |  | The approach mines: three across the gate direction at `APPROACH`, the road's tile in the middle. |
+| 1748 | `name` | Defender |  | *(the `Brain` trait's)* |
+| 1751 | `think` | Defender |  | *(the `Brain` trait's)* |
+| 2033 | `spawn` | JsonBrain | yes | Start `program` with `args` and read its answers on a thread of their own, so a slow program never holds up a tick. |
+| 2057 | `name` | JsonBrain |  | *(the `Brain` trait's)* |
+| 2060 | `think` | JsonBrain |  | *(the `Brain` trait's)* |
+| 2077 | `drop` | JsonBrain |  | *(the `Drop` trait's)* |
+| 2083 | `schema_examples` |  | yes | Example documents for the JSON brain, printed by the server. |
+| 2648 | `name` |  |  | *(the `Brain` trait's)* |
+| 2651 | `think` |  |  | *(the `Brain` trait's)* |
 
-Tests (19):
+Tests (20):
 
-- `a_bot_drives_out_from_under_a_shell` (line 2074): PLAYABILITY item 9: a rookie is beatable.
-- `a_dodge_holds_out_of_the_splash_by_its_weight` (line 2101): `dodge_hold` (LR 27): a tank at its dodge point before the shell lands stays there at 1, and is free to its errand at 0 (the dodge before LR 27).
-- `drive_to_foresees_the_world` (line 2129): `drive_to` (LR 53) foresees the world: a tank at rest or rolling, on four headings, sent to twelve points round it 5 tiles off, is where `drive_to` said after 2 s, within a tenth of a tile.
-- `a_shy_boat_runs_for_the_beach_clear_of_the_guns` (line 2166): `landfall_shy` (backlog 30, LR 31): of two beaches, the nearer one's run passing a hostile gun in reach, at 0 the boat takes it (its price is the beach and the heading only), at 1 the farther one clear of the guns.
-- `a_boat_lands_where_the_island_is_worth_the_run` (line 2189): `beach_worth` (backlog 20, LR 62): of two clear beaches, with no worth the boat takes the nearer; the farther worth more than the difference in the run, the farther.
-- `a_boat_stands_off_a_covered_beach_for_its_wait` (line 2211): `landfall_wait` (backlog 33, LR 33): the only beach covered by a seen gun 8 tiles off, at 0 the boat lands; at 10 it backs off out of the gun's reach, and lands once the 10 s are spent.
-- `a_gun_seen_and_lost_still_prices_the_run` (line 2238): `landfall_memory` (backlog 36, LR 36): a gun seen beside the near beach's run and then lost from sight still prices that run for its memory's seconds (here with `landfall_shy` 1), and not after.
-- `rulebot_kiting_pays` (line 2280): RuleBots win more than twice as often, kill more and outlive them, and the rookies still kill something.
-- `rookies_are_beatable` (line 2325): *(the `Drop` trait's)*
-- `a_rulebot_drives_to_its_zone_to_build` (line 2365): Step 10k: a RuleBot with the scrap drives to a dark refinery of its own thirty tiles off, out of the squad's reach, and powers it.
-- `a_rulebot_powers_its_zone_then_builds_a_workshop` (line 2401): Step 10j: a RuleBot holding a dark refinery builds a power plant beside it first, then a workshop; no jammer, because nothing of its side has been hit.
-- `a_rulebot_jams_after_a_hit` (line 2436): Step 10i: a RuleBot holding a powered zone builds no jammer until a structure of its side is hit; then it builds one on a free pad, launches nothing inside it, and drives out of it.
-- `a_rulebot_answers_a_person` (line 2492): A RuleBot answers a person's proposal: yes, unless that person has hurt it.
-- `pillboys_pay` (line 2526): Sixteen bots, six minutes: the rules get exercised.
-- `fortification_pays` (line 2566): Roadmap step 6c's proof: a fortified depot survives a scripted attack longer than a bare one, over twenty seeds.
-- `a_newcomer_gets_a_first_minute` (line 2649): PLAYABILITY.md item 1, the first minute: a newcomer who sits at the start reading the help is not shelled by the bots for the first minute.
-- `defenders_hold` (line 2691): Roadmap step 6d's proof, as it came out: sixteen bots, four attacking, over ten seeds of five minutes.
-- `bots_fight_to_a_result` (line 2772)
-- `a_led_direct_shot_cannot_be_dodged` (line 2803): Roadmap 12d, backlog 8 (LR 19): a direct shell flies five ticks at most (10 tiles at 40 a second), and a tank at full speed turning as hard as it can moves about 0.4 tiles off the gunner's lead in that time, inside th...
+- `a_bot_drives_out_from_under_a_shell` (line 2115): PLAYABILITY item 9: a rookie is beatable.
+- `a_dodge_holds_out_of_the_splash_by_its_weight` (line 2142): `dodge_hold` (LR 27): a tank at its dodge point before the shell lands stays there at 1, and is free to its errand at 0 (the dodge before LR 27).
+- `drive_to_foresees_the_world` (line 2170): `drive_to` (LR 53) foresees the world: a tank at rest or rolling, on four headings, sent to twelve points round it 5 tiles off, is where `drive_to` said after 2 s, within a tenth of a tile.
+- `the_own_route_foresees_a_drive_round_a_gun` (line 2207): `dodge_own_route` (LR 93): with a hostile pillbox beside the way, the world's route goes round its reach, and the forecast along the tank's own route says where the tank is after 3 s; a searched route, which leaves th...
+- `a_shy_boat_runs_for_the_beach_clear_of_the_guns` (line 2241): `landfall_shy` (backlog 30, LR 31): of two beaches, the nearer one's run passing a hostile gun in reach, at 0 the boat takes it (its price is the beach and the heading only), at 1 the farther one clear of the guns.
+- `a_boat_lands_where_the_island_is_worth_the_run` (line 2264): `beach_worth` (backlog 20, LR 62): of two clear beaches, with no worth the boat takes the nearer; the farther worth more than the difference in the run, the farther.
+- `a_boat_stands_off_a_covered_beach_for_its_wait` (line 2286): `landfall_wait` (backlog 33, LR 33): the only beach covered by a seen gun 8 tiles off, at 0 the boat lands; at 10 it backs off out of the gun's reach, and lands once the 10 s are spent.
+- `a_gun_seen_and_lost_still_prices_the_run` (line 2313): `landfall_memory` (backlog 36, LR 36): a gun seen beside the near beach's run and then lost from sight still prices that run for its memory's seconds (here with `landfall_shy` 1), and not after.
+- `rulebot_kiting_pays` (line 2355): RuleBots win more than twice as often, kill more and outlive them, and the rookies still kill something.
+- `rookies_are_beatable` (line 2400): *(the `Drop` trait's)*
+- `a_rulebot_drives_to_its_zone_to_build` (line 2440): Step 10k: a RuleBot with the scrap drives to a dark refinery of its own thirty tiles off, out of the squad's reach, and powers it.
+- `a_rulebot_powers_its_zone_then_builds_a_workshop` (line 2476): Step 10j: a RuleBot holding a dark refinery builds a power plant beside it first, then a workshop; no jammer, because nothing of its side has been hit.
+- `a_rulebot_jams_after_a_hit` (line 2511): Step 10i: a RuleBot holding a powered zone builds no jammer until a structure of its side is hit; then it builds one on a free pad, launches nothing inside it, and drives out of it.
+- `a_rulebot_answers_a_person` (line 2567): A RuleBot answers a person's proposal: yes, unless that person has hurt it.
+- `pillboys_pay` (line 2601): Sixteen bots, six minutes: the rules get exercised.
+- `fortification_pays` (line 2641): Roadmap step 6c's proof: a fortified depot survives a scripted attack longer than a bare one, over twenty seeds.
+- `a_newcomer_gets_a_first_minute` (line 2724): PLAYABILITY.md item 1, the first minute: a newcomer who sits at the start reading the help is not shelled by the bots for the first minute.
+- `defenders_hold` (line 2766): Roadmap step 6d's proof, as it came out: sixteen bots, four attacking, over ten seeds of five minutes.
+- `bots_fight_to_a_result` (line 2847)
+- `a_led_direct_shot_cannot_be_dodged` (line 2878): Roadmap 12d, backlog 8 (LR 19): a direct shell flies five ticks at most (10 tiles at 40 a second), and a tank at full speed turning as hard as it can moves about 0.4 tiles off the gunner's lead in that time, inside th...
 
 ## memory.rs
 
@@ -535,38 +601,75 @@ What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 78 | `add` | Dodges |  | Another count added to this one. |
-| 95 | `trial` |  | yes | The trial seats, a bit a player; the rest are group 0. |
-| 99 | `group` |  |  | The group of the seat being run: 1 if `trial` marks it, else 0. |
-| 107 | `bump` |  |  | Change this thread's counts. |
-| 116 | `seat` |  | yes | A seat run, the player's: the counts after it are its group's. |
-| 121 | `think` |  | yes | A RuleBot think (four a second at full skill). |
-| 125 | `moves` |  | yes | Move orders given. |
-| 129 | `crossing` |  | yes | A water crossing worked out. |
-| 133 | `crossing_cached` |  | yes | A water crossing answered from the facts' cache. |
-| 137 | `plan_clone` |  | yes | A fortification plan copied. |
-| 142 | `posture` |  | yes | A ladder pick under a posture: the rung the ladder alone takes (`first`) and the one taken with the posture's lean. |
-| 152 | `dodge` |  | yes | A shell dodge begun, ashore or afloat, taken or dropped (LR 27). |
-| 158 | `dodge_hit` |  | yes | A dodge hit before its shell landed: killed by it, and by the dodged shell itself (the hit on its landing tick). |
-| 169 | `front` |  | yes | An Expand pick with `w_front` on: the front known or not, and moved from the nearest depot or not. |
-| 182 | `lean` |  | yes | A second of the rotation's push point (`post` false) or the guard's post (`post` true) worked out: moved toward the front or not. |
-| 187 | `beach_site` |  | yes | A second afloat with the beaches priced by their islands. |
-| 192 | `kite` |  | yes | A second alive: kiting at `step`, or not. |
-| 213 | `ground` |  | yes | A board's second: an incursion on the held ground, and Defend held only for it. |
-| 221 | `spent` |  | yes | Time spent running the bots. |
-| 226 | `read` |  | yes | This thread's counts. |
-| 231 | `reset` |  | yes | Start counting again from zero. |
-| 237 | `add_dodges` | Meter | yes | Adds another count's dodges to this one's (a census's total). |
-| 248 | `add_fronts` | Meter | yes | Adds another count's front picks to this one's. |
-| 280 | `dodge_line` | Meter |  | The dodges for the meter's line, each kind that happened. |
-| 299 | `micros_per_seat` | Meter | yes | Microseconds per seat-tick: what one bot costs a tick, on average. |
-| 308 | `line` | Meter | yes | One line for a census: the counts and the cost. |
+| 117 | `of` | SquadTask | yes | The squad's task read: `water` whether the site is water or a bridge (a road there is a bridge). |
+| 151 | `add` | Dodges |  | Another count added to this one. |
+| 168 | `trial` |  | yes | The trial seats, a bit a player; the rest are group 0. |
+| 172 | `group` |  |  | The group of the seat being run: 1 if `trial` marks it, else 0. |
+| 180 | `bump` |  |  | Change this thread's counts. |
+| 189 | `seat` |  | yes | A seat run, the player's: the counts after it are its group's. |
+| 194 | `think` |  | yes | A RuleBot think (four a second at full skill). |
+| 198 | `moves` |  | yes | Move orders given. |
+| 202 | `crossing` |  | yes | A water crossing worked out. |
+| 206 | `crossing_cached` |  | yes | A water crossing answered from the facts' cache. |
+| 210 | `plan_clone` |  | yes | A fortification plan copied. |
+| 215 | `posture` |  | yes | A ladder pick under a posture: the rung the ladder alone takes (`first`) and the one taken with the posture's lean. |
+| 225 | `dodge` |  | yes | A shell dodge begun, ashore or afloat, taken or dropped (LR 27). |
+| 231 | `dodge_hit` |  | yes | A dodge hit before its shell landed: killed by it, and by the dodged shell itself (the hit on its landing tick). |
+| 242 | `front` |  | yes | An Expand pick with `w_front` on: the front known or not, and moved from the nearest depot or not. |
+| 255 | `lean` |  | yes | A second of the rotation's push point (`post` false) or the guard's post (`post` true) worked out: moved toward the front or not. |
+| 260 | `beach_site` |  | yes | A second afloat with the beaches priced by their islands. |
+| 265 | `base_site` |  | yes | A base chosen by its site, `off` tiles from the nearest depot. |
+| 276 | `kite` |  | yes | A second alive: kiting at `step`, or not. |
+| 296 | `squad` |  | yes | A second alive: the squad out at `task`, or aboard (None). |
+| 306 | `spend` |  | yes | The commands of a think: its shots and launches counted. |
+| 326 | `ground` |  | yes | A board's second: an incursion on the held ground, and Defend held only for it. |
+| 334 | `spent` |  | yes | Time spent running the bots. |
+| 339 | `read` |  | yes | This thread's counts. |
+| 344 | `reset` |  | yes | Start counting again from zero. |
+| 350 | `add_dodges` | Meter | yes | Adds another count's dodges to this one's (a census's total). |
+| 361 | `add_fronts` | Meter | yes | Adds another count's front picks to this one's. |
+| 408 | `dodge_line` | Meter |  | The dodges for the meter's line, each kind that happened. |
+| 427 | `micros_per_seat` | Meter | yes | Microseconds per seat-tick: what one bot costs a tick, on average. |
+| 436 | `line` | Meter | yes | One line for a census: the counts and the cost. |
 
-Tests (3):
+Tests (4):
 
-- `the_meter_counts_and_resets` (line 346)
-- `a_dodge_counts_by_its_seat_and_whether_taken` (line 363): A dodge counts under the seat that made it (the trial's or the rest), taken or dropped, ashore or afloat (backlog 31).
-- `a_second_alive_counts_its_kite_step` (line 383)
+- `the_meter_counts_and_resets` (line 477)
+- `a_squad_second_counts_by_its_task` (line 494): A squad's second counts under its seat's group, by its task, a road over water as a bridge (LR 83).
+- `a_dodge_counts_by_its_seat_and_whether_taken` (line 517): A dodge counts under the seat that made it (the trial's or the rest), taken or dropped, ashore or afloat (backlog 31).
+- `a_second_alive_counts_its_kite_step` (line 537)
+
+## net.rs
+
+A learned tank (LR 95, 96): a small net from the senses (senses.rs) to an action, and the Brain that drives by it.  The net is a multilayer perceptron: each layer multiplies by a table of weights, adds a bias, and bends the result (`max(0, x)`) in every layer but the last. Its outputs are scores for the action heads (`Head`); in each head the highest score among the choices allowed now (the mask) is taken. Plain Rust, no framework: the census and the trainer run it on any machine.
+
+| Line | Function | Of | Pub | What it does (its doc comment) |
+| --- | --- | --- | --- | --- |
+| 99 | `random` | Net | yes | A net of the given sizes (inputs, hidden..., outputs), its weights drawn from a seed: uniform within +/- sqrt(6 / (in + out)), so a layer's outputs start the size of its inputs (Glorot and Bengio 2010); biases 0. |
+| 119 | `tank` | Net | yes | The first nets' shape: the senses, `HIDDEN`, the heads. |
+| 127 | `parameters` | Net | yes | Its weights and biases in one count. |
+| 132 | `forward` | Net | yes | The outputs for these inputs. |
+| 150 | `flat` | Net | yes | Every weight and bias, layer by layer, as one vector (for a trainer that moves them all at once). |
+| 155 | `with_flat` | Net | yes | The same shape with these weights (`flat`'s order). |
+| 174 | `save` | Net | yes | Written as: the magic, the count of sizes, the sizes (u32), then each layer's weights and biases (f32), all little-endian. |
+| 191 | `load` | Net | yes | A net read from `save`'s form; an error for a file that is not one, or whose weights do not fit its sizes. |
+| 215 | `choose` |  | yes | Each head's choice: the highest score among those `allowed`. |
+| 247 | `new` | NetBrain | yes | A brain driven by `net`, which must take the senses and score the heads; its own queue of calls until `with_calls`. |
+| 254 | `with_calls` | NetBrain | yes | The same, sharing a team's queue of calls (one a team a match). |
+| 262 | `call_at` | NetBrain |  | Where a call of this kind would point: me for help, the nearest enemy seen (tank, else live hostile pillbox) for attack, the nearest thing to take for take. |
+| 272 | `tank_in` | NetBrain |  | The strongest hostile tank in sector k, if any. |
+| 278 | `mortar_target` | NetBrain |  | The strongest hostile in sector k the mortar can reach: a tank, else a live hostile pillbox. |
+| 287 | `name` | NetBrain |  | *(the `Brain` trait's)* |
+| 291 | `think` | NetBrain |  | *(the `Brain` trait's)* |
+| 295 | `think_on` | NetBrain |  | *(the `Brain` trait's)* |
+| 359 | `status` | NetBrain |  | *(the `Brain` trait's)* |
+
+Tests (4):
+
+- `a_net_is_its_seed_and_its_file` (line 372): The net: its shape (about 13,000 weights), the same outputs for the same seed, other outputs for another, and a file that reads back as the same net.
+- `a_masked_choice_is_never_taken` (line 390): The mask: a head's choice is never one not allowed; hold always is.
+- `a_random_net_drives_a_tank_the_same_way_twice` (line 406): A net drives a tank: random nets seated in a world give orders the world takes (most seeds drive; a net that prefers to hold may not), each its own way, and a seed plays the same match twice.
+- `net_decisions_a_second` (line 442): Decisions a second (phase 0, LR 96): the senses and the net's forward pass for one tank in a world of sixteen, on one thread.
 
 ## rotation.rs
 
@@ -618,6 +721,29 @@ Tests (6):
 - `every_family_holds_its_floor` (line 852): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
 - `scenario_one` (line 883): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
 
+## senses.rs
+
+The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map.  A compass of eight sectors round the tank, relative to its heading (sector 0 ahead; with the map's y growing down the screen, sector k turns k eighths of a turn clockwise: 2 is right, 4 behind, 6 left), and in each sector eleven channels of signal strength: the strongest thing of that kind there, `1 / (1 + d / 8)` for one d tiles off. Then the tank's body; its instruments (where it is on the map, which way it faces, the nearest edge, a hit just taken); a periscope's contacts (LR 97: the nearest enemy, thing to take, depot of ours and friend's call, each as an exact bearing and a strength, the enemy with its closing speed and which way it points, as a submarine's plot reads a contact); and the scripted brain's conclusions as hints. Nothing here is the world's raw lists: a net that learns from these learns what a tank in the field could feel. Every number is 0 to 1 but the contacts' bearings, a sine and a cosine, -1 to 1.
+
+| Line | Function | Of | Pub | What it does (its doc comment) |
+| --- | --- | --- | --- | --- |
+| 127 | `dot` |  |  | The dot product. |
+| 133 | `bearing` |  |  | A periscope bearing: the sine and cosine of `to`'s bearing from the tank's heading, and its strength. |
+| 162 | `strength` |  | yes | A signal's strength from its distance. |
+| 167 | `sector` |  | yes | The sector a bearing falls in, relative to `heading`. |
+| 173 | `sector_heading` |  | yes | The heading at the middle of a sector. |
+| 178 | `at` |  | yes | The index of a sector's channel in the senses. |
+| 184 | `sense` |  | yes | Everything the tank feels this tick, or None when it has no tank. |
+| 313 | `world` |  |  | Two tanks on a generated map, no pillbox, depot or swarm. |
+
+Tests (5):
+
+- `a_tank_to_the_right_is_felt_to_the_right` (line 324): The compass: a hostile tank set due right of a tank facing any way lights the right sector's hostile channel at its strength, and nothing else lights.
+- `the_body_reads_as_shares` (line 349): The body: armour, shells and reload read as shares; a dead tank feels nothing.
+- `the_ground_ray_finds_a_wall` (line 365): The ground ray: open ground ahead reads 0; a wall 4 tiles ahead (its tile begins 3 to 4 tiles off, the ray's last open step half a tile short of it) reads between 1 - 3.5 / 16 and 1 - 2.5 / 16.
+- `the_periscope_reads_an_enemy_exactly` (line 388): The periscope: an enemy dead right of the tank reads bearing sine 1 and cosine 0 at its strength, in reach at 6 tiles; driving at the tank it closes, pointing at it its aspect is 1; turned away, 0.
+- `a_friends_call_is_felt_where_it_points` (line 413): A friend's call: felt in its sector's Call channel and as the call contact, with its kind.
+
 ## status.rs
 
 Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). What a tank is doing was only ever a sentence, and the brain's own logic and the census read the sentence back: a guard was idle if its words began "on guard", a focus call went out if the reason said "called", the census counted "ducking" by substring. A rewording broke them silently. Now each sentence is written with a code beside it, and logic and measurement read the code; the words are for people, the code for the program.  The codes are `Copy` enums, set where the words are written (`Commander::set_doing`, `Hop::say`, the cycle's `act`). `code()` is a stable dotted name for logs, the census and the ledger.
@@ -644,28 +770,28 @@ Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to coll
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 126 | `default` | Tactics |  | *(the `Default` trait's)* |
-| 176 | `ratio` | Odds | yes | Lanchester's square law: ours squared over theirs squared. |
-| 205 | `reach` |  | yes | How far a hostile tank's gun reaches now: its direct gun while it has shells. |
-| 214 | `ready_in` |  | yes | Seconds until a tank can fire again. |
-| 266 | `worth` |  |  | A tank's worth in a fight: armour, and none without shells. |
-| 276 | `with` | Tactician | yes | A Tactician of these weights, with nothing heard yet. |
-| 281 | `hear` | Tactician | yes | Every tick: a teammate's ping is a call on what is under it. |
-| 294 | `score` | Tactician | yes | A target's score and the reasons that made it. |
-| 302 | `value` | Tactician | yes | The score alone: what `pick` asks of every candidate, with no words built for the ones that lose (roadmap 12b). |
-| 308 | `rate` | Tactician |  | A target's score; the reasons pushed to `why` when it is Some, and their tags set in `tags` (`score` wants them, `value` not). |
-| 361 | `pick` | Tactician | yes | The hostile tank to shoot, of those `fair` allows; the reason kept. |
-| 413 | `odds` | Tactician | yes | The odds at a fight round `at`, me counted as there. |
-| 437 | `stance` | Tactician | yes | Mass, engage or press, by the odds; massing ends after `mass_for` seconds whether or not the team came. |
-| 492 | `kite` | Tactician | yes | Kiting `target`, coming in on `from`, at `stance`: the step in when the target's gun cannot answer it, else the waiting ring (module notes). |
-| 538 | `enough_answer` | Tactician | yes | Teammates nearer a ping than me: past `answer_cap` I stay. |
-| 548 | `stand` | Tactician | yes | Where to stand against `target` at `range`, coming in on `from` (a unit bearing from the target): of seven points on the arc within 60 degrees of it, the one with the fewest other guns on it, the bearing breaking ties. |
+| 137 | `default` | Tactics |  | *(the `Default` trait's)* |
+| 191 | `ratio` | Odds | yes | Lanchester's square law: ours squared over theirs squared. |
+| 220 | `reach` |  | yes | How far a hostile tank's gun reaches now: its direct gun while it has shells. |
+| 229 | `ready_in` |  | yes | Seconds until a tank can fire again. |
+| 281 | `worth` |  |  | A tank's worth in a fight: armour, and none without shells. |
+| 291 | `with` | Tactician | yes | A Tactician of these weights, with nothing heard yet. |
+| 296 | `hear` | Tactician | yes | Every tick: a teammate's ping is a call on what is under it. |
+| 309 | `score` | Tactician | yes | A target's score and the reasons that made it. |
+| 317 | `value` | Tactician | yes | The score alone: what `pick` asks of every candidate, with no words built for the ones that lose (roadmap 12b). |
+| 323 | `rate` | Tactician |  | A target's score; the reasons pushed to `why` when it is Some, and their tags set in `tags` (`score` wants them, `value` not). |
+| 376 | `pick` | Tactician | yes | The hostile tank to shoot, of those `fair` allows; the reason kept. |
+| 428 | `odds` | Tactician | yes | The odds at a fight round `at`, me counted as there. |
+| 452 | `stance` | Tactician | yes | Mass, engage or press, by the odds; massing ends after `mass_for` seconds whether or not the team came. |
+| 507 | `kite` | Tactician | yes | Kiting `target`, coming in on `from`, at `stance`: the step in when the target's gun cannot answer it, else the waiting ring (module notes). |
+| 553 | `enough_answer` | Tactician | yes | Teammates nearer a ping than me: past `answer_cap` I stay. |
+| 563 | `stand` | Tactician | yes | Where to stand against `target` at `range`, coming in on `from` (a unit bearing from the target): of seven points on the arc within 60 degrees of it, the one with the fewest other guns on it, the bearing breaking ties. |
 
 Tests (3):
 
-- `focus_fire_picks_the_wounded_tank_a_teammate_is_on` (line 576): Two tanks with a pillbox-free field: a fresh near one, a far wounded one an ally is already shooting.
-- `kiting_steps_in_only_when_the_gun_cannot_answer` (line 609): Kiting's forks, one at a time: the target loaded holds us past its reach; reloading lets us step in; a second loaded gun on the spot holds us again; our own gun not loaded by the time we would be in holds us; massing...
-- `the_square_law` (line 664)
+- `focus_fire_picks_the_wounded_tank_a_teammate_is_on` (line 591): Two tanks with a pillbox-free field: a fresh near one, a far wounded one an ally is already shooting.
+- `kiting_steps_in_only_when_the_gun_cannot_answer` (line 624): Kiting's forks, one at a time: the target loaded holds us past its reach; reloading lets us step in; a second loaded gun on the spot holds us again; our own gun not loaded by the time we would be in holds us; massing...
+- `the_square_law` (line 679)
 
 ## weights.rs
 
@@ -678,34 +804,35 @@ Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5
 | 46 | `doc` |  | yes | The weight's doc line: what it does, and why its default. |
 | 50 | `by_name` |  | yes | The weight of that name, if any. |
 | 56 | `step` |  | yes | A slider's step (the coordination screen, backlog 15): one for a rounded weight, else a tenth of the default taken to 1, 2 or 5 of its power of ten; a tenth for nothing. |
-| 200 | `default` | Weights |  | *(the `Default` trait's)* |
-| 207 | `index` | Weights |  | *(the `Index` trait's)* |
-| 213 | `index_mut` | Weights |  | *(the `IndexMut` trait's)* |
-| 232 | `doc` | Weights | yes | What a capability does, for the sliders' page. |
-| 261 | `default` | Caps |  | *(the `Default` trait's)* |
-| 268 | `has` | Caps | yes | Every bit of `c` is on. |
-| 272 | `with` | Caps | yes | These, and `c` on. |
-| 276 | `without` | Caps | yes | These, and `c` off. |
-| 280 | `all` | Caps | yes | Every capability, the new ones too. |
-| 284 | `by_name` | Caps | yes | The capability of that name, as a weights file spells it. |
-| 288 | `names` | Caps | yes | The names of the bits that are on, comma-separated. |
-| 301 | `fmt` | WeightsError |  | *(the `Display` trait's)* |
-| 317 | `parse` | Settings | yes | Read the file form. |
-| 357 | `smooth` | Settings | yes | How much the bot smooths (`w_smooth`), 0 to 1. |
-| 363 | `smooth_alpha` | Settings | yes | The share of a move's new pull taken a think: all of it at `w_smooth` 0, `alpha` at 1, in a line between. |
-| 368 | `smooth_on` | Settings | yes | The yes-or-no parts of smoothing: on above 0.5. |
-| 373 | `to_text` | Settings | yes | The file form: every weight, and the capabilities. |
-| 382 | `diff` | Settings | yes | The weights that differ from the defaults: what makes a genome. |
-| 388 | `nudge` | Settings | yes | A slider moved `by` steps: never under nothing, and kept to four places so a step back is the number it was. |
-| 394 | `ticks` | Settings | yes | Seconds into ticks, for the time weights. |
-| 401 | `from_weights` | Tactics | yes | The tactics the weights describe. |
-| 453 | `eval` | Curve | yes | The curve at `x`, clamped to 0..1 both ways; a value that is not finite reads 0. |
-| 473 | `utility` |  | yes | An action's utility (LR 4): its weight times the geometric mean of its considerations, raised by `commit` if it is the intent held now. |
+| 207 | `default` | Weights |  | *(the `Default` trait's)* |
+| 214 | `index` | Weights |  | *(the `Index` trait's)* |
+| 220 | `index_mut` | Weights |  | *(the `IndexMut` trait's)* |
+| 239 | `doc` | Weights | yes | What a capability does, for the sliders' page. |
+| 268 | `default` | Caps |  | *(the `Default` trait's)* |
+| 275 | `has` | Caps | yes | Every bit of `c` is on. |
+| 279 | `with` | Caps | yes | These, and `c` on. |
+| 283 | `without` | Caps | yes | These, and `c` off. |
+| 287 | `all` | Caps | yes | Every capability, the new ones too. |
+| 291 | `by_name` | Caps | yes | The capability of that name, as a weights file spells it. |
+| 295 | `names` | Caps | yes | The names of the bits that are on, comma-separated. |
+| 308 | `fmt` | WeightsError |  | *(the `Display` trait's)* |
+| 324 | `parse` | Settings | yes | Read the file form. |
+| 364 | `smooth` | Settings | yes | How much the bot smooths (`w_smooth`), 0 to 1. |
+| 370 | `smooth_alpha` | Settings | yes | The share of a move's new pull taken a think: all of it at `w_smooth` 0, `alpha` at 1, in a line between. |
+| 375 | `smooth_on` | Settings | yes | The yes-or-no parts of smoothing: on above 0.5. |
+| 380 | `to_text` | Settings | yes | The file form: every weight, and the capabilities. |
+| 389 | `diff` | Settings | yes | The weights that differ from the defaults: what makes a genome. |
+| 395 | `nudge` | Settings | yes | A slider moved `by` steps: never under nothing, and kept to four places so a step back is the number it was. |
+| 401 | `ticks` | Settings | yes | Seconds into ticks, for the time weights. |
+| 408 | `from_weights` | Tactics | yes | The tactics the weights describe. |
+| 464 | `eval` | Curve | yes | The curve at `x`, clamped to 0..1 both ways; a value that is not finite reads 0. |
+| 484 | `utility` |  | yes | An action's utility (LR 4): its weight times the geometric mean of its considerations, raised by `commit` if it is the intent held now. |
 
-Tests (5):
+Tests (6):
 
-- `default_weights_are_todays_constants` (line 494)
-- `a_weights_file_round_trips_and_names_its_mistakes` (line 505)
-- `smooth_is_a_weight_that_blends_and_thresholds` (line 525): `w_smooth` (LR 46): the default is near off, the desire vector blends in a line, and the yes-or-no parts turn on above 0.5.
-- `the_geometric_mean_compensates_and_vetoes` (line 541)
-- `a_slider_steps_and_steps_back` (line 551)
+- `default_weights_are_todays_constants` (line 505)
+- `a_weights_file_round_trips_and_names_its_mistakes` (line 516)
+- `smooth_is_a_weight_that_blends_and_thresholds` (line 536): `w_smooth` (LR 46): the default is near off, the desire vector blends in a line, and the yes-or-no parts turn on above 0.5.
+- `the_geometric_mean_compensates_and_vetoes` (line 552)
+- `a_slider_steps_and_steps_back` (line 562)
+- `every_profile_reads_and_differs` (line 578)

@@ -483,11 +483,12 @@ asked for longer ones. Steps:
 
 ## Goal 6. In players' hands (waiting)
 
-0.1.0-rc.6 is the last candidate; it speaks wire version 12 and cannot
-meet today's builds. GitHub Actions are paused since 13 October: no
-`v*` tag and no workflow run until Paul lifts the pause. Then: rc.7 on
-wire 16, tagged on day 0 and published on day 1 or later (`DEPLOY.md`);
-PROTOCOL.md brought to wire version 16 first.
+0.1.0-rc.6 was the last candidate; it speaks wire version 12. GitHub
+Actions were paused from 13 October to 26 October, when Paul lifted
+the pause ("Fully tag. Tag it. Marge for deploy."): **0.2.0**, the next
+minor version and the first release, on wire 16 (PROTOCOL.md brought
+to 16 first), tagged on day 0 (26 October); `make publish` and the
+draft release published on day 1 or later, by Paul (`DEPLOY.md`).
 
 
 ## Backlog
@@ -1134,6 +1135,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     read past two errors read twice more on fresh seeds. A candidate
     (LR 96): dodge_horizon 2, held out +1.82 +/- 0.27 and +1.66 +/-
     0.29 on 400 seeds each, no map below, families held; for Paul.
+    Adopted 26 October (LR 97): the run read it held out ten more
+    times (+1.09 to +2.66); Paul accepted; the default is 2 and the run
+    restarted on it (18:10).
 
 70. A learned brain. (26 October; cause: Paul, "start training a
     normal AI neural network given our current reward system"; LR
@@ -1153,7 +1157,15 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     on the 4060 Ti under Ubuntu 26.04 LTS second). Phase 0 done (LR 96):
     the senses (101), a net of 14,068 weights in plain Rust, NetBrain,
     CENSUS_NET; a random team -19.30 +/- 0.36 over 110 seeds; 7.8 us a
-    decision. Next: phase 1, go to a target, by evolution strategies.
+    decision. Phases 1 and 3 done (LR 97): senses to 133 (instruments,
+    a periscope of four contacts, a Call channel); calls to friends, a
+    team's shared queue (`calls.rs`); evolution strategies on threads
+    (`learn.rs`, `make train`); nets/phase1.bin goes to an enemy, a
+    depot or a pillbox, 999 of 999 held out; nets/phase3.bin also
+    kills a still enemy with the gun, 999 of 999. The census: -23.52
+    +/- 0.38, below a random net's -20.35 +/- 0.25: it charges what a
+    match defends. Next: phase 4, live (hostile pillboxes and an enemy
+    that fires back on the grounds), AI-BRAINZ-PLAN.md section 8.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

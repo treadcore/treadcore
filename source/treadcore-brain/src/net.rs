@@ -186,6 +186,8 @@ impl Net {
         Ok(())
     }
 
+    /// A net read from `save`'s form; an error for a file that is not
+    /// one, or whose weights do not fit its sizes.
     pub fn load(path: &std::path::Path) -> std::io::Result<Net> {
         let mut bytes = Vec::new();
         std::fs::File::open(path)?.read_to_end(&mut bytes)?;
@@ -240,6 +242,8 @@ pub struct NetBrain {
 }
 
 impl NetBrain {
+    /// A brain driven by `net`, which must take the senses and score
+    /// the heads; its own queue of calls until `with_calls`.
     pub fn new(net: Net, name: &str) -> NetBrain {
         assert_eq!(net.layers.first().map(|l| l.inp), Some(SENSES), "a tank's net takes the senses");
         assert_eq!(net.layers.last().map(|l| l.out), Some(OUTPUTS), "a tank's net scores the heads");

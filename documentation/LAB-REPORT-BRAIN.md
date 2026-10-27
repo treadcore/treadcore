@@ -6359,3 +6359,199 @@ The run found the same weight on its own: its fit's best point at
 generation 2, from every census since the new defaults, is dodge_horizon
 2 alone. Read on 55 seeds at 12:28 (+1.61 +/- 0.76, past two errors), it
 went to its own two held-out reads, under way as this is written.
+
+## 97. The learned tank drives and shoots; periscope senses and calls to friends; dodge_horizon 2 the default, 26 October
+
+Backlog 70 and 69. Paul: "write a lab report. and lest go to the next
+. teach to network tank to drive and shoot, and enemy a depot a
+pillbox." Then, mid-step: "can you create documentation and show the
+html about the new design of the sensors. add more sensors if
+approporate. give tank like sensors. like pariscope tank controls.
+almost like a submarine ... Also give general request commands to the
+training to it can cally friends through shared requests queues ...
+Accept the new defaults." The plan as a whole is written out in
+`AI-BRAINZ-PLAN.md`.
+
+### A. dodge_horizon 2, the default
+
+The run (LR 92) on the census machine found dodge_horizon 2 as its
+best in generations 2, 3, 4, 8 and 9 and read it held out, 400 fresh
+seeds each, ten times:
+
+| Generation | Held-out reads |
+| --- | --- |
+| 2 | +2.66 +/- 0.30, +1.71 +/- 0.29 |
+| 3 | +1.61 +/- 0.27, +1.44 +/- 0.29 |
+| 4 | +1.09 +/- 0.26, +1.98 +/- 0.27 |
+| 8 | +2.44 +/- 0.30, +1.84 +/- 0.30 |
+| 9 | +2.00 +/- 0.30, +1.73 +/- 0.28 |
+
+Every read past two errors with no map past two below, beside LR 96's
+two (+1.82, +1.66). Three more trials passed (gen 3 samples 1 and 4,
+gen 8 sample 0), each dodge_horizon 2 with Thompson draws of other
+weights riding on it; only the common part is taken. `make families`
+holds at 2 (a-duel-in-the-open 76.2%, a-raid-on-a-guarded-base 81.5%,
+a-tank-under-a-ready-gun 83.6%, the rest 99.9 to 100%). Paul: "Accept
+the new defaults." The default is 2 (7fc7809); `make test` passes; the
+run was stopped and restarts on the new defaults (`SINCE`).
+
+### B. The senses, second edition: instruments, a periscope, calls
+
+Paul's "tank like sensors ... pariscope ... almost like a submarine".
+Three blocks added to `senses.rs`, 101 senses to 133:
+
+- **A Call channel** in each compass sector (11 channels): a friend's
+  call from that way, its strength fading over the call's 10 s.
+- **The instruments** (`Nav`, 6): x and y as shares of the map, the
+  heading's sine and cosine (each shifted to 0 to 1), the nearest
+  edge's strength, a hit just taken (1 as it lands, 0 after 2 s, from
+  `last_hit_tick`). A tank's GPS, gyro compass and hull-hit light.
+- **The periscope** (`Contact`, 18): the compass says which eighth;
+  the periscope gives the exact bearing (sine, right +; cosine,
+  ahead +) and strength of four contacts: the nearest hostile tank
+  (with its closing speed, 0.5 still and 1 closing at top speed; its
+  aspect, 1 pointing at the tank; and whether it is in the direct
+  gun's reach), the nearest thing to take, the nearest depot of ours,
+  and a friend's newest call (with its kind, one of three). A
+  submarine's plot: bearing, range, closing, aspect.
+
+Each is a few comparisons over lists the observation holds already;
+none is a raw list or a picture, so the count is the same on every
+map and the cost stays in microseconds.
+
+Tests: an enemy dead right reads sine 1, cosine 0, its strength,
+closing 1 driving at the tank, aspect 1 pointing at it and 0 turned
+away; the instruments place the tank; a friend's call north of an
+east-facing tank lights the left sector's Call channel at its strength
+and the call contact as a Take.
+
+### C. Calls to friends: a shared queue
+
+`calls.rs`: a team's `Calls`, one queue a match shared by its learned
+tanks (as the team board is shared by Commanders). A call is a kind
+(help: come to me; attack: the nearest enemy; take: the nearest thing
+to take), a place and a tick; it lives 10 s; the queue keeps 16; a
+tank calls at most every 2 s. The Signal head is now hold or one of
+the three kinds (it was hold or a sector), masked to kinds with
+something to point at. Each call is also said in the world as a
+`Command::Ping`, so scripted teammates converge on it as they do on
+one another's; a teammate's ping heard in the world (`Event::Pinged`)
+comes into the queue as an attack call. Brains think in seat order on
+one thread, so the queue reads the same in every replay. The census
+gives its net team one queue a match. Test: a call is heard by the
+others and not its caller, for its life and no longer; the queue keeps
+the newest. Nothing yet rewards calling (AI-BRAINZ-PLAN.md section 8,
+upgrade 5).
+
+### D. Training: evolution strategies in Rust
+
+`learn.rs` and `make train`. A **ground**: the seed's generated map
+with a square of grass 49 tiles across round its centre, the tank at
+the centre facing a way the seed draws, the target 10 to 20 tiles off
+(12 to 20 to shoot) in a direction the seed draws: an enemy tank
+standing still, a neutral depot or a neutral pillbox, in turn by the
+seed; nothing else. The enemy is felt at any range (the scenario's
+`advantage`): a tank sees 10 tiles, and phase 1 is going to, not
+searching. An **episode**: 60 s at most, five decisions a second.
+
+**Evolution strategies** (Salimans and others 2017): each generation
+draws 48 directions in weight space (normal, from the generation's
+seed), plays the weights 0.05 along and 0.05 back along each on the
+same 12 grounds (97 nets with the weights themselves, 1,164 episodes),
+ranks every score from -0.5 to 0.5 (one lucky score cannot pull the
+weights alone), estimates the gradient as the rank differences times
+the directions, and takes an Adam step (0.02; decay 0.0005). Threads
+take episodes from a shared counter. Tests: a ground is open and its
+target is where it says; a straight drive reaches each kind inside
+30 s and a tank that holds never does; an enemy fired at from inside
+the gun's reach is hit; one generation from a seed moves the weights
+the same way twice.
+
+Two faults on the way: a world with one seat that the trainer ran
+past its end (a guard on `over` now); the trainer's files written
+under the crate's folder (`cargo test` runs there; `make train` gives
+absolute paths).
+
+### E. Phase 1: go to. The rule, then the reads
+
+Rule (LR 95, E; `build/train/NOTES.txt` on the Mac): within 3 tiles
+inside 60 s on at least 95% of 999 held-out grounds (seeds 9,000,000
+on, a third each kind), each kind alone. On the Mac (M1, 8 threads):
+
+| Net | Enemy | Depot | Pillbox |
+| --- | --- | --- | --- |
+| first senses (101), 200 generations, 110 s | 96.4% | 100% | 94.3% +/- 1.3 |
+| first senses, 500 generations | 99.7% | 100% | **95.2% +/- 1.2: passes** |
+| untrained, new senses (133) | 13.2% | 1.8% | 0.3% |
+| new senses, 500 generations, 130 s | **100%** | **100%** | **100%** |
+
+With the periscope the net passed every training ground by generation
+67 (the compass alone needed hundreds): an exact bearing is what going
+to a point wants. `nets/phase1.bin`.
+
+### F. Phase 3: drive and shoot. Three rules, in order, each before its run
+
+1. **First rule**: a hit inside 60 s on 95%. Read on the untrained net
+   first: it passed at 99.8%, its mortar landing 7,728 shells on a
+   tank that never moves. Not a test.
+2. **Amended**: the direct gun only (a direct hit counts 1; a direct
+   miss or a lobbed shell -0.05; up to 0.2 for closing to the gun's
+   reach), and hits a shot at least RuleBot's. Read first: RuleBot
+   fires no shot on these grounds (a still tank that never fires is
+   no threat to it), and a direct shell at a still tank never misses
+   (the untrained net: 666 of 666). Hits a shot is phase 3b's measure,
+   a moving target. The untrained net: a direct hit on 44.2%.
+3. **Shoot only, from phase 1, 300 generations (83 s)**: a direct hit
+   on 999 of 999, 2,995 direct shots all hits, none lobbed, 998 kills.
+   But read on phase 1's grounds it had forgotten the going: enemy
+   100%, depot 9.3%, pillbox 23.7%.
+4. **Amended again: drive and shoot**, all three grounds in turn: the
+   enemy shot (a direct hit), the depot and pillbox gone to. Rule: each
+   kind 95% on the 999. From phase 1, 400 generations (98 s):
+
+| Ground | Held out |
+| --- | --- |
+| enemy: a direct hit | **333 of 333** (999 direct hits of 999 shots, 3 a tank, each killed; none lobbed) |
+| depot: within 3 tiles | **333 of 333** |
+| pillbox: within 3 tiles | **333 of 333** |
+
+`nets/phase3.bin`: one net that drives to a depot or a pillbox, and
+drives in on an enemy, holds the mortar and kills it with the gun.
+
+### G. The census: a team of drive-and-shoot nets
+
+On the census machine at 7d0af54 (`build/net3/NOTES.txt`, before it
+played): a team of `nets/phase3.bin` in the trial seat against the
+defaults, 110 seeds from 500,000, every map; then a random net of the
+same shape on the same seeds. Rule: the trained team above the random
+by more than two errors. Expected: both far below the defaults (phase
+3 knows nothing of supply, capture, cover or teams).
+
+| Team in the trial seat | Every map | Lowest map | Highest map |
+| --- | --- | --- | --- |
+| nets/phase3.bin (drive and shoot) | **-23.52 +/- 0.38** | island -28.91 +/- 0.42 | fortressislesx -18.02 +/- 0.76 |
+| a random net, the same shape (seed:1) | **-20.35 +/- 0.25** | atlantic -23.43 +/- 0.83 | fortressislesx -16.99 +/- 0.57 |
+| (LR 96: a random net, the first shape) | -19.30 +/- 0.36 | | |
+
+**The rule fails**: the trained team reads 3.17 +/- 0.45 *below* the
+random, seven errors. What it learned on open grass, it does in a
+match: it drives straight at the nearest enemy, depot or pillbox. On
+the training grounds nothing shoots back and every pillbox is neutral;
+in a match the nearest pillbox is often hostile and the nearest enemy
+is a team of five under its own guns. The random team dithers near
+its start and lives longer. Skills on a clean ground do not carry into
+a match until the ground teaches what kills (phase 4, live; hostile
+pillboxes and an enemy that fires back on the grounds). The census did
+its job: it says the drive-and-shoot net is not yet a better tank, and
+by how much. Both censuses took two and a half minutes (the net teams
+go down fast).
+
+### Lessons
+
+- **Read the rule on the untrained net first.** Two of phase 3's rules
+  were met or made meaningless before any training; ten minutes of
+  baselines saved a false pass.
+- **Train what must be kept.** A net trained only to shoot forgot how
+  to go to a depot in 300 generations. A curriculum rehearses.
+- **The right sense is worth hundreds of generations.** The periscope
+  turned a 500-generation pass into a 67-generation one.
