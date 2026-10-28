@@ -7465,7 +7465,7 @@ tank follows a route set seconds before and need not say `Move` again.
 
 ### B. The net and the training
 
-The learned tank's shape, unchanged (143 -> 64 -> 64 -> 42 scores), so
+The learned tank's shape, unchanged (143 -> 64 -> 64 -> 47 scores), so
 NetBrain runs the result and every existing reading judges it. Each
 trained head a softmax over its choices with cross-entropy; Adam; trained
 on calber's GPU with Burn (`tools/bc`, its own Cargo project so the census
@@ -7664,7 +7664,7 @@ per-head losses combined; the CPU version on all eight cores.
    padded to [N, 7 x 10], go to the device at the start (2.49 million
    samples, 2.8 GB). A batch is gathered there by index (`select`); a
    step uploads nothing; the epoch's shuffled order is uploaded once.
-2. **One loss for every head.** The net's 42 scores are gathered into a
+2. **One loss for every head.** The net's 47 scores are gathered into a
    padded [B, 7, 10] (each head's choices in a row of ten, unused slots
    masked), and one masked log-softmax and one product with the targets
    replace seven of each. The same loss as before: the sum over heads of

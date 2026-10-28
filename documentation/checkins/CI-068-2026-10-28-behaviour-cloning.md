@@ -46,7 +46,7 @@ with measured time whether the GPU is the faster place to train.
 
 | # | Cause | Decision | Not taken, and why |
 | --- | --- | --- | --- |
-| D1 | AI-BRAINZ-PLAN 8: cloning before PPO | Clone the scripted brain into the existing net shape (143-64-64-42), so NetBrain, the census and the gauntlet judge it unchanged | A new shape: every reading would need new code first |
+| D1 | AI-BRAINZ-PLAN 8: cloning before PPO | Clone the scripted brain into the existing net shape (143-64-64-47), so NetBrain, the census and the gauntlet judge it unchanged | A new shape: every reading would need new code first |
 | D2 | A scripted tank follows a route set seconds before and need not say `Move` again | The drive label from the tank's state (its next waypoint's sector, or stop) | From its commands: most samples would read "no command" |
 | D3 | A first recording showed a direct shot possible in 0.17% of samples | Record NetBrain's own masks and train a masked softmax | No masks: the gun would learn always to hold |
 | D4 | The census machines must never build Burn | `tools/bc` its own Cargo project (`[workspace]`) | A crate in the workspace: Burn and CUDA in every census build |

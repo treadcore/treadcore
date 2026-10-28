@@ -54,14 +54,20 @@ on() {
     if [ "$t" = - ]; then
         bash -c "$*"
     else
-        ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 "$t" "$*"
+        # Under bash whatever the host's login shell (nasser's is busybox
+        # ash, and common.sh needs BASH_SOURCE); sent as base64 so no quoting
+        # is read twice.
+        ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 "$t" \
+            "exec bash -c \"\$(echo $(printf '%s' "$*" | base64 | tr -d '\n') | base64 -d)\""
     fi
 }
 
 # The environment a remote command needs: cargo for a rustup install.
 ENV='[ -f ~/.cargo/env ] && . ~/.cargo/env; export PATH="$HOME/.cargo/bin:$PATH";'
 
-hosts() { grep -v '^#' "$D/hosts" | grep -v '^[[:space:]]*$'; }
+# ONLY=NAME: prepare or run that host alone (a host joining a run under way:
+# add its line to hosts, then ONLY=NAME prepare, then ONLY=NAME run).
+hosts() { grep -v '^#' "$D/hosts" | grep -v '^[[:space:]]*$' | awk -v o="${ONLY:-}" 'o == "" || $1 == o'; }
 store() { cat "$D/store"; }
 
 case "$CMD" in
@@ -112,7 +118,7 @@ prepare)
     ;;
 
 run)
-    [ -s "$D/bin/$(hosts | head -1 | cut -d' ' -f1)" ] || die "prepare first"
+    for h in $(hosts | cut -d' ' -f1); do [ -s "$D/bin/$h" ] || die "$h: prepare first"; done
     S="$(store)"
     lane() {
         local name="$1" target="$2" threads="$3" nice="$4" job s0 n t0 secs bytes sha sha2 log

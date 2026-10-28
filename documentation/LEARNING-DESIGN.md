@@ -94,7 +94,7 @@ Bottom to top, for one decision of one tank:
    on one binary.
 2. **The observation** is what one seat may know.
 3. **The senses** (`senses::sense`) turn it into 143 numbers in fixed places.
-4. **The net** turns 143 numbers into 42 scores; **`choose`** takes, in each
+4. **The net** turns 143 numbers into 47 scores; **`choose`** takes, in each
    head, the best-scoring choice that is allowed now (the mask); **NetBrain**
    turns the choices into Commands.
 
@@ -116,7 +116,7 @@ and plays as before.
 
 ## IV. The outputs, and what the experimenter controls
 
-**Seven heads, 42 scores:** Drive (hold, 8 sectors, stop), Gun (hold, 8
+**Seven heads, 47 scores** (10 + 9 + 3 + 9 + 5 + 7 + 4): Drive (hold, 8 sectors, stop), Gun (hold, 8
 sectors), Lead (the target, its lead point, halfway), Mortar (hold, 8
 sectors), Drone (hold, interceptor, recon, strike, longshot), Squad (7, held
 until its phase), Signal (hold, 3 calls). NetBrain allows a choice only when
@@ -166,7 +166,7 @@ The trainer is ordinary Rust. Nothing in it is written for CUDA:
 
 ```rust
 let dev = Device::cuda(0).autodiff();          // the GPU, with gradients
-let model = Mlp::new(&dev, 143, 42);           // weights allocated on the GPU
+let model = Mlp::new(&dev, 143, 47);           // weights allocated on the GPU
 let y = model.forward(x);                      // 3 matmuls, biases, 2 ReLUs
 let loss = ...;                                // masked log-softmax per head
 let grads = GradientsParams::from_grads(loss.backward(), &model);
@@ -193,7 +193,7 @@ first time each kernel is needed.** That is why the 1080 Ti works at all
 **One training step on the GPU:** a batch of 4,096 samples is copied to the
 card (143 floats each, and the masks and labels); the forward pass is three
 matrix products with biases and ReLUs; for each trained head, the head's
-slice of the 42 scores plus its mask (0 for allowed, -1e9 for not), a
+slice of the 47 scores plus its mask (0 for allowed, -1e9 for not), a
 log-softmax, and the label's log-probability; the sum is the loss; backward
 gives every weight's gradient; Adam moves every weight. Only the loss (one
 number) comes back to the CPU each step, for the log.
@@ -205,7 +205,7 @@ compute the same way:
 
 | | Definition |
 | --- | --- |
-| shape | 143 -> 64 -> 64 -> 42 |
+| shape | 143 -> 64 -> 64 -> 47 (16,431 numbers) |
 | layer | `out[o] = b[o] + sum_i w[o][i] * in[i]`; ReLU after the hidden layers, none after the last |
 | layout on disk | `TCNET1`, sizes, then each layer's weights output-major (`w[o * inp + i]`) and biases, f32 little-endian |
 | decision | per head, the highest score among the allowed choices (hold always allowed), ties to the lower choice |
@@ -315,8 +315,65 @@ all of them as they run. The design:
 4. **The census's ledger** is the first subscriber that exists already
    (`ledger.py --merge`); the others are built the same way.
 
-This is a design; its first piece to build is the event stream in the
-recorder and the trainer (LR 107).
+### Built first: the recording fleet (LR 108)
+
+`scripts/fleet-record.sh` is the first job kind on more than one machine.
+It runs on a coordinator (now the Mac, the machine with ssh to all the
+others) and keeps the run's state as plain files in `build/fleet/RUN/`:
+
+```
+plan RUN SEED0 COUNT PER   a queue/ file a job ("SEED0 SEEDS"), the commit
+hosts                      NAME TARGET THREADS NICE: only spare cores, at a nice
+prepare RUN                each host: a worktree at the commit, a frozen binary
+run RUN                    a lane a host: claim (mv), record, stream, check, log
+status RUN / consolidate RUN
+```
+
+- **Claiming** is `mv queue/J claimed/HOST/`, atomic, so no job is taken
+  twice; a failed job goes to `failed/` with its log and is moved back by
+  hand. A lane's heartbeat (`lanes/HOST.beat`) says what it is doing and
+  since when.
+- **Collection** is to one store (calber, where the GPU is): each shard is
+  streamed there, its sha256 read at both ends, then deleted from the host.
+  `manifest.tsv` names every shard's job, host, seeds, samples, bytes,
+  hash, and the hash of the binary that made it, and `consolidate` reads
+  every hash again on the store.
+- **Each host its own binary.** A recording is training data, not a
+  census: the same seed recorded on calber, columbia and the Mac gives
+  three different shards (three binaries; each reproduces its own), so
+  shards are not compared across machines, and the manifest says which
+  made which.
+
+### The plan for every job kind
+
+| Job | Runs on | Batch (one job) | Collected to | Judged by |
+| --- | --- | --- | --- | --- |
+| record | any spare CPU | 24 seeds of 600 s, about 1 million samples, 585 MB | the GPU node's store | the manifest's counts |
+| train | the GPU node | one configuration (data, batch, rate, epochs) | `nets/`, with its log and `job.json` | held-out agreement by range, then the census |
+| census | one machine per census | 110 seeds, or one trial of a run | the coordinator's ledger, never pooled across machines | `ledger.py --merge` |
+| gauntlet, match reading | any CPU | one net | beside the net | reported |
+
+1. **One queue a job kind, the same files.** `fleet-record.sh` becomes the
+   pattern for all: a `queue/`, `claimed/HOST/`, `done/HOST/`, `failed/`,
+   a heartbeat, a manifest. A census job is LR 104 E's worker, the same
+   thing with a census in the middle.
+2. **The GPU is a queue of one.** Training jobs wait their turn on calber
+   rather than share the card; a sweep (batch sizes, rates) is a list of
+   jobs, each a line in the manifest with its settings and its readings.
+3. **Spare means spare.** A host's line says how many threads and how nice;
+   a machine running a census or `make converge` (saskatchewan now) gets
+   none, or `nice 19` threads only when its load is under its cores.
+4. **Pull, later.** The coordinator pushes over ssh now. When the fleet
+   has its message bus, each lane's events (claimed, recording, sending,
+   done, failed) are published on `fleet.jobs.<host>.<kind>.<id>` as in
+   the list above, and the wall, the collector and the alert subscribe;
+   the files stay the record.
+5. **Retention.** Shards are kept on the store while a net trained on them
+   is under study; the manifest and its hashes are kept for good, so a
+   run can be re-recorded exactly, each host from its own binary.
+
+This was a design; the recording fleet is its first piece built (LR 108).
+The event stream in the recorder and the trainer is next.
 
 ## X. Where it stands
 

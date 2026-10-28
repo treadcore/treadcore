@@ -45,7 +45,7 @@ Paul's message was the list, pasted from the previous answer:
 | # | Cause | Decision | Not taken, and why |
 | --- | --- | --- | --- |
 | D1 | Item 3; 2.49 million samples, 11 GB card | Senses, targets and masks on the device once (2.82 GB); batches by `select` | Prefetching CPU-built batches on a thread: still an upload a step |
-| D2 | Item 4 | Targets and masks laid out [N, 7 x 10]; the 42 scores gathered into it; one log-softmax | Burn's fusion feature: a new build configuration, and the launches were mostly the seven heads' own |
+| D2 | Item 4 | Targets and masks laid out [N, 7 x 10]; the 47 scores gathered into it; one log-softmax | Burn's fusion feature: a new build configuration, and the launches were mostly the seven heads' own |
 | D3 | Item 2 | The detached loss summed on the device, read at the epoch's end | Reading every tenth step: still waits |
 | D4 | Item 5; flex's source | Reported as having no switch: flex threads only matrix products above 192^3 operations | Patching Burn, or a second backend (CubeCL's CPU, LLVM): a build of its own for one item |
 | D5 | The rule before the run | LR 106 E's rule restated in LR 107 B before any run, with an equivalence check of the rewrite | Judging the speed alone: a fast trainer that learns differently would pass |
