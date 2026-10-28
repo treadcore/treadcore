@@ -385,6 +385,7 @@ The event stream in the recorder and the trainer is next.
 | First training run | 12 epochs in 64 s on the 1080 Ti (a settled epoch 4.3 s); the CPU was faster (LR 106 E). **Made efficient (LR 107):** a settled epoch 0.815 s at the same settings and 0.643 s at batch 32,768, against the CPU's 4.5 and 5.0 s; the held-out agreement unchanged |
 | Parity check 1 | **passed**: Rust's `Net::forward` on the GPU-trained `bc1.bin` agrees with the scripted brain on the held-out samples exactly as the trainer did on the GPU, every head, to the decimal (LR 106 D) |
 | The rule | written (LR 106 C). Part 1 passed (D); **part 2 failed** (F): in the census on columbia bc1 reads -23.18 +/- 0.49 and map7 -20.33 +/- 0.27, paired -2.85 +/- 0.44. Imitating two choices in three does not carry into a match; PPO from the clone, the clone's inputs, or DAgger next (LR 107) |
+| Twenty times the data (LR 108) | 1,200 matches recorded by the fleet's spare CPUs in 14 min; bc2 trained on 47 million samples in 226 s on the 1080 Ti (batch 32,768 fills it). Drive held out 66.6% (bc1 65.5%); in the census bc2 is 3.42 +/- 0.41 above bc1 and level with map7 (+0.57 +/- 0.37). The clones survive and go nowhere: the senses, not the data, set the ceiling. Next, Paul to choose: the plan as senses, or PPO from bc2 |
 | Parity checks 2 and 3, the event stream | to build; the CPU backend is built (`BC_DEVICE=flex`) and timed; the GPU changes of LR 106 E done (LR 107) |
 | PPO | after the clone is judged |
 

@@ -6,6 +6,21 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Measured: twenty times the recording (1,200 matches, 50 million
+  samples), made on every spare CPU of the fleet in 14 minutes and
+  trained on calber's GPU in 4 minutes. The new clone, `bc2`, agrees
+  with the scripted brain more often (drive 66.6% against 65.5%) and
+  plays 3.42 +/- 0.41 a seat better than `bc1` in the census, level with
+  `nets/map7.bin`, which stays the official net. The clones survive but
+  go nowhere; the senses, not the data, set their ceiling. The card is
+  fastest at batch 32,768 (LAB-REPORT-BRAIN.md section 108).
+
+- Added: `scripts/fleet-record.sh`, recordings on every spare CPU of the
+  fleet, claimed by `mv`, streamed to one store, checked by sha256, a
+  manifest; `tools/bc` streams compact samples through the GPU;
+  `tools/bc/sweep.sh`; `GAUNTLET_NETS=`; `LAB-REPORT-FLEET.md`, the
+  pipes, the ssh and the time, and how a net becomes official.
+
 - Changed: `tools/bc` trains five to eight times faster on the GPU: the
   recording loaded onto the card once and batches gathered there, every
   head's loss in one masked log-softmax, the loss read once an epoch. A

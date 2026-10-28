@@ -17,7 +17,9 @@ Richeson (he/him). Journals and commits are in his name.
   `documentation/checkins/` (one report a check-in), `CHANGELOG.md`.
 - How it is made: `documentation/PROCESS.md`. The learned tank:
   `documentation/AI-BRAINZ-PLAN.md`; how it is trained, on CPUs and GPUs,
-  and the parity between them: `documentation/LEARNING-DESIGN.md`. A page published as a shared
+  and the parity between them: `documentation/LEARNING-DESIGN.md`. The recording
+  fleet (pipes, ssh, time; how a net becomes official):
+  `documentation/LAB-REPORT-FLEET.md`, `scripts/fleet-record.sh`. A page published as a shared
   link is also kept as a report of the site in `reports/` (MIT, with
   the code).
 

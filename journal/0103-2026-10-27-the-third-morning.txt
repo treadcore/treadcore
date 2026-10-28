@@ -120,6 +120,33 @@ IV. CHRONOLOGY
        switch in Burn 0.22.1. False start: an equivalence check of
        two errors on drive, too tight for two runs of the old trainer
        (65.5, 65.3); widened to 0.5 points before any run.
+   20. "deploy everywhere, even on spare cpus" (LR 108, CI-070): the
+       rule written; scripts/fleet-record.sh rehearsed on 6 seeds,
+       then 1,200 seeds on calber, the Mac and columbia in 14 min
+       (saskatchewan left to its run). The same seed on three
+       machines: three shards, each reproduced by its own binary.
+   21. nasser (192.168.8.121) joined: its login shell is busybox sh,
+       so every remote command now runs under bash, sent as base64.
+       The fix was made while the run's bash was still reading the
+       script; its text was written back into the same inode until
+       the run ended. nasser built in 3.4 min and found the queue
+       empty.
+   22. copal-tm: present on columbia and saskatchewan (the Copal
+       Store, ~/.local/bin, invisible to a non-login ssh), absent on
+       nasser; installed there, all four on 8459277.
+   23. The trainer for 50 million samples: compact samples, streamed.
+       The card padded each row of senses to 256 floats and refused
+       one 3.7 GB buffer; senses now uploaded flat, uploads of at
+       most 2 million. The sweep: batch 32,768 fills the card.
+   24. LAB-REPORT-FLEET.md, as Paul asked: the pipes, the ssh star,
+       the time, how findings come back, how a net becomes official.
+       Found writing it: the net has 47 scores, not 42.
+   25. bc2: 66.6% drive held out (rule part 2 passed); the census on
+       columbia ran on the fleet's binary (a shared target/), so bc1
+       was read again: identical seed for seed; bc2 +3.42 +/- 0.41
+       over bc1 (rule part 3 passed), +0.57 +/- 0.37 over map7 (level).
+       The gauntlet and match reading: the clones survive and go
+       nowhere.
 
 V. RESULTS
 
@@ -161,6 +188,11 @@ VIII. NEXT STEPS
     8. Done: the GPU changes of LR 106 E (LR 107). Next for the
        trainer, only if training grows: a kernel cache between runs;
        contiguous slices instead of a gather.
+    9. The learned tank after bc2, Paul to choose (LR 108 D): the
+       scripted brain's plan as senses, or PPO from bc2.
+   10. The fleet's next improvements (LAB-REPORT-FLEET V): record the
+       next job while this one moves; hash while streaming; host keys
+       to the store, if Paul grants them.
 
 ACKNOWLEDGMENTS
 

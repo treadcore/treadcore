@@ -98,8 +98,10 @@ prepare)
     hosts | while read -r name target threads nice; do
         echo "== $name: worktree at ${C:0:7}, building"
         # The worktree is the run's own, so the host's checkout is left as it
-        # was; the build shares that checkout's target directory, so its
-        # dependencies are not built twice.
+        # was. Its build has a target directory of the fleet's own, shared by
+        # runs: sharing the checkout's let columbia's next census pick up the
+        # fleet's binary instead of building its own (LR 108 D; the same
+        # source, so the same matches, but not the binary it named).
         on "$target" "$ENV set -e
             mkdir -p ~/fleet/$RUN/out
             cd ~/code/treadcore
@@ -108,7 +110,7 @@ prepare)
             git worktree prune
             git worktree add -q --detach ~/fleet/$RUN/wt $C
             cd ~/fleet/$RUN/wt
-            export CARGO_TARGET_DIR=\$HOME/code/treadcore/target
+            export CARGO_TARGET_DIR=\$HOME/fleet/target
             . scripts/common.sh
             census_bin ~/fleet/$RUN >/dev/null
             sha256sum ~/fleet/$RUN/census-bin | cut -c1-64" < /dev/null > "$D/bin/$name" \

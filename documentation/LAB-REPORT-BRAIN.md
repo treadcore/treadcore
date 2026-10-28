@@ -7807,3 +7807,153 @@ the last 120 new seeds are held out too.
    columbia, the settings of LR 106 C (110 seeds from 500,000, every map,
    900 s, respawns 3), paired by seed: bc2 above bc1 outside two errors.
    Reported beside map7's reading.
+
+### C. Results: the recording, the card, and bc2's agreement
+
+**The recording** (`scripts/fleet-record.sh`, run `rec1200`, at `65f5683`;
+the pipes, the ssh and the time in LAB-REPORT-FLEET.md): 50 shards, 1,200
+seeds, 49,807,225 samples, 29.2 GB, every shard's sha256 equal at source
+and store; 14 minutes, 19:35:52 to 19:49:51 on 28 October.
+
+| Host | Jobs | Seeds | A job: recording + moving | Seeds a second |
+| --- | --- | --- | --- | --- |
+| calber | 24 | 576 | 24 s + 11 s | 1.01 |
+| the Mac | 21 | 504 | 26 s + 13 s | 0.94 |
+| columbia | 5 | 120 | 152 s + 12 s | 0.16 |
+| nasser | 0 | 0 | joined during the run; its binary built in 3.4 min, after the queue was empty | |
+
+The same seed recorded on three machines gives three shards, each
+reproduced exactly by its own binary: deterministic per binary, as the
+census is. nasser's binary is byte for byte columbia's.
+
+**Filling the card (B.1).** The trainer's training set kept on the card
+(2 shards, 1,819,592 samples), 6 epochs at each batch, the rate scaled
+as the square root of the batch; `tools/bc/sweep.sh`, calber's
+`~/bc/sweep*/`:
+
+| Batch | Settled epoch | Samples a second | Card busy (dmon `sm`) | Card memory | Drive after 6 epochs |
+| --- | --- | --- | --- | --- | --- |
+| 4,096 | 0.812 s | 2,240,670 | 30% | 2,147 MB | 64.4% |
+| 8,192 | 0.900 s | 2,022,045 | 74% | 2,141 MB | 64.6% |
+| 16,384 | 0.873 s | 2,083,325 | 72% | 2,141 MB | 63.8% |
+| **32,768** | **0.576 / 0.580 s** | **3,160,676 / 3,139,142** | 33 / 50% | 2,141 MB | 63.5 / 63.8% |
+| 65,536 | 0.686 s | 2,650,872 | 54% | 2,143 MB | 63.0% |
+| 131,072 | 0.749 s | 2,428,979 | 67% | 2,143 MB | 61.7% |
+| 262,144 | 0.810 s | 2,245,291 | 60% | 3,135 MB | 60.3% |
+| 524,288 | 0.787 s | 2,311,063 | 65% | 4,127 MB | 52.1% |
+| 1,048,576 | 1.102 s | 1,651,750 | 72% | 6,115 MB | 42.1% |
+
+**The batch that fills the card is 32,768** (measured twice): past it, a
+doubling *loses* samples a second, and so does halving it. Larger batches
+keep the card busier for less work: its busy share is not a measure of
+use on this card (8,192 reads 74% busy and is slower than 32,768 at
+50%). The jagged curve is CubeCL choosing different kernels for different
+shapes, by the look of it; not measured kernel by kernel. Bigger batches
+also learn less in a fixed number of epochs, as expected.
+
+**Two faults on the card, found by their failures.** A [N, 143] upload is
+stored with each row padded to 256 floats: two refused allocations were
+exactly 1,024 bytes times the rows (7,319,076,864 for 7,147,536;
+3,664,890,880 for 3,578,995). And one buffer of 3.7 GB was refused with
+0.6 GB of 11 in use. The senses are now uploaded flat and reshaped on the
+card (2.3 GB used where the padded layout asked for 3.7 GB in one piece),
+and no upload is over 2 million samples; larger sets are streamed.
+
+**bc2 (B.2).** `tools/bc` on all of it: 52,297,473 samples from 1,260
+seeds (read in 5.3 s, 30.6 GB in memory), 47,057,911 trained on, held out
+bc1's seeds (9,000,054 to 059) and the last 120 (9,001,140 to 259);
+batch 32,768, Adam 1e-2, 12 epochs, streamed in uploads of 2 million.
+226 s of training: a settled epoch 18.12 +/- 0.12 s, 1,459 steps, 2,597,170
+samples a second (83% of the card's peak with the set on it), uploading
+0.2 s and waiting on the CPU 0.0 s over all epochs; the CPU 311% busy
+assembling chunks, 34 GB of memory. Training loss 0.947 (bc1's 0.986).
+
+| Head | bc2 on bc1's held-out seeds | bc1 | bc2 on the 120 new held-out seeds | Always the commonest |
+| --- | --- | --- | --- | --- |
+| drive | **66.6% +/- 0.1** | 65.5% | 67.7% +/- 0.0 | 36.5 / 37.4% |
+| gun | 62.7% +/- 1.7 | 64.2% | 65.9% +/- 0.4 | 37.9 / 40.3% |
+| mortar | 89.9% +/- 0.2 | 89.3% | 89.8% | 87.7% |
+| drone | 96.8% | 96.7% | 96.7% | 94.0% |
+| lead | 99.8% | 99.8% | 99.8% | 99.8% |
+
+**Rule part 2: passed.** bc2's drive agreement on bc1's held-out seeds is
+66.6%, above 65.7%: twenty times the data moves the drive head by 1.1
+points, about eight errors of the difference (0.1 each, 0.14 together). It is a small move for twenty times the
+data: most of the drive head's ceiling is not the amount of data. The gun
+on bc1's 783 held-out chances is within its error of bc1's; on 16,224 new
+chances it reads 65.9%.
+
+`nets/bc2.bin` (65,752 bytes, sha256 `15f7c8fb...`), on calber and columbia.
+
+### D. In matches: the census, the gauntlet, the match reading
+
+**The census (B.3)**, on columbia, 110 seeds from 500,000, every map,
+900 s, respawns 3. bc2's census ran on the binary the fleet's worktree
+had left in columbia's shared `target/` (`f1c24a77...`, the same source
+as bc1's `742037d`: `git diff 742037d 65f5683 -- source/` is empty), not
+on bc1's (`b58bf40a...`). So, as the rule said, bc1 was read again on
+bc2's binary, and the two are paired on it:
+
+| Trial team (columbia, 110 seeds) | Binary | Against the defaults |
+| --- | --- | --- |
+| `bc2` | `f1c24a77` | **-19.76 +/- 0.39** |
+| `bc1`, read again | `f1c24a77` | -23.18 +/- 0.49 |
+| `bc1` (LR 106 F) | `b58bf40a` | -23.18 +/- 0.49 |
+| `map7` (LR 106 F) | `b58bf40a` | -20.33 +/- 0.27 |
+| **bc2 less bc1, paired by seed, one binary** | | **+3.42 +/- 0.41** (8.4 errors; bc2 ahead on 87 seeds of 110) |
+| bc2 less map7, paired by seed | | +0.57 +/- 0.37 (1.5 errors: inside the noise; ahead on 58 of 110) |
+
+**Rule part 3: passed.** bc2 plays better than bc1, by 3.42 a seat, well
+outside two errors.
+
+**The two binaries play the same matches.** bc1 read on both gives the same
+difference on every one of the 110 seeds: the binaries differ only in the
+build path written into them (the source is the same). So bc2 can also be
+paired with map7's census, and reads **level with the official net**
+(+0.57 +/- 0.37), not above it. `nets/map7.bin` stays official
+(LAB-REPORT-FLEET VII: above, outside two errors, is the bar).
+
+**The gauntlet** (`make gauntlet`, `GAUNTLET_NETS=bc1,bc2`, 200 runs a
+test, on the Mac; `build/bc108/`):
+
+| Test | scripted | map7 | bc1 | bc2 |
+| --- | --- | --- | --- | --- |
+| G1 fire at an enemy in reach | 100.0% | 100.0% | 100.0% | **29.5%** |
+| G2 an enemy behind | 100.0% | 100.0% | 100.0% | 100.0% |
+| G3 a shell on a standing tank | 100.0% | 69.5% | 37.0% | 5.0% |
+| G4 a strike drone coming | 95.5% | 70.0% | **99.0%** | **96.5%** |
+| G5 low armour, home in sight | 100.0% | 25.5% | 0.0% | 0.5% |
+| G6 a depot to take | 100.0% | 2.0% | 0.0% | 0.0% |
+| G7 a pillbox from outside its ring | 88.5% | 26.0% | 0.0% | 0.0% |
+| G8 out of a pillbox's ring | 0.0% | 43.0% | 23.5% | 18.5% |
+| G9 a depot across the water | 100.0% | 0.0% | 0.0% | 0.0% |
+
+**The match reading** (`make train CHECK=net MATCH=40`: seat 9, the first
+3 minutes, 40 seeds from 8,000,000):
+
+| Seat 9 | First down (s of 180) | Deaths | Never down | Damage dealt | Kills |
+| --- | --- | --- | --- | --- | --- |
+| map7 | 129 +/- 9 | 0.82 | 16 of 40 | 27 +/- 8 | 0.20 |
+| bc1 | 176 +/- 4 | 0.03 | 39 of 40 | 4 +/- 2 | 0.05 |
+| bc2 | 178 +/- 2 | 0.03 | 39 of 40 | 4 +/- 2 | 0.00 |
+| the scripted ranger | 163 +/- 5 | 0.33 | 28 of 40 | 63 +/- 8 | 0.70 |
+
+**What the clones learned.** The scripted brain's moment-to-moment
+habits, and not its purposes. They survive: one death in 40 matches each,
+a tenth of the scripted ranger's, and they meet a strike drone better than
+it does (G4). They do not go anywhere: every test that needs a journey
+(home, a depot, a pillbox, across water) is 0%, and in a match they deal a
+fifteenth of the scripted ranger's damage. The drive label is the sector
+of a route the scripted brain planned over the whole map; the net sees
+143 senses of its surroundings and not the plan, so where the route
+cannot be read from the senses the safest guess is the commonest one,
+and a tank that guesses "stop" lives long and does nothing. Twenty times
+the data sharpened that habit (bc2 holds fire in G1 where bc1 did not) and
+moved the drive head by a point.
+
+That answers LR 106 F's second question: **the senses, not the amount of
+data, set the clone's ceiling.** The next step for imitation is to give
+the net what the scripted brain's choices depend on (its goal, as a
+sense: the sector and distance of its route's next waypoint and of its
+goal), or to stop imitating and train on the census's own score (PPO from
+the clone), which needs no labels the net cannot see.

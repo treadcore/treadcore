@@ -934,7 +934,11 @@ mod harness {
     /// Written to `OUT/gauntlet.tsv` as well.
     fn gauntlet(out: &std::path::Path, threads: usize) {
         let mut who: Vec<(String, Option<Net>)> = vec![("scripted".into(), None), ("untrained".into(), Some(Net::tank(1)))];
-        for m in MILESTONES {
+        // GAUNTLET_NETS=bc1,bc2: nets beyond the milestones, by name in nets/
+        // (LR 108: the clones are read here without being milestones).
+        let extra = std::env::var("GAUNTLET_NETS").unwrap_or_default();
+        let names: Vec<&str> = MILESTONES.iter().copied().chain(extra.split(',').map(str::trim).filter(|s| !s.is_empty())).collect();
+        for m in names {
             let f = crate::scenario::find(&format!("nets/{}.bin", m));
             if let Ok(n) = Net::load(&f) {
                 who.push((m.to_string(), Some(n.widen(crate::senses::SENSES))));

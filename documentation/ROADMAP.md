@@ -1212,6 +1212,15 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     4,096 (was 4.3 s), 0.643 s at 32,768, the CPU 4.5 and 5.0 s; the
     rule passed and the learning unchanged. The GPU now wins any run
     of more than about two epochs.
+    The fleet records, the card trains (LR 108, 28 October; cause:
+    Paul, "deploy everywhere, even on spare cpus. run on cuda."): 1,200
+    matches on calber, the Mac and columbia in 14 minutes
+    (`scripts/fleet-record.sh`; nasser joined); bc2 on 47 million
+    samples in 226 s; the card fastest at batch 32,768. bc2: drive 66.6%
+    held out, +3.42 +/- 0.41 over bc1 in the census, level with map7.
+    The clones survive and go nowhere. Next, Paul to choose: the
+    scripted brain's plan as senses (its next waypoint and goal), or
+    PPO from bc2.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

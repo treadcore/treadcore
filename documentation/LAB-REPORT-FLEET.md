@@ -389,9 +389,21 @@ Next:
 
 This report's Section VIII gets the result when there is one.
 
-## VIII. Results to come
+## VIII. Results: how far bc2 got along the road
 
-Held for the sweep, bc2 and its census (LR 108 C).
+| Stage | Result | Where |
+| --- | --- | --- |
+| the card's batch | 32,768 fills it (3.15 million samples a second); both halving and doubling are slower | LR 108 C |
+| training | 47 million samples, 12 epochs in 226 s, streamed at 2.6 million a second | calber `~/bc/bc2.log` |
+| held out | drive 66.6% against bc1's 65.5%: past the rule's bar | LR 108 C |
+| census against bc1, one binary | **+3.42 +/- 0.41**: past the bar | columbia `build/census/20261027-200745`, `-201716` |
+| census against the official net | **+0.57 +/- 0.37**: inside the noise, so **not** past the bar | paired with `20261027-183427` (the two binaries play every seed identically) |
+| gauntlet, match reading | survives (0.03 deaths), goes nowhere (0% on every journey) | LR 108 D |
+
+**The road stops at the census against `map7`.** bc2 is level with the
+official net, not above it, so nothing is committed as official and Paul
+is not asked to decide. `nets/bc2.bin` stays a candidate on calber and
+columbia, with its numbers in LR 108.
 
 ## IX. Lessons
 
@@ -415,6 +427,12 @@ Held for the sweep, bc2 and its census (LR 108 C).
    ended.
 6. **Hash at both ends, rename only after,** and write `.part` until
    then.
-7. **On the card, read the allocation that fails:** its size divided by the
+7. **A shared build directory shares binaries.** The fleet's worktrees
+   built into columbia's own `target/`, and the next census there used
+   that build, not one of its own. It played the same matches (bc1's
+   census was identical, seed for seed, on both binaries), but a census
+   must run the binary it names. The fleet now builds into
+   `~/fleet/target`.
+8. **On the card, read the allocation that fails:** its size divided by the
    rows gave the padding (1,024 bytes a row), which no documentation
    stated.

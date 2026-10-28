@@ -82,3 +82,4 @@ report is what ties a conversation to them. Named
 | [067](CI-067-2026-10-27-columbia-identity.md) | 27 October 2026 | A second census machine and its identity check | 0103 | LAB-REPORT-BRAIN.md section 105 |
 | [068](CI-068-2026-10-28-behaviour-cloning.md) | 28 October 2026 | Behaviour cloning on a GPU, and whether the GPU was faster | 0103 | LAB-REPORT-BRAIN.md section 106 |
 | [069](CI-069-2026-10-28-an-efficient-trainer.md) | 28 October 2026 | An efficient trainer: the GPU five to eight times faster than the CPU | 0103 | LAB-REPORT-BRAIN.md section 107 |
+| [070](CI-070-2026-10-28-the-fleet-records.md) | 28 October 2026 | The fleet records, the card trains: twenty times the data | 0103 | LAB-REPORT-BRAIN.md section 108 |
