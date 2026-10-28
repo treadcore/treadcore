@@ -9,6 +9,7 @@
 #   scripts/fleet-record.sh run RUN                    a lane a host until the queue
 #                                                      is empty (run it in the background)
 #   scripts/fleet-record.sh status RUN
+#   scripts/fleet-record.sh watch RUN                  the queue, live, until the run ends
 #   scripts/fleet-record.sh consolidate RUN            check every shard on the store
 #
 # It runs on the coordinator, the one machine with ssh to all the others,
@@ -40,7 +41,7 @@ SECS="${SECS:-600}"
 SAMPLE=$((143 * 4 + 7 + 3 + 4))   # TCBC2: senses, labels, masks, seed
 
 die() { printf '%s\n' "$*" >&2; exit 1; }
-usage() { sed -n '6,13p' "$0" >&2; exit 2; }
+usage() { sed -n '6,14p' "$0" >&2; exit 2; }
 
 [ $# -ge 2 ] || usage
 CMD="$1" RUN="$2"
@@ -95,8 +96,9 @@ prepare)
     C="$(cat "$D/commit")"
     S="$(store)"
     on "$S" "mkdir -p fleet/$RUN/shards"
-    hosts | while read -r name target threads nice; do
-        echo "== $name: worktree at ${C:0:7}, building"
+    # Every host builds at once; each one's output goes to bin/NAME.log.
+    prep() {
+        local name="$1" target="$2"
         # The worktree is the run's own, so the host's checkout is left as it
         # was. Its build has a target directory of the fleet's own, shared by
         # runs: sharing the checkout's let columbia's next census pick up the
@@ -113,10 +115,24 @@ prepare)
             export CARGO_TARGET_DIR=\$HOME/fleet/target
             . scripts/common.sh
             census_bin ~/fleet/$RUN >/dev/null
-            sha256sum ~/fleet/$RUN/census-bin | cut -c1-64" < /dev/null > "$D/bin/$name" \
-            || die "$name: the worktree or the build failed"
-        echo "   census-bin $(cut -c1-12 "$D/bin/$name")"
-    done
+            sha256sum ~/fleet/$RUN/census-bin | cut -c1-64" < /dev/null > "$D/bin/$name" 2> "$D/bin/$name.log"
+    }
+    t0=$(date +%s)
+    while read -r name target threads nice; do
+        echo "== $name: worktree at ${C:0:7}, building"
+        prep "$name" "$target" &
+    done < <(hosts)
+    wait
+    bad=0
+    while read -r name target threads nice; do
+        if [ -s "$D/bin/$name" ]; then
+            echo "   $name: census-bin $(cut -c1-12 "$D/bin/$name")"
+        else
+            echo "   $name: FAILED (see $D/bin/$name.log)"; bad=1
+        fi
+    done < <(hosts)
+    echo "built in $(( $(date +%s) - t0 )) s"
+    [ "$bad" = 0 ] || die "a host did not build"
     ;;
 
 run)
@@ -132,7 +148,7 @@ run)
                 [ -e "$f" ] || break
                 if mv "$f" "$D/claimed/$name/" 2>/dev/null; then job="$(basename "$f")"; break; fi
             done
-            [ -n "$job" ] || { echo "$(date +%T) queue empty: lane ends" >> "$log"; date +%s > "$D/lanes/$name.beat"; return 0; }
+            [ -n "$job" ] || { echo "$(date +%T) queue empty: lane ends" >> "$log"; echo "$(date +%s) finished" > "$D/lanes/$name.beat"; return 0; }
             read -r s0 n < "$D/claimed/$name/$job"
             echo "$(date +%s) $job recording" > "$D/lanes/$name.beat"
             echo "$(date +%T) $job: seeds $s0 +$n on $threads threads" >> "$log"
@@ -192,6 +208,38 @@ status)
             "$(echo "$b" | cut -d' ' -f2-)" $(( now - $(echo "$b" | cut -d' ' -f1) ))
     done
     awk -F'\t' '{s+=$5; b+=$6; n+=$4} END {printf "shards %d: %d seeds, %d samples, %.1f GB\n", NR, n, s, b/1e9}' "$D/manifest.tsv"
+    ;;
+
+watch)
+    # The queue, live: every WATCH s (5) until nothing is queued or claimed.
+    total=$(( $(ls "$D/queue" | wc -l) + $(find "$D/claimed" "$D/done" -type f | wc -l) + $(ls "$D/failed" | wc -l) ))
+    t0=$(date +%s)
+    while :; do
+        now=$(date +%s)
+        q=$(ls "$D/queue" | wc -l | tr -d ' ')
+        c=$(find "$D/claimed" -type f | wc -l | tr -d ' ')
+        d=$(find "$D/done" -type f | wc -l | tr -d ' ')
+        f=$(ls "$D/failed" | wc -l | tr -d ' ')
+        clear 2>/dev/null || printf '\033[2J\033[H'
+        w=50; fill=$(( total > 0 ? d * w / total : 0 ))
+        bar=$(printf '%*s' "$fill" '' | tr ' ' '#')$(printf '%*s' $(( w - fill )) '' | tr ' ' '.')
+        printf 'fleet run %s   %s\n\n[%s] %d of %d jobs done\n' "$RUN" "$(date +%T)" "$bar" "$d" "$total"
+        printf 'queued %d   running %d   done %d   failed %d\n\n' "$q" "$c" "$d" "$f"
+        printf '%-13s %5s %6s %9s  %s\n' HOST JOBS SEEDS SEEDS/S NOW
+        while read -r name target threads nice; do
+            b="$(cat "$D/lanes/$name.beat" 2>/dev/null || echo "$now waiting to start")"
+            st="${b#* }"; [ "$st" != "$b" ] || st=finished
+            awk -F'\t' -v h="$name" -v st="$st" -v ago=$(( now - $(echo "$b" | cut -d' ' -f1) )) \
+                '$2 == h {n++; s += $4; t += $9} END {printf "%-13s %5d %6d %9.2f  %s, %d s ago\n", h, n, s, (t > 0 ? s / t : 0), st, ago}' "$D/manifest.tsv"
+        done < <(hosts)
+        awk -F'\t' '{n+=$4; s+=$5; b+=$6} END {printf "\nshards: %d seeds, %d samples, %.1f GB\n", n, s, b/1e9}' "$D/manifest.tsv"
+        el=$(( now - t0 ))
+        if [ "$d" -gt 0 ] && [ "$el" -gt 0 ] && [ "$q" -gt 0 ]; then
+            printf 'watching for %d s; at this rate about %d s to go\n' "$el" $(( (q + c) * el / (d > 0 ? d : 1) ))
+        fi
+        [ "$q" = 0 ] && [ "$c" = 0 ] && { echo "the queue is empty and nothing is running: the run has ended"; break; }
+        sleep "${WATCH:-5}"
+    done
     ;;
 
 consolidate)
