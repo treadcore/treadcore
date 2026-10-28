@@ -7489,3 +7489,38 @@ Recorded on seeds from 9,000,000; the last tenth of the seeds held out.
 
 If 1 holds and 2 fails, cloning alone does not carry into matches, and
 that is the finding; PPO from the clone is the next step either way.
+
+### D. The run, and rule part 1
+
+**Recorded** on calber (8 threads): seeds 9,000,000 to 9,000,059, 600 s
+each: 2,490,248 samples in 97 s (1.46 GB, `TCBC2`); the tank moving in
+63.2% of samples, a direct shot 0.26%, mortar 3.56%, a launch 5.12%. The
+masks were added after a first recording showed a direct shot *possible* in
+only 0.17% of samples: trained without them, the gun would learn to hold.
+
+**Trained** on the GTX 1080 Ti (`tools/bc`, Burn 0.22.1, CUDA): 12 epochs,
+batch 4,096, Adam 1e-3, 91 s; training loss 1.441 to 0.986; seeds 9,000,054
+to 059 held out (253,411 samples). Written as `nets/bc1.bin` (65,752 bytes,
+the shape of every net before it).
+
+**Rule part 1: passed.** Agreement with the scripted brain on the held-out
+matches, each head where it had a choice, against always the commonest
+label:
+
+| Head | bc1 | Always the commonest | Samples |
+| --- | --- | --- | --- |
+| drive | **65.5% +/- 0.1** | 36.5% (stop) | 253,411 |
+| gun | **64.2% +/- 1.7** | 37.9% (hold) | 783 |
+| mortar | **89.3% +/- 0.2** | 87.7% | 25,813 |
+| drone | **96.7% +/- 0.0** | 94.0% | 132,613 |
+| lead | 99.8% | 99.8% | 253,411: the scripted brain all but always aims where the target is |
+
+**Parity check 1: passed** (`LEARNING-DESIGN.md` VII). `AGREE=` runs the
+written net through Rust's own `Net::forward` on the same held-out samples:
+65.5, 64.2, 99.8, 89.3, 96.7, the trainer's figures exactly, on the same
+counts. The GPU-trained coefficients play in the Rust brain as they were
+trained.
+
+**Rule part 2** (the census, bc1 against map7, one machine): next, on
+columbia.
+

@@ -296,7 +296,8 @@ recorder and the trainer (LR 107).
 | ES on CPUs | built; the school plateaued at round 13 (LR 103, 104) |
 | Burn on the GPU | proved (the probe, orrery) |
 | BC recorder and trainer | built (`0f7491b`); recorded on calber: 2,490,248 samples from 60 matches of 600 s in 97 s (1.46 GB); training (LR 106) |
-| First speed-up | an epoch takes 42 s with the GPU 1% busy: batches are built on one CPU thread and copied every step. The recording (about 1.3 GB of senses) fits on the 11 GB card; loaded once, the GPU would set the pace |
+| First training run | 12 epochs in 91 s on the 1080 Ti: the first 42 s were reading the 1.46 GB recording and compiling the kernels, then about 4 s an epoch. (A first reading of 42 s an epoch, with the GPU 1% busy, was taken during the load, and was wrong.) Batches are still built on one CPU thread; loading the recording onto the card once is the speed-up when the data grows |
+| Parity check 1 | **passed**: Rust's `Net::forward` on the GPU-trained `bc1.bin` agrees with the scripted brain on the held-out samples exactly as the trainer did on the GPU, every head, to the decimal (LR 106 D) |
 | The rule | written (LR 106 C) |
 | Parity checks 1 to 3, the CPU backend, the event stream | to build (LR 107) |
 | PPO | after the clone is judged |
