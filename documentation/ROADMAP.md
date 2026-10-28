@@ -1221,6 +1221,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     The clones survive and go nowhere. Next, Paul to choose: the
     scripted brain's plan as senses (its next waypoint and goal), or
     PPO from bc2.
+    One queue (LR 110, 28 October; cause: Paul, "the orrery should have
+    a treadcore trainer ... train all the variables and rotate between
+    them"): orrery's fleet-queue and treadcore's planner. The weights'
+    trials and the net's rounds in turn, on every spare machine; stop
+    adding, collect and stop now, as commands and as orrery buttons. A
+    sample run: 70 trials and a net round in five minutes. Next: the
+    queue at the real settings; the reward-term weights.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

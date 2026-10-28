@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: one queue for the whole fleet (orrery's `tools/fleet-queue.py`,
+  treadcore's `scripts/fleet-plan.py`). Trials of the scripted brain's
+  110 weights and rounds of the learned net take turns on every spare
+  machine. A keeper keeps it running, and two controls stop it: stop
+  adding, and collect results and stop now. orrery's Training view shows
+  it and, for an operator, has the buttons. A sample run did 70 trials
+  and a net round in five minutes. Also `LAB-REPORT-NET-PICTURES.md`
+  (LAB-REPORT-BRAIN.md sections 109 and 110).
+
 - Measured: twenty times the recording (1,200 matches, 50 million
   samples), made on every spare CPU of the fleet in 14 minutes and
   trained on calber's GPU in 4 minutes. The new clone, `bc2`, agrees

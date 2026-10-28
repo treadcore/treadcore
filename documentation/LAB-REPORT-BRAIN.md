@@ -7998,3 +7998,85 @@ held-out seeds.
 What would show the loop does not improve: three rounds in a row with no
 promotion. Then continuing on more of the scripted brain's matches has
 stopped helping, and the next lever is the senses (LR 108 D).
+
+## 110. One queue for the whole fleet: the scripted brain's weights and the net, in turn, 28 October
+
+Paul: "the orrery should have a treadcore trainer in a way such that It
+knows to train all the variables and rotate between them. Placing items
+onto the queue, and keeping these system alive, while allowing a stop
+adding to the queue button. and a collect results and stop now button."
+He chose both kinds of variable in one queue, and reward terms as the
+feedback placeholders. Then: "can we get a sample run of orrery filling
+up its queue. lets see it work."
+
+### A. What was built
+
+**The engine is orrery's, `tools/fleet-queue.py`:**
+- A lane per machine claims jobs by rename, a job at a time. A job says
+  what it needs (`cpu`, `gpu`, a host), which jobs come first (`after`),
+  and that its host's build comes first (`after_host`).
+- A remote job runs under bash in its own process group, so `stop-now`
+  stops all of it.
+- Files move three ways: `send` before a job, `fetch` back by tar, and
+  `deliver` to the store, hashed as it streams.
+- **The keeper:**
+  - restarts dead lanes;
+  - requeues what a dead keeper left running;
+  - tops the queue up from the planner;
+  - stops adding by itself after five failures in a row (the breaker).
+- `stop-adding` drains, collects and ends. `stop-now` stops every job,
+  collects and ends.
+
+**The planner is treadcore's, `scripts/fleet-plan.py`:**
+- Each host first builds the queue's commit in its own worktree.
+- **Weight trials:** `suggest.py` reads the queue's own ledger. The first
+  generation screens every weight at half and double; later ones follow
+  the fitted curves. Each trial is a census on one machine. A trial past
+  two errors, with no map past two below, is read twice more on held-out
+  seeds.
+- **Net rounds:** the best net is continued on calber's GPU (`START=`),
+  then judged on columbia by a census of the candidate and of the best on
+  one binary, paired by seed. A round's result is recorded in
+  `plan/round-NNN.json`.
+
+**orrery's Training view** shows the queue (`fleet-view.py --queue`):
+- the state, and a bar of done, running and failed;
+- the counts for each kind, the next job and the last finished;
+- each machine's job;
+- for an operator only (`--operator`, `--queue-ctl`): Stop adding /
+  Resume adding, Collect results and stop now, Start the queue.
+
+### B. The rules
+
+Unchanged from the runs they come from:
+- **A weight trial** passes as in converge (LR 92): past two errors above
+  the defaults with no map past two errors below, then both held-out
+  reads. It is then a candidate for `make families` and Paul.
+- **A net candidate** replaces the queue's best only above it outside two
+  errors (LR 109 B).
+- Nothing becomes a default, and no net becomes official, without Paul.
+
+### C. The sample run
+
+`build/queue/sample`, 28 October, from 21:40:
+- **Machines:** calber, columbia, nasser and the Mac. saskatchewan was
+  left to its run.
+- **Settings:** small censuses (4 seeds of 120 s, seeds from 16,000,000),
+  one net round (24 seeds of rec2400, 1 epoch, judged on 4 seeds).
+
+| | |
+| --- | --- |
+| builds | the Mac 19 s, columbia 50 s, calber 171 s (with the trainer), nasser |
+| net round 1 | trained in 11 s; candidate less bc2 +0.64 +/- 0.40 over 4 seeds: the best stays |
+| weight trials in the first 5 minutes after the fixes | 70, none failed: the Mac 38, columbia 16, calber 10, nasser 6; 6.4 s each on average |
+| past two errors | 1 (w0082): its two held-out reads queued by the planner |
+
+**Two faults, found by the sample run:**
+1. **The Mac has no `nproc`.** Every trial the Mac took failed at once. The
+   Mac's lane, fastest to fail, took all 57 before anything noticed. Now
+   `nproc || sysctl -n hw.ncpu`.
+2. **Nothing stopped the loop.** The queue had no breaker, so the keeper
+   kept planning trials that failed. Now it stops adding after five
+   failures in a row.
+
+The 57 failed jobs are kept in `failed-before-fix/`.

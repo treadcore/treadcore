@@ -28,6 +28,10 @@ from concurrent.futures import ThreadPoolExecutor
 TC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FT = os.environ.get("FT_DIR", os.path.join(TC, "build", "fleet-train"))
 FLEET = sys.argv[sys.argv.index("--fleet") + 1] if "--fleet" in sys.argv else "grove"
+# --queue QDIR: an orrery fleet-queue (tools/fleet-queue.py) and its planner's
+# summary, so the view shows the queue and what each machine runs in it.
+QDIR = sys.argv[sys.argv.index("--queue") + 1] if "--queue" in sys.argv else ""
+QUEUE_PY = os.path.expanduser(os.environ.get("FLEET_QUEUE", "~/code/orrery/tools/fleet-queue.py"))
 STORE = os.environ.get("STORE", "user@192.168.8.181").split("@")[-1]
 CENSUS = os.environ.get("CENSUS_HOST", "user@192.168.8.224").split("@")[-1]
 HEADS = [("drive", 10), ("gun", 9), ("lead", 3), ("mortar", 9), ("drone", 5), ("squad", 7), ("signal", 4)]
@@ -71,7 +75,7 @@ def probe(addr):
     return d
 
 
-def machines(run):
+def machines(run, qd=None):
     nodes = []
     for line in read(os.path.expanduser(f"~/.copal/fleets/{FLEET}/nodes")).splitlines():
         line = line.split("#")[0].split()
@@ -89,13 +93,31 @@ def machines(run):
             roles.append("runs the census")
         if addr == "local":
             roles.append("coordinates")
-        lanes = {l["host"] for l in (run or {}).get("lanes", [])}
+        lanes = {l["host"] for l in (run or {}).get("lanes", [])} | {l["host"] for l in (qd or {}).get("lanes", [])}
         if name in lanes or (addr == "local" and "mac" in lanes):
             roles.insert(0, "records matches")
         elif addr != "local":
             roles.append("not in this recording run")
         out.append({"name": name, "address": "" if addr == "local" else addr, "roles": roles, **p})
     return out
+
+
+def queue():
+    if not QDIR or not os.path.exists(os.path.join(QDIR, "config.json")):
+        return None
+    try:
+        out = subprocess.run([sys.executable, QUEUE_PY, QDIR, "status", "--json"], capture_output=True, text=True, timeout=20).stdout
+        q = json.loads(out)
+    except (subprocess.TimeoutExpired, ValueError):
+        return None
+    q["name"] = os.path.basename(os.path.abspath(QDIR))
+    s = read(os.path.join(QDIR, "plan", "summary.json"))
+    if s:
+        try:
+            q["summary"] = json.loads(s)
+        except ValueError:
+            pass
+    return q
 
 
 def newest_run():
@@ -214,6 +236,7 @@ def quality():
 
 if __name__ == "__main__":
     run = newest_run()
-    doc = {"fleet": FLEET, "project": "treadcore", "at": time.strftime("%H:%M:%S"),
-           "machines": machines(run), "run": run, "loop": loop(), "net": net(), "quality": quality()}
+    qd = queue()
+    doc = {"fleet": FLEET, "queue": qd, "project": "treadcore", "at": time.strftime("%H:%M:%S"),
+           "machines": machines(run, qd), "run": run, "loop": loop(), "net": net(), "quality": quality()}
     print(json.dumps(doc))

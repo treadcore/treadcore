@@ -147,6 +147,16 @@ IV. CHRONOLOGY
        over bc1 (rule part 3 passed), +0.57 +/- 0.37 over map7 (level).
        The gauntlet and match reading: the clones survive and go
        nowhere.
+   26. Charts (a dashboard); rec2400, 2,400 seeds on four machines in
+       31 min; orrery's Training view (the real fleet grove, the demo
+       museum deleted), bolder text, matrices that enlarge with axes
+       and a legend; LAB-REPORT-NET-PICTURES.md (why the pictures look
+       as they do, measured).
+   27. One queue (LR 110, CI-071): orrery's fleet-queue and treadcore's
+       planner, both kinds of variable in turn, stop adding and stop
+       now. The sample run: the Mac failed 57 trials at once (no nproc)
+       and nothing stopped it; fixed, and a breaker added; then 70
+       trials and a net round in five minutes.
 
 V. RESULTS
 

@@ -487,12 +487,18 @@ fn main() {
     let settled: Vec<f64> = epoch_s.iter().skip(1).copied().collect();
     let mean = settled.iter().sum::<f64>() / settled.len().max(1) as f64;
     let sd = (settled.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (settled.len().max(2) - 1) as f64).sqrt();
-    println!(
-        "bc: time: read {:.1} s; first epoch {:.2} s; then {} epochs of {} steps at {}: {:.3} s +/- {:.3} an epoch ({:.2} ms a step, {:.0} samples/s){}",
-        read_s, epoch_s.first().copied().unwrap_or(0.0), settled.len(), steps_a_epoch, bsz, mean, sd,
-        1000.0 * mean / steps_a_epoch.max(1) as f64, train.len() as f64 / mean.max(1e-9),
-        if resident { String::new() } else { format!("; uploading {:.1} s, waiting for the CPU's next chunk {:.1} s, over all epochs", up_s, wait_s) }
-    );
+    if settled.is_empty() {
+        // One epoch: there is no settled epoch to time (it compiles the
+        // kernels), only the one.
+        println!("bc: time: read {:.1} s; one epoch of {} steps at {}: {:.2} s, the kernels compiled in it", read_s, steps_a_epoch, bsz, epoch_s.first().copied().unwrap_or(0.0));
+    } else {
+        println!(
+            "bc: time: read {:.1} s; first epoch {:.2} s; then {} epochs of {} steps at {}: {:.3} s +/- {:.3} an epoch ({:.2} ms a step, {:.0} samples/s){}",
+            read_s, epoch_s.first().copied().unwrap_or(0.0), settled.len(), steps_a_epoch, bsz, mean, sd,
+            1000.0 * mean / steps_a_epoch.max(1) as f64, train.len() as f64 / mean.max(1e-9),
+            if resident { String::new() } else { format!("; uploading {:.1} s, waiting for the CPU's next chunk {:.1} s, over all epochs", up_s, wait_s) }
+        );
+    }
     let train_s = t0.elapsed().as_secs_f64();
     drop(whole);
 
