@@ -7431,3 +7431,61 @@ different Intel CPUs, so a census played on columbia is a reading
 saskatchewan would have made. The fleet's first condition (LR 104, E.5)
 is met. What columbia plays next is LR 106: the candidates' families, or
 the fleet worker (LR 104, E).
+
+## 106. Behaviour cloning on the GPU: the rule, before the run, 28 October
+
+Paul: "start the burn training on calber." Then, after the probe: "start
+the behaviour cloning on calber."
+
+Backlog 70, upgrade 7 (AI-BRAINZ-PLAN.md section 8): behaviour cloning,
+then PPO, on a GPU, with Burn. The GPU is calber's GTX 1080 Ti (orrery's
+`docs/cuda-node-lab-report.md`); Burn 0.22.1 and CubeCL 0.11.3 run on it
+(orrery's `docs/pascal-versions-lab-report.md`: a 143-64-64-8 net trained
+on the card).
+
+### A. What is cloned
+
+The scripted brain, seen through the learned tank's own senses. In real
+matches (16 seats, the census's mix of personalities, respawns 3), five
+times a second, for every living seat: the 143 senses that seat's
+NetBrain would see (`senses::sense`), and what its scripted brain did in
+that fifth of a second, translated into the net's head choices:
+
+| Head | Label |
+| --- | --- |
+| Drive | the sector of the tank's next route waypoint (or goal) from its heading, 1 to 8; 9 (stop) if it is not moving and has no goal |
+| Gun | the sector of a `FireDirect` in the window, else hold |
+| Lead | of the gun target's position, its lead point and halfway, the one nearest where it aimed |
+| Mortar | the sector of a `FireIndirect`, else hold |
+| Drone | the kind launched: interceptor, recon, strike, longshot, else hold |
+| Squad, Signal | not trained (their loss weight 0) |
+
+The drive is labelled from the tank's state, not its commands: a scripted
+tank follows a route set seconds before and need not say `Move` again.
+
+### B. The net and the training
+
+The learned tank's shape, unchanged (143 -> 64 -> 64 -> 42 scores), so
+NetBrain runs the result and every existing reading judges it. Each
+trained head a softmax over its choices with cross-entropy; Adam; trained
+on calber's GPU with Burn (`tools/bc`, its own Cargo project so the census
+machines never build Burn); written in `Net::save`'s form as `nets/bc1.bin`.
+Recorded on seeds from 9,000,000; the last tenth of the seeds held out.
+
+### C. The rule, written before the run
+
+1. **It imitates:** on the held-out seeds, the drive head chooses the
+   scripted brain's sector more often than a net that always says the
+   commonest label does, and the gun head's fire-or-hold agrees on more
+   than that baseline too. (Without this, nothing was learned.)
+2. **It plays, and plays better than the last net:** a team of `bc1` in the
+   census on the same machine as a team of `nets/map7.bin`, 110 seeds each,
+   paired as usual: `bc1` above `map7` outside two standard errors. (The
+   census read `map7` at -20.33 +/- 0.27 on saskatchewan, level with a
+   random net; censuses on different machines are not compared, so both are
+   read on one.)
+3. Reported, without a pass mark: the gauntlet, and the match reading (first
+   down, deaths, damage dealt) against the scripted ranger.
+
+If 1 holds and 2 fails, cloning alone does not carry into matches, and
+that is the finding; PPO from the clone is the next step either way.

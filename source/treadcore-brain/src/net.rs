@@ -301,7 +301,7 @@ impl NetBrain {
     /// What the gun fires at in sector k: its nearest hostile tank in
     /// the direct gun's reach (with the tank, for the lead), else its
     /// nearest live hostile pillbox in reach (a pillbox sits still).
-    fn gun_target(obs: &Observation, me: &Tank, k: usize) -> Option<(V2, Option<Tank>)> {
+    pub(crate) fn gun_target(obs: &Observation, me: &Tank, k: usize) -> Option<(V2, Option<Tank>)> {
         if let Some(t) = Self::tank_in(obs, me, k).filter(|t| t.pos.dist(me.pos) <= DIRECT_RANGE) {
             return Some((t.pos, Some(t)));
         }
@@ -319,7 +319,7 @@ impl NetBrain {
     /// strike at the nearest hostile tank within `DRONE_LINK`; a
     /// longshot at the nearest hostile structure, else live pillbox,
     /// else tank seen.
-    fn launch(obs: &Observation, me: &Tank, c: usize) -> Option<Command> {
+    pub(crate) fn launch(obs: &Observation, me: &Tank, c: usize) -> Option<Command> {
         let mine = |k: DroneKind| obs.drones.iter().filter(|d| d.owner == obs.player && d.kind == k).count();
         let near = |a: &V2, b: &V2| a.dist(me.pos).total_cmp(&b.dist(me.pos));
         match c {
@@ -344,7 +344,7 @@ impl NetBrain {
 
     /// The strongest hostile in sector k the mortar can reach: a tank,
     /// else a live hostile pillbox.
-    fn mortar_target(obs: &Observation, me: &Tank, k: usize) -> Option<V2> {
+    pub(crate) fn mortar_target(obs: &Observation, me: &Tank, k: usize) -> Option<V2> {
         let reach = |p: V2| (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&p.dist(me.pos)) && senses::sector(me.heading, (p - me.pos).heading()) == k;
         let tanks = obs.hostile_tanks().map(|t| t.pos).filter(|p| reach(*p));
         let boxes = obs.pillboxes.iter().filter(|b| b.alive() && b.owner.map(|o| !obs.allied(o)).unwrap_or(false)).map(|b| b.pos).filter(|p| reach(*p));

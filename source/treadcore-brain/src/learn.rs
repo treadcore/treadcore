@@ -1302,6 +1302,162 @@ mod harness {
         }
     }
 
+    /// Behaviour cloning's data (LR 106): `RECORD=path`. Real matches of
+    /// the scripted brain (16 seats, the census's mix, respawns 3), `SEEDS`
+    /// of them (60) from `SEED0` (9,000,000), `SECS` long (600). Five times
+    /// a second, for every living seat: the senses its NetBrain would see,
+    /// what its scripted brain did in that fifth of a second as the net's
+    /// head choices (LR 106, A), and which choices NetBrain would have
+    /// allowed then: the masks `choose` applies at play, from NetBrain's own
+    /// `gun_target`, `mortar_target` and `launch`. Without them the gun
+    /// head learns "hold", right 99.9% of the time (a direct shot is 0.13%
+    /// of samples). Written as `TCBC2\0\0\0`, u32 senses, u32 heads, then
+    /// each sample: the senses (f32); a label a head (u8, `HEADS` order;
+    /// Squad and Signal 0); the masks (u8 each: gun sectors, mortar sectors,
+    /// drone kinds 1 to 4 as bits 0 to 3); the seed (u32).
+    fn record(path: &std::path::Path, seed0: u64, seeds: u64, secs: u64, threads: usize) {
+        use crate::net::{DECIDE_EVERY, HEADS};
+        use crate::senses::{self, SECTORS, SENSES};
+        let one = |k: usize| -> (Vec<u8>, [u64; 4]) {
+            let seed = seed0 + k as u64;
+            let names: Vec<(String, bool)> = (0..crate::fleet::SEATS).map(|i| (crate::fleet::name(i), true)).collect();
+            let sc = Scenario { seed, players: names, teams: Some(crate::fleet::teams()), time_limit: 0, respawns: 3, ..Scenario::default() };
+            let mut w = World::new(sc);
+            crate::fleet::new_match();
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..crate::fleet::SEATS).map(|i| (i as PlayerId, crate::fleet::brain(i, seed ^ i as u64, false))).collect();
+            // A seat's open window: its senses and itself when it opened,
+            // and the commands its brain gave since.
+            struct Open {
+                x: [f32; SENSES],
+                me: Tank,
+                hostiles: Vec<Tank>,
+                masks: [u8; 3],
+                cmds: Vec<Command>,
+            }
+            let mut open: Vec<Option<Open>> = (0..crate::fleet::SEATS).map(|_| None).collect();
+            let mut out = Vec::new();
+            // drives, fires, mortars, launches: for the run's line
+            let mut count = [0u64; 4];
+            let close = |o: Open, out: &mut Vec<u8>, count: &mut [u64; 4]| {
+                let me = &o.me;
+                let sector_of = |at: V2| senses::sector(me.heading, (at - me.pos).heading()) + 1;
+                // Drive: where the tank is going, from its own state.
+                let drive = match me.route.first().copied().or(me.goal) {
+                    Some(to) if to.dist(me.pos) > 0.3 => sector_of(to),
+                    _ if me.speed.abs() < 0.05 => 1 + SECTORS,
+                    _ => sector_of(me.pos + V2::from_heading(me.heading)),
+                };
+                let (mut gun, mut lead, mut mortar, mut drone) = (0usize, 0usize, 0usize, 0usize);
+                for c in &o.cmds {
+                    match c {
+                        Command::FireDirect { at } if gun == 0 => {
+                            gun = sector_of(*at);
+                            if let Some(t) = o.hostiles.iter().filter(|t| t.pos.dist(*at) < 4.0).min_by(|a, b| a.pos.dist(*at).total_cmp(&b.pos.dist(*at))) {
+                                let l = crate::lead(me, t);
+                                let mid = t.pos + (l - t.pos).scale(0.5);
+                                let d = [t.pos.dist(*at), l.dist(*at), mid.dist(*at)];
+                                lead = (0..3).min_by(|&a, &b| d[a].total_cmp(&d[b])).unwrap();
+                            }
+                        }
+                        Command::FireIndirect { at } if mortar == 0 => mortar = sector_of(*at),
+                        Command::Launch { kind, .. } if drone == 0 => {
+                            drone = match kind {
+                                DroneKind::Interceptor => 1,
+                                DroneKind::Recon => 2,
+                                DroneKind::Strike => 3,
+                                _ => 4,
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                count[0] += (drive <= SECTORS) as u64;
+                count[1] += (gun > 0) as u64;
+                count[2] += (mortar > 0) as u64;
+                count[3] += (drone > 0) as u64;
+                for v in o.x {
+                    out.extend_from_slice(&v.to_le_bytes());
+                }
+                // HEADS order: drive, gun, lead, mortar, drone, squad, signal
+                out.extend_from_slice(&[drive as u8, gun as u8, lead as u8, mortar as u8, drone as u8, 0, 0]);
+                out.extend_from_slice(&o.masks);
+                out.extend_from_slice(&(seed as u32).to_le_bytes());
+            };
+            let mut samples = 0u64;
+            for _ in 0..secs * TICK_HZ as u64 {
+                if w.tick % DECIDE_EVERY == 0 {
+                    for p in 0..crate::fleet::SEATS {
+                        if let Some(o) = open[p].take() {
+                            close(o, &mut out, &mut count);
+                            samples += 1;
+                        }
+                        let obs = w.observe(p as PlayerId);
+                        let Some(me) = obs.me.clone().filter(|t| t.alive) else { continue };
+                        if let Some(x) = senses::sense(&obs, Some(&w.map), None, &[]) {
+                            let hostiles = obs.hostile_tanks().cloned().collect();
+                            // NetBrain's own masks (net.rs, think_on)
+                            let ready = me.reload == 0 && me.shells > 0;
+                            let mut masks = [0u8; 3];
+                            for k in 0..SECTORS {
+                                if ready && crate::net::NetBrain::gun_target(&obs, &me, k).is_some() {
+                                    masks[0] |= 1 << k;
+                                }
+                                if ready && crate::net::NetBrain::mortar_target(&obs, &me, k).is_some() {
+                                    masks[1] |= 1 << k;
+                                }
+                            }
+                            for c in 1..=4 {
+                                if crate::net::NetBrain::launch(&obs, &me, c).is_some() {
+                                    masks[2] |= 1 << (c - 1);
+                                }
+                            }
+                            open[p] = Some(Open { x, me, hostiles, masks, cmds: Vec::new() });
+                        }
+                    }
+                }
+                let orders = crate::run_bots(&w, &mut bots);
+                for o in &orders {
+                    if let Some(Some(op)) = open.get_mut(o.player as usize) {
+                        op.cmds.push(o.cmd.clone());
+                    }
+                }
+                w.step(&orders);
+                if w.over {
+                    break;
+                }
+            }
+            for o in open.into_iter().flatten() {
+                close(o, &mut out, &mut count);
+                samples += 1;
+            }
+            let _ = samples;
+            (out, count)
+        };
+        assert_eq!(HEADS.len(), 7);
+        let t0 = std::time::Instant::now();
+        let runs = spread(seeds as usize, threads, &one);
+        let mut f = std::io::BufWriter::new(std::fs::File::create(path).expect("the record file"));
+        use std::io::Write;
+        f.write_all(b"TCBC2\0\0\0").unwrap();
+        f.write_all(&(SENSES as u32).to_le_bytes()).unwrap();
+        f.write_all(&(HEADS.len() as u32).to_le_bytes()).unwrap();
+        let mut total = [0u64; 4];
+        let mut bytes = 0usize;
+        for (b, c) in &runs {
+            f.write_all(b).unwrap();
+            bytes += b.len();
+            for i in 0..4 {
+                total[i] += c[i];
+            }
+        }
+        let n = bytes / (SENSES * 4 + HEADS.len() + 3 + 4);
+        println!(
+            "record: {} samples from {} seeds of {} s (from {}) in {:.0} s -> {}; moving {:.1}%, gun {:.2}%, mortar {:.2}%, launch {:.2}% of samples",
+            n, seeds, secs, seed0, t0.elapsed().as_secs_f64(), path.display(),
+            100.0 * total[0] as f64 / n as f64, 100.0 * total[1] as f64 / n as f64, 100.0 * total[2] as f64 / n as f64, 100.0 * total[3] as f64 / n as f64
+        );
+    }
+
     /// The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a
     /// comma list of courses (`phase1`, `phase3`, training maps' paths)
     /// trained together, each episode the next course in turn. With
@@ -1323,6 +1479,10 @@ mod harness {
         let name = env("NAME", if ground.is_some() { "ground".to_string() } else { format!("phase{}", phase) });
         let threads: usize = env("THREADS", std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4));
         let held: u64 = env("HELD", 999);
+        if let Some(f) = std::env::var("RECORD").ok().filter(|f| !f.is_empty()) {
+            record(std::path::Path::new(&f), env("SEED0", 9_000_000u64), env("SEEDS", 60u64), env("SECS", 600u64), threads);
+            return;
+        }
         if !std::env::var("SCHOOL").unwrap_or_default().is_empty() {
             school(&std::path::PathBuf::from(env("OUT", "build/school".to_string())), threads);
             return;

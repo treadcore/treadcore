@@ -1,0 +1,17 @@
+# Behaviour cloning on a GPU (LAB-REPORT-BRAIN.md section 106): the learned
+# tank's net trained on recordings of the scripted brain, with Burn's CUDA
+# backend. Its own project (the [workspace] below), so treadcore's workspace
+# -- built by the census machines and Copal nodes -- never builds Burn.
+[package]
+name = "treadcore-bc"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+burn = { version = "=0.22.1", features = ["cuda", "autodiff"] }
+
+[profile.release]
+debug = false
