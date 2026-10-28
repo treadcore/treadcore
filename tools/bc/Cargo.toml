@@ -11,7 +11,9 @@ publish = false
 [workspace]
 
 [dependencies]
-burn = { version = "=0.22.1", features = ["cuda", "autodiff"] }
+# cuda: the GPU; flex: Burn's pure-Rust CPU backend, the same trainer on a
+# CPU (BC_DEVICE=flex), for parity check 3 and the time comparison.
+burn = { version = "=0.22.1", features = ["cuda", "flex", "autodiff"] }
 
 [profile.release]
 debug = false

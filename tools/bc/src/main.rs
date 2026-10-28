@@ -5,6 +5,12 @@
 //! NetBrain, the gauntlet and the census take it as any other net.
 //!
 //!   treadcore-bc RECORD.bin OUT.bin [EPOCHS=12] [BATCH=4096] [LR=1e-3]
+//!   BC_DEVICE=cuda (default) | flex (Burn's pure-Rust CPU backend)
+//!
+//! It times itself (LEARNING-DESIGN.md X): reading the recording; the first
+//! step (on CUDA, mostly compiling kernels); then every step split into
+//! building the batch on the CPU and the step itself on the device (forward,
+//! loss, backward, Adam, and the loss read back, which waits for the device).
 //!
 //! Each trained head is a softmax over the choices NetBrain would allow at
 //! that moment (the recorded masks, as `choose` applies them at play), so
@@ -132,7 +138,9 @@ fn main() {
     let epochs: usize = a.get(3).map(|s| s.parse().unwrap()).unwrap_or(12);
     let bsz: usize = a.get(4).map(|s| s.parse().unwrap()).unwrap_or(4096);
     let lr: f64 = a.get(5).map(|s| s.parse().unwrap()).unwrap_or(1e-3);
+    let t_read = std::time::Instant::now();
     let d = read(rec);
+    let read_s = t_read.elapsed().as_secs_f64();
     let n = d.labels.len();
     let mut seeds: Vec<u32> = d.seeds.clone();
     seeds.sort();
@@ -142,8 +150,13 @@ fn main() {
     let held: Vec<usize> = (0..n).filter(|&i| d.seeds[i] >= held_from).collect();
     println!("bc: {} samples, {} seeds; training on {} (seeds below {}), holding out {}", n, seeds.len(), train.len(), held_from, held.len());
 
-    let gpu = Device::cuda(0);
+    let kind = std::env::var("BC_DEVICE").unwrap_or_else(|_| "cuda".into());
+    let gpu = match kind.as_str() {
+        "flex" => Device::flex(),
+        _ => Device::cuda(0),
+    };
     let dev = gpu.clone().autodiff();
+    println!("bc: device {}, read the recording in {:.1} s", kind, read_s);
     let outs: usize = HEADS.iter().sum();
     let mut model = Mlp::new(&dev, d.senses, outs);
     let mut opt = AdamConfig::new().init();
@@ -151,7 +164,10 @@ fn main() {
     let mut order = train.clone();
     let mut z: u64 = 0x2545F4914F6CDD1D;
     let t0 = std::time::Instant::now();
+    let (mut build_s, mut step_s, mut first_s) = (0f64, 0f64, None::<f64>);
+    let mut steps = 0usize;
     for e in 0..epochs {
+        let (eb, es) = (build_s, step_s);
         for i in (1..order.len()).rev() {
             z = z.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
             order.swap(i, (z >> 33) as usize % (i + 1));
@@ -159,7 +175,10 @@ fn main() {
         let mut sum = 0f64;
         let mut batches = 0;
         for chunk in order.chunks(bsz) {
+            let tb = std::time::Instant::now();
             let (x, heads) = batch(&d, chunk, &dev);
+            build_s += tb.elapsed().as_secs_f64();
+            let ts = std::time::Instant::now();
             let y = model.forward(x);
             let mut loss: Option<Tensor<1>> = None;
             let mut k = 0;
@@ -177,10 +196,25 @@ fn main() {
             batches += 1;
             let grads = GradientsParams::from_grads(loss.backward(), &model);
             model = opt.step(lr, model, grads);
+            let st = ts.elapsed().as_secs_f64();
+            if first_s.is_none() {
+                first_s = Some(st);
+            } else {
+                step_s += st;
+            }
+            steps += 1;
         }
-        println!("bc: epoch {:2}: training loss {:.4} ({:.0} s)", e + 1, sum / batches as f64, t0.elapsed().as_secs_f64());
+        println!("bc: epoch {:2}: training loss {:.4} ({:.0} s; this epoch: building batches {:.1} s, steps {:.1} s)", e + 1, sum / batches as f64, t0.elapsed().as_secs_f64(), build_s - eb, step_s - es);
     }
 
+    let train_s = t0.elapsed().as_secs_f64();
+    println!(
+        "bc: time: read {:.1} s; first step {:.1} s; then {} steps: building batches {:.1} s, device steps {:.1} s ({:.1} ms a step, {:.0} samples/s through the device)",
+        read_s, first_s.unwrap_or(0.0), steps.saturating_sub(1), build_s, step_s,
+        1000.0 * step_s / steps.saturating_sub(1).max(1) as f64,
+        (steps.saturating_sub(1) * bsz) as f64 / step_s.max(1e-9)
+    );
+    let t_eval = std::time::Instant::now();
     // Held out: each head's choice (argmax among the allowed) against the
     // scripted brain's, beside always-the-commonest-allowed-label.
     let mut agree = [0usize; 7];
@@ -255,5 +289,6 @@ fn main() {
         }
     }
     std::fs::write(out, &f).expect("the net");
+    println!("bc: time: training {:.1} s, held-out judgement {:.1} s", train_s, t_eval.elapsed().as_secs_f64());
     println!("bc: wrote {} ({} bytes), {:.0} s in all", out, f.len(), t0.elapsed().as_secs_f64());
 }
