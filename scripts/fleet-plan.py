@@ -4,11 +4,12 @@
     python3 -I scripts/fleet-plan.py QDIR plan N     up to N new jobs, as JSON
     python3 -I scripts/fleet-plan.py QDIR collect    what the finished jobs found
     python3 -I scripts/fleet-plan.py QDIR judged ID  (on_done of a judge job)
+    python3 -I scripts/fleet-plan.py QDIR families   the families' verdicts so far
 
 orrery's keeper (`tools/fleet-queue.py QDIR start`) calls `plan` whenever the
 queue runs low, and `collect` when it stops. This file decides what the fleet
 does next, from QDIR/plan.json and from the results already in QDIR/results.
-Two kinds of work share the one queue:
+Three kinds of work share the one queue:
 
 - weights: the scripted brain's named weights (weights.rs), a census trial
   each. scripts/suggest.py picks them from the queue's own ledger, so the
@@ -22,6 +23,11 @@ Two kinds of work share the one queue:
   in one census machine's census, paired by seed. A candidate above the
   best outside two errors becomes the queue's best; the official net
   (nets/map7.bin) changes only when Paul says.
+- families: a candidate's weights over every family in scenarios/families/,
+  each held to its floor (LR 112; what `make families` did). The candidates
+  are the defaults first, then the queue's own trials that passed both
+  held-out reads, then plan.json's converge runs, newest generation first.
+  A job runs a batch of them side by side, one a core.
 
 Every host first builds the queue's commit in its own worktree
 (~/fleet/q-NAME/wt), so every census of the queue runs the same source.
@@ -63,6 +69,8 @@ class Plan:
         self.pd = os.path.join(self.q, "plan")
         os.makedirs(self.pd, exist_ok=True)
         self.state = load(os.path.join(self.pd, "state.json"), {"weights_n": 0, "gen": 0, "held_n": 0, "round": 0, "held_read": []})
+        self.state.setdefault("families_n", 0)
+        self.state.setdefault("families_queued", [])
         self.home = "fleet/q-%s" % self.name  # under each host's $HOME
 
     def keep(self):
@@ -312,10 +320,120 @@ class Plan:
             save(os.path.join(self.pd, "best.json"), {"name": "round %d" % r, "round": r, "census_vs_previous": [m, se], "held_out": agree})
         print("judge %s: candidate less best %+.2f +/- %.2f over %d seeds: %s" % (jid, m, se, len(k), "the new best" if verdict["better"] else "the best stays"))
 
+    # ---- the families ---------------------------------------------------------------
+    @staticmethod
+    def weights_set(text):
+        """A .weights file as SCENARIO_SET: name=value ... (comments dropped)."""
+        out = []
+        for l in text.splitlines():
+            l = l.split("#")[0].strip()
+            if "=" in l:
+                k, v = (x.strip() for x in l.split("=", 1))
+                out.append("%s=%s" % (k, v))
+        return " ".join(out)
+
+    def held_pairs(self):
+        """Each trial's held-out reads: {trial: [census dir, ...]}, from the jobs' titles."""
+        title = {}
+        for f in glob.glob(os.path.join(self.q, "done", "**", "*.json"), recursive=True):
+            j = load(f, {})
+            m = re.match(r"held-out read \d of (w\d+)", j.get("title", ""))
+            if m:
+                title[j["id"]] = m.group(1)
+        out = {}
+        for d in self.census_dirs():
+            hid = d.rstrip("/").split(os.sep)[-2]
+            if hid in title:
+                out.setdefault(title[hid], []).append(d)
+        return out
+
+    def family_candidates(self):
+        """[(name, SCENARIO_SET)] in the order they are read: the defaults, the
+        queue's trials that passed both held-out reads, then each converge run's
+        CANDIDATE lines, newest generation first."""
+        f = self.cfg.get("families") or {}
+        out = [("defaults", "")]
+        if f.get("queue", True):
+            for jid, ds in sorted(self.held_pairs().items()):
+                if len(ds) == 2 and all(self.passes(d) for d in ds):
+                    trial = glob.glob(os.path.join(self.q, "results", jid, self.home, "out", jid, "*", "trial.weights"))
+                    if trial:
+                        out.append(("%s/%s" % (self.name, jid), self.weights_set(open(trial[0]).read())))
+        for run in f.get("converge", []):
+            run = os.path.join(TC, run) if not os.path.isabs(run) else run
+            rows = []
+            for l in open(os.path.join(run, "candidates.txt")):
+                m = re.match(r"^(gen(\d+)/\S+) .*CANDIDATE", l)
+                if m and os.path.exists(os.path.join(run, m.group(1) + ".weights")):
+                    rows.append((int(m.group(2)), m.group(1)))
+            for g, name in sorted(rows, key=lambda r: (-r[0], r[1])):
+                text = open(os.path.join(run, name + ".weights")).read()
+                out.append(("%s/%s" % (os.path.basename(run.rstrip("/")), name), self.weights_set(text)))
+        return out
+
+    def family_jobs(self, n):
+        f = self.cfg.get("families")
+        cpu = [h for h in self.hosts if "cpu" in h.get("caps", ["cpu"]) and self.prepared(h["name"])]
+        if not f or not cpu or n <= 0:
+            return []
+        todo = [c for c in self.family_candidates() if c[0] not in self.state["families_queued"]]
+        batch = int(f.get("batch", 8))
+        jobs = []
+        while todo and len(jobs) < n:
+            part, todo = todo[:batch], todo[batch:]
+            fid = "f%04d" % self.state["families_n"]
+            self.state["families_n"] += 1
+            lines = ["%s\t%s" % (name, s) for name, s in part]
+            b = base64.b64encode(("\n".join(lines) + "\n").encode()).decode()
+            # The test fails when a family is under its floor: that is a
+            # verdict, kept in the output, not a failed job (the breaker).
+            cmd = (
+                "set -e; Q=~/%s; O=$Q/out/%s; rm -rf $O; mkdir -p $O; echo %s | base64 -d > $O/candidates.tsv\n"
+                "N=$(nproc 2>/dev/null || sysctl -n hw.ncpu)\n"
+                "i=0; while IFS=$'\\t' read -r name set; do\n"
+                "  i=$((i+1)); ( printf '%%s\\n%%s\\n' \"$name\" \"$set\" > $O/$i.set\n"
+                "    t0=$(date +%%s); SCENARIO_SET=\"$set\" $Q/census-bin --ignored every_family_holds_its_floor --nocapture > $O/$i.log 2>&1 && r=holds || r=UNDER\n"
+                "    echo \"$r $(( $(date +%%s) - t0 ))\" > $O/$i.verdict ) &\n"
+                "  while [ $(jobs -rp | wc -l) -ge $N ]; do sleep 2; done\n"
+                "done < $O/candidates.tsv; wait\n"
+                "for v in $O/*.verdict; do k=$(basename $v .verdict); echo \"$(cat $v) $(head -1 $O/$k.set)\"; done\n"
+            ) % (self.home, fid, b)
+            jobs.append({"id": fid, "kind": "families", "title": "families: %s" % ", ".join(name for name, _ in part)[:110],
+                         "needs": "cpu", "after_host": "prep-{host}", "cmd": cmd,
+                         "fetch": "%s/out/%s" % (self.home, fid), "timeout_s": 12 * 3600})
+            self.state["families_queued"] += [name for name, _ in part]
+        return jobs
+
+    def families(self):
+        """Every families verdict fetched so far, into plan/families.json."""
+        out = {}
+        for d in sorted(glob.glob(os.path.join(self.q, "results", "f*", self.home, "out", "f*", ""))):
+            for sf in glob.glob(os.path.join(d, "*.set")):
+                k = sf[:-4]
+                name, _, sset = open(sf).read().partition("\n")
+                try:
+                    verdict, secs = open(k + ".verdict").read().split()
+                except (OSError, ValueError):
+                    continue
+                fams = []
+                for l in open(k + ".log", errors="replace"):
+                    m = re.match(r"^family (\S+) \[.*\]: held (\d+) of (\d+), ([\d.]+)% \+/- ([\d.]+)%, floor (\S+), (.+) \(([\d.]+) s\)", l)
+                    if m:
+                        fams.append({"family": m.group(1)[:-5], "held": int(m.group(2)), "runs": int(m.group(3)),
+                                     "pct": float(m.group(4)), "se": float(m.group(5)), "floor": m.group(6), "verdict": m.group(7)})
+                out[name] = {"set": sset.strip(), "verdict": verdict, "seconds": int(secs), "families": fams,
+                             "job": d.rstrip("/").split(os.sep)[-1]}
+        save(os.path.join(self.pd, "families.json"), out)
+        held = [k for k, v in out.items() if v["verdict"] == "holds"]
+        print("families: %d candidates read, %d hold every floor: %s" % (len(out), len(held), ", ".join(held) or "none"))
+        return out
+
     # ---- the keeper's two calls --------------------------------------------------------
     def plan(self, n):
         jobs = self.prepare_jobs()
         jobs += self.net_jobs()
+        # The families first, a share of the queue: a candidate waits on them.
+        jobs += self.family_jobs(max(0, (n - len(jobs) + 1) // 2))
         jobs += self.weight_jobs(max(0, n - len(jobs)))
         self.keep()
         print(json.dumps(jobs))
@@ -337,7 +455,7 @@ class Plan:
                 pass
             rows.append({"job": jid, "trial": trial, "every_map": every, "passes": p})
         rounds = [load(f) for f in sorted(glob.glob(os.path.join(self.pd, "round-*.json")))]
-        summary = {"weights": rows, "rounds": rounds, "best": load(os.path.join(self.pd, "best.json"))}
+        summary = {"weights": rows, "rounds": rounds, "best": load(os.path.join(self.pd, "best.json")), "families": self.families()}
         save(os.path.join(self.pd, "summary.json"), summary)
         passed = [r["job"] for r in rows if r["passes"]]
         print("collected: %d weight censuses (%d past two errors: %s); %d net rounds judged" % (len(rows), len(passed), ", ".join(passed) or "none", len(rounds)))
@@ -351,6 +469,8 @@ if __name__ == "__main__":
         p.plan(int(sys.argv[3]) if len(sys.argv) > 3 else 4)
     elif sys.argv[2] == "collect":
         p.collect()
+    elif sys.argv[2] == "families":
+        p.families()
     elif sys.argv[2] == "judged":
         p.judged(sys.argv[3])
     else:

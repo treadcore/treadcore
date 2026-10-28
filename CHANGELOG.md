@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: families on the fleet. The queue runs `make families`'s test
+  for every candidate (8 a job, side by side) and records each family's
+  share in `plan/families.json`; all 42 candidates hold every floor.
+  orrery's queue no longer fails jobs on a host that is down: its lane
+  waits, and the job goes back on the queue (LAB-REPORT-BRAIN.md
+  section 112; the first of six steps that move training from make to
+  orrery).
+
 - Measured: the fleet queue at full settings (55 seeds of 15 minutes a
   trial, 400 held out). In its first 4 hours 10 minutes, on four
   machines, it played 37,905 games, 9,476 hours of play: 1.46 billion

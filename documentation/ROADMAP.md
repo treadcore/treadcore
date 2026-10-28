@@ -1236,6 +1236,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     (`scripts/fleet-count.py`). No trial passed both held-out reads;
     castle_inside 8 has 2 of 5 and waits for its last two before it
     joins saskatchewan's candidates. Both net rounds left bc2 the best.
+    Orrery takes over training (LR 112 on; cause: Paul, "We no longer
+    start training from a make command"). Six steps: families on the
+    fleet; one ledger; every other job kind; starting a run from orrery;
+    promotion (prepared, Paul approves); the Makefile and documents.
+    Step 1 (LR 112): families as a queue job, 8 candidates a job side
+    by side; all 42 candidates hold every floor (gen64/best: held
+    +2.40 and +2.32, the duel 76% to 84%); castle_inside 8 passed both
+    reads twice; a dead host no longer fails the queue (orrery).
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

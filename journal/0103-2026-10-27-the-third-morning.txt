@@ -165,6 +165,12 @@ IV. CHRONOLOGY
        held-out reads; castle_inside 8 has 2 of 5 and waits. False
        start, marked: three trials were first reported as passing their
        re-checks; each had passed one of two.
+   29. Orrery takes over training (Paul: all 13 make targets; promotion
+       prepared, Paul approves). Step 1 (LR 112, CI-073): families on
+       the fleet, 42 candidates in 3 minutes, all hold; castle_inside 8
+       passed both reads twice and joined saskatchewan's candidates;
+       boburner joined (CUDA 12.9, driver 580); nasser went down and
+       its lane failed 11 jobs, so lanes now wait for a lost host.
 
 V. RESULTS
 

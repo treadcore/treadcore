@@ -8196,3 +8196,150 @@ in 4 hours 10 minutes.
   those reads give, marked as from the fleet queue at 8e5df88.
 - **The queue goes on** at full settings. Nothing is promoted; no
   default changes; no net becomes official.
+
+## 112. Families on the fleet: the first make target orrery takes over, 28 October
+
+Paul: "what needs to be done with make families. we want orrery to take
+over all make training commands. We want to use orrery to orchestrate
+training as a fleet. We no longer start training from a make command.
+Remove the training from make, and insert them all into orrery. Make sure
+all aspects are accomplished, including collecting the data and
+incorporating the updates into treadcore itself."
+
+He chose:
+- all 13 training and measurement targets leave the Makefile;
+- a candidate that holds is prepared for treadcore and he approves it;
+- families reads every candidate, newest first.
+
+This section is step 1 of 6:
+1. families on the fleet;
+2. one ledger of every census;
+3. every other kind of job;
+4. starting a run from orrery;
+5. promotion;
+6. the Makefile and the documents.
+
+### A. What `make families` was
+
+`make families` runs `every_family_holds_its_floor`, which is a test in
+the brain's test binary:
+- It runs the 9 scenario families of `scenarios/families/`, 400 or 1,000
+  seeds each, with `SCENARIO_SET` applied.
+- It fails if any family's share falls under its floor.
+- It is the check the census cannot make: a change can score better on
+  average and still break one situation (CI-044, backlog 62).
+
+It runs on one thread. On the Mac it took 55 s for one candidate.
+
+### B. The job
+
+`scripts/fleet-plan.py` has a third kind of job, `families`, switched
+on by `plan.json`'s `families` key:
+
+```json
+"families": {"converge": ["build/saskatchewan/converge/20261026-181011"], "queue": true, "batch": 8}
+```
+
+**The candidates, in order:**
+1. the defaults;
+2. the queue's own trials that passed both held-out reads (read from the
+   jobs' titles, `held-out read K of wNNNN`);
+3. each converge run's `CANDIDATE` lines, newest generation first.
+
+**A job takes a batch of 8 candidates** and runs them side by side, one
+to a core, with the census binary each host already built at the
+queue's commit. That binary is the brain's test binary, so the families
+test is in it.
+
+**A family under its floor is a verdict, not a failed job.** The test's
+exit status is written as `holds` or `UNDER`. Otherwise the queue's
+breaker would count a weak candidate as a fault.
+
+**Reading the results:** `fleet-plan.py QDIR families` (and `collect`)
+reads every result into `plan/families.json`: for each candidate, its
+set, its verdict, and every family's share, error and floor.
+
+**Why the queue's commit is right for saskatchewan's candidates:**
+- They were found at 7d0af54, and the queue builds 8e5df88.
+- The defaults the two commits dump are identical: 111 weights, the
+  same values.
+- So a candidate's file of changes means the same on both. A promotion
+  lands on the queue's commit or later.
+
+### C. The run
+
+28 October, 09:12 to 09:16, in `build/queue/full-1`:
+- 6 jobs on the Mac and boburner;
+- 42 candidates: the defaults, the queue's two trials of
+  `castle_inside 8` (w0170 and w0182), and converge's 39 (its 40th line
+  is the queue's own candidate, added to its list at Paul's word);
+- 38 to 46 s a candidate.
+
+**All 42 hold every floor.** The family lines carry each candidate's set
+in brackets, so the weights were applied, and the shares differ:
+
+| Family (floor) | Defaults | Lowest candidate | Highest |
+| --- | ---: | ---: | ---: |
+| a duel in the open (55%) | 76.2% | 75.2% (gen59/best-less-dodge_horizon) | 84.0% |
+| a naval start by a bare islet (95%) | 100.0% | 100.0% | 100.0% |
+| a raid on a guarded base (75%) | 81.5% | 81.5% | 81.5% |
+| a raid on the held ground (95%) | 100.0% | 100.0% | 100.0% |
+| a rolling tank under a shell (99%) | 100.0% | 99.8% | 100.0% |
+| a rolling tank under two shells (99%) | 100.0% | 99.3% | 100.0% |
+| a standing tank under a shell (99%) | 99.9% | 99.9% | 100.0% |
+| a standing tank under two shells (99%) | 99.9% | 99.7% | 99.9% |
+| a tank under a ready gun (80%) | 83.6% | 82.5% (gen53/best) | 83.6% |
+
+- **The tightest family** is the ready gun: 2.5 points over its floor at
+  worst.
+- **gen64/best** is `castle_inside` 6.56, `dodge_horizon` 1.14, `kite_in`
+  4.5, `longshot_every` 2.59, `w_in_range` 1.4 and `w_near` 2.
+  - Census: +2.97 ± 0.71 over 55 seeds.
+  - Held out: +2.40 ± 0.28 and +2.32 ± 0.28 over 400 seeds each.
+  - Families: it lifts the duel from 76.2% to 84.0%.
+  - This makes it the strongest candidate so far.
+
+### D. `castle_inside 8` passes
+
+Of its 14 held-out reads, none is below −0.02. Two of its trials passed
+both reads:
+- w0170: +0.43 ± 0.17 and +0.66 ± 0.21;
+- w0182: +0.50 ± 0.17 and +0.64 ± 0.21.
+
+Under LR 92's rule it is a candidate. As Paul chose (LR 111 D), it was
+added to saskatchewan's `candidates.txt`, marked as from the fleet queue.
+
+### E. A fault found on the way: a dead host failed the queue
+
+At 09:07 nasser dropped off the network. Its lane then:
+- failed the census it was running;
+- failed ten more jobs in 31 s (ssh: "Host is down");
+- tripped the breaker, so the whole queue stopped adding.
+
+Removing a host from `config.json` did not help either: its lane lives
+until the keeper restarts.
+
+**The fix is in orrery's `tools/fleet-queue.py`:**
+- **An unreachable host's lane waits** and takes nothing. It is probed
+  each minute (`ssh … true`), with events `host unreachable` and
+  `host back`.
+- **A job that ends with ssh's own failure (255)** on a host that cannot
+  then be reached goes back on the queue, its log kept. It is not
+  failed, and the breaker does not count it.
+- **A host removed from `config.json`** ends its lane after the job in
+  hand (`lane left`).
+
+**Tested on a throwaway queue** of a local host and nasser, still down:
+- six jobs all ran on the local host, none failed, and nasser's lane said
+  `unreachable`;
+- removed from the config, its lane left.
+
+The running keeper still has the old code, so it changes on its next
+start. Until then nasser is parked: its build record is in `set-aside/`,
+which stops its lane taking anything.
+
+### F. Next
+
+Step 2: one ledger. It joins saskatchewan's 1,133 censuses (copied to
+`build/saskatchewan/`), the sample queue and `full-1`, each row keeping
+its machine.
