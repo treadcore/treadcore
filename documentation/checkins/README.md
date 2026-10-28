@@ -88,3 +88,4 @@ report is what ties a conversation to them. Named
 | [073](CI-073-2026-10-28-families-on-the-fleet.md) | 28 October 2026 | Families on the fleet: step 1 of moving training from make to orrery; 42 candidates hold; a dead host no longer fails the queue | 0103 | LAB-REPORT-BRAIN.md section 112 |
 | [074](CI-074-2026-10-28-orrery-holds-the-orchestration.md) | 28 October 2026 | Orrery holds the orchestration: the newest commit on every machine, sync, Shutdown Now; saskatchewan joins | 0103 | LAB-REPORT-BRAIN.md section 113 |
 | [075](CI-075-2026-10-28-every-target-a-run.md) | 28 October 2026 | Every make target a run of the fleet, a button for each, Sessions, promotion; the Makefile without training | 0103 | LAB-REPORT-BRAIN.md sections 114 to 116 |
+| [076](CI-076-2026-10-28-focus-blend.md) | 28 October 2026 | Focus fire or the near tank: a scalar; a shared cargo target folder found and closed | 0103 | LAB-REPORT-BRAIN.md section 117 |

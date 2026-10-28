@@ -1261,6 +1261,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     the 13 targets gone from the Makefile. The first promotion (gen62/
     best) stopped at a test: every strong candidate trades focus fire
     for shooting the near tank in range. Paul to decide.
+    Focus fire a scalar (LR 117; Paul: "Make it a scalar"): focus_blend,
+    0 the near tank in range, 1 the wounded one a teammate is on, 0.5
+    as before bit for bit (checked); the census reads it. On the way: a
+    shared cargo target folder could hand a census another commit's
+    binary; CENSUS_BIN, a commit's own binary, closes it.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

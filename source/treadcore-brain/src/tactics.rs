@@ -81,6 +81,11 @@ pub struct Tactics {
     pub base_r: f32,
     /// The target already chosen: switching costs a drive and a reload.
     pub w_stick: f32,
+    /// Focus fire or the near tank (LR 117, Paul: "make it a scalar"):
+    /// 1 doubles the team's terms (wounded, one shot, a teammate on it)
+    /// and drops the near ones (distance, in range); 0 the reverse; 0.5
+    /// scores as before, bit for bit.
+    pub focus_blend: f32,
     // 2. The engagement.
     /// Tanks inside this of the target count for the odds.
     pub odds_r: f32,
@@ -150,6 +155,7 @@ impl Default for Tactics {
             w_threat: 0.6,
             base_r: 16.0,
             w_stick: 0.4,
+            focus_blend: 0.5,
             odds_r: 14.0,
             pillbox_worth: 0.7,
             strike_worth: 0.35,
@@ -328,15 +334,20 @@ impl Tactician {
         };
         let w = &self.w;
         let d = me.pos.dist(t.pos);
-        let mut s = w.w_near / (1.0 + d / w.near_scale);
+        let near = w.w_near / (1.0 + d / w.near_scale);
+        // The two sides focus_blend weighs: the near terms and the team's.
+        let (mut near_side, mut team_side) = (near, 0.0f32);
+        let mut s = near;
         say(&|| format!("{:.0} out", d));
         let hurt = 1.0 - (t.armor / TANK_ARMOR).clamp(0.0, 1.0);
         if hurt > 0.05 {
             s += w.w_wounded * hurt;
+            team_side += w.w_wounded * hurt;
             say(&|| format!("armour {:.0}", t.armor));
         }
         if t.armor <= DIRECT_DAMAGE {
             s += w.w_finish;
+            team_side += w.w_finish;
             *tags |= Tags::ONE_SHOT;
             say(&|| "one shot".into());
         }
@@ -354,11 +365,13 @@ impl Tactician {
             let focus = on_it.min(w.focus_cap) as f32 * w.w_focus;
             let over = on_it.saturating_sub(w.focus_cap) as f32 * w.w_overkill;
             s += focus - over;
+            team_side += focus - over;
             *tags |= Tags::ON_IT;
             say(&|| if on_it > w.focus_cap { format!("{} on it: enough", on_it) } else { format!("{} on it", on_it) });
         }
         if d <= DIRECT_RANGE {
             s += w.w_in_range;
+            near_side += w.w_in_range;
             say(&|| "in range".into());
         }
         let menaces = obs.allied_tanks().any(|a| a.alive && a.owner != obs.player && a.pos.dist(t.pos) <= DIRECT_RANGE) || self.base.map(|b| b.dist(t.pos) <= w.base_r).unwrap_or(false);
@@ -368,6 +381,11 @@ impl Tactician {
         }
         if self.target == Some(t.id) {
             s += w.w_stick;
+        }
+        // At 0.5 this adds exactly zero, so the default plays as before.
+        let lean = 2.0 * w.focus_blend - 1.0;
+        if lean != 0.0 {
+            s += lean * (team_side - near_side);
         }
         s
     }
@@ -587,6 +605,9 @@ mod tests {
     /// Two tanks with a pillbox-free field: a fresh near one, a far
     /// wounded one an ally is already shooting. Focus fire picks the
     /// wounded one; without the focus and wound weights, the near one.
+    /// Since LR 117 the choice between them is a scalar, focus_blend: at
+    /// 1 the wounded one, at 0 the near one in range, whatever the other
+    /// weights; the default (0.5) is the census's to set.
     #[test]
     fn focus_fire_picks_the_wounded_tank_a_teammate_is_on() {
         let names = (0..4).map(|i| (format!("p{}", i), true)).collect();
@@ -606,10 +627,16 @@ mod tests {
         place(&mut w, 3, c + V2::new(14.0, 0.0), 40.0);
         let obs = w.observe(0);
         let me = obs.me.clone().unwrap();
-        let mut t = Tactician::default();
-        let pick = t.pick(&obs, &me, |_| true).map(|x| x.owner);
-        assert_eq!(pick, Some(3), "{}", t.reason);
-        assert!(t.reason.contains("one shot") && t.reason.contains("1 on it"), "{}", t.reason);
+        // The two ends of focus_blend, on today's weights and on the
+        // search's (LR 116 D: w_near 2, w_in_range 1.4).
+        for base in [Tactics::default(), Tactics { w_near: 2.0, w_in_range: 1.4, kite_in: 4.5, ..Tactics::default() }] {
+            let mut t = Tactician { w: Tactics { focus_blend: 1.0, ..base }, ..Tactician::default() };
+            let pick = t.pick(&obs, &me, |_| true).map(|x| x.owner);
+            assert_eq!(pick, Some(3), "focus_blend 1: {}", t.reason);
+            assert!(t.reason.contains("one shot") && t.reason.contains("1 on it"), "{}", t.reason);
+            let mut near = Tactician { w: Tactics { focus_blend: 0.0, ..base }, ..Tactician::default() };
+            assert_eq!(near.pick(&obs, &me, |_| true).map(|x| x.owner), Some(1), "focus_blend 0: {}", near.reason);
+        }
         let mut plain = Tactician { w: Tactics { w_wounded: 0.0, w_finish: 0.0, w_focus: 0.0, w_threat: 0.0, ..Tactics::default() }, ..Tactician::default() };
         assert_eq!(plain.pick(&obs, &me, |_| true).map(|x| x.owner), Some(1), "{}", plain.reason);
     }

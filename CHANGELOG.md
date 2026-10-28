@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: `focus_blend` (and the switch `focus_blend`), the target between
+  the near tank in range (0) and the wounded one a teammate is on (1);
+  0.5 plays as before, bit for bit. Fixed: a census in orrery's queue
+  plays the binary its machine built for that commit (`CENSUS_BIN`),
+  never one rebuilt in a shared target folder that could be another
+  commit's (LAB-REPORT-BRAIN.md section 117).
+
 - Changed: training is no longer started from make. The 13 training and
   measurement targets are gone from the Makefile; each is a run of
   orrery's fleet queue, a button in its Training view or

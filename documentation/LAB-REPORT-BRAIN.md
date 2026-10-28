@@ -8823,3 +8823,93 @@ call:**
   defaults (most of the gain goes).
 
 Until he says, nothing is promoted.
+
+## 117. Focus fire or the near tank: a scalar, 28 October
+
+Paul's answer to LR 116 D: "Make it a scalar." That follows his rule:
+either/or is a weight that blends the two, defaulting to his preference,
+plus a Caps switch, and the census finds the value.
+
+### A. The weight
+
+**`focus_blend`** (weights.rs, default 0.5) chooses between:
+- **0:** the near tank in range;
+- **1:** the wounded one a teammate is on.
+
+It is on behind the Caps switch **`FOCUS_BLEND`** (bit 21, on; off holds
+the blend at 0.5).
+
+**In the tactician's `rate()`** (tactics.rs), today's score is kept as it
+was accumulated, and to it is added
+
+    (2 · focus_blend − 1) · (team − near)
+
+where:
+- **team** is the wounded term, the one-shot term, and the focus and
+  overkill terms (a teammate on the target);
+- **near** is the distance term and the in-range term.
+
+At 1 the team's terms count double and the near terms nothing; at 0 the
+reverse. **At 0.5 the addition is skipped** (`lean == 0`), so the
+default scores as before, bit for bit.
+
+**`focus_fire_picks_the_wounded_tank_a_teammate_is_on`** now holds the
+two ends:
+- focus_blend 1 picks the wounded tank;
+- focus_blend 0 picks the near one;
+- both on today's weights and on the search's (`w_near` 2,
+  `w_in_range` 1.4).
+
+The default's choice is the census's to set.
+
+### B. The rule before the run
+
+1. At the default the brain plays as before: a census of the defaults on
+   the new code matches the old code's, to the character.
+2. The fleet's search reads `focus_blend` at its half and double (0.25,
+   1.0) by itself, as it does every weight. A value becomes a candidate
+   only by the usual rule: past two errors, both held-out reads, the
+   families. A promotion is Paul's, by Approve.
+
+### C. (1), and a fault found on the way
+
+**The first comparison differed:** per-seed scores 4.29 against 5.39.
+Bisecting each part of the change in a scratch worktree, every part
+played identically (the table line, the field and its mapping, the Caps
+line, the scoring), and so did a fresh build of the real tree:
+
+    old binary twice                     identical
+    the real tree, a fresh target folder identical to the old binary   <- (1) holds
+
+**The "new" binary of the first comparison was not the real tree.**
+- The scratch promotion worktree (gen62/best's defaults written in) and
+  the real tree were built into one `CARGO_TARGET_DIR`.
+- The test binary's file name is the same in both, so the scratch build
+  overwrote it.
+- Cargo, holding a separate fingerprint for each worktree, still called
+  the real tree's build fresh.
+
+**The same hazard is on the fleet.**
+- Every census job ran `scripts/census.sh`, which rebuilds with cargo,
+  in the commit's worktree, into the one `~/fleet/target` a machine
+  keeps.
+- On a machine that has built two commits there, a job for the older
+  commit could be handed the newer commit's binary.
+- **No result so far is affected:** the brain's source is the same in
+  every commit the fleet has built (8e5df88 to 49f2f3b).
+
+**Fixed:**
+- **`CENSUS_BIN=`** (census.sh) copies a binary already built for the
+  tree, with no cargo. orrery's census, held-out and judge jobs pass
+  `$C/census-bin`, the binary the machine built for that commit at its
+  prepare job. The families already used it.
+- **A promotion** builds into its own worktree's `target/`.
+- **Jobs planned before this commit** still rebuild. They play the old
+  or the new binary, and at the defaults those play the same, by (1).
+
+### D. Next
+
+The fleet builds the commit at its next top-ups. The families of its
+defaults run by themselves (`defaults@SHORT`), and the search adds
+`focus_blend`'s half and double to its screen. Promotion waits for the
+census.

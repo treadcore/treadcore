@@ -186,6 +186,10 @@ IV. CHRONOLOGY
        starts, marked: a switches.sh edit failed and the real script
        ran for two minutes on the Mac (stopped, its folders removed);
        run state was saved before the keeper had the jobs (fixed).
+   32. Paul: "Make it a scalar." focus_blend (LR 117, CI-076): 0.5
+       plays as before, bit for bit. False start, marked: the first
+       comparison differed, and a bisection showed the "new" binary was
+       a scratch build's; a shared cargo target folder. CENSUS_BIN.
 
 V. RESULTS
 

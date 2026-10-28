@@ -71,7 +71,13 @@ MAPS="$(census_maps "$MAP")"
 
 [ -z "${LOOKS:-}" ] || [ -z "${RESUME:-}" ] || die "a sequential census (LOOKS) does not resume"
 say "census: $SEEDS seeds from $SEED0 of $SECS s on $MAP, respawns $RESPAWNS, $JOBS at once -> $OUT${RESUME:+ (resumed)}"
-if [ -n "${RESUME:-}" ]; then BIN="$OUT/census-bin"; else BIN="$(census_bin "$OUT")"; fi
+# CENSUS_BIN: a binary already built for this tree (orrery's queue builds
+# one a commit a machine): copied in, no cargo. Two worktrees building into
+# one CARGO_TARGET_DIR share the test binary's file name, so cargo can call
+# one fresh while the file is the other's (LR 117); the queue never rebuilds.
+if [ -n "${RESUME:-}" ]; then BIN="$OUT/census-bin"
+elif [ -n "${CENSUS_BIN:-}" ]; then cp "$CENSUS_BIN" "$OUT/census-bin"; BIN="$OUT/census-bin"
+else BIN="$(census_bin "$OUT")"; fi
 per=$(( (SEEDS + JOBS - 1) / JOBS ))
 # play DIR SEED0: the jobs over SEEDS seeds from SEED0 into DIR, in the
 # background.

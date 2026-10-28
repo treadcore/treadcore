@@ -87,6 +87,7 @@ weights! {
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
     BaseR "base_r" 16.0, "target: the base's reach for w_threat, tiles";
     Stick "w_stick" 0.4, "target: the one already chosen";
+    FocusBlend "focus_blend" 0.5, "target (LR 117): 0 the near tank in range, 1 the wounded one a teammate is on; 0.5 both as before (each side's terms doubled toward its end)";
     // Tactics: the engagement and assignment.
     OddsR "odds_r" 14.0, "odds: tanks this near the fight count, tiles";
     PillboxWorth "pillbox_worth" 0.7, "odds: a hostile pillbox as a share of a tank";
@@ -262,6 +263,7 @@ caps! {
     DUCK 19 "duck" true, "out of a hostile gun's range or line when it is ready before mine: direct fire denied, since it cannot be dodged once fired (12d, LR 19)";
     POSTURE 20 "posture" true, "the team board's posture leans the Auto ladder by w_posture; needs board (12e, LR 24)";
     CASTLE_CAP 16 "castle_cap" true, "the castle stops at castle_inside and castle_road pillboxes; the rest go to posts on the roads between bases (12h)";
+    FOCUS_BLEND 21 "focus_blend" true, "the target is chosen by focus_blend, between the near tank in range and the wounded one a teammate is on (LR 117); off, 0.5, as before";
 }
 
 impl Default for Caps {
@@ -422,6 +424,8 @@ impl Tactics {
             w_threat: w[W::Threat],
             base_r: w[W::BaseR],
             w_stick: w[W::Stick],
+            // Off, the blend sits at 0.5: the target is scored as before LR 117.
+            focus_blend: if s.caps.has(Caps::FOCUS_BLEND) { w[W::FocusBlend] } else { 0.5 },
             odds_r: w[W::OddsR],
             pillbox_worth: w[W::PillboxWorth],
             strike_worth: w[W::StrikeWorth],
