@@ -259,28 +259,34 @@ A training cycle crosses both: CPUs record or play; the GPU trains; CPUs
 judge. The files between them are small and self-describing (`TCBC2`
 recordings, `TCNET1` nets), so any machine can hand work to any other.
 
-### Is the GPU faster? Measured (LAB-REPORT-BRAIN LR 106 E)
+### Is the GPU faster? Measured (LAB-REPORT-BRAIN LR 106 E, LR 107)
 
-Not for this net, yet. The same BC run, batch 4,096, on calber:
+At first, no (LR 106 E): a step took 6.4 ms on the 1080 Ti and 5.6 ms on
+the i7-9700F, the card about half a percent busy, its time spent on two
+hundred small kernel launches, fifteen uploads of a batch built on the
+CPU, and a wait for the loss after every step.
 
-| | GTX 1080 Ti (CUDA) | i7-9700F (flex, Burn's CPU backend) |
+After three changes, yes (LR 107): the recording loaded onto the card once
+and batches gathered there by index; every head's loss one masked
+log-softmax over a padded [B, 7, 10]; the loss summed on the card and read
+once an epoch. The same learning (held-out agreement unchanged to the
+decimal), and:
+
+| A settled epoch | GTX 1080 Ti (CUDA) | i7-9700F (flex) |
 | --- | --- | --- |
-| a settled step | 6.4 ms | 5.6 ms |
-| warm-up (kernels compiled and tuned) | 3 to 23 s, varying by run | none |
-| the card's arithmetic in use | about 0.5% of 11 TFLOP/s | |
-| CPU cores in use | one, feeding the card | under two of eight |
+| batch 4,096, before | 4.3 s | 3.9 s |
+| batch 4,096, after | **0.815 s** | 4.5 s |
+| batch 32,768, after | **0.643 s** | 5.0 s |
+| the first epoch (kernels compiled and tuned) | 7 to 18 s | as any other |
+| CPU cores in use | | under 2.25 of 8 |
 
-The net has 15,936 multiply-adds a sample; a step at 4,096 is 0.39 GFLOP,
-which the card would do in well under a millisecond. Its time goes to
-launching about two hundred small kernels, fifteen uploads of a batch
-built on the CPU, and a wait for the loss after every step. The way to
-efficient processing, in order: larger batches; the loss read once an
-epoch; the recording loaded onto the card once and batches gathered there;
-the heads' losses fused into one kernel; then flex on every core, so the
-GPU is judged against the CPU at its best. Not half precision: Pascal does
-f16 arithmetic at 1/64 the rate of f32. The GPU pays when a step has
-arithmetic to hide the launches: big batches, a bigger net (PPO), or a
-population of nets evaluated together.
+The GPU now wins any run of more than about two epochs, by five to eight
+times once settled. The CPU backend cannot be told to use its other cores
+(Burn 0.22.1 threads only large matrix products), so the CPU's way to
+help is to run several trainers at once, one a core. Not half precision:
+Pascal does f16 arithmetic at 1/64 the rate of f32. Left, if training
+grows: a kernel cache kept between runs, and contiguous slices of a
+shuffled copy on the card instead of a gather each step.
 
 ## IX. Collecting the reports: orrery, with subscribers
 
@@ -319,10 +325,10 @@ recorder and the trainer (LR 107).
 | ES on CPUs | built; the school plateaued at round 13 (LR 103, 104) |
 | Burn on the GPU | proved (the probe, orrery) |
 | BC recorder and trainer | built (`0f7491b`); recorded on calber: 2,490,248 samples from 60 matches of 600 s in 97 s (1.46 GB); training (LR 106) |
-| First training run | 12 epochs in 64 s on the 1080 Ti, 1.3 s of it reading the recording; a settled epoch 4.3 s. On the CPU (flex) a settled epoch is 3.9 s: **the GPU is not faster for this net** (VIII, LR 106 E), and the changes that would make it so are listed there, with the rule for the next timing |
+| First training run | 12 epochs in 64 s on the 1080 Ti (a settled epoch 4.3 s); the CPU was faster (LR 106 E). **Made efficient (LR 107):** a settled epoch 0.815 s at the same settings and 0.643 s at batch 32,768, against the CPU's 4.5 and 5.0 s; the held-out agreement unchanged |
 | Parity check 1 | **passed**: Rust's `Net::forward` on the GPU-trained `bc1.bin` agrees with the scripted brain on the held-out samples exactly as the trainer did on the GPU, every head, to the decimal (LR 106 D) |
 | The rule | written (LR 106 C). Part 1 passed (D); **part 2 failed** (F): in the census on columbia bc1 reads -23.18 +/- 0.49 and map7 -20.33 +/- 0.27, paired -2.85 +/- 0.44. Imitating two choices in three does not carry into a match; PPO from the clone, the clone's inputs, or DAgger next (LR 107) |
-| Parity checks 2 and 3, the event stream, the GPU changes of LR 106 E | to build (LR 107); the CPU backend is built (`BC_DEVICE=flex`) and timed |
+| Parity checks 2 and 3, the event stream | to build; the CPU backend is built (`BC_DEVICE=flex`) and timed; the GPU changes of LR 106 E done (LR 107) |
 | PPO | after the clone is judged |
 
 ## XI. Discussion

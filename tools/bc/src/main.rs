@@ -6,11 +6,20 @@
 //!
 //!   treadcore-bc RECORD.bin OUT.bin [EPOCHS=12] [BATCH=4096] [LR=1e-3]
 //!   BC_DEVICE=cuda (default) | flex (Burn's pure-Rust CPU backend)
+//!   (the fast setting, LR 107: BATCH=32768 LR=1e-2, 0.64 s an epoch on a 1080 Ti)
 //!
-//! It times itself (LEARNING-DESIGN.md X): reading the recording; the first
-//! step (on CUDA, mostly compiling kernels); then every step split into
-//! building the batch on the CPU and the step itself on the device (forward,
-//! loss, backward, Adam, and the loss read back, which waits for the device).
+//! It times itself (LEARNING-DESIGN.md X, LAB-REPORT-BRAIN.md LR 106 E and
+//! 107): reading the recording; putting it on the device; then each epoch's
+//! wall time, the first apart (on CUDA it compiles and tunes the kernels).
+//!
+//! Made efficient by LR 106 E's list (LR 107): the whole recording goes to
+//! the device once (senses, and each sample's targets and masks laid out
+//! for every head) and a batch is gathered there by index (`select`), so a
+//! step uploads nothing but its share of the epoch's shuffled order, sent
+//! once an epoch; every head's loss is one masked log-softmax over a padded
+//! [B, 7, 10] (each head's choices in a row of ten, the unused slots
+//! masked), not seven; and the loss is summed on the device and read once
+//! an epoch, so the CPU never waits for a step.
 //!
 //! Each trained head is a softmax over the choices NetBrain would allow at
 //! that moment (the recorded masks, as `choose` applies them at play), so
@@ -26,7 +35,7 @@ use burn::module::Module;
 use burn::nn::{Linear, LinearConfig, Relu};
 use burn::optim::{AdamConfig, GradientsParams};
 use burn::tensor::activation::log_softmax;
-use burn::tensor::{Device, Tensor, TensorData};
+use burn::tensor::{Device, Int, Tensor, TensorData};
 
 const SECTORS: usize = 8;
 /// HEADS in net.rs, in output order: drive, gun, lead, mortar, drone, squad, signal.
@@ -101,35 +110,53 @@ impl Mlp {
     }
 }
 
-/// The rows `idx` as tensors: senses [B, S]; per head a one-hot target
-/// [B, n] (zero where the label is not trained or not allowed) and an
-/// additive mask [B, n] (0 allowed, -1e9 not).
-fn batch(d: &Data, idx: &[usize], dev: &Device) -> (Tensor<2>, Vec<(Tensor<2>, Tensor<2>)>) {
-    let b = idx.len();
-    let mut xs = Vec::with_capacity(b * d.senses);
-    for &i in idx {
-        xs.extend_from_slice(&d.x[i * d.senses..(i + 1) * d.senses]);
+/// The widest head; each head's choices sit in a row of this many slots.
+const SLOT: usize = 10;
+
+/// For each of the 7 x SLOT padded slots, the net output column it reads
+/// (an unused slot reads column 0, and is masked).
+fn columns() -> Vec<i32> {
+    let mut v = Vec::with_capacity(HEADS.len() * SLOT);
+    let mut k = 0;
+    for &w in HEADS.iter() {
+        for j in 0..SLOT {
+            v.push(if j < w { (k + j) as i32 } else { 0 });
+        }
+        k += w;
     }
-    let x = Tensor::from_data(TensorData::new(xs, [b, d.senses]), dev);
-    let mut heads = Vec::new();
-    for (h, &n) in HEADS.iter().enumerate() {
-        let mut onehot = vec![0f32; b * n];
-        let mut mask = vec![0f32; b * n];
-        for (r, &i) in idx.iter().enumerate() {
-            let m = &d.masks[i];
-            for c in 0..n {
-                if !allowed(h, c, m) {
-                    mask[r * n + c] = -1e9;
+    v
+}
+
+/// Every sample's one-hot targets and additive masks, padded [N, 7 x SLOT]:
+/// a target is 1 at the trained, allowed label; a mask is 0 where a choice
+/// is allowed and -1e9 where it is not or the slot is unused.
+fn targets(d: &Data) -> (Vec<f32>, Vec<f32>) {
+    let n = d.labels.len();
+    let row = HEADS.len() * SLOT;
+    let mut t = vec![0f32; n * row];
+    let mut m = vec![-1e9f32; n * row];
+    for i in 0..n {
+        let mk = &d.masks[i];
+        for (h, &w) in HEADS.iter().enumerate() {
+            let o = i * row + h * SLOT;
+            for c in 0..w {
+                if allowed(h, c, mk) {
+                    m[o + c] = 0.0;
                 }
             }
             let l = d.labels[i][h] as usize;
-            if TRAINED[h] && l < n && allowed(h, l, m) {
-                onehot[r * n + l] = 1.0;
+            if TRAINED[h] && l < w && allowed(h, l, mk) {
+                t[o + l] = 1.0;
             }
         }
-        heads.push((Tensor::from_data(TensorData::new(onehot, [b, n]), dev), Tensor::from_data(TensorData::new(mask, [b, n]), dev)));
     }
-    (x, heads)
+    (t, m)
+}
+
+fn ints(v: &[usize], dev: &Device) -> Tensor<1, Int> {
+    let v: Vec<i32> = v.iter().map(|&i| i as i32).collect();
+    let n = v.len();
+    Tensor::from_data(TensorData::new(v, [n]), dev)
 }
 
 fn main() {
@@ -160,60 +187,68 @@ fn main() {
     let outs: usize = HEADS.iter().sum();
     let mut model = Mlp::new(&dev, d.senses, outs);
     let mut opt = AdamConfig::new().init();
+
+    // The recording onto the device, once.
+    let t_up = std::time::Instant::now();
+    let (tg, mk) = targets(&d);
+    let row = HEADS.len() * SLOT;
+    let xs = Tensor::<2>::from_data(TensorData::new(d.x.clone(), [n, d.senses]), &dev);
+    let tg = Tensor::<2>::from_data(TensorData::new(tg, [n, row]), &dev);
+    let mk = Tensor::<2>::from_data(TensorData::new(mk, [n, row]), &dev);
+    let cols = Tensor::<1, Int>::from_data(TensorData::new(columns(), [row]), &dev);
+    let _ = mk.clone().slice([0..1, 0..1]).into_data(); // wait for the uploads
+    let up_s = t_up.elapsed().as_secs_f64();
+    println!("bc: the recording on the device in {:.1} s ({:.2} GB)", up_s, (n * (d.senses + 2 * row) * 4) as f64 / 1e9);
+
     // A fixed shuffle a epoch: a small LCG, so a run is repeatable.
     let mut order = train.clone();
     let mut z: u64 = 0x2545F4914F6CDD1D;
     let t0 = std::time::Instant::now();
-    let (mut build_s, mut step_s, mut first_s) = (0f64, 0f64, None::<f64>);
-    let mut steps = 0usize;
+    let mut epoch_s: Vec<f64> = Vec::new();
+    let mut steps_a_epoch = 0usize;
     for e in 0..epochs {
-        let (eb, es) = (build_s, step_s);
+        let te = std::time::Instant::now();
         for i in (1..order.len()).rev() {
             z = z.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
             order.swap(i, (z >> 33) as usize % (i + 1));
         }
-        let mut sum = 0f64;
+        let perm = ints(&order, &dev);
+        let mut sum: Option<Tensor<1>> = None;
         let mut batches = 0;
-        for chunk in order.chunks(bsz) {
-            let tb = std::time::Instant::now();
-            let (x, heads) = batch(&d, chunk, &dev);
-            build_s += tb.elapsed().as_secs_f64();
-            let ts = std::time::Instant::now();
-            let y = model.forward(x);
-            let mut loss: Option<Tensor<1>> = None;
-            let mut k = 0;
-            for (h, &w) in HEADS.iter().enumerate() {
-                if TRAINED[h] {
-                    let (onehot, mask) = heads[h].clone();
-                    let logits = y.clone().slice([0..chunk.len(), k..k + w]) + mask;
-                    let l = (log_softmax(logits, 1) * onehot).sum().neg() / chunk.len() as f32;
-                    loss = Some(match loss { Some(t) => t + l.reshape([1]), None => l.reshape([1]) });
-                }
-                k += w;
-            }
-            let loss = loss.unwrap().sum();
-            sum += loss.clone().into_scalar::<f32>() as f64;
+        let mut s0 = 0;
+        while s0 < order.len() {
+            let s1 = (s0 + bsz).min(order.len());
+            let b = s1 - s0;
+            let ids = perm.clone().slice([s0..s1]);
+            let x = xs.clone().select(0, ids.clone());
+            let t = tg.clone().select(0, ids.clone()).reshape([b, HEADS.len(), SLOT]);
+            let m = mk.clone().select(0, ids).reshape([b, HEADS.len(), SLOT]);
+            let y = model.forward(x).select(1, cols.clone()).reshape([b, HEADS.len(), SLOT]);
+            let loss = (log_softmax(y + m, 2) * t).sum().neg() / b as f32;
+            let l = loss.clone().detach().reshape([1]);
+            sum = Some(match sum { Some(a) => a + l, None => l });
             batches += 1;
             let grads = GradientsParams::from_grads(loss.backward(), &model);
             model = opt.step(lr, model, grads);
-            let st = ts.elapsed().as_secs_f64();
-            if first_s.is_none() {
-                first_s = Some(st);
-            } else {
-                step_s += st;
-            }
-            steps += 1;
+            s0 = s1;
         }
-        println!("bc: epoch {:2}: training loss {:.4} ({:.0} s; this epoch: building batches {:.1} s, steps {:.1} s)", e + 1, sum / batches as f64, t0.elapsed().as_secs_f64(), build_s - eb, step_s - es);
+        steps_a_epoch = batches;
+        // The one wait of the epoch.
+        let total = sum.unwrap().into_scalar::<f32>() as f64;
+        let es = te.elapsed().as_secs_f64();
+        epoch_s.push(es);
+        println!("bc: epoch {:2}: training loss {:.4} ({:.2} s; {:.0} s in all)", e + 1, total / batches as f64, es, t0.elapsed().as_secs_f64());
     }
 
-    let train_s = t0.elapsed().as_secs_f64();
+    let settled: Vec<f64> = epoch_s.iter().skip(1).copied().collect();
+    let mean = settled.iter().sum::<f64>() / settled.len().max(1) as f64;
+    let sd = (settled.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (settled.len().max(2) - 1) as f64).sqrt();
     println!(
-        "bc: time: read {:.1} s; first step {:.1} s; then {} steps: building batches {:.1} s, device steps {:.1} s ({:.1} ms a step, {:.0} samples/s through the device)",
-        read_s, first_s.unwrap_or(0.0), steps.saturating_sub(1), build_s, step_s,
-        1000.0 * step_s / steps.saturating_sub(1).max(1) as f64,
-        (steps.saturating_sub(1) * bsz) as f64 / step_s.max(1e-9)
+        "bc: time: read {:.1} s; on the device {:.1} s; first epoch {:.2} s; then {} epochs of {} steps at {}: {:.3} s +/- {:.3} an epoch ({:.2} ms a step, {:.0} samples/s)",
+        read_s, up_s, epoch_s.first().copied().unwrap_or(0.0), settled.len(), steps_a_epoch, bsz, mean, sd,
+        1000.0 * mean / steps_a_epoch.max(1) as f64, train.len() as f64 / mean.max(1e-9)
     );
+    let train_s = t0.elapsed().as_secs_f64();
     let t_eval = std::time::Instant::now();
     // Held out: each head's choice (argmax among the allowed) against the
     // scripted brain's, beside always-the-commonest-allowed-label.
@@ -234,7 +269,7 @@ fn main() {
     }
     let gpu_model = model.clone();
     for chunk in held.chunks(bsz) {
-        let (x, _) = batch(&d, chunk, &dev);
+        let x = xs.clone().select(0, ints(chunk, &dev));
         let y: Vec<f32> = gpu_model.forward(x).into_data().try_to_vec::<f32>().unwrap();
         for (r, &i) in chunk.iter().enumerate() {
             let m = &d.masks[i];

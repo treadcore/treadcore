@@ -1206,6 +1206,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     net (6.4 ms a step against the CPU's 5.6); larger batches, the data
     on the card and fewer launches first. Next (LR 107, Paul to
     choose): PPO from the clone, the clone's inputs, or DAgger.
+    The trainer made efficient (LR 107, 28 October; cause: Paul pasted
+    LR 106 E's list): the recording on the card, one loss for every
+    head, the loss read once an epoch. A settled epoch 0.815 s at batch
+    4,096 (was 4.3 s), 0.643 s at 32,768, the CPU 4.5 and 5.0 s; the
+    rule passed and the learning unchanged. The GPU now wins any run
+    of more than about two epochs.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

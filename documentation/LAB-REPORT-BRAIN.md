@@ -7650,3 +7650,115 @@ teacher never led it into).
 
 Reported without a pass mark (C.3), still to run: the gauntlet and the
 match reading of bc1.
+
+## 107. Making the trainer efficient: LR 106 E's list, 28 October
+
+Paul pasted LR 106 E's list back as the work to do: much bigger batches;
+the loss read once an epoch; the recording loaded onto the card once; the
+per-head losses combined; the CPU version on all eight cores.
+
+### A. What changed in `tools/bc`
+
+1. **The recording on the device, once.** The senses [N, 143], and each
+   sample's one-hot targets and additive masks laid out for every head,
+   padded to [N, 7 x 10], go to the device at the start (2.49 million
+   samples, 2.8 GB). A batch is gathered there by index (`select`); a
+   step uploads nothing; the epoch's shuffled order is uploaded once.
+2. **One loss for every head.** The net's 42 scores are gathered into a
+   padded [B, 7, 10] (each head's choices in a row of ten, unused slots
+   masked), and one masked log-softmax and one product with the targets
+   replace seven of each. The same loss as before: the sum over heads of
+   each head's cross-entropy, divided by the batch.
+3. **The loss read once an epoch.** Each step's loss is added on the device
+   (detached); the one read is at the end of the epoch, so the CPU never
+   waits for a step.
+4. **Batch size** is the argument it was; 32,768 is tried with the
+   learning rate re-tuned.
+5. **The CPU on all its cores.** Not a setting: Burn's flex backend
+   (0.22.1) splits a matrix product over every core only above 192^3
+   operations (`PARALLEL_THRESHOLD` in its `matmul.rs`) and runs the
+   element-wise work on one thread. At batch 4,096 its three products are
+   above the threshold already; bigger batches give it more parallel work
+   than anything else. Measured, not set.
+
+Timing is now each epoch's wall time, the first apart (it compiles and
+tunes on CUDA), the epoch ending at its one read of the loss.
+
+### B. The rule, written before the runs
+
+From LR 106 E, unchanged: **with changes 1 to 3 at batch 32,768, a settled
+CUDA epoch takes under 1.0 s, and less than flex's at the same settings;
+and the held-out drive agreement stays within one point of 65.5%.** If the
+CUDA epoch stays above flex's, BC stays on the CPU and the GPU waits for
+PPO.
+
+And a check that the rewrite changed the speed and not the learning: at
+LR 106's settings (batch 4,096, Adam 1e-3, 12 epochs) the new trainer's
+held-out drive agreement is within 0.5 points of LR 106 D's (two runs of
+the old trainer, differing only in their random start, gave 65.5% and
+65.3%), and the other heads within two of their standard errors.
+
+### C. Results
+
+On calber (i7-9700F, 8 threads; GTX 1080 Ti), the recording of LR 106 D,
+12 epochs, 28 October. Settled epoch: the mean of epochs 2 to 12, with its
+standard deviation. Logs in calber's `~/bc/` (`eq-*.log`, `b32-*.log`).
+
+| Trainer | Device | Batch | LR | Settled epoch | A step | First epoch | Drive | Gun | Mortar | Drone |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| LR 106 | CUDA | 4,096 | 1e-3 | 4.3 s (0.8 + 3.5) | 6.4 ms | 9.1 s | 65.3% | 63.6% | 89.0% | 96.7% |
+| LR 106 | flex | 4,096 | 1e-3 | 3.9 s (0.8 + 3.1) | 5.6 ms | 3.9 s | 64.1% (2 epochs) | | | |
+| **LR 107** | CUDA | 4,096 | 1e-3 | **0.815 +/- 0.019 s** | 1.49 ms | 14.9 s | **65.5%** | **64.2%** | 89.1% | 96.6% |
+| LR 107 | flex | 4,096 | 1e-3 | 4.507 +/- 0.013 s | 8.24 ms | 4.5 s | 65.4% | 63.3% | 88.8% | 96.7% |
+| LR 107 | CUDA | 32,768 | 1e-3 | 0.643 +/- 0.012 s | 9.31 ms | 18.4 s | 64.1% | 59.6% | 88.4% | 95.4% |
+| LR 107 | CUDA | 32,768 | 3e-3 | 0.642 +/- 0.006 s | 9.31 ms | 7.4 s | 64.6% | 63.7% | 88.8% | 95.9% |
+| **LR 107** | CUDA | 32,768 | 1e-2 | **0.643 +/- 0.010 s** | 9.32 ms | 7.7 s | **65.1%** | 63.3% | 88.8% | 96.6% |
+| LR 107 | flex | 32,768 | 1e-2 | 5.035 +/- 0.025 s | 72.98 ms | 5.0 s | 64.9% | 63.3% | 88.6% | 96.5% |
+
+Errors: drive +/- 0.1, gun +/- 1.7 to 1.8, mortar +/- 0.2, drone +/- 0.0
+to 0.1 (held-out sampling). flex used 190% of a CPU at 4,096 and 225% at
+32,768 (`/usr/bin/time`), 4.7 GB of memory; the recording on the card took
+2.82 GB of its 11.
+
+**The equivalence check: passed.** At LR 106's settings the new trainer
+gives drive 65.5% and gun 64.2%, LR 106 D's figures to the decimal, and
+mortar and drone within one error. The rewrite changed the speed, not the
+learning.
+
+**The rule: passed.** At batch 32,768 a settled CUDA epoch is 0.643 s
+(under 1.0 s), 7.8 times faster than flex's 5.035 s at the same settings,
+and the drive agreement is 65.1%, within one point of 65.5% (at Adam
+1e-2, the best of three rates tried; 3e-3 gave 64.6%, 1e-3 64.1%, all
+three timed alike).
+
+### D. Discussion
+
+**The GPU is now the faster place to train, by five to eight times.** A
+settled CUDA epoch went from 4.3 s to 0.815 s at the same batch (5.3
+times), and to 0.643 s at 32,768. The three changes that did it are the
+ones LR 106 E blamed: nothing built on the CPU, nothing uploaded a step,
+no wait a step. Most of the gain came at batch 4,096; going to 32,768
+cut the epoch by only a further fifth: the card is no longer waiting on
+the CPU, and at 9.3 ms a step for 3.1 GFLOP it does about 340 GFLOP/s,
+three percent of its peak. Gathering 32,768 rows of 2.8 GB by index
+each step is the likely bound now; not measured.
+
+**The first epoch still costs 7 to 18 s on CUDA** (CubeCL compiling and
+tuning), so a CUDA run of 12 epochs takes 15 to 25 s against flex's
+63 s: the GPU wins any run of more than about two epochs.
+
+**The CPU is no faster for the same changes,** slightly slower (4.5 s an
+epoch against 3.9): flex gathers by index on one thread, and it never
+used more than 2.25 of the eight cores. Item 5 of the list has no
+switch in Burn 0.22.1; using the CPU's cores would mean several
+trainers at once (one a core), or a backend that threads element-wise
+work.
+
+**What is left, if training grows:** the first epoch's compile (a kernel
+cache kept between runs); the gather (a shuffled copy of the recording
+on the card each epoch, then contiguous slices); and more epochs at
+32,768, now cheap: its loss after 12 epochs (1.011) is above batch
+4,096's (0.986), having taken eight times fewer steps.
+
+The defaults stay batch 4,096 and Adam 1e-3, the settings `bc1.bin` was
+made with; 32,768 at 1e-2 is the fast setting, named in the usage line.

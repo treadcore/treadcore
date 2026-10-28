@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: `tools/bc` trains five to eight times faster on the GPU: the
+  recording loaded onto the card once and batches gathered there, every
+  head's loss in one masked log-softmax, the loss read once an epoch. A
+  settled epoch takes 0.815 s at batch 4,096 (was 4.3 s) and 0.643 s at
+  32,768, against 4.5 and 5.0 s on the CPU; the held-out agreement is
+  unchanged (LAB-REPORT-BRAIN.md section 107).
+
 - Measured: behaviour cloning of the scripted brain into the learned
   tank's net (`nets/bc1.bin`), trained on calber's GTX 1080 Ti with
   Burn. It agrees with the scripted brain on held-out matches (drive
