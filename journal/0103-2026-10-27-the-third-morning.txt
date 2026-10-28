@@ -157,6 +157,14 @@ IV. CHRONOLOGY
        now. The sample run: the Mac failed 57 trials at once (no nproc)
        and nothing stopped it; fixed, and a breaker added; then 70
        trials and a net round in five minutes.
+   28. The queue at full settings (LR 111, CI-072): the sample stopped
+       (2,175 tiny trials; 29 lost ssh connections); build/queue/full-1
+       from 02:17, the Mac caffeinated. By 06:27: 37,905 games, 1.46
+       billion thinks, 10.4 billion seat-ticks, 416 million training
+       sample-steps (scripts/fleet-count.py). No trial passed both
+       held-out reads; castle_inside 8 has 2 of 5 and waits. False
+       start, marked: three trials were first reported as passing their
+       re-checks; each had passed one of two.
 
 V. RESULTS
 
@@ -203,6 +211,8 @@ VIII. NEXT STEPS
    10. The fleet's next improvements (LAB-REPORT-FLEET V): record the
        next job while this one moves; hash while streaming; host keys
        to the store, if Paul grants them.
+   11. castle_inside 8: its last two held-out reads, then a line in
+       saskatchewan's candidates.txt with their verdict (LR 111 D).
 
 ACKNOWLEDGMENTS
 

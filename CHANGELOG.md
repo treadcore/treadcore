@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Measured: the fleet queue at full settings (55 seeds of 15 minutes a
+  trial, 400 held out). In its first 4 hours 10 minutes, on four
+  machines, it played 37,905 games, 9,476 hours of play: 1.46 billion
+  decisions and 10.4 billion seat-ticks, and trained the net through
+  416 million samples. No weight trial has yet passed both held-out
+  reads; `castle_inside` 8 leads. bc2 stays the best net. New:
+  `scripts/fleet-count.py` (LAB-REPORT-BRAIN.md section 111).
+
 - Added: one queue for the whole fleet (orrery's `tools/fleet-queue.py`,
   treadcore's `scripts/fleet-plan.py`). Trials of the scripted brain's
   110 weights and rounds of the learned net take turns on every spare

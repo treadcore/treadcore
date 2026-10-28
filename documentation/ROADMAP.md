@@ -1228,6 +1228,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     adding, collect and stop now, as commands and as orrery buttons. A
     sample run: 70 trials and a net round in five minutes. Next: the
     queue at the real settings; the reward-term weights.
+    The queue at full settings (LR 111, 28 October; cause: Paul,
+    "continue running census on the fleet"): build/queue/full-1 on
+    calber, columbia, nasser and the Mac. In its first 4 h 10 min,
+    37,905 games (9,476 hours of play), 1.46 billion thinks, 10.4
+    billion seat-ticks, 416 million training sample-steps
+    (`scripts/fleet-count.py`). No trial passed both held-out reads;
+    castle_inside 8 has 2 of 5 and waits for its last two before it
+    joins saskatchewan's candidates. Both net rounds left bc2 the best.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

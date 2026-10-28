@@ -84,3 +84,4 @@ report is what ties a conversation to them. Named
 | [069](CI-069-2026-10-28-an-efficient-trainer.md) | 28 October 2026 | An efficient trainer: the GPU five to eight times faster than the CPU | 0103 | LAB-REPORT-BRAIN.md section 107 |
 | [070](CI-070-2026-10-28-the-fleet-records.md) | 28 October 2026 | The fleet records, the card trains: twenty times the data | 0103 | LAB-REPORT-BRAIN.md section 108 |
 | [071](CI-071-2026-10-28-one-queue.md) | 28 October 2026 | One queue for the whole fleet: the weights and the net in turn, stop adding and stop now | 0103 | LAB-REPORT-BRAIN.md section 110 |
+| [072](CI-072-2026-10-28-full-queue-counts.md) | 28 October 2026 | The queue at full settings: 37,905 games and 1.46 billion thinks in four hours; no trial passes both reads yet | 0103 | LAB-REPORT-BRAIN.md section 111 |

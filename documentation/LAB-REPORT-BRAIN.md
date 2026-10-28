@@ -8080,3 +8080,119 @@ Unchanged from the runs they come from:
    failures in a row.
 
 The 57 failed jobs are kept in `failed-before-fix/`.
+
+## 111. The queue at full settings: what four hours played, 28 October
+
+Paul: "continue running census on the fleet." He chose to replace the
+sample (LR 110 C) with the queue at full settings. Then: "how many
+computations have been ran. over a million?" and "add lab report about
+these counts."
+
+### A. The run
+
+`build/queue/full-1`, keeper started 02:17:23 on 28 October:
+- **Settings:** those of orrery's `docs/fleet-train.md`.
+  - Commit 8e5df88 on every host.
+  - Weight trials: 55 seeds of 900 s from 6,000,000.
+  - Held-out reads: 400 seeds from 7,000,000. saskatchewan's run draws
+    its trials from 2,000,000 and its held-out seeds from 3,000,000, so
+    the two never share a seed.
+  - Net rounds: two, each on 1,200 seeds of rec2400 (4 epochs, batch
+    32,768), judged on 110 seeds.
+- **Machines:** calber, columbia, nasser and the Mac. saskatchewan was
+  left to `make converge` (load about 20 of 24).
+- **Before it:** the sample queue was stopped with `stop-now` after
+  2,175 tiny trials. Its 29 failures were all lost ssh connections
+  (exit 255), none a fault of the code.
+- **The Mac:** kept awake with `caffeinate -dimsu`, at Paul's word.
+
+### B. The counts
+
+`scripts/fleet-count.py build/queue/full-1` (new) counts what the queue
+has fetched back, at 06:26:56, 4 h 10 min after the start:
+- **A game** is one line `seed S on MAP: trial team T` in a census log.
+  A seed plays three games, with the trial in each team's seat.
+- **Seat-ticks, thinks and moves** are each job's own meter line.
+  - A seat-tick is one tank seat advanced one game tick.
+  - A think is one decision of a brain.
+  - A move is one route planned.
+- Jobs still running are not counted.
+
+| Kind | Census logs | Games | Seat-ticks | Thinks | Moves |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| weight trials | 1,164 | 24,585 | 6,757,079,968 | 957,738,999 | 250,016,569 |
+| held-out reads | 80 | 12,000 | 3,285,884,736 | 463,260,527 | 120,723,097 |
+| net judging | 32 | 1,320 | 364,327,056 | 36,308,633 | 9,769,679 |
+| **all** | **1,276** | **37,905** | **10,407,291,760** | **1,457,308,159** | **380,509,345** |
+
+**The net training on calber's GPU:**
+- Round 1: 52,067,105 samples × 4 epochs = 208,268,420 sample-steps, in
+  90.6 s.
+- Round 2: 51,962,086 samples × 4 epochs = 207,848,344 sample-steps, in
+  87.8 s.
+- Each read 57 million samples (33.5 GB) of 1,380 seeds, and held 5.2
+  million out.
+
+**The machines** (seconds busy from `events.jsonl`; games from the
+queue's ledger, three to a seed, which lags the logs by a census or two):
+
+| Host | Busy | Jobs done | Games (ledger) |
+| --- | ---: | --- | ---: |
+| calber | 4.1 h | 61 weight, 2 net (training), 1 build | 13,710 |
+| the Mac | 4.1 h | 70 weight, 1 build | 15,360 |
+| columbia | 3.8 h | 21 weight, 2 net (judging), 1 build | 5,535 + 1,320 judging |
+| nasser | 3.3 h | 7 weight, 1 build | 1,155 |
+
+**In a sentence:** 37,905 games of 15 minutes, or 9,476 hours of play,
+in 4 hours 10 minutes.
+- That is about 9,100 games, 350 million thinks and 2.5 billion
+  seat-ticks an hour.
+- The median census ran at 18.3 µs a seat-tick.
+- So: over a million in thinks (1.46 billion), seat-ticks (10.4
+  billion), moves (381 million) and training sample-steps (416 million).
+  Not yet in games: at this rate a million games is about 4.6 days.
+
+### C. What the counts bought
+
+**Weight trials.** 144 in the ledger at 06:26.
+- **Past two errors:** 6.
+- **Exactly zero:** 19, every seed +0.00 ± 0.00. The log names the
+  changed weight, so it was applied; every seat scored as in the
+  baseline. Among them: `advance_band` 0.675 and
+  0.175, `beta` 0.15 and 0.6, `bridge_keep` 90 and 360, `bridge_soft`
+  3 and 12, `c_boat` 10, `commit` 0.2. On these maps and seeds these
+  weights change no score.
+
+**Held-out reads, 400 seeds each:**
+
+| Trial | Weights | Read 1 | Read 2 |
+| --- | --- | --- | --- |
+| w0011 | advance_band 0.675, alpha 0.513, answer_cap 2.51 | +0.56 ± 0.24 pass | −0.11 ± 0.24 |
+| w0095 | castle_inside 8 | −0.02 ± 0.16 | +0.56 ± 0.21 pass |
+| w0113 | base_r 8, beta 0.6, bridge_keep 360, castle_inside 8 | +0.19 ± 0.19 | +0.40 ± 0.19 pass |
+| w0116 | column_gap 1 | −0.02 ± 0.17 | −0.20 ± 0.12 |
+| w0117 | castle_inside 8 | running | +0.28 ± 0.21 |
+| w0128 | castle_inside 8 | +0.80 ± 0.21 pass | running |
+
+- **No trial has passed both reads**, so none is a candidate under the
+  rule of LR 92.
+- **`castle_inside` 8** alone has ten 55-seed censuses, all at or
+  above zero (+0.01 to +1.18), and three of them reached held-out reads.
+  Of its five reads so far, 2 pass, 3 are inside the noise, none below. saskatchewan's run
+  points the same way: its best has `castle_inside` 6.78, and
+  `best-less-castle_inside` is among its candidates.
+- **Correction:** the session first told Paul that three trials passed
+  their re-checks. Each had passed one of two.
+
+**Net rounds:**
+- Round 1: candidate less bc2 −0.77 ± 0.36 over 110 seeds.
+- Round 2: +0.18 ± 0.35.
+- bc2 stays the queue's best. The clones are at their ceiling (LR 108 D).
+
+### D. Decisions
+
+- **`castle_inside` 8 waits** for its two reads still running (Paul's
+  choice). It joins saskatchewan's `candidates.txt` with the verdict
+  those reads give, marked as from the fleet queue at 8e5df88.
+- **The queue goes on** at full settings. Nothing is promoted; no
+  default changes; no net becomes official.
