@@ -59,52 +59,19 @@
 #                    REPLAY=file) and check every world hash it recorded;
 #                    the regression test for a change to the rules
 #   make test        cargo test, every crate
-#   make tune        evolve the bots' weights over the brain census (scripts/tune.sh)
+#   TRAINING AND MEASUREMENT run on the fleet, from orrery (~/code/orrery,
+#                    docs/fleet-train.md; LAB-REPORT-BRAIN.md 112 to 116):
+#                    the census, parts, switches, roundrobin, spsa, tune,
+#                    converge's search, families, train, gauntlet, clips,
+#                    school, the recordings and the ledger are runs of its
+#                    queue (build/queue/grove), each a button in its
+#                    Training view or `fleet-queue.py Q new KIND k=v`. The
+#                    scripts they call stay here: scripts/census.sh plays
+#                    one census on this machine.
 #   make scenario    run a scenario file (S=scenarios/x.toml) and print its
 #                    trace; every file in scenarios/ is also a test.
 #                    RUNS=n runs it over n seeds and gives how often it
 #                    holds; SET="name=value" sets a weight on every brain
-#   make families    every family in scenarios/families/ over its seeds,
-#                    each held to its floor (SET="w=v" to break one).
-#   make census      one brain against another over the fair census, its
-#                    seeds split over JOBS, pooled overall and by map
-#                    (scripts/census.sh; TRIAL, BASE, SEEDS, SEED0, MAP=all;
-#                    RESUME=build/census/STAMP finishes a stopped one)
-#   make parts       each part off from the brain with every part on, by
-#                    the census (scripts/parts.sh; PARTS, SEEDS, JOBS)
-#   make spsa        tune named weights by SPSA over the paired census
-#                    (scripts/spsa.sh; TUNE, STEPS, SEEDS, SET, START)
-#   make converge    the census as a learner, until stopped: each generation
-#                    of trials suggested from every census so far, each
-#                    read past two errors read twice on fresh seeds; no
-#                    default changed (scripts/converge.sh; UNTIL, GEN,
-#                    SEEDS, SEED0, HELD, RESUME)
-#   make ledger      every census on this machine, one row each
-#                    (scripts/ledger.py > build/ledger.tsv)
-#   make train       train the learned tank by evolution strategies, a
-#                    phase at a time (LR 97): PHASE=1 go to, PHASE=3
-#                    shoot; GROUND=a,b,... courses trained together
-#                    (phase1, phase3, scenarios/training/*.toml, LR 99);
-#                    GENS, PAIRS, SEEDS, THREADS, START (a net to begin
-#                    from), OUT (build/train), NAME; CHECK=net.bin reads a
-#                    net on the held-out seeds only; BASELINE=1 reads the
-#                    scripted brain first; with CHECK, MATCH=n reads the
-#                    net in one seat of n dealt matches' first 3 minutes
-#   make gauntlet    single-decision tests (scenarios/gauntlet/, LR 102):
-#                    the scripted brain, the untrained net and every
-#                    milestone net in nets/, pass share and reaction time
-#                    (RUNS a test, 200; build/train/gauntlet.tsv)
-#   make clips       a short GIF of each milestone net at work, and the
-#                    newest in a real match (needs ffmpeg; build/train/
-#                    clips/, LR 102)
-#   make school      the learned tank's curriculum until stopped (LR 103):
-#                    each round trains the next map not yet passed beside
-#                    the passed ones, keeps the net only on a real gain
-#                    with nothing broken, gauntlets it; build/school/
-#                    (touch build/school/STOP to end; it resumes)
-#   make roundrobin  the census for every ordered pair of profiles/*.weights
-#                    and the defaults: the payoff matrix (scripts/roundrobin.sh;
-#                    PROFILES, SEEDS, SEED0, MAP)
 #   make brainmap    write documentation/BRAIN-MAP.md: every brain file and
 #                    function with its doc comment's first sentence
 #   make switches    each capability that is off, alone, over the fair census:
@@ -156,7 +123,7 @@
 
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test tune scenario families parts census spsa converge ledger train gauntlet clips school roundrobin switches brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
+.PHONY: help configure warm tree why build headless debug run lan host seat introduce listen quad lobby-test rematch-test replay map worldmaps convert test scenario brainmap sounds shoot release builds hooks token publish mem quiet loud sysprep schema deps install uninstall clean distclean
 
 BUILDDIR ?= build
 LOGDIR   ?= $(BUILDDIR)/logs
@@ -298,46 +265,6 @@ worldmaps:
 test:
 	@scripts/build.sh test
 
-tune:
-	@scripts/tune.sh
-
-switches:
-	@scripts/switches.sh
-
-parts:
-	@scripts/parts.sh
-
-census:
-	@scripts/census.sh
-
-spsa:
-	@scripts/spsa.sh
-
-converge:
-	@scripts/converge.sh
-
-ledger:
-	@python3 -I scripts/ledger.py build/census > build/ledger.tsv && echo "build/ledger.tsv: $$(($$(wc -l < build/ledger.tsv) - 1)) censuses"
-
-train:
-	@PHASE="$(or $(PHASE),1)" OUT="$(abspath $(or $(OUT),build/train))" START="$(if $(START),$(abspath $(START)))" CHECK="$(if $(CHECK),$(abspath $(CHECK)))" GROUND="$(GROUND)" PROBE="$(PROBE)" MATCH="$(MATCH)" NAME="$(NAME)" HELD="$(HELD)" GENS="$(GENS)" PAIRS="$(PAIRS)" SEEDS="$(SEEDS)" THREADS="$(THREADS)" BASELINE="$(BASELINE)" \
-		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
-
-gauntlet:
-	@GAUNTLET=1 OUT="$(abspath $(or $(OUT),build/train))" GAUNTLET_RUNS="$(RUNS)" THREADS="$(THREADS)" \
-		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
-
-clips:
-	@CLIPS=1 OUT="$(abspath $(or $(OUT),build/train))" THREADS="$(THREADS)" \
-		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
-
-school:
-	@SCHOOL=1 OUT="$(abspath $(or $(OUT),build/school))" START="$(if $(START),$(abspath $(START)))" GENS="$(GENS)" THREADS="$(THREADS)" \
-		cargo test -q -p treadcore-brain --release -- --ignored learn::harness::train --nocapture
-
-roundrobin:
-	@scripts/roundrobin.sh
-
 scenario:
 	@test -n "$(S)" || { echo "make scenario S=scenarios/name.toml"; exit 1; }
 	@if [ -n "$(RUNS)" ]; then \
@@ -345,9 +272,6 @@ scenario:
 	else \
 		SCENARIO="$(abspath $(S))" SEED="$(SEED)" SCENARIO_SET="$(SET)" cargo test -q -p treadcore-brain --release -- --ignored scenario_one --nocapture; \
 	fi
-
-families:
-	@SCENARIO_SET="$(SET)" cargo test -q -p treadcore-brain --release -- --ignored every_family_holds_its_floor --nocapture
 
 brainmap:
 	@python3 -I scripts/brainmap.py documentation/BRAIN-MAP.md

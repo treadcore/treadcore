@@ -53,27 +53,48 @@ switches (`weights.rs`):
     caps = baseline, -dodge
     dodge_horizon = 4.0
 
-## 2. The scripts
+## 2. Running it: orrery's queue, on the fleet
 
-The scripts build the test binary once and copy it into the run's
-directory (`census_bin`, LR 41). The run plays that frozen copy, so the
-tree can change while it runs. All of them take `MAP` (a file, a list,
-`gen`, or `all` for the eleven maps) and write under `build/`.
+Since 28 October (LAB-REPORT-BRAIN.md 112 to 116) every census, and
+everything made of censuses, runs on the fleet from orrery
+(`~/code/orrery`, its guide `docs/fleet-train.md`). The standing queue
+is `build/queue/grove`:
+- a weight search runs in it day and night (what `make converge` did);
+- a run is a button in orrery's Training view, or a command.
 
-| Command | What it answers |
-| --- | --- |
-| `TRIAL=a.weights BASE=b.weights make census` | Is brain A better than brain B? Seeds split over `JOBS` (default: every core), pooled overall and by map |
-| `make parts` | What is each part worth? Each part off, against everything on |
-| `make switches` | What is each switch that is off worth when turned on alone? |
-| `LOOKS=8 TRIAL=a.weights make census` | The same, read as it plays; an early stop read again on fresh seeds (LR 79). For a large expected effect only |
-| `make spsa` | Which values for these weights? SPSA, a step at a time on the paired census, each weight kept within half and double (`BOUND`) |
-| `make tune` | The older evolutionary tuner, kept beside SPSA (LR 40) |
-| `make families` | Does each behaviour still do what it was built for? Scenario families, each held to its floor |
-| `S=scenarios/x.toml make scenario` | One described situation, played headless |
+```sh
+F="python3 $HOME/code/orrery/tools/fleet-queue.py $HOME/code/treadcore/build/queue/grove"
+$F new census trial="castle_inside = 8" seeds=110   # is brain A better than brain B (base= for B)
+$F new parts                                        # what is each part worth: each off, against all on
+$F new switches                                     # what is each switch that is off worth alone
+$F new roundrobin                                   # every ordered pair of profiles/*.weights
+$F new spsa tune="dodge_horizon dodge_clear"        # values for these weights, a step a census
+$F new tune                                         # the older evolutionary tuner (LR 40)
+$F new families                                     # every candidate against the families' floors again
+$F new promote candidate=@strongest                 # a candidate into weights.rs on a branch; Paul approves
+$F runs; $F cancel RID; $F approve RID
+```
 
-`make census` writes into `build/census/STAMP/`: `run.env` (its
-settings), `trial.weights`, `base.weights`, `census-bin`, one log per
-job (`g-SEED0.log`), and at the end `pooled.txt`.
+**What a run does:**
+- **Each census is played by one machine**, with every core, by
+  `scripts/census.sh`, on the newest commit of `origin/main`.
+- **The machine builds that commit itself.**
+- **The results come back** to `build/queue/grove/results/`.
+- **Each run's table** is in `plan/runs/RID/`.
+- **The list of what to measure stays here.** A run's censuses are what
+  the script prints with `LIST=1`: `scripts/parts.sh`,
+  `scripts/switches.sh` and `scripts/roundrobin.sh`.
+
+**On one machine, without the fleet,** the scripts still run directly:
+`TRIAL=a.weights BASE=b.weights scripts/census.sh`, or
+`S=scenarios/x.toml make scenario` for one described situation.
+
+`scripts/census.sh` writes into `build/census/STAMP/`:
+- `run.env` (its settings);
+- `trial.weights` and `base.weights`;
+- `census-bin`;
+- one log per job (`g-SEED0.log`);
+- at the end, `pooled.txt`.
 
 ## 3. Reading it
 
@@ -111,24 +132,24 @@ A census still running prints no pooled line until it ends. Its
 per-match `team N (trial): score` lines can be read early (LR 71 was
 read so at 123 seeds). The pooled file is the record.
 
-## 4. Resuming a census
+## 4. Resuming
 
-A census that stops part-way (a reboot, a cancel, a closed session)
-can be finished:
+**In the queue, nothing is resumed by hand.**
+- A census lost with its machine goes back on the queue and is played
+  again in full on another machine.
+- A stopped queue starts again with **Start the queue**, or with
+  `fleet-queue.py Q ensure`.
+- Every machine's censuses are gathered into `build/ledger/fleet.tsv`
+  by the queue's sync, every 30 minutes, or with **Sync now**.
 
-    RESUME=build/census/STAMP make census
+**A census run directly by `scripts/census.sh`** can be finished on the
+machine that started it:
+
+    RESUME=build/census/STAMP scripts/census.sh
 
 It reads `run.env` and keeps every job whose log ends in `test result:
-ok`. Any other log is set aside as `g-SEED.log.partial` and that job
-is played again in full on the same frozen binary and weights, so the
-pooled result is what the uninterrupted run would have given. Resume
-on the machine that started the run: the binary is built for that
-machine. A census started before `run.env` existed (before 22 October)
-resumes on the `SEEDS`, `SEED0`, `SECS`, `MAP`, `RESPAWNS` and `JOBS`
-given on the command line, and they must match the original.
-
-To see whether one is still going: `pgrep -af census-bin`. To stop
-one: `pkill -f census-bin`.
+ok`. Any other log is set aside as `g-SEED.log.partial`, and that job is
+played again in full on the same frozen binary and weights.
 
 ### The resume prompt
 
@@ -137,40 +158,43 @@ new one, from a fresh clone, paste:
 
 > Read CLAUDE.md and documentation/CENSUS.md, then the newest section
 > of documentation/LAB-REPORT-BRAIN.md and the newest journal entry.
-> Check for an unfinished census (`ls -t build/census`, a log without
-> `test result: ok`, `pgrep -af census-bin`): if one stopped, resume
-> it with `RESUME=build/census/STAMP make census`; if one ended, read
-> its pooled.txt against the rule written before it. Then tell me
-> where the roadmap's backlog stands and what you would run next on
-> this machine, with its cost in matches and hours.
+> Check the fleet's queue (`python3 ~/code/orrery/tools/fleet-queue.py
+> build/queue/grove status` and `... runs`): if its keeper is stopped,
+> start it (`... ensure`); read what finished against the rule written
+> before it, and any promotion waiting for Paul. Then tell me where the
+> roadmap's backlog stands and what you would ask the fleet for next,
+> with its cost in matches and hours.
 
 `CLAUDE.md` at the top of the tree carries the working rules a new
 session needs, so the clone is enough to resume from.
 
-## 4a. The run: the census as a learner
+## 4a. The search: the census as a learner, on the fleet
 
-`make converge` (LAB-REPORT-BRAIN.md section 92) runs until stopped,
-or until `UNTIL=06:30`. Each generation it reads every census on the
-machine into a table (`make ledger`, `scripts/ledger.py`), fits each
-weight's curve to it (`scripts/suggest.py`), and plays the trials the
-fit suggests: the best point where a curve's top is past two errors,
-reads again of trials past 1.5 errors, each weight's half and double
-not yet read, draws from what is uncertain. A trial past two errors is
-read twice more on 400 seeds no step saw. Its rule is written to
-`build/converge/STAMP/NOTES.txt` before it plays; candidates are in
-`candidates.txt`, every census in `censuses.txt`, the fit in each
-generation's `curves.tsv`. It changes no default.
+The search `make converge` ran on one machine (LAB-REPORT-BRAIN.md
+section 92) is now the standing work of orrery's queue
+(`tools/plans/treadcore.py`, kind "weights"). It works the same way:
+1. **The ledger.** Each top-up reads the ledger: the queue's censuses,
+   and the fleet's history with the same `weights.rs`.
+2. **The fit.** It fits each weight's curve to the ledger
+   (`scripts/suggest.py`).
+3. **The trials.** It plays the trials the fit suggests:
+   - the best point, where a curve's top is past two errors;
+   - reads again of trials past 1.5 errors;
+   - each weight's half and double not yet read;
+   - draws from what is uncertain.
+4. **The held-out reads.** A trial past two errors, with no map past two
+   below, is read twice more on 400 seeds no step saw.
+5. **The families.** A trial that passes both reads is a candidate, and
+   its families run next.
 
-    nohup setsid make converge > build/converge.out 2>&1 &   # start
-    tail -f build/converge/*/progress.txt                    # watch
-    pkill -f converge.sh; pkill -f census-bin                # stop
-    RESUME=build/converge/STAMP make converge                # go on
+It changes no default. A candidate becomes the default only by a
+promotion that Paul approves.
 
-Each census builds its binary from the tree as it starts, so the tree
-on the machine stays as it is while a run goes: a brain change that
-moves the defaults starts a new run with `SINCE` set to its first
-census. Rows from another machine join the table with
-`scripts/ledger.py --merge`; a census is never pooled across machines.
+`scripts/converge.sh` is kept for one machine without the fleet.
+saskatchewan's run (`build/converge/20261026-181011`, 64 generations)
+ended there on 28 October. Its records are mirrored into
+`build/fleet-sync/saskatchewan/`, and its candidates are among the
+queue's families.
 
 ## 5. A dedicated machine
 
@@ -184,7 +208,11 @@ On a fresh Linux machine:
     # a C toolchain and git (Debian: apt-get install build-essential git make python3)
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     git clone git@github.com:treadcore/treadcore.git && cd treadcore
-    SEEDS=8 SECS=60 make census             # a short first run: it builds and plays
+    SEEDS=8 SECS=60 scripts/census.sh       # a short first run: it builds and plays
+
+To join the fleet instead, add the machine to orrery's queue
+(`build/queue/grove/config.json`, orrery `docs/fleet-train.md` section 5):
+it builds the newest commit itself and takes work.
 
 The brain crate should need only the C toolchain. The game's window
 needs the full `make deps`. `JOBS` defaults to `nproc`. Long runs
@@ -215,7 +243,8 @@ censuses:
     worker on each machine (`scripts/census-worker.sh`, to build when
     a second machine arrives) takes the next trial, runs `make census`
     on it with its own frozen binary, and copies the census folder
-    back.
+    back. (Done, as orrery's fleet queue: LAB-REPORT-BRAIN.md 110 to
+    116.)
   - `run.env` names the `HOST`, and `ledger.py --merge` joins every
     machine's rows without pooling them.
   - Each held-out read is one census on one machine. A trial's two

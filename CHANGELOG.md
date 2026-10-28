@@ -6,6 +6,16 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: training is no longer started from make. The 13 training and
+  measurement targets are gone from the Makefile; each is a run of
+  orrery's fleet queue, a button in its Training view or
+  `fleet-queue.py Q new KIND`. `scripts/parts.sh`, `switches.sh` and
+  `roundrobin.sh` print their censuses with `LIST=1`;
+  `scripts/set-defaults.py` writes a candidate into `weights.rs` and
+  `Tactics::default()`. A promotion is prepared by orrery on a branch,
+  tested and its families read, and reaches main only when Paul approves
+  (LAB-REPORT-BRAIN.md sections 114 to 116).
+
 - Changed: orrery holds all of the fleet's orchestration. The plan for
   treadcore, the Training view's document, the lanes and the counting
   moved to orrery's `tools/plans/` (treadcore's `scripts/fleet-view.py`,

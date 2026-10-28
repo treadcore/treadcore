@@ -9,9 +9,9 @@
 # difference a seat, its standard error over the seeds, and whether it
 # is outside two standard errors.
 #
-#   make switches                      12 seeds of 900 s on naval.map
-#   SWITCHES="cycle duck" make switches
-#   SEEDS=6 SECS=600 MAP=maps/x.map RESPAWNS=3 JOBS=3 make switches
+#   scripts/switches.sh                      12 seeds of 900 s on naval.map
+#   SWITCHES="cycle duck" scripts/switches.sh
+#   SEEDS=6 SECS=600 MAP=maps/x.map RESPAWNS=3 JOBS=3 scripts/switches.sh
 #
 # SPLIT=n plays each switch's seeds as n censuses over consecutive seed
 # ranges (CENSUS_SEED0), pooled by scripts/pool.sh into the switch's row:

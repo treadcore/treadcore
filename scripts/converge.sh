@@ -5,7 +5,7 @@
 # a trial that reads past two errors is read twice more on seeds no
 # step saw. Nothing is promoted: candidates wait for families and Paul.
 #
-#   make converge                    until stopped (pkill -f converge.sh)
+#   scripts/converge.sh                    until stopped (pkill -f converge.sh)
 #   UNTIL=06:30                      or until that hour
 #   GEN=12 SEEDS=55 SEED0=2000000 HELD=400 MAP=all JOBS=24
 #   SINCE=20261025-181300            the ledger's rows read against
@@ -69,7 +69,7 @@ with no map past two errors below is read twice more, on $HELD seeds
 each from 3000000 + 200000 k and 3100000 + 200000 k (k its turn
 among the run's held-out pairs). It is a candidate for Paul only if
 both reads are past two errors above with no map past two below, and
-then make families holds. The run changes no default.
+then its families hold (orrery runs them). The run changes no default.
 
 EXPECTED. The defaults sit at or near the top of each weight read so
 far (LR 88, 89): few trials past two errors, most of them chance;

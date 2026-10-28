@@ -52,7 +52,7 @@ machine resumes the same way. The most important:
 | Features on by default | a new behaviour is played from the start; the census guards it |
 | The rule before the run | what would confirm a change is written down before its census plays |
 | Two standard errors is the bar | below that, a difference is noise |
-| A default change runs `make families` | a census once passed while a family fell under its floor (CI-044) |
+| A default change runs the families (orrery's queue, since LR 112) | a census once passed while a family fell under its floor (CI-044) |
 | One machine a census | the sim is deterministic per machine, not across architectures |
 | Ask before the irreversible | commits and pushes when Paul asks; a tag only for a release he names; crates.io by Paul, a day after the tag |
 
@@ -119,7 +119,7 @@ flowchart LR
     S --> C[the census<br/>16 seats, 11 maps, fair seating]
     C --> H[held-out reads<br/>400 fresh seeds, twice]
     H --> DEF[a default, if Paul says yes]
-    DEF --> RUN[make converge<br/>reads every weight, all day]
+    DEF --> RUN[the fleet's search<br/>orrery's queue, every weight, all day]
     RUN --> IDEA
 ```
 
@@ -143,7 +143,8 @@ question families cannot: does the behaviour win matches.
 twice more on 400 fresh seeds each before it is a candidate, because a
 search over many weights finds lucky readings.
 
-**The run** (`make converge`). The census as a learner: every census
+**The run** (`make converge` until 28 October; since then the standing
+work of orrery's queue on the whole fleet). The census as a learner: every census
 in a ledger, each weight's response fit to it, the next trials
 suggested, any reading past two errors read held out. It runs until
 stopped, and it found dodge_horizon 2 on its own.
@@ -184,11 +185,14 @@ the record with its fix:
 
 ## 8. Every day from here
 
-The census machine runs `make converge` all day and all night on the
-current defaults, always reading and improving the coefficients. The
-morning read (`CENSUS.md` section 4) takes what it found: any weight
-through both held-out reads is a candidate, and Paul decides. A default
-change restarts the run.
+The fleet runs the search all day and all night from orrery's queue
+(`build/queue/grove`), on the newest pushed commit, always reading and
+improving the coefficients. The morning read (`CENSUS.md` section 4)
+takes what it found: any weight through both held-out reads is a
+candidate, its families run by themselves, the strongest can be
+prepared as a promotion on a branch, and Paul decides with Approve. A
+default change moves `weights.rs`, so the search reads from the new
+defaults on.
 
 The learned tank's training follows the same rhythm, with two
 commitments from 26 October:
@@ -210,11 +214,15 @@ Everything here runs from the repository:
 
 ```sh
 make test                 # every crate's tests
-make families             # the scenario families against their floors
-make census SEEDS=110     # the brain census on this machine
-make converge             # the census as a learner, until stopped
-make train PHASE=3 START=nets/phase1.bin   # the learned tank
+S=scenarios/x.toml make scenario           # one described situation
+TRIAL=a.weights SEEDS=110 scripts/census.sh   # the brain census on this machine
 ```
+
+Training and measurement on the fleet run from orrery
+(`~/code/orrery`, `docs/fleet-train.md`): the census, the families, the
+search, the learned tank and the promotions are runs of its queue
+(`build/queue/grove`), each a button in its Training view
+(LAB-REPORT-BRAIN.md 112 to 116).
 
 A change is proposed the same way the pair works: say what would
 confirm it before measuring it (`GOVERNANCE.md` section 5). A census

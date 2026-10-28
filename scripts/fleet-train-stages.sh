@@ -104,7 +104,7 @@ census_bin_hash() { ssh_ "$CENSUS_HOST" "sha256sum ~/code/treadcore/$1/census-bi
 
 # A census of NET (a path under the census machine's checkout); prints its folder.
 census_of() {
-    ssh_ "$CENSUS_HOST" "cd ~/code/treadcore && $CENSUS_ENV CENSUS_NET=\$HOME/code/treadcore/$1 make census > build/ft-census.log 2>&1; ls -td build/census/*/ | head -1 | sed 's:/\$::'"
+    ssh_ "$CENSUS_HOST" "cd ~/code/treadcore && $CENSUS_ENV CENSUS_NET=\$HOME/code/treadcore/$1 scripts/census.sh > build/ft-census.log 2>&1; ls -td build/census/*/ | head -1 | sed 's:/\$::'"
 }
 
 stage_judge() {

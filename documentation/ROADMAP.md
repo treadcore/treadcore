@@ -1252,6 +1252,15 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     ledger (3,622 censuses) and converge records; Shutdown Now (finish,
     report, power off, a report of who finished what); saskatchewan
     joined after generation 64; the standing queue grove.
+    Steps 3 to 6 (LR 114 to 116): every make target a run of the fleet
+    (census, parts, switches, roundrobin, spsa, tune, train, gauntlet,
+    clips, school, record, families, promote), each a button; the
+    Training view in pages (Fleet, Runs, Found, Net) with the newest
+    change and Found Improvement leaderboards; Sessions, a tmux session
+    a machine in 6x10; promotion prepared on a branch, approved by Paul;
+    the 13 targets gone from the Makefile. The first promotion (gen62/
+    best) stopped at a test: every strong candidate trades focus fire
+    for shooting the near tank in range. Paul to decide.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

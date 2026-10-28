@@ -6,9 +6,9 @@
 # then pooled overall and by map (scripts/pool.sh). Above zero the trial
 # scores more a seat.
 #
-#   TRIAL=a.weights make census                  against the defaults
-#   TRIAL=a.weights BASE=b.weights SEEDS=96 SEED0=96 JOBS=4 make census
-#   MAP=all SEEDS=88 make census                 every map and a new one
+#   TRIAL=a.weights scripts/census.sh                  against the defaults
+#   TRIAL=a.weights BASE=b.weights SEEDS=96 SEED0=96 JOBS=4 scripts/census.sh
+#   MAP=all SEEDS=88 scripts/census.sh                 every map and a new one
 #                                                generated each seed
 #
 # MAP is a file, a comma-separated list, `gen` or `all` (common.sh
@@ -16,7 +16,7 @@
 # weights files, run.env and pooled.txt under build/census/STAMP.
 # JOBS defaults to the machine's cores.
 #
-#   RESUME=build/census/STAMP make census        finish a stopped census
+#   RESUME=build/census/STAMP scripts/census.sh        finish a stopped census
 #
 # A resumed census reads its settings from the directory's run.env and
 # plays on its frozen binary and weights, so it must resume on the
@@ -25,7 +25,7 @@
 # whole (the sim is deterministic on one binary, so a seed replays as
 # it played). See documentation/CENSUS.md.
 #
-#   LOOKS=8 TRIAL=a.weights make census          the sequential census
+#   LOOKS=8 TRIAL=a.weights scripts/census.sh          the sequential census
 #
 # LOOKS (backlog 59, LR 79) reads the census as it plays at each LOOKS-th
 # of its seeds (scripts/sequential.py watch) and stops at the first look

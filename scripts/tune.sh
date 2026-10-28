@@ -15,10 +15,10 @@
 # A weights file is promoted to the default only by the rule in
 # ROADMAP.md goal 4: it beats the baseline over the fixed census.
 #
-#   make tune                         5 generations of 4, 2 seeds, 900 s
+#   scripts/tune.sh                         5 generations of 4, 2 seeds, 900 s
 #                                     (each seed three matches: the census
 #                                     puts every team in the trial seat)
-#   GENERATIONS=10 LAMBDA=6 make tune
+#   GENERATIONS=10 LAMBDA=6 scripts/tune.sh
 #   START=build/tune/x/best.toml      start from a file, not the defaults
 #   TUNE="w_wounded press_odds k_long" the weights to tune (default below)
 #   CAPS="smooth,priced_crossing"     the capabilities every child has

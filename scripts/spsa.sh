@@ -14,7 +14,7 @@
 # default 2 (LR 89: the unbounded walk of LR 88 went to 15 times a
 # default, where no census had looked); BOUND=0 lifts it.
 #
-#   make spsa                          8 steps, 12 seeds a step, naval.map
+#   scripts/spsa.sh                          8 steps, 12 seeds a step, naval.map
 #   TUNE="dodge_horizon dodge_clear"   the weights to tune (positive)
 #   START=file.toml                    start from a file, not the defaults
 #   SET="landfall_memory=3"            values set on the start (a planted test)

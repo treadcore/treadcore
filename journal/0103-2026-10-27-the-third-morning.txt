@@ -178,6 +178,14 @@ IV. CHRONOLOGY
        it joined grove; families on ea336a6, 40 of 40 hold. False start,
        marked: a pkill -f pattern killed its own ssh; process names
        since.
+   31. Steps 3 to 6 (LR 114 to 116, CI-075): every make target a run
+       (eight kinds tested tiny, all worked); the Training view in
+       pages after Paul's word on the marquee and the bars; Sessions in
+       6x10; promotion; the Makefile without training. The first
+       promotion stopped at the focus-fire test: Paul to decide. False
+       starts, marked: a switches.sh edit failed and the real script
+       ran for two minutes on the Mac (stopped, its folders removed);
+       run state was saved before the keeper had the jobs (fixed).
 
 V. RESULTS
 
@@ -226,6 +234,9 @@ VIII. NEXT STEPS
        to the store, if Paul grants them.
    11. castle_inside 8: its last two held-out reads, then a line in
        saskatchewan's candidates.txt with their verdict (LR 111 D).
+       Done (LR 112 D).
+   12. Paul: focus fire or the near tank in range (LR 116 D); then a
+       promotion; the fleet management test; the user guide.
 
 ACKNOWLEDGMENTS
 

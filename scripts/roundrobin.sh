@@ -6,8 +6,8 @@
 # The defaults are one of the styles. Above zero the row's style scores
 # more a seat than the column's.
 #
-#   make roundrobin                       profiles/*.weights and the defaults
-#   PROFILES="profiles/navy.weights defaults" SEEDS=44 make roundrobin
+#   scripts/roundrobin.sh                       profiles/*.weights and the defaults
+#   PROFILES="profiles/navy.weights defaults" SEEDS=44 scripts/roundrobin.sh
 #
 # SEEDS, SEED0, SECS, MAP (default all), RESPAWNS and JOBS go to each
 # census. Each pair's census is under build/census/ as usual; the

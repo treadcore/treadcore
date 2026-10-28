@@ -8539,3 +8539,287 @@ It is copied to each machine's home folder; Paul runs it once on each.
   - parts, switches, roundrobin, SPSA and tune;
   - train (evolution strategies), school, gauntlet and clips;
   - the recording.
+
+## 114. Every make target a run of the fleet, 28 October
+
+Step 3 of the move to orrery (LR 112). A **run** is what a person asks
+for:
+
+    fleet-queue.py Q new KIND key=value ...      # or a button, LR 115
+
+It is written to `Q/runs/RID.json`. orrery's plan for treadcore
+(`tools/plans/treadcore.py`) turns it into jobs at the next top-up, and
+keeps its state and results in `plan/runs/RID/`.
+
+### A. The kinds
+
+| Kind | Was | How it runs on the fleet |
+| --- | --- | --- |
+| census | `make census` | one census, trial against base (`trial=`, `base=`: a file or the text; `@best` is the search's newest best), on one machine with every core |
+| parts, switches, roundrobin | `make parts`, `make switches`, `make roundrobin` | the censuses the script lists with `LIST=1` (new: name, trial, base), a job each, on whichever machine is free; a table when all are back |
+| spsa | `make spsa` | `spsa.sh`'s rule (log space, a step a census of plus against minus, gains a/(k+1)^0.602 and c/k^0.101, each step capped and bounded), a step at a time |
+| tune | `make tune` | `tune.sh`'s (1 + lambda) evolution strategy; a generation's children side by side, the best replacing the parent only by beating it |
+| train, gauntlet, clips, school | the same make targets | the learning harness (`learn::harness::train` in the census binary), one job, on one host (`host=`); `start=`/`check=` nets are sent with it |
+| record | `scripts/fleet-record.sh` | a shard a job (`RECORD=`), delivered to the store with its sha256 checked at both ends (fleet-queue's `deliver`) |
+| families | `make families` | every candidate's families read again (LR 112 runs them by themselves) |
+| promote | (by hand) | LR 116 |
+| (standing) | `make converge`, `make ledger` | the queue's weight search (LR 110, 113) and its sync |
+
+The list of what to measure stays in treadcore. `LIST=1` in `parts.sh`,
+`switches.sh` and `roundrobin.sh` prints their censuses and plays none.
+The rules of spsa and tune are carried over as they are, so their
+results read as before.
+
+**One difference:** tune's children now play side by side, and the best
+of a generation replaces the parent. `tune.sh` played them one after
+another, a better child replacing the parent at once.
+
+### B. Priority, cancelling
+
+- **What a person asks for goes first.** A run's jobs carry
+  `"priority": "high"`, and the keeper files them ahead of the standing
+  trials.
+- **A run is planned at once.** The keeper tops up when `runs/` changes,
+  not only at its low-water mark.
+- **Runs advance by themselves.** A run reads its finished censuses and
+  writes its table whether or not a machine has built the newest commit
+  yet. Only a new job waits for its machine's build.
+- **`cancel RID`** takes a run's queued jobs off the queue; jobs already
+  running finish.
+
+### C. The test: a run of each kind, tiny
+
+28 October, about 10:00 to 10:20, on grove. Sizes: 1 to 4 seeds of 60 to
+120 s, to show the machinery, not to measure.
+
+| Run | Result |
+| --- | --- |
+| r0001 census, `castle_inside = 8`, 4 seeds of 120 s, every map | +0.18 ± 0.12 (calber) |
+| r0002 parts `-duck w_front=0`, 2 seeds of 60 s, naval | duck off −1.05 ± 0.13 (outside); w_front 0: +0.00 ± 0.00 |
+| r0003 switches `cycle` | +0.00 ± 0.00 |
+| r0004 spsa, 1 step of 2 seeds | step 1: d +0.01 ± 0.35; θ dodge_horizon 2.0099, dodge_margin 0.7961, dodge_clear 2.5124 |
+| r0005 tune, 1 generation of 2, 1 seed | the parent read (0.00, the defaults against themselves); its two children played next |
+| r0006 gauntlet, 5 runs | `gauntlet.tsv` for every milestone net |
+| r0007 record, 2 shards of 1 seed of 60 s | shard 9900000: 2,812,816 bytes delivered to calber, sha256 3172c40f… checked at both ends |
+| r0008 roundrobin, the defaults and castle | its two censuses queued |
+
+Each run's table, steps or children are in `plan/runs/RID/`.
+
+**Two faults, found by the test and fixed:**
+1. **A run's state was saved before the keeper had its jobs.** A planner
+   error later in the same top-up would leave the run marked running with
+   no jobs. Run state is now written when the top-up succeeds.
+2. **Runs waited for every machine's build of the newest commit,**
+   because of a guard at the top of `run_jobs`. Only new jobs wait now.
+
+### D. Also
+
+- **An accidental run, stopped.** While `LIST=1` was being tested, an
+  edit to `switches.sh` failed to apply, so the test loop ran the real
+  `switches.sh` on the Mac. It was stopped within two minutes. Its two
+  folders (one switch begun each, `forget`) were removed, and nothing was
+  pooled from them.
+- **Trial titles** end at a whole weight with "+N more" (`short_moved`).
+
+## 115. Everything a button: the Training view's pages, and Sessions, 28 October
+
+Step 4. Paul asked for several things:
+- every activity available from an interface button;
+- the mouse to show more detail on a matrix's cell;
+- a slim bar of the newest coefficient to change;
+- leaderboards of "Found Improvement", by variable and by machine;
+- text subshells in a grid, resumable in tmux or screen, starting with
+  copal-tm, "in tiny font so they fit, like pt8".
+
+On the first version he said: "the scrolling marquee is too much ...
+lets try to get your text to fit. add more screens or dropdown ... the
+progress bars, I'm a bit confused what they do, are they CPU meters?"
+
+### A. The Training view, in pages
+
+The band stays on top:
+- the headline;
+- the queue's bar, now with a key: jobs done, running, queued, failed;
+- the last finished job;
+- the last sync;
+- the operator's buttons: Stop adding or Resume adding, Collect results
+  and stop now, Sync now, and Shut the fleet down, which takes two
+  presses.
+
+Under the band is **one line: the newest change**, not a marquee. It
+gives the coefficient, its new value, its offset from the default, the
+census's difference, and the machine that read it. FOUND IMPROVEMENT is
+lit when the census was past two errors with no map below.
+
+Then four pages:
+
+| Page | What it holds |
+| --- | --- |
+| Fleet (the default) | a row a machine, two lines: CPU (the load average against its cores, amber past 90%), GPU (the card's use), each bar labelled, and what it runs for the queue; a key line says what the bars mean |
+| Runs | a button a kind of run with what it does (operator), and every run with its state; Cancel on a live run, Approve on a prepared promotion |
+| Found | Found Improvement by variable (how often a variable was in an improvement), by machine (improvements found of censuses read), and the newest changes in columns |
+| Net | the net's matrices, its heads, its agreement and census (as before); pointing at a cell reads its weight and what its row and column are, without enlarging |
+
+**Where it was checked.** Review frames at 1280 × 760 (`--frame-view
+training`, `ORRERY_FRAME_PAGE=N`) were read for overflow. Every page
+fits.
+
+**What the frames found:** this Mac's CPU read "200.6 of 8 cores busy".
+That was true. The Mac's load average was 236 while orrery and treadcore
+built in release beside its census; five minutes on, it was 95.
+
+**Where the ticker comes from.** The planner writes
+`plan/ticker.jsonl`, a line a finished census: each variable it moved,
+the value, the offset from the default, d ± se, the machine (from the
+census's `run.env`), and whether it was an improvement. Promotions and
+the steps of spsa and tune write lines too. The view reads the last 40,
+and counts the leaderboards from the whole file.
+
+### B. Sessions (Command-4)
+
+`src/sessions.rs`:
+- **A tile a machine:** the fleet's static list and this Mac.
+- **Each tile is a session named `orrery` on its machine,** in tmux, or
+  in screen where there is no tmux (boburner). It is started with
+  `copal-tm` where the machine has it (the three Alpine machines), and a
+  login shell after.
+- **The multiplexer draws, not orrery.** Every 0.9 s the worker fetches
+  the screen (`tmux capture-pane -p`, or `screen ... hardcopy`), and
+  sends what is typed into the focused tile (`send-keys -l`, named keys,
+  Control letters). One ssh connection a machine is kept open
+  (ControlMaster), so the polling is cheap.
+- **A full-screen program draws correctly** (copal-tm's monitor, top, an
+  editor), because tmux is the terminal emulator.
+- **Tiles are resized to fit,** and Enlarge gives one tile the whole body.
+- **The text is 6×10** (font.rs `F6X10`, about 8 point), from the X.Org
+  misc-fixed `6x10.pcf.gz` on a Copal node, padded to the table's 20
+  rows. Its ← and —, which 6×10 lacks, were drawn by hand.
+- **Sessions outlive orrery.** Any terminal joins one with
+  `ssh -t user@HOST tmux attach -t orrery`.
+
+**Checked** by a review frame (`--frame-view sessions`, which joins the
+sessions and waits): six tiles, readable. copal-tm on saskatchewan,
+columbia and nasser showed the queue's census processes. calber,
+boburner and the Mac showed shells.
+
+### C. Also
+
+- **`--queue DIR`** sets both what the Training view reads and what its
+  buttons run.
+- **`fleet-queue.py`** has the commands `new`, `runs`, `cancel`,
+  `approve`, `sync` and `shutdown-now`.
+
+## 116. Promotion, and the Makefile without training, 28 October
+
+Steps 5 and 6. Paul chose: "Prepare, you approve."
+
+### A. Promotion
+
+1. **`scripts/set-defaults.py FILE`** (treadcore) writes a weights file's
+   numbers into the `weights!` table of `weights.rs`.
+   - `--check` prints the changes and writes nothing.
+   - A name the table does not have is an error, and nothing is written.
+2. **A `promote` run** (orrery; `candidate=NAME`, or `@strongest`)
+   prepares it on this Mac, the one machine with push rights:
+   1. a worktree on a new branch `promote/QUEUE-RID` from `origin/main`;
+   2. the defaults written;
+   3. the brain's tests run;
+   4. the families run;
+   5. a commit whose message carries the evidence;
+   6. the branch pushed.
+   
+   A test or a family that fails stops it, with nothing committed. The
+   run is then **prepared**.
+3. **Approve** (the button on the Runs page, or `approve RID`) pushes the
+   prepared commit to `origin/main` as a fast-forward. If main has moved,
+   the push is refused and the promotion must be asked again. Approval
+   also queues every candidate's families again. The fleet builds the
+   new commit at its next top-up, and the search reads from the new
+   defaults from then on (LR 113 B).
+
+**Which candidate.** `@strongest` is the candidate with the best mean of
+its two held-out reads among those that hold every family. `evidence`
+lists all of them:
+
+| Candidate | Held out (400 seeds each) | Families |
+| --- | --- | --- |
+| 20261026-181011/gen62/best | +2.55 ± 0.28, +2.53 ± 0.29 | hold |
+| 20261026-181011/gen64/best | +2.40, +2.32 | hold |
+| 20261026-181011/gen58/best | +2.55, +2.00 | hold |
+| 20261026-181011/gen53/best | +2.20, +2.20 | hold |
+
+The first promotion, r0009, was asked for at 10:12 and began at 10:19.
+It prepares **gen62/best** (census +1.93 ± 0.81) on `promote/grove-r0009`:
+
+| Weight | Default now | gen62/best |
+| --- | ---: | ---: |
+| w_near | 1.0 | 2.0 |
+| w_in_range | 0.7 | 1.4 |
+| kite_in | 9.0 | 4.5 |
+| dodge_horizon | 2.0 | 1.14366 |
+| castle_inside | 4.0 | 6.72675 |
+| longshot_every | 5.0 | 2.5 |
+
+Its verdict is in section D. It reaches main only with Paul's Approve.
+
+### B. The Makefile
+
+**Removed:** the 13 training and measurement targets (`census`,
+`converge`, `ledger`, `spsa`, `tune`, `parts`, `switches`, `roundrobin`,
+`train`, `school`, `gauntlet`, `clips`, `families`), their help lines,
+and their `.PHONY` names.
+
+**In their place,** one help paragraph points at orrery. `make census`
+now says "No rule to make target".
+
+**The scripts stay,** and their usage lines name them directly:
+`scripts/census.sh` plays one census on this machine, and `make scenario`
+stays as a development tool.
+
+**The documents now point at orrery:**
+- CENSUS.md sections 2, 4 (and its resume prompt) and 4a;
+- PROCESS.md sections 7 to 9;
+- CLAUDE.md.
+
+### C. Next
+
+1. Test orrery in fleet management mode (Paul).
+2. The user guide (Paul's request of 28 October).
+
+### D. The first promotion stopped at a test
+
+r0009 (gen62/best) failed at the brain's tests, and nothing was committed
+or pushed. That is the guard working. Two findings:
+
+**1. The defaults were in two places.** `default_weights_are_todays_constants`
+holds the `weights!` table to `Tactics::default()` (tactics.rs), whose
+numbers are written out by hand (`kite_in` as `DIRECT_RANGE - 1.0`).
+`set-defaults.py` now writes a changed weight into `Tactics::default()`
+too, where a field has its name (an integer field stays an integer).
+
+**2. A designed behaviour changes with every strong candidate.**
+`focus_fire_picks_the_wounded_tank_a_teammate_is_on` places a tank among
+two enemies:
+- a fresh tank 6 tiles away;
+- a wounded tank (armour 40, one shot from dying) 14 tiles away, which a
+  teammate is already shooting.
+
+Today's defaults pick the wounded one, which is focus fire. Tried in a
+scratch worktree:
+- **gen62/best** (held out +2.54) picks the near one, p1 at 3.93: "6 out,
+  1 on it, in range, a threat". Its `w_near` is 2 and its `w_in_range`
+  1.4.
+- **gen58/best-less-w_near** (`w_near` at its default, held out +2.08)
+  picks the near one too: `w_in_range` 1.4 alone tips it.
+- **All 30 candidates with `w_near` 2 or `w_in_range` 1.4** (every one
+  past +2.10 held out) do the same.
+
+The census says shooting the near tank in range plays better, by about
++2.5 a seat; the test says focus fire is the design. **Which is Paul's
+call:**
+- accept the new behaviour, and change the test to the situation in
+  which focus fire should still win;
+- or keep focus fire as it is, and hold those two weights at their
+  defaults (most of the gain goes).
+
+Until he says, nothing is promoted.

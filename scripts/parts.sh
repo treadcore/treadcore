@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Each part off from the brain with every part on (roadmap backlog 48;
-# LAB-REPORT-BRAIN.md section 63): the reverse of `make switches`. The
+# LAB-REPORT-BRAIN.md section 63): the reverse of `scripts/switches.sh`. The
 # brain census (treadcore-brain fleet.rs `brain_census`) once for every
 # part, one team on the defaults (every part on), two with that part
 # off, every team in the trial seat on every seed. A capability is off
@@ -9,9 +9,9 @@
 # zero it pays. Prints a table: the difference a seat, its standard
 # error over the seeds, and whether it is outside two standard errors.
 #
-#   make parts                         every part, 12 seeds of 900 s
-#   PARTS="-posture w_front=0" make parts
-#   SEEDS=6 SECS=600 MAP=maps/x.map RESPAWNS=3 JOBS=4 make parts
+#   scripts/parts.sh                         every part, 12 seeds of 900 s
+#   PARTS="-posture w_front=0" scripts/parts.sh
+#   SEEDS=6 SECS=600 MAP=maps/x.map RESPAWNS=3 JOBS=4 scripts/parts.sh
 #
 # LIST=1 prints the censuses this would play, a line each, and plays none:
 # NAME, the trial's weights file and the base's, tab-separated, a file's
