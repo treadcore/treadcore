@@ -5,7 +5,8 @@
 
 Each `name = value` line of FILE sets that weight's default in
 source/treadcore-brain/src/weights.rs, the number on its line in the
-`weights!` table:
+`weights!` table, and the same number in `Tactics::default()`
+(tactics.rs) where a field is named for the weight:
 
     PressOdds "press_odds" 2.0, "odds: above these, close in";
 
@@ -24,6 +25,9 @@ import sys
 
 TC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RS = os.path.join(TC, "source", "treadcore-brain", "src", "weights.rs")
+# The same numbers written as constants: `Tactics::default()`, which the
+# brain's test `default_weights_are_todays_constants` holds the table to.
+TACTICS = os.path.join(TC, "source", "treadcore-brain", "src", "tactics.rs")
 LINE = re.compile(r'^(\s*[A-Z][A-Za-z0-9]*\s+"([a-z_0-9]+)"\s+)(-?[0-9][0-9.eE+-]*)(\s*,)')
 
 
@@ -56,8 +60,24 @@ def main():
     missing = sorted(set(want) - seen)
     if missing:
         sys.exit("no such weight in weights.rs: %s (nothing written)" % ", ".join(missing))
+    # Tactics::default(): a field named for a changed weight gets its number
+    # (an integer field stays an integer: from_weights rounds it).
+    tl = open(TACTICS).read().split("\n")
+    start = next((i for i, l in enumerate(tl) if l.startswith("impl Default for Tactics")), None)
+    if start is not None:
+        for i in range(start, len(tl)):
+            if tl[i].startswith("}"):
+                break
+            m = re.match(r"^(\s+)([a-z_][a-z0-9_]*): (.+),$", tl[i])
+            if m and m.group(2) in want and m.group(3) not in ("true", "false"):
+                v = want[m.group(2)]
+                lit = str(int(round(v))) if re.fullmatch(r"[0-9]+", m.group(3)) else number(v)
+                if lit != m.group(3):
+                    tl[i] = "%s%s: %s," % (m.group(1), m.group(2), lit)
+                    print("  Tactics::default() %s: %s -> %s" % (m.group(2), m.group(3), lit))
     if "--check" not in sys.argv:
         open(RS, "w").write("\n".join(lines))
+        open(TACTICS, "w").write("\n".join(tl))
 
 
 if __name__ == "__main__":
