@@ -13,6 +13,12 @@
 #   PARTS="-posture w_front=0" make parts
 #   SEEDS=6 SECS=600 MAP=maps/x.map RESPAWNS=3 JOBS=4 make parts
 #
+# LIST=1 prints the censuses this would play, a line each, and plays none:
+# NAME, the trial's weights file and the base's, tab-separated, a file's
+# lines joined by ";" (orrery's fleet queue plays them, a census a machine;
+# LAB-REPORT-BRAIN.md 114). A first line "#settings ..." gives SEEDS, SEED0,
+# SECS, MAP and RESPAWNS.
+#
 # JOBS runs that many censuses at once; the scores are the same either
 # way (the matches are deterministic). The ledger is not written. Logs,
 # the weights files and the table under build/parts/STAMP.
@@ -26,6 +32,18 @@ SECS="${SECS:-900}"
 MAP="${MAP:-maps/naval.map}"
 RESPAWNS="${RESPAWNS:-3}"
 JOBS="${JOBS:-1}"
+if [ -n "${LIST:-}" ]; then
+    echo "#settings SEEDS=$SEEDS SEED0=0 SECS=$SECS MAP=$MAP RESPAWNS=$RESPAWNS"
+    for p in $PARTS; do
+        k="$(echo "$p" | sed 's/^-//; s/=.*//')"
+        case "$p" in
+            -*) base="caps = baseline, $p" ;;
+            *=*) base="caps = baseline;${p%%=*} = ${p#*=}" ;;
+        esac
+        printf '%s\tcaps = baseline\t%s\n' "$k" "$base"
+    done
+    exit 0
+fi
 OUT="$BUILDDIR/parts/$STAMP"
 mkdir -p "$OUT"
 MAPFILE_="$(census_maps "$MAP")"

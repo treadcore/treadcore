@@ -19,6 +19,12 @@
 # threads than that sat half idle. SEEDS=200 SPLIT=2 JOBS=24 is backlog
 # 22 on a 24-thread machine. SEED0 moves the whole range.
 #
+# LIST=1 prints the censuses this would play, a line each, and plays none:
+# the switch, the trial's weights file and the base's, tab-separated
+# (orrery's fleet queue plays them, a census a machine; LAB-REPORT-BRAIN.md
+# 114). A first line "#settings ..." gives SEEDS, SEED0, SECS, MAP and
+# RESPAWNS.
+#
 # JOBS runs that many censuses at once; the scores are the same either
 # way (the matches are deterministic), only the microseconds a seat-tick
 # read high under load. The ledger is not written (CENSUS_LEDGER=0), so
@@ -34,9 +40,6 @@ RESPAWNS="${RESPAWNS:-3}"
 JOBS="${JOBS:-1}"
 SPLIT="${SPLIT:-1}"
 SEED0="${SEED0:-0}"
-OUT="$BUILDDIR/switches/$STAMP"
-mkdir -p "$OUT"
-MAPFILE_="$(census_maps "$MAP")"
 
 # What a switch needs on for every team, else nothing.
 needs() {
@@ -45,6 +48,18 @@ needs() {
         *) echo "" ;;
     esac
 }
+
+if [ -n "${LIST:-}" ]; then
+    echo "#settings SEEDS=$SEEDS SEED0=$SEED0 SECS=$SECS MAP=$MAP RESPAWNS=$RESPAWNS"
+    for s in $SWITCHES; do
+        n="$(needs "$s")"
+        printf '%s\tcaps = baseline%s, %s\tcaps = baseline%s\n' "$s" "${n:+, $n}" "$s" "${n:+, $n}"
+    done
+    exit 0
+fi
+OUT="$BUILDDIR/switches/$STAMP"
+mkdir -p "$OUT"
+MAPFILE_="$(census_maps "$MAP")"
 
 say "each switch alone: $SWITCHES; $SEEDS seeds from $SEED0 of $SECS s on $MAP, respawns $RESPAWNS, split $SPLIT, $JOBS at once -> $OUT"
 BIN="$(census_bin "$OUT")"
