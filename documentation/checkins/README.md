@@ -86,3 +86,4 @@ report is what ties a conversation to them. Named
 | [071](CI-071-2026-10-28-one-queue.md) | 28 October 2026 | One queue for the whole fleet: the weights and the net in turn, stop adding and stop now | 0103 | LAB-REPORT-BRAIN.md section 110 |
 | [072](CI-072-2026-10-28-full-queue-counts.md) | 28 October 2026 | The queue at full settings: 37,905 games and 1.46 billion thinks in four hours; no trial passes both reads yet | 0103 | LAB-REPORT-BRAIN.md section 111 |
 | [073](CI-073-2026-10-28-families-on-the-fleet.md) | 28 October 2026 | Families on the fleet: step 1 of moving training from make to orrery; 42 candidates hold; a dead host no longer fails the queue | 0103 | LAB-REPORT-BRAIN.md section 112 |
+| [074](CI-074-2026-10-28-orrery-holds-the-orchestration.md) | 28 October 2026 | Orrery holds the orchestration: the newest commit on every machine, sync, Shutdown Now; saskatchewan joins | 0103 | LAB-REPORT-BRAIN.md section 113 |

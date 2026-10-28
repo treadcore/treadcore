@@ -171,6 +171,13 @@ IV. CHRONOLOGY
        passed both reads twice and joined saskatchewan's candidates;
        boburner joined (CUDA 12.9, driver 580); nasser went down and
        its lane failed 11 jobs, so lanes now wait for a lost host.
+   30. Step 2 (LR 113, CI-074): orrery holds the orchestration; the
+       fleet follows origin/main and each machine fast-forwards and
+       builds it; sync (3,622 censuses, every machine); Shutdown Now
+       tested; saskatchewan's converge stopped after generation 64 and
+       it joined grove; families on ea336a6, 40 of 40 hold. False start,
+       marked: a pkill -f pattern killed its own ssh; process names
+       since.
 
 V. RESULTS
 

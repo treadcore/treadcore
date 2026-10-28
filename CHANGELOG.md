@@ -6,6 +6,16 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: orrery holds all of the fleet's orchestration. The plan for
+  treadcore, the Training view's document, the lanes and the counting
+  moved to orrery's `tools/plans/` (treadcore's `scripts/fleet-view.py`,
+  `fleet-jobs.py`, `fleet-count.py` and `fleet-plan.py` are gone). The
+  fleet follows `origin/main`: each machine fetches, fast-forwards its own
+  checkout and builds each commit. A sync gathers every machine's census
+  ledger into `build/ledger/fleet.tsv` on its own clock. Shutdown Now:
+  each machine finishes its job, reports and powers off, and a report
+  says who finished what (LAB-REPORT-BRAIN.md section 113).
+
 - Changed: families on the fleet. The queue runs `make families`'s test
   for every candidate (8 a job, side by side) and records each family's
   share in `plan/families.json`; all 42 candidates hold every floor.

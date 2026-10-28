@@ -13,6 +13,15 @@ Richeson (he/him). Journals and commits are in his name.
 - Measurement: `documentation/CENSUS.md` explains how to run, read and
   resume the census. **To resume work, follow its resume prompt
   (section 4).**
+- **Training runs on the fleet, from orrery** (`~/code/orrery`, since
+  LR 113): the queue `build/queue/grove`, its engine
+  `tools/fleet-queue.py`, its plan for treadcore `tools/plans/treadcore.py`,
+  the guide `docs/fleet-train.md`. treadcore keeps only the work (one
+  census, the tests, `ledger.py`, `suggest.py`, `tools/bc`). The fleet
+  follows `origin/main`: this Mac pushes, every machine fetches and
+  builds the newest commit. Every machine's censuses are gathered into
+  `build/ledger/fleet.tsv` by the queue's sync. Its status:
+  `python3 ~/code/orrery/tools/fleet-queue.py build/queue/grove status`.
 - History: `journal/` (one entry a session, `journal/TEMPLATE.txt`),
   `documentation/checkins/` (one report a check-in), `CHANGELOG.md`.
 - How it is made: `documentation/PROCESS.md`. The learned tank:
@@ -44,16 +53,20 @@ Richeson (he/him). Journals and commits are in his name.
 - **The rule before the run.** Write down what result would confirm a
   change before starting its census. Outside two standard errors is
   the bar.
-- **A default change runs `make families` too.** The census and the
+- **A default change runs the families too.** The census and the
   brain's tests passed on 5899e8e while a family fell under its floor
-  (CI-044, backlog 62).
+  (CI-044, backlog 62). The queue runs them for every candidate
+  (`plan/families.json`, LR 112).
 - **The game is hard for a person.** `SKILL=0.6 make run` is the dial
   Paul liked (LR 67). Leave it unless he asks.
 
 ## Things not to do without asking
 
 - Commit or push only when Paul asks. The remote is
-  `git@github.com:treadcore/treadcore.git`.
+  `git@github.com:treadcore/treadcore.git`. Since LR 113 Paul has asked
+  for a commit and push at the end of each step of the move to orrery,
+  so the fleet trains on the newest (28 October: "The computer running
+  orrery would be pushing").
 - **A `v*` tag starts GitHub Actions** (the packages workflow). They
   were paused 13 to 26 October; Paul lifted the pause for 0.2.0 ("Tag
   it"). Push a tag or trigger a workflow only when he asks for that

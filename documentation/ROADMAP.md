@@ -1244,6 +1244,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     by side; all 42 candidates hold every floor (gen64/best: held
     +2.40 and +2.32, the duel 76% to 84%); castle_inside 8 passed both
     reads twice; a dead host no longer fails the queue (orrery).
+    Step 2 (LR 113): orrery holds the orchestration (the plan, view,
+    jobs and count scripts moved to orrery's tools/plans/); the fleet
+    follows origin/main (each machine fetches, fast-forwards its own
+    checkout and builds each commit); history read where weights.rs is
+    the same (1,153 rows); a sync every 30 min gathers every machine's
+    ledger (3,622 censuses) and converge records; Shutdown Now (finish,
+    report, power off, a report of who finished what); saskatchewan
+    joined after generation 64; the standing queue grove.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

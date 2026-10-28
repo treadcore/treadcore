@@ -8343,3 +8343,199 @@ which stops its lane taking anything.
 Step 2: one ledger. It joins saskatchewan's 1,133 censuses (copied to
 `build/saskatchewan/`), the sample queue and `full-1`, each row keeping
 its machine.
+
+## 113. Orrery holds the orchestration: the newest commit, sync, and shutdown, 28 October
+
+Paul:
+> "to confirm. that all training of make, make census, make family, and
+> other fleet orchanization is now done, scheduled, and collected by
+> orrery. we want all orchestration coded in orrery, so we don't need to
+> manually collect using manual shell commands, we want a sync updater.
+> we also want the fleet to be able to accept Shutdown Now commands for
+> the fleet . Where we finished, report back, then shut down as they
+> complete."
+
+Then: "yes, go ahead in that order. and make sure at each step. each of
+the comptuers in the fleet get the updated values for training. i'm sure
+its already done, but we need to be git pushing and git pulling and
+using these numbers to always work with the newest. The computer running
+orrery would be pushing."
+
+The answer to "to confirm" was no. Only weight trials, net rounds and
+families ran from orrery; the rest were make targets or hand commands.
+This section is the second step.
+
+### A. What moved
+
+**From treadcore to orrery:**
+
+| treadcore (removed) | orrery |
+| --- | --- |
+| `scripts/fleet-plan.py` | `tools/plans/treadcore.py`, the plan for treadcore |
+| `scripts/fleet-view.py` | `tools/plans/treadcore-view.py`, what the Training view draws |
+| `scripts/fleet-jobs.py` | `tools/plans/treadcore-jobs.py` |
+| `scripts/fleet-count.py` | `tools/plans/treadcore-count.py` |
+
+**treadcore keeps the work**, which orrery calls:
+- `scripts/census.sh`;
+- the brain's test binary (the census and the families);
+- `scripts/ledger.py` and `scripts/suggest.py`;
+- `tools/bc`.
+
+`fleet-record.sh` and `fleet-train-stages.sh`, the recording, move with
+the job kinds (step 3).
+
+### B. The newest commit, on every machine
+
+`plan.json`'s `"commit": "origin/main"` is read again, after a
+`git fetch`, at every top-up.
+
+**Building.** Each machine builds each commit once:
+- in `~/fleet/q-NAME/c/SHORT/`, as a worktree with the census binary and
+  the defaults;
+- by a job `prep-HOST-SHORT`, which every later job on that machine
+  waits for.
+
+New jobs use the newest commit. A job already planned runs on the
+build it was planned with.
+
+**Pulling.** Before building, a machine fast-forwards its own checkout
+(`~/code/treadcore`) to `origin/main`. It does so only when the checkout
+is clean and on main; otherwise it says so and leaves it as it is.
+saskatchewan's checkout went from 7d0af54 to ea336a6 ("checkout: main at
+ea336a6").
+
+**Pushing.** This Mac, which runs orrery, pushes. Paul asked for a commit
+and push at the end of each step, so the fleet trains on the newest.
+
+**History follows the defaults.** The fit reads the queue's own censuses,
+and the fleet's history (`"history": "build/ledger/fleet.tsv"`) where a
+row has:
+- 55 seeds or more, 900 s, and every map;
+- a commit whose `weights.rs` is today's (compared by git's blob hash,
+  never a dirty "+").
+
+A promotion changes `weights.rs`, so later trials are read against the
+new defaults and are never mixed with the old. grove's first generation
+read **1,153** history rows: saskatchewan's converge run, and the
+queues. Its first `best` combined `castle_inside` 8 with converge's
+`kite_in`, `longshot_every`, `w_in_range` and `w_near`.
+
+### C. Sync: gathered without a hand
+
+The keeper runs `PLANNER sync` every `sync_s` seconds (1,800), and at the
+end. A sync does three things:
+1. **Each machine's ledger.** `scripts/ledger.py` runs on that machine
+   over ssh, so each row keeps its census binary's hash. The ledgers go
+   to `build/ledger/HOST.tsv`.
+2. **Each machine's converge records**, without binaries, into
+   `build/fleet-sync/HOST/converge/`.
+3. **Every queue's ledger.**
+
+All of it is joined by `ledger.py --merge` into `build/ledger/fleet.tsv`,
+with a summary in `build/ledger/sync.json`. The Mac's names
+(users-iMac, users-iMac.lan, iMac.lan) become one, `mac`, by the
+config's `aliases`.
+
+The first sync took 13.7 s and joined **3,622 censuses**:
+
+| Machine | Censuses |
+| --- | ---: |
+| saskatchewan | 1,139 |
+| the Mac | 1,435 |
+| columbia | 450 |
+| calber | 438 |
+| nasser | 151 |
+| boburner | 9 |
+
+`tools/fleet-queue.py DIR sync`, or **Sync now** in orrery, gathers at
+once. This replaces the rsync and the ledger script run by hand earlier
+in the day.
+
+### D. Shutdown Now
+
+`tools/fleet-queue.py DIR shutdown-now`, or **Shut the fleet down** in
+orrery, which must be pressed twice.
+
+1. **Nothing new starts.** The flags are STOP_ADDING and SHUTDOWN.
+2. **Each lane finishes the job in hand.** Its results are fetched as
+   always.
+3. **It reports:** `PLANNER sync HOST` gathers that machine's ledger
+   before it goes.
+4. **It powers off,** by the host's `poweroff` command in `config.json`.
+   - The command is run detached, after a 2 s sleep, so ssh's lost
+     connection is expected.
+   - A host that then answers is reported `poweroff failed`.
+   - A host with no `poweroff` is `left running`.
+5. **The keeper writes `shutdown.json`** when no lane is left, and ends.
+   For each machine it holds the last job, its result and time, whether
+   it reported, and its power state. It also lists the jobs never
+   started.
+
+**Tested on a scratch queue** of this Mac (no `poweroff`) and boburner
+(`"poweroff": "true"`, a command that does not power off), with six 8 s
+jobs and shutdown asked at 4 s:
+
+```
+here: t00, left running; boburner: t01, poweroff failed; 4 jobs never started
+```
+
+Both finished the job in hand and reported, and neither took another.
+
+**No machine can yet power off without a password.** `sudo -n` and
+`doas -n` fail on all five. orrery's `tools/fleet-poweroff-setup.sh`
+writes one rule that lets `user` run only the power-off command:
+- `/etc/doas.d/fleet-poweroff.conf` on the Alpine machines;
+- `/etc/sudoers.d/fleet-poweroff` on the Ubuntu ones, checked by
+  `visudo -c`.
+
+It is copied to each machine's home folder; Paul runs it once on each.
+
+### E. Orrery
+
+- **`--queue DIR`.** One flag sets both what the Training view reads and
+  what its buttons run:
+
+  ```
+  cargo run --release -- --gui --operator paul --fleet grove --fleet-cmd "$HOME/.local/bin/copal fleet" --queue $HOME/code/treadcore/build/queue/grove
+  ```
+
+- **Two buttons:** Sync now, and Shut the fleet down (two presses).
+- **New lines under the bar:** the last sync, and the shutdown report.
+- **The guide,** `docs/fleet-train.md`, is rewritten for grove.
+- **Checks:** 335 tests pass, and the build is clean in the files
+  changed.
+
+### F. saskatchewan joins
+
+- **Its converge run stopped at the end of generation 64**, at 09:31:21,
+  as Paul asked ("stop saskatchewan after this run").
+  - Generation 65's first census had started 12 s before. Its
+    `census.sh` kept launching games until it was stopped by process
+    name (`pkill -x census-bin`).
+  - That census is unfinished: a `RESUME` would replay it.
+- **Its data:** 1,140 censuses and the converge records, copied to the
+  Mac and now gathered by every sync.
+- **In grove,** it is the census host (it supplies the defaults) and
+  takes CPU work: 24 threads.
+
+### G. The queues
+
+- **full-1** drained: its 9 queued trials were set aside unstarted, and
+  its running jobs finished.
+- **grove** started at 09:35 on saskatchewan and boburner. Both built
+  ea336a6 in 17 to 19 s, the build cache being shared.
+- **The other machines join grove** as full-1 ends.
+- **Families on ea336a6:** 40 candidates (the defaults and converge's 39),
+  and **all 40 hold every floor**, as on 8e5df88.
+
+### H. Also
+
+- **The lost ethernet.** Paul unplugged a cable during the day; nasser's
+  outage at 09:07 was that. With the keeper of LR 112's fix, a lost host
+  now waits instead of failing jobs.
+- **Next, step 3:** every other make target as a job kind of the plan:
+  - a census of A against B;
+  - parts, switches, roundrobin, SPSA and tune;
+  - train (evolution strategies), school, gauntlet and clips;
+  - the recording.
