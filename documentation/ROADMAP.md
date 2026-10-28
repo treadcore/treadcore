@@ -1285,7 +1285,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     held-out reads; the strongest current candidate whose families hold
     promotes itself; its tests and families on a branch, then main;
     every machine's build checked for its values. State: on; r0019
-    promoting grove/w0034; r0014 and r0015 adopted.
+    promoted grove/w0034, main dc3df01 (LR 119); r0014 and r0015
+    adopted.
+73. The rotation. (28 October; cause: Paul, "Is there a do one of each
+    on rotation method that is the default choice?"; LR 119, CI-078.)
+    One of each kind of run in turn, a run active in each of two
+    lanes (brain; net), fresh seeds each turn, measurements once per
+    set of defaults. State: on; r0020 spsa, r0021 train.
 
 ## Sequencing
 

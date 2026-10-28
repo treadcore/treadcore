@@ -197,6 +197,12 @@ IV. CHRONOLOGY
        values. The first: r0019, grove/w0034. On the way, Orrery.app
        ran the Mac out of memory (an autorelease pool, fixed in orrery;
        its own lab report), and both programs became Mac apps.
+   34. The first auto promotion (LR 119, CI-078): grove/w0034, 109
+       tests and nine families, main at dc3df01. False start, marked:
+       the pass that pushed failed on a Tactics::default() line and left
+       two runs and an unsaved state (fixed: changed_vars, runs written
+       with the state). The rotation, one of each kind in turn; the
+       Runs page for the cycle.
 
 V. RESULTS
 

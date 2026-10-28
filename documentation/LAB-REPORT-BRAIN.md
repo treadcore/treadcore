@@ -9046,3 +9046,116 @@ defaults.
 - The promotion's tests (the focus-fire test, LR 117, holds both ends on
   the search's weights) and families decide r0019.
 - Then the propagation check reads each machine's build.
+
+## 119. The first auto promotion, the rotation, and a pass that failed, 28 October
+
+### A. grove/w0034 is the defaults (r0019)
+
+The promotion asked by auto mode at 14:14 ran on the Mac in 66 s.
+- **The brain's tests:** 109 passed, 0 failed. That includes the
+  focus-fire test, which since LR 117 holds both ends of `focus_blend`.
+  It stopped r0009, and w0034 moves `w_near` and `w_in_range` to double.
+- **Every family held** (`every_family_holds_its_floor`):
+
+      a-duel-in-the-open               83.5% +/- 1.9%   floor 55%
+      a-naval-start-by-a-bare-islet   100.0%            floor 95%
+      a-raid-on-a-guarded-base         81.5% +/- 1.9%   floor 75%
+      a-raid-on-the-held-ground       100.0%            floor 95%
+      a-rolling-tank-under-a-shell     99.8% +/- 0.1%   floor 99%
+      a-rolling-tank-under-two-shells  99.3% +/- 0.3%   floor 99%
+      a-standing-tank-under-a-shell   100.0%            floor 99%
+      a-standing-tank-under-two-shells 99.7% +/- 0.2%   floor 99%
+      a-tank-under-a-ready-gun         82.4% +/- 1.2%   floor 80%
+
+Auto mode pushed it to main as **dc3df01**. The new defaults:
+
+| Weight | Was | Now |
+| --- | --- | --- |
+| `w_near` | 1.0 | 2.0 |
+| `w_in_range` | 0.7 | 1.4 |
+| `kite_in` | 9 | 4.5 |
+| `w_pos_fortify` | 3 | 6 |
+| `dodge_horizon` | 2.0 | 1.083 |
+| `castle_inside` | 4 | 8 |
+| `longshot_every` | 5 | 2.5 |
+
+Its evidence: census +2.49 ± 0.94; held out +2.67 ± 0.27 and
++3.17 ± 0.20 (400 seeds each). Every machine has a build of dc3df01
+queued, and the propagation check (LR 118 B 5) reads each one's
+defaults when it is done.
+
+### B. A pass that failed, and what it left
+
+The pass that approved r0019 pushed, then failed writing the ticker
+line. It read set-defaults.py's echo line `Tactics::default() kite_in:
+DIRECT_RANGE - 1.0 -> 4.5` as a number, which it is not.
+- **Unsaved state.** The planner never saved its state, so r0019 still
+  read "running".
+- **Two rotation runs.** The pass had already written two (r0020,
+  r0021). A second pass failed the same way and wrote nothing more: the
+  rotation saw its lanes taken.
+- **No harm to main:** the push is a fast-forward, and pushing the same
+  commit again does nothing.
+
+Fixed in orrery (cf242d0):
+- `changed_vars()` reads only `name old -> new` lines. That serves the
+  ticker, and the propagation check too, which would have read
+  `Tactics::default()` as a weight every machine lacked.
+- New run files are written by `keep()`, with the state, so a failed
+  pass leaves no run behind.
+- The rotation's counters were set by hand to match r0020 and r0021.
+
+The next pass marked r0019 approved.
+
+### C. The rotation
+
+Paul: "Is there a do one of each on rotation method that is the default
+choice? Can we have that." Auto mode now asks one run of each kind in
+turn, with one run active in each of two lanes:
+
+| Lane | Kinds, in turn |
+| --- | --- |
+| brain | spsa, tune, census of `@best`, parts, switches, roundrobin, record |
+| net | gauntlet, train, school |
+
+How it runs:
+- **Fresh seeds.** tune replayed seeds from 0 every run and spsa from
+  1000. Both now take `seed0`, from 500,000,000 a million a turn. record
+  takes the next 48 seeds.
+- **Measurements once per set of defaults:** parts, switches, roundrobin
+  and gauntlet.
+- **Adoption:** a search's result is adopted, and so is a passing census
+  of `@best`.
+- **Priority:** rotation runs share the fleet with the standing search;
+  a run asked by hand goes first.
+
+`fleet-queue.py Q rotation on|off` turns it on or off, and so does a
+button on the Runs page. The first two rotation runs are r0020 (spsa)
+and r0021 (train).
+
+**The Runs page,** for the cycle:
+- each button says what it does now: searches adopted, measurements
+  once per set of defaults, families automatic after a promotion,
+  promote now;
+- the runs list marks the rotation's runs (r) and auto mode's (a).
+
+### D. The keeper's gap
+
+A keeper plans when its queue runs low or `runs/` changes. A prepared
+promotion therefore waited behind a full queue: r0019 was approved only
+when a file in `runs/` was made and removed by hand.
+- **Now:** every sync (30 min) ends by doing the same, so a finished run
+  or prepared promotion waits at most one sync.
+- **From the next keeper start:** a keeper also plans every 5 minutes.
+- **Not restarted now:** restarting the keeper would requeue its six
+  running jobs.
+
+### E. Next
+
+- Each machine's build of dc3df01, and its confirmation (the Candidates
+  page).
+- The search goes on from the new defaults. Every candidate before it
+  is now on older defaults, so none promotes itself until it is read
+  again.
+- r0014 and r0015 are adopted when the census host's build brings back
+  today's defaults. They are now read against w0034's defaults.

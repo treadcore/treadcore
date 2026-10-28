@@ -6,6 +6,12 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the brain's defaults are grove/w0034's, promoted by orrery's
+  auto mode after the brain's tests and every family held: `w_near` 2,
+  `w_in_range` 1.4, `kite_in` 4.5, `w_pos_fortify` 6, `dodge_horizon`
+  1.083, `castle_inside` 8, `longshot_every` 2.5. Auto mode also runs
+  one of each kind of run in turn (LAB-REPORT-BRAIN.md section 119).
+
 - Changed: the fleet's cycle closes itself (orrery's auto mode, on by
   default). A spsa or tune run's result is adopted with its two held-out
   reads; the strongest current candidate whose families hold is
