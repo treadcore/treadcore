@@ -6,6 +6,23 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Measured: behaviour cloning of the scripted brain into the learned
+  tank's net (`nets/bc1.bin`), trained on calber's GTX 1080 Ti with
+  Burn. It agrees with the scripted brain on held-out matches (drive
+  65.5% against 36.5% for always the commonest label), and Rust's
+  `Net::forward` gives the trainer's figures exactly; in the census it
+  plays worse than `nets/map7.bin`, -2.85 +/- 0.44 paired over 110
+  seeds. For this net the GPU is not faster than the CPU (6.4 ms a step
+  against 5.6 ms); what would make it so, listed
+  (LAB-REPORT-BRAIN.md section 106, LEARNING-DESIGN.md).
+
+- Added: `RECORD=` (the scripted brain's choices through the learned
+  tank's senses and masks, `TCBC2`), `AGREE=` (a net's held-out
+  agreement in Rust), and `tools/bc`, the Burn trainer, its own Cargo
+  project, on CUDA or the CPU (`BC_DEVICE=cuda|flex`), timed by part
+  (LAB-REPORT-BRAIN.md section 106). `documentation/LEARNING-DESIGN.md`,
+  the learning process.
+
 - Measured: a second census machine, columbia, plays the census
   machine's job identically with the run's frozen binary
   (LAB-REPORT-BRAIN.md section 105).

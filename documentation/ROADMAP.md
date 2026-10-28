@@ -1197,6 +1197,15 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     open maps and the gauntlet as a guard proposed, Paul to decide.
     A fleet: islands, then specialists, then one evolution over the
     fleet (LR 104, E).
+    Behaviour cloning (LR 106, 27 and 28 October; cause: Paul, "start
+    the behaviour cloning on calber."): the recorder, the Burn trainer
+    on calber's 1080 Ti, nets/bc1.bin. Held out it imitates (drive 65.5%
+    against 36.5%), and Rust plays it exactly as trained; in the census
+    on columbia it reads -2.85 +/- 0.44 below map7, paired: cloning
+    alone does not carry into a match. The GPU is not faster for this
+    net (6.4 ms a step against the CPU's 5.6); larger batches, the data
+    on the card and fewer launches first. Next (LR 107, Paul to
+    choose): PPO from the clone, the clone's inputs, or DAgger.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every

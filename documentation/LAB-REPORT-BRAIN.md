@@ -7521,6 +7521,132 @@ written net through Rust's own `Net::forward` on the same held-out samples:
 counts. The GPU-trained coefficients play in the Rust brain as they were
 trained.
 
-**Rule part 2** (the census, bc1 against map7, one machine): next, on
-columbia.
+**Rule part 2** (the census, bc1 against map7, one machine): F below.
 
+### E. Is the GPU faster? Time, measured
+
+Paul asked for a time-based answer. `tools/bc` times each part of a run
+(`3567f7f`): reading the recording, the first step (where the kernels are
+compiled), building batches on the CPU, and the device's steps. The same
+recording, batch 4,096, Adam 1e-3, on calber (i7-9700F, 8 threads; GTX 1080
+Ti), 28 October 2026:
+
+| | CUDA (1080 Ti) | flex (Burn's CPU backend) |
+| --- | --- | --- |
+| Reading the 1.46 GB recording | 1.3 s | 1.3 s |
+| First step (kernels compiled, then tuned) | 3.1 s; 23.2 s on a second, colder run | 0.0 s |
+| First epoch, steps | 8.1 s; 17.9 s on the colder run | 3.1 s |
+| A settled epoch: batches built on the CPU + steps | 0.8 s + 3.5 s | 0.8 s + 3.1 s |
+| A settled step | **6.4 ms** | **5.6 ms** |
+| CPU used | 107% (one core feeding the card) | 179% (under two of eight cores) |
+| 12 epochs, end to end | 64 s (`time-cuda.log`) | about 47 s (2 epochs measured: 8 s) |
+| Training loss, epochs 1 and 2 | 1.4090, 1.1045 | 1.4058, 1.1020 |
+
+**The GPU is not faster for this net. The CPU is, by an eighth a step,
+and by much more once the GPU's warm-up is counted.** The warm-up varied
+from 3 s to 23 s between two runs of the same program, and the first
+epoch's steps from 8 s to 18 s: CubeCL compiles each kernel for the card
+and then tunes it, and how much of that a run repeats depends on what an
+earlier run left cached. A run of a minute pays it in full.
+
+**Why.** The net is small: 143 x 64 + 64 x 64 + 64 x 42 = 15,936
+multiply-adds a sample forward, about 96,000 floating-point operations
+with the backward pass, so 0.39 GFLOP a step at 4,096. In 6.4 ms that is 61
+GFLOP/s: about **half a percent** of the card's 11 TFLOP/s. The card is
+waiting, not computing. An estimate of where its time goes, from the
+trainer's code (not measured kernel by kernel):
+
+- **About two hundred small kernels a step,** each launched separately:
+  the three layers forward and back, a masked log-softmax for each of five
+  heads, and Adam's update of six tensors. A launch costs tens of
+  microseconds whatever it computes.
+- **Fifteen uploads a step:** the senses, then a one-hot label and a mask
+  for each of seven heads, each built on the CPU (0.8 s an epoch, one
+  thread).
+- **A wait every step:** the loss is read back to the CPU after each step
+  (`into_scalar`), so the CPU cannot queue the next step while the card
+  works on this one.
+
+**What would make it efficient,** in the order to try them, cheapest
+first:
+
+| | Change | What it removes | Expected |
+| --- | --- | --- | --- |
+| 1 | Batch 16,384 to 65,536 (the learning rate re-tuned) | four to sixteen times fewer steps; a step costs nearly the same, being launch-bound | the largest single gain on the GPU; the CPU gains little |
+| 2 | Read the loss once an epoch (summed on the card) | 546 waits an epoch | the CPU queues ahead |
+| 3 | Put the recording on the card once (1.3 GB of senses and the labels as integers, on an 11 GB card), and gather batches there | building batches (0.8 s an epoch) and the uploads | the epoch becomes the card's own time |
+| 4 | One masked log-softmax over all heads (padded to 7 x 10), and Burn's kernel fusion | most of the launches | fewer, larger kernels |
+| 5 | flex on all eight cores | flex used under two | the CPU's own number, before the GPU is judged against it |
+| 6 | **Not** half precision | Pascal (GP102) runs f16 arithmetic at 1/64 the rate of f32 | f16 for storage only, if memory ever binds |
+
+**When the GPU pays.** When a step has enough arithmetic to hide the
+launches: larger batches; a larger net (PPO's value head, or senses of the
+map as an image); many nets trained at once (an ES population evaluated as
+one batched forward). For BC on this 16,000-multiply net, the CPU is the
+right tool today, and the time that matters is recording and playing
+matches, which are CPU work on every machine (`LEARNING-DESIGN.md` VIII).
+
+**Toward parity check 3** (the same trainer on the CPU and the GPU): the
+two runs' losses after epochs 1 and 2 are within 0.3% of each other (the
+first batches differ, being drawn by each device's own random numbers),
+and flex's net after 2 epochs agrees with the scripted brain on drive 64.1%
+(CUDA's after 12: 65.3%). Indicative, and not the check: that needs the
+same seed and epochs on both, and a stated tolerance (LR 107).
+
+**The rule for the next timing, written before it:** with changes 1 to 3
+(batch 32,768, the loss read once an epoch, the recording on the card), a
+settled CUDA epoch takes **under 1.0 s**, and less than flex's at the same
+settings on all eight cores; and the held-out drive agreement stays within
+one point of 65.5%. If the CUDA epoch stays above flex's, BC stays on the
+CPU and the GPU waits for PPO.
+
+### F. Rule part 2: the census
+
+On columbia (LR 105), at `742037d`, one frozen binary for both (`census-bin`
+sha256 `b58bf40a...`), the settings of C: 110 seeds from 500,000, every
+map, 900 s, respawns 3. The two censuses ran one after the other, 27
+October 18:24 and 18:34 (`build/census/20261027-182432` and `-183427`,
+logs in `build/bc/`):
+
+| Trial team | Against the defaults, 110 seeds |
+| --- | --- |
+| `nets/bc1.bin` | **-23.18 +/- 0.49** |
+| `nets/map7.bin` | **-20.33 +/- 0.27** |
+| bc1 less map7, paired by seed | **-2.85 +/- 0.44** (6.5 errors below; bc1 ahead on 29 seeds of 110) |
+
+**Rule part 2: failed.** bc1 plays worse than map7, outside two errors,
+not above it. map7 read exactly what it read on saskatchewan (-20.33 +/-
+0.27), a second confirmation that columbia plays the census machine's
+matches.
+
+By map (10 seeds each), bc1 is below map7 on nine maps and above it on
+two, the fortress isles: fortressisles2 -15.27 against -19.58,
+fortressislesx -14.61 against -17.28. Its worst are island (-29.51 against
+-21.84), generated (-29.40 against -21.62) and industry (-27.75 against
+-20.83).
+
+**What it means.** Cloning taught the net the scripted brain's choices
+two times in three where the drive had a choice (D), and that is not
+enough to play: a tank that does the right thing two thirds of the time
+and something else the rest drives a different route from both the
+teacher and a net trained for itself. This is the case C named: "if 1
+holds and 2 fails, cloning alone does not carry into matches". The finding
+is that the agreement a held-out sample measures, one decision at a time,
+does not carry into a match, where errors compound over a route; it is
+the usual weakness of behaviour cloning (the learner meets states the
+teacher never led it into).
+
+**What follows** (LR 107, to be chosen):
+
+1. **PPO from the clone,** as C planned either way: the clone as the
+   starting point, the census's score as the reward.
+2. **Fix the clone's inputs first:** 65% on the drive is a ceiling the
+   senses may set; a sector label from a route the net cannot see (the
+   route is planned over the whole map) may not be learnable from 143
+   senses. A check: agreement on samples where the route's first leg is
+   in sight, against samples where it is not.
+3. **Record where the clone goes** (DAgger: the net drives, the scripted
+   brain labels), so it learns from the states its own errors lead to.
+
+Reported without a pass mark (C.3), still to run: the gauntlet and the
+match reading of bc1.

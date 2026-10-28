@@ -78,3 +78,6 @@ report is what ties a conversation to them. Named
 | [063](CI-063-2026-10-27-the-third-morning.md) | 27 October 2026 | The third morning: thirty generations of the run, and no candidate | 0103 | LAB-REPORT-BRAIN.md section 101 |
 | [064](CI-064-2026-10-27-generations-watched.md) | 27 October 2026 | Generations watched: clips of each learned tank, a gauntlet of single decisions, and what the AI costs | 0103 | LAB-REPORT-BRAIN.md section 102 |
 | [065](CI-065-2026-10-27-the-school.md) | 27 October 2026 | The school: both brains training at once, and how more machines would help | 0103 | LAB-REPORT-BRAIN.md section 103 |
+| [066](CI-066-2026-10-27-reading-the-reports-and-a-fleet.md) | 27 October 2026 | Reading the reports, what a read may adjust, and a fleet of census machines | 0103 | LAB-REPORT-BRAIN.md section 104 |
+| [067](CI-067-2026-10-27-columbia-identity.md) | 27 October 2026 | A second census machine and its identity check | 0103 | LAB-REPORT-BRAIN.md section 105 |
+| [068](CI-068-2026-10-28-behaviour-cloning.md) | 28 October 2026 | Behaviour cloning on a GPU, and whether the GPU was faster | 0103 | LAB-REPORT-BRAIN.md section 106 |

@@ -96,6 +96,21 @@ IV. CHRONOLOGY
        The school had ended at round 25 (12 rounds with nothing kept);
        the run at generation 47 had two more candidates, gen44 and
        gen45.
+   15. The CUDA node, calber (GTX 1080 Ti, Ubuntu 24.04, driver 580,
+       CUDA 12.9): Burn 0.22.1 runs on Pascal (orrery's reports).
+   16. Behaviour cloning (LR 106, CI-068): the scripted brain recorded
+       through the learned tank's senses and masks, 2,490,248 samples;
+       trained on the 1080 Ti; held out, drive 65.5% against 36.5% for
+       the commonest label; Rust plays the net exactly as trained.
+       False start: an epoch first read as 42 s was the load; about
+       4 s.
+   17. 28 October, the time analysis Paul asked for: the GPU is not
+       faster for this net, 6.4 ms a step against the CPU's 5.6, the
+       card about half a percent busy; what would make it so, in
+       order, with the rule for the next timing (LR 106 E).
+   18. Rule part 2 on columbia: bc1 -23.18 +/- 0.49, map7 -20.33 +/-
+       0.27, paired -2.85 +/- 0.44. Failed: cloning alone does not
+       carry into a match (LR 106 F).
 
 V. RESULTS
 
@@ -131,6 +146,10 @@ VIII. NEXT STEPS
     4. The candidate of generation 36: make families, then Paul.
     5. The school's two guards, if Paul says.
     6. The fleet's code when the first Copal worker is on the network.
+    7. The learned tank after cloning, Paul to choose (LR 106 F): PPO
+       from the clone, the clone's inputs, or DAgger; the gauntlet
+       and match reading of bc1.
+    8. The GPU changes of LR 106 E, judged by its rule.
 
 ACKNOWLEDGMENTS
 
