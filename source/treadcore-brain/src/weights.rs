@@ -73,7 +73,7 @@ macro_rules! weights {
 
 weights! {
     // Tactics: target selection (tactics.rs; the 22 weights and their scales).
-    Near "w_near" 1.0, "target: worth of nearness, w_near / (1 + d / near_scale)";
+    Near "w_near" 2.0, "target: worth of nearness, w_near / (1 + d / near_scale)";
     NearScale "near_scale" 15.0, "target: the distance scale of nearness, tiles";
     Wounded "w_wounded" 1.2, "target: worth of its wounds";
     Finish "w_finish" 0.8, "target: one direct shot from dead";
@@ -83,7 +83,7 @@ weights! {
     Focus "w_focus" 0.5, "target: each teammate already on it";
     FocusCap "focus_cap" 2.0, "target: teammates on it before overkill (rounded)";
     Overkill "w_overkill" 0.6, "target: off for each teammate past the cap";
-    InRange "w_in_range" 0.7, "target: in direct range now";
+    InRange "w_in_range" 1.4, "target: in direct range now";
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
     BaseR "base_r" 16.0, "target: the base's reach for w_threat, tiles";
     Stick "w_stick" 0.4, "target: the one already chosen";
@@ -102,7 +102,7 @@ weights! {
     Flank "w_flank" 0.3, "stand: cost of leaving the flank's bearing";
     Kite "kite" 1.0, "kite: on (1) or off (0) (rounded)";
     KiteMargin "kite_margin" 1.5, "kite: the waiting ring past the target's reach, tiles";
-    KiteIn "kite_in" 9.0, "kite: the ring a step in ends on, tiles";
+    KiteIn "kite_in" 4.5, "kite: the ring a step in ends on, tiles";
     KiteTurn "kite_turn" 0.8, "kite: seconds a step in takes beyond the drive";
     KiteSpare "kite_spare" 0.4, "kite: seconds of the target's reload to spare";
     // Smoothing (LR 7).
@@ -143,12 +143,12 @@ weights! {
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
     PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
-    PostureFortify "w_pos_fortify" 3.0, "posture: worth of Fortify's score, the share of the castle not yet built";
+    PostureFortify "w_pos_fortify" 6.0, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
     DefendGround "w_defend_ground" 1.5, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
     PostureExpand "w_pos_expand" 0.4, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
     // The dodge (lib.rs `Dodge`, LR 27): its numbers, once constants.
-    DodgeHorizon "dodge_horizon" 2.0, "dodge: seconds before a shell lands that the tank starts out from under it";
+    DodgeHorizon "dodge_horizon" 1.08307, "dodge: seconds before a shell lands that the tank starts out from under it";
     DodgeMargin "dodge_margin" 0.8, "dodge: tiles past the splash a shell's landing still counts as on the tank";
     DodgeClear "dodge_clear" 2.5, "dodge: tiles past the splash the tank drives to, across the shell's line";
     DodgeHold "dodge_hold" 0.0, "dodge: the share of the shell's flight the tank stays out, arrived or not (1), against only while it drives (0, before LR 27)";
@@ -174,7 +174,7 @@ weights! {
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
-    CastleInside "castle_inside" 4.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";
+    CastleInside "castle_inside" 8.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";
     CastleRoad "castle_road" 2.0, "castle: pillboxes outside on its road (rounded)";
     PostSpacing "post_spacing" 10.0, "posts: tiles between pillboxes on a road between bases";
     PostsMax "posts_max" 6.0, "posts: road posts a base fills at most (rounded)";
@@ -194,7 +194,7 @@ weights! {
     FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";
     ShellBoxes "shell_boxes" 1.0, "spending (LR 86, the cowboy, the default since): 1 shells a hostile pillbox in the indirect gun's reach whenever the gun is ready and no tank is shot at, 0 only those guarding a stormed depot (before LR 86); thresholded at 0.5";
-    LongshotEvery "longshot_every" 5.0, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
+    LongshotEvery "longshot_every" 2.5, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
     LongshotAny "longshot_any" 1.0, "spending (1 since LR 86): 1 a longshot with no hostile structure to hit goes at the nearest hostile pillbox, else the target tank; 0 at structures only (before LR 86); thresholded at 0.5";
     StrikesMax "strikes_max" 3.0, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
