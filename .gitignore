@@ -5,3 +5,4 @@
 *.log
 /reports/ledger
 __pycache__/
+.claude/settings.local.json
