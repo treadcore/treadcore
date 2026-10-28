@@ -1302,6 +1302,53 @@ mod harness {
         }
     }
 
+    /// Parity, check 1 (LEARNING-DESIGN.md VII): `AGREE=recording.bin`,
+    /// `CHECK=net.bin`, `HELD_FROM` (9,000,054): the net run by Rust's own
+    /// `Net::forward` on the recording's held-out samples, each head's
+    /// choice the best-scoring allowed one, as `choose` plays and as
+    /// tools/bc judges. Its agreement must equal the trainer's, which ran
+    /// the same net on the GPU: a wrong transpose or layout would not.
+    fn agree(rec: &std::path::Path, net: &Net, held_from: u32) {
+        use crate::net::HEADS;
+        let b = std::fs::read(rec).expect("the recording");
+        assert_eq!(&b[..8], b"TCBC2\0\0\0");
+        let ns = u32::from_le_bytes(b[8..12].try_into().unwrap()) as usize;
+        let r = ns * 4 + 7 + 3 + 4;
+        let n = (b.len() - 16) / r;
+        let names = ["drive", "gun", "lead", "mortar", "drone", "squad", "signal"];
+        let (mut agree, mut count) = ([0usize; 7], [0usize; 7]);
+        let mut x = vec![0f32; ns];
+        for i in 0..n {
+            let o = 16 + i * r;
+            let seed = u32::from_le_bytes(b[o + ns * 4 + 10..o + ns * 4 + 14].try_into().unwrap());
+            if seed < held_from {
+                continue;
+            }
+            for k in 0..ns {
+                x[k] = f32::from_le_bytes(b[o + 4 * k..o + 4 * k + 4].try_into().unwrap());
+            }
+            let lab = &b[o + ns * 4..o + ns * 4 + 7];
+            let m = &b[o + ns * 4 + 7..o + ns * 4 + 10];
+            let ok = |h: usize, c: usize| c == 0 || match h { 0 | 2 => true, 1 => m[0] >> (c - 1) & 1 == 1, 3 => m[1] >> (c - 1) & 1 == 1, 4 => m[2] >> (c - 1) & 1 == 1, _ => false };
+            let y = net.forward(&x);
+            let mut k = 0;
+            for (h, &(_, w)) in HEADS.iter().enumerate() {
+                let l = lab[h] as usize;
+                let choice = match h { 1 => m[0] != 0, 3 => m[1] != 0, 4 => m[2] != 0, _ => true };
+                if h < 5 && l < w && ok(h, l) && choice {
+                    let pick = (0..w).filter(|&c| ok(h, c)).max_by(|&p, &q| y[k + p].total_cmp(&y[k + q])).unwrap();
+                    count[h] += 1;
+                    agree[h] += (pick == l) as usize;
+                }
+                k += w;
+            }
+        }
+        println!("agree: Rust's Net::forward on the held-out samples (seeds from {}):", held_from);
+        for h in 0..5 {
+            println!("  {:7} {:6.1}%  of {}", names[h], 100.0 * agree[h] as f64 / count[h].max(1) as f64, count[h]);
+        }
+    }
+
     /// Behaviour cloning's data (LR 106): `RECORD=path`. Real matches of
     /// the scripted brain (16 seats, the census's mix, respawns 3), `SEEDS`
     /// of them (60) from `SEED0` (9,000,000), `SECS` long (600). Five times
@@ -1479,6 +1526,11 @@ mod harness {
         let name = env("NAME", if ground.is_some() { "ground".to_string() } else { format!("phase{}", phase) });
         let threads: usize = env("THREADS", std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4));
         let held: u64 = env("HELD", 999);
+        if let Some(f) = std::env::var("AGREE").ok().filter(|f| !f.is_empty()) {
+            let net = Net::load(std::path::Path::new(&std::env::var("CHECK").expect("CHECK=net.bin"))).expect("a net");
+            agree(std::path::Path::new(&f), &net, env("HELD_FROM", 9_000_054u32));
+            return;
+        }
         if let Some(f) = std::env::var("RECORD").ok().filter(|f| !f.is_empty()) {
             record(std::path::Path::new(&f), env("SEED0", 9_000_000u64), env("SEEDS", 60u64), env("SECS", 600u64), threads);
             return;
