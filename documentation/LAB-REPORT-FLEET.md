@@ -405,7 +405,59 @@ official net, not above it, so nothing is committed as official and Paul
 is not asked to decide. `nets/bc2.bin` stays a candidate on calber and
 columbia, with its numbers in LR 108.
 
-## IX. Lessons
+## IX. The process as a loop: fleet-train, and watching it
+
+Everything above was done by hand, one step at a time. orrery's
+`tools/fleet-train.sh` runs the same steps as rounds, until told to stop
+(LAB-REPORT-BRAIN section 109). On the Mac:
+
+```sh
+cd ~/code/treadcore
+~/code/orrery/tools/fleet-train.sh run    scripts/fleet-train-stages.sh   # until stopped
+~/code/orrery/tools/fleet-train.sh stop   scripts/fleet-train-stages.sh   # after the round in hand
+```
+
+A round, and where its time goes:
+
+| Stage | Machines | What it runs | About |
+| --- | --- | --- | --- |
+| record | calber, columbia, the Mac, nasser (the hosts file) | `fleet-record.sh plan / prepare / run / consolidate`: 1,200 matches in jobs of 12 | 3 min to build, then about 20 to 30 min |
+| train | calber's GTX 1080 Ti | `treadcore-bc` with `START=` the loop's best: 4 epochs over the round's 50 million samples at batch 32,768 | 2 to 3 min |
+| judge | columbia | `make census` of the candidate (and of the best again if the binary differs), paired by seed | 10 to 20 min |
+
+The first rounds take matches already recorded (`PREMADE`: `rec2400` in two
+halves) and skip recording.
+
+**Who decides what.** The judge keeps the loop's best: a candidate replaces
+it only when the census, paired by seed on one binary, puts it above the
+best outside two standard errors. The official net is a separate matter
+(Section VII): when the loop's best is also above `nets/map7.bin` outside
+two errors, the round says so, and Paul decides.
+
+**Watching it.** Two places show the same files:
+
+- **The terminal.** `fleet-record.sh watch RUN` shows a run's queue live. It
+  draws a bar of jobs done, then a line per machine (its jobs, seeds a
+  second, what it is doing and since when), and stops when the run ends.
+  `fleet-train.sh status` lists the rounds and their verdicts.
+- **orrery's museum interface, the Jobs view.** `orrery --gui --jobs-cmd
+  "fleet-train.sh status STAGES --json"` shows the fleet as one computer:
+  - each round's stages as lit chips;
+  - the round in hand's queue as one bar;
+  - every machine's lane: its job, state and age, and **the pipe it is
+    running**, spelled as in Section III.
+
+  It has no verbs: the loop is started and stopped from a shell.
+
+A picture of the Jobs view during `rec2400` is in orrery's `docs/fleet-train.md`.
+
+**Every step reports to a file** (Section VI). The loop adds
+`events.jsonl` (a line an event: round, stage, started, done or failed,
+with a detail) and a `summary.txt` per round. `status --json` turns these,
+with each machine's lane (`scripts/fleet-jobs.py`), into the one document
+the Jobs view reads.
+
+## X. Lessons
 
 1. **Spare means measured.** Every host's load was read before it was given
    work; the one busy machine got none.

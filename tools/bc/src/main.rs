@@ -10,6 +10,9 @@
 //!   BC_DEVICE=cuda (default) | flex (Burn's pure-Rust CPU backend)
 //!   HELD=9000054-9000059,9001140-9001259   held-out seed ranges, each judged
 //!                                          apart (default: the last tenth)
+//!   START=net.bin  begin from this net (Net::save's form) instead of at
+//!              random: a round of orrery's fleet-train continues the best net
+//!              on new matches (LR 109)
 //!   GPU_GB=6   the training set is kept on the device if it fits in this,
 //!              else streamed through it a chunk at a time
 //!   (the fast setting, LR 107: BATCH=32768 LR=1e-2, 0.64 s an epoch on a
@@ -40,7 +43,7 @@
 //! are not trained. At the end, each head's agreement with the scripted brain
 //! on each held-out range is printed beside always choosing the commonest
 //! label.
-use burn::module::Module;
+use burn::module::{Module, Param};
 use burn::nn::{Linear, LinearConfig, Relu};
 use burn::optim::{AdamConfig, GradientsParams};
 use burn::tensor::activation::log_softmax;
@@ -161,6 +164,39 @@ impl Mlp {
         let x = self.act.forward(self.b.forward(x));
         self.c.forward(x)
     }
+}
+
+/// A net in Net::save's form (TCNET1) as the model: the inverse of the export
+/// at the end of main, each layer's output-major weights transposed back to
+/// Burn's [inp, out].
+fn load_start(path: &str, dev: &Device, inp: usize, outs: usize) -> Mlp {
+    let b = std::fs::read(path).expect("START: a net");
+    assert_eq!(&b[..8], b"TCNET1\0\0", "START: not a TCNET1 net");
+    let u = |o: usize| u32::from_le_bytes(b[o..o + 4].try_into().unwrap()) as usize;
+    let k = u(8);
+    let sizes: Vec<usize> = (0..k).map(|i| u(12 + 4 * i)).collect();
+    assert_eq!(sizes, vec![inp, 64, 64, outs], "START: a net of another shape");
+    let mut off = 12 + 4 * k;
+    let mut next = || {
+        let v = f32::from_le_bytes(b[off..off + 4].try_into().unwrap());
+        off += 4;
+        v
+    };
+    let mut m = Mlp::new(dev, inp, outs);
+    for (l, lin) in [&mut m.a, &mut m.b, &mut m.c].into_iter().enumerate() {
+        let (a, o) = (sizes[l], sizes[l + 1]);
+        let mut w = vec![0f32; a * o];
+        for oo in 0..o {
+            for ii in 0..a {
+                w[ii * o + oo] = next();
+            }
+        }
+        let bias: Vec<f32> = (0..o).map(|_| next()).collect();
+        lin.weight = Param::from_tensor(Tensor::from_data(TensorData::new(w, [a, o]), dev));
+        lin.bias = Some(Param::from_tensor(Tensor::from_data(TensorData::new(bias, [o]), dev)));
+    }
+    assert_eq!(off, b.len(), "START: bytes left over");
+    m
 }
 
 /// For each of the 7 x SLOT padded slots, the net output column it reads
@@ -344,7 +380,13 @@ fn main() {
     };
     let dev = gpu.clone().autodiff();
     let outs: usize = HEADS.iter().sum();
-    let mut model = Mlp::new(&dev, d.senses, outs);
+    let mut model = match std::env::var("START").ok().filter(|s| !s.is_empty()) {
+        Some(p) => {
+            println!("bc: starting from {p}");
+            load_start(&p, &dev, d.senses, outs)
+        }
+        None => Mlp::new(&dev, d.senses, outs),
+    };
     let mut opt = AdamConfig::new().init();
     let (base, tables) = mask_tables();
     let loss = Loss {

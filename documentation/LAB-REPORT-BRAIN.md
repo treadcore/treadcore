@@ -7957,3 +7957,44 @@ the net what the scripted brain's choices depend on (its goal, as a
 sense: the sector and distance of its route's next waypoint and of its
 goal), or to stop imitating and train on the census's own score (PPO from
 the clone), which needs no labels the net cannot see.
+
+## 109. fleet-train: the process as a loop, and the Jobs view, 28 October
+
+Paul: "create a script to constantly improve like fleet train. a feature of
+orrery . on this mac." And: "incorporate the implimentation of the rust
+program to give us the gui to view jobs and pipe commands like a super
+computer cluster . right now our first usecase is training cuda on
+treadcore."
+
+### A. What was built
+
+| Piece | Where | What it does |
+| --- | --- | --- |
+| the loop | orrery `tools/fleet-train.sh` | rounds of a project's stages until stopped; an event a line; STOP; `status --json` |
+| treadcore's stages | `scripts/fleet-train-stages.sh` | record (the fleet), train (calber's card, continuing the best), judge (a census on columbia) |
+| a warm start | `tools/bc`, `START=net.bin` | the trainer begins from a saved net: 0 epochs from bc2 writes bc2 back byte for byte, with its agreement to the decimal |
+| the lanes as JSON | `scripts/fleet-jobs.py` | each machine's job, state, age, and the pipe it is running |
+| the Jobs view | orrery `src/jobs.rs`, `--jobs-cmd` | the museum interface's third face: the loop's rounds and stages, and every machine's lane and pipe, from that document (orrery `docs/fleet-train.md`) |
+
+**Why each round continues the best instead of starting again.** Training
+from scratch on each round's new matches only resamples the same data
+(bc1 to bc2 showed twenty times the data moves the drive head by a point),
+and calber's 62 GB holds about 1,500 seeds at once. Continuing the best on
+each round's new matches lets every round add to what the net has learned
+without all of it fitting in memory.
+
+### B. The rule for every round, written before the first
+
+A round's candidate (the best continued for 4 epochs at batch 32,768,
+Adam 3e-3, on the round's 1,200 new matches) is read in the census on
+columbia, 110 seeds from 500,000, every map, 900 s, respawns 3, and paired
+by seed with the loop's best on the same binary (the best is read again
+when the binary differs). **It becomes the loop's best only if it is above
+it outside two standard errors.** The loop's best is never the official
+net: `nets/map7.bin` changes only when Paul says (LAB-REPORT-FLEET VII).
+Reported each round without a pass mark: the drive agreement on bc1's
+held-out seeds.
+
+What would show the loop does not improve: three rounds in a row with no
+promotion. Then continuing on more of the scripted brain's matches has
+stopped helping, and the next lever is the senses (LR 108 D).

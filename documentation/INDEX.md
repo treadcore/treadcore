@@ -508,6 +508,9 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/MAPS.md | the map file format; converting prior-art maps |
 | documentation/LAB-REPORT.md | the code, crate by crate, and the Rust technique in it |
 | documentation/LAB-REPORT-BRAIN.md | the bot AI: the baseline of 17 October (section 2, archived), the research, the step 12 design, the record of building it (sections 11 to 19, 21 to 24) and the brain now (section 20) |
+| documentation/LEARNING-DESIGN.md | how the learned tank is trained, on CPUs and the GPU, and the parity between them |
+| documentation/LAB-REPORT-FLEET.md | the recording fleet: pipes, ssh, time; how a net becomes official; the process as a loop |
+| documentation/LAB-REPORT-NET-PICTURES.md | orrery's Training view: why the net's weight matrices look as they do, and what the view needs (the page: reports/2026-10-28-the-net-in-orrery.html) |
 | documentation/PROCESS.md | how treadcore is made: the pair, from a prompt to a commit, the record, the brain designed by measurement, the pages |
 | documentation/AI-BRAINZ-PLAN.md | the two brains (scripted and learned), the senses, calls to friends, training, what is proven, the upgrades proposed; with diagrams |
 | documentation/CENSUS.md | the brain census: running, reading and resuming it, and a dedicated machine for it |
