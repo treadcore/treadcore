@@ -190,6 +190,13 @@ IV. CHRONOLOGY
        plays as before, bit for bit. False start, marked: the first
        comparison differed, and a bisection showed the "new" binary was
        a scratch build's; a shared cargo target folder. CENSUS_BIN.
+   33. Paul: candidates are always accepted, so progress, not flags.
+       r0014 and r0015 read (LR 118 A): neither past two errors; both
+       adopted for held-out reads. Auto mode (LR 118, CI-077): adopt,
+       promote, approve, and every machine's build checked for the
+       values. The first: r0019, grove/w0034. On the way, Orrery.app
+       ran the Mac out of memory (an autorelease pool, fixed in orrery;
+       its own lab report), and both programs became Mac apps.
 
 V. RESULTS
 

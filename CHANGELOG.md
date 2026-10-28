@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: the fleet's cycle closes itself (orrery's auto mode, on by
+  default). A spsa or tune run's result is adopted with its two held-out
+  reads; the strongest current candidate whose families hold is
+  promoted, tested and pushed to main by orrery; each machine's build is
+  checked for the promoted values. Candidates and other news are
+  progress, not flags (LAB-REPORT-BRAIN.md section 118).
+
 - Added: `focus_blend` (and the switch `focus_blend`), the target between
   the near tank in range (0) and the wounded one a teammate is on (1);
   0.5 plays as before, bit for bit. Fixed: a census in orrery's queue

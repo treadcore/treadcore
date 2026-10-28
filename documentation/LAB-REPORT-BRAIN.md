@@ -8913,3 +8913,136 @@ The fleet builds the commit at its next top-ups. The families of its
 defaults run by themselves (`defaults@SHORT`), and the search adds
 `focus_blend`'s half and double to its screen. Promotion waits for the
 census.
+
+## 118. Auto mode: the cycle closes itself, 28 October
+
+Paul, on reading the first full-size spsa and tune runs: "queue the
+held-out reads for both. can we have this system auto incorporte the
+reults. accept them. incorporate them, sync them ... Cadidates. Should
+self promote, unless we are not in AUTO mode. We should be in auto
+mode". And, while it was being built: "i want to see some sort of
+confirmation that seach confirmation candidate shows that the values
+propigated to all computers in lab/infleet." Before that, on the
+candidate flags: "I'm going to always accept them. Just make them
+visible, so I can see progress."
+
+### A. The two runs (r0014, r0015)
+
+Both asked 11:02 as tests of the full-size runs, finished 13:38 on
+commit 92972b7 (the brain's source unchanged since). Neither clears two
+errors.
+
+**r0014, spsa** on the dodge (8 steps of 12 seeds, naval.map). Each step
+is a paired difference f(+) − f(−):
+
+    k   d       se     host           dodge_horizon  dodge_margin  dodge_clear
+    1   +0.18   0.85   boburner       1.83           0.87          2.29
+    2   -0.16   1.33   nasser         1.71           0.93          2.14
+    3   +0.36   2.73   calber         1.50           1.07          2.44
+    4   +0.38   2.00   saskatchewan   1.33           1.21          2.15
+    5   -0.76   1.14   mac            1.67           0.96          1.71
+    6   -1.04   1.30   saskatchewan   1.25           0.72          2.29
+    7   -1.43   2.34   mac            1.00           0.49          1.58
+    8   -3.84   2.51   mac            1.65           0.82          1.25
+
+From the defaults (2.0, 0.8, 2.5) to 1.65, 0.82, 1.25. `dodge_clear`
+stopped at its bound, half its start. The largest step is 1.5 errors.
+A hint that the dodge runs too far, not a finding.
+
+**r0015, tune** on fifteen target, odds and stand weights (5
+generations of 4 children, 2 seeds each). The best: +2.52 ± 2.47 over
+the defaults, 1.0 error, picked as the best of noisy reads. It moves the
+way every strong candidate has (LR 116 D): `w_near` 1.0 → 1.35,
+`w_in_range` 0.7 → 1.16, `w_focus` 0.5 → 0.38, `w_overkill` 0.6 → 0.98,
+`w_threat` 0.6 → 0.40, `press_odds` 2.0 → 1.64, `c_boat` 5.0 → 2.64.
+
+By ROADMAP goal 4 each must beat the defaults on seeds the search never
+used. Both are now adopted (B) for exactly that.
+
+### B. The cycle (orrery `tools/plans/treadcore.py`)
+
+1. **Adopt.** A finished spsa or tune run's result (`theta.weights`,
+   `best.weights`) becomes a trial of the queue: its census and its two
+   held-out reads queued together, not one after the other (a search
+   already chose it). By hand: `treadcore.py Q adopt FILE WHAT`.
+2. **Current.** Every census records its `COMMIT` (`run.env`). A
+   candidate is *current* when its census and both reads ran on commits
+   whose defaults are today's (`same_defaults`, number by number).
+3. **Auto promotion.** The strongest current candidate whose families
+   hold is asked as a promotion run (`by: auto`):
+   - one at a time;
+   - each candidate tried once;
+   - two failures in a row pause auto mode with a flag.
+4. **Auto approval.** A promotion whose tests and full families pass on
+   its branch is pushed to main by the planner (a fast-forward). The
+   commit is read again, so the same pass asks every machine to build it.
+5. **Propagation.** Every machine's build now brings back the defaults it
+   compiled (`defaults.toml`, before only the census host's). Each
+   approved promotion is checked machine by machine against the values
+   it changed:
+   - `confirmed at SHORT`;
+   - `building SHORT`;
+   - `differs at SHORT: names`;
+   - `build failed`.
+
+   Confirmed on all, it is a progress record. A difference or failure is
+   a flag.
+6. **Again.** Every candidate's families are read again on the new
+   defaults. The search's history counts only censuses on them.
+
+**Auto mode** is `"auto"` in the queue's `config.json`, on unless
+`false`:
+- `fleet-queue.py Q auto on|off`;
+- a button on the Candidates page.
+
+With it off, promotion waits for a person, and so does Approve.
+
+**Flags and progress.** A candidate, a run finished, a promotion asked,
+approved or confirmed is *progress*. Progress needs no answer and is
+not brought to the agent's hook. A *flag* asks a person:
+- a run failed;
+- a family under its floor;
+- a machine lost;
+- the breaker;
+- push refused;
+- auto mode paused;
+- a machine whose build differs.
+
+**The window.** The Candidates tab counts candidates. Its page shows:
+- auto mode and its switch;
+- the last three promotions, each with every machine's state (`ok`,
+  `..`, `!!`);
+- every candidate with its two held-out reads.
+
+### C. What happens when Orrery closes
+
+The keeper is its own process: its parent is launchd, and it was started
+apart from the window. Closing Orrery stops none of it:
+- the jobs;
+- a sync every 30 minutes;
+- the plans and auto mode.
+
+The window only reads `status` and sends its buttons' commands.
+
+### D. The first pass
+
+At 14:14 the planner, on this code, asked **r0019** to promote
+**grove/w0034**:
+- census +2.49 ± 0.94;
+- held out +2.67 ± 0.27 and +3.17 ± 0.20;
+- families hold.
+
+It moves seven defaults: `w_near` 1.0 → 2.0, `w_in_range` 0.7 → 1.4,
+`kite_in` 9.0 → 4.5, `w_pos_fortify` 3.0 → 6.0, `dodge_horizon` 2.0 →
+1.08, `castle_inside` 4 → 8, `longshot_every` 5.0 → 2.5.
+
+Its tests and families run on a branch on the Mac. Every machine has
+the newest commit's build queued (9c9abc1). r0014 and r0015 are adopted
+at the pass after the census host's build of it brings back today's
+defaults.
+
+### E. Next
+
+- The promotion's tests (the focus-fire test, LR 117, holds both ends on
+  the search's weights) and families decide r0019.
+- Then the propagation check reads each machine's build.

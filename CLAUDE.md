@@ -67,6 +67,11 @@ Richeson (he/him). Journals and commits are in his name.
   for a commit and push at the end of each step of the move to orrery,
   so the fleet trains on the newest (28 October: "The computer running
   orrery would be pushing").
+- **orrery's auto mode pushes promotions to main by itself** (LR 118,
+  28 October: "Should self promote, unless we are not in AUTO mode. We
+  should be in auto mode"). main can move under this checkout: pull
+  (`git pull --rebase`) before pushing. Off with
+  `fleet-queue.py build/queue/grove auto off`.
 - **A `v*` tag starts GitHub Actions** (the packages workflow). They
   were paused 13 to 26 October; Paul lifted the pause for 0.2.0 ("Tag
   it"). Push a tag or trigger a workflow only when he asks for that

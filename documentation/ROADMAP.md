@@ -1279,6 +1279,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     (ashore only), read again (every map -0.18 +/- 0.37, big-lizard
     +0.58 +/- 0.81, the generated maps +0.51 +/- 0.43) and on by
     default (LR 94); the run restarted on the new defaults.
+72. Auto mode. (28 October; cause: Paul, "Should self promote, unless
+    we are not in AUTO mode. We should be in auto mode"; LR 118,
+    CI-077.) Goal 4 by the fleet: a run's result adopted with its two
+    held-out reads; the strongest current candidate whose families hold
+    promotes itself; its tests and families on a branch, then main;
+    every machine's build checked for its values. State: on; r0019
+    promoting grove/w0034; r0014 and r0015 adopted.
 
 ## Sequencing
 
