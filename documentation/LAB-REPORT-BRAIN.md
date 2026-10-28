@@ -7762,3 +7762,48 @@ on the card each epoch, then contiguous slices); and more epochs at
 
 The defaults stay batch 4,096 and Adam 1e-3, the settings `bc1.bin` was
 made with; 32,768 at 1e-2 is the fast setting, named in the usage line.
+
+## 108. The fleet records, the card trains: twenty times the data, 28 October
+
+Paul: "deploy everywhere, even on spare cpus. run on cuda. consolidate
+results. plan collection and orchestration of batches. increase batch
+size to fill up cuda capabilities."
+
+Read as: the fleet's spare CPUs record the scripted brain (the part that
+is CPU work, LR 106 A), the recordings are gathered on calber, and its
+1080 Ti trains on all of them with batches as large as it can use. It also
+answers one of the three questions LR 106 F left: is 65% on the drive a
+ceiling set by the senses, or by the amount of data?
+
+### A. The fleet, 28 October
+
+| Machine | Threads | Load at the start | Spare | Its part |
+| --- | --- | --- | --- | --- |
+| saskatchewan | 24 | 23.8 (`make converge`) | none | left to the run |
+| columbia | 8 | 0.0 | 8 | records |
+| calber | 8, and the GTX 1080 Ti | 0.1 | 8 | records, then trains; the shards are gathered here |
+| the Mac (M1) | 8 | about 2 | 5 | records, at `nice 19`; coordinates |
+| nasser | not read | | | not reachable: it refuses this key (Paul to add it) |
+
+### B. The rule, written before the runs
+
+The recording: seeds 9,000,060 to 9,001,259 (1,200 matches of 600 s,
+about 50 million samples, about 29 GB), in jobs of 24 seeds, each machine
+on its own binary built at one commit (recorded with its hash beside
+each shard). bc1's held-out seeds, 9,000,054 to 9,000,059, stay held out;
+the last 120 new seeds are held out too.
+
+1. **Filling the card** (reported, no pass mark): a settled epoch's time,
+   samples a second, the card's busy share (`nvidia-smi dmon`) and its
+   memory, at batch 32,768 and each doubling up to the largest that
+   runs. The batch that fills the card is the smallest past which a
+   doubling adds less than 5% to samples a second.
+2. **More data:** `bc2`, trained on every recorded seed outside the
+   held-out ones, agrees with the scripted brain on drive on bc1's
+   held-out seeds above 65.5% by more than two errors (above 65.7%). If
+   it does not, twenty times the data does not move the drive head, and
+   the senses (or the net's size) set the ceiling.
+3. **In the census:** a team of `bc2` against a team of `bc1`, on
+   columbia, the settings of LR 106 C (110 seeds from 500,000, every map,
+   900 s, respawns 3), paired by seed: bc2 above bc1 outside two errors.
+   Reported beside map7's reading.
