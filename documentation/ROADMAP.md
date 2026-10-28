@@ -1292,6 +1292,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     One of each kind of run in turn, a run active in each of two
     lanes (brain; net), fresh seeds each turn, measurements once per
     set of defaults. State: on; r0020 spsa, r0021 train.
+74. Machines: a fresh install to a node, from orrery. (28 October;
+    cause: Paul, "these steps should be made into the process of
+    orrery ... Make then difficult to press"; LR 120, CI-079.) Probe,
+    recipes behind a typed confirmation with root typed in a Sessions
+    tile, join. State: built; whitewolf (GTX 1080) joined. Next:
+    commands by OS; then Media's Ubuntu stick and checklist.
 
 ## Sequencing
 

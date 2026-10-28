@@ -203,6 +203,11 @@ IV. CHRONOLOGY
        two runs and an unsaved state (fixed: changed_vars, runs written
        with the state). The rotation, one of each kind in turn; the
        Runs page for the cycle.
+   35. whitewolf (GTX 1080) set up by tools/fleet-node.sh and joined;
+       the Machines view (LR 120, CI-079): probe, recipes behind a
+       typed confirmation, root typed in a Sessions tile, join; this Mac
+       by its hostname. Found: cuda-node.sh stopped on an unloaded
+       driver; join's power-off command was not the rule's.
 
 V. RESULTS
 

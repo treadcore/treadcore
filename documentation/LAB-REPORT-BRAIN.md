@@ -9159,3 +9159,73 @@ when a file in `runs/` was made and removed by hand.
   again.
 - r0014 and r0015 are adopted when the census host's build brings back
   today's defaults. They are now read against w0034's defaults.
+
+## 120. The Machines view, and whitewolf joins, 28 October
+
+Paul: "these steps should be made into the process of orrery ... Which
+the Orrery then applies scripts and allows idempotent running of the
+config scripts. Make then difficult to press (with confirm with
+details), we dont wont to run the wrong scripts." His choices:
+- root is typed by him, in a Sessions tile;
+- commands run as the user (root only in a tile);
+- the Machines page first.
+
+### A. The view (orrery 4a06d8f, c5d09e9)
+
+**Machines** (Cmd-3, after Media) takes a machine from a fresh install
+(Ubuntu 24.04 with OpenSSH and `ssh-copy-id`) to a fleet node.
+- **Probe** reads it over ssh as the user: system, CPU, memory, disk,
+  addresses, NVIDIA card, driver, CUDA, Rust, treadcore, tmux, copal-tm,
+  the login banner, and the power-off rule. This Mac is read locally.
+- **Recipes** are orrery's four setup scripts (`fleet-node`,
+  `cuda-node`, `fleet-login`, `poweroff`). Each shows applied or not,
+  read from what it leaves behind.
+- **Apply…** opens a screen with:
+  - the machine and its system;
+  - what the recipe does;
+  - each file and its sha256;
+  - the command.
+
+  Its button lights only when the machine's name is typed. The files
+  are copied and their sums checked on the machine. The command is
+  typed into the machine's Sessions tile, in a window of its own, where
+  Paul types the password. orrery holds no password.
+- **Join…** adds the machine to the queue (caps from what it has) and
+  to the nodes list, after the same kind of confirmation.
+
+`tools/machines.py` does the work. The first read showed what was still
+open across the fleet:
+- calber and boburner: no power-off rule;
+- boburner: no tmux;
+- the three Alpine machines: no power-off rule.
+
+### B. whitewolf
+
+whitewolf: an i7-6700K (8 threads), 62 GB, a **GTX 1080**, Ubuntu
+24.04.5, two network ports (.124 used).
+- **Setup.** `tools/fleet-node.sh` (one run: build tools, Rust,
+  treadcore, `cuda-node.sh`, topnotch, the power-off rule) left every
+  recipe applied.
+- **The CUDA check:** compute 6.1, 20 SMs, 7.9 GB, a million-float add
+  correct.
+- **Joined:** caps cpu and gpu, power-off `sudo -n /usr/bin/systemctl
+  poweroff`.
+- **First build** of c1e00c0: started 15:10. The census binary was built
+  (`c4c9d0361ea7abe7`), then the trainer.
+
+### C. Found on the way
+
+- **`cuda-node.sh`** stopped at its first check on a machine whose
+  driver was not yet loaded, before tmux and copal-tm. It now tries the
+  module, and says to reboot if the card is held.
+- **`join`** would have written `sudo -n poweroff`, which whitewolf's
+  rule (`/usr/bin/systemctl poweroff`) refuses. The probe now records
+  the command exactly as the rule allows it.
+- **The Command-digit shortcuts moved:** Training is Cmd-4, Sessions
+  Cmd-5.
+
+### D. Next
+
+- Commands by OS: one machine, all, or Alpine / Ubuntu 24.04, as the
+  user, with the same confirmation.
+- Then Media: the Ubuntu install stick and its checklist.

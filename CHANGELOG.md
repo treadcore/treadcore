@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: whitewolf (GTX 1080) to the fleet, set up and joined from
+  orrery's new Machines view, which probes a machine, applies orrery's
+  setup scripts behind a typed confirmation, and joins it
+  (LAB-REPORT-BRAIN.md section 120).
+
 - Changed: the brain's defaults are grove/w0034's, promoted by orrery's
   auto mode after the brain's tests and every family held: `w_near` 2,
   `w_in_range` 1.4, `kite_in` 4.5, `w_pos_fortify` 6, `dodge_horizon`
