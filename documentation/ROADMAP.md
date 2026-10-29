@@ -1318,6 +1318,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Watch) with their pages in a steel column; a Projects view with
     treadcore and crucible and which machine runs which. State: done
     (orrery f0823ec). Next: crucible as grove's second job.
+78. Census to commit. (28 October; cause: Paul, "describe how the
+    coefficients get commited back to treadcore ... micro versions ... a
+    do it now button ... add crucible"; LR 124, CI-083.) The loop drawn
+    (reports/census-to-commit); brain-RID tags; Do it now; older
+    candidates re-read; crucible's islands on three GPU lanes; Results
+    filtered and scrolled; a bar for every sense and score. State: done.
+    Next: the re-reads' verdicts; a GPU arena of treadcore's rules.
 
 ## Sequencing
 

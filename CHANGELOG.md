@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: micro versions, a `brain-RID` tag on every promotion
+  (`brain-r0019` on dc3df01); Do it now (sync, promote, push); older
+  candidates read again on today's defaults; crucible on three GPU lanes
+  from a Projects button; the Results candidates filtered and scrolled;
+  a bar for every sense and score on the Net page. The report "Census to
+  Commit" (`reports/census-to-commit/`) (LAB-REPORT-BRAIN.md section 124).
+
 - Changed: orrery's views tell the story in five chapters, Machines,
   Projects, Queue, Results and Watch, each with its pages in a steel
   column. Added: a Projects view with treadcore and crucible, and which

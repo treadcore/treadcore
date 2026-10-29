@@ -225,6 +225,13 @@ IV. CHRONOLOGY
        Queue and Results, a Projects view (treadcore from the queue,
        crucible from its run files). Found: treadcore's rim made a seam
        halfway down a window-sized plate; blended.
+   39. Census to commit (LR 124, CI-083): the loop drawn with real
+       commits and times (reports/census-to-commit); brain-r0019 tagged;
+       Do it now; older candidates re-read (w0045, w0003; w0034 as a
+       control); crucible's islands on calber, whitewolf, boburner;
+       Results filtered and scrolled; every sense and score a bar. r0009
+       explained: the tests, not a family. False start, marked: a sync
+       under macOS's missing `timeout` never ran.
 
 V. RESULTS
 

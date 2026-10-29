@@ -9470,3 +9470,80 @@ crucible as grove's second job:
 - islands passing champions;
 - the GPU lanes sharing the cards with treadcore's net runs (train,
   school), which already use them.
+
+## 124. Census to commit: the loop drawn, micro versions, Do it now, re-reads, crucible's islands, 28 October
+
+Paul: "Create a learning loop and describe how the coefficients get
+commited back to treadcore, so the it picks it up in the AI ... show me
+commit versions, and timestamps ... show me hos the brainz and the net
+data are stored, show me the matrix for the AI ... essentially creating
+micro versions of this git submission ... it has a do it now button to
+sync and push the values". Also: "i want to see a button to add more gpu
+CUDA to the mix, add crucible"; "describe the results tab. why do we have
+failed tasks in family. why are some older, when it says promoted ...
+perhaps add a scrollbar and a filter by type"; and on the Net page, "show
+each variable with a bar ... expand this for all values. provide more
+details on the hover."
+
+The lab report, with its diagrams, is `reports/census-to-commit/`
+(shared page https://claude.ai/artifact/Q3UkM5y7rhpw8AyWse6KrD).
+
+### A. What was built
+
+| What | Where | Commit |
+| --- | --- | --- |
+| crucible as grove's second job: a `NAME-cuda` lane per GPU machine, each an island (500 generations a segment, six queued ahead, chained), champions exchanged | `treadcore.py` `crucible_jobs`; crucible `--export`, `--import` (6878a26) | 7ead828, 0a9ae4b |
+| The button: Projects, "Add the GPUs to crucible" (two presses); `machines.py cuda-lanes add / remove / list` | `projects.rs`, `machines.py` | 7ead828 |
+| Do it now: sync, then promote the strongest current candidate, or re-read the strongest older ones (Results, two presses; Fleet menu, armed) | `treadcore.py now`, `fleet-queue.py now` | d959a10 |
+| Older candidates re-read on today's defaults when none is current (three a set of defaults; never one already promoted) | `reread_older` | d959a10, 0a9ae4b |
+| Micro versions: an approved promotion tagged `brain-RID`, annotated with what changed and the evidence, pushed (never v*) | `micro_tag`; `tag RID` | 3f9d773 |
+| A failed promotion names the step that failed, read from its log | `promote_failure`; `why RID` | a0f854e |
+| Candidates page: a filter (all, promoted, current, older), a scroll bar, an old failure marked superseded | `training.rs`, `ui.rs` `scroll_list` | d959a10 |
+| Net page: a bar for every sense (143) and score (47); hover names it, says how it is transformed, marks its column or row on its matrix | `training.rs` `sense_name`, `score_name` | d959a10 |
+
+### B. The answers
+
+- **Older beside promoted.** A census measures a trial against the
+  defaults of its day. When w0034 became the defaults (dc3df01), the
+  other 36 candidates' evidence described a brain the game no longer
+  has. Auto mode promotes only a current one, and until this step
+  nothing made an older one current: the loop stood at "0 current".
+  The re-reads fix that. The first round, at 19:11, re-read w0045 and
+  w0003, and w0034, which is the defaults (a control; promoted ones are
+  now left out).
+- **Failed tasks in family.** No family failed: 85 of 85 reads hold. The
+  queue's one failed job is the promotion r0009 (10:12), which failed
+  `default_weights_are_todays_constants`: the table changed and
+  `Tactics::default()` did not. LR 119 fixed the step, and r0019 passed.
+  The page now shows r0009 grey, superseded by r0019.
+
+### C. One promotion, timed
+
+| Time | What happened |
+| --- | --- |
+| 13:38 | w0034 a candidate |
+| 14:14:02 | r0019 asked by auto mode |
+| 14:20:54 | dc3df01 on its branch, tests and families passed |
+| 14:28:08 | pushed to main |
+| 16:05:21 | confirmed on 7 of 7 machines |
+| 19:09:33 | `brain-r0019` tagged (retroactively; signed tag c066c65) |
+
+`git describe --tags --match 'brain-*' origin/main` reads
+`brain-r0019-5-g19638a5`.
+
+### D. Found on the way
+
+- The keeper running since 12:28 plans only when its queue is low or a
+  run changes. Restarting it would have put whitewolf's three-hour
+  school run back on the queue, so the islands queue six segments ahead
+  instead.
+- The first crucible segments (50 generations, 21 s) left the cards idle
+  between plans. They are now 500 generations
+  (plan.json `"crucible"`).
+- macOS has no `timeout`: one sync silently did not run.
+
+### E. Next
+
+- Read the re-reads: does w0045 or w0003 still beat the new defaults?
+- A GPU arena from treadcore's combat rules, so the cards can serve
+  treadcore's candidates (LR 121 D), if Paul wants it.
