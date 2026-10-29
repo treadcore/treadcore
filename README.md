@@ -42,6 +42,7 @@ Options:
 | `--lad` | share of games against a milestone | 0.2 |
 | `--exam` | file for the final champion's score against each milestone | none |
 | `--exam-eps` | duels against each milestone in the exam | 2048 |
+| `--draw` | a drawn duel's worth in training (win +2, loss -2) | -1 |
 
 **The ladder.** Once an island beats the scripted yardstick nearly every
 time, the yardstick measures nothing. The fleet keeps milestones instead:

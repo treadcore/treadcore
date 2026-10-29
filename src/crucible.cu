@@ -282,7 +282,7 @@ struct Totals {
 // of the ladder, else an opponent from the hall of fame, half the time one
 // of the newest 16. 1: the yardstick. 2: the ladder's milestone `rung`.
 __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop, const float* __restrict__ hall, int hall_n, int hall_cap, int hall_next,
-                     const float* __restrict__ ladder, int ladder_n, float lad, int rung,
+                     const float* __restrict__ ladder, int ladder_n, float lad, int rung, float drawv,
                      int reps, int opp_mode, float spar, int steps, uint32_t seed, int gen, float* fitness, Totals* tot) {
     extern __shared__ float sm[];
     float* wA = sm;
@@ -336,7 +336,12 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
     }
     float dealt = HP - fmaxf(B.hp, 0.0f), taken = HP - fmaxf(A.hp, 0.0f);
     bool won = B.hp <= 0.0f && A.hp > 0.0f, lost = A.hp <= 0.0f && B.hp > 0.0f;
-    float f = dealt - taken + (won ? 2.0f : 0.0f) - (lost ? 2.0f : 0.0f) + 0.5f * aim / steps;
+    // A draw is worth `drawv` (--draw): at 0 a net that waits for an
+    // attacker loses nothing by never finishing a duel, and two such nets
+    // drew all 2,048 duels of the first exam (28 October); below 0 it pays
+    // to finish the fight.
+    bool drew = !won && !lost;
+    float f = dealt - taken + (won ? 2.0f : 0.0f) - (lost ? 2.0f : 0.0f) + (drew ? drawv : 0.0f) + 0.5f * aim / steps;
     atomicAdd(&score, f);
     if (won) atomicAdd(&sw, 1u); else if (lost) atomicAdd(&sl, 1u); else atomicAdd(&sd, 1u);
     atomicAdd(&tot->steps, (unsigned long long)(2 * t));
@@ -380,7 +385,7 @@ __global__ void seed_pop(float* pop, size_t n, uint32_t seed) {
 
 struct Opt {
     int pop = 8192, eps = 256, steps = 600, gens = 100, elite = 16, every = 5, cap = 4096, yard = 10, yard_eps = 4096;
-    float sigma = 0.03f, spar = 0.5f, lad = 0.2f;
+    float sigma = 0.03f, spar = 0.5f, lad = 0.2f, draw = -1.0f;
     int exam_eps = 2048;
     uint32_t seed = 1;
     std::string out = "", save = "", load = "", exp = "", imp = "", ladder = "", exam = "";
@@ -392,11 +397,12 @@ static void usage() {
             "crucible [--pop N] [--eps N] [--steps N] [--gens N] [--elite N] [--every K] [--cap N]\n"
             "         [--sigma S] [--spar P] [--seed N] [--yard K] [--out FILE.tsv] [--save FILE] [--load FILE] [--bench]\n"
             "         [--export CHAMP.bin] [--import A.bin,B.bin,...] [--ladder M1.bin,M2.bin,...] [--lad P]\n"
-            "         [--exam FILE.tsv] [--exam-eps N]\n"
+            "         [--exam FILE.tsv] [--exam-eps N] [--draw V]\n"
             "  --export writes the last generation's champion (its weights, as floats);\n"
             "  --import puts other islands' champions into the hall of fame first;\n"
             "  --ladder loads milestones (oldest first): opponents with chance --lad, and a yardstick;\n"
-            "  --exam writes the final champion's score against each milestone and the yardstick.\n");
+            "  --exam writes the final champion's score against each milestone and the yardstick;\n"
+            "  --draw is a drawn duel's worth in training (a win is +2, a loss -2, besides damage).\n");
     exit(2);
 }
 
@@ -425,6 +431,7 @@ int main(int argc, char** argv) {
         else if (a == "--import") o.imp = val();
         else if (a == "--ladder") o.ladder = val();
         else if (a == "--lad") o.lad = atof(val());
+        else if (a == "--draw") o.draw = atof(val());
         else if (a == "--exam") o.exam = val();
         else if (a == "--exam-eps") o.exam_eps = atoi(val());
         else if (a == "--bench") o.bench = true;
@@ -552,7 +559,7 @@ int main(int argc, char** argv) {
         int reps = std::max(1, n / o.eps);
         CK(cudaMemset(yf, 0, sizeof(float)));
         memset(tot, 0, sizeof(Totals));
-        play<<<reps, o.eps, shm>>>(net, hall, hall_n, o.cap, hall_next, ladder, ladder_n, 0.0f, rung, reps, mode, 0.0f, o.steps, s, g, yf, tot);
+        play<<<reps, o.eps, shm>>>(net, hall, hall_n, o.cap, hall_next, ladder, ladder_n, 0.0f, rung, 0.0f, reps, mode, 0.0f, o.steps, s, g, yf, tot);
         CK(cudaDeviceSynchronize());
         CK(cudaGetLastError());
         float m = (float)(tot->wins + tot->losses + tot->draws);
@@ -583,7 +590,7 @@ int main(int argc, char** argv) {
         CK(cudaMemset(fit, 0, o.pop * sizeof(float)));
         memset(tot, 0, sizeof(Totals));
         CK(cudaEventRecord(e0));
-        play<<<o.pop, o.eps, shm>>>(pop, hall, hall_n, o.cap, hall_next, ladder, ladder_n, lad, 0, 1, 0, o.spar, o.steps, o.seed, g, fit, tot);
+        play<<<o.pop, o.eps, shm>>>(pop, hall, hall_n, o.cap, hall_next, ladder, ladder_n, lad, 0, o.draw, 1, 0, o.spar, o.steps, o.seed, g, fit, tot);
         CK(cudaEventRecord(e1));
         CK(cudaEventSynchronize(e1));
         CK(cudaGetLastError());
