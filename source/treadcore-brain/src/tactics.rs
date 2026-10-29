@@ -706,14 +706,20 @@ mod tests {
     fn the_square_law() {
         let two_to_one = Odds { ours: 2.0, theirs: 1.0, coming: 0 };
         assert_eq!(two_to_one.ratio(), 4.0);
-        let mut t = Tactician::default();
+        // The bars it was written for, mass under 0.7 and press over 2.0:
+        // the test is of the law and the stances around the bars, not of
+        // where the bars sit today. At the defaults' engage_odds 1 against
+        // 2 (0.25) massed by chance of the number, and grove/w1198's 0.175
+        // failed it (29 October).
+        let law = Tactics { engage_odds: 0.7, press_odds: 2.0, ..Tactics::default() };
+        let mut t = Tactician { w: law.clone(), ..Tactician::default() };
         assert_eq!(t.stance(0, &two_to_one), Stance::Press);
         let alone = Odds { ours: 1.0, theirs: 2.0, coming: 2 };
         assert_eq!(t.stance(0, &alone), Stance::Mass);
         let alone_for_good = Odds { coming: 0, ..alone };
         assert_eq!(t.stance(0, &alone_for_good), Stance::Engage);
         // Smoothed: one reading of strong odds is not yet a press; a few are.
-        let mut sm = Tactician { smooth: Some((0.3, 0.35)), ..Tactician::default() };
+        let mut sm = Tactician { w: law, smooth: Some((0.3, 0.35)), ..Tactician::default() };
         assert_eq!(sm.stance(0, &two_to_one), Stance::Engage, "one think is not a press");
         assert_eq!(sm.stance(1, &two_to_one), Stance::Engage, "held between thinks");
         assert_eq!(sm.stance(5, &two_to_one), Stance::Press);
