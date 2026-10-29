@@ -365,14 +365,17 @@ struct Opt {
     int pop = 8192, eps = 256, steps = 600, gens = 100, elite = 16, every = 5, cap = 4096, yard = 10, yard_eps = 4096;
     float sigma = 0.03f, spar = 0.5f;
     uint32_t seed = 1;
-    std::string out = "", save = "", load = "";
+    std::string out = "", save = "", load = "", exp = "", imp = "";
     bool bench = false;
 };
 
 static void usage() {
     fprintf(stderr,
             "crucible [--pop N] [--eps N] [--steps N] [--gens N] [--elite N] [--every K] [--cap N]\n"
-            "         [--sigma S] [--spar P] [--seed N] [--yard K] [--out FILE.tsv] [--save FILE] [--load FILE] [--bench]\n");
+            "         [--sigma S] [--spar P] [--seed N] [--yard K] [--out FILE.tsv] [--save FILE] [--load FILE] [--bench]\n"
+            "         [--export CHAMP.bin] [--import A.bin,B.bin,...]\n"
+            "  --export writes the last generation's champion (its weights, as floats);\n"
+            "  --import puts other islands' champions into the hall of fame first.\n");
     exit(2);
 }
 
@@ -397,6 +400,8 @@ int main(int argc, char** argv) {
         else if (a == "--out") o.out = val();
         else if (a == "--save") o.save = val();
         else if (a == "--load") o.load = val();
+        else if (a == "--export") o.exp = val();
+        else if (a == "--import") o.imp = val();
         else if (a == "--bench") o.bench = true;
         else usage();
     }
@@ -432,12 +437,15 @@ int main(int argc, char** argv) {
     if (!o.load.empty()) {
         FILE* f = fopen(o.load.c_str(), "rb");
         if (!f) { perror(o.load.c_str()); return 1; }
-        int hdr[6];
-        if (fread(hdr, sizeof(int), 6, f) != 6 || hdr[0] != 0x63727563 || hdr[1] != NW || hdr[2] != o.pop || hdr[3] != o.cap) {
+        // The header: a mark, the net's size, --pop, --cap, the generation,
+        // how many the hall holds and where its next one goes (imports move
+        // that, so it is kept rather than worked out from the generation).
+        int hdr[7];
+        if (fread(hdr, sizeof(int), 7, f) != 7 || hdr[0] != 0x63727532 || hdr[1] != NW || hdr[2] != o.pop || hdr[3] != o.cap) {
             fprintf(stderr, "%s: not a crucible state for this net, --pop and --cap\n", o.load.c_str());
             return 1;
         }
-        gen0 = hdr[4]; hall_n = hdr[5]; hall_next = gen0 / o.every % o.cap;
+        gen0 = hdr[4]; hall_n = hdr[5]; hall_next = hdr[6];
         std::vector<float> h((size_t)o.pop * NW);
         if (fread(h.data(), 4, h.size(), f) != h.size()) return 1;
         CK(cudaMemcpy(pop, h.data(), pop_b, cudaMemcpyHostToDevice));
@@ -453,8 +461,39 @@ int main(int argc, char** argv) {
         hall_n = 1; hall_next = 1;
     }
 
-    FILE* out = o.out.empty() ? nullptr : fopen(o.out.c_str(), gen0 ? "a" : "w");
-    if (out && !gen0) fprintf(out, "gen\tbest\tmean\tplay_s\tsteps_per_s\tnet_gflops\thall\tyard_win\tyard_draw\tyard_loss\n");
+    // Islands (the fleet's cards, each its own population): the champions
+    // other islands sent join this one's hall of fame, so each learns to
+    // beat the others' best as well as its own past.
+    if (!o.imp.empty()) {
+        size_t a = 0;
+        int n = 0;
+        while (a <= o.imp.size()) {
+            size_t b = o.imp.find(',', a);
+            if (b == std::string::npos) b = o.imp.size();
+            std::string path = o.imp.substr(a, b - a);
+            a = b + 1;
+            if (path.empty()) continue;
+            std::vector<float> w(NW);
+            FILE* f = fopen(path.c_str(), "rb");
+            if (!f || fread(w.data(), 4, NW, f) != (size_t)NW) {
+                fprintf(stderr, "# import %s: not a champion of this net, skipped\n", path.c_str());
+                if (f) fclose(f);
+                continue;
+            }
+            fclose(f);
+            CK(cudaMemcpy(hall + (size_t)hall_next * NW, w.data(), NW * sizeof(float), cudaMemcpyHostToDevice));
+            hall_next = (hall_next + 1) % o.cap;
+            hall_n = std::min(hall_n + 1, o.cap);
+            n++;
+        }
+        printf("# imported %d champion(s) into the hall of fame (%d there)\n", n, hall_n);
+    }
+
+    FILE* out = o.out.empty() ? nullptr : fopen(o.out.c_str(), "a");
+    if (out) fseek(out, 0, SEEK_END);
+    // A header on a new file, whichever generation it starts at (an
+    // island's segment starts where the last one stopped).
+    if (out && ftell(out) == 0) fprintf(out, "gen\tbest\tmean\tplay_s\tsteps_per_s\tnet_gflops\thall\tyard_win\tyard_draw\tyard_loss\n");
     printf("gen\tbest\tmean\tplay_s\tMsteps/s\tnet GFLOP/s\thall\tyardstick w/d/l\n");
 
     double flops_per_step = 2.0 * (NIN * H + H * H + H * NOUT); // one net, multiply-adds as two
@@ -525,10 +564,20 @@ int main(int argc, char** argv) {
     CK(cudaDeviceSynchronize());
     printf("# %d generations in %.1f s\n", o.gens, now() - t_start);
 
+    if (!o.exp.empty()) {
+        // The elite keep their places, best first: after the last breed
+        // the champion is individual 0.
+        std::vector<float> w(NW);
+        CK(cudaMemcpy(w.data(), pop, NW * sizeof(float), cudaMemcpyDeviceToHost));
+        FILE* f = fopen(o.exp.c_str(), "wb");
+        fwrite(w.data(), 4, NW, f);
+        fclose(f);
+        printf("# exported the champion to %s (%d weights)\n", o.exp.c_str(), NW);
+    }
     if (!o.save.empty()) {
         FILE* f = fopen(o.save.c_str(), "wb");
-        int hdr[6] = {0x63727563, NW, o.pop, o.cap, gen0 + o.gens, hall_n};
-        fwrite(hdr, sizeof(int), 6, f);
+        int hdr[7] = {0x63727532, NW, o.pop, o.cap, gen0 + o.gens, hall_n, hall_next};
+        fwrite(hdr, sizeof(int), 7, f);
         std::vector<float> h((size_t)o.pop * NW);
         CK(cudaMemcpy(h.data(), pop, pop_b, cudaMemcpyDeviceToHost));
         fwrite(h.data(), 4, h.size(), f);
