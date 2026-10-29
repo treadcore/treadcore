@@ -3021,11 +3021,16 @@ mod tests {
         c.set_goal(Goal::Auto);
         assert!(c.settings.caps.has(crate::weights::Caps::CASTLE_CAP), "the capped castle is the default");
         // The cap of LR 61, two inside, one on the road, four posts, not
-        // turtle's (LR 77): the test is of the cap.
+        // turtle's (LR 77): the test is of the cap. Posts every 10 tiles
+        // too: road_posts lines only a road past twice the spacing, and the
+        // second depot here is the nearest past 30, so a spacing of 28 or
+        // 40 (grove/w1266, w1198) left it no road to line and failed the
+        // test on a number it does not test (29 October).
         use crate::weights::W;
         c.settings.w[W::CastleInside] = 2.0;
         c.settings.w[W::CastleRoad] = 1.0;
         c.settings.w[W::PostsMax] = 4.0;
+        c.settings.w[W::PostSpacing] = 10.0;
         let mut lifted = 0;
         for _ in 0..(1200 * TICK_HZ) {
             let obs = w.observe(0);
