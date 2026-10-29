@@ -1306,6 +1306,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     measured; local repository, no remote yet. Next: orrery's interface
     redesign (projects in the orchestration); crucible islands in the
     queue.
+76. orrery's interface in treadcore's brushed metal. (28 October;
+    cause: Paul, "the interface from treadcore . the styling. thr rows
+    and columns of brushed metal"; LR 122, CI-081.) The look: steel,
+    metal keys with lamps, black readouts; one header for every view.
+    State: done (orrery f82f471). Next: the story (views in the order the
+    work goes, a Projects view) and crucible as grove's second job.
 
 ## Sequencing
 

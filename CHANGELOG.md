@@ -6,6 +6,10 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: orrery's window looks like treadcore: brushed steel, metal
+  keys with lamps and digits, black readouts (the default; `--light`
+  and `--dark` keep the flat palettes) (LAB-REPORT-BRAIN.md section 122).
+
 - Added: crucible (`~/code/crucible`), the fleet's second project: a
   self-learning loop that runs entirely on a GPU, measured on the
   1080 Ti, 1080 and 1070 Ti; its lab report on training inside the GPU

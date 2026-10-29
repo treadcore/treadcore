@@ -9335,3 +9335,68 @@ with the census still the judge.
 2. crucible as a run kind on `gpu` hosts, the three cards as islands
    passing champions.
 3. Then commands by OS, and Media's Ubuntu stick (from LR 120).
+
+## 122. orrery in treadcore's brushed metal, 28 October
+
+Paul: "we need to consider the interface from treadcore . the styling.
+thr rows and columns of brushed metal. Can we redesign all tabs all sub
+tabs and rethink about the interface progression. tell a story". Later,
+mid-step: "and incorporate orrery and crucible into its second job. we
+want to complement and use our fleet to run to improve the canidates and
+allow fleet processing of the queue in the grove."
+
+This step is the look. The story (the order of the views) and crucible
+as grove's second job are the next.
+
+### A. The look (orrery f82f471)
+
+orrery draws every pixel itself, in software. treadcore's brushed metal
+is a Bevy texture (`treadcore-client/src/metal.rs`). The same recipe is
+now in orrery's canvas (`draw.rs`), drawn at the size asked rather than
+sliced:
+- a gradient;
+- horizontal streaks wavering along each row;
+- a rim light on the lit edge;
+- a dark outline;
+- a breath of blue.
+
+| Finish | Used for |
+| --- | --- |
+| Plate | the frame and columns |
+| Button | buttons |
+| Pressed | the key that is down |
+
+The content sits in black readout wells, rounded and shaded under the
+steel, as treadcore's HUD does.
+
+| Part | Now |
+| --- | --- |
+| Header | one for all five views (`nav::header`): the name cut into the steel; the views as metal keys, each with a lamp (green for the one shown) and its Command digit; the status in a black strip |
+| Training's pages | metal keys; the lamp is green for candidates, red for flags |
+| Buttons | metal capsules, pressed in while held |
+| Lab's rail and bar | the steel column itself |
+| Rows | dark readouts with light text and coloured lamps |
+
+**The theme** is `METAL`, and it is the default (features on by
+default). `--light` and `--dark` keep the flat palettes.
+
+**Cost.** A finish is cached by kind and size, bounded at 12 M pixels.
+Orrery.app held 389 MB across 40 s, against 368 MB before.
+
+### B. Checks
+
+- 344 tests pass, including the strip under 500 pixels in metal.
+- Frames of all five views were rendered and looked at
+  (`reports/images/orrery-metal-training.png` and `-sessions.png`).
+- Installed in /Applications and relaunched.
+
+### C. Next
+
+1. **The story:** the views in the order the work goes, from a new
+   machine to a promoted result. Projects, treadcore and crucible, become
+   a view of their own.
+2. **crucible as grove's second job:** a run kind for `gpu` hosts in
+   the same queue, the cards as islands, so the GPUs work while the CPUs
+   run treadcore's candidates.
+3. **The path to the candidates themselves:** a GPU arena from
+   treadcore's combat rules (LR 121 D).
