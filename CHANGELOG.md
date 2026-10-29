@@ -6,6 +6,13 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: crucible (`~/code/crucible`), the fleet's second project: a
+  self-learning loop that runs entirely on a GPU, measured on the
+  1080 Ti, 1080 and 1070 Ti; its lab report on training inside the GPU
+  and scaling up. Recorded: orrery's steps since section 120 (menus,
+  Sessions fixes, /Applications, propagation, candidate marks)
+  (LAB-REPORT-BRAIN.md section 121).
+
 - Added: whitewolf (GTX 1080) to the fleet, set up and joined from
   orrery's new Machines view, which probes a machine, applies orrery's
   setup scripts behind a typed confirmation, and joins it

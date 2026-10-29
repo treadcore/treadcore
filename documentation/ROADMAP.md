@@ -1298,6 +1298,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     recipes behind a typed confirmation with root typed in a Sessions
     tile, join. State: built; whitewolf (GTX 1080) joined. Next:
     commands by OS; then Media's Ubuntu stick and checklist.
+75. A second project for the GPUs: crucible. (28 October; cause: Paul,
+    "we want to create a second project to run in cuda ... keep its
+    generations within itself"; LR 121, CI-080.) A self-learning loop
+    entirely on the card; 419 to 581 M tank-steps a second per card;
+    sparring confirmed on whitewolf, short on calber. State: built and
+    measured; local repository, no remote yet. Next: orrery's interface
+    redesign (projects in the orchestration); crucible islands in the
+    queue.
 
 ## Sequencing
 

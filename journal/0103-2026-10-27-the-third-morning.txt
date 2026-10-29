@@ -208,6 +208,13 @@ IV. CHRONOLOGY
        typed confirmation, root typed in a Sessions tile, join; this Mac
        by its hostname. Found: cuda-node.sh stopped on an unloaded
        driver; join's power-off command was not the rule's.
+   36. crucible (LR 121, CI-080): a second project, a self-learning
+       loop entirely on the GPU; 581, 462 and 419 M tank-steps a second
+       on the 1080 Ti, 1080 and 1070 Ti; 128 registers doubled it.
+       Self-play alone did not learn (8%); sparring bots did on
+       whitewolf (22%, 3.4 se), short on calber (14%). False start,
+       marked: a zsh $h:c made local folders instead of copying.
+       orrery's steps since LR 120 recorded in LR 121 A.
 
 V. RESULTS
 

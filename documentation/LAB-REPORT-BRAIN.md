@@ -9229,3 +9229,109 @@ whitewolf: an i7-6700K (8 threads), 62 GB, a **GTX 1080**, Ubuntu
 - Commands by OS: one machine, all, or Alpine / Ubuntu 24.04, as the
   user, with the same confirmation.
 - Then Media: the Ubuntu install stick and its checklist.
+
+## 121. Training inside the GPU: crucible, a second project for the cards, 28 October
+
+Paul: "we want to create a second project to run in cuda. Perhaps we can
+size something for the 8GB cards we have. Is there a neural net that we
+can train and retrain to keep its generations within itself. We need
+sensor data and a self contained loop ... How much of this simulation
+can be ran fully in cuda itself. If we can do that, can we write a lab
+report about general purpose traing and scaling up." The same prompt
+asks for a redesign of orrery's interface in treadcore's brushed metal.
+That is the next step: its story needs the second project to exist,
+with its numbers. The full report is crucible's
+`docs/LAB-REPORT-GPU.md`.
+
+### A. Since section 120 (orrery)
+
+Steps taken after LR 120, not recorded until now:
+
+| Commit | Change |
+| --- | --- |
+| 579375d | Sessions: typing in order and at once; no beep on every key |
+| 083e6d1 | Mac window: Quit, Minimize, Close Window |
+| 0a977d7 | The menu bar: every view, page, button and document (`src/commands.rs`) |
+| e281681 | A recipe window gets a name of its own |
+| ee54a64 | A recipe window is shown until screen says it is gone |
+| be8e117 | A click on a tile focuses it |
+| 02c22a0 | Orrery.app goes in /Applications |
+| 2e32c7b | Propagation: a machine is confirmed by any finished build since the promotion (it read 2 of 7, now 7 of 7) |
+| 67b289a | Candidates marked: current, on older defaults (with the commit), or promoted (with the run) |
+
+grove's marks at 67b289a: 1 promoted, 0 current, 36 on older defaults.
+
+### B. crucible
+
+`~/code/crucible`, one CUDA file of 543 lines. Everything is on the
+card:
+- **the arena:** 64 × 64, six pillars, two tanks, a shell each;
+- **the sensors:** twelve rays, bearing, own state;
+- **the nets:** 32-32-32-3, one per individual;
+- **the play:** one block per individual, one thread per duel, both
+  nets in shared memory;
+- **selection and mutation:** a sort, the elite kept, the top quarter
+  bred with gaussian noise;
+- **the hall of fame:** 4,096 past champions, the learner's opponents.
+
+The host reads back two numbers a generation. `--save` and `--load`
+carry the population and the hall, so training resumes.
+
+### C. Results
+
+| Card | Machine | Tank-steps per second | Net arithmetic |
+| --- | --- | --- | --- |
+| GTX 1080 Ti | calber | 581 M | 2.5 TFLOP/s |
+| GTX 1080 | whitewolf | 462 M | 2.0 TFLOP/s |
+| GTX 1070 Ti | boburner | 419 M | 1.8 TFLOP/s |
+
+All three are at 22 % of FP32 peak in the net alone.
+- **Registers.** Limiting each thread to 128 registers doubled the
+  speed (190 registers: 236 M on the 1080). 80 and 64 registers spill
+  and are slower.
+- **Width.** H = 48 fits; H = 64 does not: two nets need 51.7 KB of
+  shared memory, against 48 KB.
+- **Memory.** A run at population 2,048 uses 313 MB. Population is
+  limited by time, not by 8 GB.
+- **Power.** 55 % (1080) and 66 % (1080 Ti) of the cards' limits:
+  headroom remains (the report's VII.B).
+
+**Learning,** against a scripted yardstick tank, last five reads of
+4,096 duels:
+
+| Run | Yardstick wins | Verdict |
+| --- | --- | --- |
+| self-play against the hall only, 300 generations | 8.2 % ± 2.7 % | |
+| half the games against sparring bots of drawn skill, whitewolf, 400 generations | 21.9 % ± 3.0 % | 3.4 se: confirms the rule written before the run |
+| the replicate, calber, seed 8 | 14.3 % ± 2.1 % | 1.8 se: short of the bar |
+
+### D. treadcore's simulation in CUDA
+
+**Fits:**
+- the combat core: movement, shells, rays and tile collisions;
+- the learned net.
+
+**Fits poorly:**
+- the lists, events and diplomacy (8,437 lines of `treadcore-sim`);
+- the scripted brain's branches.
+
+So the census stays on the CPU fleet. A GPU arena made from
+treadcore's combat rules could pretrain the net by the billion steps,
+with the census still the judge.
+
+### E. Found on the way
+
+- `-DH=32` on the command line broke Thrust's headers. The macro is
+  `HID`.
+- A zsh `$h:c` in an rsync target is a modifier. It made three local
+  folders instead of copying. They were removed, and the targets are
+  now written `${h}`.
+
+### F. Next
+
+1. orrery's interface in treadcore's brushed metal: every tab and
+   page, the story from a new machine to a promoted result, and
+   projects (treadcore, crucible) in the orchestration.
+2. crucible as a run kind on `gpu` hosts, the three cards as islands
+   passing champions.
+3. Then commands by OS, and Media's Ubuntu stick (from LR 120).
