@@ -31,6 +31,17 @@
 // fires when aimed, is played by the champion every --yard generations:
 // its win rate against the yardstick is the evidence of learning, since
 // scores against the hall of fame rise and fall with the hall itself.
+//
+// The ladder (Paul, 28 October: "islands' own past champions ... battling
+// known milestones in the past is a good idea"): once the islands beat the
+// yardstick nearly every time it measures nothing, so the champions the
+// fleet has kept as milestones are the harder yardstick. --ladder loads
+// them, oldest first. In training they are opponents too (--lad, the
+// chance of one), so a learner keeps beating the fleet's whole past, not
+// only its own hall's last few thousand. Every --yard generations the
+// champion's score against the ladder is written beside the yardstick's,
+// and --exam writes the final champion's score against each milestone,
+// the evidence the coordinator uses to make it the next one.
 
 #include <cstdint>
 #include <cstdio>
@@ -267,9 +278,11 @@ struct Totals {
 
 // Block b plays individual b / reps (reps blocks to an individual, for the
 // yardstick) for blockDim.x duels. opp_mode 0, training: with chance
-// `spar` a sparring partner of drawn skill, else an opponent from the hall
-// of fame, half the time one of the newest 16. 1: the yardstick.
+// `spar` a sparring partner of drawn skill, with chance `lad` a milestone
+// of the ladder, else an opponent from the hall of fame, half the time one
+// of the newest 16. 1: the yardstick. 2: the ladder's milestone `rung`.
 __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop, const float* __restrict__ hall, int hall_n, int hall_cap, int hall_next,
+                     const float* __restrict__ ladder, int ladder_n, float lad, int rung,
                      int reps, int opp_mode, float spar, int steps, uint32_t seed, int gen, float* fitness, Totals* tot) {
     extern __shared__ float sm[];
     float* wA = sm;
@@ -278,18 +291,22 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
     __shared__ unsigned int sw, sl, sd;
     int ind = blockIdx.x / reps;
     Rng br{mix(mix(seed, gen), blockIdx.x)};
-    int opp = 0;
     Skill skill = YARDSTICK;
-    bool net_opp = opp_mode == 0 && br.u() >= spar;
-    if (opp_mode == 0 && !net_opp) skill = Skill{br.in(0.05f, 0.6f), br.in(6.0f, 20.0f)};
-    if (net_opp) {
-        bool recent = br.u() < 0.5f;
-        int k = (int)(br.u() * (recent ? min(hall_n, 16) : hall_n));
-        opp = recent ? (hall_next - 1 - k + hall_cap) % hall_cap : k;
-    }
+    const float* opp = nullptr;
+    if (opp_mode == 0) {
+        float u = br.u();
+        if (u < spar) skill = Skill{br.in(0.05f, 0.6f), br.in(6.0f, 20.0f)};
+        else if (u < spar + lad && ladder_n > 0) opp = ladder + (size_t)min((int)(br.u() * ladder_n), ladder_n - 1) * NW;
+        else {
+            bool recent = br.u() < 0.5f;
+            int k = (int)(br.u() * (recent ? min(hall_n, 16) : hall_n));
+            opp = hall + (size_t)(recent ? (hall_next - 1 - k + hall_cap) % hall_cap : k) * NW;
+        }
+    } else if (opp_mode == 2) opp = ladder + (size_t)rung * NW;
+    bool net_opp = opp != nullptr;
     for (int i = threadIdx.x; i < NW; i += blockDim.x) {
         wA[i] = pop[(size_t)ind * NW + i];
-        if (net_opp) wB[i] = hall[(size_t)opp * NW + i];
+        if (net_opp) wB[i] = opp[i];
     }
     if (threadIdx.x == 0) { score = 0; sw = sl = sd = 0; }
     __syncthreads();
@@ -363,9 +380,10 @@ __global__ void seed_pop(float* pop, size_t n, uint32_t seed) {
 
 struct Opt {
     int pop = 8192, eps = 256, steps = 600, gens = 100, elite = 16, every = 5, cap = 4096, yard = 10, yard_eps = 4096;
-    float sigma = 0.03f, spar = 0.5f;
+    float sigma = 0.03f, spar = 0.5f, lad = 0.2f;
+    int exam_eps = 2048;
     uint32_t seed = 1;
-    std::string out = "", save = "", load = "", exp = "", imp = "";
+    std::string out = "", save = "", load = "", exp = "", imp = "", ladder = "", exam = "";
     bool bench = false;
 };
 
@@ -373,9 +391,12 @@ static void usage() {
     fprintf(stderr,
             "crucible [--pop N] [--eps N] [--steps N] [--gens N] [--elite N] [--every K] [--cap N]\n"
             "         [--sigma S] [--spar P] [--seed N] [--yard K] [--out FILE.tsv] [--save FILE] [--load FILE] [--bench]\n"
-            "         [--export CHAMP.bin] [--import A.bin,B.bin,...]\n"
+            "         [--export CHAMP.bin] [--import A.bin,B.bin,...] [--ladder M1.bin,M2.bin,...] [--lad P]\n"
+            "         [--exam FILE.tsv] [--exam-eps N]\n"
             "  --export writes the last generation's champion (its weights, as floats);\n"
-            "  --import puts other islands' champions into the hall of fame first.\n");
+            "  --import puts other islands' champions into the hall of fame first;\n"
+            "  --ladder loads milestones (oldest first): opponents with chance --lad, and a yardstick;\n"
+            "  --exam writes the final champion's score against each milestone and the yardstick.\n");
     exit(2);
 }
 
@@ -402,6 +423,10 @@ int main(int argc, char** argv) {
         else if (a == "--load") o.load = val();
         else if (a == "--export") o.exp = val();
         else if (a == "--import") o.imp = val();
+        else if (a == "--ladder") o.ladder = val();
+        else if (a == "--lad") o.lad = atof(val());
+        else if (a == "--exam") o.exam = val();
+        else if (a == "--exam-eps") o.exam_eps = atoi(val());
         else if (a == "--bench") o.bench = true;
         else usage();
     }
@@ -489,12 +514,62 @@ int main(int argc, char** argv) {
         printf("# imported %d champion(s) into the hall of fame (%d there)\n", n, hall_n);
     }
 
+    // The ladder: milestones, oldest first, kept on the card beside the hall.
+    std::vector<std::string> rungs;
+    for (size_t a = 0; !o.ladder.empty() && a <= o.ladder.size();) {
+        size_t b = o.ladder.find(',', a);
+        if (b == std::string::npos) b = o.ladder.size();
+        if (b > a) rungs.push_back(o.ladder.substr(a, b - a));
+        a = b + 1;
+    }
+    std::vector<float> lh;
+    std::vector<std::string> names;
+    for (auto& path : rungs) {
+        std::vector<float> w(NW);
+        FILE* f = fopen(path.c_str(), "rb");
+        if (!f || fread(w.data(), 4, NW, f) != (size_t)NW) {
+            fprintf(stderr, "# ladder %s: not a champion of this net, skipped\n", path.c_str());
+            if (f) fclose(f);
+            continue;
+        }
+        fclose(f);
+        lh.insert(lh.end(), w.begin(), w.end());
+        size_t s = path.find_last_of('/');
+        names.push_back(s == std::string::npos ? path : path.substr(s + 1));
+    }
+    int ladder_n = (int)names.size();
+    float* ladder = nullptr;
+    CK(cudaMalloc(&ladder, std::max<size_t>(1, lh.size()) * sizeof(float)));
+    if (ladder_n) CK(cudaMemcpy(ladder, lh.data(), lh.size() * sizeof(float), cudaMemcpyHostToDevice));
+    if (ladder_n) printf("# ladder: %d milestone(s), opponents %.0f%% of the time\n", ladder_n, 100.0 * o.lad);
+    const float lad = ladder_n ? o.lad : 0.0f;
+
+    // One net against one opponent (the yardstick, mode 1, or a milestone,
+    // mode 2), n duels: wins, draws and losses as fractions.
+    float* yf;
+    CK(cudaMalloc(&yf, sizeof(float)));
+    auto match = [&](const float* net, int mode, int rung, int n, uint32_t s, int g, float* wdl) {
+        int reps = std::max(1, n / o.eps);
+        CK(cudaMemset(yf, 0, sizeof(float)));
+        memset(tot, 0, sizeof(Totals));
+        play<<<reps, o.eps, shm>>>(net, hall, hall_n, o.cap, hall_next, ladder, ladder_n, 0.0f, rung, reps, mode, 0.0f, o.steps, s, g, yf, tot);
+        CK(cudaDeviceSynchronize());
+        CK(cudaGetLastError());
+        float m = (float)(tot->wins + tot->losses + tot->draws);
+        wdl[0] = tot->wins / m; wdl[1] = tot->draws / m; wdl[2] = tot->losses / m;
+    };
+
     FILE* out = o.out.empty() ? nullptr : fopen(o.out.c_str(), "a");
     if (out) fseek(out, 0, SEEK_END);
     // A header on a new file, whichever generation it starts at (an
     // island's segment starts where the last one stopped).
-    if (out && ftell(out) == 0) fprintf(out, "gen\tbest\tmean\tplay_s\tsteps_per_s\tnet_gflops\thall\tyard_win\tyard_draw\tyard_loss\n");
-    printf("gen\tbest\tmean\tplay_s\tMsteps/s\tnet GFLOP/s\thall\tyardstick w/d/l\n");
+    // The ladder's two columns come after the old ten, so a reader of those
+    // is not disturbed. A score is wins less losses, -1 to 1: wins plus half
+    // the draws would give a net that never fights 0.5, since a duel it
+    // hides from is a draw (a 20-generation net drew 87% and 100% of its
+    // duels with two islands' champions).
+    if (out && ftell(out) == 0) fprintf(out, "gen\tbest\tmean\tplay_s\tsteps_per_s\tnet_gflops\thall\tyard_win\tyard_draw\tyard_loss\tladder_score\tladder_top\n");
+    printf("gen\tbest\tmean\tplay_s\tMsteps/s\tnet GFLOP/s\thall\tyardstick w/d/l\tladder all/top\n");
 
     double flops_per_step = 2.0 * (NIN * H + H * H + H * NOUT); // one net, multiply-adds as two
     cudaEvent_t e0, e1;
@@ -508,7 +583,7 @@ int main(int argc, char** argv) {
         CK(cudaMemset(fit, 0, o.pop * sizeof(float)));
         memset(tot, 0, sizeof(Totals));
         CK(cudaEventRecord(e0));
-        play<<<o.pop, o.eps, shm>>>(pop, hall, hall_n, o.cap, hall_next, 1, 0, o.spar, o.steps, o.seed, g, fit, tot);
+        play<<<o.pop, o.eps, shm>>>(pop, hall, hall_n, o.cap, hall_next, ladder, ladder_n, lad, 0, 1, 0, o.spar, o.steps, o.seed, g, fit, tot);
         CK(cudaEventRecord(e1));
         CK(cudaEventSynchronize(e1));
         CK(cudaGetLastError());
@@ -529,20 +604,24 @@ int main(int argc, char** argv) {
         int champ;
         CK(cudaMemcpy(&champ, rank, sizeof(int), cudaMemcpyDeviceToHost));
 
-        char yard[64] = "-";
-        float yw = -1, yd = -1, yl = -1;
+        char yard[64] = "-", ladc[32] = "-";
+        float yw = -1, yd = -1, yl = -1, ls = -9, lt = -9; // -9: not measured (a score can be -1)
         if (o.yard > 0 && (g + 1) % o.yard == 0) {
-            int reps = o.yard_eps / o.eps;
-            float* yf;
-            CK(cudaMalloc(&yf, sizeof(float)));
-            CK(cudaMemset(yf, 0, sizeof(float)));
-            memset(tot, 0, sizeof(Totals));
-            play<<<reps, o.eps, shm>>>(pop + (size_t)champ * NW, hall, hall_n, o.cap, hall_next, reps, 1, 0.0f, o.steps, o.seed ^ 0xa5a5u, g, yf, tot);
-            CK(cudaDeviceSynchronize());
-            CK(cudaFree(yf));
-            float n = (float)(tot->wins + tot->losses + tot->draws);
-            yw = tot->wins / n; yd = tot->draws / n; yl = tot->losses / n;
+            float wdl[3];
+            match(pop + (size_t)champ * NW, 1, 0, o.yard_eps, o.seed ^ 0xa5a5u, g, wdl);
+            yw = wdl[0]; yd = wdl[1]; yl = wdl[2];
             snprintf(yard, sizeof yard, "%.2f/%.2f/%.2f", yw, yd, yl);
+            // The ladder: the yardstick's duels shared among the milestones.
+            if (ladder_n) {
+                ls = 0;
+                for (int k = 0; k < ladder_n; k++) {
+                    match(pop + (size_t)champ * NW, 2, k, std::max(o.eps, o.yard_eps / ladder_n), o.seed ^ 0x5a5au, g, wdl);
+                    float sc = wdl[0] - wdl[2];
+                    ls += sc / ladder_n;
+                    if (k == ladder_n - 1) lt = sc;
+                }
+                snprintf(ladc, sizeof ladc, "%.2f/%.2f", ls, lt);
+            }
         }
         if ((g + 1) % o.every == 0) {
             CK(cudaMemcpy(hall + (size_t)hall_next * NW, pop + (size_t)champ * NW, NW * sizeof(float), cudaMemcpyDeviceToDevice));
@@ -554,10 +633,10 @@ int main(int argc, char** argv) {
         std::swap(pop, next);
         CK(cudaGetLastError());
 
-        printf("%d\t%.3f\t%.3f\t%.3f\t%.1f\t%.0f\t%d\t%s\n", g, best, mean, ms / 1000.0, sps / 1e6, gfl, hall_n, yard);
+        printf("%d\t%.3f\t%.3f\t%.3f\t%.1f\t%.0f\t%d\t%s\t%s\n", g, best, mean, ms / 1000.0, sps / 1e6, gfl, hall_n, yard, ladc);
         fflush(stdout);
         if (out) {
-            fprintf(out, "%d\t%.4f\t%.4f\t%.4f\t%.0f\t%.1f\t%d\t%.4f\t%.4f\t%.4f\n", g, best, mean, ms / 1000.0, sps, gfl, hall_n, yw, yd, yl);
+            fprintf(out, "%d\t%.4f\t%.4f\t%.4f\t%.0f\t%.1f\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n", g, best, mean, ms / 1000.0, sps, gfl, hall_n, yw, yd, yl, ls, lt);
             fflush(out);
         }
     }
@@ -573,6 +652,24 @@ int main(int argc, char** argv) {
         fwrite(w.data(), 4, NW, f);
         fclose(f);
         printf("# exported the champion to %s (%d weights)\n", o.exp.c_str(), NW);
+    }
+    if (!o.exam.empty()) {
+        // The exam: the final champion (individual 0) against the yardstick
+        // and each milestone, --exam-eps duels each, on seeds of its own.
+        // A line a match: what, wins, draws, losses, duels.
+        FILE* f = fopen(o.exam.c_str(), "w");
+        fprintf(f, "opponent\twin\tdraw\tloss\tduels\n");
+        float wdl[3];
+        int n = std::max(1, o.exam_eps / o.eps) * o.eps;
+        match(pop, 1, 0, o.exam_eps, o.seed ^ 0xe8a3u, gen0 + o.gens, wdl);
+        fprintf(f, "yardstick\t%.4f\t%.4f\t%.4f\t%d\n", wdl[0], wdl[1], wdl[2], n);
+        for (int k = 0; k < ladder_n; k++) {
+            match(pop, 2, k, o.exam_eps, o.seed ^ 0xe8a3u, gen0 + o.gens, wdl);
+            fprintf(f, "%s\t%.4f\t%.4f\t%.4f\t%d\n", names[k].c_str(), wdl[0], wdl[1], wdl[2], n);
+            printf("# exam: %s %.3f/%.3f/%.3f\n", names[k].c_str(), wdl[0], wdl[1], wdl[2]);
+        }
+        fclose(f);
+        printf("# exam written to %s (%d milestone(s))\n", o.exam.c_str(), ladder_n);
     }
     if (!o.save.empty()) {
         FILE* f = fopen(o.save.c_str(), "wb");
