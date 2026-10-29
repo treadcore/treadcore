@@ -76,29 +76,29 @@ weights! {
     Near "w_near" 2.0, "target: worth of nearness, w_near / (1 + d / near_scale)";
     NearScale "near_scale" 15.0, "target: the distance scale of nearness, tiles";
     Wounded "w_wounded" 1.2, "target: worth of its wounds";
-    Finish "w_finish" 0.8, "target: one direct shot from dead";
+    Finish "w_finish" 0.552896, "target: one direct shot from dead";
     Boat "w_boat" 1.0, "target: afloat, a boat sinks at one hit";
     Called "w_called" 0.8, "target: a teammate pinged it";
     CalledFor "called_for" 15.0, "target: seconds a ping stays a call";
     Focus "w_focus" 0.5, "target: each teammate already on it";
     FocusCap "focus_cap" 2.0, "target: teammates on it before overkill (rounded)";
     Overkill "w_overkill" 0.6, "target: off for each teammate past the cap";
-    InRange "w_in_range" 1.4, "target: in direct range now";
+    InRange "w_in_range" 0.930063, "target: in direct range now";
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
     BaseR "base_r" 16.0, "target: the base's reach for w_threat, tiles";
-    Stick "w_stick" 0.4, "target: the one already chosen";
+    Stick "w_stick" 0.322391, "target: the one already chosen";
     FocusBlend "focus_blend" 0.5, "target (LR 117): 0 the near tank in range, 1 the wounded one a teammate is on; 0.5 both as before (each side's terms doubled toward its end)";
     // Tactics: the engagement and assignment.
     OddsR "odds_r" 14.0, "odds: tanks this near the fight count, tiles";
     PillboxWorth "pillbox_worth" 0.7, "odds: a hostile pillbox as a share of a tank";
     StrikeWorth "strike_worth" 0.35, "odds: a hostile strike drone as a share of a tank";
-    EngageOdds "engage_odds" 0.7, "odds: below these, with help coming, mass";
-    PressOdds "press_odds" 2.0, "odds: above these, close in";
-    ComingR "coming_r" 45.0, "odds: teammates this near are coming, tiles";
+    EngageOdds "engage_odds" 0.353899, "odds: below these, with help coming, mass";
+    PressOdds "press_odds" 2.67535, "odds: above these, close in";
+    ComingR "coming_r" 180.0, "odds: teammates this near are coming, tiles";
     MassFor "mass_for" 12.0, "odds: seconds to hold off for them";
     AnswerCap "answer_cap" 3.0, "pings: this many nearer teammates answer instead (rounded)";
     CrewReach "crew_reach" 40.0, "pings: a crew on a job answers only this near, tiles";
-    Exposure "w_exposure" 1.0, "stand: cost per gun covering a firing point";
+    Exposure "w_exposure" 0.605073, "stand: cost per gun covering a firing point";
     Flank "w_flank" 0.3, "stand: cost of leaving the flank's bearing";
     Kite "kite" 1.0, "kite: on (1) or off (0) (rounded)";
     KiteMargin "kite_margin" 1.5, "kite: the waiting ring past the target's reach, tiles";
@@ -138,7 +138,7 @@ weights! {
     ColumnGap "column_gap" 2.0, "column: tiles between tanks in file on a bridge";
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";
     // The team (LR 9).
-    SwapGap "swap_gap" 0.3, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
+    SwapGap "swap_gap" 0.207136, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
     Posture "w_posture" 0.95, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
     PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
@@ -176,7 +176,7 @@ weights! {
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
     CastleInside "castle_inside" 8.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";
     CastleRoad "castle_road" 2.0, "castle: pillboxes outside on its road (rounded)";
-    PostSpacing "post_spacing" 10.0, "posts: tiles between pillboxes on a road between bases";
+    PostSpacing "post_spacing" 28.1025, "posts: tiles between pillboxes on a road between bases";
     PostsMax "posts_max" 6.0, "posts: road posts a base fills at most (rounded)";
     JunctionClear "junction_clear" 3.0, "posts: no post this near a road junction, tiles";
     ConnectBases "connect_bases" 0.75, "connect: a base or castle preferred to a lone pillbox, 0 none, 1 its distance counted at nothing";
