@@ -141,7 +141,7 @@ pub struct Tactics {
 impl Default for Tactics {
     fn default() -> Tactics {
         Tactics {
-            w_near: 1.0,
+            w_near: 2.0,
             near_scale: 15.0,
             w_wounded: 1.2,
             w_finish: 0.8,
@@ -151,7 +151,7 @@ impl Default for Tactics {
             w_focus: 0.5,
             focus_cap: 2,
             w_overkill: 0.6,
-            w_in_range: 0.7,
+            w_in_range: 1.4,
             w_threat: 0.6,
             base_r: 16.0,
             w_stick: 0.4,
@@ -169,11 +169,11 @@ impl Default for Tactics {
             w_flank: 0.3,
             kite: true,
             kite_margin: 1.5,
-            kite_in: DIRECT_RANGE - 1.0,
+            kite_in: 4.5,
             kite_turn: 0.8,
             kite_spare: 0.4,
             shell_boxes: true,
-            longshot_every: 5.0,
+            longshot_every: 2.5,
             longshot_any: true,
             strikes_max: 3,
         }
