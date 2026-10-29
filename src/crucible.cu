@@ -447,8 +447,13 @@ int main(int argc, char** argv) {
     CK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&per_sm, play, o.eps, shm));
     size_t free_b, total_b;
     CK(cudaMemGetInfo(&free_b, &total_b));
+    // The clock as an attribute, not cudaDeviceProp::clockRate: CUDA 13
+    // removed the field, and the attribute is in 12 and 13 alike, so one
+    // source builds on the Pascal cards (12.9) and the Ada one (13).
+    int khz = 0;
+    CK(cudaDeviceGetAttribute(&khz, cudaDevAttrClockRate, 0));
     printf("# device %s, sm_%d%d, %d SMs, %.0f MHz, %.1f GB (%.1f free)\n", dp.name, dp.major, dp.minor, dp.multiProcessorCount,
-           dp.clockRate / 1000.0, total_b / 1e9, free_b / 1e9);
+           khz / 1000.0, total_b / 1e9, free_b / 1e9);
     printf("# net 32-%d-%d-3: %d weights (%.1f KB); play: %d registers/thread, %zu B shared/block, %d blocks of %d per SM (occupancy %.0f%%)\n",
            H, H, NW, NW * 4 / 1024.0, fa.numRegs, shm, per_sm, o.eps, 100.0 * per_sm * o.eps / dp.maxThreadsPerMultiProcessor);
 
