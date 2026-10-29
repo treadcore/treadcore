@@ -9400,3 +9400,73 @@ Orrery.app held 389 MB across 40 s, against 368 MB before.
    run treadcore's candidates.
 3. **The path to the candidates themselves:** a GPU arena from
    treadcore's combat rules (LR 121 D).
+
+## 123. orrery's story: five chapters, and a Projects view, 28 October
+
+Paul chose the order "Build, Run, Result" from three (the others: a
+project switch first, or today's five views plus a sixth). The prompt:
+"rethink about the interface progression. tell a story, help us
+orchestrate and add comptuers to configure in the orchestration."
+
+### A. The chapters (orrery f0823ec)
+
+The strip holds five keys, Command-1 to 5, in the order the work goes.
+Each chapter's pages are keys in a steel column on the left, and the
+chapter's sentence is cut into the foot of the column.
+
+| # | Chapter | Its pages | The story |
+| --- | --- | --- | --- |
+| 1 | Machines | Machines, Media | add a computer: probe it, set it up, join it |
+| 2 | Projects | Projects (new) | give it work: treadcore on the CPUs, crucible on the GPUs |
+| 3 | Queue | Fleet, Runs | the work runs: each machine's job, and the runs asked for |
+| 4 | Results | Candidates, Found, Net, Flags | what it found: candidates promote themselves |
+| 5 | Watch | Lab, Sessions | look in: the room, and every terminal |
+
+The window opens on the Queue.
+
+**Training is split in two:**
+- **Queue** keeps the band and its controls: stop, sync, shut down.
+- **Results** opens with what the fleet found, as of this step: 37
+  candidates (0 on today's defaults), 717 improvements, auto mode on.
+  Its Candidates key is lit green with the count; Flags is lit red
+  while any are unacknowledged.
+
+The menu bar follows the chapters. A test holds every view to exactly
+one chapter, and every chapter's sentence to its column.
+
+### B. Projects
+
+A card for each project:
+- **treadcore,** from the queue's status: queued, running, done and
+  failed; auto and rotation; candidates.
+- **crucible,** from its own run files (`~/code/crucible/runs/*.tsv`,
+  read every 15 s): each run's generations and last yardstick read,
+  and the fastest rate.
+
+Then a row per machine (cores, card), with what each project has on it:
+- **treadcore:** the machine's lane in the queue, lamp lit while it
+  runs.
+- **crucible:** "ready, not queued" on the three GPU machines. That is
+  the truth until crucible is a run kind, the next step.
+
+### C. Found on the way
+
+The steel showed a step at half height down each side. treadcore's
+rim switches from light to shade at half height; on a plate the height
+of a window that reads as a seam. The rim is now blended down the
+sides.
+
+### D. Checks
+
+- 348 tests pass.
+- Frames of every chapter were looked at
+  (`reports/images/orrery-story-projects.png`, `-results.png`).
+- Installed and relaunched: 398 MB.
+
+### E. Next
+
+crucible as grove's second job:
+- a run kind for `gpu` hosts;
+- islands passing champions;
+- the GPU lanes sharing the cards with treadcore's net runs (train,
+  school), which already use them.

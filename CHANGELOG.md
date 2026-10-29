@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: orrery's views tell the story in five chapters, Machines,
+  Projects, Queue, Results and Watch, each with its pages in a steel
+  column. Added: a Projects view with treadcore and crucible, and which
+  machine runs which (LAB-REPORT-BRAIN.md section 123).
+
 - Changed: orrery's window looks like treadcore: brushed steel, metal
   keys with lamps and digits, black readouts (the default; `--light`
   and `--dark` keep the flat palettes) (LAB-REPORT-BRAIN.md section 122).

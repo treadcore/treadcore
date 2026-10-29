@@ -1312,6 +1312,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     metal keys with lamps, black readouts; one header for every view.
     State: done (orrery f82f471). Next: the story (views in the order the
     work goes, a Projects view) and crucible as grove's second job.
+77. orrery's story. (28 October; cause: Paul, "rethink about the
+    interface progression. tell a story"; he chose Build, Run, Result;
+    LR 123, CI-082.) Five chapters (Machines, Projects, Queue, Results,
+    Watch) with their pages in a steel column; a Projects view with
+    treadcore and crucible and which machine runs which. State: done
+    (orrery f0823ec). Next: crucible as grove's second job.
 
 ## Sequencing
 
