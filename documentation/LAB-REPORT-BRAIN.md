@@ -9547,3 +9547,127 @@ The lab report, with its diagrams, is `reports/census-to-commit/`
 - Read the re-reads: does w0045 or w0003 still beat the new defaults?
 - A GPU arena from treadcore's combat rules, so the cards can serve
   treadcore's candidates (LR 121 D), if Paul wants it.
+
+## 125. crucible's ladder, Paul Accepts or the promotion self-modifies, and the CPU lanes fed again, 28 October
+
+Paul, on seeing the GPUs at 100%: "islands' own past champions, then
+build the treadcore arena. i love this. keep everything in rotation.
+improve orrery. improve the process of Census to Commit. The process
+needs to be scripted without intervention. There are mentions to wait
+till promoted by paul, reword them to say Paul Accepts when auto promote
+is on, and ssh credentials allow. Else they self modify, and have a flag
+for please resovle this by commiting the weights and nets. The cards ,
+when they find good values at the same time, how do we keep consistent
+generations with keeping data. Also battling known milestones in the
+bast is a good idea."
+
+Why: calber and whitewolf won 98% and 96% of their yardstick duels and
+had not moved in 400 generations (boburner was still climbing, 72% to
+78%). The cards were busy and the measure had saturated.
+
+### A. The ladder (crucible bfe74b2, cbf76fa; orrery 8f14f0f, edc6a45)
+
+- **Milestones.** `--ladder` loads past champions, oldest first. In
+  training they are opponents (`--lad`, 20% of duels), so an island keeps
+  beating the fleet's whole past, not only its hall's last few thousand.
+  Every `--yard` generations the champion's score against them is
+  written beside the yardstick's; `--exam` writes the final champion's
+  score against each, 2,048 duels apiece.
+- **The score is wins less losses** (-1 to 1). Wins plus half the draws
+  would give a net that never fights 0.5: in the first test a
+  20-generation net drew 87% and 100% of its duels with two champions.
+- **Keeping data.** Every segment's champion is kept
+  (`crucible/champions/`, one line each in `crucible/lineage.tsv`: job,
+  island, generation, yardstick, the milestone examined against, wins,
+  draws, losses, margin in standard errors, ladder mean, and what became
+  of it).
+- **Consistent generations: the milestone rule, written before the
+  run.** A champion becomes milestone M(n+1) only when its exam was
+  against M(n), the newest, it beat M(n) by more than two standard errors
+  (wins less losses), and it does not lose to the ladder on balance.
+  When two islands qualify in one pass, the larger margin becomes
+  M(n+1); the other is kept and meets M(n+1) in its next segment. An
+  exam against an older milestone (a segment queued before the newest
+  was made) makes nothing. So the milestones are one line, each beating
+  the one before, whichever card found it, and nothing a card found is
+  lost.
+- **Sent at dispatch.** The ladder (at most 8: the newest four and four
+  spread over the older) and the other islands' newest champions are slot
+  files the keeper reads when it dispatches a segment, so a segment
+  queued six ahead meets the ladder as it is then.
+- **Tested** on made-up exams: two islands past M1 at once (the larger
+  margin, 16.2 se, became M2; the other, 6.5 se, was kept); a stale exam
+  (kept); a net drawing everything (0 se, kept).
+- **Projects** draws the chain of milestones (those a segment meets
+  outlined) and the lineage, newest first; each island's card shows its
+  ladder score against all milestones and the newest.
+
+### B. Paul Accepts, or the promotion self-modifies (orrery 8f14f0f)
+
+A prepared promotion (its tests and families passed on a branch):
+- **Paul Accepts**: auto mode on and this coordinator can push. It is
+  pushed to main and tagged `brain-RID`, as before; the record says
+  "Paul Accepts (auto mode)".
+- **Self-modifies**: otherwise (no push permission, or auto mode off).
+  It goes onto the local line `orrery/accepted`, main with the
+  promotions not on it. The fleet builds the local line: each build is
+  sent `plan/accepted.bundle`, the line's own commits, and fetches it
+  before its worktree. A `resolve` flag stays up: "please resolve this
+  by committing the weights and nets", naming the promotions, the line's
+  commit, and the nets not committed (files under `nets/` git does not
+  track, and the net rounds' best). `fleet-queue.py $Q resolve`, or the
+  Runs page's **To main**, pushes the line. When main holds the line it
+  ends; when main moves on without it, the line is replayed on main; in
+  auto mode, when the credentials come back, it is pushed by itself.
+- Nothing waits for a person. Before, a promotion without push
+  permission failed at once, and with auto mode off one waited for
+  Approve. A failed accept (main's brain source moved under it) now
+  self-modifies instead of failing.
+- **Tested** in a scratch repository with a bare remote: self-modified
+  (no permission), main moved under it (replayed, its parent main),
+  permission back (pushed, resolved, tagged).
+- The words: the Runs page's push line, its **Accept** and **To main**
+  buttons, the Candidates page's auto mode line, `fleet-train.md` and
+  `CENSUS.md` say Paul Accepts or self-modifies; none says "waiting for
+  Paul".
+
+The nets in this checkout today: `nets/bc1.bin` and `nets/bc2.bin` are
+not tracked; `nets/map7.bin` is the official net. The flag will name
+them until they are committed or ignored.
+
+### C. Found on the way: three CPU lanes idle
+
+At 20:40 calber, boburner and the Mac had no treadcore work: weights
+queue 0. The planner counted crucible's segments, queued six ahead,
+against the share it gives treadcore, and the keeper running since 12:28
+plans only when its queue is low (it never was: 15 crucible segments and
+5 builds waiting behind whitewolf's school run) or at its half-hourly
+sync. Fixed: the GPU lanes' jobs take none of treadcore's share, and the
+share is three queued jobs a CPU machine whatever the keeper asks (a
+census is 15 minutes, a sync 30). At 20:42 every lane was running. This
+was LR 124's fault: the islands came with it.
+
+### D. The first exam, and the draw
+
+The keeper planned at 20:30 while A was being written, and made the
+first finished segment, whitewolf's at generation 7050, milestone M0001
+(by order, not by evidence: its line says "yardstick 0.000", written
+before segments without an exam fell back to their last yardstick read).
+The first exam, calber's champion at generation 11,550 against M0001:
+yardstick 99.5% won; against M0001, **2,048 draws of 2,048**. The
+champions learned to wait for an attacker: the scripted yardstick
+charges in and is shot, two waiters time out. The rule made no
+milestone, rightly, and the ladder would have stood still.
+
+Fix (either/or is a scalar): `--draw`, a drawn duel's worth in training,
+default -1 (a win is +2 and a loss -2, besides damage); 0 is the old
+behaviour. The rule before the run: within four segments an island, the
+exams' draws against the newest milestone fall below 50%.
+
+RESULT_DRAW
+
+### E. Next
+
+- The treadcore arena on the GPU, the next step Paul asked for.
+- whitewolf's school run (r0022) ends; then the keeper can be restarted
+  on its newer code (plans every five minutes).

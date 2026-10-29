@@ -71,8 +71,8 @@ $F new roundrobin                                   # every ordered pair of prof
 $F new spsa tune="dodge_horizon dodge_clear"        # values for these weights, a step a census
 $F new tune                                         # the older evolutionary tuner (LR 40)
 $F new families                                     # every candidate against the families' floors again
-$F new promote candidate=@strongest                 # a candidate into weights.rs on a branch; Paul approves
-$F runs; $F cancel RID; $F approve RID
+$F new promote candidate=@strongest                 # a candidate into weights.rs on a branch; Paul Accepts (auto, push ok) or it self-modifies
+$F runs; $F cancel RID; $F approve RID; $F resolve  # resolve: the local line orrery/accepted pushed to main
 ```
 
 **What a run does:**
@@ -161,7 +161,8 @@ new one, from a fresh clone, paste:
 > Check the fleet's queue (`python3 ~/code/orrery/tools/fleet-queue.py
 > build/queue/grove status` and `... runs`): if its keeper is stopped,
 > start it (`... ensure`); read what finished against the rule written
-> before it, and any promotion waiting for Paul. Then tell me where the
+> before it, and any `resolve` flag (promotions self-modified onto the
+> local line `orrery/accepted`, not yet on main). Then tell me where the
 > roadmap's backlog stands and what you would ask the fleet for next,
 > with its cost in matches and hours.
 
@@ -188,7 +189,9 @@ section 92) is now the standing work of orrery's queue
    its families run next.
 
 It changes no default. A candidate becomes the default only by a
-promotion that Paul approves.
+promotion: Paul Accepts it (auto mode, push permitted), or it
+self-modifies onto the local line until the weights and nets are
+committed.
 
 `scripts/converge.sh` is kept for one machine without the fleet.
 saskatchewan's run (`build/converge/20261026-181011`, 64 generations)
