@@ -112,7 +112,7 @@ weights! {
     PillboxWorth "pillbox_worth" 0.7, "odds: a hostile pillbox as a share of a tank";
     StrikeWorth "strike_worth" 0.35, "odds: a hostile strike drone as a share of a tank";
     EngageOdds "engage_odds" 0.353899, "odds: below these, with help coming, mass";
-    PressOdds "press_odds" 2.67535, "odds: above these, close in";
+    PressOdds "press_odds" 1.33767, "odds: above these, close in";
     ComingR "coming_r" 180.0, "odds: teammates this near are coming, tiles";
     MassFor "mass_for" 12.0, "odds: seconds to hold off for them";
     AnswerCap "answer_cap" 3.0, "pings: this many nearer teammates answer instead (rounded)";
@@ -121,7 +121,7 @@ weights! {
     Flank "w_flank" 0.3, "stand: cost of leaving the flank's bearing";
     Kite "kite" 1.0, "kite: on (1) or off (0) (rounded)";
     KiteMargin "kite_margin" 1.5, "kite: the waiting ring past the target's reach, tiles";
-    KiteIn "kite_in" 4.5, "kite: the ring a step in ends on, tiles";
+    KiteIn "kite_in" 2.25, "kite: the ring a step in ends on, tiles";
     KiteTurn "kite_turn" 0.8, "kite: seconds a step in takes beyond the drive";
     KiteSpare "kite_spare" 0.4, "kite: seconds of the target's reload to spare";
     // Smoothing (LR 7).
@@ -196,7 +196,7 @@ weights! {
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
-    CastleInside "castle_inside" 8.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";
+    CastleInside "castle_inside" 6.53472, "castle: pillboxes inside the wall, then it stops filling (rounded)";
     CastleRoad "castle_road" 2.0, "castle: pillboxes outside on its road (rounded)";
     PostSpacing "post_spacing" 28.1025, "posts: tiles between pillboxes on a road between bases";
     PostsMax "posts_max" 6.0, "posts: road posts a base fills at most (rounded)";
@@ -216,7 +216,7 @@ weights! {
     FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";
     ShellBoxes "shell_boxes" 1.0, "spending (LR 86, the cowboy, the default since): 1 shells a hostile pillbox in the indirect gun's reach whenever the gun is ready and no tank is shot at, 0 only those guarding a stormed depot (before LR 86); thresholded at 0.5";
-    LongshotEvery "longshot_every" 2.5, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
+    LongshotEvery "longshot_every" 1.25, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
     LongshotAny "longshot_any" 1.0, "spending (1 since LR 86): 1 a longshot with no hostile structure to hit goes at the nearest hostile pillbox, else the target tank; 0 at structures only (before LR 86); thresholded at 0.5";
     StrikesMax "strikes_max" 3.0, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
