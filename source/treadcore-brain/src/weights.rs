@@ -269,7 +269,7 @@ macro_rules! caps {
 
 caps! {
     KITE 0 "kite" true, "kite a target past its reach (tactics.rs)";
-    PINGS 1 "pings" true, "call enemies and answer teammates' pings";
+    PINGS 1 "pings" false, "call enemies and answer teammates' pings";
     DODGE 2 "dodge" true, "step out from under a shell";
     BRIDGES 3 "bridges" true, "lay bridges (hop.rs)";
     ROTATE 4 "rotate" true, "rotate between the push and defence points";
