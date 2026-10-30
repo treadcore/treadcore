@@ -25,8 +25,8 @@
 TC="${TC:-$HOME/code/treadcore}"
 FT_DIR="${FT_DIR:-$TC/build/fleet-train}"
 FT_STAGES="record train judge"
-STORE="${STORE:-user@192.168.8.181}"            # the GPU node, where the shards are gathered
-CENSUS_HOST="${CENSUS_HOST:-user@192.168.8.224}" # every census of the loop on this one machine
+STORE="${STORE:-user@calber}"            # the GPU node, where the shards are gathered
+CENSUS_HOST="${CENSUS_HOST:-user@columbia}" # every census of the loop on this one machine
 HOSTS="${HOSTS:-$TC/build/fleet/rec2400/hosts}" # the recording hosts, copied into each round's run
 SEEDS_A_ROUND="${SEEDS_A_ROUND:-1200}"
 PER="${PER:-12}"

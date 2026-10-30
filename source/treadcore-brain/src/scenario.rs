@@ -568,6 +568,11 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
                 let mut s = crate::weights::Settings::default();
                 if let Some(t) = b.get("weights") {
                     for (k, v) in t.table().ok_or("weights: an inline table")? {
+                        if k == "caps" {
+                            let line = format!("caps = {}", v.str().ok_or("caps: a string")?);
+                            s.caps = crate::weights::Settings::parse(&line).map_err(|e| format!("{:?}", e))?.caps;
+                            continue;
+                        }
                         let w = crate::weights::W::by_name(k).ok_or(format!("no weight {}", k))?;
                         s.w[w] = v.num().ok_or(format!("weight {}: a number", k))? as f32;
                     }
@@ -1042,9 +1047,28 @@ pub fn many(doc: &Doc, first: u64, runs: u64) -> Result<(u64, f64, f64, Vec<Stri
 /// the file that holds them (a RuleBot, only the landfall's three),
 /// added to its `weights` or a new one, so two settings run on the same
 /// seeds.
+///
+/// `caps=baseline,-pings` sets the switches as a weights file's `caps` line
+/// does, on every Commander. A switch's A/B is a trial like a number's, and
+/// until this it stopped here with "not a number": the families read the
+/// panic as a floor broken, so no switch could ever be promoted (30 October).
 pub fn set_weights(doc: &mut Doc, set: &str) -> Result<(), String> {
+    let set = set.replace(", ", ",");
     for kv in set.split_whitespace() {
         let (k, v) = kv.split_once('=').ok_or(format!("not name=value: {}", kv))?;
+        if k == "caps" {
+            crate::weights::Settings::parse(&format!("caps = {}", v)).map_err(|e| format!("caps {}: {:?}", v, e))?;
+            for b in doc.lists.get_mut("brain").into_iter().flatten() {
+                if b.get("kind").and_then(Value::str) == Some("rulebot") {
+                    continue;
+                }
+                let w = b.entry("weights".into()).or_insert_with(|| Value::Table(BTreeMap::new()));
+                if let Value::Table(t) = w {
+                    t.insert("caps".to_string(), Value::Str(v.to_string()));
+                }
+            }
+            continue;
+        }
         let v: f64 = v.parse().map_err(|_| format!("not a number: {}", v))?;
         for b in doc.lists.get_mut("brain").into_iter().flatten() {
             // A RuleBot holds only the landfall's three; the rest are a
@@ -1099,6 +1123,21 @@ mod tests {
         }
         assert_eq!(d.lists["brain"][1]["weights"].table().unwrap()["landfall_shy"], Value::Num(1.0));
         assert!(set_weights(&mut d, "nope").is_err());
+    }
+
+    /// A switch's A/B reaches the families: the form the fleet writes, its
+    /// space and all, turns the switch off on a Commander and leaves a
+    /// RuleBot alone, and a misspelt switch stops the read.
+    #[test]
+    fn a_switch_is_set_on_every_commander() {
+        let mut d = parse("[[brain]]\nseat = 0\n[[brain]]\nseat = 1\nkind = \"rulebot\"\n").unwrap();
+        set_weights(&mut d, "caps=baseline, -pings").unwrap();
+        let caps = d.lists["brain"][0]["weights"].table().unwrap()["caps"].str().unwrap().to_string();
+        let s = crate::weights::Settings::parse(&format!("caps = {}", caps)).unwrap();
+        assert!(!s.caps.has(crate::weights::Caps::PINGS), "pings stayed on");
+        assert!(s.caps.has(crate::weights::Caps::DODGE), "the rest of the baseline went too");
+        assert!(d.lists["brain"][1].get("weights").is_none(), "a rulebot has no switches");
+        assert!(set_weights(&mut d, "caps=baseline,-no_such_switch").is_err());
     }
 
     #[test]
