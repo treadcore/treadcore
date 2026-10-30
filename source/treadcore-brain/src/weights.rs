@@ -158,6 +158,7 @@ weights! {
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";
     // The team (LR 9).
     SwapGap "swap_gap" 0.207136, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
+    Model "model" 0.0, "brain: a team's brain, 0 the rules, k a learned model in the fleet's slot k (choice: rules | slot1 | slot2 | slot3 | slot4 | slot5 | slot6 | slot7): the census reads CENSUS_MODELS/k.bin, orrery names each slot by its generation (models.tsv)";
     Roles "roles" 0.0, "team: a bots' team of five after its leader (choice: as_built | no_guard | two_guards | three_guards): as built a guard, two rangers and a wing; no guard sends the guard out with the fleet; two and three guards keep more at the base (fleet::MIXES)";
     Ladder "ladder" 0.0, "auto: the ladder's order, defend base first in each (choice: as_built | expand_before_hunt | hunt_first | expand_first): as built, fortify, turrets, hunt, expand, guard (Rung::order)";
     Posture "w_posture" 0.95, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";

@@ -893,6 +893,25 @@ mod tests {
         if let Some(n) = &net {
             eprintln!("brain_census: the trial team is a net ({}, {} weights)", std::env::var("CENSUS_NET").unwrap_or_default(), n.parameters());
         }
+        // The fleet's model slots (Paul, 29 October: "an enum of up to 0-7
+        // different alternate ai models"): a team whose settings choose
+        // `model` k plays as the net in CENSUS_MODELS/k.bin, the trial's
+        // and the baseline's alike, so a promoted model is the baseline
+        // the next trial meets. A slot asked for and not there stops the
+        // census: the rules played in its place would be read as the net.
+        let models = std::env::var("CENSUS_MODELS").ok().filter(|v| !v.is_empty());
+        let model_of = |s: &Settings, who: &str| -> Option<crate::net::Net> {
+            let k = s.choice(crate::weights::W::Model);
+            if k == 0 {
+                return None;
+            }
+            let dir = models.as_ref().unwrap_or_else(|| panic!("the {} asks for model slot {}, and CENSUS_MODELS is not set", who, k));
+            let p = std::path::Path::new(dir).join(format!("{}.bin", k));
+            let n = crate::net::Net::load(&p).unwrap_or_else(|e| panic!("model slot {} ({}): {}", k, p.display(), e));
+            eprintln!("brain_census: the {} plays model slot {} ({}, {} weights)", who, k, p.display(), n.parameters());
+            Some(n)
+        };
+        let (trial_model, base_model) = (model_of(&trial, "trial"), model_of(&base, "baseline"));
         eprintln!("brain_census: trial caps [{}], {} weights changed {:?}; baseline caps [{}], {} weights changed {:?}", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>(), base.caps.names(), base.diff().len(), base.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>());
         let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
         // A seed's sums, trial and baseline, for the difference a seed
@@ -963,10 +982,17 @@ mod tests {
             new_match();
             // The net team's queue of calls (LR 97): one a match.
             let calls = crate::calls::Calls::new();
+            // A model's team has its own queue of calls, as the net's has.
+            let team_calls: Vec<crate::calls::Calls> = (0..TEAMS.len()).map(|_| crate::calls::Calls::new()).collect();
             let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS)
                 .map(|i| {
                     if let Some(n) = net.as_ref().filter(|_| teams()[i] == lucky) {
                         return (i as PlayerId, Box::new(crate::net::NetBrain::new(n.clone(), &name(i)).with_calls(calls.clone())) as Box<dyn Brain>);
+                    }
+                    // The aggro seat stays the aggro bot: a team of its own.
+                    let model = if teams()[i] == lucky { trial_model.as_ref() } else { base_model.as_ref() };
+                    if let (Some(n), Some(c)) = (model.filter(|_| i != AGGRO), team_calls.get(teams()[i] as usize)) {
+                        return (i as PlayerId, Box::new(crate::net::NetBrain::new(n.clone(), &name(i)).with_calls(c.clone())) as Box<dyn Brain>);
                     }
                     let s = if teams()[i] == lucky { trial.clone() } else { base.clone() };
                     (i as PlayerId, with_settings(s, || brain(i, seed ^ i as u64, false)))
