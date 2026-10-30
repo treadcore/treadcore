@@ -151,7 +151,7 @@ impl Default for Tactics {
             w_focus: 0.5,
             focus_cap: 2,
             w_overkill: 0.6,
-            w_in_range: 0.930063,
+            w_in_range: 1.4,
             w_threat: 0.6,
             base_r: 16.0,
             w_stick: 0.322391,
