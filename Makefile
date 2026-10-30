@@ -5,6 +5,7 @@
 #
 #   make                 the binary for this machine's card, a net of H=32
 #   make CAP=89          for a named architecture (a build without the card)
+#   make HYBRID=1        the net overrides a scripted tank, as treadcore's transform does
 #   make H=48            a wider net (two nets must fit 48 KB of shared memory)
 #   make which           what this machine would build, and with what
 #   make run             100 generations, the numbers to runs/
@@ -26,7 +27,7 @@ FLAGS = -O3 -use_fast_math -std=c++17 -Wno-deprecated-gpu-targets -lineinfo
 crucible: src/crucible.cu
 	@if [ -n "$(CUDA_MAJOR)" ] && [ "$(CUDA_MAJOR)" -ge 13 ] && [ "$(CAP)" -lt 75 ]; then \
 		echo "crucible: CUDA $(CUDA_MAJOR) cannot build for sm_$(CAP): keep CUDA 12 on this card" >&2; exit 1; fi
-	$(NVCC) $(FLAGS) $(ARCH) -DHID=$(H) -DMINB=$(MINB) -Xptxas -v -o $@ $< 2>&1 | grep -E 'error|registers|spill' || true
+	$(NVCC) $(FLAGS) $(ARCH) -DHID=$(H) -DMINB=$(MINB) $(if $(HYBRID),-DHYBRID) -Xptxas -v -o $@ $< 2>&1 | grep -E 'error|registers|spill' || true
 	@test -x $@
 
 which:

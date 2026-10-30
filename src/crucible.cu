@@ -67,8 +67,17 @@
 #ifndef MINB
 #define MINB 1
 #endif
+// HYBRID (make HYBRID=1): the same design as treadcore's Algorhythm. The scripted tank
+// decides first; the net reads the senses and that answer (3 more inputs) and gives a
+// correction and a confidence (1 more output). The gate is shut below zero, and then the
+// tank plays the rules exactly. A state file of one kind does not load in the other: NW differs.
+#ifdef HYBRID
+#define NIN 35
+#define NOUT 4
+#else
 #define NIN 32
 #define NOUT 3
+#endif
 #define NW (NIN * H + H + H * H + H + H * NOUT + NOUT)
 #define RAYS 12
 #define PILLARS 6
@@ -215,6 +224,24 @@ __device__ void scripted(const Tank& me, const Tank& en, Skill k, float* out) {
     out[2] = (fabsf(b) < k.tol && d < 35.0f) ? 1.0f : -1.0f;
 }
 
+// What a net-driven tank does. Returns 1 when the net's own say reached the tank.
+__device__ int decide(const float* __restrict__ wt, const Tank& me, const Tank& en, const Arena& w, float* in, float* out) {
+    sense(me, en, w, in);
+#ifdef HYBRID
+    float rules[3];
+    scripted(me, en, YARDSTICK, rules);
+    in[32] = rules[0]; in[33] = rules[1]; in[34] = rules[2];
+    think(wt, in, out);
+    bool open = out[3] > 0.0f;
+#pragma unroll
+    for (int i = 0; i < 3; i++) out[i] = open ? fmaxf(-1.0f, fminf(1.0f, rules[i] + out[i])) : rules[i];
+    return open ? 1 : 0;
+#else
+    think(wt, in, out);
+    return 1;
+#endif
+}
+
 __device__ void drive(Tank& t, const float* act, const Arena& w) {
     if (t.hp <= 0.0f) return;
     t.a = wrap(t.a + act[0] * TURN * DT);
@@ -273,6 +300,7 @@ __device__ void place(Tank& t, Rng& r, float x0, float x1, const Arena& w) {
 
 struct Totals {
     unsigned long long steps; // tank-steps actually played (both tanks)
+    unsigned long long opened, decided; // the learner's steps where the net had its say, of its steps
     unsigned int wins, losses, draws;
 };
 
@@ -321,13 +349,13 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
 
     float in[NIN], actA[NOUT], actB[NOUT];
     float aim = 0;
+    unsigned int opened = 0;
     int t = 0;
     for (; t < steps; t++) {
         if (A.hp <= 0.0f || B.hp <= 0.0f) break;
-        sense(A, B, w, in);
-        think(wA, in, actA);
+        opened += decide(wA, A, B, w, in, actA);
         aim += in[29] > 0.0f ? in[29] * (in[28] * in[28] < 0.01f ? 1.0f : 0.2f) : 0.0f;
-        if (net_opp) { sense(B, A, w, in); think(wB, in, actB); }
+        if (net_opp) decide(wB, B, A, w, in, actB);
         else scripted(B, A, skill, actB);
         drive(A, actA, w);
         drive(B, actB, w);
@@ -345,6 +373,8 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
     atomicAdd(&score, f);
     if (won) atomicAdd(&sw, 1u); else if (lost) atomicAdd(&sl, 1u); else atomicAdd(&sd, 1u);
     atomicAdd(&tot->steps, (unsigned long long)(2 * t));
+    atomicAdd(&tot->opened, (unsigned long long)opened);
+    atomicAdd(&tot->decided, (unsigned long long)t);
     __syncthreads();
     if (threadIdx.x == 0) {
         atomicAdd(&fitness[ind], score / (blockDim.x * reps));
@@ -378,7 +408,13 @@ __global__ void breed(const float* __restrict__ pop, const int* parent, int n, i
 __global__ void seed_pop(float* pop, size_t n, uint32_t seed) {
     size_t i = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
+#ifdef HYBRID
+    // Beginning at the rules: small corrections, and every gate shut (the last number
+    // is the confidence's bias).
+    pop[i] = (i % NW == NW - 1) ? -0.5f : 0.03f * gauss(mix(seed, (uint32_t)i));
+#else
     pop[i] = 0.3f * gauss(mix(seed, (uint32_t)i));
+#endif
 }
 
 // ---- the host: setup, the loop, the numbers ---------------------------------------------
@@ -616,6 +652,10 @@ int main(int argc, char** argv) {
         int champ;
         CK(cudaMemcpy(&champ, rank, sizeof(int), cudaMemcpyDeviceToHost));
 
+#ifdef HYBRID
+        if (o.yard > 0 && (g + 1) % o.yard == 0)
+            printf("#hybrid gen %d: the net overrode the rules on %.1f%% of steps\n", g, 100.0 * tot->opened / (tot->decided ? tot->decided : 1));
+#endif
         char yard[64] = "-", ladc[32] = "-";
         float yw = -1, yd = -1, yl = -1, ls = -9, lt = -9; // -9: not measured (a score can be -1)
         if (o.yard > 0 && (g + 1) % o.yard == 0) {
