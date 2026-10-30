@@ -303,7 +303,7 @@ impl Tactician {
         let keep = (self.w.called_for * TICK_HZ as f32) as Tick;
         self.called.retain(|(_, t)| obs.tick < t + keep);
         for e in &obs.events {
-            if let Event::Pinged { player, at } = e {
+            if let Event::Pinged { player, at, .. } = e {
                 if *player != obs.player && obs.allied(*player) {
                     self.called.push((*at, obs.tick));
                 }

@@ -404,6 +404,8 @@ pub struct Commander {
     rung_challenger: Option<(Rung, Tick)>,
     /// What a switch turned off put away (`set_settings`).
     cap_held: CapHeld,
+    /// The chosen transform (`patch`), None with `patch` at 0.
+    patch: Option<std::sync::Arc<crate::patch::Patch>>,
     /// The point last ducked to, and when (`duck`).
     duck_to: Option<(V2, Tick)>,
     /// Hostile guns seen lately: whose, where, its reload and when.
@@ -483,7 +485,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        let mut c = Commander { name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
+        let mut c = Commander { patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
         // The default Settings applied, not only held: a Commander built
         // here plays as a dealt one does (LR 50: one built without this
         // ran the landfall's weights at 0 while its Settings said 30).
@@ -559,6 +561,8 @@ impl Commander {
         } else if on(Caps::BRIDGES) && h.no_bridges {
             self.inner.hop.no_bridges = false;
         }
+        let k = s.choice(W::Patch);
+        self.patch = (k > 0).then(|| crate::patch::slot(k));
         self.settings = s;
     }
 
@@ -2112,7 +2116,7 @@ impl Commander {
     fn hear_pings(&mut self, obs: &Observation, me: &Tank) {
         self.heard.retain(|(_, t)| obs.tick < t + PING_EVERY);
         for e in &obs.events {
-            if let Event::Pinged { player, at } = e {
+            if let Event::Pinged { player, at, kind } = e {
                 if *player == obs.player || !obs.allied(*player) {
                     continue;
                 }
@@ -2129,7 +2133,52 @@ impl Commander {
                 if leader_up && !order {
                     continue;
                 }
-                if self.answers_pings && me.pos.dist(*at) <= RALLY_REACH && obs.tick >= self.rally_cool {
+                // WHAT THE PING IS FOR. A person is always heard, whatever a
+                // census has made of the bots' own pings: their kind is what the
+                // person said it was. A bot's ping is read by kind only under a
+                // `ping_style` that carries it, and at 0 this is all as it was.
+                let style = self.settings.choice(crate::weights::W::PingStyle);
+                let person = obs.players.iter().any(|p| p.id == *player && !p.is_bot);
+                let typed = style > 0 || person;
+                let may_answer = self.answers_pings || (typed && self.cap_held.answers_pings);
+                let mut hold = RALLY_FOR;
+                if typed {
+                    use crate::weights::W;
+                    if !person && !style_carries(style, *kind) {
+                        continue;
+                    }
+                    let d = me.pos.dist(*at);
+                    match kind {
+                        PingKind::Info => continue,
+                        PingKind::Caution => {
+                            if may_answer && self.rally.is_some_and(|(r, _)| r.dist(*at) <= self.settings.w[W::PingCautionReach]) && !self.rally_order {
+                                self.rally = None;
+                            }
+                            continue;
+                        }
+                        PingKind::Warning => {
+                            if may_answer && d <= self.settings.w[W::PingWarnReach] && !self.rally_order {
+                                let (from, flee) = ((me.pos - *at).norm(), self.settings.w[W::PingWarnFlee]);
+                                let away = V2::new(me.pos.x + from.x * flee, me.pos.y + from.y * flee);
+                                self.rally = Some((obs.clamp(away), obs.tick + RALLY_FOR / 4));
+                                self.rally_from = None;
+                            }
+                            continue;
+                        }
+                        PingKind::Help => {
+                            if !person && d > self.settings.w[W::PingHelpReach] {
+                                continue;
+                            }
+                        }
+                        PingKind::Defend => {
+                            if !person && d > self.settings.w[W::PingDefendReach] {
+                                continue;
+                            }
+                            hold = (RALLY_FOR as f32 * self.settings.w[W::PingDefendHold].max(0.0)) as Tick;
+                        }
+                    }
+                }
+                if may_answer && me.pos.dist(*at) <= RALLY_REACH && obs.tick >= self.rally_cool {
                     let fresh = self.rally.map(|(r, _)| r.dist(*at) > PING_HEARD).unwrap_or(true);
                     self.rally_order = order;
                     // Assignment (tactics.rs): enough of us nearer it
@@ -2147,7 +2196,7 @@ impl Commander {
                             }
                         }
                     }
-                    self.rally = Some((*at, obs.tick + RALLY_FOR));
+                    self.rally = Some((*at, obs.tick + hold));
                     if fresh {
                         self.rally_from = Some(Self::flank(obs.player, (me.pos - *at).norm()));
                         self.say.push(format!("{} on the {}, {:.0} tiles out", Self::flank_word(obs.player), Self::called(obs, *at), me.pos.dist(*at)));
@@ -2160,15 +2209,24 @@ impl Commander {
     /// A hostile tank in sight that nobody of the side has called: ping
     /// it, and go for it too.
     fn call_enemy(&mut self, obs: &Observation, me: &Tank) -> Option<Command> {
-        if !self.pings || (self.last_ping > 0 && obs.tick < self.last_ping + PING_EVERY) {
+        let style = self.settings.choice(crate::weights::W::PingStyle);
+        let speaks = self.pings || (style > 0 && self.cap_held.pings);
+        if !speaks || (self.last_ping > 0 && obs.tick < self.last_ping + PING_EVERY) {
             return None;
         }
         let e = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(me.pos) <= PING_SIGHT).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))?;
         if self.heard.iter().any(|(at, _)| at.dist(e.pos) <= PING_HEARD) {
             return None;
         }
+        // At 0 every call is help, as it was; a style says what it saw, and only
+        // what that style carries.
+        let kind = if style == 0 { PingKind::Help } else { self.kind_of(obs, me, e.pos) };
+        if style > 0 && !style_carries(style, kind) {
+            return None;
+        }
         self.last_ping = obs.tick;
-        if self.answers_pings && obs.tick >= self.rally_cool {
+        let comes = matches!(kind, PingKind::Help | PingKind::Defend);
+        if comes && self.answers_pings && obs.tick >= self.rally_cool {
             self.rally = Some((e.pos, obs.tick + RALLY_FOR / 2));
             self.rally_from = Some((me.pos - e.pos).norm());
         }
@@ -2184,7 +2242,7 @@ impl Commander {
             n => format!("pincer, {} of us: left, centre, right", n + 1),
         };
         self.say.push(format!("contact: {} at ({:.0},{:.0}), {:.0} armour. {}", who, e.pos.x, e.pos.y, e.armor, plan));
-        Some(Command::Ping { at: e.pos })
+        Some(Command::Ping { at: e.pos, kind })
     }
 
     /// Answering a ping: to it, and onto any hostile tank near it, with
@@ -2395,6 +2453,64 @@ impl Commander {
     }
 }
 
+/// Which kinds of ping a `ping_style` calls and hears (0, as built, knows only help).
+pub fn style_carries(style: usize, kind: PingKind) -> bool {
+    match style {
+        1 => kind == PingKind::Help,
+        2 => matches!(kind, PingKind::Warning | PingKind::Caution),
+        3 => kind == PingKind::Defend,
+        4 => true,
+        _ => kind == PingKind::Help,
+    }
+}
+
+impl Commander {
+    /// What a hostile tank at `at` is, to call it: at our base, defend; more of them
+    /// than us, help; two or more, warn; further than a fight, caution; else, news.
+    fn kind_of(&self, obs: &Observation, me: &Tank, at: V2) -> PingKind {
+        use crate::weights::W;
+        let r = self.settings.w[W::OddsR];
+        if self.base.is_some_and(|b| b.dist(at) <= r) {
+            return PingKind::Defend;
+        }
+        let them = obs.hostile_tanks().filter(|t| t.alive && t.pos.dist(at) <= r).count() as f32;
+        let us = obs.allied_tanks().filter(|t| t.alive && t.pos.dist(at) <= r).count().max(1) as f32;
+        if them > us * self.settings.w[W::PingOutnumbered] {
+            PingKind::Help
+        } else if them >= 2.0 {
+            PingKind::Warning
+        } else if me.pos.dist(at) > PING_SIGHT * 0.7 {
+            PingKind::Caution
+        } else {
+            PingKind::Info
+        }
+    }
+
+    /// The last stage: the transform reads the senses, the waves and the rules' own
+    /// point, and moves the point if it is confident. Runs only with `patch` chosen.
+    fn patched(&self, p: &crate::patch::Patch, obs: &Observation, map: Option<&Map>, cmds: &mut [Command]) {
+        use crate::weights::W;
+        let Some(me) = obs.me.as_ref().filter(|t| t.alive) else { return };
+        let Some(senses) = crate::senses::sense(obs, map, None, &[]) else { return };
+        let waves = crate::bio::rhythm(&self.settings, obs.player, obs.tick);
+        for c in cmds.iter_mut() {
+            if let Command::Move { to } = c {
+                let d = *to - me.pos;
+                let n = d.norm();
+                let mut x = Vec::with_capacity(crate::patch::INPUTS);
+                x.extend_from_slice(&senses);
+                x.extend_from_slice(&waves);
+                x.extend_from_slice(&[n.x, n.y, d.len() / 100.0]);
+                let y = p.run(&x);
+                if y[2] >= self.settings.w[W::PatchConfidence] {
+                    let reach = self.settings.w[W::PatchReach];
+                    *to = obs.clamp(*to + V2::new(y[0] * reach, y[1] * reach));
+                }
+            }
+        }
+    }
+}
+
 impl Brain for Commander {
     fn name(&self) -> &str {
         &self.name
@@ -2450,7 +2566,19 @@ impl Commander {
     /// `dodge_fire` (`Dodge::hold_fire`, LR 57), dodging or not: a shot
     /// whose turn of the hull would carry the tank into a splash waits.
     fn think_released(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
+        // Intuition: the waves swing how bold it is. Nothing read with `bio` at 0.
+        if self.settings.choice(crate::weights::W::Bio) > 0 {
+            use crate::weights::W;
+            let mood = crate::bio::mood(&self.settings, obs.player, obs.tick);
+            let (odds, amount) = (self.settings.w[W::EngageOdds], self.settings.w[W::BioAmount]);
+            if let Some(t) = self.inner.tactics.as_mut() {
+                t.w.engage_odds = odds * (1.0 + amount * mood);
+            }
+        }
         let mut cmds = self.think_map(obs, map);
+        if let Some(p) = self.patch.clone() {
+            self.patched(&p, obs, map, &mut cmds);
+        }
         if let Some(me) = obs.me.as_ref().filter(|m| m.alive) {
             if self.act != Act::Dodge && self.dodge.release(obs, me, &mut cmds, map) {
                 self.last_move = None;
@@ -2645,9 +2773,11 @@ impl Commander {
         if !me.alive {
             // Down: call the side to come and mend it, once a fall.
             let down = me.last_hit_tick > 0 && obs.tick < me.last_hit_tick + DOWNED_TICKS as Tick;
-            if down && self.called_down != me.last_hit_tick && self.pings {
+            let style = self.settings.choice(crate::weights::W::PingStyle);
+            let calls = self.pings || (style_carries(style, PingKind::Help) && style > 0 && self.cap_held.pings);
+            if down && self.called_down != me.last_hit_tick && calls {
                 self.called_down = me.last_hit_tick;
-                cmds.push(Command::Ping { at: me.pos });
+                cmds.push(Command::Ping { at: me.pos, kind: PingKind::Help });
                 self.say.push(format!("down at ({:.0},{:.0}): a squad with {} material revives me, {} s", me.pos.x, me.pos.y, REVIVE_COST, DOWNED_TICKS / TICK_HZ));
             }
             self.flush_say(obs, &mut cmds);
@@ -3437,6 +3567,113 @@ mod tests {
         assert_eq!((c.pings, c.answers_pings, c.dodges, c.inner.hop.no_bridges), (true, false, true, false), "back as the role had them");
         let t = c.inner.tactics.as_ref().unwrap();
         assert_eq!((t.target, t.w.w_wounded), (Some(7), 1.4));
+    }
+
+    /// A world of two allied bots, and a Commander in seat 1 hearing seat 0's ping.
+    /// `person`: seat 0 is a person. Returns where seat 1 was sent, if anywhere.
+    fn hears(text: &str, kind: PingKind, person: bool, at_dist: f32, answers: bool) -> (Option<V2>, V2, V2) {
+        let sc = Scenario {
+            seed: 7,
+            players: vec![("a".into(), !person), ("b".into(), true)],
+            map: MapSource::Text(include_str!("../../../maps/naval.map").into()),
+            respawns: 3,
+            time_limit: 0,
+            ..Scenario::default()
+        }
+        .with_teams(1);
+        let mut w = World::new(sc);
+        w.step(&[]);
+        let me = w.observe(1).me.clone().unwrap().pos;
+        let at = V2::new(me.x + at_dist, me.y);
+        w.step(&[Order { player: 0, cmd: Command::Ping { at, kind } }]);
+        let mut c = Commander::new(1, "t");
+        let s = crate::weights::Settings::parse(text).unwrap();
+        c.set_settings(s.clone());
+        // As the deal does it: the role's fields, then the settings.
+        (c.pings, c.answers_pings) = (true, answers);
+        c.set_settings(s);
+        let obs = w.observe(1);
+        let tank = obs.me.clone().unwrap();
+        c.hear_pings(&obs, &tank);
+        (c.rally.map(|(p, _)| p), at, me)
+    }
+
+    #[test]
+    fn at_style_0_with_pings_off_a_bot_answers_no_bot() {
+        assert_eq!(hears("", PingKind::Help, false, 10.0, true).0, None);
+    }
+
+    #[test]
+    fn with_pings_on_as_built_a_bot_comes_to_any_ping() {
+        let (to, at, _) = hears("caps = baseline, pings", PingKind::Help, false, 10.0, true);
+        assert_eq!(to, Some(at));
+    }
+
+    #[test]
+    fn a_person_is_answered_whatever_the_bots_own_pings_are() {
+        let (to, at, _) = hears("", PingKind::Help, true, 10.0, true);
+        assert_eq!(to, Some(at), "a person called and nobody came");
+        // A guard's role does not answer: that stays.
+        assert_eq!(hears("", PingKind::Help, true, 10.0, false).0, None);
+    }
+
+    #[test]
+    fn each_kind_of_ping_does_what_it_says() {
+        // Help and defend come; info is only noted.
+        let (to, at, _) = hears("ping_style = all", PingKind::Help, false, 10.0, true);
+        assert_eq!(to, Some(at));
+        let (to, at, _) = hears("ping_style = all", PingKind::Defend, false, 10.0, true);
+        assert_eq!(to, Some(at));
+        assert_eq!(hears("ping_style = all", PingKind::Info, false, 10.0, true).0, None);
+        assert_eq!(hears("ping_style = all", PingKind::Caution, false, 10.0, true).0, None);
+        // A warning sends it the other way, and only from near it.
+        let (to, at, me) = hears("ping_style = all", PingKind::Warning, false, 10.0, true);
+        let to = to.expect("a warning moved nobody");
+        assert!(to.dist(at) > me.dist(at), "it went towards the danger");
+        assert_eq!(hears("ping_style = all", PingKind::Warning, false, 80.0, true).0, None, "too far to care");
+    }
+
+    #[test]
+    fn a_style_hears_only_the_kinds_it_carries_and_reach_is_a_dial() {
+        assert_eq!(hears("ping_style = warn", PingKind::Help, false, 10.0, true).0, None);
+        assert_eq!(hears("ping_style = help", PingKind::Defend, false, 10.0, true).0, None);
+        assert!(hears("ping_style = defend", PingKind::Defend, false, 10.0, true).0.is_some());
+        assert_eq!(hears("ping_style = help\nping_help_reach = 5", PingKind::Help, false, 10.0, true).0, None);
+        for k in 0..5 {
+            assert!(style_carries(k, PingKind::Help) || k == 2 || k == 3);
+        }
+    }
+
+    #[test]
+    fn a_patch_moves_the_rules_only_when_it_is_confident() {
+        use crate::patch::{Patch, INPUTS, OUTPUTS};
+        let sc = Scenario {
+            seed: 7,
+            players: vec![("a".into(), true)],
+            map: MapSource::Text(include_str!("../../../maps/naval.map").into()),
+            respawns: 3,
+            time_limit: 0,
+            ..Scenario::default()
+        };
+        let mut w = World::new(sc);
+        w.step(&[]);
+        let obs = w.observe(0);
+        let c = Commander::new(1, "t");
+        let start = obs.me.clone().unwrap().pos;
+        let to = V2::new(start.x + 5.0, start.y + 5.0);
+        let run = |p: &Patch| {
+            let mut cmds = vec![Command::Move { to }];
+            c.patched(p, &obs, Some(&w.map), &mut cmds);
+            match cmds[0] { Command::Move { to } => to, _ => unreachable!() }
+        };
+        assert_eq!(run(&Patch::zero(2)), to, "zeros moved the rules");
+        let mut unsure = Patch::zero(1);
+        unsure.steps[0].b = [1.0, 0.0, 0.1];
+        assert_eq!(run(&unsure), to, "it overrode without confidence");
+        let mut sure = Patch::zero(1);
+        sure.steps[0].b = [1.0, 0.0, 3.0];
+        assert_ne!(run(&sure), to, "a confident patch changed nothing");
+        let _ = (INPUTS, OUTPUTS);
     }
 
     /// A switch off by default stays off through the deal, and comes back:

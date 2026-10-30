@@ -425,7 +425,7 @@ impl Brain for NetBrain {
         if let Some(kind) = Some(pick(Head::Signal)).filter(|c| *c > 0).map(|c| CALL_KINDS[c - 1]) {
             if let Some(at) = Self::call_at(obs, &me, kind) {
                 self.calls.post(Call { from: obs.player, kind, at, tick: obs.tick });
-                cmds.push(Command::Ping { at });
+                cmds.push(Command::Ping { at, kind: PingKind::Help });
                 self.called = Some(obs.tick);
             }
         }

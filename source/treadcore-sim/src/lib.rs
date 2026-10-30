@@ -755,6 +755,23 @@ pub struct Proposal {
 
 // ----------------------------------------------------------------- commands
 
+/// What a ping is for (Paul, 30 October: "help, caution, info, warning, defend").
+/// The sim only carries it; what a bot does about each is the brain's.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PingKind {
+    /// Come here: a tank in a fight, or down. What every ping used to mean.
+    #[default]
+    Help,
+    /// Go carefully near here.
+    Caution,
+    /// Something is here; nobody need come.
+    Info,
+    /// Danger: get away from here.
+    Warning,
+    /// Hold this ground: a base under attack.
+    Defend,
+}
+
 /// What a player (human or Brain) may ask for. The world validates every
 /// one: a dead tank, an empty bay, a reloading gun, a point off the map --
 /// the command is dropped and a `Rejected` event says why.
@@ -797,8 +814,13 @@ pub enum Command {
     Tow { target: Option<EntityId> },
     /// Mark a point on the map for my side: an enemy to go for, a place
     /// to gather. Allies see it (`Event::Pinged`); allied bots answer it
-    /// by converging there. One a second.
-    Ping { at: V2 },
+    /// by converging there. One a second. `kind` says what it is for; an
+    /// old client's ping is a call for help, as every ping used to be.
+    Ping {
+        at: V2,
+        #[serde(default)]
+        kind: PingKind,
+    },
     /// Bring my destroyed tank back at my start, when the scenario has
     /// respawns and `RESPAWN_TICKS` have passed since it died.
     Respawn,
@@ -920,7 +942,12 @@ pub enum Event {
     /// A boat was hit with its tank in it: both go down (TNK-14).
     Sunk { tank: EntityId, owner: PlayerId, by: Option<PlayerId>, at: V2 },
     /// A ping, to the pinger's side.
-    Pinged { player: PlayerId, at: V2 },
+    Pinged {
+        player: PlayerId,
+        at: V2,
+        #[serde(default)]
+        kind: PingKind,
+    },
     /// A fort request, to the requester's side.
     Requested { from: PlayerId, to: Option<PlayerId>, job: Job },
     /// A chain hitched (`on`) or let go, between a tank and a pillbox or
@@ -1535,7 +1562,7 @@ impl World {
             return;
         }
         // A ping needs no tank: a destroyed one's player can still point.
-        if let Command::Ping { at } = &o.cmd {
+        if let Command::Ping { at, kind } = &o.cmd {
             if !self.map.in_bounds(*at) {
                 return self.reject(o, "off map");
             }
@@ -1545,7 +1572,7 @@ impl World {
                 return self.reject(o, "one ping a second");
             }
             pl.last_ping = Some(tick);
-            self.events.push(Event::Pinged { player: o.player, at: *at });
+            self.events.push(Event::Pinged { player: o.player, at: *at, kind: *kind });
             return;
         }
         match &o.cmd {
@@ -5597,15 +5624,15 @@ mod tests {
         let mut w = World::new(Scenario { swarm_interval: 0, ..Scenario::bots(3) }.with_teams(2));
         // Seats 0 and 2 are team 0, seat 1 team 1.
         let at = w.map.center();
-        w.step(&[Order { player: 0, cmd: Command::Ping { at } }]);
+        w.step(&[Order { player: 0, cmd: Command::Ping { at, kind: PingKind::Help } }]);
         let seen = |w: &World, p: PlayerId| w.observe(p).events.iter().any(|e| matches!(e, Event::Pinged { player: 0, .. }));
         assert!(seen(&w, 0) && seen(&w, 2) && !seen(&w, 1));
-        w.step(&[Order { player: 0, cmd: Command::Ping { at } }]);
+        w.step(&[Order { player: 0, cmd: Command::Ping { at, kind: PingKind::Help } }]);
         assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "one ping a second")));
         for _ in 0..TICK_HZ {
             w.step(&[]);
         }
-        w.step(&[Order { player: 0, cmd: Command::Ping { at: V2::new(-5.0, 1.0) } }]);
+        w.step(&[Order { player: 0, cmd: Command::Ping { at: V2::new(-5.0, 1.0), kind: PingKind::Help } }]);
         assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "off map")));
     }
 

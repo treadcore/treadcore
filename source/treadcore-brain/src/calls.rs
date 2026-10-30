@@ -79,7 +79,7 @@ impl Calls {
     /// as attack calls, once each.
     pub fn hear(&self, obs: &Observation) {
         for e in &obs.events {
-            if let Event::Pinged { player, at } = e {
+            if let Event::Pinged { player, at, .. } = e {
                 if *player != obs.player && obs.allied(*player) {
                     let c = Call { from: *player, kind: CallKind::Attack, at: *at, tick: obs.tick };
                     if !self.0.lock().unwrap().contains(&c) {

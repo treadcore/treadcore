@@ -660,7 +660,7 @@ fn narrate(world: &World, events: &[Event]) {
             Event::SeatTaken { player, was, name } => log::warn!("[{:>6} {:>6.1}s] p{} SEAT TAKEN: {} has {}'s seat", t, s, player, name, was),
             Event::Chained { owner, target, on, haulers, .. } => log::info!("[{:>6} {:>6.1}s] p{} {} #{} ({} on it)", t, s, owner, if *on { "CHAINS" } else { "UNCHAINS" }, target, haulers),
             Event::Requested { from, to, job } => log::info!("[{:>6} {:>6.1}s] p{} REQUESTS {:?} of {}", t, s, from, job, to.map(|p| format!("p{}", p)).unwrap_or_else(|| "the side".into())),
-            Event::Pinged { player, at } => log::info!("[{:>6} {:>6.1}s] p{} PINGS ({:.0},{:.0})", t, s, player, at.x, at.y),
+            Event::Pinged { player, at, .. } => log::info!("[{:>6} {:>6.1}s] p{} PINGS ({:.0},{:.0})", t, s, player, at.x, at.y),
             Event::Boarded { owner, boat, at, .. } => log::warn!("[{:>6} {:>6.1}s] p{} BOARDS boat #{} at ({:.0},{:.0})", t, s, owner, boat, at.x, at.y),
             Event::Landed { owner, at, .. } => log::warn!("[{:>6} {:>6.1}s] p{} LANDS at ({:.0},{:.0})", t, s, owner, at.x, at.y),
             Event::DronesUpgraded { mark } => log::warn!("[{:>6} {:>6.1}s] DRONES now Mk {}: {}", t, s, mark, [DroneKind::Recon, DroneKind::Interceptor, DroneKind::Strike, DroneKind::Longshot].iter().map(|k| drone_spec(*k, *mark).name).collect::<Vec<_>>().join(", ")),

@@ -618,7 +618,7 @@ fn push_events(view: &mut View, events: &[Event], me: PlayerId) {
                 view.impacts.push((*at, earth, 4));
                 view.scorches.push((*at, 0.45));
             }
-            Event::Pinged { player, at } => {
+            Event::Pinged { player, at, .. } => {
                 view.pings.push((*at, *player));
                 view.map_pings.retain(|(_, _, t)| t.elapsed().as_secs_f32() < crate::commander::MAP_PING_FOR);
                 view.map_pings.push((*at, *player, Instant::now()));
@@ -852,7 +852,7 @@ fn describe(e: &Event, me: PlayerId, view: &View) -> Option<String> {
                 Job::Release => format!("{} stands {} down", name(from), whom),
             }
         }
-        Event::Pinged { player, at } => {
+        Event::Pinged { player, at, .. } => {
             let obs = view.obs.as_ref();
             let near = obs.and_then(|o| o.tanks.iter().filter(|t| t.alive && !o.allied(t.owner)).find(|t| t.pos.dist(*at) <= 4.0));
             match near {

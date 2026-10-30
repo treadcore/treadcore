@@ -254,7 +254,7 @@ fn orders(
     // converge on it, and on an enemy there they attack together.
     if pressed(bind.key(A::Ping)) || mouse.just_pressed(MouseButton::Middle) {
         if let Some(p) = at {
-            orders.0.push(Command::Ping { at: p });
+            orders.0.push(Command::Ping { at: p, kind: treadcore_sim::PingKind::Help });
         }
     }
     // E: on the shore, a boat on the water beside the tank and the tank
