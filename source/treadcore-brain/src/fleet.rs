@@ -79,20 +79,33 @@ pub fn role(seat: usize, person_leads: bool) -> (Role, PlayerId) {
     (role_by_rank(rank, person_leads), leader)
 }
 
+/// A bots' team's roles by rank, the choice `roles` (weights.rs; Paul,
+/// 29 October: "think like different units"): the leader first in each,
+/// then 0 as built (a guard, two rangers, a wing), 1 no guard (all four
+/// with the fleet), 2 two guards, 3 three guards. A ranger and a wing
+/// are both the fleet's wingmen now (commander_as); what the mixes move
+/// is how many keep the base and how many travel. A team past five
+/// seats (the window's) is wings past the fifth, as it was.
+pub const MIXES: [[Role; 5]; 4] = [
+    [Role::Leader, Role::Guard, Role::Ranger, Role::Ranger, Role::Wing],
+    [Role::Leader, Role::Ranger, Role::Ranger, Role::Ranger, Role::Wing],
+    [Role::Leader, Role::Guard, Role::Guard, Role::Ranger, Role::Wing],
+    [Role::Leader, Role::Guard, Role::Guard, Role::Guard, Role::Wing],
+];
+
 /// A seat's role by its place in its team, the leader first.
 pub fn role_by_rank(rank: usize, person_leads: bool) -> Role {
     // A person's team gets its builder while `assist` is 0.5 or more
     // (roadmap 12h); under it, the person's team is dealt as a bots'
     // team is, the same roles for every side.
-    let person_leads = person_leads && settings().w[crate::weights::W::Assist] >= 0.5;
+    let s = settings();
+    let person_leads = person_leads && s.w[crate::weights::W::Assist] >= 0.5;
     match (person_leads, rank) {
         (_, 0) => Role::Leader,
         (true, 1) => Role::Builder,
         (true, 2) => Role::Guard,
         (true, _) => Role::Wing,
-        (false, 1) => Role::Guard,
-        (false, 2) | (false, 3) => Role::Ranger,
-        (false, _) => Role::Wing,
+        (false, r) => MIXES[s.choice(crate::weights::W::Roles)].get(r).copied().unwrap_or(Role::Wing),
     }
 }
 
@@ -291,6 +304,23 @@ mod tests {
         assert_eq!(role(10, false), (Role::Guard, 1));
         assert_eq!(name(AGGRO), "aggro");
         assert_eq!(name(13), "t2-guard");
+    }
+
+    /// The choice `roles`: 0 deals the roles as they always were; each
+    /// mix keeps the leader first; a bots' team takes the mix of the
+    /// settings it is dealt under, so a census's trial team plays its own.
+    #[test]
+    fn a_bots_team_takes_its_roles_from_its_settings() {
+        let old = |r: usize| match r { 0 => Role::Leader, 1 => Role::Guard, 2 | 3 => Role::Ranger, _ => Role::Wing };
+        for r in 0..7 {
+            assert_eq!(role_by_rank(r, false), old(r), "rank {} as built", r);
+        }
+        for mix in MIXES {
+            assert_eq!(mix[0], Role::Leader);
+        }
+        let guards = |text: &str| with_settings(Settings::parse(text).unwrap(), || (0..5).filter(|r| role_by_rank(*r, false) == Role::Guard).count());
+        assert_eq!((guards("roles = as_built"), guards("roles = no_guard"), guards("roles = two_guards"), guards("roles = 3")), (1, 0, 2, 3));
+        assert_eq!(with_settings(Settings::parse("roles = no_guard").unwrap(), || role_by_rank(1, true)), Role::Builder, "a person's team keeps its builder");
     }
 
     /// A fleet match with no time limit is decided: one side is left
