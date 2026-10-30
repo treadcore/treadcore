@@ -20,8 +20,20 @@
 //! # bolder
 //! w_wounded = 1.5
 //! press_odds = 1.2
+//! ladder = hunt_first
 //! caps = smooth, forget, priced_crossing
 //! ```
+//!
+//! A *choice* is a weight that picks one of a function's versions rather
+//! than scaling one (Paul, 29 October: "a parallel B style tank brain ...
+//! with the ability to toggle between them like weights ... an enum,
+//! perhaps 0-3"). Its doc names the versions, `(choice: a | b | c)`, 0
+//! first and 0 the brain as it was; the file takes the number or the
+//! name; `Settings::choice` reads it rounded and held to the versions.
+//! Being a weight, it is read, logged, promoted and searched as one: the
+//! fleet's planner tries each version against the defaults (A/B), and a
+//! slider steps it by one. A capability is the two-version case, kept as
+//! a bit.
 
 use crate::tactics::Tactics;
 
@@ -46,6 +58,13 @@ macro_rules! weights {
             pub fn doc(self) -> &'static str {
                 match self { $(W::$id => $doc,)* }
             }
+            /// A choice's versions, 0 first, from its doc's
+            /// `(choice: a | b | ...)`; None for a weight that scales.
+            pub fn choices(self) -> Option<Vec<&'static str>> {
+                let d = self.doc();
+                let rest = &d[d.find("(choice: ")? + 9..];
+                Some(rest[..rest.find(')')?].split('|').map(str::trim).collect())
+            }
             /// The weight of that name, if any.
             pub fn by_name(name: &str) -> Option<W> {
                 match name { $($name => Some(W::$id),)* _ => None }
@@ -54,7 +73,7 @@ macro_rules! weights {
             /// for a rounded weight, else a tenth of the default taken
             /// to 1, 2 or 5 of its power of ten; a tenth for nothing.
             pub fn step(self) -> f32 {
-                if self.doc().contains("(rounded)") {
+                if self.doc().contains("(rounded)") || self.choices().is_some() {
                     return 1.0;
                 }
                 let d = self.default_value().abs() / 10.0;
@@ -139,6 +158,7 @@ weights! {
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";
     // The team (LR 9).
     SwapGap "swap_gap" 0.207136, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
+    Ladder "ladder" 0.0, "auto: the ladder's order, defend base first in each (choice: as_built | expand_before_hunt | hunt_first | expand_first): as built, fortify, turrets, hunt, expand, guard (Rung::order)";
     Posture "w_posture" 0.95, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
     PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
@@ -353,13 +373,26 @@ impl Settings {
                 continue;
             }
             let w = W::by_name(name).ok_or_else(|| bad(format!("no weight {}", name)))?;
-            let v: f32 = value.parse().map_err(|_| bad(format!("{} is not a number", value)))?;
+            // A choice by its version's name as well as its number.
+            let named = w.choices().and_then(|c| c.iter().position(|v| *v == value)).map(|i| i as f32);
+            let v: f32 = match named {
+                Some(v) => v,
+                None => value.parse().map_err(|_| bad(format!("{} is not a number{}", value,
+                    w.choices().map(|c| format!(" or one of {}", c.join(", "))).unwrap_or_default())))?,
+            };
             if !v.is_finite() {
                 return Err(bad(format!("{} is not finite", value)));
             }
             s.w[w] = v;
         }
         Ok(s)
+    }
+
+    /// A choice's version: its weight rounded, held to the versions it has
+    /// (0 for a weight that is not a choice and below a half).
+    pub fn choice(&self, w: W) -> usize {
+        let n = w.choices().map(|c| c.len()).unwrap_or(1);
+        (self.w[w].round().max(0.0) as usize).min(n - 1)
     }
 
     /// How much the bot smooths (`w_smooth`), 0 to 1.

@@ -102,9 +102,14 @@ def main():
                     'kite,posture_scored,dodge_every,dodge_fire,dodge_plan,dodge_release,landfall_shy,w_give_item,w_give_upgrade,'
                     'w_connect,bridge_wing,duck_plan,shell_boxes,longshot_any')
     o = ap.parse_args()
+    # The choices (a weight whose doc in weights.rs says "(choice: ...)"):
+    # a version, not a slope; the planner tries each against the defaults
+    # (A/B), and a fit across versions would be a fit across functions.
+    rs = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'source', 'treadcore-brain', 'src', 'weights.rs')
+    choices = set(re.findall(r'^\s*[A-Z][A-Za-z0-9]*\s+"([a-z_0-9]+)"\s+[-0-9.]+,\s*"[^"]*\(choice: ', open(rs).read(), re.M)) if os.path.exists(rs) else set()
     rng = random.Random(o.seed)
     base = defaults(o.defaults)
-    skip = set(filter(None, o.skip.split(',')))
+    skip = set(filter(None, o.skip.split(','))) | choices
     span = math.log2(o.bound)
 
     rows, reads = [], []
@@ -113,6 +118,8 @@ def main():
         if r['stamp'] < o.since or r['base'].replace(' ', '') != 'caps=baseline' or 'caps=' in r['trial'] or r['trial'].startswith('net='):
             continue
         t = trial(r['trial'])
+        if choices & set(t):
+            continue
         x = {w: math.log2(v / base[w]) for w, v in t.items() if w in base and base[w] > 0 and v > 0}
         if len(x) != len(t):
             continue  # a weight at 0 or unknown: not on the log scale

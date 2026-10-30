@@ -163,13 +163,36 @@ impl Rung {
     /// leans toward. With no posture, or `w` 0, the first that holds, as
     /// the ladder always was; DefendBase, holding, always.
     pub fn pick(on: &[bool; 6], holds: &[bool; 6], posture: Option<crate::board::Posture>, w: f32) -> Rung {
-        let first = Rung::ALL.iter().copied().find(|r| on[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
+        Rung::pick_in(&Rung::ALL, on, holds, posture, w)
+    }
+
+    /// The ladder's orders, the choice `ladder` (weights.rs): 0 as built,
+    /// 1 expand before hunt, 2 hunt first, 3 expand first. Defend base is
+    /// first in each, and guard last: the base is never passed, and guard
+    /// is what is left. Which of the middle four comes first is a guess
+    /// the census can read, not a law (Paul, 29 October: "a parallel B
+    /// style tank brain").
+    pub fn order(choice: usize) -> [Rung; 6] {
+        use Rung::*;
+        match choice {
+            1 => [DefendBase, Fortify, Turrets, Expand, Hunt, Guard],
+            2 => [DefendBase, Hunt, Fortify, Turrets, Expand, Guard],
+            3 => [DefendBase, Expand, Fortify, Turrets, Hunt, Guard],
+            _ => Rung::ALL,
+        }
+    }
+
+    /// `pick` on a ladder in `order`: order runs from 1 for its first rung
+    /// down to 0 for its last. `on` and `holds` are by `index`, as built.
+    pub fn pick_in(order: &[Rung; 6], on: &[bool; 6], holds: &[bool; 6], posture: Option<crate::board::Posture>, w: f32) -> Rung {
+        let first = order.iter().copied().find(|r| on[r.index()] && holds[r.index()]).unwrap_or(Rung::Guard);
         let w = w.clamp(0.0, 1.0);
         let Some(p) = posture.filter(|_| w > 0.0 && first != Rung::DefendBase) else { return first };
-        let last = (Rung::ALL.len() - 1) as f32;
-        let score = |r: Rung| (1.0 - w) * (1.0 - r.index() as f32 / last) + w * r.leaned(p) as u8 as f32;
+        let last = (order.len() - 1) as f32;
+        let place = |r: Rung| order.iter().position(|o| *o == r).unwrap_or(order.len() - 1) as f32;
+        let score = |r: Rung| (1.0 - w) * (1.0 - place(r) / last) + w * r.leaned(p) as u8 as f32;
         // Ties go to the higher rung, as the order would have it.
-        Rung::ALL.iter().copied().filter(|r| on[r.index()] && holds[r.index()]).fold(None, |best: Option<Rung>, r| match best {
+        order.iter().copied().filter(|r| on[r.index()] && holds[r.index()]).fold(None, |best: Option<Rung>, r| match best {
             Some(b) if score(b) >= score(r) => Some(b),
             _ => Some(r),
         }).unwrap_or(first)
@@ -1540,9 +1563,10 @@ impl Commander {
             (true, Some(b)) => b.lock().ok().map(|b| b.posture),
             _ => None,
         };
-        let mut rung = Rung::pick(&self.ladder, &holds, posture, self.settings.w[crate::weights::W::Posture]);
+        let order = Rung::order(self.settings.choice(crate::weights::W::Ladder));
+        let mut rung = Rung::pick_in(&order, &self.ladder, &holds, posture, self.settings.w[crate::weights::W::Posture]);
         if let Some(p) = posture {
-            crate::meter::posture(p, Rung::pick(&self.ladder, &holds, None, 0.0).index(), rung.index());
+            crate::meter::posture(p, Rung::pick_in(&order, &self.ladder, &holds, None, 0.0).index(), rung.index());
         }
         // Smoothed (roadmap 12d): a new rung must win `confirm` thinks in a
         // row (a think is a quarter second) while the old one still holds;
@@ -3317,6 +3341,38 @@ mod tests {
         let mut on = all;
         on[Rung::Guard.index()] = false;
         assert_eq!(Rung::pick(&on, &holds, Some(P::Defend), 1.0), Rung::Expand);
+    }
+
+    /// The ladder's choice (weights.rs `ladder`): each order is the six
+    /// rungs, defend base first and guard last; 0 is the ladder as built;
+    /// the file names a version or numbers it, and a number past the
+    /// versions is the last.
+    #[test]
+    fn each_ladder_puts_the_base_first_and_reorders_the_middle() {
+        assert_eq!(Rung::order(0), Rung::ALL);
+        for c in 0..4 {
+            let o = Rung::order(c);
+            let mut ix: Vec<usize> = o.iter().map(|r| r.index()).collect();
+            ix.sort();
+            assert_eq!(ix, vec![0, 1, 2, 3, 4, 5], "order {} is the six rungs", c);
+            assert_eq!((o[0], o[5]), (Rung::DefendBase, Rung::Guard), "order {}", c);
+        }
+        let on = [true; 6];
+        let mut holds = [false; 6];
+        holds[Rung::Fortify.index()] = true;
+        holds[Rung::Hunt.index()] = true;
+        holds[Rung::Expand.index()] = true;
+        let at = |s: &str, holds: &[bool; 6]| {
+            let s = crate::weights::Settings::parse(s).unwrap();
+            Rung::pick_in(&Rung::order(s.choice(crate::weights::W::Ladder)), &on, holds, None, 0.0)
+        };
+        assert_eq!(at("ladder = as_built", &holds), Rung::Fortify, "as built");
+        assert_eq!(at("ladder = hunt_first", &holds), Rung::Hunt);
+        assert_eq!(at("ladder = 3", &holds), Rung::Expand);
+        assert_eq!(at("ladder = 9", &holds), Rung::Expand, "past the versions, the last");
+        holds[Rung::DefendBase.index()] = true;
+        assert_eq!(at("ladder = hunt_first", &holds), Rung::DefendBase, "the base is never passed");
+        assert!(crate::weights::Settings::parse("ladder = sideways").is_err());
     }
 
     /// On a bridge a wingman's slot is in file straight behind the
