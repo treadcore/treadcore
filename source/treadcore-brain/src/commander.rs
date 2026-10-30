@@ -524,34 +524,40 @@ impl Commander {
             t.smooth = s.smooth_on().then(|| (s.w[W::Beta], s.w[W::AdvanceBand]));
         }
         self.inner.own_resupply = !s.smooth_on();
-        // A switch turned off puts away what the role gave the bot; on
-        // again, it gets it back.
+        // A switch off puts away what the role gave the bot; on again, it gets
+        // it back. BY THE SWITCH'S STATE, NOT ITS CHANGE: a role is dealt after
+        // `new`, so with a switch off by default there is no change to see, and
+        // the bot went on doing what its weights said it did not. A switch's A/B
+        // read that off from an on baseline, and promoted it would have put a
+        // different brain on main from the one measured (30 October, `pings`).
         let was = self.settings.caps;
-        let (off, on) = (|c: Caps| was.has(c) && !s.caps.has(c), |c: Caps| !was.has(c) && s.caps.has(c));
+        let (is_off, on) = (|c: Caps| !s.caps.has(c), |c: Caps| !was.has(c) && s.caps.has(c));
         let h = &mut self.cap_held;
-        if off(Caps::DODGE) {
-            h.dodges = self.dodges;
+        if is_off(Caps::DODGE) {
+            h.dodges |= self.dodges;
             self.dodges = false;
         } else if on(Caps::DODGE) {
-            self.dodges = h.dodges;
+            self.dodges |= h.dodges;
         }
-        if off(Caps::PINGS) {
-            (h.pings, h.answers_pings) = (self.pings, self.answers_pings);
+        if is_off(Caps::PINGS) {
+            h.pings |= self.pings;
+            h.answers_pings |= self.answers_pings;
             (self.pings, self.answers_pings) = (false, false);
         } else if on(Caps::PINGS) {
-            (self.pings, self.answers_pings) = (h.pings, h.answers_pings);
+            self.pings |= h.pings;
+            self.answers_pings |= h.answers_pings;
         }
-        if off(Caps::ROTATE) {
-            h.rotation_off = self.rotation.off;
+        if is_off(Caps::ROTATE) {
+            h.rotation_off |= !self.rotation.off;
             self.rotation.off = true;
-        } else if on(Caps::ROTATE) {
-            self.rotation.off = h.rotation_off;
+        } else if on(Caps::ROTATE) && h.rotation_off {
+            self.rotation.off = false;
         }
-        if off(Caps::BRIDGES) {
-            h.no_bridges = self.inner.hop.no_bridges;
+        if is_off(Caps::BRIDGES) {
+            h.no_bridges |= !self.inner.hop.no_bridges;
             self.inner.hop.no_bridges = true;
-        } else if on(Caps::BRIDGES) {
-            self.inner.hop.no_bridges = h.no_bridges;
+        } else if on(Caps::BRIDGES) && h.no_bridges {
+            self.inner.hop.no_bridges = false;
         }
         self.settings = s;
     }
@@ -3424,12 +3430,38 @@ mod tests {
         s.caps = s.caps.without(Caps::PINGS).without(Caps::DODGE).without(Caps::BRIDGES);
         c.set_settings(s.clone());
         assert_eq!((c.pings, c.answers_pings, c.dodges, c.inner.hop.no_bridges), (false, false, false, true));
-        s.caps = Caps::BASELINE;
+        // On by name, not by BASELINE: a promotion may turn any of them off.
+        s.caps = Caps::BASELINE.with(Caps::PINGS).with(Caps::DODGE).with(Caps::BRIDGES);
         s.nudge(W::Wounded, 2);
         c.set_settings(s);
         assert_eq!((c.pings, c.answers_pings, c.dodges, c.inner.hop.no_bridges), (true, false, true, false), "back as the role had them");
         let t = c.inner.tactics.as_ref().unwrap();
         assert_eq!((t.target, t.w.w_wounded), (Some(7), 1.4));
+    }
+
+    /// A switch off by default stays off through the deal, and comes back:
+    /// `new`, then the role's fields, then the settings, with no change of
+    /// the switch for `set_settings` to see.
+    #[test]
+    fn a_switch_off_before_the_deal_is_off_after_it() {
+        use crate::weights::{Caps, Settings};
+        let mut off = Settings::default();
+        off.caps = off.caps.without(Caps::PINGS).without(Caps::DODGE).without(Caps::BRIDGES).without(Caps::ROTATE);
+        let mut c = Commander::new(1, "t");
+        c.set_settings(off.clone());
+        // What fleet.rs's commander_as does before `equip`.
+        (c.pings, c.answers_pings) = (true, true);
+        c.dodges = true;
+        c.rotation.off = false;
+        c.inner.hop.no_bridges = false;
+        c.set_settings(off.clone());
+        assert_eq!((c.pings, c.answers_pings, c.dodges, c.rotation.off, c.inner.hop.no_bridges), (false, false, false, true, true), "still on through the deal");
+        // Set again, say by a slider: what the role gave is not lost.
+        c.set_settings(off.clone());
+        let mut on = off;
+        on.caps = on.caps.with(Caps::PINGS).with(Caps::DODGE).with(Caps::BRIDGES).with(Caps::ROTATE);
+        c.set_settings(on);
+        assert_eq!((c.pings, c.answers_pings, c.dodges, c.rotation.off, c.inner.hop.no_bridges), (true, true, true, false, false), "not given back");
     }
 
     /// The settings with the castle of 11b and 11h: three towers and two

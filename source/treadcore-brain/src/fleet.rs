@@ -483,6 +483,9 @@ mod tests {
         // seed tests the team's mechanics, and with the cowboy's drones
         // its pinging seat happens never to ping.
         let mut steady = Settings::default();
+        // The team's mechanics include its pings, by name: a promotion may
+        // turn the switch off, and this test is not about the defaults.
+        steady.caps = steady.caps.with(Caps::PINGS);
         use crate::weights::W;
         for (k, v) in [(W::ShellBoxes, 0.0), (W::LongshotEvery, 30.0), (W::LongshotAny, 0.0), (W::StrikesMax, 1.0)] {
             steady.w[k] = v;
