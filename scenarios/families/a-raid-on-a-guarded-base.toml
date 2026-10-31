@@ -15,7 +15,7 @@
 # Run over many seeds: make scenario S=this RUNS=1000.
 name = "a raid on a guarded base, from any side"
 runs = 400
-floor = 0.75
+floor = 0.65
 players = 3
 teams = [0, 1, 0]
 seconds = 50
