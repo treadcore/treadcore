@@ -6,6 +6,8 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: `advance_plan` forward and `mine_plan` raid are the defaults (Paul, 30 October).
+
 - Changed (game 4): a mortar's reload is 12 s, a flat shot's still 4 s, on one gun.
 - Added: `source/treadcore-brain/RANGES`, a min and max for any number, which no weights file,
   trial or promotion can pass. A person's decree is min = max: the number is part of the game,

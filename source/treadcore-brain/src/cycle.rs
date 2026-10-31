@@ -131,7 +131,9 @@ impl Cycle {
                 offer(s.w[W::Mend] * (1.0 - p.health / PILLBOX_HEALTH), PillboyTask::Repair { target: p.id }, CycleAct::Mend);
             }
         }
-        if let Some(f) = facing.filter(|_| material >= BuildKind::Mine.cost() && mines < MINES && s.choice(W::MinePlan) == 0) {
+        // With no line to stand on, the approach, as built: no enemy ground known is no reason to go bare.
+        let on_line = s.choice(W::MinePlan) > 0 && crate::front::mine_site(obs, base, mines).is_some();
+        if let Some(f) = facing.filter(|_| material >= BuildKind::Mine.cost() && mines < MINES && !on_line) {
             let r = crate::fortify::WALL_R + 2.0;
             let across = V2::new(-f.y, f.x);
             let k = mines as f32;
