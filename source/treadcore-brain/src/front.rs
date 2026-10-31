@@ -15,6 +15,31 @@ pub const LINE_REACH: f32 = 30.0;
 /// Tiles between mines along the line.
 pub const LINE_SPACING: f32 = 2.0;
 
+/// The numbers of `base_sense`.
+pub const BASE_SENSE: usize = 4;
+
+/// Worth of a depot to a tank that wants shells: what it has, over the road to it, plus enough
+/// of each that a near empty base is not worth nothing and a far full one not everything.
+pub fn base_worth(shells: u8, dist: f32) -> f32 {
+    (shells as f32 + 1.0) / (dist + 10.0)
+}
+
+/// The base most worth going to, ours or an ally's, by `base_worth`.
+pub fn best_base(obs: &Observation, from: V2) -> Option<&Depot> {
+    obs.depots.iter().filter(|d| d.owner.is_some_and(|o| obs.allied(o)))
+        .max_by(|a, b| base_worth(a.stock.kinds[STOCK_SHELL], a.pos.dist(from)).total_cmp(&base_worth(b.stock.kinds[STOCK_SHELL], b.pos.dist(from))))
+}
+
+/// A sensor (Paul, 30 October: "base ammo / distance directions as input"), read by a transform:
+/// the best base's shells as a share of full, its distance over 100 tiles, and its bearing. All
+/// zeros with no base. The nets' 143 senses stay as they are: every net on file was made for them.
+pub fn base_sense(obs: &Observation, from: V2) -> [f32; BASE_SENSE] {
+    let Some(d) = best_base(obs, from) else { return [0.0; BASE_SENSE] };
+    let to = d.pos - from;
+    let n = to.norm();
+    [d.stock.kinds[STOCK_SHELL] as f32 / treadcore_sim::rules_stock_max(), to.len() / 100.0, n.x, n.y]
+}
+
 fn nearest(p: V2, ground: impl Iterator<Item = V2>) -> Option<f32> {
     ground.map(|g| g.dist(p)).min_by(f32::total_cmp)
 }
@@ -111,6 +136,20 @@ mod tests {
         assert!(cmds.0.iter().any(|c| matches!(c, Command::Deploy { task: PillboyTask::Build { what: BuildKind::Mine, .. } })), "{:?}", cmds.0);
         let to = cmds.1.iter().find_map(|c| match c { Command::Move { to } => Some(*to), _ => None });
         assert!(to.is_some_and(|t| t.dist(us) < t.dist(them)), "no run for home: {:?}", cmds.1);
+    }
+
+    #[test]
+    fn the_sensor_prefers_a_stocked_base_to_an_empty_nearer_one() {
+        let (mut w, us, them) = two_sides();
+        let me = w.players[0].id;
+        w.depots[1].owner = Some(me);
+        w.depots[1].stock.kinds[STOCK_SHELL] = 20;
+        let mid = us + (them - us).scale(0.3);
+        let obs = w.observe(me);
+        assert_eq!(best_base(&obs, mid).unwrap().pos, them, "an empty base is a poor road");
+        let s = base_sense(&obs, mid);
+        assert!((s[0] - 1.0).abs() < 1e-6 && s[1] > 0.0, "{:?}", s);
+        assert!((V2::new(s[2], s[3]) - (them - mid).norm()).len() < 1e-3, "{:?}", s);
     }
 
     #[test]

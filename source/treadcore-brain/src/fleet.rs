@@ -469,6 +469,41 @@ mod tests {
         eprintln!("kiting_pays over {} seeds, a team's mean: kiting kills {:.1} deaths {:.1} direct hits taken {:.1} depots {:.1}; not kiting kills {:.1} deaths {:.1} direct hits taken {:.1} depots {:.1}", seeds, on[0] / n, on[1] / n, on[2] / n, on[3] / n, off[0] / n, off[1] / n, off[2] / n, off[3] / n);
     }
 
+    /// How much a match shoots (Paul, 30 October: "too many shots being fired"): not a test, a
+    /// measurement. `cargo test --release -p treadcore-brain shot_count -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn shot_count() {
+        use treadcore_sim::*;
+        let seats = 16usize;
+        let minutes = 8u64;
+        for seed in 0..8u64 {
+            let team = |s: usize| (0..seats).filter(|x| x % 3 == s % 3).collect::<Vec<usize>>();
+            let names: Vec<(String, bool)> = (0..seats).map(|i| (format!("s{}", i), true)).collect();
+            let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
+            let sc = Scenario { seed: 0x5407_0000 + seed, players: names, map, respawns: 3, time_limit: 0, ..Scenario::default() }.with_teams(3);
+            let mut w = World::new(sc);
+            let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats).map(|i| { let t = team(i); (i as PlayerId, team_brain(i, &t, seed ^ i as u64, t[0] == 0, &format!("s{}", i))) }).collect();
+            let (mut direct, mut indirect, mut hit, mut strikes, mut kills) = (0u32, 0u32, 0u32, 0u32, 0u32);
+            while w.tick < minutes * 60 * TICK_HZ as Tick && !w.over {
+                let orders = crate::run_bots(&w, &mut bots);
+                w.step(&orders);
+                for e in &w.events {
+                    match e {
+                        Event::ShellLaunched { kind: ShellKind::Direct, .. } => direct += 1,
+                        Event::ShellLaunched { .. } => indirect += 1,
+                        Event::ShellImpact { hits, .. } if !hits.is_empty() => hit += 1,
+                        Event::StrikeHit { .. } => strikes += 1,
+                        Event::TankDestroyed { .. } => kills += 1,
+                        _ => {}
+                    }
+                }
+            }
+            let tm = seats as f32 * w.tick as f32 / TICK_HZ as f32 / 60.0;
+            println!("SHOTS seed {} direct {} indirect {} hits {} strikes {} kills {} tank-minutes {:.0} per tank-minute {:.2}", seed, direct, indirect, hit, strikes, kills, tm, (direct + indirect) as f32 / tm);
+        }
+    }
+
     #[test]
     fn the_default_match_plays_as_teams() {
         use treadcore_sim::*;

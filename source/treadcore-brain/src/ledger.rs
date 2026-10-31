@@ -89,6 +89,18 @@ pub struct Outcome {
     /// Hostile tanks the seat's mines caught.
     #[serde(default)]
     pub mine_hits: u32,
+    /// Trips left from a base with shells near full, after a trip that fired.
+    #[serde(default)]
+    pub full_sorties: u32,
+    /// Trips ended at a base with shells low.
+    #[serde(default)]
+    pub low_returns: u32,
+    /// Arrivals at a stocked base other than the last one.
+    #[serde(default)]
+    pub rotations: u32,
+    /// Castles the seat's team stood, summed each second.
+    #[serde(default)]
+    pub castle_s: u32,
 }
 
 /// A kill this near a live pillbox of the killer's team defends it
@@ -130,6 +142,13 @@ pub struct ScoreWeights {
     pub base_entry: f32,
     pub raid: f32,
     pub mine_hit: f32,
+    /// A whole trip (Paul, 30 October: "leaving base with full ammo, and returning to base with
+    /// low ammo ... rotating between bases"), and castles held, as `held` is, by the match's
+    /// length.
+    pub full_sortie: f32,
+    pub low_return: f32,
+    pub rotation: f32,
+    pub castle: f32,
     pub enemy_taken: f32,
     pub defend: f32,
     pub all_neutral: f32,
@@ -150,6 +169,10 @@ impl Default for ScoreWeights {
             base_entry: 0.5,
             raid: 1.5,
             mine_hit: 1.0,
+            full_sortie: 0.5,
+            low_return: 0.5,
+            rotation: 0.75,
+            castle: 3.0,
             enemy_taken: 6.0,
             defend: 1.5,
             all_neutral: 15.0,
@@ -170,13 +193,13 @@ impl ScoreWeights {
 
     /// The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`.
     pub fn without_rewards(self) -> ScoreWeights {
-        ScoreWeights { base_entry: 0.0, raid: 0.0, mine_hit: 0.0, direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
+        ScoreWeights { full_sortie: 0.0, low_return: 0.0, rotation: 0.0, castle: 0.0, base_entry: 0.0, raid: 0.0, mine_hit: 0.0, direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
     }
 }
 
 /// The rewards' part of a seat's score (LR 84).
 pub fn rewards(o: &Outcome, k: &ScoreWeights) -> f32 {
-    k.base_entry * o.base_entries as f32 + k.raid * o.raids as f32 + k.mine_hit * o.mine_hits as f32 + k.direct_hit * o.direct_hits as f32 + k.pillbox_damage * o.pillbox_damage + k.neutral_taken * o.neutral_taken as f32 + k.enemy_taken * o.enemy_taken as f32 + k.defend * o.defends as f32 + if o.all_neutral { k.all_neutral } else { 0.0 }
+    k.full_sortie * o.full_sorties as f32 + k.low_return * o.low_returns as f32 + k.rotation * o.rotations as f32 + k.base_entry * o.base_entries as f32 + k.raid * o.raids as f32 + k.mine_hit * o.mine_hits as f32 + k.direct_hit * o.direct_hits as f32 + k.pillbox_damage * o.pillbox_damage + k.neutral_taken * o.neutral_taken as f32 + k.enemy_taken * o.enemy_taken as f32 + k.defend * o.defends as f32 + if o.all_neutral { k.all_neutral } else { 0.0 }
 }
 
 /// A seat's match score: the win, kills less deaths, ground held over
@@ -184,7 +207,7 @@ pub fn rewards(o: &Outcome, k: &ScoreWeights) -> f32 {
 /// at its weight.
 pub fn score(o: &Outcome, seconds: u32, k: &ScoreWeights) -> f32 {
     let t = seconds.max(1) as f32;
-    (if o.won { k.win } else { 0.0 }) + k.kill * o.kills as f32 - k.death * o.deaths as f32 + k.held * o.held_s as f32 / t + k.build * o.built as f32 + k.road * (o.road_tiles + o.bridge_tiles) as f32 + rewards(o, k)
+    (if o.won { k.win } else { 0.0 }) + k.kill * o.kills as f32 - k.death * o.deaths as f32 + k.held * o.held_s as f32 / t + k.build * o.built as f32 + k.road * (o.road_tiles + o.bridge_tiles) as f32 + k.castle * o.castle_s as f32 / t + rewards(o, k)
 }
 
 /// The counts, as the match runs.
@@ -201,6 +224,35 @@ pub struct Tally {
     /// By seat: inside an enemy base at the last look, and mines laid over the line on this trip.
     inside: Vec<bool>,
     laid_out: Vec<u32>,
+    /// By seat: the depot it stands at, the last it stood at, and shells fired since it left.
+    at_base: Vec<Option<EntityId>>,
+    last_base: Vec<Option<EntityId>>,
+    fired: Vec<u32>,
+}
+
+/// A share of full at or over this leaves full; at or under `LOW_SHARE` comes back low.
+const FULL_SHARE: f32 = 0.9;
+const LOW_SHARE: f32 = 0.25;
+/// A base with fewer shells than this is not a reason to have driven to it.
+const STOCKED: u8 = 5;
+
+/// Groups of a team's guns, as the sim's crowding has them: how many castles it stands, a castle
+/// being a gun among walls, however many guns; and what it holds, a group counting at most
+/// `TURRETS_FREE`, so a ring of eight earns no more than a pair.
+fn castles_and_guns(w: &World, ours: impl Fn(Option<PlayerId>) -> bool) -> (u32, u32) {
+    let mut groups: Vec<V2> = Vec::new();
+    let mut counts: Vec<usize> = Vec::new();
+    for p in w.pillboxes.iter().filter(|p| p.alive() && ours(p.owner)) {
+        match groups.iter().position(|g| g.dist(p.pos) <= TURRET_CROWD_R) {
+            Some(i) => counts[i] += 1,
+            None => {
+                groups.push(p.pos);
+                counts.push(1);
+            }
+        }
+    }
+    let castles = groups.iter().filter(|g| w.in_castle(**g)).count() as u32;
+    (castles, counts.iter().map(|c| (*c).min(TURRETS_FREE) as u32).sum())
 }
 
 /// How far `p` stands on `seat`'s side of the battle line, as `front::side`, from the world.
@@ -220,6 +272,9 @@ impl Tally {
             shells: Default::default(),
             inside: vec![false; w.players.len()],
             laid_out: vec![0; w.players.len()],
+            at_base: vec![None; w.players.len()],
+            last_base: vec![None; w.players.len()],
+            fired: vec![1; w.players.len()],
         }
     }
 
@@ -262,6 +317,9 @@ impl Tally {
                 }
                 Event::ShellLaunched { shell, owner, .. } => {
                     self.shells.insert(*shell, *owner);
+                    if let Some(i) = seat(*owner) {
+                        self.fired[i] += 1;
+                    }
                 }
                 Event::ShellImpact { shell, kind, hits, .. } => {
                     if let Some(owner) = self.shells.remove(shell) {
@@ -326,7 +384,9 @@ impl Tally {
             for o in self.seats.iter_mut() {
                 let Some(t) = o.team else { continue };
                 let ours = |x: Option<PlayerId>| x.and_then(|p| w.team_of(p)) == Some(t);
-                o.held_s += (w.pillboxes.iter().filter(|p| p.alive() && ours(p.owner)).count() + w.depots.iter().filter(|d| ours(d.owner)).count()) as u32;
+                let (castles, guns) = castles_and_guns(w, ours);
+                o.castle_s += castles;
+                o.held_s += guns + w.depots.iter().filter(|d| ours(d.owner)).count() as u32;
             }
             // The line, once a second: going in counts once a visit, and a raid when its tank
             // is back on its own side alive.
@@ -336,6 +396,29 @@ impl Tally {
                     continue;
                 }
                 let Some(t) = w.tanks.iter().find(|t| t.owner == pl.id && t.alive) else { continue };
+                // A trip: left full after firing, back low, and to another base with something in it.
+                let share = t.shells as f32 / TANK_SHELLS as f32;
+                let here = w.depots.iter().find(|d| d.owner.is_some_and(|o| w.allied(o, pl.id)) && d.pos.dist(t.pos) <= DEPOT_RADIUS + 1.0);
+                match (self.at_base[i], here) {
+                    (None, Some(d)) => {
+                        if share <= LOW_SHARE {
+                            self.seats[i].low_returns += 1;
+                        }
+                        if self.last_base[i].is_some_and(|l| l != d.id) && d.stock.kinds[STOCK_SHELL] >= STOCKED {
+                            self.seats[i].rotations += 1;
+                        }
+                        self.at_base[i] = Some(d.id);
+                        self.last_base[i] = Some(d.id);
+                    }
+                    (Some(_), None) => {
+                        if share >= FULL_SHARE && self.fired[i] > 0 {
+                            self.seats[i].full_sorties += 1;
+                            self.fired[i] = 0;
+                        }
+                        self.at_base[i] = None;
+                    }
+                    _ => {}
+                }
                 let inside = w.depots.iter().any(|d| d.owner.is_some_and(|o| !w.allied(o, pl.id)) && d.pos.dist(t.pos) <= crate::front::ENEMY_BASE_R);
                 if inside && !self.inside[i] {
                     self.seats[i].base_entries += 1;

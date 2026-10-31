@@ -722,6 +722,11 @@ impl Commander {
     /// has not lately refused as over the water, if any; else the
     /// nearest, and the drive's refusal sends the tank by sea.
     fn home(&self, obs: &Observation, me: &Tank) -> Option<V2> {
+        if self.settings.choice(crate::weights::W::HomePick) == 1 && self.refused.is_empty() {
+            if let Some(d) = crate::front::best_base(obs, me.pos) {
+                return Some(d.pos);
+            }
+        }
         let ours = || obs.depots.iter().filter(|d| Self::mine_or_allied(obs, d.owner)).map(|d| d.pos);
         let near = |a: &V2, b: &V2| a.dist(me.pos).total_cmp(&b.dist(me.pos));
         ours().filter(|p| !self.refused.iter().any(|(t, _)| *t == p.tile())).min_by(near).or_else(|| ours().min_by(near))
@@ -2504,6 +2509,7 @@ impl Commander {
                 x.extend_from_slice(&senses);
                 x.extend_from_slice(&waves);
                 x.extend_from_slice(&[n.x, n.y, d.len() / 100.0]);
+                x.extend_from_slice(&crate::front::base_sense(obs, me.pos));
                 let y = p.run(&x);
                 if y[2] >= self.settings.w[W::PatchConfidence] {
                     let reach = self.settings.w[W::PatchReach];

@@ -28,7 +28,7 @@ use std::sync::{Arc, Mutex};
 /// What the rules said: the direction to the Move's point, across and down, and how far.
 pub const RULES: usize = 3;
 /// Everything a step reads besides `y`.
-pub const INPUTS: usize = SENSES + crate::bio::WAVES + RULES;
+pub const INPUTS: usize = SENSES + crate::bio::WAVES + RULES + crate::front::BASE_SENSE;
 /// `y`: how far to move the point, across and down, and the confidence.
 pub const OUTPUTS: usize = 3;
 const MAGIC: &[u8; 4] = b"TCP1";

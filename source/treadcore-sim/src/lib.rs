@@ -645,6 +645,11 @@ pub struct DepotStock {
     pub turn: u8,
 }
 
+/// `DEPOT_STOCK_MAX` for a reader outside the sim, as a number to divide by.
+pub fn rules_stock_max() -> f32 {
+    DEPOT_STOCK_MAX as f32
+}
+
 pub const STOCK_SHELL: usize = 0;
 pub const STOCK_TREE: usize = 1;
 pub const STOCK_INTERCEPTOR: usize = 2;
@@ -1486,6 +1491,20 @@ impl World {
     /// the prior art's cover (VIS-02): `at` lies in a 2 x 2 block of forest. A
     /// tank standing there is hidden from everything beyond
     /// `CONCEAL_RANGE`, pillboxes included (PIL-07).
+    /// Whether `at` stands among a castle's walls.
+    pub fn in_castle(&self, at: V2) -> bool {
+        let (x, y) = at.tile();
+        let mut walls = 0;
+        for ty in y - CASTLE_R..=y + CASTLE_R {
+            for tx in x - CASTLE_R..=x + CASTLE_R {
+                if self.map.in_tile(tx, ty) && self.map.at_tile(tx as usize, ty as usize).is_wall() {
+                    walls += 1;
+                }
+            }
+        }
+        walls >= CASTLE_WALLS
+    }
+
     pub fn concealed(&self, at: V2) -> bool {
         let (x, y) = at.tile();
         let forest = |x: i32, y: i32| self.map.in_tile(x, y) && self.map.at_tile(x as usize, y as usize) == Terrain::Forest;
@@ -2926,7 +2945,12 @@ impl World {
         let mut air: Vec<(EntityId, PlayerId, EntityId, f32)> = Vec::new(); // pillbox, shooter, drone, link
         // A pillbox on a chain is being moved, not manned: silent.
         let chained: Vec<EntityId> = self.tanks.iter().filter(|t| t.alive).filter_map(|t| t.towing).collect();
-        for p in self.pillboxes.iter_mut() {
+        // Each gun's reload, read once: slower the more share its castle.
+        let reloads: Vec<u16> = self.pillboxes.iter().map(|p| {
+            let near = self.pillboxes.iter().filter(|o| o.alive() && o.owner.is_some() && p.owner.is_some() && o.pos.dist(p.pos) <= TURRET_CROWD_R && p.owner.is_some_and(|po| allied_with(o.owner, po))).count();
+            (PILLBOX_RELOAD_TICKS as f32 * (1.0 + TURRET_CROWD_SLOW * near.saturating_sub(TURRETS_FREE) as f32)) as u16
+        }).collect();
+        for (pi, p) in self.pillboxes.iter_mut().enumerate() {
             if chained.contains(&p.id) {
                 continue;
             }
@@ -2945,7 +2969,7 @@ impl World {
                 .min_by(|a, b| a.2.dist(p.pos).total_cmp(&b.2.dist(p.pos)).then(a.0.cmp(&b.0)));
             if let Some((tid, _, _, _)) = tank {
                 shots.push((p.id, shooter, *tid, PILLBOX_DAMAGE));
-                p.reload = PILLBOX_RELOAD_TICKS;
+                p.reload = reloads[pi];
                 continue;
             }
             let drone = drones
@@ -2960,7 +2984,7 @@ impl World {
                     .map(|(_, _, tp, _)| (1.0 - tp.dist(p.pos) / DRONE_LINK).clamp(0.0, 1.0))
                     .unwrap_or(0.0);
                 air.push((p.id, shooter, *did, link));
-                p.reload = PILLBOX_RELOAD_TICKS;
+                p.reload = reloads[pi];
             }
         }
         for (pid, shooter, tid, dmg) in shots {
@@ -3344,6 +3368,7 @@ impl World {
         for (i, tank) in strikes {
             let owner = self.drones.iter().find(|d| d.id == i).map(|d| d.owner);
             let damage = self.drones.iter().find(|d| d.id == i).map(|d| d.spec().damage).unwrap_or(STRIKE_DAMAGE);
+            let damage = damage * self.tank(tank).filter(|t| self.in_castle(t.pos)).map_or(1.0, |_| CASTLE_DRONE_SHARE);
             lost.push((i, LossReason::Expended));
             self.events.push(Event::StrikeHit { drone: i, tank, damage });
             self.damage(tank, damage, owner.filter(|o| *o != SWARM_OWNER));
@@ -3526,7 +3551,8 @@ impl World {
             self.damage_pillbox(id, LONGSHOT_PILLBOX_DAMAGE * blast, by);
         }
         for id in tanks {
-            self.damage(id, LONGSHOT_TANK_DAMAGE * blast, by);
+            let cover = self.tank(id).filter(|t| self.in_castle(t.pos)).map_or(1.0, |_| CASTLE_DRONE_SHARE);
+            self.damage(id, LONGSHOT_TANK_DAMAGE * blast * cover, by);
         }
     }
 
@@ -4980,6 +5006,38 @@ mod tests {
         st.kinds = [DEPOT_STOCK_MAX; 6];
         st.make();
         assert_eq!(st.kinds, [DEPOT_STOCK_MAX; 6], "a full store holds at its limit");
+    }
+
+    #[test]
+    fn a_castle_halves_a_drone_and_a_lone_wall_does_not() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let at = Map::tile_centre(V2::new(40.0, 40.0));
+        assert!(!w.in_castle(at));
+        for i in 0..CASTLE_WALLS as i32 - 1 {
+            w.map.set(at + V2::new(i as f32 - 3.0, 4.0), Terrain::Wall);
+        }
+        assert!(!w.in_castle(at), "seven walls are not a castle");
+        w.map.set(at + V2::new(0.0, -4.0), Terrain::Wall);
+        assert!(w.in_castle(at), "eight are");
+    }
+
+    #[test]
+    fn a_crowded_castles_guns_fire_slower_but_are_not_refused() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        w.pillboxes.clear();
+        let (me, foe) = (w.players[0].id, w.players[1].id);
+        let at = V2::new(40.5, 40.5);
+        w.tanks[1].pos = at + V2::new(4.0, 0.0);
+        w.map.set(at + V2::new(1.0, 0.0), Terrain::Grass);
+        for n in 0..4 {
+            let id = 90_000 + n;
+            w.pillboxes.push(Pillbox { id, pos: at + V2::new(0.0, n as f32 * 2.0), owner: Some(me), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+        }
+        let _ = foe;
+        w.step(&[]);
+        // Four guns: two past the free pair, so half a reload more for each past it.
+        let longest = w.pillboxes.iter().map(|p| p.reload).max().unwrap();
+        assert_eq!(longest, PILLBOX_RELOAD_TICKS * 2, "reloads {:?}", w.pillboxes.iter().map(|p| p.reload).collect::<Vec<_>>());
     }
 
     #[test]

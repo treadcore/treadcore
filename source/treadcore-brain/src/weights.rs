@@ -168,6 +168,7 @@ weights! {
     PingWarnFlee "ping_warn_flee" 15.0, "pings: a warned tank moves this far away, tiles";
     PingCautionReach "ping_caution_reach" 20.0, "pings: a rally this near a caution is dropped, tiles";
     PingOutnumbered "ping_outnumbered" 1.5, "pings: hostile tanks over ours by this ratio is a call for help";
+    HomePick "home_pick" 1.0, "resupply: which base a tank goes home to (choice: nearest | stocked): stocked by shells over the road, front.rs; a depot's store can run dry, so the nearest may be empty";
     MinePlan "mine_plan" 0.0, "mines: where a squad lays them (choice: as_built | line | raid): as built on the base's approach; line across the battle line's road, front.rs; raid that, and a tank inside an enemy base lays one and runs home";
     Bio "bio" 0.0, "intuition: the shape of a tank's slow waves (choice: off | sine | triangle | square | saw): bio.rs";
     BioPeriod "bio_period" 60.0, "intuition: the first wave's period, seconds; the others run 28/23 and 33/23 as long";
@@ -211,7 +212,7 @@ weights! {
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
-    CastleInside "castle_inside" 6.53472, "castle: pillboxes inside the wall, then it stops filling (rounded)";
+    CastleInside "castle_inside" 2.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";
     CastleRoad "castle_road" 2.0, "castle: pillboxes outside on its road (rounded)";
     PostSpacing "post_spacing" 28.1025, "posts: tiles between pillboxes on a road between bases";
     PostsMax "posts_max" 6.0, "posts: road posts a base fills at most (rounded)";

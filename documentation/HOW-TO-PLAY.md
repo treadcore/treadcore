@@ -200,7 +200,7 @@ worded column.)
 
 The bay refills at a depot, from what it has made: one thing a second in all, round shells, trees,
 interceptors, long drones, recon and strikes, holding up to 20 of each and shared by all who draw on it.
-A depot starts empty, and only an owned one makes anything. Felled trees grow back after two minutes. The lamps along the bottom (RECON, INTCP,
+A depot starts empty, and only an owned one makes anything. Felled trees grow back after two minutes. Inside a castle, eight walls or more within six tiles, drones do half damage to a tank. More than two guns in a castle fire slower. The lamps along the bottom (RECON, INTCP,
 STRIKE, LONG) show what is left in it.
 
 **Marks.** The drones get better as the match goes on, for every side

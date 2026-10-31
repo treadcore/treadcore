@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed (game 3): a tank among a castle's walls (8 within 6 tiles) takes half from drones; a
+  gun with more than two friends within 12 tiles reloads half a reload slower for each past them;
+  `castle_inside` starts at 2, and guns past a pair earn no holding score. Added: rewards for a
+  trip that leaves full and comes back low, for rotating to another stocked base, and for castles;
+  `home_pick`, on by default, goes to the base with the most shells for the road; the best base's
+  shells, distance and bearing as four more inputs to the transform (153 in all; the nets' 143
+  senses stay). `shot_count` measures how much a match shoots.
+
 - Changed: depots make one thing a second in all, into a store of up to 20 of each kind shared
   by every tank on them, in place of two shells and two drones a second for each tank without
   end. Felled trees grow back after two minutes; they had not at all. A depot's workers walk to

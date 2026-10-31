@@ -210,6 +210,20 @@ pub const TREE_REGROW_TICKS: u64 = 120 * TICK_HZ as u64;
 /// harvest is four, so a wall is a quarter of a tree.
 pub const WALL_BUILD_TICKS: u16 = 3 * TICK_HZ as u16;
 pub const WALL_COST: u8 = 1;
+/// Walls this many, inside this many tiles, make a castle (Paul, 30 October: "a tank being in a
+/// castle has better protection"): a curtain's worth, so one wall on open ground is not one.
+pub const CASTLE_WALLS: usize = 8;
+pub const CASTLE_R: i32 = 6;
+/// What a drone does to a tank in a castle, as a share. A wall already stops a flat shot; a drone
+/// flies over it, so the walls take the part of the blast they stand in the way of. The share is
+/// heavy cover's -50% in Company of Heroes 2, as players report it.
+pub const CASTLE_DRONE_SHARE: f32 = 0.5;
+/// Friendly pillboxes this near share one castle's guns, and past `TURRETS_FREE` of them each
+/// more slows them all by `TURRET_CROWD_SLOW` of a reload (Paul: "soft enforce that we dont get
+/// castles of turrets"). Nothing refuses the build: a ring of eight fires as about three.
+pub const TURRET_CROWD_R: f32 = 12.0;
+pub const TURRETS_FREE: usize = 2;
+pub const TURRET_CROWD_SLOW: f32 = 0.5;
 pub const ROAD_BUILD_TICKS: u16 = 3 * TICK_HZ as u16;
 pub const ROAD_COST: u8 = 1;
 /// A squad laying a bridge tile lays on, straight out from where it
