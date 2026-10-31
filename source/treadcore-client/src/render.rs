@@ -663,6 +663,34 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>, window: Quer
             gizmos.line_2d(to_screen(my.pillboys.pos), to_screen(*w), mine.with_alpha(0.25));
         }
     }
+    // A depot's workers, out to the nearest trees and back with a log. Drawn only: what a depot
+    // makes is the sim's, one thing a second, with or without a wood beside it.
+    if let Some(map) = view.map.as_ref() {
+        for d in obs.depots.iter().filter(|d| d.owner.is_some()) {
+            let (dx, dy) = d.pos.tile();
+            let mut trees: Vec<V2> = Vec::new();
+            for y in dy - 10..=dy + 10 {
+                for x in dx - 10..=dx + 10 {
+                    if map.in_tile(x, y) && map.at_tile(x as usize, y as usize) == Terrain::Forest {
+                        trees.push(V2::new(x as f32 + 0.5, y as f32 + 0.5));
+                    }
+                }
+            }
+            trees.sort_by(|a, b| a.dist(d.pos).total_cmp(&b.dist(d.pos)));
+            let c = d.owner.map(player_color).unwrap_or(Color::WHITE);
+            for (i, tree) in trees.iter().take(3).enumerate() {
+                // Eight seconds a trip: out, a moment at the tree, and home carrying.
+                let f = (obs.tick as f32 / TICK_HZ as f32 / 8.0 + i as f32 / 3.0).fract();
+                let (out, home) = (f < 0.45, f >= 0.55);
+                let k = if out { f / 0.45 } else if home { 1.0 - (f - 0.55) / 0.45 } else { 1.0 };
+                let at = to_screen(d.pos + (*tree - d.pos).scale(k));
+                gizmos.circle_2d(at, TILE * 0.14, c);
+                if home {
+                    gizmos.circle_2d(at + Vec2::new(0.0, TILE * 0.2), TILE * 0.08, Color::srgb(0.55, 0.35, 0.15));
+                }
+            }
+        }
+    }
     // Depot capture rings.
 
     for d in &obs.depots {

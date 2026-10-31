@@ -198,7 +198,9 @@ worded column.)
 | `[` `]` | bubble | shrinks or widens the ring: wide catches strikes early but thins the ring and stretches every link. |
 | `X` | longshot | (no tile) sends the long-range drone at the point under the cursor, anywhere on the map. It is slow, it flies on its own and it does not come back; section 6b. |
 
-The bay refills at a depot. The lamps along the bottom (RECON, INTCP,
+The bay refills at a depot, from what it has made: one thing a second in all, round shells, trees,
+interceptors, long drones, recon and strikes, holding up to 20 of each and shared by all who draw on it.
+A depot starts empty, and only an owned one makes anything. Felled trees grow back after two minutes. The lamps along the bottom (RECON, INTCP,
 STRIKE, LONG) show what is left in it.
 
 **Marks.** The drones get better as the match goes on, for every side

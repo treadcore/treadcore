@@ -121,8 +121,9 @@ At most 10 of a player's drones in the air at once.
 Seventeen: one near each of the sixteen starts, one in the centre. A
 depot whose start is unseated is neutral, and worth capturing. A tank inside 2 tiles of a
 
-friendly depot resupplies: a shell, 4 armor and 40 fuel every half
-second, and one drone, interceptors first. Inside 2 tiles of anyone
+friendly depot resupplies 4 armor and 40 fuel every half second, and,
+from its store, a shell and one drone, interceptors first. The store
+fills one thing a second in all, round six kinds, up to 20 of each. Inside 2 tiles of anyone
 else's, alone, for 10 seconds, captures it. Two tanks there: contested,
 nothing happens.
 

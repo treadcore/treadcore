@@ -22,6 +22,7 @@ pub mod bio;
 pub mod board;
 pub mod calls;
 pub mod clip;
+pub mod front;
 pub mod commander;
 pub mod crew;
 pub mod cycle;
@@ -2739,8 +2740,14 @@ mod tests {
                 w.step(&orders);
                 for e in &w.events {
                     match e {
+                        // A shell landing wide of the tank was meant for another: the promise is
+                        // that nobody aims at a newcomer, and a fight next door can still splash.
                         Event::TankDamaged { tank, by: Some(p), .. } if *tank == mine && *p != SWARM_OWNER && *p != NEUTRAL => {
-                            first_hit.get_or_insert(w.tick);
+                            let at = w.tank(mine).map(|t| t.pos);
+                            let wide = w.events.iter().any(|x| matches!(x, Event::ShellImpact { at: i, kind: ShellKind::Indirect, hits, .. } if hits.contains(tank) && at.is_some_and(|a| a.dist(*i) > 1.0)));
+                            if !wide {
+                                first_hit.get_or_insert(w.tick);
+                            }
                         }
                         Event::ShellLaunched { .. } => fired += 1,
                         _ => {}

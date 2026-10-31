@@ -6,6 +6,14 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed: depots make one thing a second in all, into a store of up to 20 of each kind shared
+  by every tank on them, in place of two shells and two drones a second for each tank without
+  end. Felled trees grow back after two minutes; they had not at all. A depot's workers walk to
+  the nearest trees and back, drawn only. Pillboxes are unchanged.
+- Added: battle lines (`front.rs`); `mine_plan`, a whole-number choice of as built, mines across
+  the line, or a raid that lays one in an enemy base and runs home, off by default until a census
+  reads it; rewards for entering an enemy base, a raid brought home, and a mine that catches a tank.
+
 - Added: micro versions, a `brain-RID` tag on every promotion
   (`brain-r0019` on dc3df01); Do it now (sync, promote, push); older
   candidates read again on today's defaults; crucible on three GPU lanes

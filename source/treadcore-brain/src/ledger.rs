@@ -80,6 +80,15 @@ pub struct Outcome {
     /// The seat's team took every pillbox that began neutral itself.
     #[serde(default)]
     pub all_neutral: bool,
+    /// Times the seat's tank went inside an enemy base, a visit once.
+    #[serde(default)]
+    pub base_entries: u32,
+    /// Trips that laid a mine on the enemy's side of the line and came back over it alive.
+    #[serde(default)]
+    pub raids: u32,
+    /// Hostile tanks the seat's mines caught.
+    #[serde(default)]
+    pub mine_hits: u32,
 }
 
 /// A kill this near a live pillbox of the killer's team defends it
@@ -116,6 +125,11 @@ pub struct ScoreWeights {
     pub direct_hit: f32,
     pub pillbox_damage: f32,
     pub neutral_taken: f32,
+    /// Going in, laying and getting out (Paul, 30 October): a visit to an enemy base, a mine
+    /// laid over the line and brought home from, a hostile tank caught by a mine.
+    pub base_entry: f32,
+    pub raid: f32,
+    pub mine_hit: f32,
     pub enemy_taken: f32,
     pub defend: f32,
     pub all_neutral: f32,
@@ -133,6 +147,9 @@ impl Default for ScoreWeights {
             direct_hit: 1.5,
             pillbox_damage: 1.5,
             neutral_taken: 3.0,
+            base_entry: 0.5,
+            raid: 1.5,
+            mine_hit: 1.0,
             enemy_taken: 6.0,
             defend: 1.5,
             all_neutral: 15.0,
@@ -153,13 +170,13 @@ impl ScoreWeights {
 
     /// The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`.
     pub fn without_rewards(self) -> ScoreWeights {
-        ScoreWeights { direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
+        ScoreWeights { base_entry: 0.0, raid: 0.0, mine_hit: 0.0, direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
     }
 }
 
 /// The rewards' part of a seat's score (LR 84).
 pub fn rewards(o: &Outcome, k: &ScoreWeights) -> f32 {
-    k.direct_hit * o.direct_hits as f32 + k.pillbox_damage * o.pillbox_damage + k.neutral_taken * o.neutral_taken as f32 + k.enemy_taken * o.enemy_taken as f32 + k.defend * o.defends as f32 + if o.all_neutral { k.all_neutral } else { 0.0 }
+    k.base_entry * o.base_entries as f32 + k.raid * o.raids as f32 + k.mine_hit * o.mine_hits as f32 + k.direct_hit * o.direct_hits as f32 + k.pillbox_damage * o.pillbox_damage + k.neutral_taken * o.neutral_taken as f32 + k.enemy_taken * o.enemy_taken as f32 + k.defend * o.defends as f32 + if o.all_neutral { k.all_neutral } else { 0.0 }
 }
 
 /// A seat's match score: the win, kills less deaths, ground held over
@@ -181,6 +198,16 @@ pub struct Tally {
     neutral_by_team: std::collections::HashMap<TeamId, usize>,
     /// Shells in flight and whose (LR 84).
     shells: std::collections::HashMap<EntityId, PlayerId>,
+    /// By seat: inside an enemy base at the last look, and mines laid over the line on this trip.
+    inside: Vec<bool>,
+    laid_out: Vec<u32>,
+}
+
+/// How far `p` stands on `seat`'s side of the battle line, as `front::side`, from the world.
+fn world_side(w: &World, seat: PlayerId, p: V2) -> Option<f32> {
+    let ground = || w.depots.iter().filter_map(|d| d.owner.map(|o| (o, d.pos))).chain(w.pillboxes.iter().filter(|b| b.alive()).filter_map(|b| b.owner.map(|o| (o, b.pos))));
+    let near = |ours: bool| ground().filter(|(o, _)| w.allied(*o, seat) == ours).map(|(_, g)| g.dist(p)).min_by(f32::total_cmp);
+    Some(near(false)? - near(true)?)
 }
 
 impl Tally {
@@ -191,6 +218,8 @@ impl Tally {
             neutral: w.pillboxes.iter().filter(|p| p.owner.is_none()).count(),
             neutral_by_team: Default::default(),
             shells: Default::default(),
+            inside: vec![false; w.players.len()],
+            laid_out: vec![0; w.players.len()],
         }
     }
 
@@ -202,9 +231,22 @@ impl Tally {
         let hostile = |a: PlayerId, b: PlayerId| matches!((w.team_of(a), w.team_of(b)), (Some(x), Some(y)) if x != y);
         for e in &w.events {
             match e {
+                Event::MineLaid { owner, at, .. } => {
+                    if let Some(i) = seat(*owner).filter(|_| world_side(w, *owner, *at).is_some_and(|s| s < 0.0)) {
+                        self.laid_out[i] += 1;
+                    }
+                }
+                Event::MineExploded { owner, hits, .. } => {
+                    if let Some(i) = seat(*owner) {
+                        let n = hits.iter().filter(|h| w.tank(**h).is_some_and(|t| hostile(t.owner, *owner))).count();
+                        self.seats[i].mine_hits += n as u32;
+                    }
+                }
                 Event::TankDestroyed { tank, owner, by } => {
                     if let Some(i) = seat(*owner) {
                         self.seats[i].deaths += 1;
+                        self.laid_out[i] = 0;
+                        self.inside[i] = false;
                     }
                     if let Some(i) = by.and_then(seat) {
                         if Some(i as PlayerId) != Some(*owner) {
@@ -285,6 +327,24 @@ impl Tally {
                 let Some(t) = o.team else { continue };
                 let ours = |x: Option<PlayerId>| x.and_then(|p| w.team_of(p)) == Some(t);
                 o.held_s += (w.pillboxes.iter().filter(|p| p.alive() && ours(p.owner)).count() + w.depots.iter().filter(|d| ours(d.owner)).count()) as u32;
+            }
+            // The line, once a second: going in counts once a visit, and a raid when its tank
+            // is back on its own side alive.
+            for pl in &w.players {
+                let i = pl.id as usize;
+                if i >= self.seats.len() {
+                    continue;
+                }
+                let Some(t) = w.tanks.iter().find(|t| t.owner == pl.id && t.alive) else { continue };
+                let inside = w.depots.iter().any(|d| d.owner.is_some_and(|o| !w.allied(o, pl.id)) && d.pos.dist(t.pos) <= crate::front::ENEMY_BASE_R);
+                if inside && !self.inside[i] {
+                    self.seats[i].base_entries += 1;
+                }
+                self.inside[i] = inside;
+                if self.laid_out[i] > 0 && world_side(w, pl.id, t.pos).is_some_and(|s| s > 0.0) {
+                    self.seats[i].raids += 1;
+                    self.laid_out[i] = 0;
+                }
             }
         }
     }

@@ -50,6 +50,8 @@ Richeson (he/him). Journals and commits are in his name.
   on, with a starting number from a scenario family or a quick sweep.
   The census is the guard: it must not break anything and may cost
   only a little. Tuning comes after the features are in.
+- **A rule change bumps `source/treadcore-sim/GAME_VERSION`.** The fleet counts a read as evidence
+  only on today's dials and today's game, and it cannot see a game change by itself.
 - **The rule before the run.** Write down what result would confirm a
   change before starting its census. Outside two standard errors is
   the bar.

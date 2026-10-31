@@ -632,6 +632,47 @@ pub struct Depot {
     /// 0..CAPTURE_TICKS, with the id of who is capturing.
     pub capture: u16,
     pub capturer: Option<PlayerId>,
+    /// What it has made and no tank has drawn; it starts empty and only an owned depot makes.
+    #[serde(default)]
+    pub stock: DepotStock,
+}
+
+/// A depot's store, and the turn it has reached: shells, trees, interceptors, long drones,
+/// recon, strikes, one a second round the six.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DepotStock {
+    pub kinds: [u8; 6],
+    pub turn: u8,
+}
+
+pub const STOCK_SHELL: usize = 0;
+pub const STOCK_TREE: usize = 1;
+pub const STOCK_INTERCEPTOR: usize = 2;
+pub const STOCK_LONGSHOT: usize = 3;
+pub const STOCK_RECON: usize = 4;
+pub const STOCK_STRIKE: usize = 5;
+
+impl DepotStock {
+    /// One more of the next kind that has room; none when all six are full.
+    pub fn make(&mut self) {
+        for i in 0..self.kinds.len() {
+            let k = (self.turn as usize + i) % self.kinds.len();
+            if self.kinds[k] < DEPOT_STOCK_MAX {
+                self.kinds[k] += 1;
+                self.turn = ((k + 1) % self.kinds.len()) as u8;
+                return;
+            }
+        }
+    }
+
+    /// One of a kind out of the store, if there is one.
+    pub fn take(&mut self, k: usize) -> bool {
+        let there = self.kinds[k] > 0;
+        if there {
+            self.kinds[k] -= 1;
+        }
+        there
+    }
 }
 
 /// A team id. Players start each in a team of their own (the team id is
@@ -1142,6 +1183,9 @@ pub struct World {
     pub depots: Vec<Depot>,
     pub pillboxes: Vec<Pillbox>,
     pub mines: Vec<Mine>,
+    /// Trees felled, and when each grows back, soonest first.
+    #[serde(default)]
+    pub felled: Vec<(V2, Tick)>,
     pub proposals: Vec<Proposal>,
     pub structures: Vec<Structure>,
     /// Boats moored and empty.
@@ -1189,6 +1233,7 @@ impl World {
             depots: Vec::new(),
             pillboxes: Vec::new(),
             mines: Vec::new(),
+            felled: Vec::new(),
             proposals: Vec::new(),
             structures: Vec::new(),
             boats: Vec::new(),
@@ -1208,7 +1253,7 @@ impl World {
                 DepotOwner::Seat(o) if (o as usize) < seats => Some(o),
                 _ => None,
             };
-            w.depots.push(Depot { id, pos: d.pos, owner, capture: 0, capturer: None });
+            w.depots.push(Depot { id, pos: d.pos, owner, capture: 0, capturer: None, stock: DepotStock::default() });
         }
         for p in w.map.pillboxes.clone() {
             let id = w.alloc();
@@ -1503,6 +1548,7 @@ impl World {
         self.step_pillboxes();
         self.step_shells();
         self.step_depots();
+        self.step_trees();
         self.step_structures();
         self.step_swarm();
         self.step_match();
@@ -2731,6 +2777,7 @@ impl World {
                 Done::Harvested(at) => {
                     let at = Map::tile_centre(at);
                     self.set_terrain(at, Terrain::Grass);
+                    self.felled.push((at, self.tick + TREE_REGROW_TICKS));
                     let mut gained = 0;
                     if let Some(t) = self.tank_mut(tid) {
                         gained = HARVEST_MATERIAL.min(PILLBOY_MATERIAL_MAX - t.pillboys.material);
@@ -3628,7 +3675,29 @@ impl World {
         }
     }
 
+    /// Felled trees grow back, on ground still bare: a road or a wall laid there keeps it, and
+    /// a mine or a pillbox on the tile has the tree wait another ten seconds.
+    fn step_trees(&mut self) {
+        while self.felled.first().is_some_and(|f| f.1 <= self.tick) {
+            let (at, _) = self.felled.remove(0);
+            if self.map.at(at) != Terrain::Grass {
+                continue;
+            }
+            let held = self.mines.iter().any(|m| m.pos.tile() == at.tile()) || self.pillboxes.iter().any(|p| p.pos.tile() == at.tile());
+            if held {
+                self.felled.push((at, self.tick + 10 * TICK_HZ as Tick));
+            } else {
+                self.set_terrain(at, Terrain::Forest);
+            }
+        }
+    }
+
     fn step_depots(&mut self) {
+        if self.tick % DEPOT_MAKES_EVERY == 0 {
+            for dep in self.depots.iter_mut().filter(|d| d.owner.is_some()) {
+                dep.stock.make();
+            }
+        }
         let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
         let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
         let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
@@ -3687,21 +3756,26 @@ impl World {
         }
         for (tid, did) in resupplied {
             let tick = self.tick;
+            let Some(di) = self.depots.iter().position(|d| d.id == did) else { continue };
+            let mut stock = self.depots[di].stock;
             let t = self.tank_mut(tid).unwrap();
             let before = (t.shells, t.bay, t.armor as i32, t.fuel as i32);
             if tick % RESUPPLY_EVERY == 0 {
-                t.shells = (t.shells + 1).min(TANK_SHELLS);
+                if t.shells < TANK_SHELLS && stock.take(STOCK_SHELL) {
+                    t.shells += 1;
+                }
                 t.armor = (t.armor + REPAIR_PER_TICK).min(TANK_ARMOR);
                 t.fuel = (t.fuel + 40.0).min(TANK_FUEL);
                 // Interceptors first: the bubble is what keeps the tank alive
-                // long enough to use the rest.
-                if t.bay.interceptor < BAY_FULL.interceptor {
+                // long enough to use the rest. A kind the store has none of
+                // does not hold up the next.
+                if t.bay.interceptor < BAY_FULL.interceptor && stock.take(STOCK_INTERCEPTOR) {
                     t.bay.interceptor += 1;
-                } else if t.bay.recon < BAY_FULL.recon {
+                } else if t.bay.recon < BAY_FULL.recon && stock.take(STOCK_RECON) {
                     t.bay.recon += 1;
-                } else if t.bay.strike < BAY_FULL.strike {
+                } else if t.bay.strike < BAY_FULL.strike && stock.take(STOCK_STRIKE) {
                     t.bay.strike += 1;
-                } else if t.bay.longshot < BAY_FULL.longshot {
+                } else if t.bay.longshot < BAY_FULL.longshot && stock.take(STOCK_LONGSHOT) {
                     t.bay.longshot += 1;
                 }
                 // The squad and its material, when aboard.
@@ -3709,12 +3783,14 @@ impl World {
                     if t.pillboys.strength < PILLBOY_MAX {
                         t.pillboys.strength += 1;
                     }
-                    if t.pillboys.material < PILLBOY_MATERIAL_MAX {
+                    if t.pillboys.material < PILLBOY_MATERIAL_MAX && stock.take(STOCK_TREE) {
                         t.pillboys.material += 1;
                     }
                 }
             }
-            if before != (t.shells, t.bay, t.armor as i32, t.fuel as i32) && tick % (RESUPPLY_EVERY * 4) == 0 {
+            let changed = before != (t.shells, t.bay, t.armor as i32, t.fuel as i32);
+            self.depots[di].stock = stock;
+            if changed && tick % (RESUPPLY_EVERY * 4) == 0 {
                 self.events.push(Event::Resupplied { tank: tid, depot: did });
             }
         }
@@ -4891,6 +4967,56 @@ mod tests {
     /// Two allied tanks on a neutral depot take it, and two on their own
     /// depot both resupply: neither is a contest.
     #[test]
+    fn a_depot_makes_one_thing_a_second_and_passes_over_a_full_kind() {
+        let mut st = DepotStock::default();
+        for _ in 0..6 {
+            st.make();
+        }
+        assert_eq!(st.kinds, [1; 6], "six seconds, one of each");
+        st.kinds[STOCK_TREE] = DEPOT_STOCK_MAX;
+        st.turn = STOCK_TREE as u8;
+        st.make();
+        assert_eq!(st.kinds[STOCK_INTERCEPTOR], 2, "a full kind costs no second");
+        st.kinds = [DEPOT_STOCK_MAX; 6];
+        st.make();
+        assert_eq!(st.kinds, [DEPOT_STOCK_MAX; 6], "a full store holds at its limit");
+    }
+
+    #[test]
+    fn a_felled_tree_grows_back_but_not_through_a_road() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let (a, b) = (Map::tile_centre(V2::new(5.0, 5.0)), Map::tile_centre(V2::new(7.0, 5.0)));
+        w.map.set(a, Terrain::Grass);
+        w.map.set(b, Terrain::Road);
+        w.felled = vec![(a, 3), (b, 3)];
+        for _ in 0..5 {
+            w.step(&[]);
+        }
+        assert_eq!((w.map.at(a), w.map.at(b)), (Terrain::Forest, Terrain::Road));
+        assert!(w.felled.is_empty());
+    }
+
+    #[test]
+    fn a_tank_on_a_depot_gets_only_what_the_depot_has_made() {
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let mut w = World::new(sc);
+        let owner = w.tanks[0].owner;
+        let di = w.depots.iter().position(|d| d.owner == Some(owner)).unwrap();
+        let (pos, seconds) = (w.depots[di].pos, 60u32);
+        w.tanks[0].shells = 0;
+        for _ in 0..(seconds * TICK_HZ) {
+            let t = &mut w.tanks[0];
+            t.pos = pos;
+            t.speed = 0.0;
+            t.goal = None;
+            t.route.clear();
+            w.step(&[]);
+        }
+        // Sixty seconds round six kinds: ten shells, not the hundred and twenty it used to be.
+        assert!((9..=11).contains(&w.tanks[0].shells), "{} shells in {} s", w.tanks[0].shells, seconds);
+    }
+
+    #[test]
     fn allied_tanks_share_a_depot() {
         let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) }.with_teams(1);
         let mut w = World::new(sc);
@@ -4909,7 +5035,8 @@ mod tests {
             }
         }
         assert!(took.is_some(), "two allies on a neutral depot did not take it");
-        // Now it is theirs: both resupply on it.
+        // Now it is theirs: both resupply on it, from what it has made.
+        w.depots.iter_mut().find(|x| x.id == d.id).unwrap().stock.kinds[STOCK_SHELL] = 10;
         w.tanks[0].shells = 0;
         w.tanks[1].shells = 0;
         for _ in 0..(10 * TICK_HZ) {

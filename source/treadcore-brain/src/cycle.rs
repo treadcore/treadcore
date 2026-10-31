@@ -131,13 +131,19 @@ impl Cycle {
                 offer(s.w[W::Mend] * (1.0 - p.health / PILLBOX_HEALTH), PillboyTask::Repair { target: p.id }, CycleAct::Mend);
             }
         }
-        if let Some(f) = facing.filter(|_| material >= BuildKind::Mine.cost() && mines < MINES) {
+        if let Some(f) = facing.filter(|_| material >= BuildKind::Mine.cost() && mines < MINES && s.choice(W::MinePlan) == 0) {
             let r = crate::fortify::WALL_R + 2.0;
             let across = V2::new(-f.y, f.x);
             let k = mines as f32;
             let side = if mines % 2 == 0 { 1.0 } else { -1.0 };
             let at = Map::tile_centre(base + f.scale(r) + across.scale(side * (2.0 + k)));
             offer(s.w[W::Mine] * 0.5, PillboyTask::Build { what: BuildKind::Mine, at }, CycleAct::Mine);
+        }
+        // The line, in place of the approach: it needs no threat in sight to know where to stand.
+        if s.choice(W::MinePlan) > 0 && material >= BuildKind::Mine.cost() && mines < MINES {
+            if let Some(at) = crate::front::mine_site(obs, base, mines) {
+                offer(s.w[W::Mine], PillboyTask::Build { what: BuildKind::Mine, at }, CycleAct::Mine);
+            }
         }
         let built = |p: V2| obs.structures.iter().any(|x| x.alive() && x.pos.dist(p) < 0.5);
         if let Some(pad) = obs.pads.iter().copied().filter(|p| p.dist(base) <= CONNECT_NEAR && !built(*p)).min_by(|a, b| a.dist(base).total_cmp(&b.dist(base))) {

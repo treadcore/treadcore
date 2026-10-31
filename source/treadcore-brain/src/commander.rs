@@ -265,6 +265,9 @@ pub struct Commander {
     last_move: Option<(V2, Tick)>,
     /// Going home to resupply until full again.
     resupplying: bool,
+    /// `mine_plan` raid: when the last mine went down, and when the next may.
+    raid_laid: Option<Tick>,
+    raid_next: Tick,
     /// The last direct shot ordered at the target: when, and the shells
     /// then. If none was spent a half second later the world refused it
     /// (a window's client hears of a refusal later than a host does, so
@@ -485,7 +488,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        let mut c = Commander { patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
+        let mut c = Commander { raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
         // The default Settings applied, not only held: a Commander built
         // here plays as a dealt one does (LR 50: one built without this
         // ran the landfall's weights at 0 while its Settings said 30).
@@ -2770,6 +2773,35 @@ impl Commander {
             }
         }
         let Some(me) = obs.me.clone() else { return cmds };
+        // A raid (Paul, 30 October: "reward mine laying and retreating ... if we are invading the
+        // enemy base"): inside their base with a squad aboard and a tree, stop, lay one, wait for
+        // the squad, and go home. In a fight or not: a raid is laid under fire or not at all.
+        if self.settings.choice(crate::weights::W::MinePlan) == 2 && matches!(self.goal, Goal::Auto) {
+            const LAY: Tick = 5 * TICK_HZ as Tick;
+            const RUN: Tick = 25 * TICK_HZ as Tick;
+            if let Some(at) = self.raid_laid {
+                let t = obs.tick.saturating_sub(at);
+                if t < LAY {
+                    cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                    return cmds;
+                }
+                match self.home(obs, &me).filter(|_| t < RUN) {
+                    Some(home) => {
+                        self.go(obs, &me, home, &mut cmds);
+                        cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                        return cmds;
+                    }
+                    None => self.raid_laid = None,
+                }
+            } else if obs.tick >= self.raid_next && me.pillboys.aboard && me.pillboys.material >= BuildKind::Mine.cost() && crate::front::in_enemy_base(obs, me.pos) {
+                self.raid_laid = Some(obs.tick);
+                self.raid_next = obs.tick + RUN + 30 * TICK_HZ as Tick;
+                cmds.push(Command::Stop);
+                cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Mine, at: Map::tile_centre(me.pos) } });
+                cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                return cmds;
+            }
+        }
         if !me.alive {
             // Down: call the side to come and mend it, once a fall.
             let down = me.last_hit_tick > 0 && obs.tick < me.last_hit_tick + DOWNED_TICKS as Tick;

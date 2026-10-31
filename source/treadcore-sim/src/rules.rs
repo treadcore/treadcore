@@ -202,6 +202,9 @@ pub const PILLBOY_MATERIAL_START: u8 = 2;
 /// tile becomes grass, the tank gains this much material.
 pub const HARVEST_TICKS: u16 = 4 * TICK_HZ as u16;
 pub const HARVEST_MATERIAL: u8 = 4;
+/// A felled tree grows back after this (Paul, 30 October: "the trees need to regrow a bit
+/// more"). They had not regrown at all, so a harvested wood was gone for the match.
+pub const TREE_REGROW_TICKS: u64 = 120 * TICK_HZ as u64;
 /// What the squad builds, how long, for how much. The prior art's costs were
 /// half a tree for a road and a wall; here material is whole and a
 /// harvest is four, so a wall is a quarter of a tree.
@@ -336,6 +339,12 @@ pub const DEPOT_RADIUS: f32 = 2.0;
 pub const CAPTURE_TICKS: u16 = 10 * TICK_HZ as u16;
 pub const RESUPPLY_EVERY: u64 = TICK_HZ as u64 / 2;
 pub const REPAIR_PER_TICK: f32 = 4.0;
+/// A depot makes one thing a second, in all, for all who draw on it (Paul, 30 October: "there
+/// is just too much ammo"). It had handed every tank on it two shells and two drones a second,
+/// without end. Armour and fuel are not ammunition, and stay at RESUPPLY_EVERY.
+pub const DEPOT_MAKES_EVERY: u64 = TICK_HZ as u64;
+/// What it holds of each kind. A full kind is passed over, so a second is not lost on it.
+pub const DEPOT_STOCK_MAX: u8 = 20;
 
 // ---- alliances ---------------------------------------------------------
 /// A proposal (to ally, to defect, to swap, to merge) stands this long
