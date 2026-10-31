@@ -1,0 +1,31 @@
+# Paul, 30 October: "a tank will tug pill boxes while quickly collecting wood and building a road
+# back while calling for defense forces after it captured a pillbox or a base". The reward pays
+# massively for each stage, the way the match's score does. advance_plan is the forward version;
+# the expectation holds it to the capture and the call, and the reward reads the rest.
+name = "a tank takes a pillbox and advances"
+players = 2
+seconds = 120
+pillboxes = false
+learner = 0
+
+[[pillbox]]
+near = "seat:0"
+away = 12
+
+[[brain]]
+seat = 0
+kind = "commander"
+goal = "hunt_pillboxes"
+seed = 5
+weights = { advance_plan = 1 }
+
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0, by = 90 }
+
+[reward]
+pillbox_taken = 5
+called = 3
+chained = 3
+wood = 3
+road = 1
+pass = 1

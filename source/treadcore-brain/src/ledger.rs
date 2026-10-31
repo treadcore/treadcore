@@ -101,6 +101,19 @@ pub struct Outcome {
     /// Castles the seat's team stood, summed each second.
     #[serde(default)]
     pub castle_s: u32,
+    /// Tiles gained on the nearest base not the seat's side's, its best for that base, so
+    /// driving back and forth earns nothing past the first time.
+    #[serde(default)]
+    pub advanced: u32,
+    /// Of those, the tiles gained with a chain on a pillbox or base.
+    #[serde(default)]
+    pub towed: u32,
+    /// Things built within `FORWARD_BUILD` of the line.
+    #[serde(default)]
+    pub forward_built: u32,
+    /// Stages of the advance done within `ADVANCE_FOR` of a capture: a call, a chain, wood, road.
+    #[serde(default)]
+    pub advance_stages: u32,
 }
 
 /// A kill this near a live pillbox of the killer's team defends it
@@ -149,6 +162,12 @@ pub struct ScoreWeights {
     pub low_return: f32,
     pub rotation: f32,
     pub castle: f32,
+    /// Going forward (Paul, 30 October: "reward massivly the forward advancmaent and building
+    /// and dragging"): a kill is 1 and a win 10, so a good push outweighs both.
+    pub advance: f32,
+    pub tow: f32,
+    pub forward_build: f32,
+    pub advance_stage: f32,
     pub enemy_taken: f32,
     pub defend: f32,
     pub all_neutral: f32,
@@ -173,6 +192,10 @@ impl Default for ScoreWeights {
             low_return: 0.5,
             rotation: 0.75,
             castle: 3.0,
+            advance: 0.25,
+            tow: 1.0,
+            forward_build: 0.5,
+            advance_stage: 3.0,
             enemy_taken: 6.0,
             defend: 1.5,
             all_neutral: 15.0,
@@ -193,13 +216,13 @@ impl ScoreWeights {
 
     /// The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`.
     pub fn without_rewards(self) -> ScoreWeights {
-        ScoreWeights { full_sortie: 0.0, low_return: 0.0, rotation: 0.0, castle: 0.0, base_entry: 0.0, raid: 0.0, mine_hit: 0.0, direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
+        ScoreWeights { advance: 0.0, tow: 0.0, forward_build: 0.0, advance_stage: 0.0, full_sortie: 0.0, low_return: 0.0, rotation: 0.0, castle: 0.0, base_entry: 0.0, raid: 0.0, mine_hit: 0.0, direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
     }
 }
 
 /// The rewards' part of a seat's score (LR 84).
 pub fn rewards(o: &Outcome, k: &ScoreWeights) -> f32 {
-    k.full_sortie * o.full_sorties as f32 + k.low_return * o.low_returns as f32 + k.rotation * o.rotations as f32 + k.base_entry * o.base_entries as f32 + k.raid * o.raids as f32 + k.mine_hit * o.mine_hits as f32 + k.direct_hit * o.direct_hits as f32 + k.pillbox_damage * o.pillbox_damage + k.neutral_taken * o.neutral_taken as f32 + k.enemy_taken * o.enemy_taken as f32 + k.defend * o.defends as f32 + if o.all_neutral { k.all_neutral } else { 0.0 }
+    k.advance * o.advanced as f32 + k.tow * o.towed as f32 + k.forward_build * o.forward_built as f32 + k.advance_stage * o.advance_stages as f32 + k.full_sortie * o.full_sorties as f32 + k.low_return * o.low_returns as f32 + k.rotation * o.rotations as f32 + k.base_entry * o.base_entries as f32 + k.raid * o.raids as f32 + k.mine_hit * o.mine_hits as f32 + k.direct_hit * o.direct_hits as f32 + k.pillbox_damage * o.pillbox_damage + k.neutral_taken * o.neutral_taken as f32 + k.enemy_taken * o.enemy_taken as f32 + k.defend * o.defends as f32 + if o.all_neutral { k.all_neutral } else { 0.0 }
 }
 
 /// A seat's match score: the win, kills less deaths, ground held over
@@ -228,7 +251,15 @@ pub struct Tally {
     at_base: Vec<Option<EntityId>>,
     last_base: Vec<Option<EntityId>>,
     fired: Vec<u32>,
+    /// (seat, base): the nearest it has yet stood.
+    closest: std::collections::HashMap<(usize, EntityId), f32>,
+    /// By seat: when its last capture's advance ends, and the stages done, a bit each.
+    advance_until: Vec<Tick>,
+    advance_done: Vec<u8>,
 }
+
+const FORWARD_BUILD: f32 = 20.0;
+const ADVANCE_FOR: Tick = 90 * TICK_HZ as Tick;
 
 /// A share of full at or over this leaves full; at or under `LOW_SHARE` comes back low.
 const FULL_SHARE: f32 = 0.9;
@@ -275,6 +306,9 @@ impl Tally {
             at_base: vec![None; w.players.len()],
             last_base: vec![None; w.players.len()],
             fired: vec![1; w.players.len()],
+            closest: Default::default(),
+            advance_until: vec![0; w.players.len()],
+            advance_done: vec![0; w.players.len()],
         }
     }
 
@@ -380,6 +414,47 @@ impl Tally {
                 _ => {}
             }
         }
+        // The advance's stages, and what is built near the line.
+        let (until, done) = (&mut self.advance_until, &mut self.advance_done);
+        let seats = &mut self.seats;
+        let mut stage = |p: PlayerId, bit: u8, seats: &mut Vec<Outcome>| {
+            let i = p as usize;
+            if i < n && w.tick <= until[i] && done[i] & (1 << bit) == 0 {
+                done[i] |= 1 << bit;
+                seats[i].advance_stages += 1;
+            }
+        };
+        for e in &w.events {
+            match e {
+                Event::Pinged { player, .. } => stage(*player, 0, seats),
+                Event::Chained { owner, on: true, .. } => stage(*owner, 1, seats),
+                Event::Harvested { owner, .. } => stage(*owner, 2, seats),
+                _ => {}
+            }
+            let built = match e {
+                Event::Built { owner, what, at } => {
+                    if *what == BuildKind::Road {
+                        stage(*owner, 3, seats);
+                    }
+                    Some((*owner, *at))
+                }
+                Event::PillboxBuilt { by, at, .. } => Some((*by, *at)),
+                _ => None,
+            };
+            if let Some((p, at)) = built.filter(|(p, _)| (*p as usize) < n) {
+                if world_side(w, p, at).is_some_and(|s| s <= FORWARD_BUILD) {
+                    seats[p as usize].forward_built += 1;
+                }
+            }
+        }
+        for e in &w.events {
+            if let Event::DepotCaptured { by, .. } | Event::PillboxCaptured { by, .. } = e {
+                if (*by as usize) < n {
+                    until[*by as usize] = w.tick + ADVANCE_FOR;
+                    done[*by as usize] = 0;
+                }
+            }
+        }
         if w.tick % TICK_HZ as Tick == 0 {
             for o in self.seats.iter_mut() {
                 let Some(t) = o.team else { continue };
@@ -418,6 +493,20 @@ impl Tally {
                         self.at_base[i] = None;
                     }
                     _ => {}
+                }
+                // A tile gained, on its best for the nearest base not its side's.
+                let goal = w.depots.iter().filter(|d| !d.owner.is_some_and(|o| w.allied(o, pl.id))).min_by(|a, b| a.pos.dist(t.pos).total_cmp(&b.pos.dist(t.pos)));
+                if let Some(d) = goal {
+                    let now = d.pos.dist(t.pos);
+                    let best = self.closest.entry((i, d.id)).or_insert(now);
+                    let gained = (*best - now).floor();
+                    if gained >= 1.0 {
+                        *best -= gained;
+                        self.seats[i].advanced += gained as u32;
+                        if t.towing.is_some() {
+                            self.seats[i].towed += gained as u32;
+                        }
+                    }
                 }
                 let inside = w.depots.iter().any(|d| d.owner.is_some_and(|o| !w.allied(o, pl.id)) && d.pos.dist(t.pos) <= crate::front::ENEMY_BASE_R);
                 if inside && !self.inside[i] {

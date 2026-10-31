@@ -1138,6 +1138,18 @@ impl Scenario {
     }
     /// Deal the seats into `n` teams, round robin: seat i to team i mod n.
     /// Four teams of four is `teams(4)` on sixteen seats.
+    pub fn with_team_sizes(mut self, sizes: &[usize]) -> Scenario {
+        let mut t = Vec::new();
+        for (team, n) in sizes.iter().enumerate() {
+            t.extend(std::iter::repeat_n(team as TeamId, *n));
+        }
+        t.truncate(self.players.len());
+        let last = sizes.len().saturating_sub(1) as TeamId;
+        t.resize(self.players.len(), last);
+        self.teams = Some(t);
+        self
+    }
+
     pub fn with_teams(mut self, n: usize) -> Scenario {
         let n = n.max(1);
         self.teams = Some((0..self.players.len()).map(|i| (i % n) as TeamId).collect());
@@ -1739,7 +1751,7 @@ impl World {
                 });
                 let t = self.tank_mut(tid).unwrap();
                 t.shells -= 1;
-                t.reload = RELOAD_TICKS;
+                t.reload = INDIRECT_RELOAD_TICKS;
                 t.heading = (*at - pos).heading();
                 self.events.push(Event::ShellLaunched { shell: id, owner: o.player, kind: ShellKind::Indirect, spotted, eta_ticks: eta });
             }
@@ -5041,6 +5053,19 @@ mod tests {
     }
 
     #[test]
+    fn teams_of_unequal_sizes_are_dealt_in_order() {
+        let s = Scenario::bots(16).with_team_sizes(&[2, 2, 4, 8]);
+        let t = s.teams.unwrap();
+        assert_eq!((t[1], t[2], t[4], t[8], t[15]), (0, 1, 2, 3, 3));
+        assert!(World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(16).with_team_sizes(&[2, 2, 4, 8]) }).tanks.len() == 16);
+    }
+
+    #[test]
+    fn a_mortar_ties_up_the_gun_longer_than_a_flat_shot() {
+        assert!(INDIRECT_RELOAD_TICKS > RELOAD_TICKS);
+    }
+
+    #[test]
     fn a_felled_tree_grows_back_but_not_through_a_road() {
         let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
         let (a, b) = (Map::tile_centre(V2::new(5.0, 5.0)), Map::tile_centre(V2::new(7.0, 5.0)));
@@ -5906,7 +5931,7 @@ mod tests {
         // the trace says so.
         let ally_at = w.tank(t2).unwrap().pos;
         let armor = w.tank(t2).unwrap().armor;
-        for _ in 0..RELOAD_TICKS {
+        for _ in 0..INDIRECT_RELOAD_TICKS {
             w.step(&[]);
         }
         w.step(&[Order { player: 0, cmd: Command::FireIndirect { at: ally_at } }]);

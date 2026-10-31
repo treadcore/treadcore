@@ -6,6 +6,15 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Changed (game 4): a mortar's reload is 12 s, a flat shot's still 4 s, on one gun.
+- Added: `source/treadcore-brain/RANGES`, a min and max for any number, which no weights file,
+  trial or promotion can pass. A person's decree is min = max: the number is part of the game,
+  and the fleet stops searching it. Rewards for each tile gained on a base (a ratchet, so driving
+  back and forth earns nothing), far more with a chain on, for building near the line, and for
+  each stage after a capture; `advance_plan` forward, off until a census reads it; a scenario,
+  `a-tank-takes-a-pillbox-and-advances`. `treadcore` with no flags opens a launch menu of maps
+  and sides, among them 2v2v4v8 (`--team-sizes 2,2,4,8`); `--map` takes the built-in maps by name.
+
 - Changed (game 3): a tank among a castle's walls (8 within 6 tiles) takes half from drones; a
   gun with more than two friends within 12 tiles reloads half a reload slower for each past them;
   `castle_inside` starts at 2, and guns past a pair earn no holding score. Added: rewards for a

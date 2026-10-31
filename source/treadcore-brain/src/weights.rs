@@ -169,6 +169,7 @@ weights! {
     PingCautionReach "ping_caution_reach" 20.0, "pings: a rally this near a caution is dropped, tiles";
     PingOutnumbered "ping_outnumbered" 1.5, "pings: hostile tanks over ours by this ratio is a call for help";
     HomePick "home_pick" 1.0, "resupply: which base a tank goes home to (choice: nearest | stocked): stocked by shells over the road, front.rs; a depot's store can run dry, so the nearest may be empty";
+    AdvancePlan "advance_plan" 0.0, "advance: after taking a pillbox or base (choice: as_built | forward): forward calls for help, chains it, drags it on, cuts wood and lays road back";
     MinePlan "mine_plan" 0.0, "mines: where a squad lays them (choice: as_built | line | raid): as built on the base's approach; line across the battle line's road, front.rs; raid that, and a tank inside an enemy base lays one and runs home";
     Bio "bio" 0.0, "intuition: the shape of a tank's slow waves (choice: off | sine | triangle | square | saw): bio.rs";
     BioPeriod "bio_period" 60.0, "intuition: the first wave's period, seconds; the others run 28/23 and 33/23 as long";
@@ -350,12 +351,31 @@ impl std::fmt::Display for WeightsError {
     }
 }
 
+/// RANGES' lines, as (name, min, max). A bad line is a test's news (`every_range_reads`).
+fn ranges() -> impl Iterator<Item = (&'static str, f32, f32)> {
+    RANGES.lines().filter_map(|raw| {
+        let mut f = raw.split('#').next()?.split_whitespace();
+        Some((f.next()?, f.next()?.parse().ok()?, f.next()?.parse().ok()?))
+    })
+}
+
 /// A brain's settings: the weights and the capabilities.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
     pub w: Weights,
     pub caps: Caps,
 }
+
+impl Default for Settings {
+    fn default() -> Settings {
+        let mut s = Settings { w: Weights::default(), caps: Caps::default() };
+        s.hold();
+        s
+    }
+}
+
+/// Every number's limits (`RANGES`), compiled in: a binary carries its rules.
+const RANGES: &str = include_str!("../RANGES");
 
 impl Settings {
     /// Read the file form. A name not given keeps its default; `caps =`
@@ -403,7 +423,20 @@ impl Settings {
             }
             s.w[w] = v;
         }
+        s.hold();
         Ok(s)
+    }
+
+    /// Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are
+    /// not adjusted beyond their max or under their min range"). A decree is min = max.
+    pub fn hold(&mut self) {
+        for (name, min, max) in ranges() {
+            if let Some(w) = W::by_name(name) {
+                self.w[w] = self.w[w].clamp(min, max);
+            } else if let (Some(c), true) = (Caps::by_name(name), min == max) {
+                self.caps = if min >= 1.0 { self.caps.with(c) } else { self.caps.without(c) };
+            }
+        }
     }
 
     /// A choice's version: its weight rounded, held to the versions it has
@@ -555,6 +588,36 @@ pub fn utility(weight: f32, considerations: &[f32], current: bool, commit: f32) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_range_reads_and_holds_its_own_default() {
+        let mut n = 0;
+        for raw in RANGES.lines() {
+            let line = raw.split('#').next().unwrap().trim();
+            if line.is_empty() {
+                continue;
+            }
+            n += 1;
+            let f: Vec<&str> = line.split_whitespace().collect();
+            assert_eq!(f.len(), 3, "{}", line);
+            let (min, max): (f32, f32) = (f[1].parse().unwrap(), f[2].parse().unwrap());
+            assert!(min <= max, "{}", line);
+            match W::by_name(f[0]) {
+                Some(w) => assert!(w.default_value() >= min && w.default_value() <= max, "{}: default {}", line, w.default_value()),
+                None => assert!(Caps::by_name(f[0]).is_some() && min == max, "{}", line),
+            }
+        }
+        assert_eq!(ranges().count(), n);
+    }
+
+    #[test]
+    fn no_trial_can_move_a_decreed_value() {
+        let s = Settings::parse("castle_inside = 8\nkite_in = 9").unwrap();
+        assert_eq!(s.w[W::CastleInside], 2.0, "a decree held");
+        assert_eq!(s.w[W::KiteIn], 9.0, "the rest move as they did");
+        assert_eq!(Settings::default().w[W::CastleInside], 2.0);
+        assert_eq!(Settings::parse("alpha = 7").unwrap().w[W::Alpha], 1.0, "held to its max, not refused");
+    }
 
     #[test]
     fn default_weights_are_todays_constants() {

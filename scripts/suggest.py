@@ -98,6 +98,7 @@ def main():
     # Not slopes: the skill dial, the score's own blend, people's roles,
     # weights for what does not exist yet or is off, and the switches
     # (thresholded at 0.5), read by the switch census instead.
+    ap.add_argument('--also-skip', default='', help='more to leave out: the decrees in RANGES')
     ap.add_argument('--skip', default='skill,long_game,assist,upgrade_vs_mend,w_front,w_front_post,w_front_push,front_memory,dodge_hold,'
                     'kite,posture_scored,dodge_every,dodge_fire,dodge_plan,dodge_release,landfall_shy,w_give_item,w_give_upgrade,'
                     'w_connect,bridge_wing,duck_plan,shell_boxes,longshot_any')
@@ -109,7 +110,7 @@ def main():
     choices = set(re.findall(r'^\s*[A-Z][A-Za-z0-9]*\s+"([a-z_0-9]+)"\s+[-0-9.]+,\s*"[^"]*\(choice: ', open(rs).read(), re.M)) if os.path.exists(rs) else set()
     rng = random.Random(o.seed)
     base = defaults(o.defaults)
-    skip = set(filter(None, o.skip.split(','))) | choices
+    skip = set(filter(None, o.skip.split(','))) | set(filter(None, o.also_skip.split(','))) | choices
     span = math.log2(o.bound)
 
     rows, reads = [], []

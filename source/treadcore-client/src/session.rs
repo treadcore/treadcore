@@ -219,6 +219,8 @@ fn scenario(args: &Args, names: Vec<(String, bool)>) -> Scenario {
     }
     if args.fleets {
         s.teams = Some(treadcore_brain::fleet::teams());
+    } else if !args.team_sizes.is_empty() {
+        s = s.with_team_sizes(&args.team_sizes);
     } else if args.teams > 0 {
         s = s.with_teams(args.teams);
     }
@@ -244,7 +246,21 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
     // commander a team.
     let teamed = !args.fleets && args.teams > 0 && !args.plain_bots;
     let people = names.len();
-    let team_of = |s: usize| -> Vec<usize> { (0..seats).filter(|x| x % args.teams.max(1) == s % args.teams.max(1)).collect() };
+    // A seat's team, as `scenario` deals them.
+    let team_no = |s: usize| -> usize {
+        if args.team_sizes.is_empty() {
+            return s % args.teams.max(1);
+        }
+        let mut upto = 0;
+        for (t, n) in args.team_sizes.iter().enumerate() {
+            upto += n;
+            if s < upto {
+                return t;
+            }
+        }
+        args.team_sizes.len() - 1
+    };
+    let team_of = |s: usize| -> Vec<usize> { (0..seats).filter(|x| team_no(*x) == team_no(s)).collect() };
     let team_role = |s: usize| {
         let team = team_of(s);
         let person_leads = !args.autopilot && team.first().map(|l| *l < people).unwrap_or(false);
@@ -255,7 +271,7 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
         let n = if args.fleets {
             treadcore_brain::fleet::name(s)
         } else if teamed {
-            format!("t{}-{}{}", s % args.teams, team_role(s).0.word(), s)
+            format!("t{}-{}{}", team_no(s), team_role(s).0.word(), s)
         } else {
             format!("bot{}", s)
         };

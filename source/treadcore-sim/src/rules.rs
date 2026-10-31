@@ -50,6 +50,11 @@ pub const CONCEAL_RANGE: f32 = 3.0;
 
 // ---- the gun -----------------------------------------------------------
 pub const RELOAD_TICKS: u16 = 4 * TICK_HZ as u16;
+/// A mortar's, on the same gun, so a lob ties up the flat shot too (Paul, 30 October: "longer
+/// reload for mortars"): 99% of the shots in a match were mortars. Over eight seeds of one map, at
+/// 8 s shots fell a third and strike drones took their place, up by half again; at 12 s shots
+/// halved and the strikes stayed about where they were.
+pub const INDIRECT_RELOAD_TICKS: u16 = 12 * TICK_HZ as u16;
 /// Indirect: lobbed. 12 to 60 tiles is 300 m to 1.5 km, which on a 3.2 km
 /// map means a tank in one corner can reach the centre and the two
 /// neighbouring corners, but not the far one without moving.

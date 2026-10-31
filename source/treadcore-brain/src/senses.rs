@@ -18,7 +18,7 @@
 
 use treadcore_sim::map::{Map, Terrain};
 use crate::calls::{Call, CALL_KINDS, CALL_LIFE};
-use treadcore_sim::rules::{BAY_FULL, DIRECT_RANGE, PILLBOX_RANGE, SPLASH_RADIUS, PILLBOY_MATERIAL_MAX, RELOAD_TICKS, TANK_ARMOR, TANK_SHELLS, TANK_SPEED};
+use treadcore_sim::rules::{INDIRECT_RELOAD_TICKS, BAY_FULL, DIRECT_RANGE, PILLBOX_RANGE, SPLASH_RADIUS, PILLBOY_MATERIAL_MAX, TANK_ARMOR, TANK_SHELLS, TANK_SPEED};
 use treadcore_sim::*;
 
 /// The compass's sectors.
@@ -302,7 +302,7 @@ pub fn sense(obs: &Observation, map: Option<&Map>, hints: Option<&Hints>, calls:
         (me.armor / TANK_ARMOR).clamp(0.0, 1.0),
         (me.shells as f32 / TANK_SHELLS as f32).clamp(0.0, 1.0),
         me.fuel.clamp(0.0, 1.0),
-        (me.reload as f32 / RELOAD_TICKS as f32).clamp(0.0, 1.0),
+        (me.reload as f32 / INDIRECT_RELOAD_TICKS as f32).clamp(0.0, 1.0),
         (me.speed / TANK_SPEED).clamp(0.0, 1.0),
         if me.boat { 1.0 } else { 0.0 },
         if me.pillboys.deployed() { 1.0 } else { 0.0 },
@@ -415,7 +415,7 @@ mod tests {
         let mut w = world();
         w.tanks[0].armor = TANK_ARMOR * 0.25;
         w.tanks[0].shells = TANK_SHELLS / 2;
-        w.tanks[0].reload = RELOAD_TICKS;
+        w.tanks[0].reload = INDIRECT_RELOAD_TICKS;
         let s = sense(&w.observe(0), None, None, &[]).expect("a tank");
         let b = SECTORS * CHANNELS;
         assert!((s[b] - 0.25).abs() < 1e-6 && (s[b + 1] - 0.5).abs() < 1e-6 && (s[b + 3] - 1.0).abs() < 1e-6, "{:?}", &s[b..b + BODY]);

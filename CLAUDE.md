@@ -52,6 +52,8 @@ Richeson (he/him). Journals and commits are in his name.
   only a little. Tuning comes after the features are in.
 - **A rule change bumps `source/treadcore-sim/GAME_VERSION`.** The fleet counts a read as evidence
   only on today's dials and today's game, and it cannot see a game change by itself.
+- **Numbers stay in their ranges.** `source/treadcore-brain/RANGES` holds each number's min and
+  max. A decree is min = max, and only Paul decrees: never add, move or lift one on your own.
 - **The rule before the run.** Write down what result would confirm a
   change before starting its census. Outside two standard errors is
   the bar.

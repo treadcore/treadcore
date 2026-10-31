@@ -275,6 +275,8 @@ pub struct Outcome {
     /// owned it, and whether it stands at the end.
     pub pillbox_damage: Vec<f32>,
     pub pillbox_owned: Vec<BTreeMap<PlayerId, Tick>>,
+    /// By seat: calls for help, chains put on, trees cut, road tiles built, in `reward`'s words.
+    pub advance: BTreeMap<(PlayerId, &'static str), u32>,
     pub pillbox_alive: Vec<bool>,
     /// Each placed depot: the tick each seat first owned it.
     pub depot_owned: Vec<BTreeMap<PlayerId, Tick>>,
@@ -715,6 +717,10 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
                         out.trace.push(format!("{:>5.2} s  seat {} hit by {:?} for {:.0}; drones: {}", w.tick as f64 / TICK_HZ as f64, t.owner, by, damage, drones.join(", ")));
                     }
                 }
+                Event::Pinged { player, kind: PingKind::Help, .. } => *out.advance.entry((*player, "called")).or_insert(0) += 1,
+                Event::Chained { owner, on: true, .. } => *out.advance.entry((*owner, "chained")).or_insert(0) += 1,
+                Event::Harvested { owner, .. } => *out.advance.entry((*owner, "wood")).or_insert(0) += 1,
+                Event::Built { owner, what: BuildKind::Road, .. } => *out.advance.entry((*owner, "road")).or_insert(0) += 1,
                 Event::Rejected { player, why, .. } if brains.iter().any(|(s, _)| s == player) => {
                     out.refused.push((w.tick as f64 / TICK_HZ as f64, *player, why.to_string()));
                 }
@@ -1007,6 +1013,7 @@ pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
         let w = v.num().or_else(|| v.table().and_then(|t| t.get("worth")).and_then(Value::num)).unwrap_or(0.0) as f32;
         r += w * match k.as_str() {
             "pass" => failed.is_empty() as u8 as f32,
+            "called" | "chained" | "wood" | "road" => out.advance.iter().find(|((s, w), _)| *s == me && *w == k.as_str()).map_or(0.0, |(_, n)| *n as f32),
             "alive" => out.alive.get(&me).copied().unwrap_or(false) as u8 as f32,
             "damage_taken" => out.hits.iter().zip(&out.hit_damage).filter(|((_, on), _)| *on == me).map(|(_, d)| *d).sum(),
             "damage_given" => out.hits.iter().zip(&out.hit_damage).filter(|((by, on), _)| *by == Some(me) && *on != me).map(|(_, d)| *d).sum(),
@@ -1104,6 +1111,17 @@ pub fn run_file(path: &std::path::Path) -> Result<(Outcome, Vec<String>), String
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_advance_scenario_earns_the_call_the_chain_and_the_capture() {
+        let doc = parse(include_str!("../../../scenarios/a-tank-takes-a-pillbox-and-advances.toml")).unwrap();
+        let (out, failed) = run(&doc).unwrap();
+        assert!(failed.is_empty(), "{:?}", failed);
+        eprintln!("advance stages {:?} reward {}", out.advance, reward(&doc, &out, &failed));
+        for stage in ["called", "chained"] {
+            assert!(out.advance.contains_key(&(0, stage)), "no {}: {:?}", stage, out.advance);
+        }
+    }
 
     /// The scenarios, at the top of the tree.
     fn dir() -> std::path::PathBuf {

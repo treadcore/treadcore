@@ -10,7 +10,7 @@
 //!   --solo   this process hosts; three bots fill the other seats.
 //!   --lan    this process joins the lobby on the LAN, helps elect a host,
 //!            then either hosts (bots in empty seats) or plays as a client.
-//!   neither  same as --solo.
+//!   neither  and no other flag: the launch menu, which starts one of these.
 //!
 //! The world is simulated here only when this process is the host. A
 //! client draws the last observation it received and sends orders; the
@@ -22,6 +22,7 @@
 // queries are long types; both lints count what Bevy asks for.
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
+mod menu;
 mod hud;
 mod battlefield;
 mod chat;
@@ -45,6 +46,22 @@ use treadcore_sim::TICK_HZ;
 /// The default match's map (`maps/naval.map`), built in so an installed
 /// window has it.
 pub const NAVAL_MAP: &str = include_str!("../../../maps/naval.map");
+/// The maps carried in the program, by name, so `--map NAME` and the menu work from anywhere: an
+/// app on a Mac starts in no particular directory. "island" is generated, and is not here.
+pub const MAPS: &[(&str, &str)] = &[
+    ("naval", NAVAL_MAP),
+    ("industry", include_str!("../../../maps/industry.map")),
+    ("world", include_str!("../../../maps/world/world.map")),
+    ("europe", include_str!("../../../maps/world/europe.map")),
+    ("atlantic", include_str!("../../../maps/world/atlantic.map")),
+    ("big-lizard", include_str!("../../../maps/prior-art/big-lizard.map")),
+    ("fortress-isles", include_str!("../../../maps/prior-art/fortressisles2.map")),
+    ("constanine", include_str!("../../../maps/prior-art/constanine.map")),
+    ("fidos-airstrip", include_str!("../../../maps/prior-art/fidos-airstrip.map")),
+];
+/// The menu's order: its first three are named by hand, the rest as they are.
+pub const MAP_NAMES: &[&str] = &["naval", "island", "industry", "world", "europe", "atlantic", "big-lizard", "fortress-isles", "constanine", "fidos-airstrip"];
+
 
 /// Pixels per tile at zoom 1.
 pub const TILE: f32 = 8.0;
@@ -64,6 +81,8 @@ pub struct Args {
     pub map: Option<String>,
     /// Deal the seats into this many teams; 0 is everyone alone.
     pub teams: usize,
+    /// Teams of unequal sizes, in seat order; empty deals `teams` round robin.
+    pub team_sizes: Vec<usize>,
     /// An introducer ("host:port") for peers no broadcast reaches.
     pub introducer: Option<String>,
     /// Shout on the LAN while looking (`--no-beacon` turns it off).
@@ -134,6 +153,7 @@ fn parse_args() -> Args {
         // 0` everyone alone, `--respawns 0` the prior art's elimination.
         map: Some(NAVAL_MAP.into()),
         teams: 3,
+        team_sizes: Vec::new(),
         introducer: None,
         beacon: true,
         identity: None,
@@ -170,6 +190,11 @@ fn parse_args() -> Args {
             "--swarm" => a.swarm = val().parse::<u32>().unwrap_or(45) * TICK_HZ,
             "--players" => a.players = val().parse::<usize>().unwrap_or(treadcore_sim::MAX_PLAYERS).clamp(1, treadcore_sim::MAX_PLAYERS),
             "--teams" => a.teams = val().parse().unwrap_or(0),
+            // Teams of unequal sizes, seat by seat: `--team-sizes 2,2,4,8`.
+            "--team-sizes" => {
+                a.team_sizes = val().split(',').filter_map(|n| n.trim().parse().ok()).collect();
+                a.teams = a.team_sizes.len();
+            }
             "--introducer" => a.introducer = Some(val()),
             "--no-beacon" => a.beacon = false,
             "--identity" => a.identity = Some(val()),
@@ -225,6 +250,10 @@ fn parse_args() -> Args {
                     a.map = None;
                     continue;
                 }
+                if let Some((_, text)) = MAPS.iter().find(|(n, _)| *n == path) {
+                    a.map = Some(text.to_string());
+                    continue;
+                }
                 let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
                     eprintln!("{}", treadcore_sim::chair::usage("treadcore", &format!("map {}: {}", path, e)));
                     std::process::exit(2)
@@ -259,6 +288,9 @@ fn parse_args() -> Args {
 }
 
 fn main() {
+    if std::env::args().len() == 1 {
+        return menu::run();
+    }
     let args = parse_args();
     if let Some(path) = &args.weights {
         match std::fs::read_to_string(path).map_err(|e| e.to_string()).and_then(|t| treadcore_brain::weights::Settings::parse(&t).map_err(|e| e.to_string())) {

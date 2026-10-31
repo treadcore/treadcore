@@ -268,6 +268,8 @@ pub struct Commander {
     /// `mine_plan` raid: when the last mine went down, and when the next may.
     raid_laid: Option<Tick>,
     raid_next: Tick,
+    /// `advance_plan` forward: what it has taken, and how far along it is.
+    forward: Option<Forward>,
     /// The last direct shot ordered at the target: when, and the shells
     /// then. If none was spent a half second later the world refused it
     /// (a window's client hears of a refusal later than a host does, so
@@ -488,7 +490,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        let mut c = Commander { raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
+        let mut c = Commander { forward: None, raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
         // The default Settings applied, not only held: a Commander built
         // here plays as a dealt one does (LR 50: one built without this
         // ran the landfall's weights at 0 while its Settings said 30).
@@ -504,7 +506,8 @@ impl Commander {
 
     /// The weights and capabilities: the tactics from the weights, each
     /// part of the brain on or off by its bit (weights.rs, roadmap 12c).
-    pub fn set_settings(&mut self, s: crate::weights::Settings) {
+    pub fn set_settings(&mut self, mut s: crate::weights::Settings) {
+        s.hold();
         use crate::weights::{Caps, W};
         let keep = if s.caps.has(Caps::FORGET) { s.ticks(W::ForgetFor).max(1) } else { crate::memory::NEVER };
         self.given_up.keep = keep;
@@ -2520,6 +2523,17 @@ impl Commander {
     }
 }
 
+/// After a capture (Paul, 30 October: "a tank will tug pill boxes while quickly collecting wood
+/// and building a road back while calling for defense forces"): each stage once, in order.
+#[derive(Clone, Copy, Debug)]
+struct Forward {
+    target: EntityId,
+    from: V2,
+    since: Tick,
+    stage: u8,
+    tiles: u8,
+}
+
 impl Brain for Commander {
     fn name(&self) -> &str {
         &self.name
@@ -2779,6 +2793,66 @@ impl Commander {
             }
         }
         let Some(me) = obs.me.clone() else { return cmds };
+        // Forward (Paul, 30 October): a capture starts it, a fight or a minute ends it.
+        if self.settings.choice(crate::weights::W::AdvancePlan) == 1 && matches!(self.goal, Goal::Auto | Goal::HuntPillboxes) {
+            for e in &obs.events {
+                let took = match e {
+                    Event::PillboxCaptured { pillbox, by, .. } if *by == obs.player => Some(*pillbox),
+                    Event::DepotCaptured { depot, by } if *by == obs.player => Some(*depot),
+                    _ => None,
+                };
+                if let Some(target) = took {
+                    self.forward = Some(Forward { target, from: me.pos, since: obs.tick, stage: 0, tiles: 0 });
+                }
+            }
+            let fight = obs.hostile_tanks().any(|t| t.alive && t.pos.dist(me.pos) <= crate::hop::FIGHT_NEAR);
+            if let Some(mut f) = self.forward {
+                if fight || obs.tick >= f.since + 60 * TICK_HZ as Tick || f.stage > 3 {
+                    if me.towing.is_some() {
+                        cmds.push(Command::Tow { target: None });
+                    }
+                    self.forward = None;
+                } else {
+                    // On toward the nearest ground not ours, dragging what it took, then stop.
+                    let ahead = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner)).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)));
+                    match f.stage {
+                        0 => {
+                            cmds.push(Command::Ping { at: me.pos, kind: PingKind::Help });
+                            f.stage = 1;
+                        }
+                        1 => {
+                            cmds.push(Command::Tow { target: Some(f.target) });
+                            f.stage = 2;
+                        }
+                        2 => {
+                            if me.pillboys.material >= 4 || obs.forest.is_empty() {
+                                f.stage = 3;
+                            } else if me.pillboys.aboard {
+                                cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: obs.forest[0] } });
+                            }
+                        }
+                        _ => {
+                            let road = match (map, self.home(obs, &me)) {
+                                (Some(m), Some(home)) => crate::cycle::Cycle::road_to(m, me.pos, home, 8),
+                                _ => Vec::new(),
+                            };
+                            if f.tiles >= 6 || me.pillboys.material == 0 || road.is_empty() {
+                                f.stage = 4;
+                            } else if me.pillboys.aboard {
+                                cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Road, at: road[0] } });
+                                f.tiles += 1;
+                            }
+                        }
+                    }
+                    if let Some(a) = ahead.filter(|a| f.stage >= 2 && f.from.dist(me.pos) < 12.0 && a.dist(me.pos) > 8.0) {
+                        self.go(obs, &me, a, &mut cmds);
+                    }
+                    self.forward = Some(f);
+                    cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                    return cmds;
+                }
+            }
+        }
         // A raid (Paul, 30 October: "reward mine laying and retreating ... if we are invading the
         // enemy base"): inside their base with a squad aboard and a tree, stop, lay one, wait for
         // the squad, and go home. In a fight or not: a raid is laid under fire or not at all.
@@ -3637,6 +3711,35 @@ mod tests {
     }
 
     #[test]
+    fn after_a_capture_forward_calls_chains_cuts_and_builds_in_order() {
+        use crate::weights::{Settings, W};
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        let at = w.tanks[0].pos;
+        let id = 91_000;
+        w.pillboxes.clear();
+        w.pillboxes.push(Pillbox { id, pos: at + V2::new(1.0, 0.0), owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+        let mut s = Settings::default();
+        s.w[W::AdvancePlan] = 1.0;
+        let mut c = Commander::new(1, "forward");
+        c.set_settings(s);
+        c.set_goal(Goal::Auto);
+        let mut obs = w.observe(0);
+        obs.tanks.retain(|t| t.owner == 0);
+        obs.events.push(Event::PillboxCaptured { pillbox: id, by: 0, from: None });
+        let called = c.think(&obs);
+        assert!(called.iter().any(|x| matches!(x, Command::Ping { kind: PingKind::Help, .. })), "{:?}", called);
+        let mut obs = w.observe(0);
+        obs.tanks.retain(|t| t.owner == 0);
+        let chained = c.think(&obs);
+        assert!(chained.iter().any(|x| matches!(x, Command::Tow { target: Some(t) } if *t == id)), "{:?}", chained);
+        let mut obs = w.observe(0);
+        obs.tanks.retain(|t| t.owner == 0);
+        obs.forest = vec![at + V2::new(3.0, 0.0)];
+        let cut = c.think(&obs);
+        assert!(cut.iter().any(|x| matches!(x, Command::Deploy { task: PillboyTask::Harvest { .. } })), "{:?}", cut);
+    }
+
+    #[test]
     fn at_style_0_with_pings_off_a_bot_answers_no_bot() {
         assert_eq!(hears("", PingKind::Help, false, 10.0, true).0, None);
     }
@@ -4157,7 +4260,7 @@ mod tests {
         let mut recon = false;
         let mut seen = false;
         let mut answered = 0;
-        for _ in 0..(40 * TICK_HZ) {
+        for _ in 0..(120 * TICK_HZ) {
             let obs = w.observe(0);
             seen |= obs.tanks.iter().any(|t| t.owner == 1);
             let mut orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
