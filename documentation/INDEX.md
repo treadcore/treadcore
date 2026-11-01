@@ -529,6 +529,7 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | documentation/INDEX.md | this |
 | documentation/HOW-TO-PLAY.md | the player's guide with pictures, every key |
 | journal/0001 to 0017 | opening day; proving the world; replay and hash; the Pillboys; material, walls, mines; map files; teams and alliances; proposals; the backlog; the Defender; prediction; across the Internet; the first playtest; the frame; the bezel; cubes; sub-cubes |
+| reports/2026-11-01-double-report.html | the double report: the whole line, then how a match becomes a dial and senses become a command, and a user guide to every screen of orrery, pictured (reports/double/) |
 | reports/2026-11-01-the-whole-line.html | how the fleet's work reaches this game: each training method, what each stage takes, gives and simulates, what stops it, the schedule, how to store generations (orrery's report; the source is `docs/whole-line-lab-report.md` there) |
 | reports/2026-10-27-generations.html | the learned tank's generations: a clip of each, the gauntlet, real matches, the census, the cost (reports/clips/) |
 | reports/2026-10-26-the-weight-ledger.html | every weight over time, every default changed and why, the screen, the censuses |
