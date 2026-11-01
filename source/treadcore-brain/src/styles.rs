@@ -28,7 +28,7 @@ use crate::fleet::with_settings;
 use crate::net::{Net, NetBrain};
 use crate::weights::{Settings, W};
 use crate::Brain;
-use treadcore_sim::rules::{DIRECT_RANGE, TANK_ARMOR, TANK_SPEED};
+use treadcore_sim::rules::{TANK_ARMOR, TANK_SPEED};
 use treadcore_sim::{wrap_angle, Command, Map, Observation, Tank, Terrain, V2};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -239,11 +239,14 @@ pub struct Duelist {
     champion: Champion,
     rules: Box<dyn Brain>,
     open: bool,
+    /// The rules' last order to go somewhere. THEY SAY IT ONCE, and trust the route: a duel that
+    /// replaced it would leave the tank where the duel ended, and the rules believing it on its way.
+    errand: Option<Command>,
 }
 
 impl Duelist {
     pub fn new(champion: Champion, rules: Box<dyn Brain>) -> Duelist {
-        Duelist { champion, rules, open: false }
+        Duelist { champion, rules, open: false, errand: None }
     }
 
     /// Its say this decision, if the gate opens: what to do instead of the rules' moving and firing.
@@ -258,20 +261,19 @@ impl Duelist {
         if y[3] <= 0.0 {
             return None;
         }
-        let act: Vec<f32> = (0..3).map(|i| (x[32 + i] + y[i]).clamp(-1.0, 1.0)).collect();
+        let act: Vec<f32> = (0..2).map(|i| (x[32 + i] + y[i]).clamp(-1.0, 1.0)).collect();
         let mut cmds = Vec::new();
         let dir = V2::from_heading(me.heading + act[0] * SWING);
         cmds.push(Command::Move { to: obs.clamp(me.pos + dir.scale(act[1] * STRIDE)) });
-        if act[2] > 0.0 && me.reload == 0 && me.shells > 0 && me.pos.dist(en.pos) <= DIRECT_RANGE {
-            cmds.push(Command::FireDirect { at: crate::lead(me, en) });
-        }
         Some(cmds)
     }
 }
 
-/// What the rules said that the duel now says instead.
+/// What the rules said that the duel now says instead: where to be. THE GUN STAYS THE RULES'. Crucible's
+/// tank fires along its hull, so its fire output means "my hull is on him", and read as a turret's
+/// trigger it starved the tank of shots: -17.8 a seat over 24 seeds, -14.9 with the rules aiming.
 fn fight_order(c: &Command) -> bool {
-    matches!(c, Command::Move { .. } | Command::Stop | Command::FireDirect { .. })
+    matches!(c, Command::Move { .. } | Command::Stop)
 }
 
 impl Brain for Duelist {
@@ -285,6 +287,9 @@ impl Brain for Duelist {
 
     fn think_on(&mut self, obs: &Observation, map: Option<&Map>) -> Vec<Command> {
         let mut cmds = self.rules.think_on(obs, map);
+        if let Some(m) = cmds.iter().rev().find(|c| matches!(c, Command::Move { .. })) {
+            self.errand = Some(m.clone());
+        }
         if (obs.tick as u64) % DECIDE_EVERY != 0 {
             if self.open {
                 cmds.retain(|c| !fight_order(c));
@@ -297,7 +302,12 @@ impl Brain for Duelist {
                 cmds.retain(|c| !fight_order(c));
                 cmds.extend(mine);
             }
-            None => self.open = false,
+            None => {
+                // The gate shuts: back to what the rules were doing, as if never parted.
+                if std::mem::replace(&mut self.open, false) && !cmds.iter().any(|c| matches!(c, Command::Move { .. })) {
+                    cmds.extend(self.errand.clone());
+                }
+            }
         }
         cmds
     }

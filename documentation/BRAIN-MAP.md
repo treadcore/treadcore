@@ -34,7 +34,7 @@ structure as built is `checkins/`.
 | [`scenario.rs`](#scenariors) | 1263 | 23 | 0 | 8 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
 | [`senses.rs`](#sensesrs) | 528 | 8 | 0 | 7 | The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map. |
 | [`status.rs`](#statusrs) | 357 | 9 | 0 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
-| [`styles.rs`](#stylesrs) | 482 | 24 | 4 | 14 | Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. |
+| [`styles.rs`](#stylesrs) | 492 | 24 | 4 | 14 | Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. |
 | [`tactics.rs`](#tacticsrs) | 727 | 16 | 0 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
 | [`weights.rs`](#weightsrs) | 720 | 33 | 0 | 8 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
 
@@ -935,36 +935,36 @@ Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. And naming ... right now 
 | 190 | `ray_circle` |  |  | Where a ray from `from` first meets a circle. |
 | 201 | `scripted` |  |  | crucible's `scripted` at its yardstick: turn to the enemy, close to range, fire when aimed. |
 | 210 | `senses` |  | yes | crucible's `sense` and the hybrid's three inputs, from what a tank here can see. |
-| 245 | `new` | Duelist | yes |  |
-| 250 | `duel` | Duelist |  | Its say this decision, if the gate opens: what to do instead of the rules' moving and firing. |
-| 273 | `fight_order` |  |  | What the rules said that the duel now says instead. |
-| 278 | `name` | Duelist |  | *(the `Brain` trait's)* |
-| 282 | `think` | Duelist |  | *(the `Brain` trait's)* |
-| 286 | `think_on` | Duelist |  | *(the `Brain` trait's)* |
-| 305 | `status` | Duelist |  | *(the `Brain` trait's)* |
-| 309 | `settings` | Duelist |  | *(the `Brain` trait's)* |
-| 313 | `act` | Duelist |  | *(the `Brain` trait's)* |
-| 317 | `rung` | Duelist |  | *(the `Brain` trait's)* |
-| 428 | `name` |  |  | *(the `Brain` trait's)* |
-| 431 | `think` |  |  | *(the `Brain` trait's)* |
-| 436 | `world` |  |  |  |
+| 248 | `new` | Duelist | yes |  |
+| 253 | `duel` | Duelist |  | Its say this decision, if the gate opens: what to do instead of the rules' moving and firing. |
+| 275 | `fight_order` |  |  | What the rules said that the duel now says instead: where to be. |
+| 280 | `name` | Duelist |  | *(the `Brain` trait's)* |
+| 284 | `think` | Duelist |  | *(the `Brain` trait's)* |
+| 288 | `think_on` | Duelist |  | *(the `Brain` trait's)* |
+| 315 | `status` | Duelist |  | *(the `Brain` trait's)* |
+| 319 | `settings` | Duelist |  | *(the `Brain` trait's)* |
+| 323 | `act` | Duelist |  | *(the `Brain` trait's)* |
+| 327 | `rung` | Duelist |  | *(the `Brain` trait's)* |
+| 438 | `name` |  |  | *(the `Brain` trait's)* |
+| 441 | `think` |  |  | *(the `Brain` trait's)* |
+| 446 | `world` |  |  |  |
 
 Tests (14):
 
-- `eight_styles_each_by_number_and_by_name_and_none_share_either` (line 329): *(the `Brain` trait's)*
-- `the_dial_names_the_roster_in_its_order` (line 343): *(the `Brain` trait's)*
-- `a_team_may_be_one_style_or_several_and_a_mistake_says_what_there_is` (line 350): *(the `Brain` trait's)*
-- `style_zero_is_the_brain_as_it_was` (line 358): *(the `Brain` trait's)*
-- `a_style_of_rules_keeps_the_seats_skill` (line 365): *(the `Brain` trait's)*
-- `the_overrider_changes_only_the_slot_on_todays_brain` (line 374): *(the `Brain` trait's)*
-- `every_shipped_file_reads` (line 383): *(the `Brain` trait's)*
-- `a_champion_of_the_wrong_size_is_refused_not_misread` (line 395): *(the `Brain` trait's)*
-- `the_champions_arithmetic_is_crucibles` (line 401): *(the `Brain` trait's)*
-- `a_ray_meets_what_is_in_front_and_misses_what_is_not` (line 411): *(the `Brain` trait's)*
-- `the_yardstick_turns_closes_and_fires_as_crucibles` (line 420): *(the `Brain` trait's)*
-- `with_its_gate_shut_a_duelist_is_the_rules_to_the_last_command` (line 441)
-- `no_enemy_to_see_means_the_rules_alone` (line 454)
-- `every_style_plays_a_match_to_its_end_without_a_fault` (line 467)
+- `eight_styles_each_by_number_and_by_name_and_none_share_either` (line 339): *(the `Brain` trait's)*
+- `the_dial_names_the_roster_in_its_order` (line 353): *(the `Brain` trait's)*
+- `a_team_may_be_one_style_or_several_and_a_mistake_says_what_there_is` (line 360): *(the `Brain` trait's)*
+- `style_zero_is_the_brain_as_it_was` (line 368): *(the `Brain` trait's)*
+- `a_style_of_rules_keeps_the_seats_skill` (line 375): *(the `Brain` trait's)*
+- `the_overrider_changes_only_the_slot_on_todays_brain` (line 384): *(the `Brain` trait's)*
+- `every_shipped_file_reads` (line 393): *(the `Brain` trait's)*
+- `a_champion_of_the_wrong_size_is_refused_not_misread` (line 405): *(the `Brain` trait's)*
+- `the_champions_arithmetic_is_crucibles` (line 411): *(the `Brain` trait's)*
+- `a_ray_meets_what_is_in_front_and_misses_what_is_not` (line 421): *(the `Brain` trait's)*
+- `the_yardstick_turns_closes_and_fires_as_crucibles` (line 430): *(the `Brain` trait's)*
+- `with_its_gate_shut_a_duelist_is_the_rules_to_the_last_command` (line 451)
+- `no_enemy_to_see_means_the_rules_alone` (line 464)
+- `every_style_plays_a_match_to_its_end_without_a_fault` (line 477)
 
 ## tactics.rs
 
