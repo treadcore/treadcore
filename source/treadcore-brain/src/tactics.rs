@@ -163,7 +163,7 @@ impl Default for Tactics {
             press_odds: 1.33767,
             coming_r: 180.0,
             mass_for: 12.0,
-            answer_cap: 3,
+            answer_cap: 2,
             crew_reach: 40.0,
             w_exposure: 0.605073,
             w_flank: 0.3,
