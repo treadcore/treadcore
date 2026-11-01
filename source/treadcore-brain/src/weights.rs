@@ -115,7 +115,7 @@ weights! {
     PressOdds "press_odds" 1.33767, "odds: above these, close in";
     ComingR "coming_r" 180.0, "odds: teammates this near are coming, tiles";
     MassFor "mass_for" 12.0, "odds: seconds to hold off for them";
-    AnswerCap "answer_cap" 2.46205, "pings: this many nearer teammates answer instead (rounded)";
+    AnswerCap "answer_cap" 3.0, "pings: this many nearer teammates answer instead (rounded)";
     CrewReach "crew_reach" 40.0, "pings: a crew on a job answers only this near, tiles";
     Exposure "w_exposure" 0.605073, "stand: cost per gun covering a firing point";
     Flank "w_flank" 0.3, "stand: cost of leaving the flank's bearing";
@@ -128,8 +128,8 @@ weights! {
     // `smooth` as a weight (LR 46; Paul, 20 October: "give it an
     // insignificant coefficient"), once the capability `smooth`.
     SmoothShare "w_smooth" 0.05, "smooth: how much the bot smooths, 0 to 1. The move's desire vector and the retreat thresholds blend by it; the rung's and the turret's confirmation, the stance's advance scalar and resupply by the doctrine alone act above 0.5 (yes or no). 0 is the capability off, 1 on";
-    Alpha "alpha" 0.394583, "smooth: the move's desire vector, share of the new pull a think";
-    Beta "beta" 0.324887, "smooth: the advance scalar, share of the new pull a think";
+    Alpha "alpha" 0.4, "smooth: the move's desire vector, share of the new pull a think";
+    Beta "beta" 0.3, "smooth: the advance scalar, share of the new pull a think";
     Margin "margin" 0.15, "smooth: a challenger must beat the intent by this share";
     Confirm "confirm" 2.0, "smooth: thinks in a row a challenger must win (rounded)";
     ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target (rounded)";
@@ -172,9 +172,9 @@ weights! {
     HomePick "home_pick" 1.0, "resupply: which base a tank goes home to (choice: nearest | stocked): stocked by shells over the road, front.rs; a depot's store can run dry, so the nearest may be empty";
     AdvancePlan "advance_plan" 1.0, "advance: after taking a pillbox or base (choice: as_built | forward): forward calls for help, chains it, drags it on, cuts wood and lays road back";
     MinePlan "mine_plan" 1.0, "mines: where a squad lays them (choice: as_built | line | raid): as built on the base's approach; line across the battle line's road, front.rs; raid that, and a tank inside an enemy base lays one and runs home";
-    Bio "bio" 3.0, "intuition: the shape of a tank's slow waves (choice: off | sine | triangle | square | saw): bio.rs";
+    Bio "bio" 0.0, "intuition: the shape of a tank's slow waves (choice: off | sine | triangle | square | saw): bio.rs";
     BioPeriod "bio_period" 60.0, "intuition: the first wave's period, seconds; the others run 28/23 and 33/23 as long";
-    BioAmount "bio_amount" 0.181252, "intuition: how far the waves swing how bold a tank is, a share of engage_odds";
+    BioAmount "bio_amount" 0.25, "intuition: how far the waves swing how bold a tank is, a share of engage_odds";
     Patch "patch" 0.0, "patch: a learned transform over the rules' Move (choice: off | slot1 | slot2 | slot3 | slot4 | slot5 | slot6 | slot7): patch.rs, CENSUS_PATCHES/k.bin";
     PatchConfidence "patch_confidence" 0.5, "patch: it overrides the rules only at this confidence or more";
     PatchReach "patch_reach" 10.0, "patch: at full output it moves the rules' point this far, tiles";
@@ -289,7 +289,7 @@ caps! {
     KITE 0 "kite" true, "kite a target past its reach (tactics.rs)";
     PINGS 1 "pings" false, "call enemies and answer teammates' pings";
     DODGE 2 "dodge" true, "step out from under a shell";
-    BRIDGES 3 "bridges" false, "lay bridges (hop.rs)";
+    BRIDGES 3 "bridges" true, "lay bridges (hop.rs)";
     ROTATE 4 "rotate" true, "rotate between the push and defence points";
     FORGET 8 "forget" true, "given-up targets are tried again after forget_for (12b)";
     BOARD 10 "board" true, "the team board: one picture of the map per team (12e)";
