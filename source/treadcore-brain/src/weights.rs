@@ -104,7 +104,7 @@ weights! {
     Overkill "w_overkill" 0.6, "target: off for each teammate past the cap";
     InRange "w_in_range" 1.4, "target: in direct range now";
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
-    BaseR "base_r" 32.0, "target: the base's reach for w_threat, tiles";
+    BaseR "base_r" 8.0, "target: the base's reach for w_threat, tiles";
     Stick "w_stick" 0.322391, "target: the one already chosen";
     FocusBlend "focus_blend" 0.5, "target (LR 117): 0 the near tank in range, 1 the wounded one a teammate is on; 0.5 both as before (each side's terms doubled toward its end)";
     // Tactics: the engagement and assignment.
