@@ -128,13 +128,13 @@ weights! {
     // `smooth` as a weight (LR 46; Paul, 20 October: "give it an
     // insignificant coefficient"), once the capability `smooth`.
     SmoothShare "w_smooth" 0.05, "smooth: how much the bot smooths, 0 to 1. The move's desire vector and the retreat thresholds blend by it; the rung's and the turret's confirmation, the stance's advance scalar and resupply by the doctrine alone act above 0.5 (yes or no). 0 is the capability off, 1 on";
-    Alpha "alpha" 0.4, "smooth: the move's desire vector, share of the new pull a think";
+    Alpha "alpha" 0.359064, "smooth: the move's desire vector, share of the new pull a think";
     Beta "beta" 0.3, "smooth: the advance scalar, share of the new pull a think";
     Margin "margin" 0.15, "smooth: a challenger must beat the intent by this share";
     Confirm "confirm" 2.0, "smooth: thinks in a row a challenger must win (rounded)";
     ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target (rounded)";
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
-    AdvanceBand "advance_band" 0.35, "smooth: the advance scalar presses above this and falls back below minus this";
+    AdvanceBand "advance_band" 0.675, "smooth: the advance scalar presses above this and falls back below minus this";
     Jitter "jitter" 3.0, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
     RetreatArmor "retreat_armor" 50.0, "survival: armour at or under this goes home (blended from the constant by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
     RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home (blended from the constant 4 by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
