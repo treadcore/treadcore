@@ -1179,6 +1179,9 @@ mod tests {
             for t in 0..3u8 {
                 let rs: Vec<_> = records.iter().filter(|r| r.outcome.team == Some(t)).collect();
                 let sum = |f: &dyn Fn(&crate::ledger::Outcome) -> u32| rs.iter().map(|r| f(&r.outcome)).sum::<u32>();
+                // Every reward by name: "rewards" in the line below hid what europe's +18 was made of.
+                eprintln!("  rewards of team {}{}: advanced {}, towed {}, forward built {}, stages {}, sorties {}, low returns {}, rotations {}, entries {}, raids {}, mine hits {}, castle {}", t, if t == lucky { " (trial)" } else { "" },
+                    sum(&|o| o.advanced), sum(&|o| o.towed), sum(&|o| o.forward_built), sum(&|o| o.advance_stages), sum(&|o| o.full_sorties), sum(&|o| o.low_returns), sum(&|o| o.rotations), sum(&|o| o.base_entries), sum(&|o| o.raids), sum(&|o| o.mine_hits), sum(&|o| o.castle_s));
                 let score: f32 = rs.iter().map(|r| r.score).sum::<f32>() / rs.len().max(1) as f32;
                 let rewards: f32 = rs.iter().map(|r| crate::ledger::rewards(&r.outcome, &k)).sum::<f32>() / rs.len().max(1) as f32;
                 eprintln!(

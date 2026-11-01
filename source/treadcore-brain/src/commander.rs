@@ -2696,7 +2696,10 @@ impl Commander {
                         let home = crate::board::Home {
                             starved: self.starved,
                             castle_left: self.plan.as_ref().map(|p| p.castle_left()).unwrap_or(if self.base.is_some() { 1.0 } else { 0.0 }),
-                            slots_left: self.plan.as_ref().map(|p| p.slots_left()).unwrap_or(0.0),
+                            slots_left: {
+                                let can = me.pillboys.carrying.is_some() || self.fetching.is_some() || self.base.and_then(|b| self.outlying(obs, b)).is_some();
+                                connect_left(self.plan.as_ref().map(|p| p.slots_left()).unwrap_or(0.0), can, self.settings.w[crate::weights::W::ConnectIdle])
+                            },
                         };
                         b.rebuild(obs, self.base, &self.settings, home, obs.tick);
                     }
@@ -3238,6 +3241,14 @@ impl Commander {
     }
 }
 
+/// Connect's score: the slots still waiting, in full only if there is a pillbox to bring (1 November).
+/// A slot takes a pillbox this same tank owns, its team does the capturing, and in 9 matches traced no
+/// tank fetched one: the score sat at 1.00 to the end of a match, outbidding Expand, for work nobody
+/// could do. `connect_idle` says how much stands then: the census judges it, as any either/or.
+pub fn connect_left(left: f32, can_bring: bool, idle: f32) -> f32 {
+    if can_bring { left } else { left * idle.clamp(0.0, 1.0) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3557,6 +3568,15 @@ mod tests {
     /// of the 4096 combinations; at 0.25 a leaned rung climbs one rung,
     /// at 0.5 (and the default 0.95, LR 77) every rung; DefendBase is
     /// never passed.
+    #[test]
+    fn connect_scores_work_that_can_be_done() {
+        assert_eq!(connect_left(1.0, true, 0.0), 1.0, "a pillbox to bring: all of it, whatever the dial");
+        assert_eq!(connect_left(1.0, false, 1.0), 1.0, "1 is as built");
+        assert_eq!(connect_left(1.0, false, 0.0), 0.0, "0: nothing to do, no score");
+        assert_eq!(connect_left(0.5, false, 0.5), 0.25);
+        assert_eq!(crate::weights::W::ConnectIdle.default_value(), 1.0, "no default moved by the dial's arrival");
+    }
+
     #[test]
     fn the_posture_leans_the_ladder() {
         use crate::board::Posture as P;

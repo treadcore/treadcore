@@ -6,6 +6,7 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: the dial `connect_idle`, 1 as built: how much of Connect's posture score stands when a tank has no pillbox to bring in. No tank was filling those slots. The census logs each reward by name.
 - Added: **bot styles 0 to 7**, named, chosen a team at a time on the launch menu or with `--bots TEAM=STYLES` (`--bots 1=raider`, `--bots 2=1,2,6` a seat in turn, `--bots all=castle`): Fleet, Raider, Castle, Expander, Timid, Overrider, Scholar and Duelist. A style goes by its name on the roster. Nothing moves a default: style 0 is the brain as it was.
 - Added: the game reads a transform. `nets/patches/1.bin` ships as style 5, and `TREADCORE_PATCHES` is a person's own. The `patch` row on the `U` page no longer stops a game.
 - Added: the bridge from crucible. A hybrid champion plays in the game as style 7, on what a tank can see, its own gate choosing when it takes the fight from the rules.
