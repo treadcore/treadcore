@@ -183,7 +183,7 @@ weights! {
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
     PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
-    PostureFortify "w_pos_fortify" 6.0, "posture: worth of Fortify's score, the share of the castle not yet built";
+    PostureFortify "w_pos_fortify" 1.5, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
     DefendGround "w_defend_ground" 1.5, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
     ConnectIdle "connect_idle" 1.0, "posture: how much of Connect's score stands when this tank has no pillbox to bring in: 1 as built, 0 a score only for work that can be done";
