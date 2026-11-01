@@ -289,7 +289,7 @@ caps! {
     KITE 0 "kite" true, "kite a target past its reach (tactics.rs)";
     PINGS 1 "pings" false, "call enemies and answer teammates' pings";
     DODGE 2 "dodge" true, "step out from under a shell";
-    BRIDGES 3 "bridges" true, "lay bridges (hop.rs)";
+    BRIDGES 3 "bridges" false, "lay bridges (hop.rs)";
     ROTATE 4 "rotate" true, "rotate between the push and defence points";
     FORGET 8 "forget" true, "given-up targets are tried again after forget_for (12b)";
     BOARD 10 "board" true, "the team board: one picture of the map per team (12e)";
