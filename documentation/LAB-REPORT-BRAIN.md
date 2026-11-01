@@ -9671,3 +9671,8 @@ RESULT_DRAW
 - The treadcore arena on the GPU, the next step Paul asked for.
 - whitewolf's school run (r0022) ends; then the keeper can be restarted
   on its newer code (plans every five minutes).
+
+## 126. Bot styles, a transform the game reads, and the bridge from crucible, 1 November
+
+Paul: "can you impliment The game reads a transform ... Bridge crucible into treadcore ... We want Bot 0-7 Styles. And naming." `styles.rs` holds eight named brains of four kinds, each ending in the same `Command`. `patch::slot` no longer stops a game for want of a file. A hybrid champion plays as an override with its own gate, on senses built from an Observation: an adapter, where `brains.md` planned a clone, because a hybrid champion is already an override. No default moved; `bot_style` is not searched. The design, the census of each style and what is left: orrery's `docs/bot-styles-lab-report.md`.
+

@@ -951,6 +951,10 @@ mod tests {
             Some(n)
         };
         let (trial_model, base_model) = (model_of(&trial, "trial"), model_of(&base, "baseline"));
+        // A named style, a team's as a model is (styles.rs): `bot_style = 3` in a trial reads it
+        // against the baseline by the same census as a dial.
+        let style_of = |s: &Settings| -> Option<&'static crate::styles::Style> { crate::styles::ROSTER.get(s.choice(crate::weights::W::BotStyle)).filter(|st| st.slot > 0) };
+        let (trial_style, base_style) = (style_of(&trial), style_of(&base));
         eprintln!("brain_census: trial caps [{}], {} weights changed {:?}; baseline caps [{}], {} weights changed {:?}", trial.caps.names(), trial.diff().len(), trial.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>(), base.caps.names(), base.diff().len(), base.diff().iter().map(|(w, v)| format!("{}={}", w.name(), v)).collect::<Vec<_>>());
         let (mut trial_score, mut base_score, mut trial_n, mut base_n) = (0f32, 0f32, 0u32, 0u32);
         // A seed's sums, trial and baseline, for the difference a seed
@@ -1029,6 +1033,12 @@ mod tests {
                         return (i as PlayerId, Box::new(crate::net::NetBrain::new(n.clone(), &name(i)).with_calls(calls.clone())) as Box<dyn Brain>);
                     }
                     // The aggro seat stays the aggro bot: a team of its own.
+                    let style = if teams()[i] == lucky { trial_style } else { base_style };
+                    if let Some(st) = style.filter(|_| i != AGGRO) {
+                        let s = if teams()[i] == lucky { trial.clone() } else { base.clone() };
+                        let made = crate::styles::make(st, &s, &name(i), || brain(i, seed ^ i as u64, false));
+                        return (i as PlayerId, made);
+                    }
                     let model = if teams()[i] == lucky { trial_model.as_ref() } else { base_model.as_ref() };
                     if let (Some(n), Some(c)) = (model.filter(|_| i != AGGRO), team_calls.get(teams()[i] as usize)) {
                         return (i as PlayerId, Box::new(crate::net::NetBrain::new(n.clone(), &name(i)).with_calls(c.clone())) as Box<dyn Brain>);

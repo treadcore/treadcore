@@ -213,7 +213,12 @@ impl Net {
     pub fn load(path: &std::path::Path) -> std::io::Result<Net> {
         let mut bytes = Vec::new();
         std::fs::File::open(path)?.read_to_end(&mut bytes)?;
-        let bad = |m: &str| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{}: {}", path.display(), m));
+        Net::from_bytes(&bytes).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{}: {}", path.display(), e)))
+    }
+
+    /// A net from `save`'s form, in memory: one shipped in the binary has no path (styles.rs).
+    pub fn from_bytes(bytes: &[u8]) -> std::io::Result<Net> {
+        let bad = |m: &str| std::io::Error::new(std::io::ErrorKind::InvalidData, m.to_string());
         if bytes.len() < 12 || &bytes[..8] != MAGIC {
             return Err(bad("not a treadcore net"));
         }

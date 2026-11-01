@@ -131,6 +131,9 @@ pub struct Args {
     /// Bot teammates and rivals as plain RuleBots, not fleet roles
     /// (`--plain-bots`).
     pub plain_bots: bool,
+    /// Which named bot style each team plays (`--bots TEAM=STYLES`, `--bots all=STYLES`; styles.rs):
+    /// a style by number or name, or several, one a seat in turn. No word for a team: style 0.
+    pub bots: Vec<(Option<usize>, Vec<&'static treadcore_brain::styles::Style>)>,
     /// The game's speed asked for (`--speed 1|2|4`, `SPEED`; ` in play).
     pub speed: f32,
 }
@@ -171,6 +174,7 @@ fn parse_args() -> Args {
         style: voxel::TankStyle::default(),
         autopilot: false,
         plain_bots: false,
+        bots: Vec::new(),
         speed: std::env::var("SPEED").ok().and_then(|s| s.parse().ok()).unwrap_or(1.0),
     };
     let mut it = std::env::args().skip(1);
@@ -215,6 +219,17 @@ fn parse_args() -> Args {
             "--weights" => a.weights = Some(val()),
             "--autopilot" => a.autopilot = true,
             "--plain-bots" => a.plain_bots = true,
+            "--bots" => {
+                let w = val();
+                let parsed = w.split_once('=').ok_or_else(|| format!("--bots wants TEAM=STYLES, as 1=raider or all=1,2,6: {}", treadcore_brain::styles::names())).and_then(|(team, list)| {
+                    let team = if team == "all" { None } else { Some(team.parse::<usize>().map_err(|_| format!("--bots: no team {:?}", team))?) };
+                    Ok((team, treadcore_brain::styles::parse_list(list)?))
+                });
+                match parsed {
+                    Ok(b) => a.bots.push(b),
+                    Err(e) => eprintln!("{} (going on without it)", e),
+                }
+            }
             "--speed" => a.speed = val().trim_end_matches('x').parse().unwrap_or(1.0),
             "--style" => {
                 let w = val();

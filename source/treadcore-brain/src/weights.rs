@@ -158,6 +158,7 @@ weights! {
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";
     // The team (LR 9).
     SwapGap "swap_gap" 0.207136, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
+    BotStyle "bot_style" 0.0, "brain: which named style a team plays, read when its bots are made, so a match's next (choice: fleet | raider | castle | expander | timid | overrider | scholar | duelist): styles.rs";
     Model "model" 0.0, "brain: a team's brain, 0 the rules, k a learned model in the fleet's slot k (choice: rules | slot1 | slot2 | slot3 | slot4 | slot5 | slot6 | slot7): the census reads CENSUS_MODELS/k.bin, orrery names each slot by its generation (models.tsv)";
     Roles "roles" 0.0, "team: a bots' team of five after its leader (choice: as_built | no_guard | two_guards | three_guards): as built a guard, two rangers and a wing; no guard sends the guard out with the fleet; two and three guards keep more at the base (fleet::MIXES)";
     PingStyle "ping_style" 0.0, "pings: what a team calls and answers (choice: as_built | help | warn | defend | all): as built the switch `pings` decides and every call is help; help calls for help when outnumbered and comes when called; warn warns off and takes warnings and cautions; defend calls and comes only for a base under attack; all of them, and it says what it saw";

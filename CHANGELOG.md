@@ -6,6 +6,11 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Added: **bot styles 0 to 7**, named, chosen a team at a time on the launch menu or with `--bots TEAM=STYLES` (`--bots 1=raider`, `--bots 2=1,2,6` a seat in turn, `--bots all=castle`): Fleet, Raider, Castle, Expander, Timid, Overrider, Scholar and Duelist. A style goes by its name on the roster. Nothing moves a default: style 0 is the brain as it was.
+- Added: the game reads a transform. `nets/patches/1.bin` ships as style 5, and `TREADCORE_PATCHES` is a person's own. The `patch` row on the `U` page no longer stops a game.
+- Added: the bridge from crucible. A hybrid champion plays in the game as style 7, on what a tank can see, its own gate choosing when it takes the fight from the rules.
+- Added: the dial `bot_style`, so `bot_style = 3` in a trial reads a style by the census. The launch menu's Bots row is now called Skill, which is what it sets.
+
 - Fixed: six of the brain's tests asserted today's defaults through `Settings::default()`, so a promotion that moved one failed for no fault of its own. They now set the numbers they were written for. Seven of the fleet's fourteen promotions had stopped at tests like these (orrery `docs/whole-line-lab-report.md`).
 
 - Changed: `advance_plan` forward and `mine_plan` raid are the defaults (Paul, 30 October).

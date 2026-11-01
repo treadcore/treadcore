@@ -813,6 +813,27 @@ orders column and the hints under it show your keys, not these.
 | T | your side's tank style: bulwark, strider, rattler |
 | K | Key Setup: rebind any of the keys above |
 
+## 10a. Bot styles
+
+Each team's bots can play a named style. Choose on the launch menu's team rows, or:
+
+    treadcore --bots 1=raider --bots 2=castle
+    treadcore --bots 1=1,2,6        # a seat at a time, in turn
+    treadcore --bots all=duelist
+
+| Style | Name | What it is |
+| --- | --- | --- |
+| 0 | Fleet | the brain the training fleet has carried |
+| 1 | Raider | goes and fights: closes at even odds, picks off the wounded |
+| 2 | Castle | holds its ground: fortifies and defends |
+| 3 | Expander | takes the map: depots and pillboxes first |
+| 4 | Timid | fights only with the odds well on its side |
+| 5 | Overrider | the rules, with a learned transform moving their answer when it is sure |
+| 6 | Scholar | a net that learned by imitating the rules: it does not build |
+| 7 | Duelist | the rules, with a champion from the GPU islands in every fight |
+
+The roster shows each by name, as `t1-Raider3`. Your own team's first row is your wingmen.
+
 ## 11. Over a network
 
 `make lan` on each machine: the windows find each other on the LAN,

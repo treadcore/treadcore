@@ -266,9 +266,19 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
         let person_leads = !args.autopilot && team.first().map(|l| *l < people).unwrap_or(false);
         (treadcore_brain::fleet::team_role(s, &team, person_leads).0, team, person_leads)
     };
+    // The bot style a seat plays, if its team was given one: a team's seats take its list in turn.
+    let style_of = |s: usize| -> Option<&'static treadcore_brain::styles::Style> {
+        let team = teamed.then(|| team_no(s));
+        let (_, list) = args.bots.iter().rev().find(|(t, _)| t.is_none() || *t == team)?;
+        let at = if teamed { team_of(s).iter().position(|x| *x == s).unwrap_or(0) } else { s };
+        Some(list[at % list.len()]).filter(|st| st.slot > 0)
+    };
     while names.len() < seats {
         let s = names.len();
-        let n = if args.fleets {
+        // A style goes by its name on the roster: this is how a person tells them apart in play.
+        let n = if let Some(st) = style_of(s) {
+            if teamed { format!("t{}-{}{}", team_no(s), st.name, s) } else { format!("{}{}", st.name, s) }
+        } else if args.fleets {
             treadcore_brain::fleet::name(s)
         } else if teamed {
             format!("t{}-{}{}", team_no(s), team_role(s).0.word(), s)
@@ -300,7 +310,9 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
             let skill = if ally { 1.0 } else { args.skill.clamp(0.0, 1.0) };
             let mut s = treadcore_brain::fleet::settings();
             s.w[treadcore_brain::weights::W::Skill] = skill;
-            let b: Box<dyn Brain> = treadcore_brain::fleet::with_settings(s, || -> Box<dyn Brain> { if args.fleets {
+            let style = style_of(i as usize);
+            let base = s.clone();
+            let rules = || -> Box<dyn Brain> { if args.fleets {
                 // A team led from a person's seat assists the person.
                 let (_, leader) = treadcore_brain::fleet::role(i as usize, true);
                 treadcore_brain::fleet::brain(i as usize, seed, leader < first_bot)
@@ -315,7 +327,11 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
                 let mut r = RuleBot::new(seed, "rulebot");
                 r.skill = skill;
                 Box::new(r)
-            } });
+            } };
+            let b: Box<dyn Brain> = match style {
+                Some(st) => treadcore_brain::styles::make(st, &base, &names[i as usize].0, rules),
+                None => treadcore_brain::fleet::with_settings(s, rules),
+            };
             (i, b)
         })
         .collect();

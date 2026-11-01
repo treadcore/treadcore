@@ -41,6 +41,7 @@ pub mod rotation;
 pub mod scenario;
 pub mod senses;
 pub mod status;
+pub mod styles;
 pub mod tactics;
 pub mod weights;
 pub use commander::{Commander, Goal, Rung};

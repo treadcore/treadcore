@@ -568,7 +568,7 @@ impl Commander {
             self.inner.hop.no_bridges = false;
         }
         let k = s.choice(W::Patch);
-        self.patch = (k > 0).then(|| crate::patch::slot(k));
+        self.patch = if k > 0 { crate::patch::slot(k) } else { None };
         self.settings = s;
     }
 

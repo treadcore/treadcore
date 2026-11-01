@@ -20,6 +20,17 @@ fn opt(label: &str, v: &[&str]) -> (String, Vec<String>) {
     (label.to_string(), flags(v))
 }
 
+/// A team's bots: which named style they play (styles.rs), or a mix, a seat at a time. This is what
+/// makes a side of raiders against a side of castles a thing to choose from a menu.
+fn team_row(name: &'static str, team: usize) -> Row {
+    let mut choices: Vec<(String, Vec<String>)> = treadcore_brain::styles::ROSTER
+        .iter()
+        .map(|s| (format!("{} {}", s.slot, s.name), if s.slot == 0 { Vec::new() } else { vec!["--bots".to_string(), format!("{}={}", team, s.slot)] }))
+        .collect();
+    choices.push(("A mix: rules, net, duelist".to_string(), vec!["--bots".to_string(), format!("{}=0,6,7", team)]));
+    Row { name, choices, at: 0 }
+}
+
 fn rows() -> Vec<Row> {
     let mut maps = vec![opt("Naval", &["--map", "naval"]), opt("Generated island", &["--map", "island"]), opt("Industry", &["--map", "industry"])];
     for name in crate::MAP_NAMES.iter().skip(3) {
@@ -42,10 +53,14 @@ fn rows() -> Vec<Row> {
             at: 0,
         },
         Row {
-            name: "Bots",
+            name: "Skill",
             choices: vec![opt("Full strength", &["--skill", "1"]), opt("Medium", &["--skill", "0.6"]), opt("Easy", &["--skill", "0.3"])],
             at: 0,
         },
+        team_row("Your team", 0),
+        team_row("Team 2", 1),
+        team_row("Team 3", 2),
+        team_row("Team 4", 3),
         Row {
             name: "Lives",
             choices: vec![opt("Unlimited", &["--respawns", "unlimited"]), opt("3", &["--respawns", "3"]), opt("1", &["--respawns", "0"])],
@@ -87,7 +102,7 @@ impl Menu {
 
     fn line(&self, i: usize) -> String {
         match self.rows.get(i) {
-            Some(r) => format!("{:<8} <  {}  >", r.name, r.choices[r.at].0),
+            Some(r) => format!("{:<9} <  {}  >", r.name, r.choices[r.at].0),
             None => "Start".to_string(),
         }
     }
@@ -112,11 +127,11 @@ fn setup(mut commands: Commands, menu: Res<Menu>) {
     commands
         .spawn(Node { width: percent(100), height: percent(100), flex_direction: FlexDirection::Column, align_items: AlignItems::Center, justify_content: JustifyContent::Center, row_gap: px(10), ..default() })
         .with_children(|p| {
-            p.spawn((Text::new("treadcore"), TextFont { font_size: 46.0, ..default() }, Node { margin: UiRect::bottom(px(24)), ..default() }));
+            p.spawn((Text::new("treadcore"), TextFont { font_size: 30.0, ..default() }, Node { margin: UiRect::bottom(px(24)), ..default() }));
             for i in 0..=menu.rows.len() {
-                p.spawn((Button, Line(i), Node { width: px(560), padding: UiRect::axes(px(16), px(9)), ..default() }, BackgroundColor(Color::srgb(0.14, 0.16, 0.18))))
+                p.spawn((Button, Line(i), Node { width: px(560), padding: UiRect::axes(px(14), px(4)), ..default() }, BackgroundColor(Color::srgb(0.14, 0.16, 0.18))))
                     .with_children(|b| {
-                        b.spawn((Text::new(menu.line(i)), TextFont { font_size: 22.0, ..default() }));
+                        b.spawn((Text::new(menu.line(i)), TextFont { font_size: 17.0, ..default() }));
                     });
             }
             p.spawn((Text::new("Up and down choose a row, left and right change it, Enter starts."), TextFont { font_size: 15.0, ..default() }, TextColor(Color::srgb(0.6, 0.63, 0.66)), Node { margin: UiRect::top(px(18)), ..default() }));

@@ -99,18 +99,23 @@ impl Patch {
 
     pub fn load(path: &std::path::Path) -> Result<Patch, String> {
         let b = std::fs::read(path).map_err(|e| format!("{}: {}", path.display(), e))?;
+        Patch::from_bytes(&b).map_err(|e| format!("{}: {}", path.display(), e))
+    }
+
+    /// A slot from its file's bytes: one shipped in the binary has no path.
+    pub fn from_bytes(b: &[u8]) -> Result<Patch, String> {
         if b.len() < 12 || &b[..4] != MAGIC {
-            return Err(format!("{}: not a patch", path.display()));
+            return Err("not a patch".to_string());
         }
         let word = |at: usize| u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]) as usize;
         // Senses added since it was trained would feed it the wrong numbers.
         if word(8) != INPUTS {
-            return Err(format!("{}: made for {} inputs, these are {}", path.display(), word(8), INPUTS));
+            return Err(format!("made for {} inputs, these are {}", word(8), INPUTS));
         }
         let shape = Patch::zero(word(4));
         let v: Vec<f32> = b[12..].chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
         if v.len() != shape.flat().len() {
-            return Err(format!("{}: {} numbers, wanted {}", path.display(), v.len(), shape.flat().len()));
+            return Err(format!("{} numbers, wanted {}", v.len(), shape.flat().len()));
         }
         Ok(shape.with_flat(&v))
     }
@@ -118,19 +123,30 @@ impl Patch {
 
 static SLOTS: Mutex<Option<HashMap<usize, Arc<Patch>>>> = Mutex::new(None);
 
-/// Slot `k`, from `CENSUS_PATCHES/k.bin`, read once. A slot asked for and not there
-/// stops the run, as a model slot does: the rules played in its place would be read
-/// as the patch.
-pub fn slot(k: usize) -> Arc<Patch> {
+/// The transforms the game ships with: a player has no fleet to fetch one from (styles.rs).
+const SHIPPED: [(usize, &[u8]); 1] = [(1, include_bytes!("../../../nets/patches/1.bin"))];
+
+/// Slot `k`, read once. THE GAME READS A TRANSFORM (Paul, 1 November): `TREADCORE_PATCHES/k.bin`, a
+/// person's own, then what ships. A slot nobody has is the rules alone: moving the `patch` row on the
+/// `U` page must never stop a game. But under CENSUS_PATCHES a slot asked for and not there STOPS THE
+/// RUN, as a model slot does: the rules played in its place would be read as the patch.
+pub fn slot(k: usize) -> Option<Arc<Patch>> {
     let mut g = SLOTS.lock().unwrap_or_else(|e| e.into_inner());
     let map = g.get_or_insert_with(HashMap::new);
-    map.entry(k)
-        .or_insert_with(|| {
-            let dir = std::env::var("CENSUS_PATCHES").unwrap_or_else(|_| panic!("patch slot {} is asked for, and CENSUS_PATCHES is not set", k));
-            let p = std::path::Path::new(&dir).join(format!("{}.bin", k));
-            Arc::new(Patch::load(&p).unwrap_or_else(|e| panic!("patch slot {}: {}", k, e)))
-        })
-        .clone()
+    if let Some(p) = map.get(&k) {
+        return Some(p.clone());
+    }
+    let found = if let Ok(dir) = std::env::var("CENSUS_PATCHES") {
+        let p = std::path::Path::new(&dir).join(format!("{}.bin", k));
+        Some(Patch::load(&p).unwrap_or_else(|e| panic!("patch slot {}: {}", k, e)))
+    } else if let Some(p) = std::env::var("TREADCORE_PATCHES").ok().and_then(|d| Patch::load(&std::path::Path::new(&d).join(format!("{}.bin", k))).ok()) {
+        Some(p)
+    } else {
+        SHIPPED.iter().find(|(s, _)| *s == k).map(|(_, b)| Patch::from_bytes(b).expect("a shipped transform reads"))
+    };
+    let p = Arc::new(found?);
+    map.insert(k, p.clone());
+    Some(p)
 }
 
 #[cfg(test)]
