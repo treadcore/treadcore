@@ -171,7 +171,7 @@ weights! {
     HomePick "home_pick" 1.0, "resupply: which base a tank goes home to (choice: nearest | stocked): stocked by shells over the road, front.rs; a depot's store can run dry, so the nearest may be empty";
     AdvancePlan "advance_plan" 1.0, "advance: after taking a pillbox or base (choice: as_built | forward): forward calls for help, chains it, drags it on, cuts wood and lays road back";
     MinePlan "mine_plan" 1.0, "mines: where a squad lays them (choice: as_built | line | raid): as built on the base's approach; line across the battle line's road, front.rs; raid that, and a tank inside an enemy base lays one and runs home";
-    Bio "bio" 0.0, "intuition: the shape of a tank's slow waves (choice: off | sine | triangle | square | saw): bio.rs";
+    Bio "bio" 3.0, "intuition: the shape of a tank's slow waves (choice: off | sine | triangle | square | saw): bio.rs";
     BioPeriod "bio_period" 60.0, "intuition: the first wave's period, seconds; the others run 28/23 and 33/23 as long";
     BioAmount "bio_amount" 0.25, "intuition: how far the waves swing how bold a tank is, a share of engage_odds";
     Patch "patch" 0.0, "patch: a learned transform over the rules' Move (choice: off | slot1 | slot2 | slot3 | slot4 | slot5 | slot6 | slot7): patch.rs, CENSUS_PATCHES/k.bin";
