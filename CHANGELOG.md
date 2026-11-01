@@ -6,6 +6,8 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- Fixed: six of the brain's tests asserted today's defaults through `Settings::default()`, so a promotion that moved one failed for no fault of its own. They now set the numbers they were written for. Seven of the fleet's fourteen promotions had stopped at tests like these (orrery `docs/whole-line-lab-report.md`).
+
 - Changed: `advance_plan` forward and `mine_plan` raid are the defaults (Paul, 30 October).
 
 - Changed (game 4): a mortar's reload is 12 s, a flat shot's still 4 s, on one gun.

@@ -3574,7 +3574,6 @@ mod tests {
         }
         let all = [true; 6];
         let w = 0.25;
-        assert_eq!(crate::weights::W::Posture.default_value(), 0.95);
         // Fortify, Hunt, Expand and Guard hold; the team would expand.
         let holds = [false, true, false, true, true, true];
         assert_eq!(Rung::pick(&all, &holds, Some(P::Expand), 0.0), Rung::Fortify);
@@ -3642,6 +3641,7 @@ mod tests {
         c.slot = Some(1);
         let wedge = c.slot_point(&leader, Some(&map)).unwrap();
         let mut s = crate::weights::Settings::default();
+        s.w[crate::weights::W::ColumnGap] = 2.0;
         s.caps = s.caps.with(crate::weights::Caps::COLUMN);
         c.set_settings(s);
         assert_eq!(c.slot_point(&leader, Some(&map)).unwrap(), wedge, "on land the wedge");
@@ -3678,7 +3678,8 @@ mod tests {
         c.set_settings(s);
         assert_eq!((c.pings, c.answers_pings, c.dodges, c.inner.hop.no_bridges), (true, false, true, false), "back as the role had them");
         let t = c.inner.tactics.as_ref().unwrap();
-        assert_eq!((t.target, t.w.w_wounded), (Some(7), 1.4));
+        assert_eq!(t.target, Some(7));
+        assert!((t.w.w_wounded - (W::Wounded.default_value() + 2.0 * W::Wounded.step())).abs() < 2e-4);
     }
 
     /// A world of two allied bots, and a Commander in seat 1 hearing seat 0's ping.

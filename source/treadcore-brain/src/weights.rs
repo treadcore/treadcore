@@ -653,6 +653,9 @@ mod tests {
     #[test]
     fn smooth_is_a_weight_that_blends_and_thresholds() {
         let mut s = Settings::default();
+        // The numbers this test was written for: the fleet moves the defaults.
+        s.w[W::SmoothShare] = 0.05;
+        s.w[W::Alpha] = 0.4;
         assert!((s.smooth() - 0.05).abs() < 1e-6 && !s.smooth_on());
         assert!((s.smooth_alpha() - 0.97).abs() < 1e-6, "0.05 of the way from 1 to alpha 0.4");
         s.w[W::SmoothShare] = 0.0;
@@ -678,14 +681,20 @@ mod tests {
 
     #[test]
     fn a_slider_steps_and_steps_back() {
-        assert_eq!((W::Alpha.step(), W::NearScale.step(), W::ForgetFor.step(), W::Margin.step()), (0.05, 2.0, 10.0, 0.02));
+        // A step is a tenth of the default, rounded to a nice number: the fleet moves the defaults.
+        for w in [W::Alpha, W::NearScale, W::ForgetFor, W::Margin] {
+            let (step, d) = (w.step(), w.default_value().abs());
+            assert!(step >= d / 20.0 && step <= d / 5.0, "{}: {} on {}", w.name(), step, d);
+        }
         assert_eq!((W::CastleInside.step(), W::Confirm.step(), W::Kite.step()), (1.0, 1.0, 1.0), "a rounded weight steps by one");
         let mut s = Settings::default();
+        let (start, step) = (s.w[W::Alpha], W::Alpha.step());
         s.nudge(W::Alpha, 3);
-        assert_eq!(s.w[W::Alpha], 0.55);
+        // A nudge rounds to four places, so a default from the search comes back within one.
+        assert!((s.w[W::Alpha] - (start + 3.0 * step)).abs() < 2e-4);
         s.nudge(W::Alpha, -3);
-        assert_eq!(s.w[W::Alpha], 0.4, "three up and three down is where it was");
-        s.nudge(W::Commit, -10);
+        assert!((s.w[W::Alpha] - start).abs() < 2e-4, "three up and three down is where it was");
+        s.nudge(W::Commit, -1000);
         assert_eq!(s.w[W::Commit], 0.0, "never under nothing");
         for w in W::ALL {
             assert!(w.step() > 0.0 && w.step() <= w.default_value().max(1.0), "{}: {}", w.name(), w.step());

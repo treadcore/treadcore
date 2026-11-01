@@ -65,8 +65,10 @@ mod tests {
 
     #[test]
     fn with_bio_off_there_is_no_wave_at_all() {
-        assert_eq!(rhythm(&Settings::default(), 3, 5000), [0.0; WAVES]);
-        assert_eq!(mood(&Settings::default(), 3, 5000), 0.0);
+        // Named, not the default: the fleet may turn bio on.
+        let off = on("off");
+        assert_eq!(rhythm(&off, 3, 5000), [0.0; WAVES]);
+        assert_eq!(mood(&off, 3, 5000), 0.0);
     }
 
     #[test]
