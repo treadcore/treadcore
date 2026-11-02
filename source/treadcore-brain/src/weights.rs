@@ -93,7 +93,7 @@ macro_rules! weights {
 weights! {
     // Tactics: target selection (tactics.rs; the 22 weights and their scales).
     Near "w_near" 2.0, "target: worth of nearness, w_near / (1 + d / near_scale)";
-    NearScale "near_scale" 15.0, "target: the distance scale of nearness, tiles";
+    NearScale "near_scale" 30.0, "target: the distance scale of nearness, tiles";
     Wounded "w_wounded" 1.2, "target: worth of its wounds";
     Finish "w_finish" 0.552896, "target: one direct shot from dead";
     Boat "w_boat" 2.0, "target: afloat, a boat sinks at one hit";
@@ -106,7 +106,7 @@ weights! {
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
     BaseR "base_r" 6.15272, "target: the base's reach for w_threat, tiles";
     Stick "w_stick" 0.322391, "target: the one already chosen";
-    FocusBlend "focus_blend" 0.5, "target (LR 117): 0 the near tank in range, 1 the wounded one a teammate is on; 0.5 both as before (each side's terms doubled toward its end)";
+    FocusBlend "focus_blend" 0.25, "target (LR 117): 0 the near tank in range, 1 the wounded one a teammate is on; 0.5 both as before (each side's terms doubled toward its end)";
     // Tactics: the engagement and assignment.
     OddsR "odds_r" 14.0, "odds: tanks this near the fight count, tiles";
     PillboxWorth "pillbox_worth" 0.7, "odds: a hostile pillbox as a share of a tank";
@@ -211,7 +211,7 @@ weights! {
     ConnectTiles "connect_tiles" 5.12027, "cycle: road tiles laid on one visit at most";
     // Paul's answers of 18 October as scalars (ROADMAP 12h, LR 10).
     Mend "w_mend" 0.5, "improvement: worth of mending the most hurt pillbox of the base";
-    Mine "w_mine" 1.0, "improvement: worth of a mine on the moat";
+    Mine "w_mine" 0.860887, "improvement: worth of a mine on the moat";
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
@@ -225,7 +225,7 @@ weights! {
     BridgeReach "bridge_reach" 40.0, "bridge jobs: a teammate this near its next tile takes it, tiles";
     BridgeWing "bridge_wing" 1.0, "bridge jobs: a wingman with material takes one too, leaving its leader's wedge (1), or only tanks on auto (0) (rounded)";
     Duck "w_duck" 1.0, "duck: safety against the errand; a tank ducks with its armour share at or under this, 1 always, 0 never";
-    DuckMemory "duck_memory" 5.0, "duck: seconds a hostile gun seen is remembered where it was, its reload counted down (sight and direct range are both 10 tiles, so a gun at the edge is often unseen)";
+    DuckMemory "duck_memory" 2.5, "duck: seconds a hostile gun seen is remembered where it was, its reload counted down (sight and direct range are both 10 tiles, so a gun at the edge is often unseen)";
     DuckPlan "duck_plan" 1.0, "duck: the point held while it stays safe, else the one `drive_to` has out of the gun's reach or line by the tick it is ready (1, LR 57), against the nearest safe point to the errand, picked anew each think (0, LR 21); thresholded at 0.5";
     DuckReady "duck_ready" 1.5, "duck: a hostile gun ready within this many seconds threatens, if it fires before mine (a tank covers about five tiles in 1.5 s)";
     Front "w_front" 0.0, "front (0, the default since LR 75): Expand's depot by its distance to the team board's front (1, LR 58) against its distance to the base (0, before LR 58), the cost the blend of the two; a depot so chosen is kept until taken or given up; needs board";
