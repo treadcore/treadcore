@@ -145,7 +145,7 @@ impl Default for Tactics {
             near_scale: 15.0,
             w_wounded: 1.2,
             w_finish: 0.552896,
-            w_boat: 1.0,
+            w_boat: 2.0,
             w_called: 0.8,
             called_for: 15.0,
             w_focus: 0.5,

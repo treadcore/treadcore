@@ -96,7 +96,7 @@ weights! {
     NearScale "near_scale" 15.0, "target: the distance scale of nearness, tiles";
     Wounded "w_wounded" 1.2, "target: worth of its wounds";
     Finish "w_finish" 0.552896, "target: one direct shot from dead";
-    Boat "w_boat" 1.0, "target: afloat, a boat sinks at one hit";
+    Boat "w_boat" 2.0, "target: afloat, a boat sinks at one hit";
     Called "w_called" 0.8, "target: a teammate pinged it";
     CalledFor "called_for" 15.0, "target: seconds a ping stays a call";
     Focus "w_focus" 0.5, "target: each teammate already on it";
@@ -185,7 +185,7 @@ weights! {
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
     PostureFortify "w_pos_fortify" 0.1875, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
-    DefendGround "w_defend_ground" 1.5, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
+    DefendGround "w_defend_ground" 3.0, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
     ConnectIdle "connect_idle" 1.0, "posture: how much of Connect's score stands when this tank has no pillbox to bring in: 1 as built, 0 a score only for work that can be done";
     PostureExpand "w_pos_expand" 0.4, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
     // The dodge (lib.rs `Dodge`, LR 27): its numbers, once constants.
@@ -208,9 +208,9 @@ weights! {
     GiveItem "w_give_item" 1.0, "cycle: one plan item for the base on each fill";
     GiveUpgrade "w_give_upgrade" 1.0, "cycle: one improvement for the base on each fill";
     Connect "w_connect" 1.0, "cycle: road tiles toward the next friendly base or pillbox";
-    ConnectTiles "connect_tiles" 4.0, "cycle: road tiles laid on one visit at most";
+    ConnectTiles "connect_tiles" 5.12027, "cycle: road tiles laid on one visit at most";
     // Paul's answers of 18 October as scalars (ROADMAP 12h, LR 10).
-    Mend "w_mend" 1.0, "improvement: worth of mending the most hurt pillbox of the base";
+    Mend "w_mend" 0.5, "improvement: worth of mending the most hurt pillbox of the base";
     Mine "w_mine" 1.0, "improvement: worth of a mine on the moat";
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
