@@ -7,6 +7,20 @@
 # Decrees.
 castle_inside 2 2  # Paul, 30 October 2026: "dont get castles of turrets ... more than 2"
 
+# The temperament matrix: a wave may calm as well as rouse, and a row is held to a quarter or four times.
+temper_engage_1 -1 1
+temper_engage_2 -1 1
+temper_engage_3 -1 1
+temper_press_1 -1 1
+temper_press_2 -1 1
+temper_press_3 -1 1
+temper_retreat_1 -1 1
+temper_retreat_2 -1 1
+temper_retreat_3 -1 1
+temper_trigger_1 -1 1
+temper_trigger_2 -1 1
+temper_trigger_3 -1 1
+
 # Shares: outside 0 to 1 they are not shares (suggest.py's UNIT).
 w_smooth 0 1
 alpha 0 1

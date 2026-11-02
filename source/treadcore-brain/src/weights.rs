@@ -239,6 +239,18 @@ weights! {
     LongshotAny "longshot_any" 1.0, "spending (1 since LR 86): 1 a longshot with no hostile structure to hit goes at the nearest hostile pillbox, else the target tank; 0 at structures only (before LR 86); thresholded at 0.5";
     StrikesMax "strikes_max" 3.0, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
+    TemperEngage1 "temper_engage_1" 0.0, "temper: how much the 60 s wave moves engage_odds, the bar under which a tank holds off, a share of it; bio.rs";
+    TemperEngage2 "temper_engage_2" 0.0, "temper: how much the 73 s wave moves engage_odds, the bar under which a tank holds off, a share of it; bio.rs";
+    TemperEngage3 "temper_engage_3" 0.0, "temper: how much the 86 s wave moves engage_odds, the bar under which a tank holds off, a share of it; bio.rs";
+    TemperPress1 "temper_press_1" 0.0, "temper: how much the 60 s wave moves press_odds, the bar over which it closes, a share of it; bio.rs";
+    TemperPress2 "temper_press_2" 0.0, "temper: how much the 73 s wave moves press_odds, the bar over which it closes, a share of it; bio.rs";
+    TemperPress3 "temper_press_3" 0.0, "temper: how much the 86 s wave moves press_odds, the bar over which it closes, a share of it; bio.rs";
+    TemperRetreat1 "temper_retreat_1" 0.0, "temper: how much the 60 s wave moves retreat_armor, the armour it goes home at, a share of it; bio.rs";
+    TemperRetreat2 "temper_retreat_2" 0.0, "temper: how much the 73 s wave moves retreat_armor, the armour it goes home at, a share of it; bio.rs";
+    TemperRetreat3 "temper_retreat_3" 0.0, "temper: how much the 86 s wave moves retreat_armor, the armour it goes home at, a share of it; bio.rs";
+    TemperTrigger1 "temper_trigger_1" 0.0, "temper: how much the 60 s wave moves longshot_every, the seconds between its longshots, a share of it; bio.rs";
+    TemperTrigger2 "temper_trigger_2" 0.0, "temper: how much the 73 s wave moves longshot_every, the seconds between its longshots, a share of it; bio.rs";
+    TemperTrigger3 "temper_trigger_3" 0.0, "temper: how much the 86 s wave moves longshot_every, the seconds between its longshots, a share of it; bio.rs";
 }
 
 /// The flat array of every weight.

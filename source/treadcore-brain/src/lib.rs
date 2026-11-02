@@ -78,6 +78,11 @@ pub trait Brain: Send + Sync {
     }
     /// The Auto rung this think took, if it reached the ladder (the
     /// census, LR 26); None for a brain without one.
+    /// The stance last taken in a fight and when, for a census to read.
+    fn stance(&self) -> Option<(Tick, tactics::Stance)> {
+        None
+    }
+
     fn rung(&self) -> Option<commander::Rung> {
         None
     }

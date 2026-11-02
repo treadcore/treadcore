@@ -281,6 +281,8 @@ pub struct Tactician {
     advance: crate::intent::Advance,
     advance_at: Option<Tick>,
     held_stance: Option<Stance>,
+    /// The last stance taken and when, for a census to read: it decides nothing.
+    pub last_stance: Option<(Tick, Stance)>,
 }
 
 /// A tank's worth in a fight: armour, and none without shells.
@@ -468,6 +470,12 @@ impl Tactician {
     /// Mass, engage or press, by the odds; massing ends after
     /// `mass_for` seconds whether or not the team came.
     pub fn stance(&mut self, tick: Tick, odds: &Odds) -> Stance {
+        let st = self.stance_now(tick, odds);
+        self.last_stance = Some((tick, st));
+        st
+    }
+
+    fn stance_now(&mut self, tick: Tick, odds: &Odds) -> Stance {
         let r = odds.ratio();
         if let Some((beta, band)) = self.smooth {
             // The decision to close, rounded off (Paul, 18 October): the

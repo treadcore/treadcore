@@ -251,6 +251,8 @@ impl Goal {
 
 pub struct Commander {
     name: String,
+    /// The temperament matrix's row for `retreat_armor` at this think: 1 with no waves (bio.rs).
+    temper_retreat: f32,
     pub goal: Goal,
     /// The doctrine for drones and for tanks in sight.
     inner: RuleBot,
@@ -490,7 +492,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        let mut c = Commander { forward: None, raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
+        let mut c = Commander { temper_retreat: 1.0, forward: None, raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
         // The default Settings applied, not only held: a Commander built
         // here plays as a dealt one does (LR 50: one built without this
         // ran the landfall's weights at 0 while its Settings said 30).
@@ -783,7 +785,7 @@ impl Commander {
         let (low_shells, low_armor) = if share > 0.0 {
             use crate::weights::W;
             let shells = LOW_SHELLS as f32 + share * (self.settings.w[W::RetreatShells].max(0.0) - LOW_SHELLS as f32);
-            (shells.round() as u16, LOW_ARMOR + share * (self.settings.w[W::RetreatArmor] - LOW_ARMOR))
+            (shells.round() as u16, LOW_ARMOR + share * (self.settings.w[W::RetreatArmor] * self.temper_retreat - LOW_ARMOR))
         } else {
             (LOW_SHELLS, LOW_ARMOR)
         };
@@ -2551,6 +2553,10 @@ impl Brain for Commander {
         self.rung_now
     }
     /// The inner RuleBot's: the doctrine runs the landfall.
+    fn stance(&self) -> Option<(Tick, crate::tactics::Stance)> {
+        self.inner.tactics.as_ref().and_then(|t| t.last_stance)
+    }
+
     fn beach(&self) -> Option<V2> {
         self.inner.beach()
     }
@@ -2594,8 +2600,21 @@ impl Commander {
             use crate::weights::W;
             let mood = crate::bio::mood(&self.settings, obs.player, obs.tick);
             let (odds, amount) = (self.settings.w[W::EngageOdds], self.settings.w[W::BioAmount]);
+            let waves = crate::bio::rhythm(&self.settings, obs.player, obs.tick);
+            let s = &self.settings;
+            let row = |r: usize| crate::bio::temper_row(s, r, &waves);
+            // Stances are reached in about 1.4% of a live tank's seconds; going home and firing are nearly
+            // always in play, or the matrix would have little to swing.
+            self.temper_retreat = row(2);
             if let Some(t) = self.inner.tactics.as_mut() {
-                t.w.engage_odds = odds * (1.0 + amount * mood);
+                t.w.engage_odds = odds * (1.0 + amount * mood) * row(0);
+                // A row of zeros leaves its dial as it is, not set again from the settings.
+                if crate::bio::temper_on(s, 1) {
+                    t.w.press_odds = s.w[W::PressOdds] * row(1);
+                }
+                if crate::bio::temper_on(s, 3) {
+                    t.w.longshot_every = s.w[W::LongshotEvery] * row(3);
+                }
             }
         }
         let mut cmds = self.think_map(obs, map);

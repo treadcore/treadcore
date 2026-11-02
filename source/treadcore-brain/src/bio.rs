@@ -33,6 +33,20 @@ pub fn wave(shape: usize, phase: f32) -> f32 {
     }
 }
 
+/// Where this seat's three waves stand now, in turns: whatever `bio` says, so a census can fold what
+/// tanks did over waves that were driving nothing, and see what chance looks like.
+pub fn phases(s: &Settings, seat: PlayerId, tick: Tick) -> [f32; WAVES] {
+    let secs = tick as f32 / TICK_HZ as f32;
+    let period = s.w[W::BioPeriod].max(1.0);
+    // The golden ratio spreads any number of seats about the circle.
+    let start = seat as f32 * 0.618_034;
+    let mut out = [0.0; WAVES];
+    for (i, o) in out.iter_mut().enumerate() {
+        *o = start + i as f32 / 3.0 + secs / (period * RATIO[i]);
+    }
+    out
+}
+
 /// The three waves for this seat now. All zero with `bio` at 0.
 pub fn rhythm(s: &Settings, seat: PlayerId, tick: Tick) -> [f32; WAVES] {
     let shape = s.choice(W::Bio);
@@ -40,14 +54,35 @@ pub fn rhythm(s: &Settings, seat: PlayerId, tick: Tick) -> [f32; WAVES] {
     if shape == 0 {
         return out;
     }
-    let secs = tick as f32 / TICK_HZ as f32;
-    let period = s.w[W::BioPeriod].max(1.0);
-    // The golden ratio spreads any number of seats about the circle.
-    let start = seat as f32 * 0.618_034;
-    for (i, o) in out.iter_mut().enumerate() {
-        *o = wave(shape, start + i as f32 / 3.0 + secs / (period * RATIO[i]));
+    let at = phases(s, seat, tick);
+    for (o, p) in out.iter_mut().zip(at) {
+        *o = wave(shape, p);
     }
     out
+}
+
+/// THE TEMPERAMENT MATRIX (Paul, 1 November: "connect biorhythems to the output temperment"). Rows are
+/// what a tank's temper moves, columns are the three waves, and each entry is a dial, so the census, the
+/// road and a person read them as they read any other. Each row: its dial x (1 + sum of entry x wave).
+/// All zero, as they start, nothing moves. `bio_amount` is the older road, the mean of the waves into
+/// `engage_odds`: one row of equal numbers, and it stays.
+pub const TEMPERS: usize = 4;
+pub const TEMPER: [[W; WAVES]; TEMPERS] = [
+    [W::TemperEngage1, W::TemperEngage2, W::TemperEngage3],
+    [W::TemperPress1, W::TemperPress2, W::TemperPress3],
+    [W::TemperRetreat1, W::TemperRetreat2, W::TemperRetreat3],
+    [W::TemperTrigger1, W::TemperTrigger2, W::TemperTrigger3],
+];
+
+/// One matrix row at these waves: its multiplier, held from a quarter to four times.
+pub fn temper_row(s: &Settings, row: usize, waves: &[f32; WAVES]) -> f32 {
+    let sum: f32 = TEMPER[row].iter().zip(waves).map(|(w, v)| s.w[*w] * v).sum();
+    (1.0 + sum).clamp(0.25, 4.0)
+}
+
+/// Whether any entry of a row is set: a row of zeros leaves its dial alone altogether.
+pub fn temper_on(s: &Settings, row: usize) -> bool {
+    TEMPER[row].iter().any(|w| s.w[*w] != 0.0)
 }
 
 /// One number for a dial to follow: the waves' mean.
@@ -81,6 +116,34 @@ mod tests {
         }
         assert_ne!(wave(1, 0.1), wave(2, 0.1));
         assert_ne!(wave(3, 0.1), wave(4, 0.1));
+    }
+
+    #[test]
+    fn the_matrix_starts_empty_and_a_row_follows_its_own_wave() {
+        let s = on("sine");
+        for row in 0..TEMPERS {
+            assert!(!temper_on(&s, row), "a row is set by default: the brain would change");
+            assert_eq!(temper_row(&s, row, &[1.0, -1.0, 0.5]), 1.0);
+        }
+        let set = Settings::parse("bio = sine\ntemper_press_2 = 0.5\n").unwrap();
+        assert!(temper_on(&set, 1) && !temper_on(&set, 0));
+        assert_eq!(temper_row(&set, 1, &[1.0, 1.0, 1.0]), 1.5);
+        assert_eq!(temper_row(&set, 1, &[1.0, -1.0, 1.0]), 0.5, "the second wave, not the first");
+        let neg = Settings::parse("temper_retreat_1 = -1\ntemper_retreat_2 = -1\ntemper_retreat_3 = -1\n").unwrap();
+        assert_eq!(neg.w[W::TemperRetreat1], -1.0, "a negative entry is allowed: a wave may calm");
+        assert_eq!(temper_row(&neg, 2, &[1.0, 1.0, 1.0]), 0.25, "held at a quarter");
+    }
+
+    #[test]
+    fn phases_stand_whatever_bio_says_and_the_waves_are_unchanged() {
+        let off = on("off");
+        assert_ne!(phases(&off, 3, 500), phases(&off, 4, 500));
+        let s = on("sine");
+        let p = phases(&s, 3, 500);
+        let r = rhythm(&s, 3, 500);
+        for i in 0..WAVES {
+            assert_eq!(r[i], wave(1, p[i]));
+        }
     }
 
     #[test]

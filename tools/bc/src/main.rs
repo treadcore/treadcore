@@ -13,6 +13,8 @@
 //!   START=net.bin  begin from this net (Net::save's form) instead of at
 //!              random: a round of orrery's fleet-train continues the best net
 //!              on new matches (LR 109)
+//!   WIDTH=64   the two hidden layers' width: orrery's width watch trains the same
+//!              data at several, to see if the net has run out of room
 //!   GPU_GB=6   the training set is kept on the device if it fits in this,
 //!              else streamed through it a chunk at a time
 //!   (the fast setting, LR 107: BATCH=32768 LR=1e-2, 0.64 s an epoch on a
@@ -155,9 +157,15 @@ struct Mlp {
     act: Relu,
 }
 
+/// The hidden layers' width: `WIDTH`, 64 as ever.
+fn width() -> usize {
+    std::env::var("WIDTH").ok().and_then(|s| s.parse().ok()).unwrap_or(64)
+}
+
 impl Mlp {
     fn new(dev: &Device, inp: usize, out: usize) -> Self {
-        Mlp { a: LinearConfig::new(inp, 64).init(dev), b: LinearConfig::new(64, 64).init(dev), c: LinearConfig::new(64, out).init(dev), act: Relu::new() }
+        let h = width();
+        Mlp { a: LinearConfig::new(inp, h).init(dev), b: LinearConfig::new(h, h).init(dev), c: LinearConfig::new(h, out).init(dev), act: Relu::new() }
     }
     fn forward(&self, x: Tensor<2>) -> Tensor<2> {
         let x = self.act.forward(self.a.forward(x));
@@ -175,7 +183,7 @@ fn load_start(path: &str, dev: &Device, inp: usize, outs: usize) -> Mlp {
     let u = |o: usize| u32::from_le_bytes(b[o..o + 4].try_into().unwrap()) as usize;
     let k = u(8);
     let sizes: Vec<usize> = (0..k).map(|i| u(12 + 4 * i)).collect();
-    assert_eq!(sizes, vec![inp, 64, 64, outs], "START: a net of another shape");
+    assert_eq!(sizes, vec![inp, width(), width(), outs], "START: a net of another shape");
     let mut off = 12 + 4 * k;
     let mut next = || {
         let v = f32::from_le_bytes(b[off..off + 4].try_into().unwrap());
@@ -564,7 +572,7 @@ fn main() {
     // weights row by row (output-major: w[o * inp + i]) and biases, f32 LE.
     // Burn keeps a Linear's weight as [inp, out], so it is transposed here.
     let mut f: Vec<u8> = b"TCNET1\0\0".to_vec();
-    let sizes = [d.senses as u32, 64, 64, outs as u32];
+    let sizes = [d.senses as u32, width() as u32, width() as u32, outs as u32];
     f.extend_from_slice(&(sizes.len() as u32).to_le_bytes());
     for s in sizes {
         f.extend_from_slice(&s.to_le_bytes());

@@ -327,6 +327,10 @@ impl Brain for Duelist {
     fn rung(&self) -> Option<crate::commander::Rung> {
         self.rules.rung()
     }
+
+    fn stance(&self) -> Option<(treadcore_sim::Tick, crate::tactics::Stance)> {
+        self.rules.stance()
+    }
 }
 
 #[cfg(test)]

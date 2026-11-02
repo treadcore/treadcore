@@ -109,6 +109,11 @@ pub fn role_by_rank(rank: usize, person_leads: bool) -> Role {
     }
 }
 
+/// A census folds what a tank did over where its waves stood: each wave cut into this many bins.
+const FOLD_BINS: usize = 8;
+/// What it counts: live seconds, seconds in a fight, each stance's, shells, kills, deaths.
+const FOLD: [&str; 8] = ["secs", "fight", "mass", "engage", "press", "shells", "kills", "deaths"];
+
 /// Any team, as the window deals one (`--teams N`, seat i on team
 /// i % N; the default match): `team` is its seats in order, the first
 /// the leader. The same roles as a fleet's: a person's team gets a
@@ -1070,6 +1075,11 @@ mod tests {
             };
             let mut words = [0u32; 10];
             let mut rungs = [0u32; 6];
+            // What the trial team did, folded over where each seat's waves stood (bio.rs). Only when
+            // the trial has waves on: a line a seed, and it changes nothing a tank does.
+            let folding = trial.choice(crate::weights::W::Bio) > 0;
+            let mut fold = [[[0u32; FOLD_BINS]; FOLD.len()]; crate::bio::WAVES];
+            let bin = |p: PlayerId, tick: Tick| crate::bio::phases(&trial, p, tick).map(|f| (((f - f.floor()) * FOLD_BINS as f32) as usize).min(FOLD_BINS - 1));
             let mut window: std::collections::HashMap<PlayerId, std::collections::VecDeque<String>> = Default::default();
             let mut seen: std::collections::HashMap<(PlayerId, PlayerId), Tick> = Default::default();
             let mut sightings: std::collections::HashMap<PlayerId, Vec<(Tick, V2)>> = Default::default();
@@ -1077,6 +1087,27 @@ mod tests {
                 let orders = crate::run_bots(&w, &mut bots);
                 w.step(&orders);
                 tally.hear(&w);
+                if folding {
+                    for e in &w.events {
+                        let mut count = |p: PlayerId, what: usize| {
+                            if teams()[p as usize] == lucky {
+                                for (wave, b) in bin(p, w.tick).into_iter().enumerate() {
+                                    fold[wave][what][b] += 1;
+                                }
+                            }
+                        };
+                        match e {
+                            Event::ShellLaunched { owner, .. } => count(*owner, 5),
+                            Event::TankDestroyed { owner, by, .. } => {
+                                count(*owner, 7);
+                                if let Some(k) = by {
+                                    count(*k, 6);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 if acts_on {
                     for e in &w.events {
                         let Event::TankDestroyed { tank, owner, by } = e else { continue };
@@ -1121,6 +1152,19 @@ mod tests {
                 }
                 if w.tick % TICK_HZ as Tick == 0 {
                     for (p, b) in &bots {
+                        if folding && teams()[*p as usize] == lucky && w.tanks.iter().any(|t| t.owner == *p && t.alive) {
+                            let bins = bin(*p, w.tick);
+                            // In a fight if it took a stance within the last second.
+                            let st = b.stance().filter(|(t, _)| w.tick.saturating_sub(*t) <= TICK_HZ as Tick).map(|(_, s)| s);
+                            for (wave, k) in bins.into_iter().enumerate() {
+                                fold[wave][0][k] += 1;
+                                if let Some(s) = st {
+                                    fold[wave][1][k] += 1;
+                                    use crate::tactics::Stance;
+                                    fold[wave][match s { Stance::Mass => 2, Stance::Engage => 3, Stance::Press => 4 }][k] += 1;
+                                }
+                            }
+                        }
                         if teams()[*p as usize] == lucky {
                             for (i, on) in part(b.act()).into_iter().enumerate() {
                                 words[i] += on as u32;
@@ -1219,6 +1263,12 @@ mod tests {
             }
             eprintln!("  trial team, seat-seconds: {}", WORDS.iter().zip(words.iter()).map(|(k, n)| format!("{} {}", k, n)).collect::<Vec<_>>().join(", "));
             eprintln!("  trial team, seat-seconds a rung: {}", rung_line(&rungs));
+            if folding {
+                for (i, wave) in fold.iter().enumerate() {
+                    let cols: Vec<String> = FOLD.iter().zip(wave).map(|(k, v)| format!("{} {}", k, v.iter().map(|n| n.to_string()).collect::<Vec<_>>().join(","))).collect();
+                    eprintln!("  bio folded wave {}: {}", i, cols.join("; "));
+                }
+            }
             for (t, n) in rungs_total.iter_mut().zip(rungs) {
                 *t += n;
             }
