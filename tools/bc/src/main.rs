@@ -151,8 +151,8 @@ fn allowed(h: usize, c: usize, m: &[u8; 3]) -> bool {
 
 #[derive(Module, Debug)]
 struct Mlp {
-    a: Linear,
-    b: Linear,
+    /// The hidden layers, `DEPTH` of them at `WIDTH` each (two of 64 as ever), then the heads.
+    hidden: Vec<Linear>,
     c: Linear,
     act: Relu,
 }
@@ -162,15 +162,43 @@ fn width() -> usize {
     std::env::var("WIDTH").ok().and_then(|s| s.parse().ok()).unwrap_or(64)
 }
 
+/// How many hidden layers: `DEPTH`, 2 as ever (the shape watch of the plan's chapter 12 trains
+/// the same data at other shapes; Net reads any number of layers).
+fn depth() -> usize {
+    std::env::var("DEPTH").ok().and_then(|s| s.parse().ok()).unwrap_or(2).max(1)
+}
+
+/// The sizes of a net of this shape: the senses, the hidden layers, the heads.
+fn sizes(inp: usize, out: usize) -> Vec<usize> {
+    let mut v = vec![inp];
+    v.extend(std::iter::repeat(width()).take(depth()));
+    v.push(out);
+    v
+}
+
 impl Mlp {
     fn new(dev: &Device, inp: usize, out: usize) -> Self {
-        let h = width();
-        Mlp { a: LinearConfig::new(inp, h).init(dev), b: LinearConfig::new(h, h).init(dev), c: LinearConfig::new(h, out).init(dev), act: Relu::new() }
+        let s = sizes(inp, out);
+        let hidden = s.windows(2).take(s.len() - 2).map(|p| LinearConfig::new(p[0], p[1]).init(dev)).collect();
+        Mlp { hidden, c: LinearConfig::new(s[s.len() - 2], out).init(dev), act: Relu::new() }
     }
     fn forward(&self, x: Tensor<2>) -> Tensor<2> {
-        let x = self.act.forward(self.a.forward(x));
-        let x = self.act.forward(self.b.forward(x));
+        let mut x = x;
+        for l in &self.hidden {
+            x = self.act.forward(l.forward(x));
+        }
         self.c.forward(x)
+    }
+    /// Every layer in order, the heads last.
+    fn layers_mut(&mut self) -> Vec<&mut Linear> {
+        let mut v: Vec<&mut Linear> = self.hidden.iter_mut().collect();
+        v.push(&mut self.c);
+        v
+    }
+    fn layers(&self) -> Vec<&Linear> {
+        let mut v: Vec<&Linear> = self.hidden.iter().collect();
+        v.push(&self.c);
+        v
     }
 }
 
@@ -182,8 +210,8 @@ fn load_start(path: &str, dev: &Device, inp: usize, outs: usize) -> Mlp {
     assert_eq!(&b[..8], b"TCNET1\0\0", "START: not a TCNET1 net");
     let u = |o: usize| u32::from_le_bytes(b[o..o + 4].try_into().unwrap()) as usize;
     let k = u(8);
-    let sizes: Vec<usize> = (0..k).map(|i| u(12 + 4 * i)).collect();
-    assert_eq!(sizes, vec![inp, width(), width(), outs], "START: a net of another shape");
+    let sizes_read: Vec<usize> = (0..k).map(|i| u(12 + 4 * i)).collect();
+    assert_eq!(sizes_read, sizes(inp, outs), "START: a net of another shape (WIDTH and DEPTH say {:?})", sizes(inp, outs));
     let mut off = 12 + 4 * k;
     let mut next = || {
         let v = f32::from_le_bytes(b[off..off + 4].try_into().unwrap());
@@ -191,8 +219,8 @@ fn load_start(path: &str, dev: &Device, inp: usize, outs: usize) -> Mlp {
         v
     };
     let mut m = Mlp::new(dev, inp, outs);
-    for (l, lin) in [&mut m.a, &mut m.b, &mut m.c].into_iter().enumerate() {
-        let (a, o) = (sizes[l], sizes[l + 1]);
+    for (l, lin) in m.layers_mut().into_iter().enumerate() {
+        let (a, o) = (sizes_read[l], sizes_read[l + 1]);
         let mut w = vec![0f32; a * o];
         for oo in 0..o {
             for ii in 0..a {
@@ -572,12 +600,12 @@ fn main() {
     // weights row by row (output-major: w[o * inp + i]) and biases, f32 LE.
     // Burn keeps a Linear's weight as [inp, out], so it is transposed here.
     let mut f: Vec<u8> = b"TCNET1\0\0".to_vec();
-    let sizes = [d.senses as u32, width() as u32, width() as u32, outs as u32];
+    let sizes: Vec<u32> = sizes(d.senses, outs).into_iter().map(|s| s as u32).collect();
     f.extend_from_slice(&(sizes.len() as u32).to_le_bytes());
     for s in sizes {
         f.extend_from_slice(&s.to_le_bytes());
     }
-    for l in [&model.a, &model.b, &model.c] {
+    for l in model.layers() {
         let w: Vec<f32> = l.weight.val().into_data().try_to_vec::<f32>().unwrap();
         let shape = l.weight.val().dims();
         let (inp, out_) = (shape[0], shape[1]);
