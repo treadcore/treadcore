@@ -1,0 +1,145 @@
+<meta charset="utf-8">
+<title>A Terrain for Each Dataset</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="bar"><div class="bar-in"><strong><a href="index.html">orrery</a> · lab report</strong><a href="#abstract">Abstract</a><a href="#si">I</a><a href="#sii">II</a><a href="#siii">III</a><a href="#siv">IV</a><a href="#sv">V</a><a href="#svi">VI</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">orrery · the brain · maxima and what works on them</p>
+    <h1>A Terrain for Each Dataset</h1>
+    <div class="front"><p class="note">Paul, 1 November: "i see there are areas of local maxima in the terrain map. Is there a way to can perform this visualization to each dataset we can. Selecting regions of operation with the terrain map can be visually confirmed that data is working on all maximas."</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#abstract">Abstract</a></li><li><a href="#si">I. What was wrong with the old one</a></li><li><a href="#sii">II. The three words</a></li><li><a href="#siii">III. What it shows</a></li><li><a href="#siv">IV. Selecting a region</a></li><li><a href="#sv">V. Threats and what is open</a></li><li><a href="#svi">VI. Reproducing this</a></li></ol></nav>
+  <main>
+  <section id="abstract"><h2>Abstract</h2><p>Yes, and building it found that the terrain Paul was looking at stood on 109 reads of the 2,675 it should have used. It now draws sixteen datasets: every map, each of eleven maps, kills less deaths, the score less what going forward pays, and both kinds of Crucible net. Each maximum says whether work stands on it: <strong>read</strong>, <strong>being worked on</strong>, or <strong>nothing on it</strong>. A region drawn on a flat map lights up on the surface and can be sent trials. At 18:22, of 88 maxima, 77 had been read, 8 were being worked on and 3 had nothing on them. <strong>The picture that matters most is that the score's highest hill stands in the valley of kills less deaths, and disappears when going forward is taken out.</strong> No game value changed, and no region has been asked for yet.</p><p><strong>Index Terms:</strong> response surfaces, search coverage, kernel smoothing, interactive selection.</p></section><section id="si"><h2>I. What was wrong with the old one</h2><p>The terrain read <code>fleet.tsv</code>, whose rows mostly carry no commit or an old one, and a ledger that stopped on 28 October. So 3,651 rows looked like some other game, and it drew from 76 to 109 reads. It also set its heights by the gains promotions claimed, and centred on main, where the fleet stands on the line.</p><div class="table"><table><thead><tr><th></th><th>Before</th><th>Now</th></tr></thead><tbody><tr><td>Reads</td><td>109</td><td><strong>2,675</strong>, from every census's own directory</td></tr><tr><td>Today's defaults</td><td>main, <code>w_pos_fortify</code> 6</td><td>the line, 1.5</td></tr><tr><td>A read's height</td><td>its gain less the gains promotions claimed since</td><td>its gain plus how far its day's defaults stood from today's, by a small fit of the dials that have moved</td></tr><tr><td>Counted on a pair</td><td>every read</td><td><strong>only reads that moved one of the two dials.</strong> A trial of a third dial says nothing of these two</td></tr><tr><td>A maximum</td><td>any rise, including the rim of a pit</td><td>falling away on both sides of some line, off the map counting, and not in the lower half of the height</td></tr><tr><td>A map's read</td><td>any</td><td>8 seeds on that map or more. One read of 2 or 3 seeds, +15.50 +/- 0.25 on europe, drew a mountain</td></tr></tbody></table></div><p>Left out, and said on the page: 2,413 reads of other games, 1,225 of one map, 531 of switches, 157 of whole brains, 406 unfinished or without a reading.</p></section><section id="sii"><h2>II. The three words</h2><p>A maximum's reads are those within one kernel of it, about a third to half a doubling.</p><div class="table"><table><thead><tr><th>Word</th><th>Means</th></tr></thead><tbody><tr><td><strong>read</strong></td><td>110 seeds or more stand there. Their mean says if it <strong>holds</strong> (past two errors over today), <strong>falls</strong> (past two under), or is not settled</td></tr><tr><td><strong>being worked on</strong></td><td>Fewer, and a job queued or running there</td></tr><tr><td><strong>nothing on it</strong></td><td>Neither</td></tr></tbody></table></div><p><strong>"Read" means seeds stood there, not that it won.</strong> Of the 77 read, 17 hold, 2 fall and 58 are not settled.</p><figure style="max-width:1100px"><img loading="lazy" src="terrain/every.png" alt="The terrain of every map over w_pos_fortify and base_r, with a hill at w_pos_fortify 0.37" style="width:100%;border:1px solid var(--line);border-radius:6px"><figcaption><strong>Fig. 1. Every map, points a seat.</strong> Left, the datasets, each with how many of its maxima have work on them. Middle, the surface. Right of it, the same ground from above: dots are reads, amber are jobs, the ring is today. Flag 1 is the hill at <code>w_pos_fortify</code> 0.37.</figcaption></figure>
+</section><section id="siii"><h2>III. What it shows</h2><p><strong>The fortify trade, as ground.</strong> On every map the top is <code>w_pos_fortify</code> 0.37, reading +2.54 +/- 0.55 over 1,930 seeds, the same place as the 0.4 the report held. On kills less deaths that ground is the valley, and the maximum is at 5.83, +0.17 +/- 0.04. With going forward taken out the hill is gone: 0.37 reads +0.10 +/- 0.48. Nobody chose these pictures to agree with <a href="fortify-lab-report.html">A Stale Dial</a>, and they do, because they are largely the same reads.</p><figure style="max-width:1100px"><img loading="lazy" src="terrain/kills.png" alt="The terrain of kills less deaths over the same dials, with the red valley where the score's hill is" style="width:100%;border:1px solid var(--line);border-radius:6px"><figcaption><strong>Fig. 2. The same reads and the same dials, kills less deaths.</strong> The score's hill stands in this one's valley, and this one's maximum is near the old 6. The box is a selected region, lit on the surface as well; one maximum here has nothing on it, so the panel offers to read it.</figcaption></figure>
+<figure style="max-width:1100px"><img loading="lazy" src="terrain/less.png" alt="The same terrain with what going forward pays taken out, where the hill is gone" style="width:100%;border:1px solid var(--line);border-radius:6px"><figcaption><strong>Fig. 3. The same again, less what going forward pays.</strong> From 145 reads, because only logs since the census named its rewards can say. The hill is gone. This is the conclusion of <a href="fortify-lab-report.html">A Stale Dial</a>, seen as ground.</figcaption></figure>
+<p><strong>Maps differ, and most have little to show.</strong> Atlantic draws no maximum at all: its reads sit near zero. Fidos-airstrip has seven and fortressislesx six. A map's reads have about 37 seeds at most.</p><p><strong>Crucible's islands went apart.</strong> Three islands, three separate tracks in weight space, each with its island at the end, in both the plain and the hybrid nets. So they are searching different ground, which is what islands are for. <strong>The heights say little:</strong> a plain ladder is mostly draws, and the hybrid's margins are mostly negative. There is no dial to send a trial to, so a net's maximum can only be watched.</p><figure style="max-width:1100px"><img loading="lazy" src="terrain/nets.png" alt="Crucible's champions as points in two directions of their weights: three separate tracks, with the islands at their ends" style="width:100%;border:1px solid var(--line);border-radius:6px"><figcaption><strong>Fig. 4. Crucible's nets.</strong> Each dot is a champion, placed by two main directions of its weights. Three islands, three tracks going apart, each island at the end of its own. The one red flag is a rise off the tracks with seven nets near it.</figcaption></figure>
+</section><section id="siv"><h2>IV. Selecting a region</h2><p>Drag on the flat map, or click a maximum in the list. The cells light up on the surface, and the panel says what is inside: reads, jobs, maxima.</p><ul><li><strong>Read here: 6</strong> asks for six trials inside the box.</li><li><strong>Read the bare</strong> asks for three trials tight on each maximum of this pair with nothing on it.</li><li><strong>Read every bare</strong> does that for all datasets, each place once.</li></ul><p>These write <code>QUEUE/regions.json</code> by <code>tools/regions.py</code>. The planner puts them ahead of its own search, spaced evenly on each dial's log scale. <strong>They go by the ordinary road: nothing is promoted because a person looked there.</strong> A trial sets the two dials and leaves the rest at today's. A job retired before it ran is asked again. The terrains are redrawn at the next poll, so the amber marks appear within a couple of minutes, once the planner has asked.</p><p>A test presses, drags and lets go through the screen's own code, and checks the box and the values asked for. I have not pressed these in the running app, and <strong>no region has been asked for on the live fleet,</strong> because that is a person's choice.</p></section><section id="sv"><h2>V. Threats and what is open</h2><p><strong>One hill is counted several times.</strong> Each hill is seen through every pair containing its dial: 0.37 appears in five. The 88 are 88 flags, not 88 places. <strong>Two dials at a time is a slice of something with 118.</strong> Other dials average out, and a trial moving four dials sits on all of its pairs. <strong>The move to today's defaults assumes the score adds,</strong> and switches a generation flipped are not in it: <code>bridges</code> and <code>escort</code> are off, and those reads are left out. <strong>The reads are not random.</strong> The search chose them, and read winners more, so a hill is partly where it looked hardest. <strong>Which pairs are drawn changes as the fit changes its mind,</strong> and a selection is dropped when its pair goes. <strong>"Holds" uses each read's own error,</strong> and the two proofs that disagreed in A Stale Dial say that error may be small. <strong>A net's map is two directions from 400 sampled weights of thousands,</strong> and I did not measure how much of the variation they hold.</p><p><strong>Unrelated, found while testing:</strong> <code>sftp::tests::an_empty_file_is_a_transfer_and_not_a_hang</code> failed in about one run in three here, in code this work did not touch. It is not fixed.</p><p><strong>Not drawn:</strong> bot styles (8 points, not a surface), the bc nets (one each), the transform's reads (too few so far).</p></section><section id="svi"><h2>VI. Reproducing this</h2><div class="code"><span class="lang">sh</span><pre><code>Q=~/code/treadcore/build/queue/grove
+python3 -I tools/terrain.py $Q             # every dataset, about 10 s after the first
+python3 -I tools/regions.py $Q status      # what has been asked
+python3 -I tools/plans/board-check.py      # regions, among the rest</code></pre></div><p>Results, Algorhythm, Terrain. Pictures: <code>ORRERY_FRAME_TAB=1 ORRERY_FRAME_DATASET=n ORRERY_FRAME_PAIR=n ORRERY_FRAME_REGION=x0,x1,y0,y1</code>.</p></section>
+  </main>
+  <footer>
+    <p>Paul Richeson, 28 October 2026. MIT licensed, as orrery. The Markdown original and the example's source are in orrery: <code>docs/appkit-gui-lab-report.md</code> and <code>docs/appkit-example/</code>.</p>
+  </footer>
+</div>
