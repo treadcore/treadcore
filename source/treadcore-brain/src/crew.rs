@@ -209,6 +209,8 @@ pub struct Crew {
     /// A fleet wingman's leader: its bridge tiles are jobs too.
     pub leader: Option<PlayerId>,
     muster: Option<V2>,
+    /// When it was last called: the plan is unfinished while musters keep coming.
+    muster_heard: Tick,
     job: Option<(Job, Tick)>,
     /// The squad was sent on the job at this tick.
     sent: Option<Tick>,
@@ -234,6 +236,16 @@ impl Crew {
     /// Where the last muster heard called the crews, if one was.
     pub fn muster_at(&self) -> Option<V2> {
         self.muster
+    }
+
+    /// The fort, while its commander is still calling for crews: two musters' time since the last.
+    pub fn fort_calling(&self, now: Tick) -> Option<V2> {
+        self.muster.filter(|_| self.muster_heard > 0 && now <= self.muster_heard + 2 * MUSTER_EVERY)
+    }
+
+    /// Whether it has a job in hand.
+    pub fn has_job(&self) -> bool {
+        self.job.is_some()
     }
 
     /// What this crew is hauling, if its job is a haul.
@@ -333,6 +345,7 @@ impl Crew {
                 Event::Requested { from, to: None, job: Job::Muster { at } } if obs.allied(*from) && *from != mine => {
                     self.commander = Some(*from);
                     self.muster = Some(*at);
+                    self.muster_heard = obs.tick;
                     if self.on && free && self.job.is_none() && me.pos.dist(*at) <= CREW_REACH && obs.tick >= self.last_ready + READY_EVERY {
                         self.ready(obs, &mut out);
                     }

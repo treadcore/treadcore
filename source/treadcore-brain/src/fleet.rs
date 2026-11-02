@@ -527,7 +527,9 @@ mod tests {
         // turn the switch off, and this test is not about the defaults.
         steady.caps = steady.caps.with(Caps::PINGS);
         use crate::weights::W;
-        for (k, v) in [(W::ShellBoxes, 0.0), (W::LongshotEvery, 30.0), (W::LongshotAny, 0.0), (W::StrikesMax, 1.0)] {
+        // And a team that stays to build, by name: this seed tests that a commander sets crews to work,
+        // and a low w_pos_fortify sends the leader forward and its crews after it (w5525, 1 November).
+        for (k, v) in [(W::ShellBoxes, 0.0), (W::LongshotEvery, 30.0), (W::LongshotAny, 0.0), (W::StrikesMax, 1.0), (W::PostureFortify, 6.0)] {
             steady.w[k] = v;
         }
         let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = with_settings(steady, || {

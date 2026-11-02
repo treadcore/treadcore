@@ -509,6 +509,10 @@ impl Commander {
     /// The weights and capabilities: the tactics from the weights, each
     /// part of the brain on or off by its bit (weights.rs, roadmap 12c).
     pub fn set_settings(&mut self, mut s: crate::weights::Settings) {
+        // A guard crews only if a person's dial says so: as built, guards guard.
+        if self.goal == Goal::DefendBase && s.choice(crate::weights::W::CrewStay) > 0 {
+            self.crew.on = true;
+        }
         s.hold();
         use crate::weights::{Caps, W};
         let keep = if s.caps.has(Caps::FORGET) { s.ticks(W::ForgetFor).max(1) } else { crate::memory::NEVER };
@@ -1641,6 +1645,20 @@ impl Commander {
         }
     }
 
+    /// `crew_stay`: a guard works the fort while no hostile is near it, and that many wingmen, by their
+    /// slot, stay while the fort is unfinished.
+    fn stays_to_build(&self, obs: &Observation, me: &Tank) -> bool {
+        let n = self.settings.choice(crate::weights::W::CrewStay);
+        if n == 0 || self.crew.fort_calling(obs.tick).is_none() {
+            return false;
+        }
+        match self.goal {
+            Goal::DefendBase => !obs.hostile_tanks().any(|t| t.alive && t.pos.dist(me.pos) <= 30.0),
+            Goal::Escort(_) => self.slot.is_some_and(|k| k + 1 < n),
+            _ => false,
+        }
+    }
+
     /// My place in the leader's wedge (`WEDGE`), where it will be in a
     /// second at the leader's speed.
     fn slot_point(&self, leader: &Tank, map: Option<&Map>) -> Option<V2> {
@@ -2603,7 +2621,7 @@ impl Commander {
             let waves = crate::bio::rhythm(&self.settings, obs.player, obs.tick);
             let s = &self.settings;
             let row = |r: usize| crate::bio::temper_row(s, r, &waves);
-            // Stances are reached in about 1.4% of a live tank's seconds; going home and firing are nearly
+            // Stances are reached in about 3% of a live tank's seconds; going home and firing are nearly
             // always in play, or the matrix would have little to swing.
             self.temper_retreat = row(2);
             if let Some(t) = self.inner.tactics.as_mut() {
@@ -3051,6 +3069,22 @@ impl Commander {
                 Goal::Auto | Goal::HuntPillboxes => true,
                 _ => false,
             });
+        // THE DESIRE TO BUILD (Paul, 1 November: "maybe we need to focus on fixing the desire to build"). A
+        // wingman built only while its leader stood at the fort, and a guard not at all. So a leader that
+        // went forward early took the crews with it, and squads spent 6% of their time on construction
+        // against 13% going home. `crew_stay` keeps some building, whatever the leader does.
+        let stays = !self.resupplying && self.stays_to_build(obs, &me);
+        let free = free || stays;
+        if stays && !self.crew.has_job() {
+            if let Some(fort) = self.crew.fort_calling(obs.tick).filter(|f| me.pos.dist(*f) > crate::crew::CREW_REACH * 0.6) {
+                // Near enough to answer the next muster.
+                self.set_doing(Act::Crew, "crew: back to the fort".to_string());
+                cmds.push(Command::Move { to: fort });
+                self.flush_say(obs, &mut cmds);
+                cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                return cmds;
+            }
+        }
         if let Some(work) = self.crew.think(obs, &me, free) {
             let working = self.crew.working() && free;
             cmds.extend(work);
@@ -3177,9 +3211,13 @@ impl Commander {
         }
         // The base cycle (roadmap 12f1): just filled up, the base gets an
         // item, an improvement and road out before the tank goes back out.
-        if self.caps().has(crate::weights::Caps::CYCLE) && matches!(self.goal, Goal::Auto | Goal::Fortify(_) | Goal::DefendBase) && self.cycle.active() {
+        // "after THEY fill up on base resources, add to the base 1 item, 1 improvement" (Paul, 18 October): the
+        // cycle went to the leader and the guard alone, and the rest of a team held 6 of 8 material from
+        // the fifth minute to the last (1 November). `cycle_all`: every tank that has filled up.
+        let wing_cycles = matches!(self.goal, Goal::Escort(_)) && self.settings.choice(crate::weights::W::CycleAll) > 0;
+        if self.caps().has(crate::weights::Caps::CYCLE) && (matches!(self.goal, Goal::Auto | Goal::Fortify(_) | Goal::DefendBase) || wing_cycles) && self.cycle.active() {
             let quiet = !obs.hostile_tanks().any(|t| t.alive && t.pos.dist(me.pos) <= crate::hop::FIGHT_NEAR);
-            match (quiet, self.base) {
+            match (quiet, if wing_cycles { Some(self.base_of(obs, &me)) } else { self.base }) {
                 (true, Some(base)) => {
                     if let Some((c, word)) = self.cycle.think(obs, &me, base, self.plan.as_mut(), &self.settings, map) {
                         cmds.extend(c);
