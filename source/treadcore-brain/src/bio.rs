@@ -118,18 +118,29 @@ mod tests {
         assert_ne!(wave(3, 0.1), wave(4, 0.1));
     }
 
+    /// Every entry named: the fleet may promote one, and these tests are not about the defaults.
+    fn matrix(set: &str) -> Settings {
+        let mut text = String::from("bio = sine\n");
+        for row in TEMPER.iter() {
+            for w in row {
+                text += &format!("{} = 0\n", w.name());
+            }
+        }
+        Settings::parse(&(text + set)).unwrap()
+    }
+
     #[test]
-    fn the_matrix_starts_empty_and_a_row_follows_its_own_wave() {
-        let s = on("sine");
+    fn an_empty_matrix_moves_nothing_and_a_row_follows_its_own_wave() {
+        let s = matrix("");
         for row in 0..TEMPERS {
-            assert!(!temper_on(&s, row), "a row is set by default: the brain would change");
+            assert!(!temper_on(&s, row), "named at 0, and a row is on");
             assert_eq!(temper_row(&s, row, &[1.0, -1.0, 0.5]), 1.0);
         }
-        let set = Settings::parse("bio = sine\ntemper_press_2 = 0.5\n").unwrap();
+        let set = matrix("temper_press_2 = 0.5\n");
         assert!(temper_on(&set, 1) && !temper_on(&set, 0));
         assert_eq!(temper_row(&set, 1, &[1.0, 1.0, 1.0]), 1.5);
         assert_eq!(temper_row(&set, 1, &[1.0, -1.0, 1.0]), 0.5, "the second wave, not the first");
-        let neg = Settings::parse("temper_retreat_1 = -1\ntemper_retreat_2 = -1\ntemper_retreat_3 = -1\n").unwrap();
+        let neg = matrix("temper_retreat_1 = -1\ntemper_retreat_2 = -1\ntemper_retreat_3 = -1\n");
         assert_eq!(neg.w[W::TemperRetreat1], -1.0, "a negative entry is allowed: a wave may calm");
         assert_eq!(temper_row(&neg, 2, &[1.0, 1.0, 1.0]), 0.25, "held at a quarter");
     }
