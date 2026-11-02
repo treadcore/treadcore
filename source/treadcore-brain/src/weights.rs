@@ -311,7 +311,7 @@ caps! {
     TEAM_ROTATE 11 "team_rotate" false, "swap a hurt tank at a hot point for a fresh one at a cold point (12e); off since LR 76, +0.55 +/- 0.15 a seat off over 400 fresh seeds";
     PRICED_CROSSING 12 "priced_crossing" true, "boat or bridge by price, long bridges and scarce trees costing more (12f2)";
     COLUMN 13 "column" true, "a fleet crosses a bridge in file (12f3)";
-    CYCLE 14 "cycle" false, "after filling up, give the base an item and an improvement and road out (12f1)";
+    CYCLE 14 "cycle" true, "after filling up, give the base an item and an improvement and road out (12f1)";
     ISLAND_SITE 15 "island_site" true, "a small island with few trees is a poor base (12f2)";
     ESCORT 17 "escort" true, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
     BRIDGE_JOBS 18 "bridge_jobs" true, "a part-laid bridge is a job on the team board, taken by the next teammate with material; needs board (12f)";
