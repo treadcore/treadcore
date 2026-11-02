@@ -69,7 +69,7 @@ was done in one session, with no agents.
 - Tests: treadcore-sim 59 of 59; treadcore-brain 151 of 151 (15 ignored), including the roster, RANGES and course tests.
 - Gauntlets, scripted wingman, 30 seeds: G10 0 of 30 at a 0.7 bar (within 8 tiles 57 to 59% of the run on every seed), 30 of 30 at 0.5; G11 29 of 30; G12 30 of 30.
 - Ranges added: 57 physical, 24 shares, 1 decree (`bio_period`); defaults all inside.
-- Personas: 8, none yet read; their censuses asked for at 400 seeds.
+- Personas: 8, read at 400 seeds the same afternoon (score a seat; built a team): Rome −5.13 ± 0.58 (+5.96 built), China −5.17 ± 0.67 (+4.53), Mongolia −0.30 ± 0.65 (+3.53), Shoshone −7.15 ± 0.63 (kills less deaths −0.49 ± 0.07), Venice +0.39 ± 0.54, Japan −0.63 ± 0.61, Polynesia −0.36 ± 0.45, Assyria −0.96 ± 0.63 (+5.32 built). The builders build and the score, which pays for the walk, punishes it; Shoshone's pair of dials loses fights. Read again under game 5.
 - The book: 16 chapters, 106 references (36 IEEE), 29 reports on the Lab Reports page.
 - From the same morning, in orrery (84ce3b4): the trade guard; replayed over the sixteen candidates since the evening before, it would have held eleven; `cycle` off read +0.33 ± 0.49 on score and −5.03 ± 0.39 built, −4.14 ± 0.27 road, −0.66 ± 0.07 kills less deaths a seat at 400 seeds.
 
