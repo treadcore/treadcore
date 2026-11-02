@@ -1,0 +1,145 @@
+<meta charset="utf-8">
+<title>Waves, Width and Waiting</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="bar"><div class="bar-in"><strong><a href="index.html">orrery</a> · lab report</strong><a href="#abstract">Abstract</a><a href="#si">I</a><a href="#sii">II</a><a href="#siii">III</a><a href="#siv">IV</a><a href="#sv">V</a><a href="#svi">VI</a><a href="#svii">VII</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">orrery · the brain and the fleet · temperament, capacity, the queue</p>
+    <h1>Waves, Width and Waiting</h1>
+    <div class="front"><p class="note">Paul, 1 November: "can we describe how we can connect biorhythems to the output temperment. what does it take to correlate these with the matrix"; "yes. both."; "do we need to expand its dimensions"; "can these be setup in a way to achieve this in many generations in the future. add the options in the settings page"; "is there any consistent bottlenecks ... just trying to speed it all up".</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#abstract">Abstract</a></li><li><a href="#si">I. The waves and temperament</a></li><li><a href="#sii">II. The width</a></li><li><a href="#siii">III. The bottleneck</a></li><li><a href="#siv">IV. Main moved</a></li><li><a href="#sv">V. Over many generations</a></li><li><a href="#svi">VI. Threats and what is open</a></li><li><a href="#svii">VII. Reproducing this</a></li></ol></nav>
+  <main>
+  <section id="abstract"><h2>Abstract</h2><p>Three questions, measured the same evening. <strong>Do the waves reach behaviour? Yes.</strong> A new census log folds what tanks do over each wave's phase, and a new matrix of twelve dials moves stances along the one wave it should, by up to 18 points of fights. <strong>Whether that wins is not shown:</strong> kills, deaths and score show nothing clear. <strong>Does the net need to be wider? Not yet.</strong> On the data it was trained on, 128 beats 64 by 0.85 points of agreement, under the bar of 1.0. <strong>What holds up the line? Waiting in the queue, not machine capacity.</strong> A winning trial took 57 minutes with 20 of work. Read-ons now go first and long reads go to fast machines, and the first few winners took 25 minutes. Meanwhile a proof passed at z 3.51 and <strong>main moved for the first time since the line began</strong>, carrying <code>w_pos_fortify</code> 1.5. All of it repeats by itself, with options on Settings, Long run.</p><p><strong>Index Terms:</strong> phase folding, negative controls, capacity tests, queueing, critical paths.</p></section><section id="si"><h2>I. The waves and temperament</h2><h3 id="a-what-was-built">A. What was built</h3><div class="table"><table><thead><tr><th>Part</th><th>What it does</th></tr></thead><tbody><tr><td><strong>The census log</strong></td><td>With waves on, each seed prints what the trial team did in eight bins of each wave's phase: seconds alive, in a fight, each stance, shells, kills, deaths. It changes nothing a tank does</td></tr><tr><td><strong>The control</strong></td><td><code>bio</code> on, <code>bio_amount</code> 0. Read over 400 seeds: <strong>+0.00 +/- 0.00</strong>. The same games, so it shows what chance looks like</td></tr><tr><td><strong>The matrix</strong></td><td>Three waves by four dials: <code>engage_odds</code>, <code>press_odds</code>, <code>retreat_armor</code>, <code>longshot_every</code>. Each row is its dial x (1 + the sum of entry x wave), held to a quarter or four times. Twelve dials, all 0, so nothing plays differently. <code>bio_amount</code> stays as it was</td></tr><tr><td><strong>The Temper tab</strong></td><td>Results, Algorhythm, Temper: a grid of waves by behaviours, each read less the control</td></tr></tbody></table></div><p>Periods are unchanged, at 60, 73 and 86 s: Paul confirmed those.</p><h3 id="b-why-two-rows-moved">B. Why two rows moved</h3><p>The first draft had <code>mass_for</code> and <code>kite_margin</code>. <strong>A tank takes a stance in about 3% of its live seconds across all eleven maps, 1.4% on the one map where I first measured it,</strong> so anything hung on a stance has little to swing. That may be why the mood has read nothing. Two rows moved to going home and firing, which apply outside fights. Each row was checked to change games.</p><figure style="max-width:1100px"><img loading="lazy" src="waves/control.png" alt="The Temper grid for the waves driving nothing, with three bright cells under Shells" style="width:100%;border:1px solid var(--line);border-radius:6px"><figcaption><strong>Fig. 1. The control: waves driving nothing, 1,200 plays.</strong> The same games as with no waves at all, so nothing here is an effect of them. Yet shells read about 5 errors from zero. A match's first minutes fire more, and they fall on some phases more than others. That is why every other grid is read less this one.</figcaption></figure>
+<figure style="max-width:1100px"><img loading="lazy" src="waves/mood.png" alt="The Temper grid for the mood at full strength, where massing is bright for all three waves" style="width:100%;border:1px solid var(--line);border-radius:6px"><figcaption><strong>Fig. 2. The mood at full strength, less the control.</strong> Massing rises at each wave's high, by 4 to 6 points of fights. The higher a tank's mood, the higher its bar for engaging: <strong>the mood makes a tank more careful, not bolder.</strong> Nothing past two errors in kills or deaths.</figcaption></figure>
+<figure style="max-width:1100px"><img loading="lazy" src="waves/press3.png" alt="The Temper grid for one matrix entry, where pressing is bright only on the 86 second wave" style="width:100%;border:1px solid var(--line);border-radius:6px"><figcaption><strong>Fig. 3. One matrix entry, <code>temper_press_3</code> at -0.5, less the control.</strong> Pressing moves by 17 points of fights on the 86 s wave, the one this entry follows.</figcaption></figure>
+<h3 id="c-what-it-found">C. What it found</h3><p>Each cell is a wave's high less its low, less the control. Errors in brackets.</p><div class="table"><table><thead><tr><th>Read</th><th>Plays</th><th>Pressing, on its own wave</th><th>Massing, on its own wave</th></tr></thead><tbody><tr><td>Mood as it stands, 0.25</td><td>2,544</td><td></td><td>+1.4 (+2.3), +1.4 (+2.3), +1.3 (+2.0)</td></tr><tr><td>Mood at 1</td><td>1,200</td><td></td><td><strong>+4.8 (+7.0), +5.9 (+8.1), +3.8 (+4.9)</strong></td></tr><tr><td><code>temper_engage_1</code> +0.5</td><td>165</td><td></td><td><strong>+9.0 (+6.6)</strong></td></tr><tr><td><code>temper_press_1</code> +0.5 / -0.5</td><td>165</td><td><strong>-14.0 (-6.3) / +17.5 (+8.7)</strong></td><td></td></tr><tr><td><code>temper_press_2</code> +0.5 / -0.5</td><td>165 / 246</td><td><strong>-15.1 (-8.0) / +16.1 (+10.1)</strong></td><td></td></tr><tr><td><code>temper_press_3</code> +0.5 / -0.5</td><td>165 / 372</td><td><strong>-18.6 (-9.2) / +16.7 (+11.5)</strong></td><td></td></tr></tbody></table></div><p><strong>It does what it was built to do.</strong> The sign flips with the entry's sign, and the large effect is on that entry's own wave.</p><p><strong>It also shows two things I had wrong or did not know.</strong> The mood makes a tank more careful at its high, not bolder, though earlier reports wrote "how bold". And a smaller effect on neighbouring waves appears in several rows, about 4 to 7 points, which the design did not ask for. It may be that the waves' overlap is not even over a match; I have not tested that.</p><p><strong>Whether it wins is a different question, and the answer so far is no sign of it.</strong> Kills and deaths have no pattern a reader should trust: some cells pass two errors, as one in twenty will. Scored over 400 seeds, the mood at 0.25 reads -0.58 +/- 0.44 and at 1 reads +0.38 +/- 0.46. The retreat and trigger rows show no clear behaviour change yet, on few reads, and the retreat row is damped: <code>w_smooth</code> at 0.05 lets through only 5% of <code>retreat_armor</code>.</p><h3 id="d-the-transform">D. The transform</h3><p>It reads the waves but cannot express temperament: its outputs are a move and a confidence. Its wave columns are 18 of 942 numbers, and only 18 of 106 training reads had waves on. So the matrix came first. Adding a boldness output would need a new file format and retraining, and is not built.</p></section><section id="sii"><h2>II. The width</h2><p>Same data as <code>bc2</code>, 52 million samples from 1,260 seeds, held-out seeds 9001140 to 9001259, one training each, on calber:</p><div class="table"><table><thead><tr><th>Width</th><th>Drive</th><th>Gun</th><th>Mortar</th><th>Time</th></tr></thead><tbody><tr><td>32</td><td>67.1%</td><td>64.6%</td><td>89.0%</td><td>6 min</td></tr><tr><td><strong>64, as it is</strong></td><td>67.7%</td><td>65.7%</td><td>90.0%</td><td>6 min</td></tr><tr><td>128</td><td>68.7%</td><td>66.4%</td><td>90.4%</td><td>8 min</td></tr></tbody></table></div><p>128 over 64 is +1.0 on drive and +0.7 on gun, <strong>+0.85 together, under the bar of 1.0</strong>, set before reading. A small steady gain, no sharp knee. Each is one training: how much a second training at the same width would differ was not measured, so 0.85 should not be read closely. <strong>The test is about copying.</strong> The Scholar trails Fleet by about 57 points a seat, and one point of agreement will not close that.</p><p>This data is from an older game. Future tests record new matches.</p></section><section id="siii"><h2>III. The bottleneck</h2><div class="table"><table><thead><tr><th>Class, from 08:00</th><th>Jobs</th><th>Wait, median</th><th>Run, median</th><th>Lane-hours</th></tr></thead><tbody><tr><td>New trials</td><td>869</td><td>10.1 min</td><td>2.0 min</td><td>36.8</td></tr><tr><td>Read-ons</td><td>489</td><td><strong>10.2 min</strong></td><td>1.5 min</td><td>16.4</td></tr><tr><td>Held-out reads</td><td>70</td><td>0.6</td><td>9.7, p90 33</td><td>17.1</td></tr><tr><td>Builds</td><td>124</td><td>5.8, p90 15</td><td>0.4</td><td>1.1</td></tr></tbody></table></div><p><strong>The lanes were never idle, so depth was all waiting.</strong> A winner passes through several read-ons, and each sat ten minutes behind trials that had shown nothing. <strong>The fix is order, not ratio.</strong> Changing the share of trial kinds would not have helped: the queue's order was first come.</p><p>Machine speed differs 4.5 times, 1.4 s a seed on macmini against 6.2 on columbia, and any machine took a long read. A 400-seed job on columbia took 38 minutes, and a slow machine in a long read was the last to build a new commit, holding up the proof.</p><div class="table"><table><thead><tr><th>Change</th><th>Before</th><th>First 45 minutes after</th></tr></thead><tbody><tr><td>Read-ons go ahead of new trials: read-on wait</td><td>10.2 min</td><td><strong>0.7 min</strong></td></tr><tr><td>Long reads on macmini, saskatchewan, boburner: held-out run p90</td><td>33 min</td><td><strong>about 10 min</strong></td></tr><tr><td>A winner with read-ons, first read to pass</td><td>57 min (17)</td><td><strong>25 min (3)</strong></td></tr><tr><td>All machines built, added to done</td><td>up to 29 min</td><td>10 min (1)</td></tr><tr><td>Queue depth, 4 to 2 a machine; CPU jobs an hour</td><td>119</td><td>115</td></tr></tbody></table></div><p><strong>Those after-numbers are few, and from under an hour.</strong> Throughput is within noise of before. <strong>New trials still wait 10 minutes,</strong> since read-ons now go past them, and that is the point: what has shown something goes first.</p><p><strong>One real waste is not a queue:</strong> <code>boburner-cuda</code>, a GTX 1070 Ti, has done nothing since 07:55, because Crucible is switched off on that machine. It is a setting, not a fault, and I left it for a person.</p></section><section id="siv"><h2>IV. Main moved</h2><p>At 20:07 the line at <code>286338b</code> read <strong>+1.43 +/- 0.41 over 800 seeds, z 3.51</strong>, and the fix to a passed proof landed it. Proofs that evening read +1.97, -0.07, +0.24, +1.43. Main now has <code>w_pos_fortify</code> 1.5 and <code>base_r</code> 6.15. The line has moved on to 0.75, a find the fit's new memory pointed at, read by the ordinary road at +1.34 +/- 0.63.</p></section><section id="sv"><h2>V. Over many generations</h2><p>Settings, Long run. Each is live at the next plan.</p><figure style="max-width:1100px"><img loading="lazy" src="waves/longrun.png" alt="The Settings page Long run, with four status lines and rows of options" style="width:100%;border:1px solid var(--line);border-radius:6px"><figcaption><strong>Fig. 4. Settings, Long run.</strong> What repeats over many generations: what each part last found, and its options. A press is live at the next plan.</figcaption></figure>
+<div class="table"><table><thead><tr><th>Part</th><th>Every</th><th>Does</th></tr></thead><tbody><tr><td>Temperament</td><td>12 generations</td><td>Reads each entry each way, with three reads of 400 seeds to fold</td></tr><tr><td>Width</td><td>20 generations, counted from today</td><td>Records 240 seeds, trains 32, 64 and 128, and flags a person past the bar. <strong>It changes no net</strong></td></tr><tr><td>Far read</td><td>each new game</td><td>Each dial at a quarter and four times</td></tr><tr><td>The fit's memory</td><td>always</td><td>Older reads, trusted less with drift</td></tr><tr><td>Long reads on fast machines</td><td>always</td><td>With a switch</td></tr></tbody></table></div></section><section id="svi"><h2>VI. Threats and what is open</h2><p><strong>A matrix entry can promote itself,</strong> by the ordinary road. <code>w5490</code>, <code>temper_retreat_1</code> at -0.5, passed its held-out reads at +0.13 with the bar at z 0.95. If it lands, it turns <code>bio</code> on across the line, and only the proof stands behind that. <strong>Generations are landing on small reads:</strong> the search has now flipped <code>escort</code> off and back on, and those commits' messages say "no change" for a switch, which is wrong and not yet fixed. <strong>The plan was live before the fleet had the dials:</strong> for about two minutes it asked for trials a binary could not read. One was caught in the queue and removed, and a guard now prevents it. <strong>The width watch's 240 seeds lean narrow:</strong> a wide net needs more data than that. <strong>The scheduled watch has not run through once:</strong> its parts have, by hand, on a real GPU, and in checks.</p><p><strong>Not done:</strong> reading the rest of the first round's trials, a boldness output on the transform, and the two flaky <code>sftp</code> tests, which still fail in about one run in three.</p></section><section id="svii"><h2>VII. Reproducing this</h2><div class="code"><span class="lang">sh</span><pre><code>Q=~/code/treadcore/build/queue/grove
+python3 -I tools/temperament.py $Q         # every grid
+python3 -I tools/plans/board-check.py      # the rounds, the watch, long reads
+python3 tools/fleet-tune.py $Q width_every 0   # any option, as the page does</code></pre></div></section>
+  </main>
+  <footer>
+    <p>Paul Richeson, 28 October 2026. MIT licensed, as orrery. The Markdown original and the example's source are in orrery: <code>docs/appkit-gui-lab-report.md</code> and <code>docs/appkit-example/</code>.</p>
+  </footer>
+</div>
