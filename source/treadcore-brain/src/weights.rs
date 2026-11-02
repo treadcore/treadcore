@@ -183,7 +183,7 @@ weights! {
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
     PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
-    PostureFortify "w_pos_fortify" 0.375, "posture: worth of Fortify's score, the share of the castle not yet built";
+    PostureFortify "w_pos_fortify" 0.1875, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
     DefendGround "w_defend_ground" 1.5, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
     ConnectIdle "connect_idle" 1.0, "posture: how much of Connect's score stands when this tank has no pillbox to bring in: 1 as built, 0 a score only for work that can be done";
@@ -211,7 +211,7 @@ weights! {
     ConnectTiles "connect_tiles" 4.0, "cycle: road tiles laid on one visit at most";
     // Paul's answers of 18 October as scalars (ROADMAP 12h, LR 10).
     Mend "w_mend" 1.0, "improvement: worth of mending the most hurt pillbox of the base";
-    Mine "w_mine" 0.5, "improvement: worth of a mine on the moat";
+    Mine "w_mine" 1.0, "improvement: worth of a mine on the moat";
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
@@ -311,7 +311,7 @@ caps! {
     TEAM_ROTATE 11 "team_rotate" false, "swap a hurt tank at a hot point for a fresh one at a cold point (12e); off since LR 76, +0.55 +/- 0.15 a seat off over 400 fresh seeds";
     PRICED_CROSSING 12 "priced_crossing" true, "boat or bridge by price, long bridges and scarce trees costing more (12f2)";
     COLUMN 13 "column" true, "a fleet crosses a bridge in file (12f3)";
-    CYCLE 14 "cycle" true, "after filling up, give the base an item and an improvement and road out (12f1)";
+    CYCLE 14 "cycle" false, "after filling up, give the base an item and an improvement and road out (12f1)";
     ISLAND_SITE 15 "island_site" true, "a small island with few trees is a poor base (12f2)";
     ESCORT 17 "escort" true, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
     BRIDGE_JOBS 18 "bridge_jobs" true, "a part-laid bridge is a job on the team board, taken by the next teammate with material; needs board (12f)";
