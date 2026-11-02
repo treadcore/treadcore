@@ -312,11 +312,10 @@ station = { to = 1, within = 8, worth = 1 }</code></pre></div><p>The scripted wi
 +            if operator &amp;&amp; ui.button(rect(at.x + 300, y, 22 + 50, 22), &quot;Release&quot;, true) {
 +                st.tune = Some(format!(&quot;hold {} off&quot;, dial));
 +            }</code></pre></div><p>and <code>fleet-tune.py</code> took the verb, <code>hold DIAL VALUE | off</code>, writing <code>hold.json</code>, which the planner has read since 1 November. The keeper's <code>health()</code> gained a check that reads the operator certificate with <code>ssh-keygen -L</code> and turns amber a day before it runs out, which is what an expired one cost the fleet on 31 October. Every page was rendered to a frame and looked at before it was committed; two header overlaps and one wrong count were found that way and fixed.</p></section><section id="sxii"><h2>XII. The program's flow, as it now runs</h2><figure>
-<svg viewBox="0 0 1000 560" width="100%" role="img" aria-label="The whole program's flow: a person and the bots give commands, the world steps, observations come back; the fleet reads censuses and moves main" style="font-family: var(--cond); max-width: 1000px;">
+<svg viewBox="0 0 1000 600" width="100%" role="img" aria-label="The whole program's flow: a person and the bots give commands, the world steps, observations come back; the fleet reads censuses and moves main" style="font-family: var(--cond); max-width: 1000px;">
   <defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
   <g font-size="14" fill="var(--ink)">
-    <!-- the game, top half -->
-    <rect x="20" y="20" width="960" height="250" rx="8" fill="none" stroke="var(--line)" stroke-dasharray="5 4"/>
+    <rect x="20" y="20" width="960" height="290" rx="8" fill="none" stroke="var(--line)" stroke-dasharray="5 4"/>
     <text x="36" y="42" font-size="13" fill="var(--dim)" letter-spacing="1">THE GAME, TWENTY TIMES A SECOND (treadcore-sim, -brain, -client, -net)</text>
     <rect x="40" y="60" width="180" height="70" rx="6" fill="var(--tile)" stroke="var(--line)"/>
     <text x="130" y="84" text-anchor="middle" font-weight="700">a person</text>
@@ -343,43 +342,44 @@ station = { to = 1, within = 8, worth = 1 }</code></pre></div><p>The scripted wi
     <text x="880" y="138" text-anchor="middle" font-weight="700">Observation</text>
     <text x="880" y="158" text-anchor="middle" font-size="12" fill="var(--dim)">what seat p may see;</text>
     <text x="880" y="174" text-anchor="middle" font-size="12" fill="var(--dim)">events, the HUD's top strip</text>
-    <!-- the fleet, bottom half -->
-    <rect x="20" y="300" width="960" height="240" rx="8" fill="none" stroke="var(--line)" stroke-dasharray="5 4"/>
-    <text x="36" y="322" font-size="13" fill="var(--dim)" letter-spacing="1">THE FLEET, ONCE A MINUTE (orrery: the planner, the keeper, nine machines)</text>
-    <rect x="40" y="340" width="200" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
-    <text x="140" y="364" text-anchor="middle" font-weight="700">the planner</text>
-    <text x="140" y="382" text-anchor="middle" font-size="12" fill="var(--dim)">tools/plans/treadcore.py</text>
-    <text x="140" y="398" text-anchor="middle" font-size="12" fill="var(--dim)">trials, gates, the proof</text>
-    <text x="140" y="416" text-anchor="middle" font-size="12" fill="var(--accent)">trade guard · shape watch · gauntlet (new)</text>
-    <rect x="300" y="340" width="170" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
-    <text x="385" y="364" text-anchor="middle" font-weight="700">the keeper</text>
-    <text x="385" y="382" text-anchor="middle" font-size="12" fill="var(--dim)">tools/fleet-queue.py</text>
-    <text x="385" y="398" text-anchor="middle" font-size="12" fill="var(--dim)">a lane a machine; health</text>
-    <text x="385" y="416" text-anchor="middle" font-size="12" fill="var(--accent)">certificate check (new)</text>
-    <rect x="540" y="340" width="200" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
-    <text x="640" y="364" text-anchor="middle" font-weight="700">a census</text>
-    <text x="640" y="382" text-anchor="middle" font-size="12" fill="var(--dim)">treadcore-server --local, 400 seeds,</text>
-    <text x="640" y="398" text-anchor="middle" font-size="12" fill="var(--dim)">the trial team against today's;</text>
-    <text x="640" y="416" text-anchor="middle" font-size="12" fill="var(--dim)">pooled.txt, built, road, kills, deaths</text>
-    <rect x="800" y="340" width="160" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
-    <text x="880" y="364" text-anchor="middle" font-weight="700">main</text>
-    <text x="880" y="382" text-anchor="middle" font-size="12" fill="var(--dim)">a generation lands;</text>
-    <text x="880" y="398" text-anchor="middle" font-size="12" fill="var(--dim)">every machine builds it;</text>
-    <text x="880" y="416" text-anchor="middle" font-size="12" fill="var(--dim)">the site's reports</text>
-    <rect x="300" y="460" width="440" height="60" rx="6" fill="var(--tile)" stroke="var(--line)"/>
-    <text x="520" y="484" text-anchor="middle" font-weight="700">the console (orrery, six chapters)</text>
-    <text x="520" y="504" text-anchor="middle" font-size="12" fill="var(--accent)">Personas · Gauntlet · Ranges pages, the hold's Release (new)</text>
+    <text x="500" y="290" text-anchor="middle" font-size="12" fill="var(--dim)">the observation goes back to every brain and to the window, which draws it and decides again</text>
+    <rect x="20" y="340" width="960" height="240" rx="8" fill="none" stroke="var(--line)" stroke-dasharray="5 4"/>
+    <text x="36" y="362" font-size="13" fill="var(--dim)" letter-spacing="1">THE FLEET, ONCE A MINUTE (orrery: the planner, the keeper, nine machines)</text>
+    <rect x="40" y="380" width="200" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="140" y="404" text-anchor="middle" font-weight="700">the planner</text>
+    <text x="140" y="422" text-anchor="middle" font-size="12" fill="var(--dim)">tools/plans/treadcore.py</text>
+    <text x="140" y="438" text-anchor="middle" font-size="12" fill="var(--dim)">trials, gates, the proof</text>
+    <text x="140" y="456" text-anchor="middle" font-size="12" fill="var(--accent)">trade guard · shape watch · gauntlet</text>
+    <rect x="300" y="380" width="170" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="385" y="404" text-anchor="middle" font-weight="700">the keeper</text>
+    <text x="385" y="422" text-anchor="middle" font-size="12" fill="var(--dim)">tools/fleet-queue.py</text>
+    <text x="385" y="438" text-anchor="middle" font-size="12" fill="var(--dim)">a lane a machine; health</text>
+    <text x="385" y="456" text-anchor="middle" font-size="12" fill="var(--accent)">certificate check (new)</text>
+    <rect x="540" y="380" width="200" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="640" y="404" text-anchor="middle" font-weight="700">a census</text>
+    <text x="640" y="422" text-anchor="middle" font-size="12" fill="var(--dim)">treadcore-server --local, 400 seeds,</text>
+    <text x="640" y="438" text-anchor="middle" font-size="12" fill="var(--dim)">the trial team against today's;</text>
+    <text x="640" y="456" text-anchor="middle" font-size="12" fill="var(--dim)">pooled.txt, built, road, kills, deaths</text>
+    <rect x="800" y="380" width="160" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="880" y="404" text-anchor="middle" font-weight="700">main</text>
+    <text x="880" y="422" text-anchor="middle" font-size="12" fill="var(--dim)">a generation lands;</text>
+    <text x="880" y="438" text-anchor="middle" font-size="12" fill="var(--dim)">every machine builds it;</text>
+    <text x="880" y="456" text-anchor="middle" font-size="12" fill="var(--dim)">the site's reports</text>
+    <rect x="300" y="505" width="440" height="60" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="520" y="529" text-anchor="middle" font-weight="700">the console (orrery, six chapters)</text>
+    <text x="520" y="549" text-anchor="middle" font-size="12" fill="var(--accent)">Personas · Gauntlet · Ranges pages, the hold's Release (new)</text>
+    <text x="150" y="545" text-anchor="middle" font-size="12" fill="var(--dim)">reads pipeline.json and</text>
+    <text x="150" y="560" text-anchor="middle" font-size="12" fill="var(--dim)">treadcore-view.py's document</text>
+    <text x="760" y="330" font-size="12" fill="var(--dim)">the same simulator plays the censuses</text>
   </g>
   <g stroke="var(--accent)" stroke-width="1.5" fill="none" marker-end="url(#fa)">
     <path d="M220 95 L298 135"/><path d="M220 205 L298 165"/><path d="M470 150 L538 150"/><path d="M740 150 L798 150"/>
-    <path d="M880 190 C880 240 130 250 130 158"/><path d="M880 190 C880 230 130 240 130 132" opacity="0"/>
-    <path d="M240 385 L298 385"/><path d="M470 385 L538 385"/><path d="M740 385 L798 385"/>
-    <path d="M880 430 C880 460 140 470 140 432"/>
-    <path d="M520 460 L520 435" stroke-dasharray="3 3"/>
-    <path d="M640 250 L640 338" stroke-dasharray="3 3"/>
+    <path d="M880 190 L880 265 L130 265 L130 252"/>
+    <path d="M240 425 L298 425"/><path d="M470 425 L538 425"/><path d="M740 425 L798 425"/>
+    <path d="M880 470 L880 490 L140 490 L140 472"/>
+    <path d="M300 535 L240 535 L240 472" stroke-dasharray="3 3"/>
+    <path d="M740 250 L740 378" stroke-dasharray="3 3"/>
   </g>
-  <text x="655" y="300" font-size="12" fill="var(--dim)">the same simulator plays the censuses</text>
-  <text x="500" y="455" font-size="12" fill="var(--dim)" text-anchor="middle">reads pipeline.json and treadcore-view.py's document</text>
 </svg>
 <figcaption>Fig. 1. The whole program's flow. The top half runs twenty times a second: commands from a person and from the bots into one deterministic world, observations back out. The bottom half runs once a minute: the planner asks the machines for censuses of the same simulator, gates what they find, and moves main. What is new today is marked in the accent.</figcaption>
 </figure>
@@ -421,303 +421,311 @@ station = { to = 1, within = 8, worth = 1 }</code></pre></div><p>The scripted wi
   <defs><marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
   <g font-size="13" fill="var(--ink)">
     <text x="20" y="30" font-size="13" fill="var(--dim)" letter-spacing="1">plan(), once a minute (tools/plans/treadcore.py)</text>
-    <rect x="20" y="45" width="300" height="60" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="170" y="68" text-anchor="middle" font-weight="700">trials</text><text x="170" y="88" text-anchor="middle" font-size="11" fill="var(--dim)">search · ab_trials · far_trials · temper_trials · anchors · regions</text>
-    <rect x="20" y="125" width="300" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="170" y="146" text-anchor="middle" font-weight="700">read on until decided</text><text x="170" y="164" text-anchor="middle" font-size="11" fill="var(--dim)">55 · 110 · 220 · 440 seeds, inside RANGES</text>
-    <rect x="20" y="195" width="300" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="170" y="216" text-anchor="middle" font-weight="700">two held-out reads, pooled</text><text x="170" y="234" text-anchor="middle" font-size="11" fill="var(--dim)">held_pass: z ≥ 3, no map two errors under</text>
-    <rect x="20" y="265" width="300" height="90" rx="6" fill="var(--tile)" stroke="var(--accent)" stroke-width="2"/><text x="170" y="286" text-anchor="middle" font-weight="700">auto_promote's gates</text>
-    <text x="170" y="304" text-anchor="middle" font-size="11" fill="var(--dim)">noise(): MIN_GAIN 0.25, SETTLE_GENS 2</text>
-    <text x="170" y="320" text-anchor="middle" font-size="11" fill="var(--accent)">trades_away() → gives_up(): built 1.0, road 0.5, kd 0.10 (new)</text>
-    <text x="170" y="336" text-anchor="middle" font-size="11" fill="var(--dim)">held_by_a_person(): hold.json (now a row with Release)</text>
-    <rect x="20" y="375" width="300" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="170" y="396" text-anchor="middle" font-weight="700">promote_run: tests, nine families</text><text x="170" y="414" text-anchor="middle" font-size="11" fill="var(--accent)">the pinned-test lint runs with the tests (new)</text>
-    <rect x="20" y="445" width="140" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="90" y="466" text-anchor="middle" font-weight="700">the line</text><text x="90" y="484" text-anchor="middle" font-size="11" fill="var(--dim)">a generation</text>
-    <rect x="180" y="445" width="140" height="50" rx="6" fill="var(--accent)"/><text x="250" y="466" text-anchor="middle" font-weight="700" fill="var(--base)">main</text><text x="250" y="484" text-anchor="middle" font-size="11" fill="var(--base)">line_proof: 800 seeds, z 3, and gives up nothing</text>
-    <!-- the watches -->
-    <text x="400" y="30" font-size="13" fill="var(--dim)" letter-spacing="1">the watches, on their own clocks</text>
-    <rect x="400" y="45" width="280" height="90" rx="6" fill="var(--tile)" stroke="var(--accent)"/><text x="540" y="66" text-anchor="middle" font-weight="700">width_watch → a shape watch</text>
-    <text x="540" y="84" text-anchor="middle" font-size="11" fill="var(--dim)">every width_every generations: record, then train</text>
-    <text x="540" y="100" text-anchor="middle" font-size="11" fill="var(--dim)">WIDTHS "32" "64" "128" "64x3" (WIDTH, DEPTH to tools/bc)</text>
-    <text x="540" y="118" text-anchor="middle" font-size="11" fill="var(--accent)">width_read: the best other shape against "64", bar 1.0</text>
-    <rect x="400" y="155" width="280" height="80" rx="6" fill="var(--tile)" stroke="var(--accent)"/><text x="540" y="176" text-anchor="middle" font-weight="700">gauntlet_watch (new)</text>
-    <text x="540" y="194" text-anchor="middle" font-size="11" fill="var(--dim)">every gauntlet_every_h hours, needs host:mac:</text>
-    <text x="540" y="210" text-anchor="middle" font-size="11" fill="var(--dim)">GAUNTLET=1 cargo test … --ignored train</text>
-    <text x="540" y="226" text-anchor="middle" font-size="11" fill="var(--dim)">→ build/train/gauntlet.tsv → Results, Gauntlet</text>
-    <rect x="400" y="255" width="280" height="80" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="540" y="276" text-anchor="middle" font-weight="700">a persona's census (by hand)</text>
-    <text x="540" y="294" text-anchor="middle" font-size="11" fill="var(--dim)">new census "trial=bot_style = K" adopt=no</text>
-    <text x="540" y="310" text-anchor="middle" font-size="11" fill="var(--dim)">400 seeds; pooled.txt; its composition read</text>
-    <text x="540" y="326" text-anchor="middle" font-size="11" fill="var(--dim)">→ treadcore-view.py personas() → Results, Personas</text>
-    <rect x="400" y="355" width="280" height="70" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="540" y="376" text-anchor="middle" font-weight="700">the keeper's health</text>
-    <text x="540" y="394" text-anchor="middle" font-size="11" fill="var(--dim)">keeper, heartbeat, code, planning, sync, lanes,</text>
-    <text x="540" y="410" text-anchor="middle" font-size="11" fill="var(--accent)">certificate (new): warn a day before, bad when gone</text>
-    <!-- what a person touches -->
-    <text x="740" y="30" font-size="13" fill="var(--dim)" letter-spacing="1">what a person moves</text>
-    <rect x="740" y="45" width="240" height="120" rx="6" fill="var(--tile)" stroke="var(--line)"/>
-    <text x="860" y="66" text-anchor="middle" font-weight="700">Queue → Values, Settings → Long run</text>
-    <text x="860" y="86" text-anchor="middle" font-size="11" fill="var(--dim)">fleet-tune.py KEY VALUE → tuning.json</text>
-    <text x="860" y="104" text-anchor="middle" font-size="11" fill="var(--accent)">fleet-tune.py hold DIAL VALUE|off → hold.json (new)</text>
-    <text x="860" y="122" text-anchor="middle" font-size="11" fill="var(--dim)">give_built, give_road, give_kd; gauntlet_every_h</text>
-    <text x="860" y="140" text-anchor="middle" font-size="11" fill="var(--dim)">live at the next plan; no restart</text>
-    <rect x="740" y="185" width="240" height="70" rx="6" fill="var(--tile)" stroke="var(--line)"/>
-    <text x="860" y="206" text-anchor="middle" font-weight="700">Settings → Ranges</text>
-    <text x="860" y="224" text-anchor="middle" font-size="11" fill="var(--dim)">RANGES as rows, the decrees marked;</text>
-    <text x="860" y="240" text-anchor="middle" font-size="11" fill="var(--dim)">the file is edited by hand, only Paul decrees</text>
+    <rect x="20" y="45" width="330" height="60" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="185" y="68" text-anchor="middle" font-weight="700">trials</text><text x="185" y="88" text-anchor="middle" font-size="11" fill="var(--dim)">search · ab_trials · far_trials · temper_trials · anchors · regions</text>
+    <rect x="20" y="125" width="330" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="185" y="146" text-anchor="middle" font-weight="700">read on until decided</text><text x="185" y="164" text-anchor="middle" font-size="11" fill="var(--dim)">55 · 110 · 220 · 440 seeds, inside RANGES</text>
+    <rect x="20" y="195" width="330" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="185" y="216" text-anchor="middle" font-weight="700">two held-out reads, pooled</text><text x="185" y="234" text-anchor="middle" font-size="11" fill="var(--dim)">held_pass: z ≥ 3, no map two errors under</text>
+    <rect x="20" y="265" width="330" height="90" rx="6" fill="var(--tile)" stroke="var(--accent)" stroke-width="2"/><text x="185" y="286" text-anchor="middle" font-weight="700">auto_promote's gates</text>
+    <text x="185" y="304" text-anchor="middle" font-size="11" fill="var(--dim)">noise(): MIN_GAIN 0.25, SETTLE_GENS 2</text>
+    <text x="185" y="320" text-anchor="middle" font-size="11" fill="var(--accent)">trades_away() → gives_up(): built 1.0, road 0.5, kd 0.10 (new)</text>
+    <text x="185" y="336" text-anchor="middle" font-size="11" fill="var(--dim)">held_by_a_person(): hold.json (now a row with Release)</text>
+    <rect x="20" y="375" width="330" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="185" y="396" text-anchor="middle" font-weight="700">promote_run: tests, nine families</text><text x="185" y="414" text-anchor="middle" font-size="11" fill="var(--accent)">the pinned-test lint runs with the tests (new)</text>
+    <rect x="20" y="445" width="150" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="95" y="466" text-anchor="middle" font-weight="700">the line</text><text x="95" y="484" text-anchor="middle" font-size="11" fill="var(--dim)">a generation</text>
+    <rect x="190" y="445" width="160" height="62" rx="6" fill="var(--accent)"/><text x="270" y="464" text-anchor="middle" font-weight="700" fill="var(--base)">main</text><text x="270" y="482" text-anchor="middle" font-size="11" fill="var(--base)">proof: 800 seeds, z 3,</text><text x="270" y="498" text-anchor="middle" font-size="11" fill="var(--base)">nothing given up</text>
+    <text x="420" y="30" font-size="13" fill="var(--dim)" letter-spacing="1">the watches, on their own clocks</text>
+    <rect x="420" y="45" width="290" height="90" rx="6" fill="var(--tile)" stroke="var(--accent)"/><text x="565" y="66" text-anchor="middle" font-weight="700">width_watch → a shape watch</text>
+    <text x="565" y="84" text-anchor="middle" font-size="11" fill="var(--dim)">every width_every generations: record, then train</text>
+    <text x="565" y="100" text-anchor="middle" font-size="11" fill="var(--dim)">WIDTHS "32" "64" "128" "64x3" (WIDTH, DEPTH)</text>
+    <text x="565" y="118" text-anchor="middle" font-size="11" fill="var(--accent)">width_read: the best other shape against "64", bar 1.0</text>
+    <rect x="420" y="155" width="290" height="80" rx="6" fill="var(--tile)" stroke="var(--accent)"/><text x="565" y="176" text-anchor="middle" font-weight="700">gauntlet_watch (new)</text>
+    <text x="565" y="194" text-anchor="middle" font-size="11" fill="var(--dim)">every gauntlet_every_h hours, needs host:mac:</text>
+    <text x="565" y="210" text-anchor="middle" font-size="11" fill="var(--dim)">GAUNTLET=1 cargo test … --ignored train</text>
+    <text x="565" y="226" text-anchor="middle" font-size="11" fill="var(--dim)">→ build/train/gauntlet.tsv → Results, Gauntlet</text>
+    <rect x="420" y="255" width="290" height="80" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="565" y="276" text-anchor="middle" font-weight="700">a persona's census (by hand)</text>
+    <text x="565" y="294" text-anchor="middle" font-size="11" fill="var(--dim)">new census "trial=bot_style = K" adopt=no</text>
+    <text x="565" y="310" text-anchor="middle" font-size="11" fill="var(--dim)">400 seeds; pooled.txt; its composition read</text>
+    <text x="565" y="326" text-anchor="middle" font-size="11" fill="var(--dim)">→ treadcore-view.py personas() → Results, Personas</text>
+    <rect x="420" y="355" width="290" height="70" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="565" y="376" text-anchor="middle" font-weight="700">the keeper's health</text>
+    <text x="565" y="394" text-anchor="middle" font-size="11" fill="var(--dim)">keeper, heartbeat, code, planning, sync, lanes,</text>
+    <text x="565" y="410" text-anchor="middle" font-size="11" fill="var(--accent)">certificate (new): warn a day before, bad when gone</text>
+    <text x="760" y="30" font-size="13" fill="var(--dim)" letter-spacing="1">what a person moves</text>
+    <rect x="760" y="45" width="220" height="120" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="870" y="66" text-anchor="middle" font-weight="700">Values · Long run</text>
+    <text x="870" y="86" text-anchor="middle" font-size="11" fill="var(--dim)">fleet-tune.py KEY VALUE → tuning.json</text>
+    <text x="870" y="104" text-anchor="middle" font-size="11" fill="var(--accent)">hold DIAL VALUE | off → hold.json (new)</text>
+    <text x="870" y="122" text-anchor="middle" font-size="11" fill="var(--dim)">give_built, give_road, give_kd</text>
+    <text x="870" y="140" text-anchor="middle" font-size="11" fill="var(--dim)">gauntlet_every_h; live at the next plan</text>
+    <rect x="760" y="185" width="220" height="70" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="870" y="206" text-anchor="middle" font-weight="700">Settings → Ranges</text>
+    <text x="870" y="224" text-anchor="middle" font-size="11" fill="var(--dim)">RANGES as rows, the decrees marked;</text>
+    <text x="870" y="240" text-anchor="middle" font-size="11" fill="var(--dim)">edited by hand; only Paul decrees</text>
   </g>
   <g stroke="var(--accent)" stroke-width="1.5" fill="none" marker-end="url(#fl)">
-    <path d="M170 105 L170 123"/><path d="M170 175 L170 193"/><path d="M170 245 L170 263"/><path d="M170 355 L170 373"/><path d="M90 425 L90 443"/><path d="M160 470 L178 470"/>
-    <path d="M320 300 L398 300" stroke-dasharray="3 3"/>
-    <path d="M740 100 C700 100 360 100 320 300" stroke-dasharray="3 3" opacity="0.6"/>
+    <path d="M185 105 L185 123"/><path d="M185 175 L185 193"/><path d="M185 245 L185 263"/><path d="M185 355 L185 373"/><path d="M95 425 L95 443"/><path d="M170 470 L188 470"/>
+    <path d="M350 300 L418 300" stroke-dasharray="3 3"/>
+    <path d="M760 110 L735 110 L735 300" stroke-dasharray="3 3" marker-end="none"/>
   </g>
-  <text x="500" y="505" text-anchor="middle" font-size="12" fill="var(--dim)">A persona's read enters no gate: it is read for what it is, never promoted because a person looked there.</text>
+  <text x="560" y="516" text-anchor="middle" font-size="12" fill="var(--dim)">A persona's read enters no gate: it is read for what it is, never promoted because a person looked there. The values on the right reach the gates at the next plan.</text>
 </svg>
 <figcaption>Fig. 3. The line as the planner runs it from 2 November. The left column is the road a trial takes to main; the gates in the accent box are the rules of the last two days. The middle column is the watches on their own clocks; the right what a person moves, now including the hold.</figcaption>
 </figure>
 </section><section id="sxiii"><h2>XIII. The architecture, in UML</h2><figure>
-<svg viewBox="0 0 1000 720" width="100%" role="img" aria-label="UML of treadcore's three layers: the simulator's World, Map, Pillbox, Depot and Command; the brain's Brain trait, Commander, Settings, Style roster and scenario Outcome; the window's Args, Pilot, Action and View" style="font-family: var(--mono); font-size: 11px; max-width: 1000px;">
+<svg viewBox="0 0 1000 760" width="100%" role="img" aria-label="UML of treadcore's three layers: the simulator's World, Map, Pillbox, Depot and Command; the brain's Brain trait, Commander, Settings, Style roster and scenario Outcome; the window's Args, Pilot, Action and View" style="font-family: var(--mono); font-size: 10px; max-width: 1000px;">
   <defs>
     <marker id="gen" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0 L12 6 L0 12 z" fill="var(--base)" stroke="var(--ink)" stroke-width="1"/></marker>
     <marker id="dep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="none" stroke="var(--dim)" stroke-width="1.2"/></marker>
   </defs>
   <g fill="var(--ink)">
     <text x="20" y="22" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">treadcore-sim (the world; no I/O; deterministic)</text>
-    <!-- World -->
-    <rect x="20" y="30" width="250" height="150" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="20" y="30" width="250" height="18" fill="var(--line)"/><text x="145" y="43" text-anchor="middle" font-weight="700">World</text>
+    <rect x="20" y="30" width="235" height="160" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="30" width="235" height="18" fill="var(--line)"/><text x="137" y="43" text-anchor="middle" font-weight="700">World</text>
     <text x="26" y="62">tick, map: Map, tanks, drones, shells</text>
-    <text x="26" y="76">pillboxes: Vec&lt;Pillbox&gt;, depots: Vec&lt;Depot&gt;</text>
-    <text x="26" y="90">structures, mines, players, events</text>
-    <line x1="20" y1="98" x2="270" y2="98" stroke="var(--ink)"/>
-    <text x="26" y="112">step(orders)  observe(p) → Observation</text>
-    <text x="26" y="126">apply(order)  damage_pillbox(id, amt, by)</text>
+    <text x="26" y="76">pillboxes, depots, structures, mines</text>
+    <text x="26" y="90">players, events</text>
+    <line x1="20" y1="98" x2="255" y2="98" stroke="var(--ink)"/>
+    <text x="26" y="112">step(orders)  observe(p)</text>
+    <text x="26" y="126">apply(order)  damage_pillbox(id,amt,by)</text>
     <text x="26" y="140" fill="var(--accent)">step_pillboxes(): regen + supply (new)</text>
-    <text x="26" y="154">step_shells()  step_depots()  hash()</text>
-    <text x="26" y="168">map_as_played()  route_for()</text>
-    <!-- Map -->
-    <rect x="300" y="30" width="230" height="130" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="300" y="30" width="230" height="18" fill="var(--line)"/><text x="415" y="43" text-anchor="middle" font-weight="700">Map</text>
-    <text x="306" y="62">w, h, seed, cells: Vec&lt;u8&gt;</text>
-    <text x="306" y="76" fill="var(--accent)">scale_m: f32 = 25, tempo: f32 = 6 (new)</text>
-    <text x="306" y="90">starts, depots, pillboxes, structures</text>
-    <line x1="300" y1="98" x2="530" y2="98" stroke="var(--ink)"/>
-    <text x="306" y="112">generate(seed)  from_text()  to_text()</text>
-    <text x="306" y="126" fill="var(--accent)">class() → "field" | "theatre" (new)</text>
-    <text x="306" y="140" fill="var(--accent)">metres(tiles)  real_seconds(s) (new)</text>
-    <text x="306" y="154">route()  line_clear()  at()</text>
-    <!-- Pillbox -->
-    <rect x="560" y="30" width="200" height="100" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="560" y="30" width="200" height="18" fill="var(--line)"/><text x="660" y="43" text-anchor="middle" font-weight="700">Pillbox</text>
-    <text x="566" y="62">id, pos, owner: Option&lt;PlayerId&gt;</text>
-    <text x="566" y="76">health, reload, capture, capturer</text>
-    <text x="566" y="90" fill="var(--accent)">shells: u16 (0 on a hit, game 5)</text>
-    <line x1="560" y1="98" x2="760" y2="98" stroke="var(--ink)"/>
-    <text x="566" y="112">alive()  shooter()  hostile_to()</text>
-    <!-- Depot -->
-    <rect x="790" y="30" width="190" height="100" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="790" y="30" width="190" height="18" fill="var(--line)"/><text x="885" y="43" text-anchor="middle" font-weight="700">Depot</text>
-    <text x="796" y="62">id, pos, owner, capture</text>
-    <text x="796" y="76">stock: DepotStock</text>
-    <text x="796" y="90">  kinds: [u8; 6], turn</text>
-    <line x1="790" y1="98" x2="980" y2="98" stroke="var(--ink)"/>
-    <text x="796" y="112">stock.make()  (shells to pillboxes)</text>
-    <!-- Command / rules -->
-    <rect x="560" y="150" width="200" height="90" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="560" y="150" width="200" height="18" fill="var(--line)"/><text x="660" y="163" text-anchor="middle" font-weight="700">«enum» Command</text>
-    <text x="566" y="182">Move, Stop, FireIndirect, FireDirect</text>
-    <text x="566" y="196">Launch, Recall, SetBubble, Deploy</text>
-    <text x="566" y="210">Ping { at: V2, kind: PingKind }</text>
-    <text x="566" y="224">Propose, Answer, Chat, Embark …</text>
-    <rect x="790" y="150" width="190" height="90" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="790" y="150" width="190" height="18" fill="var(--line)"/><text x="885" y="163" text-anchor="middle" font-weight="700">rules (consts)</text>
-    <text x="796" y="182">PILLBOX_SHELLS 8, _REGEN 10 s</text>
-    <text x="796" y="196" fill="var(--accent)">PILLBOX_SUPPLY_REACH 12, _EVERY 2 s</text>
-    <text x="796" y="210" fill="var(--accent)">METRES_PER_TILE 25, TEMPO 6</text>
-    <text x="796" y="224" fill="var(--accent)">physical() → Vec&lt;Physical&gt;</text>
-    <!-- brain layer -->
-    <text x="20" y="282" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">treadcore-brain (above observe; every kind ends in a Command)</text>
-    <rect x="20" y="290" width="170" height="80" fill="var(--tile)" stroke="var(--ink)" stroke-dasharray="4 3"/>
-    <rect x="20" y="290" width="170" height="18" fill="var(--line)"/><text x="105" y="303" text-anchor="middle" font-weight="700">«trait» Brain</text>
-    <text x="26" y="322">name()  think(obs)</text>
-    <text x="26" y="336">think_on(obs, map)  settings()</text>
-    <text x="26" y="350">act()  rung()  stance()</text>
-    <rect x="220" y="290" width="270" height="170" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="220" y="290" width="270" height="18" fill="var(--line)"/><text x="355" y="303" text-anchor="middle" font-weight="700">Commander</text>
-    <text x="226" y="322">goal: Goal, settings: Settings, slot, task</text>
-    <text x="226" y="336">fleet, crew, cycle, rotation, rally, pings</text>
-    <line x1="220" y1="344" x2="490" y2="344" stroke="var(--ink)"/>
-    <text x="226" y="358">set_goal(g)  think_on()  hunt()  go()</text>
-    <text x="226" y="372" fill="var(--accent)">fly_wing(): reads escort_distance, wing_*,</text>
-    <text x="226" y="386" fill="var(--accent)">  station by wing_stance (new)</text>
-    <text x="226" y="400">fortify()  cycle  defend_base()</text>
-    <text x="226" y="414">«enum» Goal: Manual | HuntPillboxes |</text>
-    <text x="226" y="428">  DefendPillbox | DefendDepot | Escort(p) |</text>
-    <text x="226" y="442">  Hold(V2) | Fortify | DefendBase | Auto</text>
-    <rect x="520" y="290" width="240" height="140" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="520" y="290" width="240" height="18" fill="var(--line)"/><text x="640" y="303" text-anchor="middle" font-weight="700">Settings</text>
-    <text x="526" y="322">w: Weights ([f32; W::ALL] = 141)</text>
-    <text x="526" y="336">caps: Caps (u64 bits)</text>
-    <line x1="520" y1="344" x2="760" y2="344" stroke="var(--ink)"/>
-    <text x="526" y="358">parse(text)  to_text()  diff()</text>
-    <text x="526" y="372">hold(): clamp to RANGES (include_str!)</text>
-    <text x="526" y="386">choice(w) → version  nudge()  ticks()</text>
-    <text x="526" y="400" fill="var(--accent)">+ EscortDistance, WingLeash, WingGreed,</text>
-    <text x="526" y="414" fill="var(--accent)">  WingThreat, WingAhead, WingStance (new)</text>
-    <rect x="790" y="290" width="190" height="140" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="790" y="290" width="190" height="18" fill="var(--line)"/><text x="885" y="303" text-anchor="middle" font-weight="700">styles</text>
-    <text x="796" y="322">Style { slot, name, about, kind }</text>
-    <text x="796" y="336">«enum» Kind: Rules(&amp;str) |</text>
-    <text x="796" y="350">  Transform | Net(bytes) | Duel(bytes)</text>
-    <text x="796" y="364" fill="var(--accent)">ROSTER: [Style; 16] (8 personas new)</text>
-    <line x1="790" y1="372" x2="980" y2="372" stroke="var(--ink)"/>
-    <text x="796" y="386">find(word)  parse_list()</text>
-    <text x="796" y="400">settings_for(style, base)</text>
-    <text x="796" y="414">make(style, base, name, rules)</text>
-    <rect x="20" y="480" width="470" height="110" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="20" y="480" width="470" height="18" fill="var(--line)"/><text x="255" y="493" text-anchor="middle" font-weight="700">scenario</text>
-    <text x="26" y="512">Doc { top, expect, reward, lists }   Outcome { hits, alive, start, end, points, advance,</text>
-    <text x="26" y="526" fill="var(--accent)">  station: BTreeMap&lt;(seat, to), (near, ticks)&gt; (new) }</text>
-    <line x1="20" y1="534" x2="490" y2="534" stroke="var(--ink)"/>
-    <text x="26" y="548">run_inner(doc, seed, net, make)   check(expect, out) → failed   reward(doc, out, failed)</text>
-    <text x="26" y="562" fill="var(--accent)">brain goal "escort:N"; expect/reward "station" (new);  learn::REWARDS has "station"</text>
-    <text x="26" y="576">learn: Course, gauntlet(out, threads) over scenarios/gauntlet/*.toml (G1 … G12)</text>
-    <rect x="520" y="480" width="460" height="110" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="520" y="480" width="460" height="18" fill="var(--line)"/><text x="750" y="493" text-anchor="middle" font-weight="700">the learned kinds</text>
-    <text x="526" y="512">NetBrain { net: Net { layers: Vec&lt;Layer&gt; } }   143 senses → 64 → 64 → heads (TCNET1)</text>
-    <text x="526" y="526">patch::Patch { steps: Vec&lt;Step&gt; }   153 inputs, 3 outputs, k steps, all zeros = the rules</text>
-    <text x="526" y="540">styles::Duelist { champion: Champion (35 → 32 → 32 → 4), rules: Box&lt;dyn Brain&gt; }</text>
-    <text x="526" y="554" fill="var(--accent)">tools/bc Mlp { hidden: Vec&lt;Linear&gt; (DEPTH × WIDTH), c: Linear } (new shape)</text>
-    <text x="526" y="576" fill="var(--dim)">fleet: role(seat, person_leads), team_brain(), fleet_of(): a person's team gets a builder, a guard, two wingmen</text>
-    <!-- client -->
-    <text x="20" y="622" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">treadcore-client (the window, Bevy)</text>
-    <rect x="20" y="630" width="300" height="80" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="20" y="630" width="300" height="18" fill="var(--line)"/><text x="170" y="643" text-anchor="middle" font-weight="700">Args / menu</text>
-    <text x="26" y="662">players, teams, map, skill, bots: Vec&lt;(team, styles)&gt;</text>
-    <text x="26" y="676" fill="var(--accent)">brain_file: Option&lt;String&gt; (--brain-file, new)</text>
-    <text x="26" y="690">menu rows: Map, Sides, Skill, Your team … (16 styles)</text>
-    <rect x="350" y="630" width="300" height="80" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="350" y="630" width="300" height="18" fill="var(--line)"/><text x="500" y="643" text-anchor="middle" font-weight="700">keys::Action / input</text>
-    <text x="356" y="662">ALL: [Action; 45]  word()  default_key()  group()</text>
-    <text x="356" y="676" fill="var(--accent)">FormUp F1, HoldHere F2, ScreenAhead F3,</text>
-    <text x="356" y="690" fill="var(--accent)">GoHome F4, SpreadOut F5 → Command::Ping (new)</text>
-    <rect x="680" y="630" width="300" height="80" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="680" y="630" width="300" height="18" fill="var(--line)"/><text x="830" y="643" text-anchor="middle" font-weight="700">goal::Pilot / hud / session</text>
-    <text x="686" y="662">Pilot { brain: Commander, coord, folded }  screen()</text>
-    <text x="686" y="676" fill="var(--accent)">hud::top(): "field 25 m/tile" (new)</text>
-    <text x="686" y="690">session: bots by styles::make | fleet | NetBrain(file)</text>
+    <text x="26" y="154">step_shells()  step_depots()</text>
+    <text x="26" y="168">hash()  map_as_played()  route_for()</text>
+    <rect x="285" y="30" width="235" height="150" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="285" y="30" width="235" height="18" fill="var(--line)"/><text x="402" y="43" text-anchor="middle" font-weight="700">Map</text>
+    <text x="291" y="62">w, h, seed, cells: Vec&lt;u8&gt;</text>
+    <text x="291" y="76" fill="var(--accent)">scale_m: f32 = 25 (new)</text>
+    <text x="291" y="90" fill="var(--accent)">tempo: f32 = 6 (new)</text>
+    <text x="291" y="104">starts, depots, pillboxes, structures</text>
+    <line x1="285" y1="112" x2="520" y2="112" stroke="var(--ink)"/>
+    <text x="291" y="126">generate(seed)  from_text()  to_text()</text>
+    <text x="291" y="140" fill="var(--accent)">class() → "field" | "theatre" (new)</text>
+    <text x="291" y="154" fill="var(--accent)">metres(tiles)  real_seconds(s) (new)</text>
+    <text x="291" y="168">route()  line_clear()  at()</text>
+    <rect x="550" y="30" width="205" height="100" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="550" y="30" width="205" height="18" fill="var(--line)"/><text x="652" y="43" text-anchor="middle" font-weight="700">Pillbox</text>
+    <text x="556" y="62">id, pos, owner: Option&lt;PlayerId&gt;</text>
+    <text x="556" y="76">health, reload, capture, capturer</text>
+    <text x="556" y="90" fill="var(--accent)">shells: u16 (0 on a hit, game 5)</text>
+    <line x1="550" y1="98" x2="755" y2="98" stroke="var(--ink)"/>
+    <text x="556" y="112">alive()  shooter()  hostile_to()</text>
+    <rect x="785" y="30" width="195" height="100" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="785" y="30" width="195" height="18" fill="var(--line)"/><text x="882" y="43" text-anchor="middle" font-weight="700">Depot</text>
+    <text x="791" y="62">id, pos, owner, capture</text>
+    <text x="791" y="76">stock: DepotStock</text>
+    <text x="791" y="90">  kinds: [u8; 6], turn</text>
+    <line x1="785" y1="98" x2="980" y2="98" stroke="var(--ink)"/>
+    <text x="791" y="112">stock.make()  → the pillboxes</text>
+    <rect x="550" y="150" width="205" height="104" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="550" y="150" width="205" height="18" fill="var(--line)"/><text x="652" y="163" text-anchor="middle" font-weight="700">«enum» Command</text>
+    <text x="556" y="182">Move, Stop, FireIndirect,</text>
+    <text x="556" y="196">FireDirect, Launch, Recall,</text>
+    <text x="556" y="210">SetBubble, Deploy, Embark,</text>
+    <text x="556" y="224">Ping { at: V2, kind: PingKind }</text>
+    <text x="556" y="238">Propose, Answer, Chat …</text>
+    <rect x="785" y="150" width="195" height="104" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="785" y="150" width="195" height="18" fill="var(--line)"/><text x="882" y="163" text-anchor="middle" font-weight="700">rules (consts)</text>
+    <text x="791" y="182">PILLBOX_SHELLS 8, REGEN 10 s</text>
+    <text x="791" y="196" fill="var(--accent)">PILLBOX_SUPPLY_REACH 12 tiles</text>
+    <text x="791" y="210" fill="var(--accent)">PILLBOX_SUPPLY_EVERY 2 s</text>
+    <text x="791" y="224" fill="var(--accent)">METRES_PER_TILE 25, TEMPO 6</text>
+    <text x="791" y="238" fill="var(--accent)">physical() → Vec&lt;Physical&gt;</text>
+    <text x="20" y="292" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">treadcore-brain (above observe; every kind ends in a Command)</text>
+    <rect x="20" y="300" width="170" height="80" fill="var(--tile)" stroke="var(--ink)" stroke-dasharray="4 3"/>
+    <rect x="20" y="300" width="170" height="18" fill="var(--line)"/><text x="105" y="313" text-anchor="middle" font-weight="700">«trait» Brain</text>
+    <text x="26" y="332">name()  think(obs)</text>
+    <text x="26" y="346">think_on(obs, map)  settings()</text>
+    <text x="26" y="360">act()  rung()  stance()</text>
+    <rect x="220" y="300" width="300" height="180" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="220" y="300" width="300" height="18" fill="var(--line)"/><text x="370" y="313" text-anchor="middle" font-weight="700">Commander</text>
+    <text x="226" y="332">goal: Goal, settings: Settings, slot, task</text>
+    <text x="226" y="346">fleet, crew, cycle, rotation, rally, pings</text>
+    <line x1="220" y1="354" x2="520" y2="354" stroke="var(--ink)"/>
+    <text x="226" y="368">set_goal(g)  think_on()  hunt()  go()</text>
+    <text x="226" y="382" fill="var(--accent)">fly_wing(): reads escort_distance, wing_*;</text>
+    <text x="226" y="396" fill="var(--accent)">  the station by wing_stance (new)</text>
+    <text x="226" y="410">fortify()  defend_base()  the base cycle</text>
+    <text x="226" y="428">«enum» Goal: Manual | HuntPillboxes |</text>
+    <text x="226" y="442">  DefendPillbox | DefendDepot | Escort(p) |</text>
+    <text x="226" y="456">  Hold(V2) | Fortify | DefendBase | Auto</text>
+    <rect x="550" y="300" width="205" height="150" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="550" y="300" width="205" height="18" fill="var(--line)"/><text x="652" y="313" text-anchor="middle" font-weight="700">Settings</text>
+    <text x="556" y="332">w: Weights (141 of W::ALL)</text>
+    <text x="556" y="346">caps: Caps (u64 bits)</text>
+    <line x1="550" y1="354" x2="755" y2="354" stroke="var(--ink)"/>
+    <text x="556" y="368">parse(text)  to_text()  diff()</text>
+    <text x="556" y="382">hold(): clamp to RANGES</text>
+    <text x="556" y="396">choice(w) → version  nudge()</text>
+    <text x="556" y="414" fill="var(--accent)">+ EscortDistance, WingLeash,</text>
+    <text x="556" y="428" fill="var(--accent)">  WingGreed, WingThreat,</text>
+    <text x="556" y="442" fill="var(--accent)">  WingAhead, WingStance (new)</text>
+    <rect x="785" y="300" width="195" height="150" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="785" y="300" width="195" height="18" fill="var(--line)"/><text x="882" y="313" text-anchor="middle" font-weight="700">styles</text>
+    <text x="791" y="332">Style { slot, name,</text>
+    <text x="791" y="346">  about, kind: Kind }</text>
+    <text x="791" y="360">Kind: Rules | Transform | Net | Duel</text>
+    <text x="791" y="374" fill="var(--accent)">ROSTER: [Style; 16] (8 new)</text>
+    <line x1="785" y1="382" x2="980" y2="382" stroke="var(--ink)"/>
+    <text x="791" y="396">find(word)  parse_list()</text>
+    <text x="791" y="410">settings_for(style, base)</text>
+    <text x="791" y="424">make(style, base, name, rules)</text>
+    <rect x="20" y="500" width="500" height="110" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="500" width="500" height="18" fill="var(--line)"/><text x="270" y="513" text-anchor="middle" font-weight="700">scenario · learn</text>
+    <text x="26" y="532">Doc { top, expect, reward, lists }</text>
+    <text x="26" y="546">Outcome { hits, alive, start, end, points, advance, …,</text>
+    <text x="26" y="560" fill="var(--accent)">  station: BTreeMap&lt;(seat, to), (near, ticks)&gt; } (new)</text>
+    <line x1="20" y1="568" x2="520" y2="568" stroke="var(--ink)"/>
+    <text x="26" y="582">run_inner(doc, seed, net, make)  check(expect, out)  reward(doc, out, failed)</text>
+    <text x="26" y="596" fill="var(--accent)">goal "escort:N"; "station" in expect, reward and learn::REWARDS (new)</text>
+    <text x="26" y="608" fill="var(--dim)">learn: Course; gauntlet() over scenarios/gauntlet/ (G1 … G12)</text>
+    <rect x="550" y="500" width="430" height="110" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="550" y="500" width="430" height="18" fill="var(--line)"/><text x="765" y="513" text-anchor="middle" font-weight="700">the learned kinds · fleet</text>
+    <text x="556" y="532">NetBrain { net: Net { layers: Vec&lt;Layer&gt; } }  143 → 64 → 64 → heads</text>
+    <text x="556" y="546">patch::Patch { steps }  153 in, 3 out; all zeros = the rules</text>
+    <text x="556" y="560">Duelist { champion: 35 → 32 → 32 → 4, rules: Box&lt;dyn Brain&gt; }</text>
+    <text x="556" y="574" fill="var(--accent)">tools/bc Mlp { hidden: Vec&lt;Linear&gt; (DEPTH × WIDTH), c } (new)</text>
+    <line x1="550" y1="582" x2="980" y2="582" stroke="var(--ink)"/>
+    <text x="556" y="596" fill="var(--dim)">fleet: role(seat, person_leads)  team_brain()  fleet_of():</text>
+    <text x="556" y="608" fill="var(--dim)">  a person's team gets a builder, a guard, two wingmen</text>
+    <text x="20" y="652" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">treadcore-client (the window, Bevy)</text>
+    <rect x="20" y="660" width="300" height="90" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="660" width="300" height="18" fill="var(--line)"/><text x="170" y="673" text-anchor="middle" font-weight="700">Args / menu</text>
+    <text x="26" y="692">players, teams, map, skill, bots</text>
+    <text x="26" y="706" fill="var(--accent)">brain_file: Option&lt;String&gt; (new)</text>
+    <text x="26" y="720">menu rows: Map, Sides, Skill, teams …</text>
+    <text x="26" y="734" fill="var(--dim)">(a team row lists the 16 slots)</text>
+    <rect x="350" y="660" width="300" height="90" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="350" y="660" width="300" height="18" fill="var(--line)"/><text x="500" y="673" text-anchor="middle" font-weight="700">keys::Action / input</text>
+    <text x="356" y="692">ALL: [Action; 45]  word()  default_key()</text>
+    <text x="356" y="706" fill="var(--accent)">FormUp F1, HoldHere F2, ScreenAhead F3,</text>
+    <text x="356" y="720" fill="var(--accent)">GoHome F4, SpreadOut F5 (new)</text>
+    <text x="356" y="734" fill="var(--dim)">→ Command::Ping { at, kind }</text>
+    <rect x="680" y="660" width="300" height="90" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="680" y="660" width="300" height="18" fill="var(--line)"/><text x="830" y="673" text-anchor="middle" font-weight="700">goal::Pilot / hud / session</text>
+    <text x="686" y="692">Pilot { brain: Commander, coord, folded }</text>
+    <text x="686" y="706" fill="var(--accent)">hud::top(): "field 25 m/tile" (new)</text>
+    <text x="686" y="720">session: bots by styles::make, fleet,</text>
+    <text x="686" y="734" fill="var(--accent)">  or NetBrain from --brain-file (new)</text>
   </g>
-  <!-- relations -->
   <g stroke="var(--dim)" stroke-width="1.2" fill="none">
-    <path d="M270 60 L298 60"/><path d="M270 80 L558 80" stroke-dasharray="2 3"/><path d="M270 95 L788 95" stroke-dasharray="2 3"/>
-    <path d="M190 330 L218 330" marker-end="url(#gen)"/>
-    <path d="M490 330 L518 330"/><path d="M760 400 L788 400" stroke-dasharray="2 3" marker-end="url(#dep)"/>
-    <path d="M355 290 L355 250 L660 250 L660 242" stroke-dasharray="2 3" marker-end="url(#dep)"/>
-    <path d="M500 630 L500 600 L660 600 L660 242" stroke-dasharray="2 3" marker-end="url(#dep)" opacity="0.6"/>
+    <path d="M255 60 L283 60"/><path d="M137 190 L137 270 L652 270 L652 242" stroke-dasharray="2 3" opacity="0"/>
+    <path d="M190 340 L218 340" marker-end="url(#gen)"/>
+    <path d="M520 340 L548 340"/><path d="M755 410 L783 410" stroke-dasharray="2 3" marker-end="url(#dep)"/>
+    <path d="M370 300 L370 266 L652 266 L652 256" stroke-dasharray="2 3" marker-end="url(#dep)"/>
+    <path d="M500 660 L500 628 L535 628 L535 272 L645 272 L645 256" stroke-dasharray="2 3" marker-end="url(#dep)" opacity="0.7"/>
   </g>
-  <text x="200" y="258" font-size="10" fill="var(--dim)">«use» a brain's think returns Commands</text>
+  <text x="380" y="262" font-size="9" fill="var(--dim)">«use» think() returns Commands</text>
+  <text x="540" y="640" font-size="9" fill="var(--dim)">«use» the keys become Commands</text>
 </svg>
-<figcaption>Fig. 4. UML of treadcore's three layers, the classes that today's changes touch drawn in full and the rest named. The arrows: World owns a Map and its pillboxes and depots; a Commander is a Brain; a Commander reads its Settings; the window's actions become Commands. What is new is in the accent: a field, a method or a slot added today.</figcaption>
+<figcaption>Fig. 4. UML of treadcore's three layers, the classes that today's changes touch drawn in full and the rest named. World owns a Map and its pillboxes and depots; a Commander is a Brain; a Commander reads its Settings; the window's actions become Commands. What is new is in the accent: a field, a method or a slot added today.</figcaption>
 </figure>
 <figure>
-<svg viewBox="0 0 1000 520" width="100%" role="img" aria-label="UML of orrery's training side: the planner Plan class, the keeper, the tune tool, the view script, and the console's training and pipeline models and states" style="font-family: var(--mono); font-size: 11px; max-width: 1000px;">
+<svg viewBox="0 0 1000 560" width="100%" role="img" aria-label="UML of orrery's training side: the planner Plan class, the keeper, the tune tool, the view script, and the console's training and pipeline models and states" style="font-family: var(--mono); font-size: 10px; max-width: 1000px;">
   <defs><marker id="od" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="none" stroke="var(--dim)" stroke-width="1.2"/></marker></defs>
   <g fill="var(--ink)">
     <text x="20" y="22" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">Python: the planner, the keeper, the tools (tools/)</text>
-    <rect x="20" y="30" width="330" height="250" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="20" y="30" width="330" height="18" fill="var(--line)"/><text x="185" y="43" text-anchor="middle" font-weight="700">plans/treadcore.py :: Plan</text>
-    <text x="26" y="62">state, cfg, line (line.json), hosts, cuda, q (QUEUE)</text>
-    <text x="26" y="76">MIN_GAIN 0.25, SETTLE_GENS 2, HELD_Z 3, PROOF_EVERY_MIN 60</text>
-    <text x="26" y="90" fill="var(--accent)">GIVE_BUILT 1.0, GIVE_ROAD 0.5, GIVE_KD 0.10 (new)</text>
-    <text x="26" y="104" fill="var(--accent)">WIDTHS ("32","64","128","64x3"), GAUNTLET_EVERY_H 24 (new)</text>
-    <line x1="20" y1="112" x2="350" y2="112" stroke="var(--ink)"/>
-    <text x="26" y="126">plan()  search()  ab_trials()  far_trials()  temper_trials()</text>
-    <text x="26" y="140">held_pairs()  held_pass()  evidence()  batch()</text>
-    <text x="26" y="154">noise()  held_by_a_person()  anchor_short()</text>
-    <text x="26" y="168" fill="var(--accent)">side_read(dir)  gives_up(dirs, sign)  trades_away(k, v) (new)</text>
-    <text x="26" y="182">auto_promote()  promote_run()  resolve()  land()  build_tip()</text>
-    <text x="26" y="196" fill="var(--accent)">line_proof(): … and gives up nothing past the floors (new)</text>
-    <text x="26" y="210" fill="var(--accent)">width_watch()  width_read()  shape(s)  gauntlet_watch() (new)</text>
-    <text x="26" y="224">region_trials()  carry_passes()  remembered()</text>
-    <text x="26" y="238">board()  values_view()  pipeline.json ← values, flow, timeline,</text>
-    <text x="26" y="252" fill="var(--accent)">  queued, traces, held (new)</text>
-    <text x="26" y="266">apply_tuning(): tuning.json over line.json's values</text>
+    <rect x="20" y="30" width="340" height="270" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="30" width="340" height="18" fill="var(--line)"/><text x="190" y="43" text-anchor="middle" font-weight="700">plans/treadcore.py :: Plan</text>
+    <text x="26" y="62">state, cfg, line (line.json), hosts, cuda, q</text>
+    <text x="26" y="76">MIN_GAIN 0.25  SETTLE_GENS 2  HELD_Z 3</text>
+    <text x="26" y="90" fill="var(--accent)">GIVE_BUILT 1.0  GIVE_ROAD 0.5  GIVE_KD 0.10 (new)</text>
+    <text x="26" y="104" fill="var(--accent)">WIDTHS "32" "64" "128" "64x3"  GAUNTLET_EVERY_H 24</text>
+    <line x1="20" y1="112" x2="360" y2="112" stroke="var(--ink)"/>
+    <text x="26" y="126">plan()  search()  ab_trials()  far_trials()</text>
+    <text x="26" y="140">temper_trials()  anchor_trial()  region_trials()</text>
+    <text x="26" y="154">held_pairs()  held_pass()  evidence()  batch()</text>
+    <text x="26" y="168">noise()  held_by_a_person()  anchor_short()</text>
+    <text x="26" y="182" fill="var(--accent)">side_read()  gives_up()  trades_away() (new)</text>
+    <text x="26" y="196">auto_promote()  promote_run()  resolve()  land()</text>
+    <text x="26" y="210" fill="var(--accent)">line_proof(): … and gives up nothing (new)</text>
+    <text x="26" y="224" fill="var(--accent)">width_watch()  width_read()  shape()  (shapes)</text>
+    <text x="26" y="238" fill="var(--accent)">gauntlet_watch() (new)  carry_passes()</text>
+    <text x="26" y="252">board()  values_view()  → pipeline.json:</text>
+    <text x="26" y="266" fill="var(--accent)">  values, flow, timeline, queued, traces, held (new)</text>
+    <text x="26" y="280">apply_tuning(): tuning.json over line.json</text>
     <rect x="380" y="30" width="290" height="120" fill="var(--tile)" stroke="var(--ink)"/>
     <rect x="380" y="30" width="290" height="18" fill="var(--line)"/><text x="525" y="43" text-anchor="middle" font-weight="700">fleet-queue.py (the keeper)</text>
-    <text x="386" y="62">lanes, keeper loop, sync, plan each minute</text>
+    <text x="386" y="62">lanes, the keeper loop, sync, a plan a minute</text>
     <line x1="380" y1="70" x2="670" y2="70" stroke="var(--ink)"/>
-    <text x="386" y="84">health(q): keeper, heartbeat, code, planning,</text>
-    <text x="386" y="98" fill="var(--accent)">  certificate (new), sync, machines, lanes, jobs,</text>
-    <text x="386" y="112">  search, line, models, difficulty</text>
-    <text x="386" y="126">verbs: new, cancel, machine, project, resume,</text>
-    <text x="386" y="140">  stop-job, restart, status, health</text>
-    <rect x="380" y="170" width="290" height="110" fill="var(--tile)" stroke="var(--ink)"/>
+    <text x="386" y="84">health(q): keeper, heartbeat, code,</text>
+    <text x="386" y="98" fill="var(--accent)">  certificate (new), planning, sync,</text>
+    <text x="386" y="112">  machines, lanes, jobs, search, line, …</text>
+    <text x="386" y="126">verbs: new, cancel, machine, project,</text>
+    <text x="386" y="140">  resume, stop-job, restart, status, health</text>
+    <rect x="380" y="170" width="290" height="130" fill="var(--tile)" stroke="var(--ink)"/>
     <rect x="380" y="170" width="290" height="18" fill="var(--line)"/><text x="525" y="183" text-anchor="middle" font-weight="700">fleet-tune.py · treadcore-view.py</text>
     <text x="386" y="202">tune: KEY VALUE | KEY default → tuning.json</text>
     <text x="386" y="216" fill="var(--accent)">hold DIAL VALUE | off → hold.json (new)</text>
     <line x1="380" y1="224" x2="670" y2="224" stroke="var(--ink)"/>
-    <text x="386" y="238">view: machines(), run(), net(), analysis(), long_run(),</text>
-    <text x="386" y="252" fill="var(--accent)">  ranges(), personas(), gauntlet(), held (new)</text>
-    <text x="386" y="266">→ one JSON document the console draws</text>
-    <!-- data files -->
-    <rect x="700" y="30" width="280" height="250" fill="var(--tile)" stroke="var(--ink)" stroke-dasharray="4 3"/>
-    <rect x="700" y="30" width="280" height="18" fill="var(--line)"/><text x="840" y="43" text-anchor="middle" font-weight="700">files (QUEUE = build/queue/grove)</text>
-    <text x="706" y="62">plan/state.json  (search, far, temper, width,</text>
-    <text x="706" y="76" fill="var(--accent)">  gauntlet, side_reads (new))</text>
-    <text x="706" y="90">plan/pipeline.json  (the board, values, held)</text>
-    <text x="706" y="104">tuning.json  hold.json  config.json</text>
-    <text x="706" y="118">runs/*.json  results/*/…/pooled.txt, g-*.log</text>
-    <text x="706" y="132">flags/*.json  events.jsonl  archive/</text>
-    <text x="706" y="150">treadcore: RANGES, weights.rs, styles.rs,</text>
-    <text x="706" y="164">  profiles/*.weights, scenarios/gauntlet/*.toml,</text>
-    <text x="706" y="178">  build/train/gauntlet.tsv</text>
-    <text x="706" y="196">tools/plans/line.json: values (the floors,</text>
-    <text x="706" y="210" fill="var(--accent)">  gauntlet_every_h new), stages, edges, methods,</text>
-    <text x="706" y="224" fill="var(--accent)">  screens (Personas, Gauntlet, Ranges new)</text>
-    <text x="706" y="242">docs/book/*.md → chapters.py → the site</text>
-    <!-- Rust console -->
-    <text x="20" y="312" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">Rust: the console (src/, no crates)</text>
-    <rect x="20" y="320" width="330" height="180" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="20" y="320" width="330" height="18" fill="var(--line)"/><text x="185" y="333" text-anchor="middle" font-weight="700">training::Model / State</text>
-    <text x="26" y="352">Model: machines, run, net, algo, analysis, long_run,</text>
-    <text x="26" y="366" fill="var(--accent)">  ranges, personas, gauntlet: Option&lt;json::Value&gt; (new)</text>
-    <text x="26" y="380">State: page, zoom, tune, operator, cand_off,</text>
-    <text x="26" y="394" fill="var(--accent)">  ranges_off (new), analysis, arm_*</text>
-    <line x1="20" y1="402" x2="350" y2="402" stroke="var(--ink)"/>
-    <text x="26" y="416">PAGES: [(n, name, what); 13]  draw(ui, m, st, view)</text>
-    <text x="26" y="430">draw_runs_page … draw_long_run  draw_commits_page</text>
-    <text x="26" y="444" fill="var(--accent)">draw_personas(ui, at, m) (10)  draw_gauntlet (12) (new)</text>
-    <text x="26" y="458" fill="var(--accent)">draw_ranges(ui, at, m, st) (11): ui.scroll_list (new)</text>
-    <text x="26" y="472">RESULTS_PAGES [5,2,3,8,10,12,4]  SETTINGS_PAGES [6,9,11,7]</text>
-    <text x="26" y="486">frames: ORRERY_FRAME_PAGE, --frame-view results|settings</text>
-    <rect x="380" y="320" width="290" height="180" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="380" y="320" width="290" height="18" fill="var(--line)"/><text x="525" y="333" text-anchor="middle" font-weight="700">pipeline::Model / pages</text>
-    <text x="386" y="352">Model: tasks, values: Vec&lt;(key, now, moved)&gt;,</text>
-    <text x="386" y="366" fill="var(--accent)">  held: Vec&lt;(dial, value)&gt; (new), flow, lanes, queued</text>
-    <line x1="380" y1="374" x2="670" y2="374" stroke="var(--ink)"/>
-    <text x="386" y="388">PAGES: Board, Flow, Timeline, Queued, Values</text>
-    <text x="386" y="402">values(ui, at, m, st): value_rows() for the table,</text>
-    <text x="386" y="416" fill="var(--accent)">  then the held rows with Release →</text>
-    <text x="386" y="430" fill="var(--accent)">  st.tune = "hold DIAL off" (new)</text>
-    <text x="386" y="444">main: tune_cmd(queue_ctl) runs fleet-tune.py with it</text>
-    <text x="386" y="466" fill="var(--dim)">line::values() from line.json, baked in; line::Value</text>
-    <text x="386" y="480" fill="var(--dim)">  { key, attr, label, default, min, max, step, unit, long }</text>
-    <rect x="700" y="320" width="280" height="180" fill="var(--tile)" stroke="var(--ink)"/>
-    <rect x="700" y="320" width="280" height="18" fill="var(--line)"/><text x="840" y="333" text-anchor="middle" font-weight="700">ui / nav / draw</text>
-    <text x="706" y="352">Ui: label, label_in, label_right, button, tip,</text>
-    <text x="706" y="366">  scroll_list(box, n, lh, &amp;mut off), c.rect, c.disc</text>
-    <text x="706" y="380">nav::header(ui, view, …, keys) → (rest, go, clicked)</text>
-    <text x="706" y="394">nav::Key { label, on, lamp }</text>
-    <text x="706" y="408">theme t: ink, dim, accent, up, warn, alarm, tile, line</text>
-    <text x="706" y="422">fonts F8X13, F6X10, F10X20 (baked glyphs)</text>
-    <line x1="700" y1="430" x2="980" y2="430" stroke="var(--ink)"/>
-    <text x="706" y="444" fill="var(--dim)">tools/report: md.py (Doc), build.py (a page),</text>
-    <text x="706" y="458" fill="var(--accent)">  chapters.py (a book) (new); page.html the look</text>
-    <text x="706" y="472" fill="var(--dim)">docs/book/00-front.md … 16-references.md, figs/</text>
+    <text x="386" y="238">view: machines(), run(), net(), analysis(),</text>
+    <text x="386" y="252">  long_run(), quality(),</text>
+    <text x="386" y="266" fill="var(--accent)">  ranges(), personas(), gauntlet(), held (new)</text>
+    <text x="386" y="280">→ one JSON document the console draws</text>
+    <rect x="690" y="30" width="290" height="270" fill="var(--tile)" stroke="var(--ink)" stroke-dasharray="4 3"/>
+    <rect x="690" y="30" width="290" height="18" fill="var(--line)"/><text x="835" y="43" text-anchor="middle" font-weight="700">files (QUEUE = build/queue/grove)</text>
+    <text x="696" y="62">plan/state.json: search, far, temper,</text>
+    <text x="696" y="76" fill="var(--accent)">  width, gauntlet, side_reads (new)</text>
+    <text x="696" y="90">plan/pipeline.json: the board, values,</text>
+    <text x="696" y="104" fill="var(--accent)">  held (new)</text>
+    <text x="696" y="118">tuning.json  hold.json  config.json</text>
+    <text x="696" y="132">runs/*.json  results/…/pooled.txt, g-*.log</text>
+    <text x="696" y="146">flags/*.json  events.jsonl  archive/</text>
+    <text x="696" y="166">treadcore: RANGES, weights.rs, styles.rs,</text>
+    <text x="696" y="180">  profiles/*.weights, scenarios/gauntlet/,</text>
+    <text x="696" y="194">  build/train/gauntlet.tsv</text>
+    <text x="696" y="214">tools/plans/line.json: values (the floors,</text>
+    <text x="696" y="228" fill="var(--accent)">  gauntlet_every_h new), stages, methods,</text>
+    <text x="696" y="242" fill="var(--accent)">  screens (Personas, Gauntlet, Ranges new)</text>
+    <text x="696" y="262">docs/book/*.md → chapters.py → the site</text>
+    <text x="696" y="276">docs/*-lab-report.md → build.py → a page</text>
+    <text x="20" y="332" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">Rust: the console (src/, no crates)</text>
+    <rect x="20" y="340" width="340" height="200" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="340" width="340" height="18" fill="var(--line)"/><text x="190" y="353" text-anchor="middle" font-weight="700">training::Model / State</text>
+    <text x="26" y="372">Model: machines, run, net, algo, analysis,</text>
+    <text x="26" y="386">  long_run, quality, queue,</text>
+    <text x="26" y="400" fill="var(--accent)">  ranges, personas, gauntlet (new)</text>
+    <text x="26" y="414">State: page, zoom, tune, operator, cand_off,</text>
+    <text x="26" y="428" fill="var(--accent)">  ranges_off (new), analysis, arm_*</text>
+    <line x1="20" y1="436" x2="360" y2="436" stroke="var(--ink)"/>
+    <text x="26" y="450">PAGES: [(n, name, what); 13]  draw(ui, m, st, view)</text>
+    <text x="26" y="464">draw_runs_page … draw_long_run  draw_commits_page</text>
+    <text x="26" y="478" fill="var(--accent)">draw_personas (10)  draw_gauntlet (12) (new)</text>
+    <text x="26" y="492" fill="var(--accent)">draw_ranges (11): ui.scroll_list (new)</text>
+    <text x="26" y="506">RESULTS_PAGES [5,2,3,8,10,12,4]</text>
+    <text x="26" y="520">SETTINGS_PAGES [6,9,11,7]</text>
+    <text x="26" y="534" fill="var(--dim)">frames: ORRERY_FRAME_PAGE, --frame-view</text>
+    <rect x="380" y="340" width="290" height="200" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="380" y="340" width="290" height="18" fill="var(--line)"/><text x="525" y="353" text-anchor="middle" font-weight="700">pipeline::Model / pages</text>
+    <text x="386" y="372">Model: tasks, values: Vec&lt;(key, now, moved)&gt;,</text>
+    <text x="386" y="386" fill="var(--accent)">  held: Vec&lt;(dial, value)&gt; (new),</text>
+    <text x="386" y="400">  flow, lanes, marks, queued, traces</text>
+    <line x1="380" y1="408" x2="670" y2="408" stroke="var(--ink)"/>
+    <text x="386" y="422">PAGES: Board, Flow, Timeline, Queued, Values</text>
+    <text x="386" y="436">values(ui, at, m, st): value_rows() for the</text>
+    <text x="386" y="450" fill="var(--accent)">  table, then the held rows with Release →</text>
+    <text x="386" y="464" fill="var(--accent)">  st.tune = "hold DIAL off" (new)</text>
+    <text x="386" y="478">main: tune_cmd(queue_ctl) runs fleet-tune.py</text>
+    <text x="386" y="498" fill="var(--dim)">line::values() from line.json, baked in;</text>
+    <text x="386" y="512" fill="var(--dim)">line::Value { key, attr, label, default,</text>
+    <text x="386" y="526" fill="var(--dim)">  min, max, step, unit, long }</text>
+    <rect x="690" y="340" width="290" height="200" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="690" y="340" width="290" height="18" fill="var(--line)"/><text x="835" y="353" text-anchor="middle" font-weight="700">ui / nav / draw</text>
+    <text x="696" y="372">Ui: label, label_in, label_right, button,</text>
+    <text x="696" y="386">  tip, scroll_list(box, n, lh, &amp;mut off),</text>
+    <text x="696" y="400">  c.rect, c.disc</text>
+    <text x="696" y="414">nav::header(ui, view, …, keys)</text>
+    <text x="696" y="428">  → (rest, go, clicked);  nav::Key</text>
+    <text x="696" y="442">theme t: ink, dim, accent, up, warn,</text>
+    <text x="696" y="456">  alarm, tile, line</text>
+    <text x="696" y="470">fonts F8X13, F6X10, F10X20 (baked)</text>
+    <line x1="690" y1="478" x2="980" y2="478" stroke="var(--ink)"/>
+    <text x="696" y="492" fill="var(--dim)">tools/report: md.py (Doc), build.py,</text>
+    <text x="696" y="506" fill="var(--accent)">  chapters.py (a book) (new)</text>
+    <text x="696" y="520" fill="var(--dim)">page.html: the look of every page</text>
   </g>
   <g stroke="var(--dim)" stroke-width="1.2" fill="none" marker-end="url(#od)" stroke-dasharray="2 3">
-    <path d="M350 150 L378 150"/><path d="M670 100 L698 100"/><path d="M670 240 L698 240"/>
-    <path d="M185 280 L185 318"/><path d="M525 280 L525 318"/>
-    <path d="M840 280 L840 318"/>
+    <path d="M360 150 L378 150"/><path d="M670 100 L688 100"/><path d="M670 250 L688 250"/>
+    <path d="M190 300 L190 338"/><path d="M525 300 L525 338"/><path d="M835 300 L835 338"/>
   </g>
-  <text x="195" y="300" font-size="10" fill="var(--dim)">«reads» view JSON, pipeline.json</text>
+  <text x="200" y="322" font-size="9" fill="var(--dim)">«reads» the view JSON, pipeline.json</text>
 </svg>
-<figcaption>Fig. 5. UML of orrery's training side. The planner is one class of about ninety methods; the keeper, the tune tool and the view script are small programs beside it; the console's two models are what the pages draw, read from the files in the middle. What is new is in the accent.</figcaption>
+<figcaption>Fig. 5. UML of orrery's training side. The planner is one class of about ninety methods; the keeper, the tune tool and the view script are small programs beside it; the console's two models are what the pages draw, read from the files on the right. What is new is in the accent.</figcaption>
 </figure>
 </section><section id="sxiv"><h2>XIV. What the difference did, in numbers</h2><div class="table"><table><thead><tr><th>Measure</th><th>Before the day</th><th>After</th></tr></thead><tbody><tr><td>RANGES lines</td><td>34 (1 decree, 12 temper, 10 shares)</td><td>109 (2 decrees, 12 temper, 34 shares, 57 physical)</td></tr><tr><td>weights</td><td>135</td><td>141</td></tr><tr><td>styles on the roster</td><td>8</td><td>16</td></tr><tr><td>gauntlets</td><td>9</td><td>12</td></tr><tr><td>window actions</td><td>40</td><td>45</td></tr><tr><td>game version</td><td>4</td><td>5</td></tr><tr><td>console pages (training.rs)</td><td>10</td><td>13</td></tr><tr><td>health checks</td><td>12</td><td>13</td></tr><tr><td>tests: sim, brain, console</td><td>59, 150, 391</td><td>61, 152, 391</td></tr><tr><td>the scripted wingman on G10–G12</td><td>unmeasured</td><td>57–59% within 8 tiles; 29/30; 30/30</td></tr><tr><td>the eight personas, 400 seeds</td><td>unread</td><td>Rome −5.13 ± 0.58 (+5.96 built) … Shoshone −7.15 ± 0.63 (kd −0.49); see the book, chapter 10</td></tr></tbody></table></div></section><section id="sxv"><h2>XV. Limits</h2><ul><li>The trainer's depth is unverified by a compiler on this machine; the fleet's first shape-watch job decides it.</li><li>The window's unit tests were not run to the end today (the Bevy test build outran the session's limit twice); <code>cargo check</code> passed and the keys' and goal's tests are small, but it is a gap.</li><li>The persona reads of the afternoon are of game 4; the eight were asked again under game 5 and will overwrite the Personas page's column as they return.</li><li>The nightly gauntlet runs in this Mac's working checkout, which is also where the work is done; a build in progress and the job could collide on cargo's lock.</li><li>The hold's Release knows one reason (the stale dial of 1 November) and says it for any dial; the reason should come from the file.</li></ul></section><section id="sxvi"><h2>XVI. Conclusion</h2><p>The day's difference is small in each place and consistent across all of them: a number that was a constant became a weight with a range; a thing that was a file became a row; a behaviour the census could not see became a floor; a decision a person could not give became a key. The world's tick changed in two boxes and the hash's order in none. The figures show where each sits; the hunks show what each is; the book says why.</p></section><section id="links"><h2>Links</h2><p><a href="https://treadcore.org/reports/2026-11-02-the-plan/">The Post-Mortem and the Plan</a> · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/checkins/CI-084-2026-11-02-the-post-mortem-and-the-plan.md">CI-084</a> · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-BRAIN.md">LAB-REPORT-BRAIN.md section 127</a> · <a href="https://treadcore.org/reports/">the Lab Reports page</a> · the commits named in the masthead.</p></section>
   </main>
