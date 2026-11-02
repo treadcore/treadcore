@@ -217,11 +217,11 @@ weights! {
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
     CastleInside "castle_inside" 2.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";
     CastleRoad "castle_road" 2.0, "castle: pillboxes outside on its road (rounded)";
-    PostSpacing "post_spacing" 28.1025, "posts: tiles between pillboxes on a road between bases";
+    PostSpacing "post_spacing" 31.8699, "posts: tiles between pillboxes on a road between bases";
     PostsMax "posts_max" 6.0, "posts: road posts a base fills at most (rounded)";
     JunctionClear "junction_clear" 3.0, "posts: no post this near a road junction, tiles";
     ConnectBases "connect_bases" 0.75, "connect: a base or castle preferred to a lone pillbox, 0 none, 1 its distance counted at nothing";
-    BridgeKeep "bridge_keep" 180.0, "bridge jobs: seconds a part-laid bridge stays on the team board with no tile laid";
+    BridgeKeep "bridge_keep" 90.0, "bridge jobs: seconds a part-laid bridge stays on the team board with no tile laid";
     BridgeReach "bridge_reach" 40.0, "bridge jobs: a teammate this near its next tile takes it, tiles";
     BridgeWing "bridge_wing" 1.0, "bridge jobs: a wingman with material takes one too, leaving its leader's wedge (1), or only tanks on auto (0) (rounded)";
     Duck "w_duck" 1.0, "duck: safety against the errand; a tank ducks with its armour share at or under this, 1 always, 0 never";
@@ -237,7 +237,7 @@ weights! {
     ShellBoxes "shell_boxes" 1.0, "spending (LR 86, the cowboy, the default since): 1 shells a hostile pillbox in the indirect gun's reach whenever the gun is ready and no tank is shot at, 0 only those guarding a stormed depot (before LR 86); thresholded at 0.5";
     LongshotEvery "longshot_every" 1.25, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
     LongshotAny "longshot_any" 1.0, "spending (1 since LR 86): 1 a longshot with no hostile structure to hit goes at the nearest hostile pillbox, else the target tank; 0 at structures only (before LR 86); thresholded at 0.5";
-    StrikesMax "strikes_max" 3.0, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
+    StrikesMax "strikes_max" 3.30238, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
     TemperEngage1 "temper_engage_1" 0.0, "temper: how much the 60 s wave moves engage_odds, the bar under which a tank holds off, a share of it; bio.rs";
     TemperEngage2 "temper_engage_2" 0.0, "temper: how much the 73 s wave moves engage_odds, the bar under which a tank holds off, a share of it; bio.rs";
