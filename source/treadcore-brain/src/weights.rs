@@ -313,7 +313,7 @@ caps! {
     COLUMN 13 "column" true, "a fleet crosses a bridge in file (12f3)";
     CYCLE 14 "cycle" true, "after filling up, give the base an item and an improvement and road out (12f1)";
     ISLAND_SITE 15 "island_site" true, "a small island with few trees is a poor base (12f2)";
-    ESCORT 17 "escort" false, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
+    ESCORT 17 "escort" true, "a fleet leader's far fetch trip gathers its wingmen first, so the fleet escorts the pillbox home along the road (12f)";
     BRIDGE_JOBS 18 "bridge_jobs" true, "a part-laid bridge is a job on the team board, taken by the next teammate with material; needs board (12f)";
     DUCK 19 "duck" true, "out of a hostile gun's range or line when it is ready before mine: direct fire denied, since it cannot be dodged once fired (12d, LR 19)";
     POSTURE 20 "posture" true, "the team board's posture leans the Auto ladder by w_posture; needs board (12e, LR 24)";
