@@ -142,7 +142,7 @@ impl Default for Tactics {
     fn default() -> Tactics {
         Tactics {
             w_near: 2.0,
-            near_scale: 15.0,
+            near_scale: 30.0,
             w_wounded: 1.2,
             w_finish: 0.552896,
             w_boat: 2.0,
@@ -155,7 +155,7 @@ impl Default for Tactics {
             w_threat: 0.6,
             base_r: 6.15272,
             w_stick: 0.322391,
-            focus_blend: 0.5,
+            focus_blend: 0.25,
             odds_r: 14.0,
             pillbox_worth: 0.7,
             strike_worth: 0.35,
