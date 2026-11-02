@@ -161,7 +161,7 @@ impl Default for Tactics {
             strike_worth: 0.35,
             engage_odds: 0.353899,
             press_odds: 1.33767,
-            coming_r: 180.0,
+            coming_r: 221.036,
             mass_for: 12.0,
             answer_cap: 3,
             crew_reach: 40.0,
