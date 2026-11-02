@@ -104,7 +104,7 @@ weights! {
     Overkill "w_overkill" 0.6, "target: off for each teammate past the cap";
     InRange "w_in_range" 1.4, "target: in direct range now";
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
-    BaseR "base_r" 8.0, "target: the base's reach for w_threat, tiles";
+    BaseR "base_r" 6.15272, "target: the base's reach for w_threat, tiles";
     Stick "w_stick" 0.322391, "target: the one already chosen";
     FocusBlend "focus_blend" 0.5, "target (LR 117): 0 the near tank in range, 1 the wounded one a teammate is on; 0.5 both as before (each side's terms doubled toward its end)";
     // Tactics: the engagement and assignment.
@@ -134,7 +134,7 @@ weights! {
     Confirm "confirm" 2.0, "smooth: thinks in a row a challenger must win (rounded)";
     ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target (rounded)";
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
-    AdvanceBand "advance_band" 0.675, "smooth: the advance scalar presses above this and falls back below minus this";
+    AdvanceBand "advance_band" 0.652128, "smooth: the advance scalar presses above this and falls back below minus this";
     Jitter "jitter" 3.0, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
     RetreatArmor "retreat_armor" 50.0, "survival: armour at or under this goes home (blended from the constant by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
     RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home (blended from the constant 4 by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
