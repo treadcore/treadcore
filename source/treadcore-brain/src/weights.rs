@@ -158,7 +158,7 @@ weights! {
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";
     // The team (LR 9).
     SwapGap "swap_gap" 0.207136, "rotation: readiness gap between a hot and a cold point that swaps two tanks";
-    BotStyle "bot_style" 0.0, "brain: which named style a team plays, read when its bots are made, so a match's next (choice: fleet | raider | castle | expander | timid | overrider | scholar | duelist): styles.rs";
+    BotStyle "bot_style" 0.0, "brain: which named style a team plays, read when its bots are made, so a match's next (choice: fleet | raider | castle | expander | timid | overrider | scholar | duelist | rome | china | mongolia | shoshone | venice | japan | polynesia | assyria): styles.rs; 8 to 15 are the personas of 2 November";
     Model "model" 0.0, "brain: a team's brain, 0 the rules, k a learned model in the fleet's slot k (choice: rules | slot1 | slot2 | slot3 | slot4 | slot5 | slot6 | slot7): the census reads CENSUS_MODELS/k.bin, orrery names each slot by its generation (models.tsv)";
     Roles "roles" 0.0, "team: a bots' team of five after its leader (choice: as_built | no_guard | two_guards | three_guards): as built a guard, two rangers and a wing; no guard sends the guard out with the fleet; two and three guards keep more at the base (fleet::MIXES)";
     PingStyle "ping_style" 0.0, "pings: what a team calls and answers (choice: as_built | help | warn | defend | all): as built the switch `pings` decides and every call is help; help calls for help when outnumbered and comes when called; warn warns off and takes warnings and cautions; defend calls and comes only for a base under attack; all of them, and it says what it saw";
@@ -253,6 +253,15 @@ weights! {
     TemperTrigger3 "temper_trigger_3" 0.0, "temper: how much the 86 s wave moves longshot_every, the seconds between its longshots, a share of it; bio.rs";
     CrewStay "crew_stay" 1.0, "crew: who keeps building while the castle is unfinished, whatever the leader does (choice: none | guard | guard_one | guard_two): crew.rs";
     CycleAll "cycle_all" 1.0, "cycle: who gives the base something after filling up (choice: leader_and_guard | every_tank): cycle.rs";
+    // THE WINGMAN'S NUMBERS WERE CONSTANTS (Paul, 2 November: "a wingman ... following my moves, like an
+    // escort mission"). A person's two wingmen kept station by five numbers nobody could move: not the
+    // person, not a persona, not the search. As weights they are sliders on the U page and dials the
+    // census reads; the defaults are the constants, so nothing plays differently until someone moves one.
+    EscortDistance "escort_distance" crate::commander::ESCORT_DISTANCE, "wingman: the station behind the leader, tiles";
+    WingLeash "wing_leash" crate::commander::WING_LEASH, "wingman: nothing takes it further than this from its leader, tiles";
+    WingGreed "wing_greed" crate::commander::WING_GREED, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
+    WingThreat "wing_threat" crate::commander::WING_THREAT, "wingman: anything hostile this near the leader is its first job, tiles";
+    WingAhead "wing_ahead" crate::commander::WING_AHEAD, "wingman: it hits what is ahead of the leader within this, tiles";
 }
 
 /// The flat array of every weight.

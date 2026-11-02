@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>The goals, rewritten</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#treadcore-s-six-goals-as-the-roadmap-sta">Treadcore&#x27;s six goals, as the roadmap states them</a><a href="#orrery-s-goals-as-its-documents-state-th">Orrery&#x27;s goals, as its documents state them</a><a href="#the-goals-as-the-directives-express-them">The goals as the directives express them</a><a href="#what-2-november-adds">What 2 November adds</a><a href="#the-gap">The gap</a><a href="#links">Links</a><a href="01-the-project.html">&larr; 1</a><a href="03-the-directives.html">3 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 2 of 16</p>
+    <h1>The goals, rewritten</h1>
+    <div class="front"><p>The goals have been written three times: as treadcore's roadmap (18 October), as orrery's plan (September, then the backlog of 29 October), and, between the lines, as four weeks of Paul's directives. This chapter puts them in one place, says what each means in plain words, where it stands, and what the asks of 2 November add. It links back rather than repeating; nothing here changes an old report.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#treadcore-s-six-goals-as-the-roadmap-sta">Treadcore's six goals, as the roadmap states them</a></li><li><a href="#orrery-s-goals-as-its-documents-state-th">Orrery's goals, as its documents state them</a></li><li><a href="#the-goals-as-the-directives-express-them">The goals as the directives express them</a></li><li><a href="#what-2-november-adds">What 2 November adds</a></li><li><a href="#the-gap">The gap</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="treadcore-s-six-goals-as-the-roadmap-sta"><h2>Treadcore's six goals, as the roadmap states them</h2><div class="table"><table><thead><tr><th>Goal</th><th>In plain words</th><th>State</th><th>Where</th></tr></thead><tbody><tr><td>1. One world, many machines</td><td>a world that is playable, editable, networked and programmable at once: deterministic, sixteen seats, maps and an editor, teams and alliances, prediction, play across the Internet, a headless server</td><td>met</td><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/ROADMAP.md">ROADMAP</a> goal 1</td></tr><tr><td>2. The battlefield the war made</td><td>indirect fire, the bubble, recon, strike and longshot drones, jammers, industry under drones</td><td>met; balance continues</td><td>goal 2, <a href="../2026-10-30-balance.html">Too Many Shots</a></td></tr><tr><td>3. Command, not only driving</td><td>goal modes, fleets, castles, pillboxes that move, a coordination screen</td><td>half met: allies' goals, fleet orders from the screen, shared drones and transfers, build patterns by ping are open</td><td>goal 3, steps 11c to 11i</td></tr><tr><td>4. Bots that think as a team</td><td>one tunable decision pattern on shared memory, cheap enough for sixteen at 4x speed</td><td>being finished: every part on by default since 20 October; tuning is the fleet's job</td><td>goal 4, the brain report</td></tr><tr><td>5. Longer, truer matches</td><td>real numbers and tuned ranges (11f), upgrades bought for supply (11g), the flag and the town's vision (11j), a score for ground held over time</td><td>open</td><td>goal 5, <a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROPOSAL-UPGRADES.md">PROPOSAL-UPGRADES</a></td></tr><tr><td>6. In players' hands</td><td>packages, a release, two real routers</td><td>0.2.0 released 26 October; the two-router proof still open</td><td>goal 6</td></tr></tbody></table></div></section><section id="orrery-s-goals-as-its-documents-state-th"><h2>Orrery's goals, as its documents state them</h2><p>Orrery's first design set (console, surface, wire, lockdown, media) had one goal: <strong>the console the operator stands in front of</strong>, with no dependencies, able to reach a locked-down node by SSH, SFTP, TLS and RDP, with verbs that act on a selection and refuse structurally what they cannot do. All eleven of its phases are done (<a href="https://github.com/richeson/orrery/blob/main/docs/writeup.html">the writeup</a>). The second set, written in the last week of October, has three goals that this book inherits:</p><ul><li><strong>The fleet as one computer</strong>: a queue, a lane a machine, a keeper, with health checks and buttons for anything a person might need to do (<a href="https://github.com/richeson/orrery/blob/main/docs/fleet-train.md">fleet-train</a>).</li><li><strong>One coherent process</strong>: a ratchet of generations on a line, proved before it reaches the game, drawn as a Gantt and a Kanban, every value adjustable from a screen (<a href="../2026-11-01-the-whole-line.html">The Whole Line</a>, <a href="../2026-11-01-double-report.html">Double Report</a>).</li><li><strong>More brains judged by one judge</strong>: versions, roles, senses, a league of learned models, the crucible bridge, each read by the same census (<a href="https://github.com/richeson/orrery/blob/main/docs/brains.md">brains.md</a>).</li></ul></section><section id="the-goals-as-the-directives-express-them"><h2>The goals as the directives express them</h2><p>Read across the check-ins and the commit messages, Paul's prompts return to the same eight things. They are the project's working goals whether or not a document names them:</p><ol><li><strong>Always progress forward and carry the weights.</strong> Nothing found is thrown away; a generation builds on the last; a pass is carried across a generation rather than re-read from nothing.</li><li><strong>Automatic, with buttons.</strong> The fleet should promote by itself when in auto mode and the machine can push; anything manual should be a button; a process that needs a person at the keyboard has failed.</li><li><strong>Every number a weight, every either-or a scalar, every feature on by default.</strong> "Should it do x or y" becomes a weight that blends the two plus a switch; new behaviour ships on with a sensible starting number; the census is the guard.</li><li><strong>Numbers stay in their ranges, and a decree is a constant.</strong> Every number may have a min and max; min equal to max is a person's ruling, which only Paul makes.</li><li><strong>Record every step.</strong> A lab-report section, a roadmap item, a changelog line, a journal entry and an IEEE-style check-in, with the prompt quoted word for word and each decision traced to its cause.</li><li><strong>Measure before believing.</strong> The rule before the run; two standard errors as the bar; a census of 400 seeds, not a smoke test; one lever at a time.</li><li><strong>The game is for a person.</strong> Hard at full skill, playable at 0.6; the bots should play like a side; a person should be able to pick a bot by name, set a goal, and be followed.</li><li><strong>Speed it up, but not with noise.</strong> One promotion every half hour was asked for and the noise it buys was measured; less noise was then asked for, and the bars were raised.</li></ol></section><section id="what-2-november-adds"><h2>What 2 November adds</h2><p>The asks of 2 November are the second half of the design, and they fall into the same frame:</p><div class="table"><table><thead><tr><th>Ask</th><th>Which goal it serves</th><th>New or continued</th></tr></thead><tbody><tr><td>Lock the physical constraints into ranges first</td><td>4 (ranges and decrees), 5 (real numbers, 11f)</td><td>continues 11f, which has been open since 18 October</td></tr><tr><td>A scale system for ballistic arcs and drone speed</td><td>5 (real numbers)</td><td>new: maps differ in size and the constants assume 25 m a tile</td></tr><tr><td>Named personas from the terrain's local maxima</td><td>4 (bots that think as a team), 7 (pick a bot by name)</td><td>continues bot styles with a method for naming them</td></tr><tr><td>A wingman that follows the human</td><td>3 (command, not only driving), 7</td><td>the scripted wingman exists; a trained one and a person's say over it are new</td></tr><tr><td>Training gauntlets for these abilities</td><td>6 (measure before believing)</td><td>continues the gauntlet of 27 October</td></tr><tr><td>A wider or deeper transform</td><td>the fourth part of the design</td><td>the width watch exists; depth is new</td></tr><tr><td>A zero-sum economy, refineries, smelters, harvesters</td><td>5 (longer, truer matches), 11g</td><td>new; the upgrades proposal is its nearest kin</td></tr><tr><td>Logistics: workers, bases that recharge, a pillbox that loses its ammo when hit</td><td>5</td><td>new</td></tr><tr><td>Cities, and a teammate who builds while defending</td><td>3, 4</td><td>the builder role exists on a person's team; the rest is new</td></tr><tr><td>Human-with-bots play, goal and personality toggles, fleet messages, ally bot play</td><td>3, 7</td><td>continues 11c and 11d</td></tr><tr><td>Every feature an interface element</td><td>2 (automatic, with buttons)</td><td>an audit, then the elements</td></tr><tr><td>The goals rewritten, the how-to, the post-mortem, in chapters, with IEEE references</td><td>5 (record every step)</td><td>this book</td></tr></tbody></table></div></section><section id="the-gap"><h2>The gap</h2><p>Three things the documents promise that the directives have outrun, and one the other way:</p><ul><li>The roadmap's goal 4 says tuning comes once the features are in. The features have been in since 20 October and the fleet has tuned for a week; what the week found is that the search also tunes numbers that should have been constants. That is why the plan begins with ranges.</li><li>Goal 3's coordination screen was to carry allies' goals and fleet orders. The screen shows the fleet's rungs now; orders from it, and a person's say over a wingman, are still to come, and chapter 14 designs them.</li><li>Goal 5 (longer, truer matches) has had a proposal since 18 October and no step; the economy asked for on 2 November is where it goes.</li><li>The other way: the directives asked for one promotion every twenty minutes, then every half hour, then for less noise. The numbers settled it (chapter 6): the pace is set by the seeds a read needs, and the bars now stand at z 1.5 with a floor of a quarter point a seat.</li></ul></section><section id="links"><h2>Links</h2><p><a href="https://github.com/treadcore/treadcore/blob/main/documentation/ROADMAP.md">ROADMAP.md</a> · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/CONCEPT.md">CONCEPT.md</a> · <a href="https://github.com/richeson/orrery/blob/main/docs/brains.md">brains.md</a> · <a href="https://github.com/richeson/orrery/blob/main/docs/plan.md">plan.md</a> · <a href="../2026-11-01-the-whole-line.html">The Whole Line</a> · chapter 3 for the directives in full, chapter 8 for the register of open items.</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="01-the-project.html">&larr; 1. The project on one page</a></span><span><a href="03-the-directives.html">3. The directives, in plain words &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

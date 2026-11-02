@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>The project on one page</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#the-game">The game</a><a href="#the-two-brains">The two brains</a><a href="#the-instrument">The instrument</a><a href="#the-definition-of-the-design">The definition of the design</a><a href="#where-it-stands-in-one-table">Where it stands, in one table</a><a href="02-the-goals.html">2 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 1 of 16</p>
+    <h1>The project on one page</h1>
+    <div class="front"><p>Two programs and a room of machines, with one aim: a tank game whose bots play like a side, and a process that makes them better by itself, in a way a person can read, steer and trust.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#the-game">The game</a></li><li><a href="#the-two-brains">The two brains</a></li><li><a href="#the-instrument">The instrument</a></li><li><a href="#the-definition-of-the-design">The definition of the design</a></li><li><a href="#where-it-stands-in-one-table">Where it stands, in one table</a></li></ol></nav>
+  <main>
+  <section id="the-game"><h2>The game</h2><p>Treadcore is an overhead tank game for up to sixteen players on a 128 by 128 tile island, one tile 25 metres. It descends from a 1980s tank game and adds what the war of the last few years handed the tank: the gun fires indirect at a point a recon drone is watching, interceptors hold a ring round the hull and ram what flies in, strike and longshot drones carry the fight past the horizon, and jammers blind everyone's link alike. Each tank carries a squad of four that captures pillboxes, builds walls, roads, bridges and mines, fells trees for material, and can lift a pillbox and carry it home. Depots resupply. Alliances form and break under a three-way rule. The windows find each other on a LAN or across the Internet and elect a host; nobody runs a server. It is Rust, with Bevy for the window; the simulation is deterministic and headless, and everything above it drives it through two calls, <code>step</code> and <code>observe</code>. The player's guide is <a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to Play</a>; the rules and their reasons are <a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">DESIGN.md</a>.</p></section><section id="the-two-brains"><h2>The two brains</h2><p>Every seat a person does not take is a bot, and a bot is one of two kinds of mind, or a mix.</p><p><strong>The programmed brain</strong> (the Commander, in <code>treadcore-brain</code>) is a ladder of goals a person can also set by hand: defend the base, fortify, hunt pillboxes, expand, guard. Under it sit about 135 named numbers, the <em>weights</em>: some are worths that lean a choice, some are shares between 0 and 1, some are distances and times with a meaning in the world, some are whole-number <em>choices</em> that pick one of several rewritten versions of a function, and a few are on-off <em>switches</em>. A team shares one board (influence, the front, posture, jobs) and plays roles: a leader, a guard, rangers, wingmen, and on a person's team a builder. Eight named <em>styles</em> (Fleet, Raider, Castle, Expander, Timid, Overrider, Scholar, Duelist) are whole brains anybody can pick by name and put on a side. The month's record of building it is the <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-BRAIN.md">brain's lab report</a>, 126 numbered sections.</p><p><strong>The learned brain</strong> is small on purpose. A tank's senses are 133 numbers (a compass of sectors, the body, the instruments, a periscope's contacts, hints); a net of two hidden layers of 64 reads them and chooses. Beside it sits the <em>transform</em>: a few hundred numbers that read the senses, the slow waves of a tank's temperament and the rules' own answer, and may move that answer when confident. All zeros is the brain as it was, so training starts exactly where the rules stand. A GPU arena, crucible, breeds a third kind: duelling champions on islands of a population, whose best plays the fight inside a rules tank on this simulator. The plan for the learned tank is <a href="https://github.com/treadcore/treadcore/blob/main/documentation/AI-BRAINZ-PLAN.md">AI-BRAINZ-PLAN.md</a>; how it is trained, and the parity between CPU and GPU, is <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LEARNING-DESIGN.md">LEARNING-DESIGN.md</a>.</p></section><section id="the-instrument"><h2>The instrument</h2><p>Orrery began as a fleet console with no dependencies: a window drawn by hand on a Mac and on Wayland, SSH, SFTP, TLS and RDP written from the standards, so that a locked-down node on a LAN that never reaches the Internet could be reached, read and commanded. In the last week of October it grew the second half of its job: it holds the orchestration of training. A <em>keeper</em> runs a queue; each machine is a lane; a <em>planner</em> decides every minute what the lanes should do. The work is a <em>census</em>: seeded matches of a trial brain against the shipped one, pooled by inverse variance, and judged against bars written before the run. A trial that passes its reads and two held-out reads becomes a <em>generation</em> on a local <em>line</em>; the line is proved against the shipped game at 800 seeds, hourly, and goes to main past z 3. Every number of that process a person might want to move is a <em>value</em> on a screen; everything a person might need to do is a button; what the machines found is drawn, with hover, on the Results chapter's tabs. The <a href="../2026-11-01-double-report.html">Double Report</a> is the guide to every screen; <a href="../2026-11-01-the-whole-line.html">The Whole Line</a> is the process end to end.</p></section><section id="the-definition-of-the-design"><h2>The definition of the design</h2><p>Paul set the frame on 2 November in six parts, and this book keeps to it:</p><ol><li><strong>The design</strong>: the game's rules, the brain's shape, the process. Written, mostly; chapter 2 says where.</li><li><strong>The implementation</strong>: the game, the brains, the console. Built and shipped (0.2.0).</li><li><strong>Training the programmed brain's weights</strong>: the fleet's censuses, the line, the proof. Running; a week of it is this book's subject.</li><li><strong>Training the transform into a learned player</strong>: built, with a first trained transform in a slot; not yet promoted, and the width test said wider is not yet worth it.</li><li><strong>Combining the two</strong>: the Overrider style (rules under a transform) and the Duelist (rules with a champion in the fight) exist; the net cannot yet build or crew.</li><li><strong>Orrery orchestrating the whole</strong>: dependencies, the order of seeds, promotion, values. Built; its faults were the week's main lesson.</li></ol></section><section id="where-it-stands-in-one-table"><h2>Where it stands, in one table</h2><div class="table"><table><thead><tr><th>Part</th><th>State on 2 November 2026</th><th>Evidence</th></tr></thead><tbody><tr><td>The game</td><td>0.2.0 released; game 4's rules (12 s mortar, finite depots, going forward paid) since 30 October</td><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/RELEASE.md">release</a>, <a href="../2026-10-30-balance.html">Too Many Shots</a></td></tr><tr><td>The programmed brain</td><td>135 weights, 19 switches, 12 choices, 8 styles; every part on by default</td><td><a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-BRAIN.md">brain report</a>, <a href="../2026-11-01-bot-styles.html">Eight Named Minds</a></td></tr><tr><td>The learned brain</td><td>nets that drive and shoot, about 20 points a seat behind the rules; a transform in slot 1; a crucible champion in the Duelist</td><td><a href="../2026-10-27-generations.html">Generations</a>, <a href="../2026-11-01-waves.html">Waves</a></td></tr><tr><td>The line</td><td>19 generations this run; main moved eight times in the week; the newest proof +1.82 ± 0.42 over 800 seeds</td><td>chapter 4</td></tr><tr><td>The fleet</td><td>nine machines, three with CUDA cards; about 114 machine-hours a day</td><td><a href="../2026-11-01-the-whole-line.html">The Whole Line</a></td></tr><tr><td>The console</td><td>six chapters, 27 screens, every value a row, every action a button</td><td><a href="../2026-11-01-double-report.html">Double Report</a></td></tr></tbody></table></div><p>Chapter 2 rewrites the goals; chapter 5 is the how-to for the line; the plan begins at chapter 9.</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="index.html">&larr; contents</a></span><span><a href="02-the-goals.html">2. The goals, rewritten &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

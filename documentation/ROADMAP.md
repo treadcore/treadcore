@@ -1325,6 +1325,20 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     candidates re-read; crucible's islands on three GPU lanes; Results
     filtered and scrolled; a bar for every sense and score. State: done.
     Next: the re-reads' verdicts; a GPU arena of treadcore's rules.
+79. The post-mortem and the plan. (2 November; cause: Paul, "we are on
+    max fix mode ... read all the lab reports ... rewrite the entire
+    goals and aspirations ... lock physical constraints into a range of
+    values ... named personas ... a wingman trained"; LR 127, CI-084.)
+    Built: physical ranges in RANGES; the wingman's five numbers as
+    weights; eight personas (styles 8 to 15); the escort gauntlets G10 to
+    G12 with `station`; `rules::physical()`; the site's Lab Reports page
+    and the book `reports/2026-11-02-the-plan/` (sixteen chapters, 106
+    references); in orrery, the trade guard on what the score does not
+    weigh. State: built; the personas' censuses asked for. Next, in the
+    book's order: the economy's stage 1 (a hit pillbox loses its stock,
+    game version 5); the game-side slot for a net; fleet messages and a
+    wingman stance as elements; the shape watch for the transform; the
+    pinned-test lint; a playtest afternoon.
 
 ## Sequencing
 

@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>The economy and the logistics of a base</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#the-economy-as-it-is">The economy as it is</a><a href="#the-design-four-stocks-one-of-them-renew">The design: four stocks, one of them renewable</a><a href="#logistics-workers-and-what-a-hit-costs-a">Logistics: workers, and what a hit costs a pillbox</a><a href="#how-a-city-develops">How a city develops</a><a href="#the-quartermaster">The quartermaster</a><a href="#trade-from-the-game-paul-described">Trade, from the game Paul described</a><a href="#the-staged-plan-and-what-each-stage-cost">The staged plan, and what each stage costs</a><a href="#what-the-training-data-should-carry">What the training data should carry</a><a href="#links">Links</a><a href="12-the-transform.html">&larr; 12</a><a href="14-play-and-every-feature-an-element.html">14 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 13 of 16</p>
+    <h1>The economy and the logistics of a base</h1>
+    <div class="front"><p>Paul's ask, in his words made plain: a fun zero-sum economy, where every mineral but the growing trees is finite; bonuses for refineries, smelters and wood harvesters; a logistics layer where each base has a worker that does its work and recharges its empty supplies, and a pillbox does too, except that a pillbox that is hit loses its ammunition (it all goes up) and keeps only what it makes afresh; a description of how cities develop and refineries are built; and perhaps a teammate who stays back issuing the building orders while defending. This is a design chapter: nothing in it is built, and the first step is named.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#the-economy-as-it-is">The economy as it is</a></li><li><a href="#the-design-four-stocks-one-of-them-renew">The design: four stocks, one of them renewable</a></li><li><a href="#logistics-workers-and-what-a-hit-costs-a">Logistics: workers, and what a hit costs a pillbox</a></li><li><a href="#how-a-city-develops">How a city develops</a></li><li><a href="#the-quartermaster">The quartermaster</a></li><li><a href="#trade-from-the-game-paul-described">Trade, from the game Paul described</a></li><li><a href="#the-staged-plan-and-what-each-stage-cost">The staged plan, and what each stage costs</a></li><li><a href="#what-the-training-data-should-carry">What the training data should carry</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="the-economy-as-it-is"><h2>The economy as it is</h2><p>Material comes from trees: a squad fells a forest tile in four seconds for four material, and the tree grows back in two minutes. A tank carries eight. Walls, roads, bridges, mines and pillboxes cost one or two; a boat five. Depots resupply armour, fuel, shells and drones; since game 4 a depot makes one thing a second for all who draw on it and holds twenty of each kind, so a depot is a well that can run dry under a crowd and refills on its own. A pillbox holds eight shells for its owner and regains one every ten seconds. Structures go on pads: a power plant powers a zone of eighteen tiles; a refinery is a fuel and shell stop that halves the side's fuel burn; a workshop repairs and mends; a data centre is fire control and radar. Scoring pays a kill 100, a capture 25, an interception 5 and two points every ten seconds for each structure held; game 4 added rewards for going forward, which chapter 6 showed the search will farm. The upgrades proposal of 18 October (<a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROPOSAL-UPGRADES.md">PROPOSAL-UPGRADES</a>) adds <em>supply</em>, a side's second count earned from holdings and kills, and sixteen things to buy with it; it was traced once and never built.</p><p>Nothing in this is finite. Shells and drones appear at depots from nowhere, for ever. That is what makes a sixteen-minute elimination game work, and what makes a thirty-minute one shapeless.</p></section><section id="the-design-four-stocks-one-of-them-renew"><h2>The design: four stocks, one of them renewable</h2><div class="table"><table><thead><tr><th>Stock</th><th>Source</th><th>Finite?</th><th>Spent on</th><th>The structure that improves it</th></tr></thead><tbody><tr><td>wood</td><td>forest tiles, felled by the squad; regrows</td><td>no</td><td>roads, walls, bridges, boats, pillboxes</td><td>the <strong>harvester</strong>: a works on a pad by a forest; the squad's harvest near it yields six, not four, and the tile regrows in one minute</td></tr><tr><td>ore</td><td><strong>deposits</strong>: a new map object, a few per map, each with a fixed stock</td><td>yes</td><td>shells (smelted), pillbox and structure armour plate</td><td>the <strong>smelter</strong>: a works that turns ore into a depot's shell stock, one a second; without one a depot's shells do not refill</td></tr><tr><td>oil</td><td><strong>wells</strong>: a map object with a fixed stock</td><td>yes</td><td>fuel, drone batteries</td><td>the <strong>refinery</strong>: already a works; now it turns a well's oil into the side's fuel and halves the burn, as it does</td></tr><tr><td>supply</td><td>holdings and kills, as the proposal has it</td><td>earned, not mined</td><td>upgrades; and trade</td><td>the <strong>depot stores</strong> upgrade</td></tr></tbody></table></div><p>Zero-sum is the point: the ore and oil on a map are the ore and oil there is. A side that takes a deposit denies it; a side that loses its smelter runs its guns dry over minutes, not seconds; a long match becomes a contest over three or four places on the map rather than a crowd at the depots. Trees stay renewable so a side can always build, if slowly, and nobody is locked out of the game.</p></section><section id="logistics-workers-and-what-a-hit-costs-a"><h2>Logistics: workers, and what a hit costs a pillbox</h2><p>A base today is a depot, what stands near it, and whatever tanks happen to be there. The design gives it a crew: <strong>workers</strong>, a base's own squad, who never board a tank. They do three things, in order: carry (smelted shells from the smelter to the depot, fuel from the refinery, shells from the depot to the base's pillboxes), repair (what the workshop's slow mending does not reach), and build (what the city's plan says next). Roads speed them; a base with no road to its smelter is a base whose guns run dry in a siege. Workers are an abstraction a world can run cheaply: a stock in transit with a travel time along the route, drawn as a small figure on the road.</p><p>A pillbox's ammunition then has a source and a fate. It fills from its depot by the workers, not from nowhere; and when the pillbox is hit, its stored shells go up: the stock falls to zero, the blast is drawn, and the pillbox fights on with only what the workers bring and what it makes itself (one shell in ten seconds, as now). A besieged pillbox is a dangerous thing for a minute and a quiet one after, which is what a siege is, and why cutting the road matters.</p></section><section id="how-a-city-develops"><h2>How a city develops</h2><p>A base grows through four shapes, each the squad's and the workers' work on top of the last, and each what the builder role and the base cycle already try to make today:</p><ol><li><strong>A camp</strong>: a depot held, two pillboxes brought home, a ring road begun.</li><li><strong>A town</strong>: a power plant on its pad, a harvester by the wood, walls at the gate, the castle's two pillboxes inside and posts on the road out.</li><li><strong>A works town</strong>: a smelter at the nearest ore and the road to it, a refinery at the nearest well, the depot's stores upgraded, the workshop mending.</li><li><strong>A city</strong>: the data centre's fire control and radar, concrete walls, a gatehouse, a dock if there is water, supply roads to the allies' towns.</li></ol><p>The order is a plan, not a script: the team's posture leans it (Defend buys plating, Connect buys roads, Economy buys stores), and the brain's improvement slot (<code>upgrade_vs_mend</code>) already exists to weigh an upgrade against a mend.</p></section><section id="the-quartermaster"><h2>The quartermaster</h2><p>Paul's "one teammate stays back issuing the city-building commands while defending" is a role. A person's team already has a builder on Auto whose castle goes round the person's depot, and the guard now keeps building while the castle is unfinished (<code>crew_stay</code>). The quartermaster is that builder given the city's plan and the workers to carry it out: it stays within the base's alarm, defends when the base is threatened, and otherwise issues the next item of the plan, buys upgrades with supply by the team's posture, and asks the fleet for ore and oil ground when a stock runs low. It is a <code>roles</code> version (<code>quartermaster</code>) and a <code>city_plan</code> choice (camp, town, works, city) on top of the builder that exists, which is why it comes after the stocks and before the trade.</p></section><section id="trade-from-the-game-paul-described"><h2>Trade, from the game Paul described</h2><p>The trade mechanics he pasted (ports trade with ports and factories with factories; a payout that grows with distance and is highest between allies; trade units that spawn by themselves and are captured or protected; an embargo for five minutes on an attack, or for good by choice) map onto this game as supply: two depots of allied sides joined by road or water trade supply by the distance between them, with the allied rate above the team rate above a side's own; a convoy is a stock in transit the workers run and a raider can take; attacking a trading partner embargoes the pair for five minutes. The three-way rule already keeps alliances a choice rather than the end of the game. Trade gives a reason to hold a road and to keep an ally, which is what goal 3 (command, not only driving) and goal 5 (longer matches) have both lacked ([82], [83], [86]).</p></section><section id="the-staged-plan-and-what-each-stage-cost"><h2>The staged plan, and what each stage costs</h2><p>Every stage is a rule change: a <code>GAME_VERSION</code> bump, the evidence started anew, every dial promoted before it suspect, and a census before and after. That is expensive, which is why the stages are few and bundled, and why each has its proof written first.</p><div class="table"><table><thead><tr><th>Stage</th><th>Game version</th><th>What changes</th><th>Proof, written before the run</th></tr></thead><tbody><tr><td>1. The pillbox's stock</td><td>5</td><td>a hit pillbox loses its shells; a pillbox refills only from a depot within reach that has stock (the workers, abstract)</td><td>pillbox shots a match fall; a besieged base is taken more often; the guarded-base family still holds at 65%</td></tr><tr><td>2. Ore and the smelter</td><td>6</td><td>deposits on the maps; the squad harvests ore; the smelter; depots make shells only from ore; the harvester</td><td>a match of 30 minutes has a shape (holdings decide it); shells a match fall by half; a side without ore loses its guns within five minutes</td></tr><tr><td>3. Workers and the city</td><td>7</td><td>workers as stock in transit; the city's four shapes; the quartermaster role and the city plan; oil and the refinery's source</td><td>building rises without the walk reward; supply as the proposal has it; the upgrades</td></tr><tr><td>4. Trade</td><td>8</td><td>allied depots trade supply by distance; convoys; the embargo</td><td>alliances form in bots' matches; a trade road is defended</td></tr></tbody></table></div><p>Stage 1 is one session and touches <code>step_pillboxes</code>, <code>step_depots</code> and the pillbox's resupply; its only new state is nothing (a stock that falls to zero). Stage 2 is the large one: a map object, a terrain or object kind, a structure kind, and the depot's rule. The map files that carry deposits are new files; the old ones play as before until they are given deposits.</p></section><section id="what-the-training-data-should-carry"><h2>What the training data should carry</h2><p>The census logs each team's built, road, kills and deaths already (chapter 6 read them). For the economy they need ore mined, shells smelted, fuel refined, supply earned and traded, convoys taken, and minutes a pillbox stood empty, so that the score's blind spots do not repeat: the trade guard's floors extend to these, and a persona (Venice) can be judged on what it is for.</p></section><section id="links"><h2>Links</h2><p><a href="https://github.com/treadcore/treadcore/blob/main/documentation/PROPOSAL-UPGRADES.md">PROPOSAL-UPGRADES.md</a> · <a href="../2026-10-30-balance.html">Too Many Shots</a> · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">DESIGN.md</a> · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/GOVERNANCE.md">GOVERNANCE.md</a> section 5 (a change to the rules wants a trace) · real-time strategy economies and balance [82]–[89].</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="12-the-transform.html">&larr; 12. The transform: wider, deeper, or neither yet</a></span><span><a href="14-play-and-every-feature-an-element.html">14. Playing with and against the bots, and every feature an element &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

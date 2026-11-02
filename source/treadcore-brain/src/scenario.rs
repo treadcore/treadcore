@@ -292,6 +292,9 @@ pub struct Outcome {
     pub landed: BTreeMap<PlayerId, V2>,
     /// Orders the world refused a thinking seat: when, whose, and why.
     pub refused: Vec<(f64, PlayerId, String)>,
+    /// `station` (the wingman's gauntlets, 2 November): for each (seat, to) asked for, the ticks the
+    /// seat spent within the asked distance of `to`, and the ticks both lived.
+    pub station: BTreeMap<(PlayerId, PlayerId), (u64, u64)>,
 }
 
 /// Run a scenario: the outcome, and every expectation that failed (none
@@ -616,6 +619,8 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
                     ("defend_base", _) => Goal::DefendBase,
                     ("defend_depot", k) => Goal::DefendDepot(k.and_then(|k| depots.get(k)).map(|d| d.0)),
                     ("defend_pillbox", k) => Goal::DefendPillbox(k.and_then(|k| pillboxes.get(k)).copied()),
+                    // `escort:1`: the wingman's goal, seat 1 its leader (the gauntlets G10 to G12).
+                    ("escort", k) => Goal::Escort(k.unwrap_or(1) as PlayerId),
                     (g, _) => return Err(format!("no goal {}", g)),
                 });
                 Box::new(c)
@@ -652,6 +657,18 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
     if let Some(Value::Table(t)) = doc.reward.get("closer") {
         let at = place(&w, &depots, &pillboxes, t.get("at").and_then(Value::str).unwrap_or("centre"), t.get("offset"))?;
         out.points.insert("closer".into(), at);
+    }
+    // `station`: the share of the run a seat spends within `within` tiles of another, counted while
+    // both live. `[expect] station = { seat, to, within, at_least }`; `[reward] station = { to, within,
+    // worth }` for the learner's seat. The wingman's gauntlets (G10 to G12) are made of it.
+    let learner = doc.top.get("learner").and_then(Value::num).unwrap_or(0.0) as PlayerId;
+    let mut stations: Vec<(PlayerId, PlayerId, f32)> = Vec::new();
+    for (t, seat) in [(doc.expect.get("station"), None), (doc.reward.get("station"), Some(learner))] {
+        if let Some(Value::Table(t)) = t {
+            let s = seat.or(t.get("seat").and_then(Value::num).map(|s| s as PlayerId)).unwrap_or(learner);
+            let to = t.get("to").and_then(Value::num).ok_or("station: to")? as PlayerId;
+            stations.push((s, to, t.get("within").and_then(Value::num).unwrap_or(8.0) as f32));
+        }
     }
     for key in ["ends_near", "lands_near", "met_beyond"] {
         if let Some(Value::Table(t)) = doc.expect.get(key) {
@@ -706,6 +723,15 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
             }
         }
         w.step(&orders);
+        for &(a, b, within) in &stations {
+            if let (Some(x), Some(y)) = (w.tanks.iter().find(|t| t.owner == a && t.alive), w.tanks.iter().find(|t| t.owner == b && t.alive)) {
+                let e = out.station.entry((a, b)).or_insert((0, 0));
+                e.1 += 1;
+                if x.pos.dist(y.pos) <= within {
+                    e.0 += 1;
+                }
+            }
+        }
         for e in &w.events {
             match e {
                 Event::TankDamaged { tank, by, damage, .. } => {
@@ -821,6 +847,16 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
         let t = v.table().ok_or(format!("expect {}: an inline table", key))?;
         let seat = field(t, "seat").map(|s| s as PlayerId);
         match key.as_str() {
+            // `station = { seat, to, within, at_least }`: the share of the run `seat` spent within
+            // `within` tiles of `to`, both alive.
+            "station" => {
+                let (s, to) = (seat.ok_or("station: a seat")?, field(t, "to").ok_or("station: to")? as PlayerId);
+                let (near, ticks) = out.station.get(&(s, to)).copied().unwrap_or((0, 0));
+                let share = if ticks > 0 { near as f64 / ticks as f64 } else { 0.0 };
+                if let Some(m) = field(t, "at_least").filter(|m| share < *m) {
+                    failed.push(format!("seat {} was within {} tiles of seat {} for {:.0}% of the run, at least {:.0}% expected", s, field(t, "within").unwrap_or(8.0), to, 100.0 * share, 100.0 * m));
+                }
+            }
             "hits_on" => {
                 let s = seat.ok_or("hits_on: a seat")?;
                 let n = out.hits.iter().filter(|(_, on)| *on == s).count() as f64;
@@ -1005,7 +1041,10 @@ pub fn reaction(doc: &Doc, out: &Outcome) -> Option<f64> {
 ///   the point closed, start to end (a potential: no pay for circling);
 /// - `alive_time`: the share of the run the learner's tank lived;
 /// - `armor_gained`: its armour at the end less at the start, a share
-///   of full (dead is none).
+///   of full (dead is none);
+/// - `station = { to = 1, within = 8, worth = 1 }`: the share of the run the
+///   learner spent within that many tiles of seat `to`, both alive (the
+///   wingman's gauntlets, 2 November).
 pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
     let me = doc.top.get("learner").and_then(Value::num).unwrap_or(0.0) as PlayerId;
     let mut r = 0.0f32;
@@ -1013,6 +1052,10 @@ pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
         let w = v.num().or_else(|| v.table().and_then(|t| t.get("worth")).and_then(Value::num)).unwrap_or(0.0) as f32;
         r += w * match k.as_str() {
             "pass" => failed.is_empty() as u8 as f32,
+            "station" => {
+                let to = v.table().and_then(|t| t.get("to")).and_then(Value::num).unwrap_or(1.0) as PlayerId;
+                out.station.get(&(me, to)).map(|(near, ticks)| if *ticks > 0 { *near as f32 / *ticks as f32 } else { 0.0 }).unwrap_or(0.0)
+            }
             "called" | "chained" | "wood" | "road" => out.advance.iter().find(|((s, w), _)| *s == me && *w == k.as_str()).map_or(0.0, |(_, n)| *n as f32),
             "alive" => out.alive.get(&me).copied().unwrap_or(false) as u8 as f32,
             "damage_taken" => out.hits.iter().zip(&out.hit_damage).filter(|((_, on), _)| *on == me).map(|(_, d)| *d).sum(),

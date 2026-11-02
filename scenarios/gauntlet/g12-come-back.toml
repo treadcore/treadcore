@@ -1,0 +1,54 @@
+# The wingman's gauntlet (the plan of 2 November, chapter 11): come back.
+# As G10, and at ten seconds a hostile shell lands on the wingman. Decision:
+# dodge it, then return to the leader. Passed: the wingman is not hit, and is
+# within the leash (twenty tiles) of the leader for eight tenths of the run.
+name = "G12 come back after a shell"
+reaction = "move"
+floor = 0.8
+players = 3
+teams = [0, 0, 1]
+seconds = 60
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 60]
+y = [-70, 30]
+[[tank]]
+seat = 1
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 0
+at = "seat:1"
+offset = [-8, 0]
+heading = "any"
+[[tank]]
+seat = 2
+at = "centre"
+offset = [0, -65]
+[[depot]]
+at = "centre"
+offset = [50, 0]
+[[shell]]
+owner = 2
+at = "seat:0"
+scatter = 1
+from = [0, -30]
+from_any = true
+lands_in = [10, 11]
+[[brain]]
+seat = 1
+kind = "commander"
+goal = "defend_depot:0"
+[[brain]]
+seat = 0
+kind = "net"
+goal = "escort:1"
+[expect]
+hits_on = { seat = 0, max = 0 }
+station = { seat = 0, to = 1, within = 20, at_least = 0.8 }
+[reward]
+station = { to = 1, within = 20, worth = 1 }
+alive = 1

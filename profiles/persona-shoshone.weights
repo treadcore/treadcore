@@ -1,0 +1,13 @@
+# Shoshone: territory (persona, slot 11; the plan of 2 November, chapter 10).
+# Expander's dials (+2.35 at 400 seeds, europe-inflated) with the front forward and the advance plan
+# that calls for help and lays road back. Takes the map: depots and pillboxes first.
+w_posture = 0.9
+w_pos_expand = 2.5
+w_pos_connect = 2.5
+w_pos_fortify = 0.5
+w_connect = 2.0
+connect_tiles = 8
+posts_max = 6
+post_spacing = 8
+w_front = 0.5
+advance_plan = forward

@@ -480,3 +480,80 @@ pub fn drone_spec(k: crate::DroneKind, mark: u8) -> DroneSpec {
         (Longshot, _) => DroneSpec { name: "heavy one-way drone", speed: 3.5, battery: 190.0, blast: 1.4, ..s },
     }
 }
+
+// ---- the scale (Paul, 2 November: "a scale system so we can get ballistic arcs and drone speed") --
+/// A tile in metres, and how many real seconds a game second stands for. THE GAME IS A GAME SPEED,
+/// NOT A SCALE MODEL: at 25 m a tile its vehicles and drones fit the systems they are modelled on at
+/// a tempo of about six (a tank at 4 tiles a second is 360 km/h in game time and 60 km/h at tempo
+/// 6; a recon quadcopter 75 km/h; an FPV 97 km/h), and the two exceptions are kept on purpose: the
+/// longshot is four times too slow, so a bubble on its path has time, and the gun is short and its
+/// shell flies twice as long, so the island is a battlefield and a shell can be moved from. `physical`
+/// is the table in real units, computed from the constants so it cannot go stale; a map may one day
+/// declare its own scale (europe at 320 tiles is a theatre, not a field), and nothing here is a rule.
+pub const METRES_PER_TILE: f32 = 25.0;
+pub const TEMPO: f32 = 6.0;
+
+/// One row of the physical table: what, the game's number and unit, the real number and unit.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Physical {
+    pub what: &'static str,
+    pub game: f32,
+    pub game_unit: &'static str,
+    pub real: f32,
+    pub real_unit: &'static str,
+}
+
+fn kmh(tiles_per_s: f32) -> f32 {
+    tiles_per_s * METRES_PER_TILE * 3.6 / TEMPO
+}
+
+/// The constants in real units at `METRES_PER_TILE` and `TEMPO`: the table the plan's chapter 9 prints.
+pub fn physical() -> Vec<Physical> {
+    use crate::DroneKind::*;
+    let row = |what: &'static str, game: f32, game_unit: &'static str, real: f32, real_unit: &'static str| Physical { what, game, game_unit, real, real_unit };
+    let m = |tiles: f32| tiles * METRES_PER_TILE;
+    let flight = INDIRECT_MAX_RANGE / SHELL_SPEED_INDIRECT;
+    let mut v = vec![
+        row("tank speed", TANK_SPEED, "tiles/s", kmh(TANK_SPEED), "km/h"),
+        row("tank vision", TANK_VISION, "tiles", m(TANK_VISION), "m"),
+        row("direct gun range", DIRECT_RANGE, "tiles", m(DIRECT_RANGE), "m"),
+        row("direct shell speed", SHELL_SPEED_DIRECT, "tiles/s", SHELL_SPEED_DIRECT * METRES_PER_TILE / TEMPO, "m/s"),
+        row("indirect gun, least range", INDIRECT_MIN_RANGE, "tiles", m(INDIRECT_MIN_RANGE), "m"),
+        row("indirect gun, full range", INDIRECT_MAX_RANGE, "tiles", m(INDIRECT_MAX_RANGE), "m"),
+        row("a full-range shell's flight", flight, "s", flight * TEMPO, "s"),
+        row("pillbox range", PILLBOX_RANGE, "tiles", m(PILLBOX_RANGE), "m"),
+        row("recon vision", RECON_VISION, "tiles", m(RECON_VISION), "m"),
+        row("recon link", RECON_LINK, "tiles", m(RECON_LINK), "m"),
+        row("a 128-tile island", 128.0, "tiles", m(128.0) / 1000.0, "km"),
+        row("a sixteen-minute match", 16.0 * 60.0, "s", 16.0 * TEMPO, "min"),
+    ];
+    for k in [Recon, Interceptor, Strike, Longshot] {
+        for mark in 1..=3u8 {
+            let s = drone_spec(k, mark);
+            v.push(row(s.name, s.speed, "tiles/s", kmh(s.speed), "km/h"));
+            v.push(row(s.name, s.battery, "s of flight", s.battery * TEMPO / 60.0, "min"));
+        }
+    }
+    v
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The plan's chapter 9: the table follows the constants, and at tempo 6 the tank drives like a
+    /// tank. `cargo test -p treadcore-sim physical -- --nocapture` prints it.
+    #[test]
+    fn the_physical_table_follows_the_constants() {
+        let t = physical();
+        let tank = t.iter().find(|r| r.what == "tank speed").unwrap();
+        assert!((tank.real - 60.0).abs() < 1e-3, "{} km/h", tank.real);
+        let shell = t.iter().find(|r| r.what == "a full-range shell's flight").unwrap();
+        assert!((shell.game - 6.0).abs() < 1e-6 && (shell.real - 36.0).abs() < 1e-3, "{} s, {} s", shell.game, shell.real);
+        assert!(t.iter().all(|r| r.game > 0.0 && r.real > 0.0));
+        assert_eq!(t.iter().filter(|r| r.real_unit == "km/h").count(), 13, "the tank and twelve drone marks");
+        for r in &t {
+            println!("{:<30} {:>9.2} {:<12} {:>9.2} {}", r.what, r.game, r.game_unit, r.real, r.real_unit);
+        }
+    }
+}

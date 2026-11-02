@@ -1,0 +1,11 @@
+# Rome: roads, posts and legions (persona, slot 8; the plan of 2 November, chapter 10).
+# Stands on the builder hill of the terrain: w_pos_economy about 2.1 with posts_max about 12 read
+# +2.56 +/- 0.66 over every map and +1.12 +/- 0.33 without the reward for going forward. Every tank
+# runs the base cycle, the guard keeps building, and the roads and posts between bases come first.
+w_pos_economy = 2.1
+posts_max = 12
+connect_tiles = 8
+w_connect = 1.5
+w_pos_fortify = 1.0
+crew_stay = guard_one
+cycle_all = every_tank

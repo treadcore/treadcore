@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>Lessons</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#what-worked">What worked</a><a href="#what-wasted-time">What wasted time</a><a href="#the-faults-that-hid">The faults that hid</a><a href="#what-the-numbers-say-about-the-judge">What the numbers say about the judge</a><a href="#on-recording-and-shipping">On recording and shipping</a><a href="#links">Links</a><a href="06-what-the-numbers-said.html">&larr; 6</a><a href="08-the-register.html">8 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 7 of 16</p>
+    <h1>Lessons</h1>
+    <div class="front"><p>What the month teaches about the process, drawn from the lessons each report recorded and from the week's record. Each is stated as a rule a future week can be run by, with the place it was learned. They are grouped: what worked, what wasted time, the faults that hid, what the numbers say about the judge, and how to record and ship.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#what-worked">What worked</a></li><li><a href="#what-wasted-time">What wasted time</a></li><li><a href="#the-faults-that-hid">The faults that hid</a></li><li><a href="#what-the-numbers-say-about-the-judge">What the numbers say about the judge</a></li><li><a href="#on-recording-and-shipping">On recording and shipping</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="what-worked"><h2>What worked</h2><ul><li><strong>Write the rule before the run.</strong> A z 5.9 result was refused by rules written before the read, because the rules said what would count and the breakdown said it did not (<a href="../2026-11-01-a-stale-dial.html">A Stale Dial</a>). The width test's bar of 1.0, set in advance, made a 0.85 gain a clean "not yet" (<a href="../2026-11-01-waves.html">Waves</a>). Every design in this book's plan names its bar first.</li><li><strong>Build the negative control first.</strong> A waves-on, amount-zero control over 400 seeds reading exactly zero let every later difference be believed. A control costs one read and saves a week of argument.</li><li><strong>Make every new thing a version the same judge reads.</strong> Choices, switches, roles, model slots, styles and the temperament rows were all read by one census unchanged; the judge did not have to be rebuilt for each (<a href="https://github.com/richeson/orrery/blob/main/docs/brains.md">brains.md</a>).</li><li><strong>Prove each link in a container before touching a real machine.</strong> The fleet listener, the CUDA nodes and the Copal machines were each rehearsed on throwaway machines first; the faults found there were cheap (<a href="../2026-10-30-fleet-orchestration.html">Commanding the Fleet</a>).</li><li><strong>Prove against other people's servers, not your own fakes.</strong> A real sshd, OpenSSH's sftp-server and openssl found what no fake would have; the one module with no fake was the one with no surprise.</li><li><strong>Mine the records already on disk.</strong> Five diagnostic views (terrain, spectrum, matrices, senses, fleet) came from reads already made, for no new games (<a href="../2026-10-30-analysis.html">Reading a Growing Brain</a>).</li><li><strong>A frame rendered to a file is an acceptance test.</strong> Three drawing bugs invisible to a green test run were found only by looking; a byte-identical frame proved a refactor; this book's own tooling was proved the same way.</li></ul></section><section id="what-wasted-time"><h2>What wasted time</h2><ul><li><strong>Tests that pinned constants rather than rules.</strong> Half of all promotions for three days failed on them; fixing them one at a time cost a passed candidate each. The sweep that fixed them all at once fixed the line (<a href="../2026-11-01-the-whole-line.html">The Whole Line</a>).</li><li><strong>Measuring every change together.</strong> Game 4's six levers went in at once over eight seeds of one map, and there was no way to say which did what (<a href="../2026-10-30-balance.html">Too Many Shots</a>). One lever at a time, 400 seeds, all maps.</li><li><strong>Short smoke tests.</strong> A 300-second one-map test read a dial as exactly zero that a full census read at +1.5; smoke tests must be 900 seconds on real maps or not run (<a href="../2026-10-30-algorhythm.html">Algorhythm</a>).</li><li><strong>Lowering the bars.</strong> The simulation showed the read-on limit buys nothing and that ease past about 2.5 promotes mostly noise; the pace is set by seeds, not bars (<a href="../2026-10-29-difficulty.html">Promotion Difficulty</a>).</li><li><strong>The process outrunning its own checks.</strong> A proof takes a quarter of an hour and generations landed inside it, so a proof that passed at z 4.82 had nothing left to land. The fix was to land the commit that was read, not the line's head.</li><li><strong>A dashboard that mixed retired with failed.</strong> It made a healthy queue look broken and sent the owner hunting a fault that was 96% jobs that never ran (<a href="../2026-11-01-double-report.html">Double Report</a>).</li><li><strong>Written-down state.</strong> A saved address list called two healthy machines down; a value copied at join time went stale silently. Read the truth every run.</li></ul></section><section id="the-faults-that-hid"><h2>The faults that hid</h2><ul><li><strong>A self-inflicted fault behind a hardware one.</strong> jaguaribe's dead clock battery and the SSH resets looked like one fault; the resets were orrery's own four-second polling with an expired eight-hour certificate, which OpenSSH penalised (<a href="../2026-11-01-jaguaribe-clock.html">A Dead Clock Battery</a>).</li><li><strong>A crash recorded as a verdict.</strong> Reading a panic as UNDER hid a strongest-in-fleet result for three hours (<a href="../2026-10-30-brain-versions.html">Many Versions of One Brain</a>). A crash is never a number.</li><li><strong>A keeper running the code it started with.</strong> Fixes to the keeper did nothing all evening; it now restarts itself on new code.</li><li><strong>A fit that cannot tell a dead dial from noise.</strong> A dial not routed by the chosen switch reads exactly zero and looks settled.</li><li><strong>A nearby search that cannot find a far optimum.</strong> The fit looks within a doubling or two; <code>w_pos_fortify</code>'s best value was eight to sixteen times away, and the far read was built for it (<a href="../2026-11-01-bot-styles.html">Eight Named Minds</a>).</li><li><strong>A variadic FFI declared fixed.</strong> <code>fcntl</code> declared with a fixed third argument compiled, ran and never delivered <code>O_NONBLOCK</code>; it hid for two phases because every test asked a question before reading.</li></ul></section><section id="what-the-numbers-say-about-the-judge"><h2>What the numbers say about the judge</h2><ul><li><strong>The score is blind to what it does not weigh.</strong> It paid for walking and did not notice 18% less building or a third of a point a seat lost in fights. A judge must read the composition, not the total; the trade guard is the first rule that does.</li><li><strong>Picking the best of several first reads inflates it.</strong> Timid went from +3.15 on picked seeds to +0.39 on fresh ones. The held-out reads exist for this, and the fit's memory must not let a picked read back in.</li><li><strong>A tiny effect has a tiny error.</strong> +0.08 ± 0.04 clears any z and is worth nothing; a floor on the gain, not only on z, keeps the line from filling with noise.</li><li><strong>The seed swing is the pace.</strong> 9.5 points a seat means 400 seeds for half a point; the search cannot be hurried past that except by playing more seeds in parallel, which is machines.</li><li><strong>Values promoted under an older game go stale, and the search cannot find its way back</strong> without a far read or a person. A game change must start the evidence anew (GAME_VERSION), and every dial promoted before it is suspect.</li></ul></section><section id="on-recording-and-shipping"><h2>On recording and shipping</h2><ul><li><strong>Every step recorded is a step that can be audited.</strong> This book was possible because each check-in quotes its prompt and traces its decisions; the one week with thinner records (the fleet's first days) is the one hardest to reconstruct.</li><li><strong>A commit to main is a fleet event.</strong> It replays the line, rebuilds every machine and voids a proof in flight; source goes out when no proof runs, and documents go out any time, which is why the planner learned the difference.</li><li><strong>Hand the irreversible to the person.</strong> Nothing in orrery formats a disk, pushes a tag or lifts a decree; destructive steps are staged scripts with a list, not buttons. The two things that went to main by a person's hand this week (the building dials, the cycle restored) were the two the score could not see.</li><li><strong>Say what was left out, on the page, with counts.</strong> The terrain report's "88 maxima, 77 read, 58 unsettled, 3 bare" is the cheapest guard against the same rot recurring, and this book's register (chapter 8) is written the same way.</li></ul></section><section id="links"><h2>Links</h2><p>The lessons sections of each report named; <a href="../2026-10-30-fleet-commanders.html">Fleet Commanders</a> and <a href="../2026-10-30-fleet-orchestration.html">Commanding the Fleet</a> for the proving-in-containers method; <a href="../2026-10-28-appkit-gui.html">From Cargo to AppKit</a> for the frame-as-test method.</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="06-what-the-numbers-said.html">&larr; 6. What the numbers said</a></span><span><a href="08-the-register.html">8. The register of unfinished work &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

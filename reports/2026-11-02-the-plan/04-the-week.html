@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>The week, day by day</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#the-month-in-phases">The month, in phases</a><a href="#the-week">The week</a><a href="#by-the-numbers">By the numbers</a><a href="#links">Links</a><a href="03-the-directives.html">&larr; 3</a><a href="05-how-the-line-works.html">5 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 4 of 16</p>
+    <h1>The week, day by day</h1>
+    <div class="front"><p>The month in one line a phase, then the week of 25 October to 2 November a day at a time. Times are the Mac's; what each day asked and found is drawn from the commit messages of both repositories, the check-ins and the queue's own flags. The numbers are named once; the reports linked carry the rest.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#the-month-in-phases">The month, in phases</a></li><li><a href="#the-week">The week</a></li><li><a href="#by-the-numbers">By the numbers</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="the-month-in-phases"><h2>The month, in phases</h2><div class="table"><table><thead><tr><th>Days</th><th>Phase</th><th>What it left</th></tr></thead><tbody><tr><td>12 to 13 October</td><td>the world</td><td>a deterministic simulation, replay and hash, the squad, maps, teams, prediction, play across the Internet, the first playtest (journal 0001 to 0017)</td></tr><tr><td>13 to 17 October</td><td>the window and the bots</td><td>the frame, cubes, sound, chat, proposals; the attacking and defending rule brains; drones in three marks; fleets of five with a wedge and a rotation</td></tr><tr><td>18 to 24 October</td><td>the brain on weights</td><td>76 then 110 named weights, 16 switches, a team board, a ledger, a fair census and a tuner; every part on by default from 20 October; check-ins CI-001 to CI-041</td></tr><tr><td>25 to 27 October</td><td>the learned tank, and the run</td><td>the longest run of the census fit; senses, a net that drives and shoots, training maps, the gauntlet, clips of each generation, behaviour cloning on the GPU; 0.2.0 released on the 26th</td></tr><tr><td>27 to 29 October</td><td>the fleet</td><td>CUDA nodes, a queue and a keeper, orrery holding the orchestration, auto mode, the first auto promotion, crucible, a difficulty for promotions, choices and model slots</td></tr><tr><td>30 October to 1 November</td><td>one process</td><td>Algorhythm (switches, dials, a transform), game 4's rules, machine buttons, the Fleet chapter, the ratchet and the line, the whole-line and double reports, bot styles, the stale dial, the fit's memory, the terrain, the waves</td></tr><tr><td>2 November</td><td>the second half</td><td>the guard on what the score does not weigh, and this book</td></tr></tbody></table></div></section><section id="the-week"><h2>The week</h2><p><strong>Saturday 25 October.</strong> The fit over the census's record ran its longest, and the brain gained the squad's time by task and rewards in the census score. Personalities arrived as weight files (step one), and the cowboy's spend (shells at any pillbox in reach, longshots every five seconds) became the default. Check-ins CI-043 to CI-053.</p><p><strong>Sunday 26 October.</strong> The census was made 2.6 times faster with every match the same. The run (<code>make converge</code>) got its ledger and its fit, a trial once a generation. The learned tank's phase zero: 133 senses, a net, then a net that drives to an enemy, a depot or a pillbox and shoots. 0.2.0 was tagged and released. Training maps from scenario files; the net took a guarded depot.</p><p><strong>Monday 27 October.</strong> Survival maps, the gauntlet of nine single decisions, clips of every generation, and the generations report. The school: the learned tank trains until stopped. A second census machine, columbia, with an identity check. Behaviour cloning on the GPU, with the rule set before the run; the GPU was not faster for a net this small. The recording fleet: 1,200 matches on every spare CPU in 14 minutes. The first CUDA node (calber), then a queue and a keeper in orrery, and the Training view.</p><p><strong>Tuesday 28 October.</strong> Orrery took the orchestration from treadcore's scripts: every make target a run of the fleet, a button each. Families on the fleet. Auto mode: a result adopted with its two held-out reads, the strongest candidate promoted by itself. The first auto promotion (w0034) at 14:20. The Machines view, crucible as a second project for the cards, the brushed-metal look, five chapters, the Settings chapter with the keeper's health. The AppKit and Mac-application reports.</p><p><strong>Wednesday 29 October.</strong> The search had run ten hours and found nothing after the promotion: trials were made sequential (read on until decided, 55 to 440 seeds), the two held-out reads pooled past z 3. A difficulty like a block chain's, measured by simulation; one promotion every two and a half hours was chosen over twenty minutes. Two promotions (w1266 at 16:30, and the floor measured). Choices, roles and model slots. Two Copal machines joined; daily updates; the storage survey.</p><p><strong>Thursday 30 October.</strong> Three promotions in the morning (w1463, w1554, w1656: pings off, the first switch ever flipped by the fleet). The A/B of switches verified and a fault fixed that would have put a brain on main different from the one read. Algorhythm: typed pings, intuition, a multi-step transform, and its inspector. The Fleet chapter and the listener. Game 4: too much ammunition, so finite depots, a 12-second mortar, walls with a purpose, going forward paid; every number may have a range. The transform trainer. Stop-job.</p><p><strong>Friday 31 October.</strong> Paul stopped every queue task while the brain was redesigned, then machine buttons: pause, stop, resume, remove and add per machine and project. The fleet's SSH connections to the Copal machines began resetting, which turned out to be orrery's own polling with an expired certificate.</p><p><strong>Saturday 1 November.</strong> The longest day. The certificate fixed and jaguaribe's dead clock battery found. One process, one line: the ratchet, the Pipeline board, and the first proof of the line against main. The whole-line and double reports found that half of all promotions had failed on unit tests that pinned defaults, and the tests were fixed (11:30). Bot styles 0 to 7 and the bridge from crucible. Europe's +18 traced to one stale dial, w_pos_fortify, promoted at 6.0 under an older game; a lab report with rules written before the read; 1.5 taken, 0.4 held. A proof passed at z 4.82 and reached nothing (a planner fault, fixed); the next read −0.07. The fit's memory, one generation a half hour, the far read. The terrain for each dataset. The temperament matrix, the width test (+0.85, under its bar of 1.0), the queue sped up (a winner's first read to pass fell from 57 minutes to 25). The line proved past main at 20:07 (z 3.51), the first move of main by the line. Less noise: a floor of a quarter point and a settling rule. The desire to build: material was never the limit; two new dials built 18% more and laid 34% more road, promoted by hand at 23:43. The line proved past main again at 23:55 (+3.16 ± 0.46).</p><p><strong>Sunday 2 November.</strong> Overnight the search turned the base cycle off at +0.83 on the score, and with it the building fix: 4.8 fewer built a team, 0.40 fewer kills-less-deaths a seat, which the score does not weigh. Found at 06:40; the cycle restored by hand; a guard added so a candidate that gives up building or fights past a floor waits for a person (eleven of the night's sixteen candidates would have waited). A pinned test fixed. The line proved past main at 09:43 (+1.82 ± 0.42) and a generation landed at 11:56 (w6501). Then this book.</p></section><section id="by-the-numbers"><h2>By the numbers</h2><div class="table"><table><tbody><tr><td>Commits, 25 October to 2 November</td><td>treadcore 130, orrery 116</td></tr><tr><td>Check-ins</td><td>CI-043 to CI-083</td></tr><tr><td>Generations on the line this run</td><td>19 by the morning of 2 November</td></tr><tr><td>Moves of main by promotion or proof</td><td>eight in the week (28 October to 2 November)</td></tr><tr><td>Proof reads of the line against main</td><td>nine, from +1.97 to −0.60; the last three +3.16, +1.46 and +1.82</td></tr><tr><td>The fleet</td><td>nine machines, three CUDA cards, about 114 machine-hours a day</td></tr></tbody></table></div></section><section id="links"><h2>Links</h2><p><a href="../2026-10-27-generations.html">Generations</a> · <a href="../census-to-commit/">Census to Commit</a> · <a href="../2026-11-01-the-whole-line.html">The Whole Line</a> · <a href="../2026-11-01-a-stale-dial.html">A Stale Dial</a> · <a href="../2026-11-01-waves.html">Waves, Width and Waiting</a> · <a href="../2026-11-01-jaguaribe-clock.html">A Dead Clock Battery</a> · the <a href="https://github.com/treadcore/treadcore/tree/main/journal">journal</a>.</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="03-the-directives.html">&larr; 3. The directives, in plain words</a></span><span><a href="05-how-the-line-works.html">5. How the line works: the how-to &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

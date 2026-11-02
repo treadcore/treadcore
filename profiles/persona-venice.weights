@@ -1,0 +1,8 @@
+# Venice: trade and treasure (persona, slot 12; the plan of 2 November, chapter 10).
+# Stands on the steady economist's hill: w_pos_economy 2.35 with alpha 0.19 read +1.2 +/- 0.46 over
+# every map. The economy first, no expansion, a stocked depot before a fight, a moat of mines.
+w_pos_economy = 2.35
+alpha = 0.19
+w_pos_expand = 0.1
+home_pick = stocked
+w_mine = 1.5

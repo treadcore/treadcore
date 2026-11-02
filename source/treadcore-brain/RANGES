@@ -6,6 +6,7 @@
 
 # Decrees.
 castle_inside 2 2  # Paul, 30 October 2026: "dont get castles of turrets ... more than 2"
+bio_period 60 60  # Paul, 1 November 2026: "it was already at 60,73, 86 second per cycle. thats perfect."
 
 # The temperament matrix: a wave may calm as well as rouse, and a row is held to a quarter or four times.
 temper_engage_1 -1 1
@@ -32,3 +33,101 @@ w_posture 0 1
 w_duck 0 1
 advance_band 0 1
 swap_gap 0 1
+skill 0 1
+connect_idle 0 1
+long_game 0 1
+posture_scored 0 1
+dodge_hold 0 1
+landfall_shy 0 1
+bridge_wing 0 1
+dodge_release 0 1
+dodge_every 0 1
+dodge_fire 0 1
+dodge_own_route 0 1
+dodge_plan 0 1
+duck_plan 0 1
+shell_boxes 0 1
+longshot_any 0 1
+kite 0 1
+upgrade_vs_mend 0 1
+w_front 0 1
+w_front_post 0 1
+w_front_push 0 1
+focus_blend 0 1
+assist 0 1
+bio_amount 0 1
+patch_confidence 0 1
+site_poor -1 1  # a site score runs -1 to 1
+
+# PHYSICAL CONSTRAINTS (Paul, 2 November 2026: "we start this process by locking physical constraints
+# into a range of values"). A distance, a time or a count has limits the world sets: the gun's reach
+# (60 tiles), the map (128 wide, 181 across, 256 the largest), a pillbox's ring (8), direct range and
+# a tank's sight (10), a recon's (20), a shell's flight (6 s at full range), a reload (4 s, 12 s), the
+# bay (2, 6, 3, 2), the squad (4), the material a tank carries (8), sixteen seats, a match of 30 min at
+# most. These are ranges, not decrees: the search moves inside them. Where a number is a fact of the
+# simulator (tree_material is 4 a tree; a fourth strike drone cannot launch) the range says so and the
+# decree is Paul's to make. The week's reason: base_r walked 16, 32, 8, 6.15 in a day and coming_r
+# reached 221 tiles on a 128-tile map.
+# Distances, tiles.
+near_scale 2 60  # under two tiles nearness is adjacency; past the gun's reach nothing is near
+base_r 2 32  # a depot's radius to a quarter of the map
+odds_r 8 60  # a pillbox's ring to the gun's reach
+coming_r 10 256  # a teammate beyond the largest map is not coming; 221 today means everyone counts
+crew_reach 5 128  # the map's width
+kite_margin 0 10  # past the target's reach, within direct range
+kite_in 0 10
+jitter 0 20
+bridge_soft 0 30
+site_reach 0 128
+w_site_beach 0 128
+column_gap 0.5 6
+column_past 0 20
+ping_help_reach 5 128
+ping_defend_reach 5 128
+ping_warn_reach 2 60
+ping_warn_flee 2 60
+ping_caution_reach 2 60
+patch_reach 0 30
+dodge_margin 0 5  # past the splash (2.5)
+dodge_clear 0.5 10
+post_spacing 6 64  # twice a pillbox's spacing to half the map
+junction_clear 0 10
+bridge_reach 0 128
+fetch_gather 0 128
+escort_distance 1 12  # a tank's length to direct range
+wing_leash 5 60  # within the gun's reach
+wing_greed 2 40
+wing_threat 2 30
+wing_ahead 2 40
+# Times, seconds.
+called_for 1 120  # a ping older than forget_for is history
+mass_for 1 60
+kite_turn 0 5
+kite_spare 0 4  # a reload is 4 s
+forget_for 10 1800  # a match is at most 30 minutes
+dodge_horizon 0.2 6  # a full-range shell flies 6 s
+landfall_wait 0 60
+landfall_memory 0 300
+front_memory 0 300
+bridge_keep 10 600
+duck_memory 0 30
+duck_ready 0 4
+longshot_every 0.5 60
+# Counts and material.
+focus_cap 1 5  # a fleet is five
+answer_cap 0 15  # sixteen seats
+confirm 1 10
+confirm_turret 1 10
+retreat_armor 0 100  # armour is 100
+retreat_shells 0 24  # a tank holds 24
+c_boat 0 16  # in trees' worth; a tank carries 8
+t_launch 0 16
+tree_material 1 8  # the simulator gives 4 a tree (HARVEST_MATERIAL): a decree candidate
+forest_need 0 64
+site_area 16 16384  # 128 squared
+connect_tiles 1 16
+castle_road 0 6
+posts_max 0 20  # there are twenty neutral pillboxes
+strikes_max 0 4  # the bay holds 3 and a fourth cannot launch: a decree candidate
+ping_defend_hold 0.5 5  # times a rally's length
+ping_outnumbered 1 4  # a ratio of tanks

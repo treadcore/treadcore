@@ -1,0 +1,11 @@
+# Polynesia: the sea (persona, slot 14; the plan of 2 November, chapter 10).
+# The navy profile's dials with a longer stand-off and a beach worth more: island hops, boats and
+# beaches, a navy's patience. Unread by census as a whole; its census is its certificate.
+c_boat = 3.0
+t_launch = 2.0
+bridge_soft = 3
+k_long = 1.0
+w_boat = 1.5
+w_site_beach = 40
+landfall_shy = 0.5
+landfall_wait = 20

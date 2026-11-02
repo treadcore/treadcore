@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>The directives, in plain words</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#on-how-the-work-is-done">On how the work is done</a><a href="#on-the-game-s-rules">On the game&#x27;s rules</a><a href="#on-the-bots">On the bots</a><a href="#on-the-search-and-the-fleet">On the search and the fleet</a><a href="#on-the-console-and-the-reports">On the console and the reports</a><a href="#what-the-directives-did-not-say">What the directives did not say</a><a href="#links">Links</a><a href="02-the-goals.html">&larr; 2</a><a href="04-the-week.html">4 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 3 of 16</p>
+    <h1>The directives, in plain words</h1>
+    <div class="front"><p>Paul's prompts arrived as fast typing, often one line, often mid-run. The check-in reports quote each one word for word; this chapter gives their sense, spelling put right, grouped by what they were about and dated, so a reader can see what the project was told and in what order. Where a directive was later reversed or refined, both are kept. Nothing here is a quotation; the originals are in the <a href="https://github.com/treadcore/treadcore/tree/main/documentation/checkins">check-ins</a> and in the commit messages, which carry them in parentheses.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#on-how-the-work-is-done">On how the work is done</a></li><li><a href="#on-the-game-s-rules">On the game's rules</a></li><li><a href="#on-the-bots">On the bots</a></li><li><a href="#on-the-search-and-the-fleet">On the search and the fleet</a></li><li><a href="#on-the-console-and-the-reports">On the console and the reports</a></li><li><a href="#what-the-directives-did-not-say">What the directives did not say</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="on-how-the-work-is-done"><h2>On how the work is done</h2><ul><li><strong>18 October.</strong> Work one step at a time, synchronously; record every step with a lab-report section, a roadmap item, a changelog line, a journal entry and an IEEE-style check-in.</li><li><strong>20 October.</strong> Keep all the new behaviour and keep adding; the brain must still work, even if slightly less well; the scalars are adjusted after the features are in, but each feature lands with a sensible starting number.</li><li><strong>28 October.</strong> The computer running orrery should be the one pushing; the queue should promote by itself unless auto mode is off, and auto mode should be on.</li><li><strong>29 October.</strong> Make the search's A/B testing of alternate functions more efficient, so a brain can branch into parallel versions toggled like weights, as an enum.</li><li><strong>30 October.</strong> Instead of a fixed list of locked values, one general rule: every number may have a minimum and a maximum, and a decree sets both equal.</li><li><strong>1 November.</strong> Write a report on each of the training methods; streamline and unify them into one coherent process shown as a Gantt chart with dependencies, machine names, expected durations, and the task with the most dependents marked as next essential. Commit, push, implement.</li><li><strong>1 November.</strong> Use orrery and give a screen-by-screen breakdown; add an inspector with hover information on just about every piece of data.</li><li><strong>2 November.</strong> Max fix mode: read all the lab reports a section at a time and write the long post-mortem; rewrite the goals and the how-to, linking to past reports without editing them; less specifics, more overview; summaries of prompts and directives, spell-corrected and simplified; only proven generational techniques, cited in IEEE form.</li></ul></section><section id="on-the-game-s-rules"><h2>On the game's rules</h2><ul><li><strong>16 October.</strong> Increase everyone's sight, especially the air units'; a downed tank has twenty seconds to be repaired before death and respawn; reference each drone against real systems, with similar flight times and a rotation of marks.</li><li><strong>17 October.</strong> More momentum and a more consistent top speed; a tank should still move forward through a turn; the tanks should prioritise the wedge.</li><li><strong>18 October.</strong> Think of more base upgrades and ways for players to buy them.</li><li><strong>30 October.</strong> There is too much ammunition; reward leaving the base full and coming back empty; a longer reload for mortars prices the shot itself; do not get castles of turrets, soft-enforce it; a tank in a castle has better protection; the trees need to regrow; turn advance_plan and mine_plan on by default; lower the guarded-base family's floor to 65%; reward going forward heavily.</li><li><strong>2 November.</strong> Lock the physical constraints into ranges first; ranges of artillery, direct fire, interceptors and long-range drones should be reasonable for their distances, with flight times at our scale; a scale system, since maps differ in size; bonuses for refineries, smelters and wood harvesters; a fun zero-sum economy where every mineral but growing trees is finite; a logistics layer where each base has a worker that recharges it, and a pillbox hit loses its ammunition and keeps only what it makes afresh; describe how cities develop and refineries are built; perhaps one teammate stays back issuing the building orders while defending.</li></ul></section><section id="on-the-bots"><h2>On the bots</h2><ul><li><strong>17 October.</strong> The bots should hold a line and never stand about; a fleet of five in a wedge; rotation between a defence point and a push point.</li><li><strong>19 October.</strong> Yes, all three landfall behaviours on; the dodge should be planned rather than reflexive.</li><li><strong>20 October.</strong> Give smoothing an insignificant coefficient as a weight rather than a switch.</li><li><strong>25 October.</strong> Personalities, step one: named play styles as weight files.</li><li><strong>29 October.</strong> A parallel B-style tank brain with the ability to toggle between them like weights; think like different units (roles); an enum of up to eight alternate AI models fed back into the game.</li><li><strong>30 October.</strong> Think of the program as a synthesizer: analogue dials, whole-number switches, and a learned transform that may override the rules when it is confident; pings should carry a kind (help, caution, warn, defend); the biorhythm waves should be about a minute long with offsets, like biorhythms.</li><li><strong>1 November.</strong> Bot styles 0 to 7, selectable by name; connect the biorhythms to the output temperament and correlate them with the matrix; expand the matrix's dimensions if it has no tail; fix the desire to build; promote the fortify dial anyway.</li><li><strong>2 November.</strong> Named personas, differentiated by the topography of local maxima, perhaps after Civilization V's civilizations by their historic strengths; a wingman trained to follow my moves, like an escort mission; training gauntlets to converge on all these abilities; maybe a larger transform matrix, or more layers; toggles between goals and personalities; ways to assign fleet messages; ally bot play.</li></ul></section><section id="on-the-search-and-the-fleet"><h2>On the search and the fleet</h2><ul><li><strong>27 October.</strong> Make the 1080 Ti machine run CUDA on a setup NVIDIA supports; a login that shows the node's address, GPU and state; bring the second GPU machine up to date.</li><li><strong>28 October.</strong> Bring every make target into orrery as a button; the keeper should be part of orrery and keep the Mac awake; a brushed-metal look; five chapters in the order the work goes.</li><li><strong>29 October.</strong> A difficulty like a block chain's, aiming at one promotion every twenty minutes; then, measured, one every two and a half hours; stages that grow more gently; a script that updates each machine daily and at boot; a settings program that deploys and configures storage.</li><li><strong>30 October.</strong> Verify that the A/B testing and the enum matching are finished before anything is published; elect and prove a candidate quicker; stop and resume each machine individually; add a way for the queue to stop a single job; create and install a listener on the Ubuntu and Alpine machines; it is not one-on-one, it is one room.</li><li><strong>31 October.</strong> Stop all queue tasks while the brain is redesigned.</li><li><strong>1 November.</strong> Look at europe first and find the fault; follow the recommendations and do it, documenting what is measured; continue implementing; is there any consistent bottleneck, just trying to speed it all up; can we get a little less noise in the promotions; the operator certificate should last thirty days.</li><li><strong>2 November.</strong> Do it (restore the building fix the search undid, guard what the score does not weigh, fix the pinned test); work only in this session, no background agents.</li></ul></section><section id="on-the-console-and-the-reports"><h2>On the console and the reports</h2><ul><li><strong>28 October.</strong> How do I get an application launcher after make install; write a lab report about the Mac applications and about the AppKit window.</li><li><strong>30 October.</strong> A three-dimensional view of the local maxima, something like a spectrogram, an analysis of the matrix, the input sensors as the tank sees them.</li><li><strong>1 November.</strong> Perform the terrain visualisation for each dataset, with regions of operation that can be selected, so the search can be seen working on all the maxima; write a lab report on the dead clock battery; pictures from the real game on the VM.</li><li><strong>2 November.</strong> Markdown converted to chaptered HTML linked from the site's index; a Lab Reports section; diagrams; the output in IEEE format.</li></ul></section><section id="what-the-directives-did-not-say"><h2>What the directives did not say</h2><p>Three questions came back to Paul and are still his to answer; the plan marks each where it bears: whether bots should answer a person's ping whatever the pings switch says (they did not, after pings-off was promoted on a bots-only census); whether to send Raider or Expander down the road as a candidate; and whether the 0.25-a-tile reward for going forward should be repriced, since it is what keeps paying the search to stop building (chapter 6).</p></section><section id="links"><h2>Links</h2><p><a href="https://github.com/treadcore/treadcore/tree/main/documentation/checkins">check-ins</a> · <a href="https://github.com/treadcore/treadcore/tree/main/journal">journal</a> · the commit messages of both repositories, which quote each prompt · chapter 4 for the same weeks as a timeline.</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="02-the-goals.html">&larr; 2. The goals, rewritten</a></span><span><a href="04-the-week.html">4. The week, day by day &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

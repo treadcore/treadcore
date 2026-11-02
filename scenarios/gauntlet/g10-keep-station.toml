@@ -1,0 +1,47 @@
+# The wingman's gauntlet (the plan of 2 November, chapter 11): keep station.
+# An allied leader on the rules drives fifty tiles east to a depot and holds it;
+# the wingman starts eight tiles behind it with the escort goal. Decision:
+# follow. Passed: the wingman is within eight tiles of the leader for half
+# the run. Read by `make gauntlet` for the scripted brain (seat 0 as a
+# Commander with `goal = escort:1`) and for every net (which has no goal and
+# must have learned it). THE SCRIPTED WINGMAN HOLDS 57 TO 59% (thirty seeds,
+# 2 November): it takes the first half minute to close on a leader that drives
+# as fast as it does, and a trained wingman has that number to beat. At a bar
+# of seven tenths the scripted brain held 0 of 30.
+name = "G10 keep station on a moving leader"
+reaction = "move"
+floor = 0.8
+players = 2
+teams = [0, 0]
+seconds = 60
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 60]
+y = [-30, 30]
+[[tank]]
+seat = 1
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 0
+at = "seat:1"
+offset = [-8, 0]
+heading = "any"
+[[depot]]
+at = "centre"
+offset = [50, 0]
+[[brain]]
+seat = 1
+kind = "commander"
+goal = "defend_depot:0"
+[[brain]]
+seat = 0
+kind = "net"
+goal = "escort:1"
+[expect]
+station = { seat = 0, to = 1, within = 8, at_least = 0.5 }
+[reward]
+station = { to = 1, within = 8, worth = 1 }

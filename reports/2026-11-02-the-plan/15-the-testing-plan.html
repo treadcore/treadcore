@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>The testing plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#the-levels">The levels</a><a href="#what-is-new-in-each-level">What is new in each level</a><a href="#the-matrix">The matrix</a><a href="#the-schedule">The schedule</a><a href="#what-is-fixed-first-by-the-data">What is fixed first, by the data</a><a href="#links">Links</a><a href="14-play-and-every-feature-an-element.html">&larr; 14</a><a href="16-references.html">16 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 15 of 16</p>
+    <h1>The testing plan</h1>
+    <div class="front"><p>What the week taught about testing is in chapter 7: write the rule before the run, read the composition and not the total, never pick the best of several first reads, and keep the seeds the judge reads apart from the seeds the learner sees. This chapter turns that into a plan with levels, owners and a schedule, for the game as it is and for what chapters 9 to 14 add. The literature it leans on is the evaluation protocol for learned agents: fixed and disjoint seeds, confidence intervals on everything, and enough runs to say anything at all ([93], [95], [96], [97]).</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#the-levels">The levels</a></li><li><a href="#what-is-new-in-each-level">What is new in each level</a></li><li><a href="#the-matrix">The matrix</a></li><li><a href="#the-schedule">The schedule</a></li><li><a href="#what-is-fixed-first-by-the-data">What is fixed first, by the data</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="the-levels"><h2>The levels</h2><div class="table"><table><thead><tr><th>Level</th><th>What it proves</th><th>Runs</th><th>Bar</th><th>Owner</th></tr></thead><tbody><tr><td>1. Unit tests</td><td>the simulator's rules and the brain's functions</td><td>every commit, on the Mac and on each machine's build</td><td>green; and the lint: a brain test may not read a searchable default without naming it</td><td>the build</td></tr><tr><td>2. Gauntlets</td><td>single decisions: twelve now, nine of the tank and three of the wingman</td><td>fixed seeds, for the rules, each net, each persona</td><td>each file's floor; a persona must pass the tank's nine at the rules' floors</td><td><code>make gauntlet</code>, nightly</td></tr><tr><td>3. Families</td><td>behaviours a census cannot see: nine floors (a raid on a guarded base, a duel in the open, a tank under a shell)</td><td>every candidate, on its branch</td><td>the floors; a candidate under one does not promote</td><td>the planner</td></tr><tr><td>4. The census</td><td>a brain against today's, 400 seeds, eleven maps, the composition read</td><td>every trial, every persona, every shape of net</td><td>two held-out reads pooled past z 3; the noise rules; the trade guard's floors</td><td>the planner</td></tr><tr><td>5. The proof</td><td>the line against main, 800 seeds</td><td>hourly</td><td>z 3, no map under, nothing given up past the floors</td><td>the planner</td></tr><tr><td>6. Playtests</td><td>whether it is fun, feels different, and works for a person</td><td>a person, a match each</td><td>a written sheet a match</td><td>Paul</td></tr><tr><td>7. The machine</td><td>sixteen bots at 4x in a window; the card's time a step</td><td>on a change to the brain's cost</td><td>the meter's seat-seconds a think; no frame over its budget</td><td><code>make debug</code>, the meter</td></tr></tbody></table></div></section><section id="what-is-new-in-each-level"><h2>What is new in each level</h2><p><strong>Unit tests.</strong> The lint of level 1 is the fix for the week's commonest failure, written as a test of the tests: it reads <code>source/treadcore-brain/src/*.rs</code>, finds every test that calls <code>Settings::default()</code> or <code>Tactics::default()</code>, and requires that the test set each weight it asserts on by name. A test that does not is named in the failure, which is what a pinned test should have been from the start. The physical table of chapter 9 has a test that recomputes the real units from the constants.</p><p><strong>Gauntlets.</strong> The three escort gauntlets of chapter 11 join the nine. A persona's certificate is the census; its fitness to play at all is the gauntlet: a persona that cannot fire at an enemy in reach is not a persona, it is a fault.</p><p><strong>Families.</strong> Two families are wanted that do not exist: a team answering a call (so pings-off can never again be promoted on a census that has no person in it), and a wingman keeping its leader alive against a raid. Each is a scenario file with a floor, written before the run.</p><p><strong>The census.</strong> The composition is read by the guard (built, road, kills less deaths) and should be read for the economy's stocks when they exist (chapter 13). A persona's census asks two more questions: which maps it wins on, and whether its composition matches its name (Rome builds, Assyria shells).</p><p><strong>The proof.</strong> As it is; the one change is that a proof that lands on main writes a line on the Lab Reports page's running table, so the site shows the shipped game's provenance.</p><p><strong>Playtests.</strong> The level the week did not run. A sheet a match, kept in <code>LAB-REPORT-PLAYTEST.md</code> as the first playtest's were:</p><ul><li><em>Against a persona, blind</em>: a person plays one match against each of the sixteen in a shuffled order and names the persona at the end; a persona named at chance is not one.</li><li><em>With the wingmen</em>: a person drives a sweep with two wingmen at each stance and says which they would take into a fight; the wingmen's numbers that the person prefers are written beside the search's.</li><li><em>The orders</em>: each fleet message of chapter 14, given once, with what the fleet did written down.</li><li><em>The long match</em>: thirty minutes under the economy's first stage, and whether it had a shape.</li><li><em>The network</em>: two machines, two real routers, the proof goal 6 has owed since October.</li></ul><p>Pictures come from the VM as the three reports of 1 November did; a playtest without a picture did not happen.</p></section><section id="the-matrix"><h2>The matrix</h2><p>Sixteen personas by eleven maps by two kinds of opponent (today's defaults, and each other) is 352 cells of 400 seeds, about 140,000 matches: four days of the fleet at its present pace. It is not asked for at once. The order: each persona against the defaults (sixteen reads, a day), then the round robin on three maps (a day), then the rest as the terrain's regions ask for them.</p></section><section id="the-schedule"><h2>The schedule</h2><div class="table"><table><thead><tr><th>When</th><th>What runs</th><th>Where it shows</th></tr></thead><tbody><tr><td>every commit</td><td>unit tests, the lint</td><td>the build; a red Mac does not push</td></tr><tr><td>every minute</td><td>the planner's plan: trials, read-ons, held-out reads, families, promotions</td><td>Queue</td></tr><tr><td>every hour</td><td>the proof</td><td>the <code>line</code> flag; the Lab Reports table</td></tr><tr><td>every night</td><td>the gauntlet, for the rules, every net and every persona</td><td>Results → Gauntlet (chapter 14)</td></tr><tr><td>every twenty generations</td><td>the shape watch (chapter 12), the temperament round</td><td>Settings → Long run</td></tr><tr><td>every week</td><td>a playtest afternoon: one sheet a match; the register (chapter 8) re-read</td><td><code>LAB-REPORT-PLAYTEST.md</code>, this book's next edition</td></tr></tbody></table></div></section><section id="what-is-fixed-first-by-the-data"><h2>What is fixed first, by the data</h2><p>The analysis of the week's logs says what to fix before any of the above can be believed, in order:</p><ol><li>The score's blind spots: the guard holds them; the reward for going forward is priced in chapter 13 and waits for Paul.</li><li>Pinned tests: the lint.</li><li>The thin terrain: regions pressed on the live fleet, so maxima are read to a verdict.</li><li>The net that cannot build: a squad head trained before any claim that a net is behind for want of width.</li><li>The flaky sftp tests: a fixed directory, two tests; not gating, but noise in every run.</li></ol></section><section id="links"><h2>Links</h2><p><a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-PLAYTEST.md">LAB-REPORT-PLAYTEST.md</a> · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/CENSUS.md">CENSUS.md</a> · <a href="../2026-10-27-generations.html">Generations</a> (the gauntlet) · <a href="../2026-10-29-difficulty.html">Promotion Difficulty</a> · evaluation protocols [90]–[97] · noisy fitness [25]–[32].</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="14-play-and-every-feature-an-element.html">&larr; 14. Playing with and against the bots, and every feature an element</a></span><span><a href="16-references.html">16. References, in IEEE form &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

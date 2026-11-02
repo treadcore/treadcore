@@ -1,0 +1,56 @@
+# The wingman's gauntlet (the plan of 2 November, chapter 11): cover the leader.
+# As G10, and at twenty seconds an enemy tank is set down ten tiles ahead of the
+# leader. Decision: hit it, and stay on the leash. Passed: the wingman hits the
+# enemy at least once, and is within the leash (twenty tiles) of the leader for
+# eight tenths of the run.
+name = "G11 cover the leader against what appears ahead"
+reaction = "fire"
+floor = 0.7
+players = 3
+teams = [0, 0, 1]
+seconds = 45
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 60]
+y = [-60, 30]
+[[tank]]
+seat = 1
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 0
+at = "seat:1"
+offset = [-8, 0]
+heading = "any"
+[[tank]]
+seat = 2
+at = "centre"
+offset = [0, -50]
+[[depot]]
+at = "centre"
+offset = [50, 0]
+[[event]]
+at = 20
+move = 2
+to = "seat:1"
+offset = [10, 0]
+[[brain]]
+seat = 1
+kind = "commander"
+goal = "defend_depot:0"
+[[brain]]
+seat = 2
+kind = "commander"
+[[brain]]
+seat = 0
+kind = "net"
+goal = "escort:1"
+[expect]
+hits = { by = 0, on = 2, at_least = 1 }
+station = { seat = 0, to = 1, within = 20, at_least = 0.8 }
+[reward]
+station = { to = 1, within = 20, worth = 1 }
+damage_given = 0.02

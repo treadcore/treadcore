@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>The register of unfinished work</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#by-area">By area</a><a href="#the-items-that-matter-most-in-order">The items that matter most, in order</a><a href="#what-the-asks-of-2-november-do-not-cover">What the asks of 2 November do not cover, and stays open</a><a href="#refused-and-kept-as-refused">Refused, and kept as refused</a><a href="#links">Links</a><a href="07-lessons.html">&larr; 7</a><a href="09-physical-constraints-and-scale.html">9 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 8 of 16</p>
+    <h1>The register of unfinished work</h1>
+    <div class="front"><p>Every report keeps its open items honestly, which is why they can be gathered. Read section by section, the twenty-eight orrery reports and design documents leave 380 open entries; many are the same item seen from two reports, so about 250 are distinct. Treadcore's roadmap adds its own backlog (goal 3's four steps, goal 5's three, the two-router proof). This chapter sorts them by area, names the ones that matter, says which the asks of 2 November cover, and gives each group a disposition: <em>do now</em> (this plan builds it), <em>design now</em> (this plan designs it and names its first step), <em>later</em>, or <em>refuse</em> (with the reason). The counts are of entries, not of distinct items.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#by-area">By area</a></li><li><a href="#the-items-that-matter-most-in-order">The items that matter most, in order</a></li><li><a href="#what-the-asks-of-2-november-do-not-cover">What the asks of 2 November do not cover, and stays open</a></li><li><a href="#refused-and-kept-as-refused">Refused, and kept as refused</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="by-area"><h2>By area</h2><div class="table"><table><thead><tr><th>Area</th><th>Entries</th><th>Do now</th><th>Design now</th><th>Later</th><th>Refuse</th></tr></thead><tbody><tr><td>The game's rules and economy</td><td>24</td><td>the physical ranges; the scale header</td><td>the economy, logistics, cities (chapter 13)</td><td>the upgrades proposal's traces; the castle's drone share</td><td></td></tr><tr><td>The programmed brain</td><td>46</td><td>the wingman's numbers as weights; personas</td><td>per-role ladders; a learned target pick; rewritten functions</td><td>think_every, think_order</td><td></td></tr><tr><td>The learned net, the transform, crucible</td><td>38</td><td>the escort gauntlets</td><td>the transform's shape (chapter 12)</td><td>a boldness output; netlets; the crucible bridge to slot 7</td><td></td></tr><tr><td>The training line and planner</td><td>52</td><td></td><td>the testing plan (chapter 15)</td><td>carry's gain measured; a check-in per trial; a tournament of two passing versions</td><td>a family difficulty adjustor (refused on 1 November)</td></tr><tr><td>The judge: score, census, terrain</td><td>31</td><td></td><td></td><td>the reward breakdown on every candidate's report; an occlusion census of the senses; regions pressed on the live fleet</td><td></td></tr><tr><td>The fleet and its machines</td><td>54</td><td></td><td></td><td>storage (Hexamir, Ceph, the mirror); jaguaribe's battery; power on; persistent logs on Copal; the real listener install</td><td>Observe (a capture daemon on every node)</td></tr><tr><td>The console's screens</td><td>41</td><td>a Lab Reports page; the hold as a row</td><td>every feature an element (chapter 14)</td><td>screen merges; fewer clicks to frequent paths; a certificate warning</td><td></td></tr><tr><td>The game's window</td><td>22</td><td>personas on the launch menu</td><td>goal and personality toggles, fleet messages, ally play (chapter 14)</td><td>a game-side slot for a net; the lobby's bots row</td><td></td></tr><tr><td>Reports, releases, the site</td><td>27</td><td>this book; the site's reports section</td><td></td><td>notarization; a second Mac; the two-router proof</td><td></td></tr><tr><td>Orrery's console core (wire, RDP, refactors)</td><td>45</td><td></td><td></td><td>the five priced refactors; hypr-rdp's unknowns; the credentials pane</td><td>AES fallback</td></tr></tbody></table></div></section><section id="the-items-that-matter-most-in-order"><h2>The items that matter most, in order</h2><ol><li><strong>Numbers that were constants were searched as preferences.</strong> <code>base_r</code> walked 16 → 32 → 8 → 6.15 in a day; <code>coming_r</code> sits at 221 tiles on a 128-tile map. Do now: chapter 9's ranges.</li><li><strong>The score cannot see building or fights.</strong> Found on 1 and 2 November; the guard holds it for now; the reward for going forward (0.25 a tile) still pays the search to stop building. Paul's decision; chapter 13 prices it.</li><li><strong>A promoted model plays in the census only.</strong> Neither the game's bots nor the families deal a net or a transform; the client cannot load one from a file. Design now, in chapter 14: the game-side slot.</li><li><strong>The wingman cannot be told anything.</strong> A person's two wingmen follow by five constants nobody can move; a style cannot be chosen for the autopilot apart from the wingmen; the U page's style dial acts only at the next match. Do now and design now: chapter 11 and 14.</li><li><strong>Half the maxima are unsettled and most maps draw none.</strong> The terrain is thin; personas drawn from it are seeds, not results. Chapter 10 says so and certifies each by census.</li><li><strong>The economy is a proposal with one trace.</strong> Supply and upgrades were designed on 18 October and traced on the 21st; nothing since. Chapter 13 folds them into the zero-sum economy.</li><li><strong>The real fleet buttons are proved in containers, not on the machines.</strong> The listener install needs a root password typed on each machine. Later: a person's afternoon.</li><li><strong>Storage.</strong> Shared storage is a staged script and a plan; nothing formats a disk. Later, and by hand first.</li><li><strong>Pinned tests.</strong> Fixed three times; a fourth can still exist. Chapter 15's testing plan adds a lint: a brain test may not read a searchable default without naming it.</li><li><strong>Two flaky sftp tests.</strong> About one run in three while the Mac is busy, in code this work never touched. Later; they do not gate the fleet.</li></ol></section><section id="what-the-asks-of-2-november-do-not-cover"><h2>What the asks of 2 November do not cover, and stays open</h2><ul><li>The crucible bridge to slot 7 and the league (the transform clone of a champion on treadcore's senses); crucible's champions still do not play treadcore except inside the Duelist.</li><li>Why <code>ladder = hunt_first</code> plays games identical to the default; exact-zero reads are flagged now, the cause is not found.</li><li>A check-in record per trial; the carry's gain measured; the simulation's pace figures corrected for what a generation discards.</li><li>The fit's uneven coverage: 21 weights read one to four times while <code>dodge_horizon</code> has hundreds.</li><li>The console's priced refactors (one SSH connection per node, row blits, one byte writer, one pane lifecycle), each written up with its price and none urgent.</li><li>Power on, notarization, a second Mac, the two-router proof, the Raspberry Pi suite.</li></ul></section><section id="refused-and-kept-as-refused"><h2>Refused, and kept as refused</h2><ul><li><strong>Observe</strong> (a thumbnail of every node): a capture daemon on every machine with no deadline. Refused in the console's design and again here.</li><li><strong>A family difficulty adjustor</strong>: families are floors on behaviours the census cannot see; easing them defeats them.</li><li><strong>Lowering the bars to speed the line</strong>: measured on 29 October; the pace is seeds.</li><li><strong>AES in the TLS client</strong>: 370 times slower than ChaCha by hand; one suite is the design.</li></ul></section><section id="links"><h2>Links</h2><p>The open-items sections of every report listed on the <a href="../index.html">Lab Reports</a> page · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/ROADMAP.md">ROADMAP.md</a> backlog · <a href="https://github.com/richeson/orrery/blob/main/docs/plan.md">plan.md</a> "Backlog after 29 October" · <a href="https://github.com/richeson/orrery/blob/main/docs/refactor.md">refactor.md</a>.</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="07-lessons.html">&larr; 7. Lessons</a></span><span><a href="09-physical-constraints-and-scale.html">9. Physical constraints first, and a scale for the world &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

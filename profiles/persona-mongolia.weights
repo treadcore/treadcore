@@ -1,0 +1,16 @@
+# Mongolia: the horde (persona, slot 10; the plan of 2 November, chapter 10).
+# Raider's dials (+3.06 at 400 seeds, europe-inflated) with the bold hill of the kills-less-deaths
+# terrain: w_duck about 0.23 read +0.24 +/- 0.16 a seat. Raids, presses at even odds, picks off the
+# wounded, ducks a quarter as often.
+w_posture = 0.9
+w_pos_expand = 3.0
+w_pos_defend = 0.4
+w_pos_fortify = 0.4
+press_odds = 1.0
+engage_odds = 0.5
+retreat_armor = 25
+w_wounded = 1.6
+w_finish = 1.2
+castle_road = 0
+posts_max = 2
+w_duck = 0.25

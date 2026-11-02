@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>Playing with and against the bots, and every feature an element</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#in-the-game-today">In the game today</a><a href="#what-a-person-cannot-do-and-the-element-">What a person cannot do, and the element for each</a><a href="#in-orrery-today">In orrery today</a><a href="#what-orrery-knows-and-does-not-show-and-">What orrery knows and does not show, and the element for each</a><a href="#the-rule-for-new-features">The rule for new features</a><a href="#links">Links</a><a href="13-economy-and-logistics.html">&larr; 13</a><a href="15-the-testing-plan.html">15 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 14 of 16</p>
+    <h1>Playing with and against the bots, and every feature an element</h1>
+    <div class="front"><p>A week of training made the bots better at a game nobody was playing. This chapter is about the person in the seat: what they can set and say today, what they cannot, and the element each missing thing gets. Then the same audit for orrery, where the rule is Paul's: anything a person might need to do is a button, and anything the machines know is on a screen.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#in-the-game-today">In the game today</a></li><li><a href="#what-a-person-cannot-do-and-the-element-">What a person cannot do, and the element for each</a></li><li><a href="#in-orrery-today">In orrery today</a></li><li><a href="#what-orrery-knows-and-does-not-show-and-">What orrery knows and does not show, and the element for each</a></li><li><a href="#the-rule-for-new-features">The rule for new features</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="in-the-game-today"><h2>In the game today</h2><p>The launch menu (<code>treadcore</code> with no flags) is rows: map, sides, skill, a style for each of four teams, lives, length, speed, driver (you, or the autopilot to watch). The same choices are flags, so the menu adds nothing the command line cannot say. In play, the keys drive and fire; <code>G</code> steps the person's own goal (auto, hunt pillboxes, defend depot, defend base, defend pillbox, hold, fortify, escort, the wheel); Space raises the coordination screen with the ladder's rungs on 1 to 6, a click to hold there, a right-click for the push point, and the fleet's lines; <code>U</code> opens the team's sliders, every weight of the brain, including, from today, the wingman's five and the persona dial; <code>Q</code> pings the cursor for the side and allied bots converge; <code>C</code> chains a pillbox for two tanks to haul; <code>O</code> is the autopilot; proposals and chat have their keys; <code>K</code> rebinds any key. A person's team is dealt a builder, a guard and two wingmen on the person (chapter 11).</p></section><section id="what-a-person-cannot-do-and-the-element-"><h2>What a person cannot do, and the element for each</h2><div class="table"><table><thead><tr><th>Want</th><th>Today</th><th>The element</th><th>State</th></tr></thead><tbody><tr><td>pick a persona for a team</td><td>the menu's team rows list the eight styles</td><td>the rows list sixteen: the styles and the personas</td><td>built today, since the menu reads the roster</td></tr><tr><td>change a bot's style or persona during a match</td><td>the <code>bot_style</code> slider acts at the next match, because a style is made with the brain</td><td>a <em>re-deal</em> on the host: the slider's change rebuilds that team's bot brains at their next think; no rule or wire change, host-side only</td><td>designed</td></tr><tr><td>a style for my own autopilot apart from my wingmen</td><td>one dial for the team</td><td>a second row on the U page, <em>my autopilot</em>, over the person's Commander alone</td><td>designed</td></tr><tr><td>tell a wingman where to be</td><td>ping</td><td>the wingman's five sliders (station, leash, greed, threat, look-ahead); a <em>stance</em> choice (shadow, flank, screen, free) and a <em>side</em> (left, right, behind) as choice weights the U page shows</td><td>sliders built today; the choices designed</td></tr><tr><td>give the fleet an order by name</td><td>one ping means "converge and attack"</td><td><em>fleet messages</em>: Form up, Hold here, Take that, Screen ahead, Go home, Spread out; each a typed ping the brain already distinguishes (<code>ping_style</code>'s help, warn, defend kinds) or a goal; on keys a person assigns in the <code>K</code> screen, which rebinds any action; the coordination screen lists them and the last one sent</td><td>designed</td></tr><tr><td>have bots answer my ping whatever the switch</td><td>since pings-off was promoted on a bots-only census, a person's ping is answered only if <code>pings</code> is on</td><td>a person's ping is always a call: the switch governs bot-to-bot calls alone</td><td>designed, and Paul's to decide (chapter 3)</td></tr><tr><td>set a bot's goal</td><td>bots climb their own ladder</td><td>per-bot goal from the coordination screen: a line per fleet member with its rung and a key to pin a goal (defend base, hold, escort me)</td><td>designed</td></tr><tr><td>ally with a bots' team</td><td>proposals exist in the world and the window; whether a bots' team answers a person's is not measured</td><td>an <em>ally policy</em> weight for bots (never, when outnumbered, when offered, always) and the menu's sides row offering "allies: ask the bots"</td><td>designed</td></tr><tr><td>play a net or a transform in a match</td><td>the census reads a slot; the game cannot load one from a file, and the <code>patch</code> row on the U page could ask for a file the game does not have</td><td>a game-side slot: <code>--brain-file</code> and a menu row listing <code>nets/</code> and the fleet's slots, off by default; the <code>patch</code> row refuses above zero until a file is there</td><td>designed; the refusal first</td></tr><tr><td>see who is who in a crowd</td><td>the names overprint; the name is the whole of how styles are told apart</td><td>a persona's colour band on the hull and a glyph on the minimap</td><td>designed</td></tr><tr><td>set bots' styles in a network match</td><td>the host reads <code>--bots</code>; the lobby has no row</td><td>a bots row in the lobby, sent as the host's setting</td><td>designed</td></tr></tbody></table></div></section><section id="in-orrery-today"><h2>In orrery today</h2><p>Six chapters and 27 screens, each with its six answers in the one table (<code>line.json</code>): Machines (and Storage, Media), Projects, Queue (Fleet, Runs, Board, Flow, Timeline, Queued, Values, then the Pipeline's pages), Results (the Algorhythm tabs: Patch, Terrain, Spectrum, Matrices, Senses, Temper, Fleet; the net; the ledger), Lab, Sessions, Fleet, Chat, Settings (Keeper, Long run, Commits). Every value of the process is a row with a step; every machine and project has pause, stop, resume, remove and add; the keeper has restart; a run can be asked for (census, promote, switches, parts, train) and cancelled.</p></section><section id="what-orrery-knows-and-does-not-show-and-"><h2>What orrery knows and does not show, and the element for each</h2><div class="table"><table><thead><tr><th>Feature</th><th>Today</th><th>The element</th><th>State</th></tr></thead><tbody><tr><td>a dial held by a person</td><td><code>hold.json</code>, a file</td><td>a <em>hold</em> on each row of Values and of the brain's dials: the value held, who, when; a press writes the file</td><td>designed</td></tr><tr><td>the physical ranges</td><td><code>RANGES</code>, a file the brain compiles in</td><td>Settings → Ranges: every number with its min, default and max, its kind (distance, time, count, share, worth), and the decrees marked; a trial's clamp shown on its row</td><td>designed; the page's data (<code>plan/ranges.json</code>) built today</td></tr><tr><td>the personas and their reads</td><td><code>nets/styles.tsv</code> and the census results</td><td>Results → Personas: the sixteen with their dials over the defaults, their last read (total and composition), the maps they win on, and a <em>Read</em> button that asks the census</td><td>designed</td></tr><tr><td>the trade guard's decisions</td><td>a flag a candidate</td><td>the Candidates page shows built, road and kills-less-deaths beside the score for every candidate, and the floor each is held by</td><td>designed</td></tr><tr><td>the gauntlets</td><td><code>make gauntlet</code> and a TSV</td><td>Results → Gauntlet: a row a gauntlet, a column a brain (rules, each net, each persona), the pass share and the reaction's median; red under the floor</td><td>designed</td></tr><tr><td>the testing plan's state</td><td>nowhere</td><td>Settings → Tests: the levels of chapter 15 with the last time each ran, what passed, and what a person owes (a playtest, a battery, an install)</td><td>designed</td></tr><tr><td>a certificate about to expire</td><td>a silent penalty</td><td>a Settings → Keeper check turning amber a day before, and Renew beside it</td><td>designed</td></tr><tr><td>the book and the reports</td><td>the site</td><td>the Lab Reports page, with every report of the month and this book</td><td>built today</td></tr><tr><td>frequent paths</td><td>several clicks</td><td>Command-digit reaches chapters; the next step is a key a page</td><td>later</td></tr></tbody></table></div></section><section id="the-rule-for-new-features"><h2>The rule for new features</h2><p>From here, a feature lands with its element or with a line in this table saying which element it will get and why not yet. The audit is cheap because the one table of screens already asks every screen six questions; a feature with no screen fails the seventh.</p></section><section id="links"><h2>Links</h2><p><a href="https://github.com/treadcore/treadcore/blob/main/documentation/HOW-TO-PLAY.md">How to Play</a> · <a href="../2026-11-01-double-report.html">Double Report</a> (every screen of orrery, pictured) · <a href="../2026-11-01-bot-styles.html">Eight Named Minds</a> (what a style cannot do in a match) · <code>source/treadcore-client/src/menu.rs</code>, <code>goal.rs</code>, <code>tune.rs</code>, <code>keys.rs</code> · <code>tools/plans/line.json</code> · human interaction with automation [106].</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="13-economy-and-logistics.html">&larr; 13. The economy and the logistics of a base</a></span><span><a href="15-the-testing-plan.html">15. The testing plan &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

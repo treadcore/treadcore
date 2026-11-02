@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>Physical constraints first, and a scale for the world</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#the-rule-and-who-may-use-it">The rule, and who may use it</a><a href="#what-is-physical">What is physical</a><a href="#the-ranges">The ranges</a><a href="#the-scale-system">The scale system</a><a href="#links">Links</a><a href="08-the-register.html">&larr; 8</a><a href="10-personas.html">10 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 9 of 16</p>
+    <h1>Physical constraints first, and a scale for the world</h1>
+    <div class="front"><p>The plan begins where the week's numbers point. Of the brain's 135 weights, about a third are distances, times and counts with a meaning in the world: how far a teammate can be and still be "coming", how long a target stays called, how many strike drones fly at once. The search has treated them as preferences, and some of them walked: <code>base_r</code> went 16, 32, 8, 6.15 in one day; <code>coming_r</code> reached 221 tiles on a map 128 tiles wide. A number that means something in the world has limits the world sets, and the first step of the second half is to write them down. Then the scale: the game's constants assume a tile of 25 metres and a game speed about six times life, and the maps range from a 128-tile island to a 1,024-tile world. A scale system says what a tile is on each map, so that flight times, arcs and speeds can be reasoned about, and so that the game can show a player real units.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#the-rule-and-who-may-use-it">The rule, and who may use it</a></li><li><a href="#what-is-physical">What is physical</a></li><li><a href="#the-ranges">The ranges</a></li><li><a href="#the-scale-system">The scale system</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="the-rule-and-who-may-use-it"><h2>The rule, and who may use it</h2><p>Paul's rule of 30 October stands: every number may have a minimum and a maximum in <code>source/treadcore-brain/RANGES</code>; nothing moves a number outside its range (not a weights file, not a trial, not a promotion); the search stays inside; and a <em>decree</em>, min equal to max, is a person's ruling that only Paul makes. What this chapter adds are ranges, not decrees. Each is grounded in a constant of the simulator or the map, and each says so beside it. Three numbers are <em>decree candidates</em>: they are facts of the simulator or Paul's own word, and the chapter names them for him rather than writing them.</p></section><section id="what-is-physical"><h2>What is physical</h2><div class="table"><table><thead><tr><th>Kind</th><th>Count</th><th>Examples</th><th>What bounds it</th></tr></thead><tbody><tr><td>physical: a distance in tiles</td><td>30</td><td><code>near_scale</code>, <code>base_r</code>, <code>odds_r</code>, <code>coming_r</code>, <code>crew_reach</code>, <code>kite_in</code>, <code>post_spacing</code>, the ping reaches, the dodge's margin and clearance</td><td>the gun's reach (60), the map (128 wide, 181 across), a pillbox's ring (8), direct range (10), vision (10 and 20)</td></tr><tr><td>physical: a time in seconds</td><td>17</td><td><code>called_for</code>, <code>mass_for</code>, <code>forget_for</code>, <code>dodge_horizon</code>, <code>bridge_keep</code>, <code>duck_memory</code>, <code>longshot_every</code>, <code>bio_period</code></td><td>a shell's flight (6 s at full range), a reload (4 s, 12 s), a match (16 to 30 min)</td></tr><tr><td>physical: a count or material</td><td>10</td><td><code>focus_cap</code>, <code>answer_cap</code>, <code>confirm</code>, <code>strikes_max</code>, <code>posts_max</code>, <code>c_boat</code>, <code>tree_material</code>, <code>forest_need</code></td><td>the bay (2, 6, 3, 2), the squad (4), the material a tank carries (8), sixteen seats</td></tr><tr><td>a share, 0 to 1</td><td>31</td><td><code>alpha</code>, <code>w_duck</code>, <code>focus_blend</code>, <code>skill</code>, <code>w_front</code>, the thresholded yes-or-no weights</td><td>already ranged, or added here</td></tr><tr><td>a worth or preference</td><td>33</td><td><code>w_near</code>, <code>w_wounded</code>, <code>w_pos_fortify</code>, <code>w_mend</code>, <code>pillbox_worth</code></td><td>free: a worth is what the search is for</td></tr><tr><td>a choice or switch</td><td>14</td><td><code>bot_style</code>, <code>roles</code>, <code>ladder</code>, <code>crew_stay</code>, <code>cycle_all</code></td><td>held to their versions by construction</td></tr></tbody></table></div></section><section id="the-ranges"><h2>The ranges</h2><p>Added to RANGES on 2 November, each with its reason. A range holds a number at its edge rather than refusing it, so a trial that asks for more gets the edge and is read there. The defaults of 2 November all lie inside.</p><div class="table"><table><thead><tr><th>Weight</th><th>Default</th><th>Min</th><th>Max</th><th>Why</th></tr></thead><tbody><tr><td>near_scale</td><td>30</td><td>2</td><td>60</td><td>nearness is scaled by a distance: under two tiles it is adjacency, past the gun's reach (60) nothing is near</td></tr><tr><td>called_for</td><td>15</td><td>1</td><td>120</td><td>a ping older than two minutes is history; <code>forget_for</code> is 120</td></tr><tr><td>focus_cap</td><td>2</td><td>1</td><td>5</td><td>teammates on one target: a fleet is five</td></tr><tr><td>base_r</td><td>6.15</td><td>2</td><td>32</td><td>the base's reach for threats: a depot's radius (2) to a quarter of the map</td></tr><tr><td>odds_r</td><td>14</td><td>8</td><td>60</td><td>tanks that count toward a fight: a pillbox's ring to the gun's reach</td></tr><tr><td>coming_r</td><td>221</td><td>10</td><td>256</td><td>a teammate "coming" from beyond the largest map (256) is not coming; today's 221 means everyone counts, and Paul may wish to decree less</td></tr><tr><td>mass_for</td><td>12</td><td>1</td><td>60</td><td>seconds to hold off for help</td></tr><tr><td>answer_cap</td><td>3</td><td>0</td><td>15</td><td>nearer teammates who answer instead: sixteen seats</td></tr><tr><td>crew_reach</td><td>40</td><td>5</td><td>128</td><td>a crew answers a call this near: the map's width</td></tr><tr><td>kite_margin</td><td>1.5</td><td>0</td><td>10</td><td>past the target's reach, within direct range</td></tr><tr><td>kite_in</td><td>2.25</td><td>0</td><td>10</td><td>the ring a step in ends on</td></tr><tr><td>kite_turn</td><td>0.8</td><td>0</td><td>5</td><td>seconds beyond the drive</td></tr><tr><td>kite_spare</td><td>0.4</td><td>0</td><td>4</td><td>seconds of a 4-second reload to spare</td></tr><tr><td>confirm, confirm_turret</td><td>2, 3</td><td>1</td><td>10</td><td>thinks in a row</td></tr><tr><td>jitter</td><td>3</td><td>0</td><td>20</td><td>a goal's shift smoothed under this many tiles</td></tr><tr><td>retreat_armor</td><td>50</td><td>0</td><td>100</td><td>armour is 100</td></tr><tr><td>retreat_shells</td><td>4</td><td>0</td><td>24</td><td>a tank holds 24</td></tr><tr><td>forget_for</td><td>120</td><td>10</td><td>1800</td><td>a match is at most 30 minutes</td></tr><tr><td>bridge_soft</td><td>6</td><td>0</td><td>30</td><td>a bridge this long costs no extra</td></tr><tr><td>c_boat, t_launch</td><td>5, 3</td><td>0</td><td>16</td><td>material, in trees' worth; a tank carries 8</td></tr><tr><td>tree_material</td><td>4</td><td>1</td><td>8</td><td><strong>decree candidate</strong>: the simulator gives 4 a tree (<code>HARVEST_MATERIAL</code>)</td></tr><tr><td>forest_need</td><td>12</td><td>0</td><td>64</td><td>trees a base asks for</td></tr><tr><td>site_area</td><td>400</td><td>16</td><td>16384</td><td>tiles of an island; 128 squared</td></tr><tr><td>site_reach, w_site_beach</td><td>30, 20</td><td>0</td><td>128</td><td>tiles, the map's width</td></tr><tr><td>column_gap</td><td>2</td><td>0.5</td><td>6</td><td>tiles between tanks in file</td></tr><tr><td>column_past</td><td>2</td><td>0</td><td>20</td><td>tiles past a bridge</td></tr><tr><td>ping_help_reach, ping_defend_reach</td><td>60, 90</td><td>5</td><td>128</td><td>tiles, the map's width</td></tr><tr><td>ping_defend_hold</td><td>1.5</td><td>0.5</td><td>5</td><td>times a rally's length</td></tr><tr><td>ping_warn_reach, ping_warn_flee, ping_caution_reach</td><td>25, 15, 20</td><td>2</td><td>60</td><td>tiles, within the gun's reach</td></tr><tr><td>ping_outnumbered</td><td>1.5</td><td>1</td><td>4</td><td>a ratio of tanks</td></tr><tr><td>bio_period</td><td>60</td><td>60</td><td>60</td><td><strong>a decree by Paul's word</strong> (1 November: "it was already at 60, 73, 86 seconds per cycle; that's perfect")</td></tr><tr><td>patch_reach</td><td>10</td><td>0</td><td>30</td><td>tiles the transform may move a point</td></tr><tr><td>dodge_horizon</td><td>1.08</td><td>0.2</td><td>6</td><td>seconds before a shell lands; a full-range shell flies 6</td></tr><tr><td>dodge_margin</td><td>0.8</td><td>0</td><td>5</td><td>tiles past the splash (2.5)</td></tr><tr><td>dodge_clear</td><td>2.5</td><td>0.5</td><td>10</td><td>tiles driven clear</td></tr><tr><td>landfall_wait</td><td>10</td><td>0</td><td>60</td><td>seconds standing off a beach</td></tr><tr><td>landfall_memory, front_memory</td><td>30, 30</td><td>0</td><td>300</td><td>seconds a hostile is remembered</td></tr><tr><td>connect_tiles</td><td>5.12</td><td>1</td><td>16</td><td>road tiles a visit</td></tr><tr><td>castle_road</td><td>2</td><td>0</td><td>6</td><td>pillboxes on the castle's road</td></tr><tr><td>post_spacing</td><td>31.9</td><td>6</td><td>64</td><td>tiles between posts: twice a pillbox's spacing to half the map</td></tr><tr><td>posts_max</td><td>6</td><td>0</td><td>20</td><td>there are twenty neutral pillboxes</td></tr><tr><td>junction_clear</td><td>3</td><td>0</td><td>10</td><td>tiles from a junction</td></tr><tr><td>bridge_keep</td><td>90</td><td>10</td><td>600</td><td>seconds a part-laid bridge stays a job</td></tr><tr><td>bridge_reach, fetch_gather</td><td>40, 20</td><td>0</td><td>128</td><td>tiles</td></tr><tr><td>duck_memory</td><td>2.5</td><td>0</td><td>30</td><td>seconds a gun is remembered</td></tr><tr><td>duck_ready</td><td>1.5</td><td>0</td><td>4</td><td>seconds; a tank's reload is 4</td></tr><tr><td>longshot_every</td><td>1.25</td><td>0.5</td><td>60</td><td>seconds between longshots</td></tr><tr><td>strikes_max</td><td>3.3</td><td>0</td><td>4</td><td><strong>decree candidate</strong>: the bay holds 3; a fourth cannot launch</td></tr><tr><td>escort_distance, wing_leash, wing_greed, wing_threat, wing_ahead</td><td>4, 20, 16, 10, 16</td><td>1, 5, 2, 2, 2</td><td>12, 60, 40, 30, 40</td><td>the wingman's five numbers, weights from today (chapter 11): a tank's length to direct range; a leash within the gun's reach</td></tr><tr><td>the shares (<code>skill</code>, <code>connect_idle</code>, <code>long_game</code>, <code>posture_scored</code>, <code>dodge_hold</code>, <code>landfall_shy</code>, the thresholded yes-or-no weights, <code>upgrade_vs_mend</code>, <code>w_front</code>, <code>w_front_post</code>, <code>w_front_push</code>, <code>focus_blend</code>, <code>assist</code>, <code>bio_amount</code>, <code>patch_confidence</code>)</td><td></td><td>0</td><td>1</td><td>outside 0 to 1 a share is not one</td></tr><tr><td>site_poor</td><td>0.5</td><td>−1</td><td>1</td><td>a site score runs −1 to 1</td></tr></tbody></table></div><p>What this changes in the search: a trial that asked for <code>coming_r</code> 400 is read at 256; the far read, which doubles and halves a dial four times, stops at the edges; and the fit's draws are bounded, which is what <code>suggest.py</code> already does with the file. What it changes in the game: nothing today, since every default lies inside.</p></section><section id="the-scale-system"><h2>The scale system</h2><h3 id="what-a-tile-is">What a tile is</h3><div class="table"><table><thead><tr><th>Map</th><th>Tiles</th><th>At 25 m a tile</th><th>What it depicts</th><th>Scale it should declare</th></tr></thead><tbody><tr><td>island, industry</td><td>128 × 128</td><td>3.2 km</td><td>a generated island</td><td>25 m</td></tr><tr><td>naval</td><td>160 × 160</td><td>4 km</td><td>an archipelago</td><td>25 m</td></tr><tr><td>big-lizard, constanine, fidos-airstrip, fortressisles2, fortressislesx</td><td>256 × 256</td><td>6.4 km</td><td>converted prior-art maps</td><td>25 m</td></tr><tr><td>europe</td><td>320 × 256</td><td>8 km</td><td>Europe, about 4,000 km across</td><td>about 12 km: a theatre, not a field</td></tr><tr><td>atlantic</td><td>512 × 333</td><td>12.8 km</td><td>the Atlantic, about 6,000 km</td><td>about 12 km</td></tr><tr><td>world</td><td>1024 × 1024</td><td>25.6 km</td><td>the world</td><td>about 40 km</td></tr></tbody></table></div><p>The game plays every one of these with the same constants, so on europe a tank crosses the continent in eighty seconds and a mortar reaches 700 km. Nobody minds, because the game's time and distance are gameplay, not physics; but the census reads europe and atlantic among its eleven maps, and a brain tuned there is tuned for a theatre game. The scale system makes the difference explicit rather than removing it.</p><h3 id="the-three-numbers">The three numbers</h3><ol><li><strong>Scale</strong>, metres a tile, declared in the map file's header (<code>scale 25</code>), 25 when absent. It changes no rule; it labels.</li><li><strong>Tempo</strong>, how many real seconds a game second stands for, declared with the scale. At 25 m a tile the game's own numbers fit a tempo of about 6: a tank at 4 tiles a second is 360 km/h in game time and 60 km/h at tempo 6; a recon quadcopter 75 km/h; an interceptor 135 km/h; an FPV strike 97 km/h; a recon's 150-second battery is a quarter of an hour; a sixteen-minute match is an hour and a half. Those are the vehicles the drones are modelled on.</li><li><strong>The class</strong>: <em>field</em> (scale under 100 m), where the physical table below should hold, or <em>theatre</em>, where it does not and the HUD says so.</li></ol><h3 id="the-constants-in-real-units-at-25-m-a-ti">The constants in real units, at 25 m a tile and tempo 6</h3><div class="table"><table><thead><tr><th>Constant</th><th>Game</th><th>Real, at tempo 6</th><th>The system it stands for</th><th>Fit</th></tr></thead><tbody><tr><td>tank speed</td><td>4 tiles/s</td><td>60 km/h</td><td>a main battle tank on a road, 65 to 70 km/h</td><td>fits</td></tr><tr><td>recon Mk I speed, battery</td><td>5 tiles/s, 150 s</td><td>75 km/h, 15 min</td><td>a quadcopter, 50 to 90 km/h, 20 to 40 min</td><td>fits</td></tr><tr><td>recon Mk II</td><td>6.5 tiles/s, 210 s</td><td>97 km/h, 21 min</td><td>a VTOL fixed-wing</td><td>fits</td></tr><tr><td>interceptor Mk I</td><td>9 tiles/s, 90 s</td><td>135 km/h, 9 min</td><td>a kinetic interceptor drone, 150 to 300 km/h</td><td>slow by half</td></tr><tr><td>interceptor Mk III</td><td>14 tiles/s</td><td>210 km/h</td><td>a high-speed interceptor</td><td>fits</td></tr><tr><td>strike (FPV)</td><td>6.5 tiles/s, 45 s</td><td>97 km/h, 4.5 min</td><td>an FPV, 100 to 150 km/h, 5 to 10 min</td><td>fits</td></tr><tr><td>loitering munition</td><td>5.5 tiles/s, 90 s</td><td>82 km/h, 9 min</td><td>a loitering munition, about 110 km/h, 30 min</td><td>slow, short</td></tr><tr><td>longshot</td><td>3 tiles/s, 150 s</td><td>45 km/h, 15 min</td><td>a one-way attack drone, 150 to 200 km/h, hours</td><td>slow by four; kept slow so a bubble on its path has time</td></tr><tr><td>indirect gun</td><td>12 to 60 tiles, 6 s at full range</td><td>300 m to 1.5 km, 36 s</td><td>a 120 mm mortar, 200 m to 7 km, 15 to 25 s at 1.5 km</td><td>short, and the shell flies twice as long; kept long so a tank can move if it sees the launch</td></tr><tr><td>direct gun</td><td>10 tiles, 40 tiles/s</td><td>250 m, 170 m/s</td><td>a tank gun, 2 to 4 km, 800 to 1,700 m/s</td><td>a quarter of the range, a fifth of the speed: the island is small</td></tr><tr><td>recon vision, link</td><td>20, 40 tiles</td><td>500 m, 1 km</td><td>a drone's camera and radio</td><td>short, by design: the island is small</td></tr><tr><td>pillbox range</td><td>8 tiles</td><td>200 m</td><td>a fortified gun</td><td>fits a machine gun, not a cannon</td></tr></tbody></table></div><p>The fit column is the finding: the vehicles and the drones scale together at tempo 6, and the two exceptions are the longshot (four times too slow) and the gun (short and slow). Both are gameplay choices the code already explains in its comments, and the plan keeps them; what it adds is that they are now written in one table, in one place, with the real units beside them, so a change is a one-line diff with a sentence (which is what <code>rules.rs</code> has always said it wants to be).</p><h3 id="ballistic-arcs">Ballistic arcs</h3><p>A shell today flies a straight track at 10 tiles a second and lands; the arc is drawn, not simulated. A real arc for a range <em>R</em> at launch speed <em>v</em> and angle <em>θ</em> has <em>R</em> = <em>v*² sin 2*θ</em> / <em>g</em> and flight time <em>t</em> = 2 <em>v</em> sin <em>θ</em> / <em>g</em>; at a high angle the time grows with the range's square root, not linearly. The design keeps the straight track (determinism, replay, every read of the week) and adds the arc as a displayed quantity: given the scale and tempo, the HUD can show "a 1.2 km lob, 5 s" and the newswire can say it, with the real arc's apex for the picture. A later game version may make the flight time follow the square root; that is a rule change, a GAME_VERSION bump, and a census, and it is not built.</p><h3 id="where-the-scale-system-is-built-and-wher">Where the scale system is built, and where not</h3><ul><li>Built: the ranges above, in RANGES, with the brain's test that every default lies inside; the physical table in <code>rules.rs</code>'s documentation with a test that recomputes the real units from the constants, so the table cannot go stale.</li><li>Designed, not built: the <code>scale</code> and <code>tempo</code> header fields (a map-format change with a round-trip test), the class on the HUD, the arc as a displayed quantity, and the square-root flight time behind a game version. Each is a one-session step; none changes a read already made.</li></ul></section><section id="links"><h2>Links</h2><p><a href="../2026-10-30-balance.html">Too Many Shots</a> (game 4's numbers and the rule of ranges) · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/RESEARCH.md">RESEARCH.md</a> (the systems the drones are modelled on) · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/DESIGN.md">DESIGN.md</a> · <code>source/treadcore-sim/src/rules.rs</code> · <code>source/treadcore-brain/RANGES</code> · McCoy on exterior ballistics [105].</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="08-the-register.html">&larr; 8. The register of unfinished work</a></span><span><a href="10-personas.html">10. Personas from the terrain &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

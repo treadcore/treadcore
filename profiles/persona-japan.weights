@@ -1,0 +1,8 @@
+# Japan: bushido (persona, slot 13; the plan of 2 November, chapter 10).
+# A hypothesis, unread: fights at full strength however hurt, closes at even odds, does not go home
+# for armour or shells until there is almost nothing left. Its census is its certificate.
+retreat_armor = 20
+retreat_shells = 1
+press_odds = 1.0
+w_wounded = 0.6
+w_duck = 0.5

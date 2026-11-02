@@ -1,0 +1,9 @@
+# Assyria: siege (persona, slot 15; the plan of 2 November, chapter 10).
+# The cowboy's spend (LR 86) taken whole: shells every pillbox in reach, longshots without pause,
+# strikes out in threes, a pillbox worth more than a tank's share. Unread as a whole; its census is
+# its certificate.
+shell_boxes = 1
+longshot_every = 0.5
+strikes_max = 3
+pillbox_worth = 1.2
+w_pos_fortify = 0.5

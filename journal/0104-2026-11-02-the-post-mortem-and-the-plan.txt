@@ -1,0 +1,78 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Sun, 02 Nov 2026 12:45:00 -0800
+Subject: [JOURNAL 0104] The post-mortem and the plan
+Message-ID: <0104.20261102@treadcore.org>
+In-Reply-To: <0103.20261027@treadcore.org>
+Organization: treadcore.org
+Keywords: post-mortem, ranges, wingman, personas, gauntlets, lab reports
+X-Session: the Mac, with Claude Code (Claude Fable 5.1); the fleet running throughout
+X-Commits: in CHANGELOG under 2 November; orrery 3d04507, 84ce3b4 and the book's commit
+
+                     THE POST-MORTEM AND THE PLAN
+
+                     Paul Richeson, treadcore.org
+                           2 November 2026
+
+
+ABSTRACT
+
+    A week of training without a hand on it ended, and the session read
+    it back: twenty-eight reports and design documents a section at a
+    time, the roadmap, the brain report, the check-ins, the journal, the
+    code and the week's data, into a book of sixteen chapters published
+    on the site with a Lab Reports page for every report of the month.
+    The plan's first step was built the same day: physical ranges for
+    every distance, time and count of the brain; the wingman's five
+    constants as weights; eight named personas; three escort gauntlets
+    with a measure of station. The scripted wingman covers its leader
+    (29 of 30) and comes back after a shell (30 of 30) and holds eight
+    tiles for only 57 to 59% of a keep-station run, which is the first
+    number a trained wingman has to beat. The one thing learned: a judge
+    that reads a total cannot see what it does not weigh, and a search
+    will spend itself on any number it is allowed to move.
+
+INDEX TERMS
+
+    post-mortem, ranges, decrees, wingman, personas, gauntlets, scale.
+
+
+I. INTRODUCTION
+
+    Paul set the day's mode: max fix. Read every lab report, write the
+    long post-mortem, rewrite the goals and the how-to linking back,
+    overview over specifics, prompts spell-corrected; then the plan:
+    personas from the terrain's maxima, a wingman that follows the
+    person, gauntlets, maybe a bigger transform, physical constraints
+    locked into ranges first, a scale system, a zero-sum economy, the
+    logistics of a base, play with bots with every feature an element,
+    a testing plan, IEEE references, chaptered HTML on the site.
+
+II. WHAT WAS DONE
+
+    The morning before the mode began: the search had turned the base
+    cycle off overnight at +0.83 on the score and lost the building fix
+    with it; it was restored by hand and a guard added in orrery's
+    planner (a candidate that gives up building, road or kills less
+    deaths past a floor waits for a person); a pinned test was fixed.
+
+    Then the reading, the book (orrery docs/book, built by chapters.py
+    into reports/2026-11-02-the-plan), the Lab Reports page, and the
+    code: RANGES, the wingman's weights, the personas, the gauntlets,
+    rules::physical(). Tests: 59 and 151 pass. No default moved.
+
+III. RESULTS
+
+    Gauntlets, thirty seeds: G10 57 to 59% within eight tiles (0 of 30
+    at a bar of seven tenths; the bar is a half); G11 29 of 30; G12 30
+    of 30. Ranges: 57 physical, 24 shares, bio_period a decree at 60.
+    Personas: 8, unread, their censuses asked for. References: 106, 36
+    of them IEEE, each found and verified by search.
+
+IV. CONCLUSION
+
+    The second half of the design begins with constraints, not with
+    more search. What is Paul's to decide is listed in the book's
+    chapter 3 and in CI-084: the decree candidates, the reward for
+    going forward, the persona names, and whether a person's ping is
+    always a call.

@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>What the numbers said</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="index.html">contents</a><a href="#the-search-works-and-it-is-noisy">The search works, and it is noisy</a><a href="#half-the-promotions-failed-on-tests-not-">Half the promotions failed on tests, not on brains</a><a href="#a-total-score-hides-its-composition">A total score hides its composition</a><a href="#material-was-never-the-limit">Material was never the limit</a><a href="#the-waves-reach-behaviour-and-do-not-win">The waves reach behaviour and do not win</a><a href="#wider-is-not-yet-worth-it">Wider is not yet worth it</a><a href="#the-nets-are-twenty-points-behind-the-ru">The nets are twenty points behind the rules</a><a href="#the-styles-read">The styles, read</a><a href="#the-queue-was-the-bottleneck-not-the-mac">The queue was the bottleneck, not the machines</a><a href="#the-terrain-is-thin-where-it-matters">The terrain is thin where it matters</a><a href="#the-dials-that-moved-most">The dials that moved most</a><a href="#links">Links</a><a href="05-how-the-line-works.html">&larr; 5</a><a href="07-lessons.html">7 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">chapter 6 of 16</p>
+    <h1>What the numbers said</h1>
+    <div class="front"><p>The week's findings, each in a paragraph, with the one number that carries it. The reports hold the tables.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#the-search-works-and-it-is-noisy">The search works, and it is noisy</a></li><li><a href="#half-the-promotions-failed-on-tests-not-">Half the promotions failed on tests, not on brains</a></li><li><a href="#a-total-score-hides-its-composition">A total score hides its composition</a></li><li><a href="#material-was-never-the-limit">Material was never the limit</a></li><li><a href="#the-waves-reach-behaviour-and-do-not-win">The waves reach behaviour and do not win</a></li><li><a href="#wider-is-not-yet-worth-it">Wider is not yet worth it</a></li><li><a href="#the-nets-are-twenty-points-behind-the-ru">The nets are twenty points behind the rules</a></li><li><a href="#the-styles-read">The styles, read</a></li><li><a href="#the-queue-was-the-bottleneck-not-the-mac">The queue was the bottleneck, not the machines</a></li><li><a href="#the-terrain-is-thin-where-it-matters">The terrain is thin where it matters</a></li><li><a href="#the-dials-that-moved-most">The dials that moved most</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="the-search-works-and-it-is-noisy"><h2>The search works, and it is noisy</h2><p>Over the week the fleet read about two thousand trials on today's defaults and carried nineteen generations onto the line in this run. The line proved past main nine times from +1.97 to −0.60 a seat; the last three reads were +3.16 ± 0.46, +1.46 ± 0.35 and +1.82 ± 0.42 over 800 seeds. The game's seed-to-seed swing is about 9.5 points a seat, twice what the difficulty simulation first assumed, so a read of 400 seeds has an error near half a point, and that sets the pace: a generation every half hour is the most the seeds allow, and a promotion every twenty minutes would be mostly noise (<a href="../2026-10-29-difficulty.html">Promotion Difficulty</a>). Of the thirteen generations of 1 November, replayed under the rules written that night, four would have landed; nine were a switch going off at +0.10 and back on at +0.08, or a dial walking four steps on luck.</p></section><section id="half-the-promotions-failed-on-tests-not-"><h2>Half the promotions failed on tests, not on brains</h2><p>Seven of the first fourteen promotions failed, every one of them at the brain's unit tests and none at the families or the census. The tests pinned defaults by reading <code>Settings::default()</code> rather than naming the numbers they tested, so every move of a searchable number broke a test that had nothing to say about it. Each such failure cost a passed candidate. Sweeping all of them together on 1 November fixed the line more than any bar did (<a href="../2026-11-01-the-whole-line.html">The Whole Line</a>). The same fault recurred twice afterwards (the matrix's test, the improvement's test) and each was fixed the same way: a test names the weights it tests.</p></section><section id="a-total-score-hides-its-composition"><h2>A total score hides its composition</h2><p>Europe's +18 for a hand-written style was one stale dial: <code>w_pos_fortify</code> had been promoted at 6.0 under an older game, and under game 4's reward for going forward it was paying tanks to walk. A trial at 0.4 read +3.65 ± 0.62 at z 5.9 across all maps; broken down, all of it was advance rewards, with kills-less-deaths −0.17 ± 0.05. The rules written before the read refused it; 1.5 was taken and 0.4 held (<a href="../2026-11-01-a-stale-dial.html">A Stale Dial</a>). The same lesson came back on the night of 1 November: a candidate turned the base cycle off at +0.83 on the score, and built 4.8 less a team, laid 4.1 less road and lost 0.40 kills-less-deaths a seat, none of which the score weighs. Read at 400 seeds the next morning: cycle off scores +0.33 ± 0.49 and loses 5.03 ± 0.39 built, 4.14 ± 0.27 road and 0.66 ± 0.07 a seat in fights. The guard built that morning holds a candidate that gives up more than a floor past two errors; replayed over the sixteen candidates since the evening before, it would have held eleven.</p></section><section id="material-was-never-the-limit"><h2>Material was never the limit</h2><p>Teams held six of eight material from the fifth minute to the last, and squads spent 6% of their time on construction against 13% going home. Nothing asked them to build: the fill-up cycle ran for the leader and the guard alone, and a wingman built only while its leader stood at the fort. Two dials, <code>cycle_all</code> and <code>crew_stay</code>, built +3.16 ± 0.35 a team (18%) and laid +2.14 ± 0.20 road (34%) at 400 seeds, with kills-less-deaths +0.19 ± 0.06 and the score flat at −0.26 ± 0.46 (<a href="../2026-11-01-waves.html">Waves, Width and Waiting</a>, section IX). They were promoted by hand, since the score would never have let them through.</p></section><section id="the-waves-reach-behaviour-and-do-not-win"><h2>The waves reach behaviour and do not win</h2><p>Each entry of the temperament matrix moves its own wave's behaviour with the right sign: pressing up to ±18 points of fights; mood makes tanks more careful at high. A negative control (waves on, amount zero, identical games) read exactly zero over 400 seeds, which made every later difference believable. No clear gain in kills, deaths or score followed, and stances occupy about 3% of live seconds, so two of the matrix's rows have little to move (<a href="../2026-11-01-waves.html">Waves</a>).</p></section><section id="wider-is-not-yet-worth-it"><h2>Wider is not yet worth it</h2><p>The transform trained at widths 32, 64 and 128 read 67.1, 67.7 and 68.7 on the drive head and 64.6, 65.7 and 66.4 on the gun: 128 beats 64 by 0.85 points, under the bar of 1.0 set before the test. The width watch repeats the test every twenty generations (<a href="../2026-11-01-waves.html">Waves</a>, section VI). The transform in slot 1, trained by SPSA over 942 numbers, is the Overrider style; it is not promoted.</p></section><section id="the-nets-are-twenty-points-behind-the-ru"><h2>The nets are twenty points behind the rules</h2><p>A net that learned by imitating the rules (Scholar) read about 20 a seat under them; a pure net cannot build or crew. The GPU was not faster than a CPU for a net this small (6.4 ms a step against 5.6). Behaviour cloning gets a net playing in minutes and inherits its teacher's faults (<a href="../2026-10-26-the-learned-tank.html">The Learned Tank</a>, <a href="../2026-10-27-generations.html">Generations</a>). The crucible champion plays the fight inside a rules tank at 84% against its yardstick on its own arena; on this simulator the gun had to stay the rules' (−17.8 a seat when the champion fired).</p></section><section id="the-styles-read"><h2>The styles, read</h2><p>Raider +3.06 and Expander +2.35 at 400 seeds, mostly on europe before the stale dial was found; Timid +0.39 on fresh seeds after reading +3.15 on picked ones; Duelist −17.14; Scholar −56.84 (<a href="../2026-11-01-bot-styles.html">Eight Named Minds</a>). Picking the best of several first reads inflates it; a re-read on fresh seeds is the only honest number.</p></section><section id="the-queue-was-the-bottleneck-not-the-mac"><h2>The queue was the bottleneck, not the machines</h2><p>A winner's first read to pass fell from 57 minutes to 25 (three samples) once read-ons went to the front of the queue, the queue per machine fell to two, and quick machines took the long reads; the wait for a read-on fell from 10.2 to 0.7 minutes; a proof takes 7.5 to 9.6 minutes. New trials still wait about ten minutes (<a href="../2026-11-01-waves.html">Waves</a>, section VII).</p></section><section id="the-terrain-is-thin-where-it-matters"><h2>The terrain is thin where it matters</h2><p>Of 88 maxima flagged on the terrain at 18:22 on 1 November, 77 had been read and 58 of those were not settled; two dials at a time are a slice of a 118-dial space, and the hills the search drew are mostly where it had already read. The old terrain had used 109 of 2,675 reads before it was rebuilt from each census's own directory (<a href="../2026-11-01-terrain.html">A Terrain for Each Dataset</a>). This matters for the personas of chapter 10: the maxima name a few places, not a map.</p></section><section id="the-dials-that-moved-most"><h2>The dials that moved most</h2><p>Over the week the fleet moved <code>w_pos_fortify</code> from 6.0 to 1.5, 0.75, 0.375 and 0.1875 (and tried 0.4, held); <code>base_r</code> from 16 to 32 to 8 to 6.15; <code>alpha</code> from 0.4 to 0.18; <code>press_odds</code> from 2.68 to 1.34; <code>kite_in</code> from 9 to 4.5 to 2.25; <code>near_scale</code> from 15 to 30; <code>connect_tiles</code> 4 to 5.1; <code>w_mine</code> 0.5 to 1 to 0.86; <code>coming_r</code> 180 to 221; and flipped <code>pings</code>, <code>bridges</code> and <code>escort</code> off and <code>cycle</code> off and on. Several of these are distances and times with a meaning in the world: <code>coming_r</code> at 221 tiles is wider than the map's diagonal, <code>base_r</code> walked a factor of five in a day. That is the finding chapter 9 acts on: numbers that were meant to be constants were searched as if they were preferences.</p></section><section id="links"><h2>Links</h2><p>Every report named above; chapter 7 for what these findings teach; chapter 9 for what they change.</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span><a href="05-how-the-line-works.html">&larr; 5. How the line works: the how-to</a></span><span><a href="07-lessons.html">7. Lessons &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

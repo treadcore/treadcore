@@ -1,0 +1,138 @@
+<meta charset="utf-8">
+<title>A Dead Clock Battery</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="bar"><div class="bar-in"><strong><a href="index.html">orrery</a> · lab report</strong><a href="#abstract">Abstract</a><a href="#si">I</a><a href="#sii">II</a><a href="#siii">III</a><a href="#siv">IV</a><a href="#sv">V</a><a href="#svi">VI</a><a href="#svii">VII</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">orrery · the fleet · machines</p>
+    <h1>A Dead Clock Battery and an Expired Certificate: Why jaguaribe Left the Fleet</h1>
+    <div class="front"><p class="note">Lab Report — IEEE Format · 1 November 2026</p><p>Copyright (c) 2026 Paul Richeson. MIT licensed, as orrery.</p><p>Companions: <code>tools/orchestrate.py</code> (the guard); <code>tools/fleet-queue.py</code> (the retries); <code>docs/copal-machines-lab-report.md</code> (how jaguaribe joined).</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#abstract">Abstract</a></li><li><a href="#si">I. Introduction</a></li><li><a href="#sii">II. Method</a></li><li><a href="#siii">III. Results</a></li><li><a href="#siv">IV. Changes Made</a></li><li><a href="#sv">V. What Needs a Person</a></li><li><a href="#svi">VI. Limitations</a></li><li><a href="#svii">VII. Future Work</a></li></ol></nav>
+  <main>
+  <section id="abstract"><h2>Abstract</h2><p>jaguaribe, a Supermicro X8DTL with two Xeon X5670s, did no work for 17 hours and 54 minutes after the fleet's shutdown on 31 October. Paul found a CMOS error at the console and a dead clock battery. The machine's own log shows it booted believing the date was 16 November 2012, and that chronyd stepped the clock forward 440,470,337.786 seconds, about 13.96 years, 26 seconds after boot. The date is now correct, and the system clock and the clock chip agree to the second. It is not fixed for good: the next loss of mains power will reset the chip again until the battery is replaced.</p><p>The logs also settled a second question. The SSH resets seen on all three Copal machines are not a network fault. orrery's chat room dialled every machine every 4 seconds with an operator certificate that expired on 30 October. Each refusal cost the Mac's address a penalty in OpenSSH 10.3, and sshd then dropped connections from that address, the keeper's among them. The three Ubuntu machines run OpenSSH 9.6, which has no such penalties, and logged none.</p></section><section id="si"><h2>I. Introduction</h2><p>The fleet's keeper had reported jaguaribe unreachable since 31 October. An earlier reading in this work described it as dropping off the network repeatedly. That was wrong: there were two separate faults, and one logging bug that made them look like one.</p></section><section id="sii"><h2>II. Method</h2><p>Everything was read as the ordinary user, with no change to the machine: <code>/var/log/messages</code>, <code>/sys/class/rtc/rtc0</code>, <code>/sys/class/dmi/id</code>, chrony's configuration, file times under <code>/etc</code> and <code>~/.fleet-queue</code>, <code>/proc/stat</code>, and the queue's <code>events.jsonl</code>. The other machines' logs and <code>ssh -V</code> were read for comparison.</p><p><strong>What could not be read.</strong> <code>/var/log</code> on Copal is a tmpfs, so <strong>every log from before this boot is gone</strong>. <code>dmesg</code> and <code>/var/lib/chrony</code> need root. A subnet sweep and a look at the router's leases were refused by this session's permission system and not attempted again.</p></section><section id="siii"><h2>III. Results</h2><h3 id="a-the-clock">A. The clock</h3><div class="table"><table><thead><tr><th>Evidence</th><th>Reading</th></tr></thead><tbody><tr><td>Board and BIOS</td><td>Supermicro X8DTL, BIOS 2.1b, <strong>dated 11/16/2012</strong></td></tr><tr><td>First log line this boot</td><td><code>Nov 16 07:03:59</code> (2012)</td></tr><tr><td>chronyd, 07:56:22</td><td><code>System clock wrong by 440470337.786110 seconds</code>, then stepped</td></tr><tr><td>True boot time (<code>btime</code>)</td><td>2026-11-01 07:55:56 PST</td></tr><tr><td>Chip against system, after</td><td>0 s; <code>rtcsync</code> keeps the chip set while the machine runs</td></tr><tr><td>Time source</td><td><code>pool.ntp.org</code>, <code>makestep 1.0 3</code></td></tr></tbody></table></div><p>The date the clock fell back to is the BIOS's own build date. That is the usual sign of a chip that lost its contents.</p><p>Files under <code>/etc</code> carry two wrong dates: 15 November 2012 at 16:46 PST, and 16 November at 07:03 PST. So there were <strong>two boots on the wrong clock</strong>, about 14 h 18 min apart.</p><h3 id="b-a-probable-timeline">B. A probable timeline</h3><div class="table"><table><thead><tr><th>Real time</th><th>Event</th><th>Basis</th></tr></thead><tbody><tr><td>31 Oct 14:02</td><td>Last job, <code>w2224</code>, starts; its pid file is never removed</td><td>measured</td></tr><tr><td>31 Oct 14:04</td><td><code>shutdown now</code> for the fleet</td><td>measured</td></tr><tr><td>31 Oct about 16:52</td><td>Mains back; the chip resets to 16:00 PST on 15 Nov 2012 (midnight UTC)</td><td>inferred</td></tr><tr><td>31 Oct about 17:38</td><td>A first boot on the wrong clock writes <code>/etc/hostname</code></td><td>inferred</td></tr><tr><td>1 Nov 07:55:56</td><td>The boot that came back</td><td>measured</td></tr><tr><td>1 Nov 07:56:22</td><td>chronyd corrects the clock</td><td>measured</td></tr><tr><td>1 Nov 07:58:01</td><td>Rebuilt on <code>7a0ca91</code>, takes a census</td><td>measured</td></tr></tbody></table></div><p>The inferred times count back from the measured boot, and assume the chip ran steadily. saskatchewan also booted about 16:52, which fits but does not prove it. Why the 17:38 boot never answered the keeper is unknown: its logs died with it. A BIOS waiting for a key at a CMOS error, which is what Paul saw, would explain the hours after it. It does not explain that boot itself.</p><h3 id="c-what-the-wrong-clock-can-break">C. What the wrong clock can break</h3><p>Between boot and the step, 26 seconds here, <code>sshd</code> was already listening and the clock was 14 years behind. Reasoned from how these checks work, and not tested: a certificate is not yet valid to it, HTTPS fails for <code>git fetch</code> and for packages, and a census stamped then sorts as 2012. If the internet were down at boot all of that would last until it returned. Here it did no harm. Nine files in <code>/etc</code> keep 2012 dates, harmlessly, and the build ran after the step.</p><h3 id="d-the-ssh-resets">D. The SSH resets</h3><div class="table"><table><thead><tr><th>Machine</th><th>OpenSSH</th><th>Refused certificates in its log</th><th>Penalty drops</th></tr></thead><tbody><tr><td>saskatchewan</td><td>10.3p1</td><td>338 in 29 minutes</td><td>104</td></tr><tr><td>columbia</td><td>10.3p1</td><td>82 in 7 minutes</td><td>26</td></tr><tr><td>jaguaribe</td><td>10.3p1</td><td>24 in 3 minutes</td><td>6</td></tr><tr><td>calber, boburner, whitewolf</td><td>9.6p1</td><td>0 in an hour</td><td>0</td></tr></tbody></table></div><p>The log lines are exact:</p><p>error: Refusing certificate ID "user@users-iMac.lan" ... Certificate invalid: expired drop connection #0 from [192.168.8.143]:60164 ... penalty: failed authentication</p><p>The certificate lasted to 30 October 19:30. Keeper events of "host unreachable", from 29 October to that time and from then until today:</p><div class="table"><table><thead><tr><th>Machine</th><th>Before</th><th>After</th></tr></thead><tbody><tr><td>saskatchewan</td><td>2</td><td>91</td></tr><tr><td>columbia</td><td>2</td><td>34</td></tr><tr><td>jaguaribe</td><td>2</td><td>14</td></tr><tr><td>calber</td><td>2</td><td>1</td></tr><tr><td>boburner</td><td>3</td><td>0</td></tr></tbody></table></div><p>The windows are about equal in length, though the fleet was stopped for part of each.</p><h3 id="e-the-false-host-back">E. The false "host back"</h3><p>A lane waiting on a machine logs "host back" whenever the wait ends, including when a keeper restart ends it. The entries for jaguaribe at 07:12 and 07:16 on 1 November were this: it was off. The health line "every machine answers" at about 07:13 was probably the same. Not yet mended.</p></section><section id="siv"><h2>IV. Changes Made</h2><ol><li><strong>The date.</strong> Nothing was needed by hand: chronyd had corrected it, and the chip with it.</li><li><strong><code>tools/orchestrate.py</code>.</strong> The chat room and the minute's survey no longer dial on an expired certificate. Measured: with the chat room's guard in at about 07:59, penalty drops stopped on all three machines (last at 07:58:58 and 07:59:07) and refusals fell from one every 4 s to about one a minute, the survey's. The certificate was renewed at 08:00, and there has been no refusal or drop since 08:00:24, nor any keeper "unreachable" since 07:19. The survey's guard went in at 08:01, after the renewal, so it <strong>has not been seen working against an expired certificate</strong>.</li><li>Earlier today, in <code>tools/fleet-queue.py</code>: retries on ssh's failure, so a reset cannot lose a finished census.</li><li><strong>The operator certificate lasts 720 hours (thirty days), not 8</strong>, at Paul's asking. It is adjustable: <code>copal fleet login --hours N</code> once, or a number in the fleet's <code>cert-hours</code> file for every login and Orrery's Renew. The price is stated in <code>docs/lockdown.md</code>: a stolen operator key holds the fleet for up to that long.</li></ol><p>The queue took jaguaribe back by itself, with no change to any record.</p></section><section id="sv"><h2>V. What Needs a Person</h2><ol><li><strong>Replace the battery.</strong> On this board that is most likely a CR2032; check the holder before buying. Then confirm the date in the BIOS.</li><li><strong>If the BIOS offers it, stop it halting on errors</strong>, so that a machine with no one at it still boots.</li><li><strong>Decide how long the operator certificate should last.</strong> Thirty days by Paul's decision (Section IV). Shorter is safer if the Mac is ever lost: write hours in <code>~/.copal/fleets/grove/cert-hours</code>, then press Renew.</li></ol><p>No <code>ssh-copy-id</code> is needed anywhere: the fleet's user key is accepted on every machine read here.</p><p>Until the battery is in, leave the machine's mains power on, since the chip is kept by standby power.</p></section><section id="svi"><h2>VI. Limitations</h2><ul><li>The battery's death is Paul's reading at the console, and the logs agree. It was not measured.</li><li>Other machines' batteries were not tested. Their chips agree with their clocks, but <code>rtcsync</code> makes that so on any running machine. Only a boot after a power loss shows a weak battery. saskatchewan and columbia keep under an hour of log, so an old step would no longer be there to find.</li><li>The penalties are shown to happen and to drop connections. How much of each unreachable count they explain was not separated from the machines' real absences.</li><li>The penalty settings themselves (<code>sshd -T</code>) need root and were not read; the behaviour is in the log.</li></ul></section><section id="svii"><h2>VII. Future Work</h2><ul><li>Persistent logs on Copal: this report's central question could not be answered because they vanish at each boot.</li><li>Mend the false "host back".</li><li>The guard covers the chat room. The minute's survey and button presses still dial as they did.</li><li>A warning before the thirty days run out: the guard stops the penalties, but the chat room then goes quiet.</li></ul></section>
+  </main>
+  <footer>
+    <p>Paul Richeson, 28 October 2026. MIT licensed, as orrery. The Markdown original and the example's source are in orrery: <code>docs/appkit-gui-lab-report.md</code> and <code>docs/appkit-example/</code>.</p>
+  </footer>
+</div>

@@ -64,7 +64,10 @@ pub const ESCORT_DISTANCE: f32 = 4.0;
 /// of the leader; a threat to the leader is anything hostile within
 /// `WING_THREAT` of it; ahead is the leader's heading within 60 degrees
 /// out to `WING_AHEAD`. A task is kept `WING_COMMIT` before another
-/// below it in the order may take its place.
+/// below it in the order may take its place. SINCE 2 NOVEMBER THESE ARE
+/// THE DEFAULTS OF WEIGHTS (`escort_distance`, `wing_leash`, `wing_greed`,
+/// `wing_threat`, `wing_ahead` in weights.rs): `fly_wing` reads the
+/// settings, so a person, a persona or the search can move them.
 pub const WING_LEASH: f32 = 20.0;
 pub const WING_GREED: f32 = 16.0;
 pub const WING_THREAT: f32 = 10.0;
@@ -953,23 +956,27 @@ impl Commander {
     /// inner doctrine may use the gun.
     fn fly_wing(&mut self, obs: &Observation, me: &Tank, leader: &Tank, map: Option<&Map>, cmds: &mut Vec<Command>) -> bool {
         let lp = leader.pos;
+        // The five numbers, weights since 2 November (their defaults the constants above): a person's
+        // sliders, a persona's say, and the search's.
+        let w = &self.settings.w;
+        let (station, leash, greed, threat_r, ahead_r) = (w[crate::weights::W::EscortDistance], w[crate::weights::W::WingLeash], w[crate::weights::W::WingGreed], w[crate::weights::W::WingThreat], w[crate::weights::W::WingAhead]);
         let hostile = |t: &&Tank| t.alive && !obs.allied(t.owner);
         let near = |a: V2, b: V2| a.dist(lp).total_cmp(&b.dist(lp));
-        let threat = obs.tanks.iter().filter(hostile).filter(|t| t.pos.dist(lp) <= WING_THREAT).min_by(|a, b| near(a.pos, b.pos).then(a.id.cmp(&b.id)));
+        let threat = obs.tanks.iter().filter(hostile).filter(|t| t.pos.dist(lp) <= threat_r).min_by(|a, b| near(a.pos, b.pos).then(a.id.cmp(&b.id)));
         let facing = V2::from_heading(leader.heading);
         let ahead = obs
             .tanks
             .iter()
             .filter(hostile)
-            .filter(|t| t.pos.dist(lp) <= WING_AHEAD && { let d = (t.pos - lp).norm(); d.x * facing.x + d.y * facing.y >= 0.5 })
+            .filter(|t| t.pos.dist(lp) <= ahead_r && { let d = (t.pos - lp).norm(); d.x * facing.x + d.y * facing.y >= 0.5 })
             .min_by(|a, b| near(a.pos, b.pos).then(a.id.cmp(&b.id)));
-        let pillbox = obs.pillboxes.iter().any(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.has(&p.id, obs.tick) && p.pos.dist(lp) <= WING_GREED);
-        let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && d.pos.dist(lp) <= WING_GREED).min_by(|a, b| near(a.pos, b.pos)).map(|d| d.id);
+        let pillbox = obs.pillboxes.iter().any(|p| !Self::mine_or_allied(obs, p.owner) && !self.given_up.has(&p.id, obs.tick) && p.pos.dist(lp) <= greed);
+        let depot = obs.depots.iter().filter(|d| !Self::mine_or_allied(obs, d.owner) && d.pos.dist(lp) <= greed).min_by(|a, b| near(a.pos, b.pos)).map(|d| d.id);
         let help = obs
             .tanks
             .iter()
-            .filter(|t| t.alive && t.owner != obs.player && t.owner != leader.owner && obs.allied(t.owner) && t.pos.dist(lp) <= WING_LEASH)
-            .find_map(|a| obs.tanks.iter().filter(hostile).find(|h| h.pos.dist(a.pos) <= WING_THREAT * 0.8).map(|h| h.id));
+            .filter(|t| t.alive && t.owner != obs.player && t.owner != leader.owner && obs.allied(t.owner) && t.pos.dist(lp) <= leash)
+            .find_map(|a| obs.tanks.iter().filter(hostile).find(|h| h.pos.dist(a.pos) <= threat_r * 0.8).map(|h| h.id));
         let best = threat
             .map(|t| Wing::Defend(t.id))
             .or(ahead.map(|t| Wing::Ahead(t.id)))
@@ -980,7 +987,7 @@ impl Commander {
         // Keep the task for its commitment unless a better one outranks
         // it by a defence; a task that no longer exists ends at once.
         let still = |w: Wing| match w {
-            Wing::Defend(id) | Wing::Ahead(id) | Wing::Help(id) => obs.tanks.iter().any(|t| t.id == id && t.alive && t.pos.dist(lp) <= WING_LEASH),
+            Wing::Defend(id) | Wing::Ahead(id) | Wing::Help(id) => obs.tanks.iter().any(|t| t.id == id && t.alive && t.pos.dist(lp) <= leash),
             Wing::Pillbox => pillbox,
             Wing::Depot(id) => depot == Some(id),
             Wing::Regroup => true,
@@ -993,7 +1000,7 @@ impl Commander {
                 best
             }
         };
-        let behind = lp - facing.scale(ESCORT_DISTANCE);
+        let behind = lp - facing.scale(station);
         match task {
             Wing::Defend(id) | Wing::Ahead(id) | Wing::Help(id) => {
                 let t = obs.tanks.iter().find(|t| t.id == id).unwrap().clone();
@@ -1017,7 +1024,7 @@ impl Commander {
                     None => None,
                 };
                 if let Some(to) = to {
-                    let to = if to.dist(lp) > WING_LEASH { lp + (to - lp).norm().scale(WING_LEASH) } else { to };
+                    let to = if to.dist(lp) > leash { lp + (to - lp).norm().scale(leash) } else { to };
                     if kite.map(|k| k.stepping_in).unwrap_or(false) {
                         self.last_move = None;
                     }
@@ -1035,7 +1042,7 @@ impl Commander {
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
             }
             Wing::Pillbox => {
-                self.hunt(obs, me, Some((lp, WING_GREED)), cmds);
+                self.hunt(obs, me, Some((lp, greed)), cmds);
                 self.set_doing(Act::TakePillbox, format!("pillbox by the leader: {}", self.doing));
                 !self.gun_reserved
             }
@@ -1045,7 +1052,7 @@ impl Commander {
                 self.set_doing(Act::TakeDepot, "taking the depot".into());
                 true
             }
-            Wing::Regroup if leader.boat && !me.boat && self.slot.is_some() && me.pos.dist(lp) <= WING_LEASH && !self.inner.hop.active() && self.inner.hop.send(lp) => {
+            Wing::Regroup if leader.boat && !me.boat && self.slot.is_some() && me.pos.dist(lp) <= leash && !self.inner.hop.active() && self.inner.hop.send(lp) => {
                 // The leader is launching: launch with it (the hop finds
                 // the bank), and sail in the wedge (think's afloat fleet).
                 self.set_doing(Act::WingSea, "the leader is launching: launching with it".into());
@@ -1054,13 +1061,13 @@ impl Commander {
             Wing::Regroup if leader.boat && !me.boat && self.slot.is_some() => {
                 // The leader crossed without us: wait at the shore for
                 // where it lands, then follow it over (below).
-                if me.goal.is_some() && me.pos.dist(lp) <= WING_LEASH {
+                if me.goal.is_some() && me.pos.dist(lp) <= leash {
                     cmds.push(Command::Stop);
                 }
                 self.set_doing(Act::WingSea, "the leader is afloat: waiting for its landing".into());
                 true
             }
-            Wing::Regroup if self.slot.is_some() && !self.inner.hop.active() && self.refused.iter().any(|(t, _)| V2::new(t.0 as f32 + 0.5, t.1 as f32 + 0.5).dist(lp) <= WING_LEASH) && self.inner.hop.send(lp) => {
+            Wing::Regroup if self.slot.is_some() && !self.inner.hop.active() && self.refused.iter().any(|(t, _)| V2::new(t.0 as f32 + 0.5, t.1 as f32 + 0.5).dist(lp) <= leash) && self.inner.hop.send(lp) => {
                 // The leader is over the water: after it by sea.
                 self.set_doing(Act::WingSea, format!("following the leader by sea, to ({:.0},{:.0})", lp.x, lp.y));
                 true

@@ -1,0 +1,152 @@
+<meta charset="utf-8">
+<title>The Post-Mortem and the Plan: a week of training, the goals rewritten, and the player it is for</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<style>
+/* The book's own two pieces: the chapter list on the index, and previous/next at a chapter's foot. */
+ol.chapters { list-style: none; padding: 0; margin: 0 0 1.4em; }
+ol.chapters li { padding: 14px 0; border-bottom: 1px solid var(--rule); max-width: var(--measure); margin: 0; }
+ol.chapters li:last-child { border-bottom: none; }
+ol.chapters .n { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .1em; color: var(--accent); margin-right: 12px; }
+ol.chapters a.t { font-family: var(--cond); font-weight: 700; font-size: var(--step-1); text-decoration: none; }
+ol.chapters a.t:hover, ol.chapters a.t:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+ol.chapters p { margin: 6px 0 0; font-size: var(--step--1); color: var(--dim); }
+nav.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--cond); padding-block: 18px; border-top: 1px solid var(--rule); }
+nav.pn a { color: var(--ink); text-decoration: none; }
+nav.pn a:hover, nav.pn a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+</style>
+<div class="bar"><div class="bar-in"><strong><a href="index.html">treadcore · lab reports</a></strong><a href="#how-to-read-it">How to read it</a><a href="#the-reports-this-book-stands-on">The reports this book stands on</a><a href="01-the-project.html">1 &rarr;</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">treadcore and orrery · the post-mortem and the plan, in chapters</p>
+    <h1>The Post-Mortem and the Plan: a week of training, the goals rewritten, and the player it is for</h1>
+    <div class="front"><p class="note">Paul Richeson, with Claude. 2 November 2026. Treadcore and orrery, in chapters.</p><p>Treadcore is a sixteen-player tank game for the drone battlefield. Orrery is the console and the planner that run a room of machines to train the game's bots. Between 25 October and 2 November 2026 that room ran about a week without a hand on it: it read some two thousand trial brains, carried thirty-odd generations of weights onto a line, proved the line against the shipped game, and moved the shipped game eight times. This book is the post-mortem of that week and of the month that led to it, written for a newcomer: what the project is for, what it was told to do, what it did, what it learned, what it left undone, and what comes next.</p><p>It is written at the altitude of the process, not the dial. Where a number matters it is named once, with its error; where a report already carries the detail, this book links to it rather than repeating it. Paul's directives, which arrived as fast typing over four weeks, are given here in plain words with their spelling put right and their sense kept; the originals are quoted in the check-in reports the chapters cite.</p><p>The second half of the book is the plan. The design of this game was always in six parts: the design itself; its implementation; the training of the programmed brain's weights; the training of a transform that becomes a learned player; the combining of the two; and orrery, which orders the seeds, the promotions and the values so that the whole converges on a well-defined player. The first half of that is done and measured. The second half, which this plan sets out, starts where the week's numbers say it must: by locking the game's physical constants into ranges, so the search stops spending itself on numbers that were never meant to move.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#how-to-read-it">How to read it</a></li><li><a href="#the-reports-this-book-stands-on">The reports this book stands on</a></li></ol></nav>
+  <main>
+  <section id="how-to-read-it"><h2>How to read it</h2><p>Read the first chapter, then whichever question brought you. Chapters 1 to 8 are the post-mortem: the project, its goals, its directives, the week, the process, the findings, the lessons, the unfinished work. Chapters 9 to 15 are the plan: physical constraints and scale, personas, the wingman, the transform, the economy and logistics, play with and against bots, and the testing plan. Chapter 16 is the reference list, in IEEE form, which the plan cites by number. Every chapter ends with what it links to.</p><ol class="chapters"><li><span class="n">01</span><a class="t" href="01-the-project.html">The project on one page</a><p>Two programs and a room of machines, with one aim: a tank game whose bots play like a side, and a process that makes them better by itself, in a way a person can read, steer and trust.</p></li><li><span class="n">02</span><a class="t" href="02-the-goals.html">The goals, rewritten</a><p>The goals have been written three times: as treadcore's roadmap (18 October), as orrery's plan (September, then the backlog of 29 October), and, between the lines, as four weeks of Paul's directives. This chapter puts them in one place, says what each means in plain words, where it stands, and what the asks of 2 November add. It links back rather than repeating; nothing here changes an old report.</p></li><li><span class="n">03</span><a class="t" href="03-the-directives.html">The directives, in plain words</a><p>Paul's prompts arrived as fast typing, often one line, often mid-run. The check-in reports quote each one word for word; this chapter gives their sense, spelling put right, grouped by what they were about and dated, so a reader can see what the project was told and in what order. Where a directive was later reversed or refined, both are kept. Nothing here is a quotation; the originals are in the <a href="https://github.com/treadcore/treadcore/tree/main/documentation/checkins">check-ins</a> and in the commit messages, which carry them in parentheses.</p></li><li><span class="n">04</span><a class="t" href="04-the-week.html">The week, day by day</a><p>The month in one line a phase, then the week of 25 October to 2 November a day at a time. Times are the Mac's; what each day asked and found is drawn from the commit messages of both repositories, the check-ins and the queue's own flags. The numbers are named once; the reports linked carry the rest.</p></li><li><span class="n">05</span><a class="t" href="05-how-the-line-works.html">How the line works: the how-to</a><p>This is the process as it runs on 2 November, for someone who has to watch it, steer it or restart it. Every number here is a value a person can move from a screen; every state is a flag a person can read. The detail of each stage is in <a href="../2026-11-01-the-whole-line.html">The Whole Line</a>; the screens, pictured, are in the <a href="../2026-11-01-double-report.html">Double Report</a>.</p></li><li><span class="n">06</span><a class="t" href="06-what-the-numbers-said.html">What the numbers said</a><p>The week's findings, each in a paragraph, with the one number that carries it. The reports hold the tables.</p></li><li><span class="n">07</span><a class="t" href="07-lessons.html">Lessons</a><p>What the month teaches about the process, drawn from the lessons each report recorded and from the week's record. Each is stated as a rule a future week can be run by, with the place it was learned. They are grouped: what worked, what wasted time, the faults that hid, what the numbers say about the judge, and how to record and ship.</p></li><li><span class="n">08</span><a class="t" href="08-the-register.html">The register of unfinished work</a><p>Every report keeps its open items honestly, which is why they can be gathered. Read section by section, the twenty-eight orrery reports and design documents leave 380 open entries; many are the same item seen from two reports, so about 250 are distinct. Treadcore's roadmap adds its own backlog (goal 3's four steps, goal 5's three, the two-router proof). This chapter sorts them by area, names the ones that matter, says which the asks of 2 November cover, and gives each group a disposition: <em>do now</em> (this plan builds it), <em>design now</em> (this plan designs it and names its first step), <em>later</em>, or <em>refuse</em> (with the reason). The counts are of entries, not of distinct items.</p></li><li><span class="n">09</span><a class="t" href="09-physical-constraints-and-scale.html">Physical constraints first, and a scale for the world</a><p>The plan begins where the week's numbers point. Of the brain's 135 weights, about a third are distances, times and counts with a meaning in the world: how far a teammate can be and still be "coming", how long a target stays called, how many strike drones fly at once. The search has treated them as preferences, and some of them walked: <code>base_r</code> went 16, 32, 8, 6.15 in one day; <code>coming_r</code> reached 221 tiles on a map 128 tiles wide. A number that means something in the world has limits the world sets, and the first step of the second half is to write them down. Then the scale: the game's constants assume a tile of 25 metres and a game speed about six times life, and the maps range from a 128-tile island to a 1,024-tile world. A scale system says what a tile is on each map, so that flight times, arcs and speeds can be reasoned about, and so that the game can show a player real units.</p></li><li><span class="n">10</span><a class="t" href="10-personas.html">Personas from the terrain</a><p>A style is a whole brain with a name. Eight exist: Fleet, Raider, Castle, Expander, Timid, Overrider, Scholar and Duelist (<a href="../2026-11-01-bot-styles.html">Eight Named Minds</a>). Paul asked for more, differentiated by the topography of the terrain's local maxima, and named like Civilization V's civilizations, each after a historic culture's strengths. This chapter gives the method, the eight personas built today, how each is certified, and how they are kept fresh as the line moves.</p></li><li><span class="n">11</span><a class="t" href="11-the-wingman.html">The wingman: an escort for a person</a><p>Paul's ask: a wingman trained so that it follows my moves, like an escort mission. Part of it exists and nobody can touch it; part of it does not exist. This chapter says which is which, makes the existing part adjustable today, sets the gauntlets a wingman must pass, and designs the trained one.</p></li><li><span class="n">12</span><a class="t" href="12-the-transform.html">The transform: wider, deeper, or neither yet</a><p>The transform is the fourth part of the design: a learned stage after the rules that may move their answer when it is confident, and that is the brain as it was when all its numbers are zero. Paul asked whether it needs a larger matrix or more layers. The short answer from the week's one measurement is <em>not yet</em>; this chapter says what was measured, what the shapes on offer are, what each would touch, and the test that decides.</p></li><li><span class="n">13</span><a class="t" href="13-economy-and-logistics.html">The economy and the logistics of a base</a><p>Paul's ask, in his words made plain: a fun zero-sum economy, where every mineral but the growing trees is finite; bonuses for refineries, smelters and wood harvesters; a logistics layer where each base has a worker that does its work and recharges its empty supplies, and a pillbox does too, except that a pillbox that is hit loses its ammunition (it all goes up) and keeps only what it makes afresh; a description of how cities develop and refineries are built; and perhaps a teammate who stays back issuing the building orders while defending. This is a design chapter: nothing in it is built, and the first step is named.</p></li><li><span class="n">14</span><a class="t" href="14-play-and-every-feature-an-element.html">Playing with and against the bots, and every feature an element</a><p>A week of training made the bots better at a game nobody was playing. This chapter is about the person in the seat: what they can set and say today, what they cannot, and the element each missing thing gets. Then the same audit for orrery, where the rule is Paul's: anything a person might need to do is a button, and anything the machines know is on a screen.</p></li><li><span class="n">15</span><a class="t" href="15-the-testing-plan.html">The testing plan</a><p>What the week taught about testing is in chapter 7: write the rule before the run, read the composition and not the total, never pick the best of several first reads, and keep the seeds the judge reads apart from the seeds the learner sees. This chapter turns that into a plan with levels, owners and a schedule, for the game as it is and for what chapters 9 to 14 add. The literature it leans on is the evaluation protocol for learned agents: fixed and disjoint seeds, confidence intervals on everything, and enough runs to say anything at all ([93], [95], [96], [97]).</p></li><li><span class="n">16</span><a class="t" href="16-references.html">References, in IEEE form</a><p>The plan's citations, [1] to [106], found and verified by web search on 2 November 2026 (one entry marked where a detail could not be verified), grouped by theme. Under each theme, <em>What it means for us</em> says what the sources establish and how the line uses or should use it. Thirty-six are IEEE publications; the rest are the field's founding books and journals.</p></li></ol></section><section id="the-reports-this-book-stands-on"><h2>The reports this book stands on</h2><p>The lab reports of the month are on this site, one page each, and listed on the <a href="../index.html">Lab Reports</a> page. The ones a chapter leans on most: <a href="../2026-11-01-the-whole-line.html">The Whole Line</a> (how the fleet's work reaches the game), <a href="../2026-11-01-double-report.html">The Double Report</a> (the process end to end, and a guide to every screen of orrery), <a href="../2026-11-01-bot-styles.html">Eight Named Minds</a> (bot styles), <a href="../2026-11-01-a-stale-dial.html">A Stale Dial</a> (what a total score hides), <a href="../2026-11-01-terrain.html">A Terrain for Each Dataset</a> (the local maxima), <a href="../2026-11-01-waves.html">Waves, Width and Waiting</a> (temperament, the net's width, the queue), <a href="../2026-10-27-generations.html">Generations</a> and <a href="../2026-10-26-the-learned-tank.html">The Learned Tank</a> (the net), and treadcore's own <a href="https://github.com/treadcore/treadcore/blob/main/documentation/ROADMAP.md">roadmap</a>, <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-BRAIN.md">brain report</a> and <a href="https://github.com/treadcore/treadcore/tree/main/documentation/checkins">check-ins</a>.</p></section>
+  </main>
+  <nav class="pn" aria-label="Chapters"><span></span><span><a href="01-the-project.html">1. The project on one page &rarr;</a></span></nav>
+  <footer>
+    <p>Paul Richeson, 2 November 2026. MIT licensed, as treadcore. The Markdown original is orrery's docs/book/, one file a chapter.</p>
+  </footer>
+</div>

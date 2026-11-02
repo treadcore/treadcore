@@ -1,0 +1,10 @@
+# China: the Great Wall (persona, slot 9; the plan of 2 November, chapter 10).
+# A walled castle, mended first, defended hard: the Castle style's lean without its 5.0 fortify
+# worth, which under game 4 paid for walking (A Stale Dial). Stands on Castle's read and the
+# castle rules; its own census is its certificate.
+w_pos_fortify = 1.5
+w_pos_expand = 0.2
+castle_road = 4
+post_spacing = 6
+w_mend = 1.5
+w_pos_defend = 4

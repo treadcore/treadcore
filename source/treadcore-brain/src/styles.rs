@@ -52,7 +52,14 @@ pub struct Style {
 }
 
 /// The roster. Its order is the `bot_style` dial's, so a slot once given keeps its meaning.
-pub const ROSTER: [Style; 8] = [
+///
+/// SLOTS 8 TO 15 ARE PERSONAS (Paul, 2 November: "use the topography of local maxima to differentiate
+/// different named personas, perhaps use the civilizations of Civ V ... according to their strengths").
+/// A persona is a short weights file over today's defaults, named after a culture for the strength it
+/// plays: it stands on a hill of the terrain or on a style's census read where there is one, and says
+/// "unread" where there is not. Every dial it does not name rides the line, so a persona stays fresh
+/// as the fleet moves the defaults. Its certificate is its own census (the plan, chapter 10).
+pub const ROSTER: [Style; 16] = [
     Style { slot: 0, name: "Fleet", about: "the brain the fleet's search has carried: today's defaults", kind: Kind::Rules("") },
     Style { slot: 1, name: "Raider", about: "goes and fights: leans to expanding, closes at even odds, picks off the wounded", kind: Kind::Rules(include_str!("../../../profiles/raider.weights")) },
     Style { slot: 2, name: "Castle", about: "holds its ground: leans to fortifying and defending", kind: Kind::Rules(include_str!("../../../profiles/castle.weights")) },
@@ -61,6 +68,14 @@ pub const ROSTER: [Style; 8] = [
     Style { slot: 5, name: "Overrider", about: "the rules, with the learned transform moving their answer when it is sure", kind: Kind::Transform("patch = 1\n") },
     Style { slot: 6, name: "Scholar", about: "a net that learned by imitating the rules: all senses, no rules", kind: Kind::Net(include_bytes!("../../../nets/bc2.bin")) },
     Style { slot: 7, name: "Duelist", about: "the rules, with a champion from crucible's GPU islands in every fight", kind: Kind::Duel(include_bytes!("../../../nets/duelist.bin")) },
+    Style { slot: 8, name: "Rome", about: "roads, posts and legions: every tank runs the base cycle, the guard keeps building, the roads between bases come first", kind: Kind::Rules(include_str!("../../../profiles/persona-rome.weights")) },
+    Style { slot: 9, name: "China", about: "the Great Wall: a walled castle, mended first, defended hard", kind: Kind::Rules(include_str!("../../../profiles/persona-china.weights")) },
+    Style { slot: 10, name: "Mongolia", about: "the horde: raids, presses at even odds, picks off the wounded, ducks a quarter as often", kind: Kind::Rules(include_str!("../../../profiles/persona-mongolia.weights")) },
+    Style { slot: 11, name: "Shoshone", about: "territory: takes the map, depots and pillboxes first, the front forward", kind: Kind::Rules(include_str!("../../../profiles/persona-shoshone.weights")) },
+    Style { slot: 12, name: "Venice", about: "trade and treasure: the economy first, no expansion, stocks before fights, a moat of mines", kind: Kind::Rules(include_str!("../../../profiles/persona-venice.weights")) },
+    Style { slot: 13, name: "Japan", about: "bushido: fights at full strength however hurt, and does not go home", kind: Kind::Rules(include_str!("../../../profiles/persona-japan.weights")) },
+    Style { slot: 14, name: "Polynesia", about: "the sea: island hops, boats and beaches, a navy's patience", kind: Kind::Rules(include_str!("../../../profiles/persona-polynesia.weights")) },
+    Style { slot: 15, name: "Assyria", about: "siege: shells every pillbox in reach, longshots without pause, strikes out in threes", kind: Kind::Rules(include_str!("../../../profiles/persona-assyria.weights")) },
 ];
 
 /// A style by its number or name, in any case.
@@ -340,8 +355,8 @@ mod tests {
     use treadcore_sim::{MapSource, Scenario, World};
 
     #[test]
-    fn eight_styles_each_by_number_and_by_name_and_none_share_either() {
-        assert_eq!(ROSTER.len(), 8);
+    fn sixteen_styles_each_by_number_and_by_name_and_none_share_either() {
+        assert_eq!(ROSTER.len(), 16, "eight styles and eight personas");
         for (i, s) in ROSTER.iter().enumerate() {
             assert_eq!(s.slot, i, "a slot keeps its place");
             assert_eq!(find(&i.to_string()), Some(s));
@@ -349,8 +364,9 @@ mod tests {
             assert!(!s.about.is_empty());
             assert_eq!(ROSTER.iter().filter(|o| o.name == s.name).count(), 1);
         }
-        assert_eq!(find("8"), None);
+        assert_eq!(find("16"), None);
         assert_eq!(find("nobody"), None);
+        assert_eq!(find("rome").map(|s| s.slot), Some(8), "a persona by name");
     }
 
     #[test]
