@@ -1,6 +1,8 @@
 treadcore map 1
 size 320 256
 seed 0xe0
+scale 12500
+tempo 1
 # europe, drawn by scripts/worldmap.py (roadmap step 10g): coarse coastlines in
 # longitude and latitude, -12 to 46 E, 33 to 64 N, about 0 degrees a tile
 # rows: . grass  T forest  = road  ~ water  + bridge  % rough ground  D depot  _ pad

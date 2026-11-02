@@ -115,6 +115,14 @@ pub struct Map {
     pub w: usize,
     pub h: usize,
     pub seed: u64,
+    /// THE SCALE (the plan of 2 November, chapter 9): metres a tile, 25 when a file does not say,
+    /// and how many real seconds a game second stands for, 6 when it does not. They change no rule:
+    /// they label, so the window can show real units and say whether a map is a field (under 100 m
+    /// a tile, where `rules::physical` holds) or a theatre (europe at 320 tiles is a continent).
+    #[serde(default = "default_scale")]
+    pub scale_m: f32,
+    #[serde(default = "default_tempo")]
+    pub tempo: f32,
     /// Row-major, `h` rows of `w`. u8 so a snapshot of the whole map is
     /// 16 KiB and a diff is the cells that changed.
     pub cells: Vec<u8>,
@@ -438,7 +446,7 @@ impl Map {
             pillboxes.push(MapPillbox { pos: center + V2::new(dx, dy), owner: None });
         }
 
-        let mut map = Map { w, h, seed, cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new(), regions: Regions::default(), edits: Edits::default() };
+        let mut map = Map { w, h, seed, scale_m: default_scale(), tempo: default_tempo(), cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new(), regions: Regions::default(), edits: Edits::default() };
 
         // Roads: the four sides to the centre, and a ring road round the
         // edge through every start, so each start reaches a spoke. Roads
@@ -1160,7 +1168,29 @@ thread_local! {
 /// places. Any text editor is the map editor.
 pub const MAP_FORMAT: &str = "treadcore map 1";
 
+fn default_scale() -> f32 {
+    crate::rules::METRES_PER_TILE
+}
+
+fn default_tempo() -> f32 {
+    crate::rules::TEMPO
+}
+
 impl Map {
+    /// A field, where the physical table holds, or a theatre, where a tile is a town and the
+    /// game's seconds and tiles are a board's.
+    pub fn class(&self) -> &'static str {
+        if self.scale_m < 100.0 { "field" } else { "theatre" }
+    }
+
+    /// A distance in tiles as metres, and a time in game seconds as real seconds, at this map's scale.
+    pub fn metres(&self, tiles: f32) -> f32 {
+        tiles * self.scale_m
+    }
+    pub fn real_seconds(&self, game_seconds: f32) -> f32 {
+        game_seconds * self.tempo
+    }
+
     /// The map as a text file. `{}` on floats prints the shortest
     /// string that reads back to the same value, so a map survives the
     /// round trip exactly (the test for this step).
@@ -1170,6 +1200,8 @@ impl Map {
         s.push('\n');
         s.push_str(&format!("size {} {}\n", self.w, self.h));
         s.push_str(&format!("seed {:#x}\n", self.seed));
+        s.push_str(&format!("scale {}\n", self.scale_m));
+        s.push_str(&format!("tempo {}\n", self.tempo));
         s.push_str("# rows: one character per tile, west to east, north first;\n");
         s.push_str("# . grass  T forest  = road  ~ water  + bridge  % rubble  D depot  W wall\n");
         s.push_str("# _ pad (structures are built on it)  H concrete (a wall that takes two)\n");
@@ -1219,6 +1251,7 @@ impl Map {
             return Err(err(n, &format!("not a treadcore map: expected '{}'", MAP_FORMAT)));
         }
         let (mut w, mut h, mut seed) = (0usize, 0usize, 0u64);
+        let (mut scale_m, mut tempo) = (default_scale(), default_tempo());
         let mut cells: Vec<u8> = Vec::new();
         let mut starts = Vec::new();
         let mut depots = Vec::new();
@@ -1254,6 +1287,19 @@ impl Map {
                 "seed" => {
                     let s = words.next().ok_or_else(|| err(n, "seed missing"))?;
                     seed = s.strip_prefix("0x").map(|x| u64::from_str_radix(x, 16)).unwrap_or_else(|| s.parse::<u64>()).map_err(|_| err(n, "seed is not a number"))?;
+                }
+                // `scale 25` metres a tile and `tempo 6` real seconds a game second: labels, not rules.
+                "scale" => {
+                    scale_m = num(words.next(), "scale")?;
+                    if !(scale_m > 0.0) {
+                        return Err(err(n, "scale must be above nothing"));
+                    }
+                }
+                "tempo" => {
+                    tempo = num(words.next(), "tempo")?;
+                    if !(tempo > 0.0) {
+                        return Err(err(n, "tempo must be above nothing"));
+                    }
                 }
                 "start" | "depot" | "pillbox" | "structure" => {
                     if rows_read < h {
@@ -1339,7 +1385,7 @@ impl Map {
         if starts.len() > MAX_PLAYERS {
             return Err(err(0, &format!("{} starts; the most is {}", starts.len(), MAX_PLAYERS)));
         }
-        Ok(Map { w, h, seed, cells, starts, depots, pillboxes, structures, regions: Regions::default(), edits: Edits::default() })
+        Ok(Map { w, h, seed, scale_m, tempo, cells, starts, depots, pillboxes, structures, regions: Regions::default(), edits: Edits::default() })
     }
 }
 
@@ -1455,6 +1501,24 @@ mod tests {
             assert_eq!(back, m, "seed {}", seed);
             assert_eq!(back.to_text(), text);
         }
+    }
+
+    /// The scale (the plan's chapter 9): a file without one is a field at 25 m a tile and tempo 6;
+    /// a file that says `scale 12500` is a theatre; both survive the round trip; nothing else changes.
+    #[test]
+    fn a_maps_scale_is_a_label_that_survives_the_round_trip() {
+        let m = Map::generate(5);
+        assert_eq!((m.scale_m, m.tempo, m.class()), (25.0, 6.0, "field"));
+        assert_eq!(m.metres(60.0), 1500.0, "the gun's reach in metres");
+        assert_eq!(m.real_seconds(6.0), 36.0, "a full-range shell's flight in real seconds");
+        let text = m.to_text().replace("scale 25\n", "scale 12500\n").replace("tempo 6\n", "tempo 1\n");
+        let t = Map::from_text(&text).expect("a theatre reads");
+        assert_eq!((t.scale_m, t.tempo, t.class()), (12500.0, 1.0, "theatre"));
+        assert_eq!(t.cells, m.cells, "the scale changes no tile");
+        assert_eq!(Map::from_text(&t.to_text()).unwrap(), t);
+        let bare: String = m.to_text().lines().filter(|l| !l.starts_with("scale") && !l.starts_with("tempo")).map(|l| format!("{}\n", l)).collect();
+        assert_eq!(Map::from_text(&bare).unwrap().scale_m, 25.0, "an old file is a field");
+        assert!(Map::from_text(&m.to_text().replace("scale 25\n", "scale 0\n")).is_err(), "a scale of nothing is refused");
     }
 
     /// A loader that says no, with the line.

@@ -306,6 +306,15 @@ pub const FOREST_SIGHT: f32 = 20.0;
 /// resupply cycle while they last; they come back slowly.
 pub const PILLBOX_SHELLS: u16 = 8;
 pub const PILLBOX_SHELL_REGEN_TICKS: u64 = 10 * TICK_HZ as u64;
+/// GAME 5, THE LOGISTICS OF A BASE (Paul, 2 November: "each time a pillbox gets hit, it loses its
+/// ammo supplies, they all go boom. And then the pillbox only has its newly created ammo"; "bases
+/// recharge empty supplies"). A hit pillbox's stock goes to nothing. It fills again from its own slow
+/// making (one in ten seconds, above) and from a depot of its side within `PILLBOX_SUPPLY_REACH`
+/// that has shells in stock: the base's workers, abstracted to a shell moved every
+/// `PILLBOX_SUPPLY_EVERY`. A besieged pillbox is dangerous for a minute and quiet after, and cutting
+/// a base off from its depot starves its guns, which is what a siege is.
+pub const PILLBOX_SUPPLY_REACH: f32 = 12.0;
+pub const PILLBOX_SUPPLY_EVERY: u64 = 2 * TICK_HZ as u64;
 
 /// A shell's splash over a deployed squad costs it this many Pillboys.
 pub const PILLBOY_SPLASH_LOSS: u8 = 2;

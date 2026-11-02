@@ -2924,6 +2924,26 @@ impl World {
                 p.shells += 1;
             }
         }
+        // Game 5: a depot of the side within reach, with shells in stock, sends one along (the
+        // base's workers). A neutral pillbox has no depot and makes its own alone.
+        if self.tick % PILLBOX_SUPPLY_EVERY == 0 {
+            let mut sends: Vec<(EntityId, EntityId)> = Vec::new();
+            for p in self.pillboxes.iter().filter(|p| p.alive() && p.owner.is_some() && p.shells < PILLBOX_SHELLS) {
+                if let Some(d) = self.depots.iter().filter(|d| d.stock.kinds[STOCK_SHELL] > 0 && d.owner.is_some_and(|o| self.allied_opt(p.owner, o)) && d.pos.dist(p.pos) <= PILLBOX_SUPPLY_REACH).min_by(|a, b| a.pos.dist(p.pos).total_cmp(&b.pos.dist(p.pos))) {
+                    sends.push((p.id, d.id));
+                }
+            }
+            for (pid, did) in sends {
+                let Some(d) = self.depots.iter_mut().find(|d| d.id == did) else { continue };
+                if d.stock.kinds[STOCK_SHELL] == 0 {
+                    continue;
+                }
+                d.stock.kinds[STOCK_SHELL] -= 1;
+                if let Some(p) = self.pillbox_mut(pid) {
+                    p.shells += 1;
+                }
+            }
+        }
         if self.tick % RESUPPLY_EVERY == 0 {
             let mut draws: Vec<(EntityId, EntityId)> = Vec::new();
             for t in self.tanks.iter().filter(|t| t.alive && t.shells < TANK_SHELLS) {
@@ -3036,6 +3056,9 @@ impl World {
             return;
         }
         p.health = (p.health - amount).max(0.0);
+        // Game 5: what it held goes up with the hit. It fights on with what it makes and what its
+        // depot sends (step_pillboxes).
+        p.shells = 0;
         let (left, owner) = (p.health, p.owner);
         self.events.push(Event::PillboxDamaged { pillbox: pid, by, damage: amount, health_left: left });
         if left <= 0.0 {
@@ -6323,5 +6346,29 @@ mod tests {
             intercepts += w.events.iter().filter(|e| matches!(e, Event::Intercepted { .. })).count();
         }
         assert!(intercepts > 0, "interceptors never engaged");
+    }
+
+    /// Game 5 (the plan's chapter 13, stage 1): a hit pillbox's stock goes up; its depot within
+    /// reach sends a shell every two seconds while it has them; a pillbox with no depot in reach
+    /// makes its own alone, one in ten seconds.
+    #[test]
+    fn a_hit_pillbox_loses_its_stock_and_its_depot_sends_more() {
+        let mut w = World::new(Scenario::bots(2));
+        let at = w.map.center();
+        w.pillboxes.push(Pillbox { id: 9001, pos: at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
+        w.pillboxes.push(Pillbox { id: 9002, pos: at + V2::new(40.0, 0.0), owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+        w.depots.push(Depot { id: 9003, pos: at + V2::new(4.0, 0.0), owner: Some(0), capture: 0, capturer: None, stock: DepotStock { kinds: [10, 0, 0, 0, 0, 0], turn: 0 } });
+        w.damage_pillbox(9001, 10.0, Some(1));
+        assert_eq!(w.pillbox(9001).unwrap().shells, 0, "the stock went up with the hit");
+        assert!(w.pillbox(9001).unwrap().alive(), "and the pillbox stands");
+        let before = w.depots.iter().find(|d| d.id == 9003).unwrap().stock.kinds[STOCK_SHELL];
+        for _ in 0..(10 * TICK_HZ) {
+            w.step(&[]);
+        }
+        let near = w.pillbox(9001).unwrap().shells;
+        let far = w.pillbox(9002).unwrap().shells;
+        assert!(near >= 5, "the depot's workers sent {} in ten seconds", near);
+        assert_eq!(far, 1, "with no depot in reach, its own making alone: {}", far);
+        assert!(w.depots.iter().find(|d| d.id == 9003).unwrap().stock.kinds[STOCK_SHELL] < before + 10, "the depot's stock paid for it");
     }
 }
