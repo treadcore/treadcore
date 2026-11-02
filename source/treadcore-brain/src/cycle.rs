@@ -387,7 +387,10 @@ mod tests {
         w.pillboxes.push(Pillbox { id: 9001, pos: base + V2::new(3.0, 0.0), owner: Some(0), health: PILLBOX_HEALTH * 0.3, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
         let obs = w.observe(0);
         let f = Some(V2::new(1.0, 0.0));
+        // Named here: which goes first follows the two weights, and w_mine 2 was a fair trial that failed this.
         let mut s = Settings::default();
+        s.w[W::Mend] = 1.0;
+        s.w[W::Mine] = 0.5;
         assert!(matches!(Cycle::improvement(&obs, base, f, &s, 8, 0), Some((PillboyTask::Repair { .. }, _))));
         s.w[W::Mend] = 0.0;
         assert!(matches!(Cycle::improvement(&obs, base, f, &s, 8, 0), Some((PillboyTask::Build { what: BuildKind::Mine, .. }, _))));
