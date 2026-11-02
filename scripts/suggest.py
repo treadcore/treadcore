@@ -15,6 +15,16 @@ of a x + b x^2, by least squares weighted by 1 / se^2 with a little
 ridge, so each weight's curve is what the screens and searches read of
 it, alone and in company. Weights the ledger never moved are unknown.
 
+With --memory, the reads of earlier defaults count too. A file of
+{commit: {"old": {weight: its default then}, "drift": doublings moved}}
+says what a row's base was. Such a row reads the trial's value less the
+value of its day, so a weight in it is fit as (x - x0) and (x^2 - x0^2),
+x0 where its old default sits on today's scale, and what moved and is
+not in the trial cancels. Its error grows by TAU a doubling of drift,
+since the score does not quite add. It never counts as a trial read on
+today's defaults, except that a weight's end stays screened if that
+weight has not moved since.
+
 The generation, in this order, N files in all:
   1. best: every weight at its curve's top within the bound where the
      top is past its error above zero, the rest at their defaults;
@@ -32,6 +42,7 @@ held-out rule decides, Paul promotes.
 """
 import argparse
 import csv
+import json
 import math
 import os
 import random
@@ -93,6 +104,8 @@ def main():
     ap.add_argument('out')
     ap.add_argument('--since', default='20261025-181300')
     ap.add_argument('--n', type=int, default=12)
+    ap.add_argument('--memory', default='', help="reads of earlier defaults: {commit: {old, drift}}")
+    ap.add_argument('--tau', type=float, default=0.5, help='error a seat added per doubling the defaults have moved')
     ap.add_argument('--bound', type=float, default=2.0)
     ap.add_argument('--seed', type=int, default=1)
     # Not slopes: the skill dial, the score's own blend, people's roles,
@@ -113,6 +126,7 @@ def main():
     skip = set(filter(None, o.skip.split(','))) | set(filter(None, o.also_skip.split(','))) | choices
     span = math.log2(o.bound)
 
+    memory = json.load(open(o.memory)) if o.memory else {}
     rows, reads = [], []
     for r in csv.DictReader(open(o.ledger), delimiter='\t'):
         # Weights against the defaults only: not a caps census, not a net's (LR 96).
@@ -124,19 +138,30 @@ def main():
         x = {w: math.log2(v / base[w]) for w, v in t.items() if w in base and base[w] > 0 and v > 0}
         if len(x) != len(t):
             continue  # a weight at 0 or unknown: not on the log scale
-        rows.append((x, float(r['d']), max(float(r['se']), 0.05)))
-        reads.append((r['trial'], x, float(r['z']), int(r['seeds'])))
-    names = sorted({w for x, _, _ in rows for w in x} - skip)
+        se = max(float(r['se']), 0.05)
+        m = memory.get(r['commit'])
+        x0 = {}
+        if m:
+            old = {w: m['old'][w] for w in x if w in m['old']}
+            if any(v <= 0 for v in old.values()):
+                continue
+            x0 = {w: math.log2(v / base[w]) for w, v in old.items()}
+            se = math.hypot(se, o.tau * m['drift'])
+        rows.append((x, float(r['d']), se, x0))
+        if not m:
+            reads.append((r['trial'], x, float(r['z']), int(r['seeds'])))
+    names = sorted({w for x, _, _, _ in rows for w in x} - skip)
     k = len(names)
     col = {w: i for i, w in enumerate(names)}
     # Weighted least squares with ridge: features (x, x^2) per weight.
     A = [[0.0] * (2 * k) for _ in range(2 * k)]
     B = [0.0] * (2 * k)
-    for x, d, se in rows:
+    for x, d, se, x0 in rows:
         f = [0.0] * (2 * k)
         for w, v in x.items():
             if w in col:
-                f[2 * col[w]], f[2 * col[w] + 1] = v, v * v
+                u = x0.get(w, 0.0)
+                f[2 * col[w]], f[2 * col[w] + 1] = v - u, v * v - u * u
         iw = 1.0 / (se * se)
         for i in range(2 * k):
             if f[i]:
@@ -202,7 +227,7 @@ def main():
             times[t] = 2
     # Each weight's two ends, half and double, read alone: the screen.
     # Ends never read keep half the generation, so every weight is read.
-    ends = {(w, v > 0) for x, _, _ in rows if len(x) == 1 for w, v in x.items()}
+    ends = {(w, v > 0) for x, _, _, x0 in rows if len(x) == 1 for w, v in x.items() if w not in x0}
     unexplored = [(w, hi) for w in sorted(set(base) - skip) if base[w] > 0 for hi in (False, True) if (w, hi) not in ends and value(w, span if hi else -span) != base[w]]
     room = o.n - len(plan) - min(len(unexplored), o.n // 2)
     s = 0
