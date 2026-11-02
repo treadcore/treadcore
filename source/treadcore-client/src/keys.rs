@@ -67,12 +67,21 @@ pub enum Action {
     TankStyle,
     Speed,
     KeySetup,
+    // FLEET MESSAGES (the plan of 2 November, chapter 14): what a person says to the bots of their
+    // side, each a typed ping the brain already answers (a person is always heard). Form up: come to
+    // me. Hold here: hold this ground. Screen ahead: go in front of me. Go home: hold the base. Spread
+    // out: get away from me. Take that is the ping itself.
+    FormUp,
+    HoldHere,
+    ScreenAhead,
+    GoHome,
+    SpreadOut,
 }
 
 use Action::*;
 
 impl Action {
-    pub const ALL: [Action; 40] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Tune, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, Speed, KeySetup];
+    pub const ALL: [Action; 45] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Tune, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, Speed, KeySetup, FormUp, HoldHere, ScreenAhead, GoHome, SpreadOut];
 
     /// The word in the file and in Key Setup.
     pub fn word(self) -> &'static str {
@@ -117,6 +126,11 @@ impl Action {
             TankStyle => "tank-style",
             Speed => "game-speed",
             KeySetup => "key-setup",
+            FormUp => "form-up",
+            HoldHere => "hold-here",
+            ScreenAhead => "screen-ahead",
+            GoHome => "go-home",
+            SpreadOut => "spread-out",
         }
     }
 
@@ -128,6 +142,7 @@ impl Action {
             Farm => Some("The squad"),
             Propose => Some("Sides"),
             Mute => Some("The window"),
+            FormUp => Some("Fleet messages"),
             _ => None,
         }
     }
@@ -174,6 +189,11 @@ impl Action {
             TankStyle => KeyCode::KeyT,
             Speed => KeyCode::Backquote,
             KeySetup => KeyCode::KeyK,
+            FormUp => KeyCode::F1,
+            HoldHere => KeyCode::F2,
+            ScreenAhead => KeyCode::F3,
+            GoHome => KeyCode::F4,
+            SpreadOut => KeyCode::F5,
         }
     }
 

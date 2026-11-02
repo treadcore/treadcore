@@ -257,6 +257,26 @@ fn orders(
             orders.0.push(Command::Ping { at: p, kind: treadcore_sim::PingKind::Help });
         }
     }
+    // The fleet messages (keys.rs): each a typed ping at a place that says what it means, which
+    // the bots of my side already read by kind. A person is always heard.
+    {
+        use treadcore_sim::PingKind;
+        let ahead = me.pos + V2::from_heading(me.heading).scale(16.0);
+        let home = obs.depots.iter().filter(|d| d.owner.map(|o| obs.allied(o)).unwrap_or(false)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))).map(|d| d.pos);
+        // Go home with no depot of the side is hold here: the nearest thing to home there is.
+        let says: [(A, V2, PingKind); 5] = [
+            (A::FormUp, me.pos, PingKind::Help),
+            (A::HoldHere, at.unwrap_or(me.pos), PingKind::Defend),
+            (A::ScreenAhead, obs.clamp(ahead), PingKind::Help),
+            (A::GoHome, home.unwrap_or(me.pos), PingKind::Defend),
+            (A::SpreadOut, me.pos, PingKind::Warning),
+        ];
+        for (action, place, kind) in says {
+            if pressed(bind.key(action)) {
+                orders.0.push(Command::Ping { at: place, kind });
+            }
+        }
+    }
     // E: on the shore, a boat on the water beside the tank and the tank
     // on it (five material from the squad aboard).
     if pressed(bind.key(A::Embark)) {

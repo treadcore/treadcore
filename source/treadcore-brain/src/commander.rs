@@ -1000,7 +1000,16 @@ impl Commander {
                 best
             }
         };
-        let behind = lp - facing.scale(station);
+        // The station by the stance (`wing_stance`): behind, off a side (each wingman its own, by its
+        // slot), or ahead as a screen. "Behind" keeps its name: it is where the wingman regroups to.
+        let behind = match self.settings.choice(crate::weights::W::WingStance) {
+            1 => {
+                let side = V2::new(-facing.y, facing.x).scale(if self.slot.unwrap_or(0) % 2 == 0 { 1.0 } else { -1.0 });
+                lp + side.scale(station) - facing.scale(station * 0.5)
+            }
+            2 => lp + facing.scale(station),
+            _ => lp - facing.scale(station),
+        };
         match task {
             Wing::Defend(id) | Wing::Ahead(id) | Wing::Help(id) => {
                 let t = obs.tanks.iter().find(|t| t.id == id).unwrap().clone();

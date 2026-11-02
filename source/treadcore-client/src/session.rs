@@ -328,9 +328,15 @@ fn host_local(args: &Args, me: PeerId, remote: Vec<(PeerId, String)>, sock: Opti
                 r.skill = skill;
                 Box::new(r)
             } };
-            let b: Box<dyn Brain> = match style {
-                Some(st) => treadcore_brain::styles::make(st, &base, &names[i as usize].0, rules),
-                None => treadcore_brain::fleet::with_settings(s, rules),
+            let b: Box<dyn Brain> = match (&args.brain_file, style) {
+                // `--brain-file`: a learned tank from a file in every seat against me; my side's
+                // bots stay the rules, so the wingmen follow and the builder builds.
+                (Some(f), _) if !ally => {
+                    let net = treadcore_brain::net::Net::load(std::path::Path::new(f)).unwrap_or_else(|e| panic!("{}", treadcore_sim::chair::usage("treadcore", &format!("--brain-file {}: {}", f, e))));
+                    Box::new(treadcore_brain::net::NetBrain::new(net, &names[i as usize].0))
+                }
+                (_, Some(st)) => treadcore_brain::styles::make(st, &base, &names[i as usize].0, rules),
+                _ => treadcore_brain::fleet::with_settings(s, rules),
             };
             (i, b)
         })

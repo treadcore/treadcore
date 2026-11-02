@@ -262,6 +262,7 @@ weights! {
     WingGreed "wing_greed" crate::commander::WING_GREED, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
     WingThreat "wing_threat" crate::commander::WING_THREAT, "wingman: anything hostile this near the leader is its first job, tiles";
     WingAhead "wing_ahead" crate::commander::WING_AHEAD, "wingman: it hits what is ahead of the leader within this, tiles";
+    WingStance "wing_stance" 0.0, "wingman: where its station is (choice: shadow | flank | screen): shadow behind the leader as built; flank off its side, each wingman its own side; screen ahead of it";
 }
 
 /// The flat array of every weight.

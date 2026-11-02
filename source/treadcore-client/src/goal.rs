@@ -82,6 +82,7 @@ impl Pilot {
     pub fn screen(&self, obs: &Observation, fleet: &[String]) -> String {
         let b = &self.brain;
         let mut t = String::from("COORDINATION  Space: the wheel  1-6: rungs  G: one goal  U: weights  click: hold there  right-click: push point  Tab: fold\n");
+        t.push_str("FLEET MESSAGES  F1 form up on me  F2 hold here  F3 screen ahead  F4 go home  F5 spread out  Q take that (Key Setup rebinds them)\n");
         t.push_str(&format!("goal: {}{}\n", b.goal.label(), if b.doing.is_empty() { String::new() } else { format!(": {}", b.doing) }));
         t.push_str(if b.goal == Goal::Auto { "THE LADDER  the first rung on whose condition holds is what the tank does\n" } else { "THE LADDER  (not in use: G back to auto)\n" });
         for r in Rung::ALL {

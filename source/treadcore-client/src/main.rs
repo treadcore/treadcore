@@ -136,6 +136,10 @@ pub struct Args {
     pub bots: Vec<(Option<usize>, Vec<&'static treadcore_brain::styles::Style>)>,
     /// The game's speed asked for (`--speed 1|2|4`, `SPEED`; ` in play).
     pub speed: f32,
+    /// A learned tank from a file for every bot seat not on my side (`--brain-file nets/map7.bin`;
+    /// the plan of 2 November, chapter 14: the game-side slot). My own side's bots stay the rules,
+    /// so the wingmen still follow. Off unless asked.
+    pub brain_file: Option<String>,
 }
 
 fn parse_args() -> Args {
@@ -174,6 +178,7 @@ fn parse_args() -> Args {
         style: voxel::TankStyle::default(),
         autopilot: false,
         plain_bots: false,
+        brain_file: None,
         bots: Vec::new(),
         speed: std::env::var("SPEED").ok().and_then(|s| s.parse().ok()).unwrap_or(1.0),
     };
@@ -219,6 +224,7 @@ fn parse_args() -> Args {
             "--weights" => a.weights = Some(val()),
             "--autopilot" => a.autopilot = true,
             "--plain-bots" => a.plain_bots = true,
+            "--brain-file" => a.brain_file = Some(val()),
             "--bots" => {
                 let w = val();
                 let parsed = w.split_once('=').ok_or_else(|| format!("--bots wants TEAM=STYLES, as 1=raider or all=1,2,6: {}", treadcore_brain::styles::names())).and_then(|(team, list)| {

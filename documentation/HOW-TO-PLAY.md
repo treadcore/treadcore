@@ -797,6 +797,7 @@ orders column and the hints under it show your keys, not these.
 | `O` | autopilot on and off: the tank on auto with the map clear; a click to drive also takes the wheel |
 | `V` | respawn, when the match allows it and the wait is over (section 6e) |
 | `Q`, middle button | ping the cursor for your side: allied bots converge and attack (section 1) |
+| `F1` `F2` `F3` `F4` `F5` | the fleet messages: form up on me, hold here (the cursor, else where you are), screen ahead of me, go home (your side's nearest depot), spread out. Each is a typed ping your side's bots read by kind; a person is always heard. Key Setup rebinds them |
 | `C` | chain on the nearest pillbox or depot of your side in reach, or let go; two tanks of a side haul it (section 1) |
 | `E` | on the shore, launch a boat beside the tank and board it (five material; section 5b) |
 | Shift-click a pillbox of yours in pillbox mode | lift it, to set it down with the next pillbox built |

@@ -846,6 +846,11 @@ fn top(view: &View) -> String {
             if view.speed > 1.01 || view.speed < 0.99 { format!("{}  x{}", view.status, view.speed) } else { view.status.clone() },
             t.map(|t| if obs.tick.saturating_sub(t.last_hit_tick) < (3 * TICK_HZ) as Tick && t.last_hit_tick > 0 { "   !! UNDER FIRE !!" } else { "" }).unwrap_or("")
         );
+        // The map's scale (the plan of 2 November, chapter 9): a field at so many metres a tile, or
+        // a theatre, so a player knows what a tile is on this map.
+        if let Some(m) = view.map.as_ref() {
+            first.push_str(&format!("   {} {:.0} m/tile", m.class(), m.scale_m));
+        }
         // Under a goal (step 11a), what the tank is doing for it.
         if !view.goal.is_empty() {
             first.push_str("   ");
