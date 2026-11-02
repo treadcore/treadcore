@@ -727,6 +727,46 @@ mod tests {
         }
     }
 
+    /// THE PINNED-TEST LINT (the plan of 2 November, chapter 15). Half of all promotions for three
+    /// days failed on tests that read `Settings::default()` or `Tactics::default()` and asserted on
+    /// what they found, so every move of a searchable number broke a test that had nothing to say
+    /// about it. A test that uses the defaults in an assertion must name the weights it tests
+    /// (`s.w[W::X] = ...` or `Settings::parse("x = ...")`). The sixteen that were written before the
+    /// rule are listed; a new one fails here, by name, before it can fail a promotion.
+    #[test]
+    fn a_test_that_uses_the_defaults_names_the_weights_it_tests() {
+        const BEFORE_THE_RULE: &[&str] = &[
+            "the_team_defends_a_threat_at_the_base_not_far_off", "a_hostile_on_the_held_ground_is_an_incursion", "the_front_is_where_influence_crosses_zero", "a_hurt_tank_swaps_out",
+            "a_far_fetch_gathers_the_fleet", "a_teammate_finishes_a_part_laid_bridge", "a_switch_off_before_the_deal_is_off_after_it", "a_full_tank_gives_the_base_an_item",
+            "the_islands_are_counted", "a_small_island_takes_a_boat", "the_default_match_plays_as_teams", "a_hop_bridges_a_narrow_gap_and_sails_a_wide_one",
+            "every_style_plays_a_match_to_its_end_without_a_fault", "focus_fire_picks_the_wounded_tank_a_teammate_is_on", "the_square_law", "default_weights_are_todays_constants",
+        ];
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut offenders = Vec::new();
+        let mut seen = 0;
+        for e in std::fs::read_dir(&dir).unwrap() {
+            let path = e.unwrap().path();
+            if path.extension().and_then(|x| x.to_str()) != Some("rs") {
+                continue;
+            }
+            let src = std::fs::read_to_string(&path).unwrap();
+            for body in src.split("#[test]").skip(1) {
+                let name = body.trim_start().trim_start_matches("#[ignore]").trim_start().strip_prefix("fn ").and_then(|r| r.split(['(', '<']).next()).unwrap_or("").to_string();
+                if name.is_empty() {
+                    continue;
+                }
+                seen += 1;
+                let uses = body.contains("Settings::default()") || body.contains("Tactics::default()");
+                let names = body.contains(".w[W::") || body.contains(".w[crate::weights::W::") || body.contains("Settings::parse(");
+                if uses && body.contains("assert") && !names && !BEFORE_THE_RULE.contains(&name.as_str()) {
+                    offenders.push(format!("{}::{}", path.file_name().unwrap().to_string_lossy(), name));
+                }
+            }
+        }
+        assert!(seen > 100, "{} tests read", seen);
+        assert!(offenders.is_empty(), "a test that uses the defaults in an assertion must name the weights it tests, or it pins the search: {}", offenders.join(", "));
+    }
+
     #[test]
     fn every_profile_reads_and_differs() {
         // The play styles of backlog 60 (`profiles/`): each one parses,
