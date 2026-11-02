@@ -1,0 +1,727 @@
+<meta charset="utf-8">
+<title>The Day&#x27;s Difference</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a lab report on orrery's paper -- a sticky bar of section
+   numerals, a masthead, then numbered sections at a reading measure, with
+   code and diagrams set dark like a terminal. Palette: orrery's draw.rs
+   LIGHT and DARK, as the user guide. */
+:root {
+  --base: #fce2ab; --panel: #f7d79a; --tile: #fff2d4; --ink: #121212;
+  --dim: #6b5836; --line: #c4a870; --accent: #87704f; --up: #4a7c4e;
+  --term-bg: #1c1a16; --term-ink: #f0e3c4; --term-dim: #8a7d63;
+  --rule: color-mix(in srgb, var(--line) 70%, transparent);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cond: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 68ch;
+  --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.08rem);
+  --step-1: clamp(1.18rem, 1.12rem + .3vw, 1.36rem);
+  --step-2: clamp(1.45rem, 1.32rem + .6vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.6rem + 1.3vw, 2.8rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+    --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+    --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+    --rule: color-mix(in srgb, var(--line) 100%, transparent);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --base: #181818; --panel: #121212; --tile: #1f1f1f; --ink: #d0daed;
+  --dim: #a08a66; --line: #3a3a3a; --accent: #fccf8a; --up: #8fbf7a;
+  --term-bg: #0e0e0e; --term-ink: #d0daed; --term-dim: #7c705c;
+  --rule: color-mix(in srgb, var(--line) 100%, transparent);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--base); color: var(--ink);
+  font-family: var(--serif); font-size: var(--step-0); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--base); }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--base) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in {
+  max-width: 980px; margin: 0 auto; padding-block: 9px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: var(--cond); font-size: var(--step--1);
+}
+.bar-in strong { letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: auto; }
+.bar-in a { color: var(--dim); text-decoration: none; border-bottom: 1px solid transparent; }
+.bar-in a:hover, .bar-in a:focus-visible { color: var(--ink); border-bottom-color: var(--accent); }
+
+header.mast { padding-block: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 40px); }
+.eyebrow { font-family: var(--mono); font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+h1 { font-family: var(--cond); font-weight: 700; font-size: var(--step-3); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 18px; max-width: 22ch; }
+.front p, .front li { font-size: var(--step--1); color: var(--dim); }
+.front p.note { font-family: var(--mono); letter-spacing: .04em; color: var(--accent); }
+.front ul { margin: 0; }
+
+nav.toc { border-top: 1px solid var(--rule); padding-block: 22px 30px; }
+nav.toc h2 { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); font-weight: 500; margin: 0 0 10px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 18rem; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 3px 0; font-family: var(--cond); }
+nav.toc a { color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); }
+
+section { padding-block: clamp(28px, 4vw, 48px); border-top: 1px solid var(--rule); scroll-margin-top: 48px; }
+h2 { font-family: var(--cond); font-weight: 700; font-size: var(--step-2); line-height: 1.12; text-wrap: balance; margin: 0 0 18px; }
+h3 { font-family: var(--cond); font-weight: 600; font-size: var(--step-1); line-height: 1.25; text-wrap: balance; margin: 30px 0 10px; scroll-margin-top: 48px; }
+p, ul, ol, blockquote { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { margin: 0 0 1em; padding-left: 1.3em; }
+li { margin-bottom: .35em; }
+li > ul, li > ol { margin: .35em 0 .2em; }
+li::marker { color: var(--accent); }
+p.note { font-size: var(--step--1); color: var(--dim); }
+strong { font-weight: 600; }
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; }
+p code, li code, td code, th code { color: var(--accent); word-break: break-word; }
+blockquote { margin: 0 0 1.2em; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--tile); font-family: var(--mono); font-size: var(--step--1); line-height: 1.6; }
+blockquote p { margin: 0; }
+
+.code { position: relative; margin: 0 0 1.3em; background: var(--term-bg); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.code pre { margin: 0; padding: 16px 18px; color: var(--term-ink); font-family: var(--mono); font-size: .8rem; line-height: 1.55; tab-size: 4; }
+.code code { font-size: inherit; color: inherit; }
+.code .lang { position: absolute; top: 6px; right: 10px; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--term-dim); }
+.code.diagram { background: var(--tile); border: 1px solid var(--rule); }
+.code.diagram pre { color: var(--ink); }
+
+.table { overflow-x: auto; max-width: 100%; margin: 0 0 1.4em; }
+table { border-collapse: collapse; font-size: var(--step--1); line-height: 1.5; min-width: 30rem; }
+th { font-family: var(--cond); font-weight: 600; text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; font-family: var(--cond); }
+
+figure { margin: 0 0 1.4em; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); }
+figcaption { margin-top: 8px; font-size: var(--step--1); color: var(--dim); max-width: var(--measure); }
+
+footer { border-top: 1px solid var(--rule); padding-block: 24px 48px; font-size: var(--step--1); color: var(--dim); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="bar"><div class="bar-in"><strong><a href="index.html">orrery</a> · lab report</strong><a href="#abstract">Abstract</a><a href="#si">I</a><a href="#sii">II</a><a href="#siii">III</a><a href="#siv">IV</a><a href="#sv">V</a><a href="#svi">VI</a><a href="#svii">VII</a><a href="#sviii">VIII</a><a href="#six">IX</a><a href="#sx">X</a><a href="#sxi">XI</a><a href="#sxii">XII</a><a href="#sxiii">XIII</a><a href="#sxiv">XIV</a><a href="#sxv">XV</a><a href="#sxvi">XVI</a><a href="#links">Links</a></div></div>
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">orrery · treadcore · 2 November in exact code, flow and UML</p>
+    <h1>The Day's Difference: what changed on 2 November 2026, in exact code, with the program's flow and the architecture it changed</h1>
+    <div class="front"><p class="note">Paul Richeson, with Claude. 2 November 2026. Lab report: the second half of the design, read as a diff.</p><p class="note">Companion to <a href="https://treadcore.org/reports/2026-11-02-the-plan/">The Post-Mortem and the Plan</a>, the book the day was spent on; this report is for the reader who wants the code. Every example below is taken from the day's commits with <code>git diff</code>, trimmed only where marked <code>…</code>, and named by file. Commits: treadcore <code>bbd534c</code>, <code>19aba7e</code>, <code>845ae28</code>, <code>1fed90f</code>, <code>f0497ad</code>; orrery <code>84ce3b4</code>, <code>3d04507</code>, <code>c20571e</code>, <code>445a334</code>, <code>5db027f</code>.</p></div>
+  </header>
+  <nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#abstract">Abstract</a></li><li><a href="#si">I. Method</a></li><li><a href="#sii">II. The guard on what the score does not weigh</a></li><li><a href="#siii">III. Physical ranges</a></li><li><a href="#siv">IV. The wingman's numbers, and its stance</a></li><li><a href="#sv">V. Personas, and the roster</a></li><li><a href="#svi">VI. The escort gauntlets, and a measure of station</a></li><li><a href="#svii">VII. Game 5: the pillbox's stock</a></li><li><a href="#sviii">VIII. The map's scale</a></li><li><a href="#six">IX. Fleet messages, and a brain from a file</a></li><li><a href="#sx">X. The lint, the shape watch, the nightly gauntlet</a></li><li><a href="#sxi">XI. The console: three pages and a button</a></li><li><a href="#sxii">XII. The program's flow, as it now runs</a></li><li><a href="#sxiii">XIII. The architecture, in UML</a></li><li><a href="#sxiv">XIV. What the difference did, in numbers</a></li><li><a href="#sxv">XV. Limits</a></li><li><a href="#sxvi">XVI. Conclusion</a></li><li><a href="#links">Links</a></li></ol></nav>
+  <main>
+  <section id="abstract"><h2>Abstract</h2><p>Twelve changes went into treadcore and orrery on 2 November 2026, every one of them a step the plan's chapters 9 to 15 had named: a guard on what the census score does not weigh; physical ranges for every distance, time and count of the brain; the wingman's five constants as weights and a stance beside them; eight named personas; three escort gauntlets with a measure of station; game 5, in which a hit pillbox loses its stock and refills from its depot; a map's scale as a label; five fleet-message keys; a learned tank from a file; a lint against tests that pin the search; a shape watch and a nightly gauntlet in the planner; and three pages and a button in the console. This report shows each as before-and-after code, exact, then draws the program's flow as it now runs (the world's tick, the fleet's line) and the UML of the classes the changes touched. Across both repositories the day is 71 files, 5,840 lines added and 53 removed in treadcore, and about 1,400 added in orrery; the tests stand at 61 (simulator), 152 (brain) and 391 (console), all passing; the window compiles; the imitation trainer's change could not be compiled on this Mac and is proved by the fleet's first shape-watch job.</p></section><section id="si"><h2>I. Method</h2><p>The diffs were taken against the last commit before the day's work in each repository (<code>6f26539</code> in treadcore, <code>3d04507</code>'s parent in orrery) with <code>git diff -U1</code>, and the hunks below are copied from that output. Where a hunk is long, lines are left out and the gap marked <code>…</code>; nothing is paraphrased. A reader can reproduce every example with the commit hashes in the masthead. The figures are drawn by hand from the code as read, not generated, and name the files they stand for; a box in the accent colour is a thing that did not exist on 1 November.</p></section><section id="sii"><h2>II. The guard on what the score does not weigh</h2><p>The night's search had turned the base cycle off at +0.83 on the score and lost the building fix with it (the book, chapter 6). The planner's promotion gate gained a reading of each candidate's composition, built from the census logs already on disk, and a floor on each.</p><p>Before, <code>tools/plans/treadcore.py</code>, the candidates <code>auto_promote</code> may take:</p><div class="code"><span class="lang">python</span><pre><code>              and not self.anchor_short(k, v) and not self.held_by_a_person(v[&quot;weights&quot;]) and not self.noise(k, v)}</code></pre></div><p>After:</p><div class="code"><span class="lang">python</span><pre><code>              and not self.anchor_short(k, v) and not self.held_by_a_person(v[&quot;weights&quot;]) and not self.noise(k, v) and not self.trades_away(k, v)}</code></pre></div><p>The method behind it reads the per-seed team lines of a census's <code>g-*.log</code> files, trial less the rest, pooled by inverse variance across the held-out reads, and compares each of three sides to a floor:</p><div class="code"><span class="lang">python</span><pre><code>    def gives_up(self, dirs, sign=1):
+        &quot;&quot;&quot;What these reads, pooled, give up past noise and past a floor, in words. sign -1: the
+        trial is what would be left behind, as in the proof, where main is the trial.&quot;&quot;&quot;
+        cache = self.state.setdefault(&quot;side_reads&quot;, {})
+        reads = []
+        for d in dirs or []:
+            key = os.sep.join(d.rstrip(os.sep).split(os.sep)[-2:])
+            if key not in cache and os.path.exists(os.path.join(d, &quot;pooled.txt&quot;)):
+                cache[key] = self.side_read(d)
+            reads.append(cache.get(key) or {})
+        …
+        for k, word, floor in ((&quot;built&quot;, &quot;built a team&quot;, self.GIVE_BUILT), (&quot;road&quot;, &quot;road a team&quot;, self.GIVE_ROAD), (&quot;kd&quot;, &quot;kills less deaths a seat&quot;, self.GIVE_KD)):
+            rows = [r[k] for r in reads if k in r and r[k][1] &gt; 0]
+            if rows:
+                iw = sum(1 / x[1] ** 2 for x in rows)
+                mean, se = sign * sum(x[0] / x[1] ** 2 for x in rows) / iw, 1 / math.sqrt(iw)
+                if mean &lt; -floor and mean &lt; -2 * se:
+                    out.append(&quot;%s %+.2f +/- %.2f&quot; % (word, mean, se))
+        return out</code></pre></div><p>The same reading stands before the proof lands a line on main. Before:</p><div class="code"><span class="lang">python</span><pre><code>                if -d / se &gt;= self.HELD_Z and not p[&quot;above&quot;] and on_line:
+                    try:</code></pre></div><p>After:</p><div class="code"><span class="lang">python</span><pre><code>                lost = self.gives_up(ds, sign=-1) if -d / se &gt;= self.HELD_Z and not p[&quot;above&quot;] and on_line else []
+                if lost:
+                    self.flag(&quot;trade&quot;, &quot;the line %s reads %+.2f past main and gives up %s: it stays on the line for a person. Raise that floor on Values to let it land&quot; % (
+                        head[:7], -d, &quot;, &quot;.join(lost)), key=&quot;trade-line:%s&quot; % head[:12])
+                elif -d / se &gt;= self.HELD_Z and not p[&quot;above&quot;] and on_line:
+                    try:</code></pre></div><p>The three floors are values in <code>line.json</code> (<code>give_built</code> 1.0, <code>give_road</code> 0.5, <code>give_kd</code> 0.10), rows on Queue → Values, live at the next plan. Replayed over the sixteen candidates since the evening before, the guard would have held eleven; the one that turned the cycle off reads, at 400 seeds, +0.33 ± 0.49 on score and −5.03 ± 0.39 built, −4.14 ± 0.27 road, −0.66 ± 0.07 kills less deaths a seat.</p></section><section id="siii"><h2>III. Physical ranges</h2><p><code>source/treadcore-brain/RANGES</code> grew from 34 lines to 109: a decree by Paul's word, 24 shares held to 0 to 1, and 57 physical limits in three sections, each with its reason. A fragment, exact:</p><div class="code"><span class="lang">text</span><pre><code># Decrees.
+castle_inside 2 2  # Paul, 30 October 2026: &quot;dont get castles of turrets ... more than 2&quot;
+bio_period 60 60  # Paul, 1 November 2026: &quot;it was already at 60,73, 86 second per cycle. thats perfect.&quot;
+…
+# Distances, tiles.
+near_scale 2 60  # under two tiles nearness is adjacency; past the gun&#x27;s reach nothing is near
+base_r 2 32  # a depot&#x27;s radius to a quarter of the map
+odds_r 8 60  # a pillbox&#x27;s ring to the gun&#x27;s reach
+coming_r 10 256  # a teammate beyond the largest map is not coming; 221 today means everyone counts
+…
+# Counts and material.
+tree_material 1 8  # the simulator gives 4 a tree (HARVEST_MATERIAL): a decree candidate
+strikes_max 0 4  # the bay holds 3 and a fourth cannot launch: a decree candidate</code></pre></div><p>Nothing in the brain changed to read it: <code>Settings::hold()</code> has clamped every number to the file since 30 October, and the brain's test <code>every_range_reads_and_holds_its_own_default</code> proved every default inside. What changed is the search's room: a trial that asks for <code>coming_r</code> 400 is read at 256, the far read's doublings stop at the edges, and <code>suggest.py</code>'s draws are bounded by the same file.</p></section><section id="siv"><h2>IV. The wingman's numbers, and its stance</h2><p>Five constants in <code>commander.rs</code> governed a person's two wingmen; nobody could move them. They became weights with the constants as their defaults. In <code>weights.rs</code>:</p><div class="code"><span class="lang">rust</span><pre><code>    EscortDistance &quot;escort_distance&quot; crate::commander::ESCORT_DISTANCE, &quot;wingman: the station behind the leader, tiles&quot;;
+    WingLeash &quot;wing_leash&quot; crate::commander::WING_LEASH, &quot;wingman: nothing takes it further than this from its leader, tiles&quot;;
+    WingGreed &quot;wing_greed&quot; crate::commander::WING_GREED, &quot;wingman: a pillbox or depot this near the leader is worth taking, tiles&quot;;
+    WingThreat &quot;wing_threat&quot; crate::commander::WING_THREAT, &quot;wingman: anything hostile this near the leader is its first job, tiles&quot;;
+    WingAhead &quot;wing_ahead&quot; crate::commander::WING_AHEAD, &quot;wingman: it hits what is ahead of the leader within this, tiles&quot;;
+    WingStance &quot;wing_stance&quot; 0.0, &quot;wingman: where its station is (choice: shadow | flank | screen): …&quot;;</code></pre></div><p>In <code>fly_wing</code>, before:</p><div class="code"><span class="lang">rust</span><pre><code>        let hostile = |t: &amp;&amp;Tank| t.alive &amp;&amp; !obs.allied(t.owner);
+        let near = |a: V2, b: V2| a.dist(lp).total_cmp(&amp;b.dist(lp));
+        let threat = obs.tanks.iter().filter(hostile).filter(|t| t.pos.dist(lp) &lt;= WING_THREAT).min_by(|a, b| near(a.pos, b.pos).then(a.id.cmp(&amp;b.id)));</code></pre></div><p>After:</p><div class="code"><span class="lang">rust</span><pre><code>        let w = &amp;self.settings.w;
+        let (station, leash, greed, threat_r, ahead_r) = (w[crate::weights::W::EscortDistance], w[crate::weights::W::WingLeash], w[crate::weights::W::WingGreed], w[crate::weights::W::WingThreat], w[crate::weights::W::WingAhead]);
+        let hostile = |t: &amp;&amp;Tank| t.alive &amp;&amp; !obs.allied(t.owner);
+        let near = |a: V2, b: V2| a.dist(lp).total_cmp(&amp;b.dist(lp));
+        let threat = obs.tanks.iter().filter(hostile).filter(|t| t.pos.dist(lp) &lt;= threat_r).min_by(|a, b| near(a.pos, b.pos).then(a.id.cmp(&amp;b.id)));</code></pre></div><p>And the station, which was one line, <code>let behind = lp - facing.scale(ESCORT_DISTANCE);</code>, is now a choice:</p><div class="code"><span class="lang">rust</span><pre><code>        let behind = match self.settings.choice(crate::weights::W::WingStance) {
+            1 =&gt; {
+                let side = V2::new(-facing.y, facing.x).scale(if self.slot.unwrap_or(0) % 2 == 0 { 1.0 } else { -1.0 });
+                lp + side.scale(station) - facing.scale(station * 0.5)
+            }
+            2 =&gt; lp + facing.scale(station),
+            _ =&gt; lp - facing.scale(station),
+        };</code></pre></div><p>Six sliders on the U page followed without a line of window code: the page lists <code>W::ALL</code>.</p></section><section id="sv"><h2>V. Personas, and the roster</h2><p><code>styles.rs</code> went from eight slots to sixteen, the first eight unchanged so the <code>bot_style</code> dial keeps its meaning:</p><div class="code"><span class="lang">rust</span><pre><code>-pub const ROSTER: [Style; 8] = [
++pub const ROSTER: [Style; 16] = [
+     Style { slot: 0, name: &quot;Fleet&quot;, about: &quot;the brain the fleet&#x27;s search has carried: today&#x27;s defaults&quot;, kind: Kind::Rules(&quot;&quot;) },
+     …
++    Style { slot: 8, name: &quot;Rome&quot;, about: &quot;roads, posts and legions: every tank runs the base cycle, the guard keeps building, the roads between bases come first&quot;, kind: Kind::Rules(include_str!(&quot;../../../profiles/persona-rome.weights&quot;)) },
+     …
++    Style { slot: 15, name: &quot;Assyria&quot;, about: &quot;siege: shells every pillbox in reach, longshots without pause, strikes out in threes&quot;, kind: Kind::Rules(include_str!(&quot;../../../profiles/persona-assyria.weights&quot;)) },
+ ];</code></pre></div><p>A persona is a short file over today's defaults, <code>profiles/persona-rome.weights</code> in full:</p><div class="code"><span class="lang">text</span><pre><code>w_pos_economy = 2.1
+posts_max = 12
+connect_tiles = 8
+w_connect = 1.5
+w_pos_fortify = 1.0
+crew_stay = guard_one
+cycle_all = every_tank</code></pre></div><p>The launch menu's team rows, <code>--bots TEAM=NAME</code>, the census trial <code>bot_style = K</code> and orrery's Results → Personas page all read the roster, so the sixteen appeared everywhere at once. Their first reads are in the book's chapter 10.</p></section><section id="svi"><h2>VI. The escort gauntlets, and a measure of station</h2><p>The scenario runner learned one goal and one measure. The goal, in <code>scenario.rs</code>:</p><div class="code"><span class="lang">rust</span><pre><code>                    (&quot;defend_pillbox&quot;, k) =&gt; Goal::DefendPillbox(k.and_then(|k| pillboxes.get(k)).copied()),
++                   // `escort:1`: the wingman&#x27;s goal, seat 1 its leader (the gauntlets G10 to G12).
++                   (&quot;escort&quot;, k) =&gt; Goal::Escort(k.unwrap_or(1) as PlayerId),
+                    (g, _) =&gt; return Err(format!(&quot;no goal {}&quot;, g)),</code></pre></div><p>The measure, counted every tick after <code>w.step(&amp;orders)</code>, for each pair a file asked about:</p><div class="code"><span class="lang">rust</span><pre><code>        for &amp;(a, b, within) in &amp;stations {
+            if let (Some(x), Some(y)) = (w.tanks.iter().find(|t| t.owner == a &amp;&amp; t.alive), w.tanks.iter().find(|t| t.owner == b &amp;&amp; t.alive)) {
+                let e = out.station.entry((a, b)).or_insert((0, 0));
+                e.1 += 1;
+                if x.pos.dist(y.pos) &lt;= within {
+                    e.0 += 1;
+                }
+            }
+        }</code></pre></div><p>and read by <code>check</code> as <code>station = { seat, to, within, at_least }</code> and by <code>reward</code> as <code>station = { to, within, worth }</code>; <code>learn::REWARDS</code> lists the new term so a course accepts it. G10, the keep-station file, in its working part:</p><div class="code"><span class="lang">toml</span><pre><code>[[brain]]
+seat = 1
+kind = &quot;commander&quot;
+goal = &quot;defend_depot:0&quot;
+[[brain]]
+seat = 0
+kind = &quot;net&quot;
+goal = &quot;escort:1&quot;
+[expect]
+station = { seat = 0, to = 1, within = 8, at_least = 0.5 }
+[reward]
+station = { to = 1, within = 8, worth = 1 }</code></pre></div><p>The scripted wingman read 57 to 59% within eight tiles on every one of thirty seeds, 0 of 30 at the seven-tenths bar the file was first written with; the bar is a half and the file says why. G11 (cover the leader) 29 of 30; G12 (come back after a shell) 30 of 30.</p></section><section id="svii"><h2>VII. Game 5: the pillbox's stock</h2><p>The only rule change of the day, and the only <code>GAME_VERSION</code> bump. Two hunks in <code>source/treadcore-sim/src/lib.rs</code>. The supply, in <code>step_pillboxes</code>, after the regeneration that was already there:</p><div class="code"><span class="lang">rust</span><pre><code>        // Game 5: a depot of the side within reach, with shells in stock, sends one along (the
+        // base&#x27;s workers). A neutral pillbox has no depot and makes its own alone.
+        if self.tick % PILLBOX_SUPPLY_EVERY == 0 {
+            let mut sends: Vec&lt;(EntityId, EntityId)&gt; = Vec::new();
+            for p in self.pillboxes.iter().filter(|p| p.alive() &amp;&amp; p.owner.is_some() &amp;&amp; p.shells &lt; PILLBOX_SHELLS) {
+                if let Some(d) = self.depots.iter().filter(|d| d.stock.kinds[STOCK_SHELL] &gt; 0 &amp;&amp; d.owner.is_some_and(|o| self.allied_opt(p.owner, o)) &amp;&amp; d.pos.dist(p.pos) &lt;= PILLBOX_SUPPLY_REACH).min_by(|a, b| a.pos.dist(p.pos).total_cmp(&amp;b.pos.dist(p.pos))) {
+                    sends.push((p.id, d.id));
+                }
+            }
+            for (pid, did) in sends {
+                let Some(d) = self.depots.iter_mut().find(|d| d.id == did) else { continue };
+                if d.stock.kinds[STOCK_SHELL] == 0 {
+                    continue;
+                }
+                d.stock.kinds[STOCK_SHELL] -= 1;
+                if let Some(p) = self.pillbox_mut(pid) {
+                    p.shells += 1;
+                }
+            }
+        }</code></pre></div><p>The loss, in <code>damage_pillbox</code>:</p><div class="code"><span class="lang">rust</span><pre><code>         p.health = (p.health - amount).max(0.0);
++        // Game 5: what it held goes up with the hit. It fights on with what it makes and what its
++        // depot sends (step_pillboxes).
++        p.shells = 0;
+         let (left, owner) = (p.health, p.owner);</code></pre></div><p>Two constants in <code>rules.rs</code> carry the numbers and the reason: <code>PILLBOX_SUPPLY_REACH</code> 12 tiles, <code>PILLBOX_SUPPLY_EVERY</code> 2 seconds. The test that proves it, <code>a_hit_pillbox_loses_its_stock_and_its_depot_sends_more</code>, places a pillbox with a stocked depot four tiles off and another forty tiles from any depot, hits the first, and after ten seconds expects the first refilled by the depot (at least five) and the second with one of its own. No event was added: the wire did not change. Every census read before this commit is of game 4, and the planner, which keys evidence by <code>GAME_VERSION</code>, started the reads anew by itself.</p></section><section id="sviii"><h2>VIII. The map's scale</h2><p>Two fields on <code>Map</code>, with defaults, so an old file reads as it did:</p><div class="code"><span class="lang">rust</span><pre><code>pub struct Map {
+    pub w: usize,
+    pub h: usize,
+    pub seed: u64,
++   #[serde(default = &quot;default_scale&quot;)]
++   pub scale_m: f32,
++   #[serde(default = &quot;default_tempo&quot;)]
++   pub tempo: f32,
+    pub cells: Vec&lt;u8&gt;,</code></pre></div><p>Two header words in <code>from_text</code>, beside <code>size</code> and <code>seed</code>:</p><div class="code"><span class="lang">rust</span><pre><code>                &quot;scale&quot; =&gt; {
+                    scale_m = num(words.next(), &quot;scale&quot;)?;
+                    if !(scale_m &gt; 0.0) {
+                        return Err(err(n, &quot;scale must be above nothing&quot;));
+                    }
+                }
+                &quot;tempo&quot; =&gt; {
+                    tempo = num(words.next(), &quot;tempo&quot;)?;
+                    if !(tempo &gt; 0.0) {
+                        return Err(err(n, &quot;tempo must be above nothing&quot;));
+                    }
+                }</code></pre></div><p>and <code>class()</code>, <code>metres()</code> and <code>real_seconds()</code> on the map, which the HUD's top strip reads: <code>field 25 m/tile</code>. The three world maps declare <code>scale 12500</code>, <code>12000</code> and <code>40000</code> at <code>tempo 1</code>. The round-trip test proves a theatre reads and writes back, an old file is a field, and a scale of nothing is refused. No tile and no number of the game changed; <code>rules::physical()</code> is the table of the constants in real units at 25 m and tempo 6, with a test that recomputes it.</p></section><section id="six"><h2>IX. Fleet messages, and a brain from a file</h2><p>Five actions in <code>keys.rs</code>, defaults <code>F1</code> to <code>F5</code>, rebindable in Key Setup like the other forty:</p><div class="code"><span class="lang">rust</span><pre><code>-    pub const ALL: [Action; 40] = [ScrollUp, ScrollDown, …, Speed, KeySetup];
++    pub const ALL: [Action; 45] = [ScrollUp, ScrollDown, …, Speed, KeySetup, FormUp, HoldHere, ScreenAhead, GoHome, SpreadOut];</code></pre></div><p>Each is a typed ping at a place that says what it means, in <code>input.rs</code>, and no new command or wire word was needed, because the brain has read pings by kind since 30 October and a person's ping is always heard:</p><div class="code"><span class="lang">rust</span><pre><code>        let says: [(A, V2, PingKind); 5] = [
+            (A::FormUp, me.pos, PingKind::Help),
+            (A::HoldHere, at.unwrap_or(me.pos), PingKind::Defend),
+            (A::ScreenAhead, obs.clamp(ahead), PingKind::Help),
+            (A::GoHome, home.unwrap_or(me.pos), PingKind::Defend),
+            (A::SpreadOut, me.pos, PingKind::Warning),
+        ];
+        for (action, place, kind) in says {
+            if pressed(bind.key(action)) {
+                orders.0.push(Command::Ping { at: place, kind });
+            }
+        }</code></pre></div><p>The game-side slot the plan asked for is one flag and one arm in <code>session.rs</code>, where the host makes its bots:</p><div class="code"><span class="lang">rust</span><pre><code>-            let b: Box&lt;dyn Brain&gt; = match style {
+-                Some(st) =&gt; treadcore_brain::styles::make(st, &amp;base, &amp;names[i as usize].0, rules),
+-                None =&gt; treadcore_brain::fleet::with_settings(s, rules),
++            let b: Box&lt;dyn Brain&gt; = match (&amp;args.brain_file, style) {
++                (Some(f), _) if !ally =&gt; {
++                    let net = treadcore_brain::net::Net::load(std::path::Path::new(f)).unwrap_or_else(|e| panic!(&quot;{}&quot;, treadcore_sim::chair::usage(&quot;treadcore&quot;, &amp;format!(&quot;--brain-file {}: {}&quot;, f, e))));
++                    Box::new(treadcore_brain::net::NetBrain::new(net, &amp;names[i as usize].0))
++                }
++                (_, Some(st)) =&gt; treadcore_brain::styles::make(st, &amp;base, &amp;names[i as usize].0, rules),
++                _ =&gt; treadcore_brain::fleet::with_settings(s, rules),
+             };</code></pre></div><p>The person's own side stays the rules, so the wingmen follow and the builder builds.</p></section><section id="sx"><h2>X. The lint, the shape watch, the nightly gauntlet</h2><p>The lint is a test of the tests in <code>weights.rs</code>: it reads every <code>src/*.rs</code> of the brain, finds each <code>#[test]</code>, and fails by name if a test uses <code>Settings::default()</code> or <code>Tactics::default()</code> in an assertion without setting a weight by name. Sixteen tests written before the rule are listed and pass; a seventeenth would not. The week's commonest promotion failure cannot recur unnoticed.</p><p>The width watch became a shape watch by letting a shape be a string:</p><div class="code"><span class="lang">python</span><pre><code>-    WIDTHS = (32, 64, 128)
+-    WIDTH_NOW = 64
++    WIDTHS = (&quot;32&quot;, &quot;64&quot;, &quot;128&quot;, &quot;64x3&quot;)
++    WIDTH_NOW = &quot;64&quot;</code></pre></div><p>with <code>shape(s)</code> reading <code>&quot;64x3&quot;</code> as width 64, depth 3, and the trainer taking the depth. In <code>tools/bc/src/main.rs</code>:</p><div class="code"><span class="lang">rust</span><pre><code>-    a: Linear,
+-    b: Linear,
++    /// The hidden layers, `DEPTH` of them at `WIDTH` each (two of 64 as ever), then the heads.
++    hidden: Vec&lt;Linear&gt;,
+     c: Linear,
+     act: Relu,
+ …
+-        let x = self.act.forward(self.a.forward(x));
+-        let x = self.act.forward(self.b.forward(x));
++        let mut x = x;
++        for l in &amp;self.hidden {
++            x = self.act.forward(l.forward(x));
++        }
+         self.c.forward(x)</code></pre></div><p>The net file it writes already carried any number of layers (<code>TCNET1</code>: a count, the sizes, then each layer), and <code>Net::from_bytes</code> reads them, so nothing downstream changed. This is the one change of the day not compiled where it was written: the trainer's Burn lock wants rustc 1.95 and this Mac has 1.93; the GPU machines build it, and the first shape-watch job's log is its proof.</p><p>The nightly gauntlet is a job the planner asks for once each <code>gauntlet_every_h</code> hours, on this Mac's lane, running <code>GAUNTLET=1 GAUNTLET_RUNS=100 OUT=build/train cargo test -q -p treadcore-brain --release --lib -- --ignored train --nocapture</code> in the checkout, which writes <code>build/train/gauntlet.tsv</code>; the console's Results → Gauntlet page draws it.</p></section><section id="sxi"><h2>XI. The console: three pages and a button</h2><p><code>training.rs</code> gained two Results pages and a Settings page by three rows in one table and three arms in one match:</p><div class="code"><span class="lang">rust</span><pre><code>-const RESULTS_PAGES: [usize; 5] = [5, 2, 3, 8, 4];
+-const SETTINGS_PAGES: [usize; 3] = [6, 9, 7];
++const RESULTS_PAGES: [usize; 7] = [5, 2, 3, 8, 10, 12, 4];
++const SETTINGS_PAGES: [usize; 4] = [6, 9, 11, 7];
+ …
++    (10, &quot;Personas&quot;, &quot;the roster of styles and personas: what each plays, its dials over today&#x27;s defaults, and its last census read&quot;),
++    (12, &quot;Gauntlet&quot;, &quot;the single-decision tests: a row a gauntlet, a column a brain, the share passed; red under the file&#x27;s floor&quot;),
++    (11, &quot;Ranges&quot;, &quot;the brain&#x27;s RANGES: every number&#x27;s limits, the decrees, and the reason beside each; only Paul decrees&quot;),</code></pre></div><p>Each page is a function of about forty lines over a JSON value <code>treadcore-view.py</code> now writes (<code>ranges()</code>, <code>personas()</code>, <code>gauntlet()</code>), with a hover tip on every row and, on Ranges, the wheel scrolling 109 rows through <code>ui.scroll_list</code>. The hold, which was a file, is a row on Values:</p><div class="code"><span class="lang">rust</span><pre><code>+    /// The dials a person holds (QUEUE/hold.json): a trial there waits for a person.
++    pub held: Vec&lt;(String, f64)&gt;,
+ …
++            if operator &amp;&amp; ui.button(rect(at.x + 300, y, 22 + 50, 22), &quot;Release&quot;, true) {
++                st.tune = Some(format!(&quot;hold {} off&quot;, dial));
++            }</code></pre></div><p>and <code>fleet-tune.py</code> took the verb, <code>hold DIAL VALUE | off</code>, writing <code>hold.json</code>, which the planner has read since 1 November. The keeper's <code>health()</code> gained a check that reads the operator certificate with <code>ssh-keygen -L</code> and turns amber a day before it runs out, which is what an expired one cost the fleet on 31 October. Every page was rendered to a frame and looked at before it was committed; two header overlaps and one wrong count were found that way and fixed.</p></section><section id="sxii"><h2>XII. The program's flow, as it now runs</h2><figure>
+<svg viewBox="0 0 1000 560" width="100%" role="img" aria-label="The whole program's flow: a person and the bots give commands, the world steps, observations come back; the fleet reads censuses and moves main" style="font-family: var(--cond); max-width: 1000px;">
+  <defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
+  <g font-size="14" fill="var(--ink)">
+    <!-- the game, top half -->
+    <rect x="20" y="20" width="960" height="250" rx="8" fill="none" stroke="var(--line)" stroke-dasharray="5 4"/>
+    <text x="36" y="42" font-size="13" fill="var(--dim)" letter-spacing="1">THE GAME, TWENTY TIMES A SECOND (treadcore-sim, -brain, -client, -net)</text>
+    <rect x="40" y="60" width="180" height="70" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="130" y="84" text-anchor="middle" font-weight="700">a person</text>
+    <text x="130" y="104" text-anchor="middle" font-size="12" fill="var(--dim)">keys, mouse: input.rs</text>
+    <text x="130" y="120" text-anchor="middle" font-size="12" fill="var(--accent)">F1–F5 fleet messages (new)</text>
+    <rect x="40" y="160" width="180" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="130" y="184" text-anchor="middle" font-weight="700">the bots</text>
+    <text x="130" y="202" text-anchor="middle" font-size="12" fill="var(--dim)">Commander · NetBrain · Duelist</text>
+    <text x="130" y="218" text-anchor="middle" font-size="12" fill="var(--dim)">styles::make: 16 slots (8 new)</text>
+    <text x="130" y="236" text-anchor="middle" font-size="12" fill="var(--accent)">--brain-file (new)</text>
+    <rect x="300" y="110" width="170" height="80" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="385" y="138" text-anchor="middle" font-weight="700">Commands</text>
+    <text x="385" y="158" text-anchor="middle" font-size="12" fill="var(--dim)">Move, Fire, Launch, Ping{at, kind},</text>
+    <text x="385" y="174" text-anchor="middle" font-size="12" fill="var(--dim)">Deploy, Propose, Chat …</text>
+    <rect x="540" y="60" width="200" height="190" rx="6" fill="var(--tile)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="640" y="86" text-anchor="middle" font-weight="700">World::step(orders)</text>
+    <text x="640" y="108" text-anchor="middle" font-size="12" fill="var(--dim)">deterministic; the host runs it,</text>
+    <text x="640" y="124" text-anchor="middle" font-size="12" fill="var(--dim)">every window predicts its own tank</text>
+    <text x="640" y="152" text-anchor="middle" font-size="12" fill="var(--accent)">game 5: a hit pillbox loses its</text>
+    <text x="640" y="168" text-anchor="middle" font-size="12" fill="var(--accent)">stock; its depot sends more</text>
+    <text x="640" y="196" text-anchor="middle" font-size="12" fill="var(--dim)">Map: scale_m, tempo (new labels)</text>
+    <text x="640" y="226" text-anchor="middle" font-size="12" fill="var(--dim)">hash, replay, GAME_VERSION 5</text>
+    <rect x="800" y="110" width="160" height="80" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="880" y="138" text-anchor="middle" font-weight="700">Observation</text>
+    <text x="880" y="158" text-anchor="middle" font-size="12" fill="var(--dim)">what seat p may see;</text>
+    <text x="880" y="174" text-anchor="middle" font-size="12" fill="var(--dim)">events, the HUD's top strip</text>
+    <!-- the fleet, bottom half -->
+    <rect x="20" y="300" width="960" height="240" rx="8" fill="none" stroke="var(--line)" stroke-dasharray="5 4"/>
+    <text x="36" y="322" font-size="13" fill="var(--dim)" letter-spacing="1">THE FLEET, ONCE A MINUTE (orrery: the planner, the keeper, nine machines)</text>
+    <rect x="40" y="340" width="200" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="140" y="364" text-anchor="middle" font-weight="700">the planner</text>
+    <text x="140" y="382" text-anchor="middle" font-size="12" fill="var(--dim)">tools/plans/treadcore.py</text>
+    <text x="140" y="398" text-anchor="middle" font-size="12" fill="var(--dim)">trials, gates, the proof</text>
+    <text x="140" y="416" text-anchor="middle" font-size="12" fill="var(--accent)">trade guard · shape watch · gauntlet (new)</text>
+    <rect x="300" y="340" width="170" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="385" y="364" text-anchor="middle" font-weight="700">the keeper</text>
+    <text x="385" y="382" text-anchor="middle" font-size="12" fill="var(--dim)">tools/fleet-queue.py</text>
+    <text x="385" y="398" text-anchor="middle" font-size="12" fill="var(--dim)">a lane a machine; health</text>
+    <text x="385" y="416" text-anchor="middle" font-size="12" fill="var(--accent)">certificate check (new)</text>
+    <rect x="540" y="340" width="200" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="640" y="364" text-anchor="middle" font-weight="700">a census</text>
+    <text x="640" y="382" text-anchor="middle" font-size="12" fill="var(--dim)">treadcore-server --local, 400 seeds,</text>
+    <text x="640" y="398" text-anchor="middle" font-size="12" fill="var(--dim)">the trial team against today's;</text>
+    <text x="640" y="416" text-anchor="middle" font-size="12" fill="var(--dim)">pooled.txt, built, road, kills, deaths</text>
+    <rect x="800" y="340" width="160" height="90" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="880" y="364" text-anchor="middle" font-weight="700">main</text>
+    <text x="880" y="382" text-anchor="middle" font-size="12" fill="var(--dim)">a generation lands;</text>
+    <text x="880" y="398" text-anchor="middle" font-size="12" fill="var(--dim)">every machine builds it;</text>
+    <text x="880" y="416" text-anchor="middle" font-size="12" fill="var(--dim)">the site's reports</text>
+    <rect x="300" y="460" width="440" height="60" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="520" y="484" text-anchor="middle" font-weight="700">the console (orrery, six chapters)</text>
+    <text x="520" y="504" text-anchor="middle" font-size="12" fill="var(--accent)">Personas · Gauntlet · Ranges pages, the hold's Release (new)</text>
+  </g>
+  <g stroke="var(--accent)" stroke-width="1.5" fill="none" marker-end="url(#fa)">
+    <path d="M220 95 L298 135"/><path d="M220 205 L298 165"/><path d="M470 150 L538 150"/><path d="M740 150 L798 150"/>
+    <path d="M880 190 C880 240 130 250 130 158"/><path d="M880 190 C880 230 130 240 130 132" opacity="0"/>
+    <path d="M240 385 L298 385"/><path d="M470 385 L538 385"/><path d="M740 385 L798 385"/>
+    <path d="M880 430 C880 460 140 470 140 432"/>
+    <path d="M520 460 L520 435" stroke-dasharray="3 3"/>
+    <path d="M640 250 L640 338" stroke-dasharray="3 3"/>
+  </g>
+  <text x="655" y="300" font-size="12" fill="var(--dim)">the same simulator plays the censuses</text>
+  <text x="500" y="455" font-size="12" fill="var(--dim)" text-anchor="middle">reads pipeline.json and treadcore-view.py's document</text>
+</svg>
+<figcaption>Fig. 1. The whole program's flow. The top half runs twenty times a second: commands from a person and from the bots into one deterministic world, observations back out. The bottom half runs once a minute: the planner asks the machines for censuses of the same simulator, gates what they find, and moves main. What is new today is marked in the accent.</figcaption>
+</figure>
+<figure>
+<svg viewBox="0 0 1000 300" width="100%" role="img" aria-label="One tick of the world, in the order World::step runs it, with game 5's two changes marked" style="font-family: var(--cond); max-width: 1000px;">
+  <defs><marker id="ft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
+  <g font-size="13" fill="var(--ink)">
+    <rect x="20" y="40" width="100" height="56" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="70" y="64" text-anchor="middle" font-weight="700">proposals</text><text x="70" y="82" text-anchor="middle" font-size="11" fill="var(--dim)">lapse</text>
+    <rect x="140" y="40" width="100" height="56" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="190" y="64" text-anchor="middle" font-weight="700">orders</text><text x="190" y="82" text-anchor="middle" font-size="11" fill="var(--dim)">apply, or refuse</text>
+    <rect x="260" y="40" width="100" height="56" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="310" y="64" text-anchor="middle" font-weight="700">tanks</text><text x="310" y="82" text-anchor="middle" font-size="11" fill="var(--dim)">drive, mines</text>
+    <rect x="380" y="40" width="100" height="56" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="430" y="64" text-anchor="middle" font-weight="700">pillboys</text><text x="430" y="82" text-anchor="middle" font-size="11" fill="var(--dim)">capture, build</text>
+    <rect x="500" y="40" width="100" height="56" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="550" y="64" text-anchor="middle" font-weight="700">drones</text><text x="550" y="82" text-anchor="middle" font-size="11" fill="var(--dim)">orbit, intercept</text>
+    <rect x="620" y="40" width="100" height="56" rx="6" fill="var(--tile)" stroke="var(--accent)" stroke-width="2"/><text x="670" y="64" text-anchor="middle" font-weight="700">pillboxes</text><text x="670" y="82" text-anchor="middle" font-size="11" fill="var(--dim)">regen, supply, fire</text>
+    <rect x="740" y="40" width="100" height="56" rx="6" fill="var(--tile)" stroke="var(--accent)" stroke-width="2"/><text x="790" y="64" text-anchor="middle" font-weight="700">shells</text><text x="790" y="82" text-anchor="middle" font-size="11" fill="var(--dim)">fly, land, damage</text>
+    <rect x="860" y="40" width="120" height="56" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="920" y="64" text-anchor="middle" font-weight="700">depots, swarm,</text><text x="920" y="82" text-anchor="middle" font-size="11" fill="var(--dim)">match: stock made, ended?</text>
+    <!-- the two new paths -->
+    <rect x="560" y="150" width="220" height="100" rx="6" fill="var(--tile)" stroke="var(--accent)"/>
+    <text x="670" y="172" text-anchor="middle" font-weight="700" fill="var(--accent)">step_pillboxes, every 2 s</text>
+    <text x="670" y="192" text-anchor="middle" font-size="12">for each live owned pillbox short of 8:</text>
+    <text x="670" y="208" text-anchor="middle" font-size="12">the nearest depot of its side within 12 tiles</text>
+    <text x="670" y="224" text-anchor="middle" font-size="12">with shells in stock sends one</text>
+    <text x="670" y="242" text-anchor="middle" font-size="11" fill="var(--dim)">(and every 10 s, one of its own, as before)</text>
+    <rect x="800" y="150" width="180" height="100" rx="6" fill="var(--tile)" stroke="var(--accent)"/>
+    <text x="890" y="172" text-anchor="middle" font-weight="700" fill="var(--accent)">damage_pillbox</text>
+    <text x="890" y="192" text-anchor="middle" font-size="12">health −= amount</text>
+    <text x="890" y="210" text-anchor="middle" font-size="12" font-weight="700">shells = 0</text>
+    <text x="890" y="228" text-anchor="middle" font-size="11" fill="var(--dim)">PillboxDamaged event; dead at 0</text>
+  </g>
+  <g stroke="var(--accent)" stroke-width="1.5" fill="none" marker-end="url(#ft)">
+    <path d="M120 68 L138 68"/><path d="M240 68 L258 68"/><path d="M360 68 L378 68"/><path d="M480 68 L498 68"/><path d="M600 68 L618 68"/><path d="M720 68 L738 68"/><path d="M840 68 L858 68"/>
+    <path d="M670 96 L670 148" stroke-dasharray="3 3"/><path d="M790 96 C790 120 890 120 890 148" stroke-dasharray="3 3"/>
+  </g>
+  <text x="500" y="285" text-anchor="middle" font-size="12" fill="var(--dim)">World::step, source/treadcore-sim/src/lib.rs; the order is the one the world hash depends on, and it did not change.</text>
+</svg>
+<figcaption>Fig. 2. One tick of the world in the order <code>World::step</code> runs it. Game 5 touches two boxes: the pillboxes' step gains the depot's supply, and a shell's damage empties the pillbox it hits. Nothing else in the tick moved.</figcaption>
+</figure>
+<figure>
+<svg viewBox="0 0 1000 520" width="100%" role="img" aria-label="The line as the planner runs it after 2 November: trials, read-ons, held-out reads, the gates including the trade guard, tests and families, the generation, the proof, main; beside it the watches: shape, gauntlet, personas" style="font-family: var(--cond); max-width: 1000px;">
+  <defs><marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
+  <g font-size="13" fill="var(--ink)">
+    <text x="20" y="30" font-size="13" fill="var(--dim)" letter-spacing="1">plan(), once a minute (tools/plans/treadcore.py)</text>
+    <rect x="20" y="45" width="300" height="60" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="170" y="68" text-anchor="middle" font-weight="700">trials</text><text x="170" y="88" text-anchor="middle" font-size="11" fill="var(--dim)">search · ab_trials · far_trials · temper_trials · anchors · regions</text>
+    <rect x="20" y="125" width="300" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="170" y="146" text-anchor="middle" font-weight="700">read on until decided</text><text x="170" y="164" text-anchor="middle" font-size="11" fill="var(--dim)">55 · 110 · 220 · 440 seeds, inside RANGES</text>
+    <rect x="20" y="195" width="300" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="170" y="216" text-anchor="middle" font-weight="700">two held-out reads, pooled</text><text x="170" y="234" text-anchor="middle" font-size="11" fill="var(--dim)">held_pass: z ≥ 3, no map two errors under</text>
+    <rect x="20" y="265" width="300" height="90" rx="6" fill="var(--tile)" stroke="var(--accent)" stroke-width="2"/><text x="170" y="286" text-anchor="middle" font-weight="700">auto_promote's gates</text>
+    <text x="170" y="304" text-anchor="middle" font-size="11" fill="var(--dim)">noise(): MIN_GAIN 0.25, SETTLE_GENS 2</text>
+    <text x="170" y="320" text-anchor="middle" font-size="11" fill="var(--accent)">trades_away() → gives_up(): built 1.0, road 0.5, kd 0.10 (new)</text>
+    <text x="170" y="336" text-anchor="middle" font-size="11" fill="var(--dim)">held_by_a_person(): hold.json (now a row with Release)</text>
+    <rect x="20" y="375" width="300" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="170" y="396" text-anchor="middle" font-weight="700">promote_run: tests, nine families</text><text x="170" y="414" text-anchor="middle" font-size="11" fill="var(--accent)">the pinned-test lint runs with the tests (new)</text>
+    <rect x="20" y="445" width="140" height="50" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="90" y="466" text-anchor="middle" font-weight="700">the line</text><text x="90" y="484" text-anchor="middle" font-size="11" fill="var(--dim)">a generation</text>
+    <rect x="180" y="445" width="140" height="50" rx="6" fill="var(--accent)"/><text x="250" y="466" text-anchor="middle" font-weight="700" fill="var(--base)">main</text><text x="250" y="484" text-anchor="middle" font-size="11" fill="var(--base)">line_proof: 800 seeds, z 3, and gives up nothing</text>
+    <!-- the watches -->
+    <text x="400" y="30" font-size="13" fill="var(--dim)" letter-spacing="1">the watches, on their own clocks</text>
+    <rect x="400" y="45" width="280" height="90" rx="6" fill="var(--tile)" stroke="var(--accent)"/><text x="540" y="66" text-anchor="middle" font-weight="700">width_watch → a shape watch</text>
+    <text x="540" y="84" text-anchor="middle" font-size="11" fill="var(--dim)">every width_every generations: record, then train</text>
+    <text x="540" y="100" text-anchor="middle" font-size="11" fill="var(--dim)">WIDTHS "32" "64" "128" "64x3" (WIDTH, DEPTH to tools/bc)</text>
+    <text x="540" y="118" text-anchor="middle" font-size="11" fill="var(--accent)">width_read: the best other shape against "64", bar 1.0</text>
+    <rect x="400" y="155" width="280" height="80" rx="6" fill="var(--tile)" stroke="var(--accent)"/><text x="540" y="176" text-anchor="middle" font-weight="700">gauntlet_watch (new)</text>
+    <text x="540" y="194" text-anchor="middle" font-size="11" fill="var(--dim)">every gauntlet_every_h hours, needs host:mac:</text>
+    <text x="540" y="210" text-anchor="middle" font-size="11" fill="var(--dim)">GAUNTLET=1 cargo test … --ignored train</text>
+    <text x="540" y="226" text-anchor="middle" font-size="11" fill="var(--dim)">→ build/train/gauntlet.tsv → Results, Gauntlet</text>
+    <rect x="400" y="255" width="280" height="80" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="540" y="276" text-anchor="middle" font-weight="700">a persona's census (by hand)</text>
+    <text x="540" y="294" text-anchor="middle" font-size="11" fill="var(--dim)">new census "trial=bot_style = K" adopt=no</text>
+    <text x="540" y="310" text-anchor="middle" font-size="11" fill="var(--dim)">400 seeds; pooled.txt; its composition read</text>
+    <text x="540" y="326" text-anchor="middle" font-size="11" fill="var(--dim)">→ treadcore-view.py personas() → Results, Personas</text>
+    <rect x="400" y="355" width="280" height="70" rx="6" fill="var(--tile)" stroke="var(--line)"/><text x="540" y="376" text-anchor="middle" font-weight="700">the keeper's health</text>
+    <text x="540" y="394" text-anchor="middle" font-size="11" fill="var(--dim)">keeper, heartbeat, code, planning, sync, lanes,</text>
+    <text x="540" y="410" text-anchor="middle" font-size="11" fill="var(--accent)">certificate (new): warn a day before, bad when gone</text>
+    <!-- what a person touches -->
+    <text x="740" y="30" font-size="13" fill="var(--dim)" letter-spacing="1">what a person moves</text>
+    <rect x="740" y="45" width="240" height="120" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="860" y="66" text-anchor="middle" font-weight="700">Queue → Values, Settings → Long run</text>
+    <text x="860" y="86" text-anchor="middle" font-size="11" fill="var(--dim)">fleet-tune.py KEY VALUE → tuning.json</text>
+    <text x="860" y="104" text-anchor="middle" font-size="11" fill="var(--accent)">fleet-tune.py hold DIAL VALUE|off → hold.json (new)</text>
+    <text x="860" y="122" text-anchor="middle" font-size="11" fill="var(--dim)">give_built, give_road, give_kd; gauntlet_every_h</text>
+    <text x="860" y="140" text-anchor="middle" font-size="11" fill="var(--dim)">live at the next plan; no restart</text>
+    <rect x="740" y="185" width="240" height="70" rx="6" fill="var(--tile)" stroke="var(--line)"/>
+    <text x="860" y="206" text-anchor="middle" font-weight="700">Settings → Ranges</text>
+    <text x="860" y="224" text-anchor="middle" font-size="11" fill="var(--dim)">RANGES as rows, the decrees marked;</text>
+    <text x="860" y="240" text-anchor="middle" font-size="11" fill="var(--dim)">the file is edited by hand, only Paul decrees</text>
+  </g>
+  <g stroke="var(--accent)" stroke-width="1.5" fill="none" marker-end="url(#fl)">
+    <path d="M170 105 L170 123"/><path d="M170 175 L170 193"/><path d="M170 245 L170 263"/><path d="M170 355 L170 373"/><path d="M90 425 L90 443"/><path d="M160 470 L178 470"/>
+    <path d="M320 300 L398 300" stroke-dasharray="3 3"/>
+    <path d="M740 100 C700 100 360 100 320 300" stroke-dasharray="3 3" opacity="0.6"/>
+  </g>
+  <text x="500" y="505" text-anchor="middle" font-size="12" fill="var(--dim)">A persona's read enters no gate: it is read for what it is, never promoted because a person looked there.</text>
+</svg>
+<figcaption>Fig. 3. The line as the planner runs it from 2 November. The left column is the road a trial takes to main; the gates in the accent box are the rules of the last two days. The middle column is the watches on their own clocks; the right what a person moves, now including the hold.</figcaption>
+</figure>
+</section><section id="sxiii"><h2>XIII. The architecture, in UML</h2><figure>
+<svg viewBox="0 0 1000 720" width="100%" role="img" aria-label="UML of treadcore's three layers: the simulator's World, Map, Pillbox, Depot and Command; the brain's Brain trait, Commander, Settings, Style roster and scenario Outcome; the window's Args, Pilot, Action and View" style="font-family: var(--mono); font-size: 11px; max-width: 1000px;">
+  <defs>
+    <marker id="gen" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0 L12 6 L0 12 z" fill="var(--base)" stroke="var(--ink)" stroke-width="1"/></marker>
+    <marker id="dep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="none" stroke="var(--dim)" stroke-width="1.2"/></marker>
+  </defs>
+  <g fill="var(--ink)">
+    <text x="20" y="22" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">treadcore-sim (the world; no I/O; deterministic)</text>
+    <!-- World -->
+    <rect x="20" y="30" width="250" height="150" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="30" width="250" height="18" fill="var(--line)"/><text x="145" y="43" text-anchor="middle" font-weight="700">World</text>
+    <text x="26" y="62">tick, map: Map, tanks, drones, shells</text>
+    <text x="26" y="76">pillboxes: Vec&lt;Pillbox&gt;, depots: Vec&lt;Depot&gt;</text>
+    <text x="26" y="90">structures, mines, players, events</text>
+    <line x1="20" y1="98" x2="270" y2="98" stroke="var(--ink)"/>
+    <text x="26" y="112">step(orders)  observe(p) → Observation</text>
+    <text x="26" y="126">apply(order)  damage_pillbox(id, amt, by)</text>
+    <text x="26" y="140" fill="var(--accent)">step_pillboxes(): regen + supply (new)</text>
+    <text x="26" y="154">step_shells()  step_depots()  hash()</text>
+    <text x="26" y="168">map_as_played()  route_for()</text>
+    <!-- Map -->
+    <rect x="300" y="30" width="230" height="130" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="300" y="30" width="230" height="18" fill="var(--line)"/><text x="415" y="43" text-anchor="middle" font-weight="700">Map</text>
+    <text x="306" y="62">w, h, seed, cells: Vec&lt;u8&gt;</text>
+    <text x="306" y="76" fill="var(--accent)">scale_m: f32 = 25, tempo: f32 = 6 (new)</text>
+    <text x="306" y="90">starts, depots, pillboxes, structures</text>
+    <line x1="300" y1="98" x2="530" y2="98" stroke="var(--ink)"/>
+    <text x="306" y="112">generate(seed)  from_text()  to_text()</text>
+    <text x="306" y="126" fill="var(--accent)">class() → "field" | "theatre" (new)</text>
+    <text x="306" y="140" fill="var(--accent)">metres(tiles)  real_seconds(s) (new)</text>
+    <text x="306" y="154">route()  line_clear()  at()</text>
+    <!-- Pillbox -->
+    <rect x="560" y="30" width="200" height="100" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="560" y="30" width="200" height="18" fill="var(--line)"/><text x="660" y="43" text-anchor="middle" font-weight="700">Pillbox</text>
+    <text x="566" y="62">id, pos, owner: Option&lt;PlayerId&gt;</text>
+    <text x="566" y="76">health, reload, capture, capturer</text>
+    <text x="566" y="90" fill="var(--accent)">shells: u16 (0 on a hit, game 5)</text>
+    <line x1="560" y1="98" x2="760" y2="98" stroke="var(--ink)"/>
+    <text x="566" y="112">alive()  shooter()  hostile_to()</text>
+    <!-- Depot -->
+    <rect x="790" y="30" width="190" height="100" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="790" y="30" width="190" height="18" fill="var(--line)"/><text x="885" y="43" text-anchor="middle" font-weight="700">Depot</text>
+    <text x="796" y="62">id, pos, owner, capture</text>
+    <text x="796" y="76">stock: DepotStock</text>
+    <text x="796" y="90">  kinds: [u8; 6], turn</text>
+    <line x1="790" y1="98" x2="980" y2="98" stroke="var(--ink)"/>
+    <text x="796" y="112">stock.make()  (shells to pillboxes)</text>
+    <!-- Command / rules -->
+    <rect x="560" y="150" width="200" height="90" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="560" y="150" width="200" height="18" fill="var(--line)"/><text x="660" y="163" text-anchor="middle" font-weight="700">«enum» Command</text>
+    <text x="566" y="182">Move, Stop, FireIndirect, FireDirect</text>
+    <text x="566" y="196">Launch, Recall, SetBubble, Deploy</text>
+    <text x="566" y="210">Ping { at: V2, kind: PingKind }</text>
+    <text x="566" y="224">Propose, Answer, Chat, Embark …</text>
+    <rect x="790" y="150" width="190" height="90" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="790" y="150" width="190" height="18" fill="var(--line)"/><text x="885" y="163" text-anchor="middle" font-weight="700">rules (consts)</text>
+    <text x="796" y="182">PILLBOX_SHELLS 8, _REGEN 10 s</text>
+    <text x="796" y="196" fill="var(--accent)">PILLBOX_SUPPLY_REACH 12, _EVERY 2 s</text>
+    <text x="796" y="210" fill="var(--accent)">METRES_PER_TILE 25, TEMPO 6</text>
+    <text x="796" y="224" fill="var(--accent)">physical() → Vec&lt;Physical&gt;</text>
+    <!-- brain layer -->
+    <text x="20" y="282" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">treadcore-brain (above observe; every kind ends in a Command)</text>
+    <rect x="20" y="290" width="170" height="80" fill="var(--tile)" stroke="var(--ink)" stroke-dasharray="4 3"/>
+    <rect x="20" y="290" width="170" height="18" fill="var(--line)"/><text x="105" y="303" text-anchor="middle" font-weight="700">«trait» Brain</text>
+    <text x="26" y="322">name()  think(obs)</text>
+    <text x="26" y="336">think_on(obs, map)  settings()</text>
+    <text x="26" y="350">act()  rung()  stance()</text>
+    <rect x="220" y="290" width="270" height="170" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="220" y="290" width="270" height="18" fill="var(--line)"/><text x="355" y="303" text-anchor="middle" font-weight="700">Commander</text>
+    <text x="226" y="322">goal: Goal, settings: Settings, slot, task</text>
+    <text x="226" y="336">fleet, crew, cycle, rotation, rally, pings</text>
+    <line x1="220" y1="344" x2="490" y2="344" stroke="var(--ink)"/>
+    <text x="226" y="358">set_goal(g)  think_on()  hunt()  go()</text>
+    <text x="226" y="372" fill="var(--accent)">fly_wing(): reads escort_distance, wing_*,</text>
+    <text x="226" y="386" fill="var(--accent)">  station by wing_stance (new)</text>
+    <text x="226" y="400">fortify()  cycle  defend_base()</text>
+    <text x="226" y="414">«enum» Goal: Manual | HuntPillboxes |</text>
+    <text x="226" y="428">  DefendPillbox | DefendDepot | Escort(p) |</text>
+    <text x="226" y="442">  Hold(V2) | Fortify | DefendBase | Auto</text>
+    <rect x="520" y="290" width="240" height="140" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="520" y="290" width="240" height="18" fill="var(--line)"/><text x="640" y="303" text-anchor="middle" font-weight="700">Settings</text>
+    <text x="526" y="322">w: Weights ([f32; W::ALL] = 141)</text>
+    <text x="526" y="336">caps: Caps (u64 bits)</text>
+    <line x1="520" y1="344" x2="760" y2="344" stroke="var(--ink)"/>
+    <text x="526" y="358">parse(text)  to_text()  diff()</text>
+    <text x="526" y="372">hold(): clamp to RANGES (include_str!)</text>
+    <text x="526" y="386">choice(w) → version  nudge()  ticks()</text>
+    <text x="526" y="400" fill="var(--accent)">+ EscortDistance, WingLeash, WingGreed,</text>
+    <text x="526" y="414" fill="var(--accent)">  WingThreat, WingAhead, WingStance (new)</text>
+    <rect x="790" y="290" width="190" height="140" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="790" y="290" width="190" height="18" fill="var(--line)"/><text x="885" y="303" text-anchor="middle" font-weight="700">styles</text>
+    <text x="796" y="322">Style { slot, name, about, kind }</text>
+    <text x="796" y="336">«enum» Kind: Rules(&amp;str) |</text>
+    <text x="796" y="350">  Transform | Net(bytes) | Duel(bytes)</text>
+    <text x="796" y="364" fill="var(--accent)">ROSTER: [Style; 16] (8 personas new)</text>
+    <line x1="790" y1="372" x2="980" y2="372" stroke="var(--ink)"/>
+    <text x="796" y="386">find(word)  parse_list()</text>
+    <text x="796" y="400">settings_for(style, base)</text>
+    <text x="796" y="414">make(style, base, name, rules)</text>
+    <rect x="20" y="480" width="470" height="110" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="480" width="470" height="18" fill="var(--line)"/><text x="255" y="493" text-anchor="middle" font-weight="700">scenario</text>
+    <text x="26" y="512">Doc { top, expect, reward, lists }   Outcome { hits, alive, start, end, points, advance,</text>
+    <text x="26" y="526" fill="var(--accent)">  station: BTreeMap&lt;(seat, to), (near, ticks)&gt; (new) }</text>
+    <line x1="20" y1="534" x2="490" y2="534" stroke="var(--ink)"/>
+    <text x="26" y="548">run_inner(doc, seed, net, make)   check(expect, out) → failed   reward(doc, out, failed)</text>
+    <text x="26" y="562" fill="var(--accent)">brain goal "escort:N"; expect/reward "station" (new);  learn::REWARDS has "station"</text>
+    <text x="26" y="576">learn: Course, gauntlet(out, threads) over scenarios/gauntlet/*.toml (G1 … G12)</text>
+    <rect x="520" y="480" width="460" height="110" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="520" y="480" width="460" height="18" fill="var(--line)"/><text x="750" y="493" text-anchor="middle" font-weight="700">the learned kinds</text>
+    <text x="526" y="512">NetBrain { net: Net { layers: Vec&lt;Layer&gt; } }   143 senses → 64 → 64 → heads (TCNET1)</text>
+    <text x="526" y="526">patch::Patch { steps: Vec&lt;Step&gt; }   153 inputs, 3 outputs, k steps, all zeros = the rules</text>
+    <text x="526" y="540">styles::Duelist { champion: Champion (35 → 32 → 32 → 4), rules: Box&lt;dyn Brain&gt; }</text>
+    <text x="526" y="554" fill="var(--accent)">tools/bc Mlp { hidden: Vec&lt;Linear&gt; (DEPTH × WIDTH), c: Linear } (new shape)</text>
+    <text x="526" y="576" fill="var(--dim)">fleet: role(seat, person_leads), team_brain(), fleet_of(): a person's team gets a builder, a guard, two wingmen</text>
+    <!-- client -->
+    <text x="20" y="622" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">treadcore-client (the window, Bevy)</text>
+    <rect x="20" y="630" width="300" height="80" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="630" width="300" height="18" fill="var(--line)"/><text x="170" y="643" text-anchor="middle" font-weight="700">Args / menu</text>
+    <text x="26" y="662">players, teams, map, skill, bots: Vec&lt;(team, styles)&gt;</text>
+    <text x="26" y="676" fill="var(--accent)">brain_file: Option&lt;String&gt; (--brain-file, new)</text>
+    <text x="26" y="690">menu rows: Map, Sides, Skill, Your team … (16 styles)</text>
+    <rect x="350" y="630" width="300" height="80" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="350" y="630" width="300" height="18" fill="var(--line)"/><text x="500" y="643" text-anchor="middle" font-weight="700">keys::Action / input</text>
+    <text x="356" y="662">ALL: [Action; 45]  word()  default_key()  group()</text>
+    <text x="356" y="676" fill="var(--accent)">FormUp F1, HoldHere F2, ScreenAhead F3,</text>
+    <text x="356" y="690" fill="var(--accent)">GoHome F4, SpreadOut F5 → Command::Ping (new)</text>
+    <rect x="680" y="630" width="300" height="80" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="680" y="630" width="300" height="18" fill="var(--line)"/><text x="830" y="643" text-anchor="middle" font-weight="700">goal::Pilot / hud / session</text>
+    <text x="686" y="662">Pilot { brain: Commander, coord, folded }  screen()</text>
+    <text x="686" y="676" fill="var(--accent)">hud::top(): "field 25 m/tile" (new)</text>
+    <text x="686" y="690">session: bots by styles::make | fleet | NetBrain(file)</text>
+  </g>
+  <!-- relations -->
+  <g stroke="var(--dim)" stroke-width="1.2" fill="none">
+    <path d="M270 60 L298 60"/><path d="M270 80 L558 80" stroke-dasharray="2 3"/><path d="M270 95 L788 95" stroke-dasharray="2 3"/>
+    <path d="M190 330 L218 330" marker-end="url(#gen)"/>
+    <path d="M490 330 L518 330"/><path d="M760 400 L788 400" stroke-dasharray="2 3" marker-end="url(#dep)"/>
+    <path d="M355 290 L355 250 L660 250 L660 242" stroke-dasharray="2 3" marker-end="url(#dep)"/>
+    <path d="M500 630 L500 600 L660 600 L660 242" stroke-dasharray="2 3" marker-end="url(#dep)" opacity="0.6"/>
+  </g>
+  <text x="200" y="258" font-size="10" fill="var(--dim)">«use» a brain's think returns Commands</text>
+</svg>
+<figcaption>Fig. 4. UML of treadcore's three layers, the classes that today's changes touch drawn in full and the rest named. The arrows: World owns a Map and its pillboxes and depots; a Commander is a Brain; a Commander reads its Settings; the window's actions become Commands. What is new is in the accent: a field, a method or a slot added today.</figcaption>
+</figure>
+<figure>
+<svg viewBox="0 0 1000 520" width="100%" role="img" aria-label="UML of orrery's training side: the planner Plan class, the keeper, the tune tool, the view script, and the console's training and pipeline models and states" style="font-family: var(--mono); font-size: 11px; max-width: 1000px;">
+  <defs><marker id="od" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="none" stroke="var(--dim)" stroke-width="1.2"/></marker></defs>
+  <g fill="var(--ink)">
+    <text x="20" y="22" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">Python: the planner, the keeper, the tools (tools/)</text>
+    <rect x="20" y="30" width="330" height="250" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="30" width="330" height="18" fill="var(--line)"/><text x="185" y="43" text-anchor="middle" font-weight="700">plans/treadcore.py :: Plan</text>
+    <text x="26" y="62">state, cfg, line (line.json), hosts, cuda, q (QUEUE)</text>
+    <text x="26" y="76">MIN_GAIN 0.25, SETTLE_GENS 2, HELD_Z 3, PROOF_EVERY_MIN 60</text>
+    <text x="26" y="90" fill="var(--accent)">GIVE_BUILT 1.0, GIVE_ROAD 0.5, GIVE_KD 0.10 (new)</text>
+    <text x="26" y="104" fill="var(--accent)">WIDTHS ("32","64","128","64x3"), GAUNTLET_EVERY_H 24 (new)</text>
+    <line x1="20" y1="112" x2="350" y2="112" stroke="var(--ink)"/>
+    <text x="26" y="126">plan()  search()  ab_trials()  far_trials()  temper_trials()</text>
+    <text x="26" y="140">held_pairs()  held_pass()  evidence()  batch()</text>
+    <text x="26" y="154">noise()  held_by_a_person()  anchor_short()</text>
+    <text x="26" y="168" fill="var(--accent)">side_read(dir)  gives_up(dirs, sign)  trades_away(k, v) (new)</text>
+    <text x="26" y="182">auto_promote()  promote_run()  resolve()  land()  build_tip()</text>
+    <text x="26" y="196" fill="var(--accent)">line_proof(): … and gives up nothing past the floors (new)</text>
+    <text x="26" y="210" fill="var(--accent)">width_watch()  width_read()  shape(s)  gauntlet_watch() (new)</text>
+    <text x="26" y="224">region_trials()  carry_passes()  remembered()</text>
+    <text x="26" y="238">board()  values_view()  pipeline.json ← values, flow, timeline,</text>
+    <text x="26" y="252" fill="var(--accent)">  queued, traces, held (new)</text>
+    <text x="26" y="266">apply_tuning(): tuning.json over line.json's values</text>
+    <rect x="380" y="30" width="290" height="120" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="380" y="30" width="290" height="18" fill="var(--line)"/><text x="525" y="43" text-anchor="middle" font-weight="700">fleet-queue.py (the keeper)</text>
+    <text x="386" y="62">lanes, keeper loop, sync, plan each minute</text>
+    <line x1="380" y1="70" x2="670" y2="70" stroke="var(--ink)"/>
+    <text x="386" y="84">health(q): keeper, heartbeat, code, planning,</text>
+    <text x="386" y="98" fill="var(--accent)">  certificate (new), sync, machines, lanes, jobs,</text>
+    <text x="386" y="112">  search, line, models, difficulty</text>
+    <text x="386" y="126">verbs: new, cancel, machine, project, resume,</text>
+    <text x="386" y="140">  stop-job, restart, status, health</text>
+    <rect x="380" y="170" width="290" height="110" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="380" y="170" width="290" height="18" fill="var(--line)"/><text x="525" y="183" text-anchor="middle" font-weight="700">fleet-tune.py · treadcore-view.py</text>
+    <text x="386" y="202">tune: KEY VALUE | KEY default → tuning.json</text>
+    <text x="386" y="216" fill="var(--accent)">hold DIAL VALUE | off → hold.json (new)</text>
+    <line x1="380" y1="224" x2="670" y2="224" stroke="var(--ink)"/>
+    <text x="386" y="238">view: machines(), run(), net(), analysis(), long_run(),</text>
+    <text x="386" y="252" fill="var(--accent)">  ranges(), personas(), gauntlet(), held (new)</text>
+    <text x="386" y="266">→ one JSON document the console draws</text>
+    <!-- data files -->
+    <rect x="700" y="30" width="280" height="250" fill="var(--tile)" stroke="var(--ink)" stroke-dasharray="4 3"/>
+    <rect x="700" y="30" width="280" height="18" fill="var(--line)"/><text x="840" y="43" text-anchor="middle" font-weight="700">files (QUEUE = build/queue/grove)</text>
+    <text x="706" y="62">plan/state.json  (search, far, temper, width,</text>
+    <text x="706" y="76" fill="var(--accent)">  gauntlet, side_reads (new))</text>
+    <text x="706" y="90">plan/pipeline.json  (the board, values, held)</text>
+    <text x="706" y="104">tuning.json  hold.json  config.json</text>
+    <text x="706" y="118">runs/*.json  results/*/…/pooled.txt, g-*.log</text>
+    <text x="706" y="132">flags/*.json  events.jsonl  archive/</text>
+    <text x="706" y="150">treadcore: RANGES, weights.rs, styles.rs,</text>
+    <text x="706" y="164">  profiles/*.weights, scenarios/gauntlet/*.toml,</text>
+    <text x="706" y="178">  build/train/gauntlet.tsv</text>
+    <text x="706" y="196">tools/plans/line.json: values (the floors,</text>
+    <text x="706" y="210" fill="var(--accent)">  gauntlet_every_h new), stages, edges, methods,</text>
+    <text x="706" y="224" fill="var(--accent)">  screens (Personas, Gauntlet, Ranges new)</text>
+    <text x="706" y="242">docs/book/*.md → chapters.py → the site</text>
+    <!-- Rust console -->
+    <text x="20" y="312" font-family="var(--cond)" font-size="13" fill="var(--dim)" letter-spacing="1">Rust: the console (src/, no crates)</text>
+    <rect x="20" y="320" width="330" height="180" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="20" y="320" width="330" height="18" fill="var(--line)"/><text x="185" y="333" text-anchor="middle" font-weight="700">training::Model / State</text>
+    <text x="26" y="352">Model: machines, run, net, algo, analysis, long_run,</text>
+    <text x="26" y="366" fill="var(--accent)">  ranges, personas, gauntlet: Option&lt;json::Value&gt; (new)</text>
+    <text x="26" y="380">State: page, zoom, tune, operator, cand_off,</text>
+    <text x="26" y="394" fill="var(--accent)">  ranges_off (new), analysis, arm_*</text>
+    <line x1="20" y1="402" x2="350" y2="402" stroke="var(--ink)"/>
+    <text x="26" y="416">PAGES: [(n, name, what); 13]  draw(ui, m, st, view)</text>
+    <text x="26" y="430">draw_runs_page … draw_long_run  draw_commits_page</text>
+    <text x="26" y="444" fill="var(--accent)">draw_personas(ui, at, m) (10)  draw_gauntlet (12) (new)</text>
+    <text x="26" y="458" fill="var(--accent)">draw_ranges(ui, at, m, st) (11): ui.scroll_list (new)</text>
+    <text x="26" y="472">RESULTS_PAGES [5,2,3,8,10,12,4]  SETTINGS_PAGES [6,9,11,7]</text>
+    <text x="26" y="486">frames: ORRERY_FRAME_PAGE, --frame-view results|settings</text>
+    <rect x="380" y="320" width="290" height="180" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="380" y="320" width="290" height="18" fill="var(--line)"/><text x="525" y="333" text-anchor="middle" font-weight="700">pipeline::Model / pages</text>
+    <text x="386" y="352">Model: tasks, values: Vec&lt;(key, now, moved)&gt;,</text>
+    <text x="386" y="366" fill="var(--accent)">  held: Vec&lt;(dial, value)&gt; (new), flow, lanes, queued</text>
+    <line x1="380" y1="374" x2="670" y2="374" stroke="var(--ink)"/>
+    <text x="386" y="388">PAGES: Board, Flow, Timeline, Queued, Values</text>
+    <text x="386" y="402">values(ui, at, m, st): value_rows() for the table,</text>
+    <text x="386" y="416" fill="var(--accent)">  then the held rows with Release →</text>
+    <text x="386" y="430" fill="var(--accent)">  st.tune = "hold DIAL off" (new)</text>
+    <text x="386" y="444">main: tune_cmd(queue_ctl) runs fleet-tune.py with it</text>
+    <text x="386" y="466" fill="var(--dim)">line::values() from line.json, baked in; line::Value</text>
+    <text x="386" y="480" fill="var(--dim)">  { key, attr, label, default, min, max, step, unit, long }</text>
+    <rect x="700" y="320" width="280" height="180" fill="var(--tile)" stroke="var(--ink)"/>
+    <rect x="700" y="320" width="280" height="18" fill="var(--line)"/><text x="840" y="333" text-anchor="middle" font-weight="700">ui / nav / draw</text>
+    <text x="706" y="352">Ui: label, label_in, label_right, button, tip,</text>
+    <text x="706" y="366">  scroll_list(box, n, lh, &amp;mut off), c.rect, c.disc</text>
+    <text x="706" y="380">nav::header(ui, view, …, keys) → (rest, go, clicked)</text>
+    <text x="706" y="394">nav::Key { label, on, lamp }</text>
+    <text x="706" y="408">theme t: ink, dim, accent, up, warn, alarm, tile, line</text>
+    <text x="706" y="422">fonts F8X13, F6X10, F10X20 (baked glyphs)</text>
+    <line x1="700" y1="430" x2="980" y2="430" stroke="var(--ink)"/>
+    <text x="706" y="444" fill="var(--dim)">tools/report: md.py (Doc), build.py (a page),</text>
+    <text x="706" y="458" fill="var(--accent)">  chapters.py (a book) (new); page.html the look</text>
+    <text x="706" y="472" fill="var(--dim)">docs/book/00-front.md … 16-references.md, figs/</text>
+  </g>
+  <g stroke="var(--dim)" stroke-width="1.2" fill="none" marker-end="url(#od)" stroke-dasharray="2 3">
+    <path d="M350 150 L378 150"/><path d="M670 100 L698 100"/><path d="M670 240 L698 240"/>
+    <path d="M185 280 L185 318"/><path d="M525 280 L525 318"/>
+    <path d="M840 280 L840 318"/>
+  </g>
+  <text x="195" y="300" font-size="10" fill="var(--dim)">«reads» view JSON, pipeline.json</text>
+</svg>
+<figcaption>Fig. 5. UML of orrery's training side. The planner is one class of about ninety methods; the keeper, the tune tool and the view script are small programs beside it; the console's two models are what the pages draw, read from the files in the middle. What is new is in the accent.</figcaption>
+</figure>
+</section><section id="sxiv"><h2>XIV. What the difference did, in numbers</h2><div class="table"><table><thead><tr><th>Measure</th><th>Before the day</th><th>After</th></tr></thead><tbody><tr><td>RANGES lines</td><td>34 (1 decree, 12 temper, 10 shares)</td><td>109 (2 decrees, 12 temper, 34 shares, 57 physical)</td></tr><tr><td>weights</td><td>135</td><td>141</td></tr><tr><td>styles on the roster</td><td>8</td><td>16</td></tr><tr><td>gauntlets</td><td>9</td><td>12</td></tr><tr><td>window actions</td><td>40</td><td>45</td></tr><tr><td>game version</td><td>4</td><td>5</td></tr><tr><td>console pages (training.rs)</td><td>10</td><td>13</td></tr><tr><td>health checks</td><td>12</td><td>13</td></tr><tr><td>tests: sim, brain, console</td><td>59, 150, 391</td><td>61, 152, 391</td></tr><tr><td>the scripted wingman on G10–G12</td><td>unmeasured</td><td>57–59% within 8 tiles; 29/30; 30/30</td></tr><tr><td>the eight personas, 400 seeds</td><td>unread</td><td>Rome −5.13 ± 0.58 (+5.96 built) … Shoshone −7.15 ± 0.63 (kd −0.49); see the book, chapter 10</td></tr></tbody></table></div></section><section id="sxv"><h2>XV. Limits</h2><ul><li>The trainer's depth is unverified by a compiler on this machine; the fleet's first shape-watch job decides it.</li><li>The window's unit tests were not run to the end today (the Bevy test build outran the session's limit twice); <code>cargo check</code> passed and the keys' and goal's tests are small, but it is a gap.</li><li>The persona reads of the afternoon are of game 4; the eight were asked again under game 5 and will overwrite the Personas page's column as they return.</li><li>The nightly gauntlet runs in this Mac's working checkout, which is also where the work is done; a build in progress and the job could collide on cargo's lock.</li><li>The hold's Release knows one reason (the stale dial of 1 November) and says it for any dial; the reason should come from the file.</li></ul></section><section id="sxvi"><h2>XVI. Conclusion</h2><p>The day's difference is small in each place and consistent across all of them: a number that was a constant became a weight with a range; a thing that was a file became a row; a behaviour the census could not see became a floor; a decision a person could not give became a key. The world's tick changed in two boxes and the hash's order in none. The figures show where each sits; the hunks show what each is; the book says why.</p></section><section id="links"><h2>Links</h2><p><a href="https://treadcore.org/reports/2026-11-02-the-plan/">The Post-Mortem and the Plan</a> · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/checkins/CI-084-2026-11-02-the-post-mortem-and-the-plan.md">CI-084</a> · <a href="https://github.com/treadcore/treadcore/blob/main/documentation/LAB-REPORT-BRAIN.md">LAB-REPORT-BRAIN.md section 127</a> · <a href="https://treadcore.org/reports/">the Lab Reports page</a> · the commits named in the masthead.</p></section>
+  </main>
+  <footer>
+    <p>Paul Richeson, 28 October 2026. MIT licensed, as orrery. The Markdown original and the example's source are in orrery: <code>docs/appkit-gui-lab-report.md</code> and <code>docs/appkit-example/</code>.</p>
+  </footer>
+</div>
