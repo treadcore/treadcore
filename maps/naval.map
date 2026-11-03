@@ -200,3 +200,17 @@ pillbox 72.5 93.5 neutral
 pillbox 64.5 80.5 neutral
 pillbox 72.5 66.5 neutral
 pillbox 88.5 66.5 neutral
+# the ore and the oil (games 6 and 7): deposit x y stock, well x y stock
+deposit 80.5 52.5 120
+deposit 57.5 92.5 120
+deposit 97.5 97.5 120
+deposit 58.5 101.5 120
+deposit 65.5 55.5 120
+deposit 66.5 101.5 120
+well 103.5 93.5 120
+well 86.5 56.5 120
+well 56.5 86.5 120
+well 105.5 87.5 120
+well 55.5 80.5 120
+well 105.5 79.5 120
+well 97.5 63.5 120

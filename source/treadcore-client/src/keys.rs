@@ -76,12 +76,14 @@ pub enum Action {
     ScreenAhead,
     GoHome,
     SpreadOut,
+    /// Game 7: buy the depot's stores with supply, at the depot of my side I am beside.
+    BuyStores,
 }
 
 use Action::*;
 
 impl Action {
-    pub const ALL: [Action; 45] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Tune, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, Speed, KeySetup, FormUp, HoldHere, ScreenAhead, GoHome, SpreadOut];
+    pub const ALL: [Action; 46] = [ScrollUp, ScrollDown, ScrollLeft, ScrollRight, TankView, PillboxView, Alert, Events, Interceptor, Recon, Strike, Recall, Longshot, BubbleIn, BubbleOut, Stop, Goal, Coordinate, Tune, Autopilot, Respawn, Ping, Chain, Embark, Farm, Road, Wall, Pillbox, Mine, Works, WorksKind, Return, Propose, Accept, Decline, Leave, Mute, TankStyle, Speed, KeySetup, FormUp, HoldHere, ScreenAhead, GoHome, SpreadOut, BuyStores];
 
     /// The word in the file and in Key Setup.
     pub fn word(self) -> &'static str {
@@ -131,6 +133,7 @@ impl Action {
             ScreenAhead => "screen-ahead",
             GoHome => "go-home",
             SpreadOut => "spread-out",
+            BuyStores => "buy-stores",
         }
     }
 
@@ -194,6 +197,7 @@ impl Action {
             ScreenAhead => KeyCode::F3,
             GoHome => KeyCode::F4,
             SpreadOut => KeyCode::F5,
+            BuyStores => KeyCode::F6,
         }
     }
 

@@ -277,6 +277,12 @@ fn orders(
             }
         }
     }
+    // F6 (game 7): the depot's stores, bought with supply at the depot of my side beside me.
+    if pressed(bind.key(A::BuyStores)) {
+        if let Some(d) = obs.depots.iter().filter(|d| d.owner.map(|o| o == me.owner || obs.allied(o)).unwrap_or(false) && d.pos.dist(me.pos) <= DEPOT_RADIUS + 6.0).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+            orders.0.push(Command::Buy { upgrade: treadcore_sim::Upgrade::DepotStores, at: d.id });
+        }
+    }
     // E: on the shore, a boat on the water beside the tank and the tank
     // on it (five material from the squad aboard).
     if pressed(bind.key(A::Embark)) {

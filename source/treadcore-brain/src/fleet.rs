@@ -615,6 +615,8 @@ mod tests {
             })
             .collect();
         let (mut smelters, mut mined, mut unloaded, mut smelted, mut refused) = (0, 0u32, 0, 0, Vec::new());
+        // Game 7: the workers, the oil, the city.
+        let (mut workers_left, mut workers_arrived, mut workers_taken, mut pumped, mut oil_unloaded, mut bought, mut city_items) = (0, 0, 0, 0u32, 0, 0, 0);
         let mut dry_stand: std::collections::HashMap<PlayerId, Tick> = Default::default();
         let mut longest_dry = 0;
         let mut dry_status = String::new();
@@ -628,6 +630,13 @@ mod tests {
                     Event::Mined { ore, .. } => mined += *ore as u32,
                     Event::OreUnloaded { .. } => unloaded += 1,
                     Event::Smelted { .. } => smelted += 1,
+                    Event::WorkerLeft { .. } => workers_left += 1,
+                    Event::WorkerArrived { .. } => workers_arrived += 1,
+                    Event::WorkerTaken { .. } => workers_taken += 1,
+                    Event::Pumped { oil, .. } => pumped += *oil as u32,
+                    Event::OilUnloaded { .. } => oil_unloaded += 1,
+                    Event::Bought { .. } => bought += 1,
+                    Event::StructureBuilt { kind: StructureKind::Harvester | StructureKind::Refinery | StructureKind::DataCentre, .. } | Event::StructureCaptured { kind: StructureKind::Refinery, .. } => city_items += 1,
                     Event::Rejected { player, why, .. } if why.contains("ore") || why.contains("smelter") || why.contains("works") => refused.push((w.tick / TICK_HZ as Tick, *player, why.clone())),
                     _ => {}
                 }
@@ -658,12 +667,13 @@ mod tests {
             }
         }
         let shells: Vec<u8> = w.depots.iter().filter(|d| d.owner.is_some()).map(|d| d.stock.kinds[STOCK_SHELL]).collect();
-        eprintln!("the_bots_build_a_smelter_mine_and_smelt: {} smelters built, {} ore mined, {} unloads, {} smelted; depots' shells {:?}; longest wait at a dry depot {} s ({}); {} tank-seconds on ore runs {:?}; refusals {:?}", smelters, mined, unloaded, smelted, shells, longest_dry, dry_status, ore_runs, run_words, refused.iter().take(6).collect::<Vec<_>>());
+        eprintln!("the_bots_build_a_smelter_mine_and_smelt: {} smelters built, {} ore mined, {} unloads, {} smelted; workers {} left {} arrived {} taken; oil {} pumped {} unloads; {} bought, {} city works; supply {:?}; depots' shells {:?}; longest wait at a dry depot {} s ({}); {} tank-seconds on ore runs {:?}; refusals {:?}", smelters, mined, unloaded, smelted, workers_left, workers_arrived, workers_taken, pumped, oil_unloaded, bought, city_items, w.players.iter().map(|p| p.supply).collect::<Vec<_>>(), shells, longest_dry, dry_status, ore_runs, run_words, refused.iter().take(4).collect::<Vec<_>>());
         assert!(smelters > 0, "no side built a smelter");
         assert!(mined > 0, "nobody mined");
         assert!(unloaded > 0, "no ore reached a smelter");
         assert!(smelted > 0, "no shell was smelted");
         assert!(longest_dry <= 40, "a tank stood {} s at a depot with no shells to give", longest_dry);
+        assert!(workers_arrived > 0, "no worker reached a depot or a pillbox");
     }
 
     /// The quad match headless (scripts/quad.sh): fifteen seats, three
@@ -1303,7 +1313,7 @@ mod tests {
                 let score: f32 = rs.iter().map(|r| r.score).sum::<f32>() / rs.len().max(1) as f32;
                 let rewards: f32 = rs.iter().map(|r| crate::ledger::rewards(&r.outcome, &k)).sum::<f32>() / rs.len().max(1) as f32;
                 eprintln!(
-                    "  team {}{}: score {:.2}, kills {}, deaths {}, revives {}, built {}, road {}, bridge {}, ore {}, smelted {}, held {:.1}, rewards {:.2} (direct hits {}, pillbox damage {:.1}, pillboxes taken {} neutral {} hostile, defends {}, all neutral {})",
+                    "  team {}{}: score {:.2}, kills {}, deaths {}, revives {}, built {}, road {}, bridge {}, ore {}, smelted {}, oil {}, supply {}, workers lost {} taken {}, held {:.1}, rewards {:.2} (direct hits {}, pillbox damage {:.1}, pillboxes taken {} neutral {} hostile, defends {}, all neutral {})",
                     t,
                     if t == lucky { " (trial)" } else { "" },
                     score,
@@ -1315,6 +1325,10 @@ mod tests {
                     sum(&|o| o.bridge_tiles),
                     sum(&|o| o.ore),
                     sum(&|o| o.smelted),
+                    sum(&|o| o.oil),
+                    sum(&|o| o.supply),
+                    sum(&|o| o.workers_lost),
+                    sum(&|o| o.workers_taken),
                     rs.first().map(|r| r.outcome.held_s as f32 / r.seconds.max(1) as f32).unwrap_or(0.0),
                     rewards,
                     sum(&|o| o.direct_hits),

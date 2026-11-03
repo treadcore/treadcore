@@ -349,6 +349,42 @@ pub const HARVESTER_RANGE: f32 = 8.0;
 pub const HARVESTER_MATERIAL: u8 = 6;
 pub const HARVESTER_REGROW_TICKS: u64 = 60 * TICK_HZ as u64;
 
+// ---- game 7: oil, the workers, supply --------------------------------------
+/// GAME 7, THE LOGISTICS OF A BASE (the plan's chapter 13, stage 3). Wells of oil as deposits of ore:
+/// a map object with a finite stock, pumped by the squad as ore is mined, carried to a refinery of
+/// the side and unloaded beside it. A refinery with oil does what it did (the side burns half, a fuel
+/// stop within three tiles); one without does neither. On a map with wells a depot's fuel comes from
+/// a refinery of the side within `REFINERY_REACH` that has oil, one oil a stop; with none, the depot
+/// gives `DEPOT_FUEL_DRY` a stop, a trickle of its own.
+pub const WELL_STOCK: u16 = 120;
+pub const OIL_TICKS: u16 = 6 * TICK_HZ as u16;
+pub const OIL_HARVEST: u8 = 4;
+pub const PILLBOY_OIL_MAX: u8 = 8;
+pub const REFINERY_REACH: f32 = 30.0;
+pub const DEPOT_FUEL_DRY: f32 = 10.0;
+/// THE WORKERS: a stock in transit, no longer a number moved. A smelter's shells go to the depot on
+/// a worker, and a depot's shells to its pillboxes: `WORKER_LOAD` at a time, one leaving every
+/// `WORKER_EVERY`, walking the map's route at `WORKER_SPEED` on grass and quicker on a road (the
+/// terrain's cost), drawn as a small figure with its load. A splash within `SPLASH_RADIUS` loses it;
+/// a hostile tank within `WORKER_TAKE` takes it, the load to the tank. A base with no road to its
+/// smelter is a base whose guns run dry in a siege, and cutting the road matters.
+pub const WORKER_LOAD: u16 = 5;
+pub const WORKER_EVERY: u64 = 10 * TICK_HZ as u64;
+pub const WORKER_SPEED: f32 = 1.5;
+pub const WORKER_TAKE: f32 = 2.0;
+/// SUPPLY (PROPOSAL-UPGRADES 1.1, as it has it): a side's second count, earned every
+/// `HOLD_EVERY_TICKS` from each live pillbox it owns, each depot, and each powered structure (every
+/// second time), and at once for a kill and a capture; held by the seat, pooled by nobody. Spent on
+/// upgrades (the first, depot stores: the depot holds `STORES_STOCK_MAX` of each kind and makes twice
+/// a second) and, from stage 4, moved by trade.
+pub const SUPPLY_PILLBOX: u32 = 1;
+pub const SUPPLY_DEPOT: u32 = 2;
+pub const SUPPLY_STRUCTURE: u32 = 1;
+pub const SUPPLY_KILL: u32 = 10;
+pub const SUPPLY_CAPTURE: u32 = 5;
+pub const STORES_COST: u32 = 60;
+pub const STORES_STOCK_MAX: u8 = 30;
+
 /// A shell's splash over a deployed squad costs it this many Pillboys.
 pub const PILLBOY_SPLASH_LOSS: u8 = 2;
 /// Within this of the tank the squad is back aboard.

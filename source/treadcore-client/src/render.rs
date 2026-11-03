@@ -355,6 +355,21 @@ fn sync_entities(
         let label = if d.stock > 0 { format!("ore {}", d.stock) } else { "ore gone".to_string() };
         place(&mut commands, d.id, to_screen(d.pos), 0.0, model_key(12, c, bucket), &|| voxel::deposit(left), 1.0, Some((label, c)));
     }
+    // Wells of oil (game 7): a derrick over a pool that shrinks as it is pumped.
+    for d in &obs.wells {
+        let left = d.stock as f32 / DEPOT_STOCK_FULL;
+        let bucket = (left.clamp(0.0, 1.0) * 3.0).round() as u32;
+        let c = if d.stock > 0 { Color::srgb(0.35, 0.3, 0.3) } else { Color::srgb(0.45, 0.42, 0.4) };
+        let label = if d.stock > 0 { format!("oil {}", d.stock) } else { "well dry".to_string() };
+        place(&mut commands, d.id, to_screen(d.pos), 0.0, model_key(13, c, bucket), &|| voxel::well(left), 1.0, Some((label, c)));
+    }
+    // The workers on the road (game 7): a figure in its owner's colour, its load on its back.
+    for w in &obs.carries {
+        let c = player_color(w.owner);
+        let kind = w.kind;
+        let heading = w.route.first().map(|n| (*n - w.pos).heading()).unwrap_or(0.0);
+        place(&mut commands, w.id, to_screen(w.pos), heading, model_key(14, c, kind as u32), &|| voxel::worker(c, kind), 0.7, None);
+    }
     // Pillboxes: Bolo's pyramid, tinted by the owner, the gun on top
     // while it has more than half its health; labelled with health.
     for p in &obs.pillboxes {

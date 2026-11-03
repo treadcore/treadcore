@@ -84,6 +84,8 @@ pub const DRY_FOR: Tick = 60 * TICK_HZ as Tick;
 /// mining, 2 to the smelter) and when the stage began.
 #[derive(Clone, Copy, Debug)]
 struct OreRun {
+    /// Ore to a smelter, or (game 7) oil to a refinery.
+    oil: bool,
     deposit: V2,
     smelter: V2,
     stage: u8,
@@ -343,6 +345,10 @@ pub struct Commander {
     /// Game 6: the ore run under way, if any; the shells seen at the last think and when they changed
     /// (a dry depot does not hold a tank); and until when a dry depot is not asked for shells.
     ore_run: Option<OreRun>,
+    /// Game 7: the city item the guard is on, where it is, and since when.
+    city_run: Option<(crate::city::CityItem, V2, Tick)>,
+    /// The city's order went out: when the squad is back, the item is done.
+    city_ordered: bool,
     /// Game 6: a fill-up just ended, so one ore run is due, as one base cycle is.
     ore_due: bool,
     fill_watch: (u16, Tick),
@@ -519,7 +525,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        let mut c = Commander { temper_retreat: 1.0, forward: None, raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None, ore_run: None, ore_due: false, fill_watch: (0, 0), dry_until: 0 };
+        let mut c = Commander { temper_retreat: 1.0, forward: None, raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None, ore_run: None, city_run: None, city_ordered: false, ore_due: false, fill_watch: (0, 0), dry_until: 0 };
         // The default Settings applied, not only held: a Commander built
         // here plays as a dealt one does (LR 50: one built without this
         // ran the landfall's weights at 0 while its Settings said 30).
@@ -860,36 +866,65 @@ impl Commander {
             }
             self.ore_due = false;
             let deposit = obs.deposits.iter().filter(|d| d.stock > 0 && d.pos.dist(base) <= self.settings.w[W::OreReach]).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)));
+            // Game 7: the oil run, when the side's refinery in reach is short and a well is in reach;
+            // the shells come first.
+            let oil_run = || -> Option<OreRun> {
+                if self.settings.w[W::OilLow] <= 0.0 || obs.wells.is_empty() {
+                    return None;
+                }
+                let carrying = me.pillboys.oil > 0;
+                let refinery = obs.structures.iter().filter(|x| x.kind == StructureKind::Refinery && x.working() && ours(x.owner) && x.pos.dist(base) <= REFINERY_REACH).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)))?;
+                if !carrying && refinery.oil as f32 >= self.settings.w[W::OilLow] {
+                    return None;
+                }
+                let well = obs.wells.iter().filter(|d| d.stock > 0 && d.pos.dist(base) <= self.settings.w[W::OreReach]).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)));
+                let well = well.or(if carrying { Some(me.pos) } else { None })?;
+                Some(OreRun { oil: true, deposit: well, smelter: refinery.pos, stage: if carrying { 2 } else { 0 }, since: obs.tick })
+            };
             match smelters().map(|x| x.pos).filter(|s| s.dist(base) <= SMELTER_REACH).min_by(|a, b| a.dist(base).total_cmp(&b.dist(base))) {
                 Some(smelter) => {
                     let short = obs.depots.iter().filter(|d| ours(d.owner)).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base))).map(|d| (d.stock.kinds[STOCK_SHELL] as f32) < self.settings.w[W::OreLow]).unwrap_or(false);
-                    if !(short || carrying) {
-                        return None;
+                    if (short && deposit.is_some()) || carrying {
+                        let deposit = deposit.or(if carrying { Some(me.pos) } else { None })?;
+                        self.ore_run = Some(OreRun { oil: false, deposit, smelter, stage: if carrying { 2 } else { 0 }, since: obs.tick });
+                    } else {
+                        self.ore_run = Some(oil_run()?);
                     }
-                    let deposit = deposit.or(if carrying { Some(me.pos) } else { None })?;
-                    self.ore_run = Some(OreRun { deposit, smelter, stage: if carrying { 2 } else { 0 }, since: obs.tick });
                 }
                 None => {
                     // No smelter yet: the side's nearest tank to the ore, with the material, goes and
-                    // builds one beside it; the rest wait for it to stand.
-                    let deposit = deposit?;
-                    if me.pillboys.material < StructureKind::Smelter.cost() {
-                        return None;
-                    }
-                    let nearest = obs.tanks.iter().filter(|t| t.alive && !t.boat && ours(Some(t.owner)) && t.pillboys.material >= StructureKind::Smelter.cost()).min_by(|a, b| a.pos.dist(deposit).total_cmp(&b.pos.dist(deposit)).then(a.owner.cmp(&b.owner)));
-                    if nearest.map(|t| t.owner) != Some(obs.player) {
-                        return None;
-                    }
-                    let site = crate::cycle::Cycle::smelter_site(obs, deposit, base, map)?;
-                    self.ore_run = Some(OreRun { deposit, smelter: site, stage: 3, since: obs.tick });
+                    // builds one beside it; the rest wait for it to stand, or fetch oil.
+                    let build = (|| {
+                        let deposit = deposit?;
+                        if me.pillboys.material < StructureKind::Smelter.cost() {
+                            return None;
+                        }
+                        let nearest = obs.tanks.iter().filter(|t| t.alive && !t.boat && ours(Some(t.owner)) && t.pillboys.material >= StructureKind::Smelter.cost()).min_by(|a, b| a.pos.dist(deposit).total_cmp(&b.pos.dist(deposit)).then(a.owner.cmp(&b.owner)));
+                        if nearest.map(|t| t.owner) != Some(obs.player) {
+                            return None;
+                        }
+                        let site = crate::cycle::Cycle::smelter_site(obs, deposit, base, map)?;
+                        Some(OreRun { oil: false, deposit, smelter: site, stage: 3, since: obs.tick })
+                    })();
+                    self.ore_run = Some(build.or_else(oil_run)?);
                 }
             }
         }
         let mut run = self.ore_run.take()?;
         let building = run.stage >= 3;
-        if (!building && !smelters().any(|x| x.pos.dist(run.smelter) < 1.0)) || obs.tick.saturating_sub(run.since) > ORE_RUN_PATIENCE {
+        let sink_stands = if run.oil {
+            obs.structures.iter().any(|x| x.kind == StructureKind::Refinery && x.working() && ours(x.owner) && x.pos.dist(run.smelter) < 1.0)
+        } else {
+            smelters().any(|x| x.pos.dist(run.smelter) < 1.0)
+        };
+        if (!building && !sink_stands) || obs.tick.saturating_sub(run.since) > ORE_RUN_PATIENCE {
             return None;
         }
+        let (what, sources, load, range): (&str, Vec<V2>, u8, f32) = if run.oil {
+            ("oil", obs.wells.iter().filter(|d| d.stock > 0).map(|d| d.pos).collect(), me.pillboys.oil, REFINERY_RANGE)
+        } else {
+            ("ore", obs.deposits.iter().filter(|d| d.stock > 0).map(|d| d.pos).collect(), me.pillboys.ore, SMELTER_RANGE)
+        };
         let mut cmds = Vec::new();
         match run.stage {
             3 => {
@@ -924,36 +959,36 @@ impl Commander {
                 if me.pos.dist(run.deposit) > ORE_STAND {
                     let to = obs.clamp(run.deposit + (me.pos - run.deposit).norm().scale(ORE_STAND * 0.7));
                     self.go(obs, me, to, &mut cmds);
-                    self.set_doing(Act::OreRun, format!("ore run: to the deposit, {:.0} tiles", me.pos.dist(run.deposit)));
+                    self.set_doing(Act::OreRun, format!("{} run: to the {}, {:.0} tiles", what, if run.oil { "well" } else { "deposit" }, me.pos.dist(run.deposit)));
                 } else if me.pillboys.aboard && me.pillboys.task.is_none() {
-                    if !obs.deposits.iter().any(|d| d.pos.tile() == run.deposit.tile() && d.stock > 0) {
+                    if !sources.iter().any(|d| d.tile() == run.deposit.tile()) {
                         return None;
                     }
                     cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: run.deposit } });
                     run.stage = 1;
                     run.since = obs.tick;
-                    self.set_doing(Act::OreRun, "ore run: the squad is mining".into());
+                    self.set_doing(Act::OreRun, format!("{} run: the squad is {}", what, if run.oil { "pumping" } else { "mining" }));
                 }
             }
             1 => {
                 if me.pillboys.aboard && me.pillboys.task.is_none() {
-                    if me.pillboys.ore == 0 {
+                    if load == 0 {
                         return None;
                     }
                     run.stage = 2;
                     run.since = obs.tick;
                 }
-                self.set_doing(Act::OreRun, format!("ore run: the squad is mining, {} ore aboard", me.pillboys.ore));
+                self.set_doing(Act::OreRun, format!("{} run: the squad is {}, {} aboard", what, if run.oil { "pumping" } else { "mining" }, load));
             }
             _ => {
-                if me.pillboys.ore == 0 {
+                if load == 0 {
                     return None;
                 }
-                if me.pos.dist(run.smelter) > SMELTER_RANGE * 0.7 {
-                    let to = obs.clamp(run.smelter + (me.pos - run.smelter).norm().scale(SMELTER_RANGE * 0.5));
+                if me.pos.dist(run.smelter) > range * 0.7 {
+                    let to = obs.clamp(run.smelter + (me.pos - run.smelter).norm().scale(range * 0.5));
                     self.go(obs, me, to, &mut cmds);
                 }
-                self.set_doing(Act::OreRun, format!("ore run: {} ore to the smelter, {:.0} tiles", me.pillboys.ore, me.pos.dist(run.smelter)));
+                self.set_doing(Act::OreRun, format!("{} run: {} {} to the {}, {:.0} tiles", what, load, what, if run.oil { "refinery" } else { "smelter" }, me.pos.dist(run.smelter)));
             }
         }
         self.ore_run = Some(run);
@@ -1544,11 +1579,16 @@ impl Commander {
     /// Defend the base: out to meet the threat as far as BASE_ALARM, else
     /// on guard at the post; the squad mends or takes back the neediest
     /// pillbox of the base whenever no hostile tank is in the leash.
-    fn defend_base(&mut self, obs: &Observation, me: &Tank, cmds: &mut Vec<Command>) -> bool {
+    fn defend_base(&mut self, obs: &Observation, me: &Tank, map: Option<&Map>, cmds: &mut Vec<Command>) -> bool {
         let base = self.base_of(obs, me);
         let (tank, alarm) = self.base_threat(obs, base);
         // A raid on the held ground (LR 68): the side's work nearest it.
         let raid = if tank.is_none() && !alarm { self.raided(obs, base) } else { None };
+        // Game 7: the quartermaster. Quiet, the guard builds the city before it rotates.
+        if tank.is_none() && !alarm && raid.is_none() && self.city(obs, me, base, map, cmds) {
+            return true;
+        }
+        self.city_run = None;
         // Nothing in sight but a gun of the base at work: go and look.
         let post = match (&tank, alarm, self.alarm_at, raid) {
             (None, true, Some(at), _) => at,
@@ -1576,6 +1616,73 @@ impl Commander {
             self.set_doing(Act::BaseThreat, format!("THE HELD GROUND RAIDED: to the work at ({:.0},{:.0}); {}", w.x, w.y, self.doing));
         }
         !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
+    }
+
+    /// Game 7, the city (city.rs): the guard as quartermaster. With an item under way, or one the
+    /// city wants and the squad aboard and idle, the tank drives near the site, the squad is sent,
+    /// and the tank holds until the squad is back; a purchase is made beside the depot. True while
+    /// the city has the tank.
+    fn city(&mut self, obs: &Observation, me: &Tank, base: V2, map: Option<&Map>, cmds: &mut Vec<Command>) -> bool {
+        use crate::city::CityItem;
+        if me.pillboys.strength == 0 || me.boat || self.settings.choice(crate::weights::W::CityPlan) < 2 {
+            self.city_run = None;
+            return false;
+        }
+        if self.city_run.is_none() {
+            if !me.pillboys.aboard || me.pillboys.task.is_some() {
+                return false;
+            }
+            let Some(item) = crate::city::next(obs, me, base, map, &self.settings) else { return false };
+            let site = match &item {
+                CityItem::Order(_, at, _) => *at,
+                CityItem::Buy(_, d, _) => obs.depots.iter().find(|x| x.id == *d).map(|x| x.pos).unwrap_or(base),
+            };
+            self.city_ordered = false;
+            self.city_run = Some((item, site, obs.tick));
+        }
+        let (item, site, since) = self.city_run.take().unwrap();
+        if obs.tick.saturating_sub(since) > ORE_RUN_PATIENCE {
+            return false;
+        }
+        let word = item.word();
+        match &item {
+            CityItem::Buy(up, d, _) => {
+                if me.pos.dist(site) > DEPOT_RADIUS + 4.0 {
+                    self.go(obs, me, site, cmds);
+                    self.set_doing(Act::City, format!("{}: to the depot, {:.0} tiles", word, me.pos.dist(site)));
+                    self.city_run = Some((item, site, since));
+                } else {
+                    cmds.push(Command::Buy { upgrade: *up, at: *d });
+                    self.set_doing(Act::City, format!("{}: bought", word));
+                }
+                true
+            }
+            CityItem::Order(task, _, _) => {
+                if !me.pillboys.aboard || me.pillboys.task.is_some() {
+                    // The squad is out on it: hold here.
+                    self.set_doing(Act::City, format!("{}: the squad is at it", word));
+                    self.city_run = Some((item, site, since));
+                    return true;
+                }
+                if self.city_ordered {
+                    // The squad went and is back: the item is done, or was refused; either way the
+                    // next think asks the city again.
+                    return false;
+                }
+                if me.pos.dist(site) > PILLBOY_REACH * 0.7 {
+                    let to = obs.clamp(site + (me.pos - site).norm().scale(PILLBOY_REACH * 0.5));
+                    self.go(obs, me, to, cmds);
+                    self.set_doing(Act::City, format!("{}: {:.0} tiles to the site", word, me.pos.dist(site)));
+                    self.city_run = Some((item, site, since));
+                    return true;
+                }
+                cmds.push(Command::Deploy { task: task.clone() });
+                self.city_ordered = true;
+                self.set_doing(Act::City, format!("{}: the squad goes", word));
+                self.city_run = Some((item, site, obs.tick));
+                true
+            }
+        }
     }
 
     /// A raid on the held ground (LR 68, `w_defend_ground`): the board's
@@ -1801,7 +1908,7 @@ impl Commander {
             return true;
         }
         match rung {
-            Rung::DefendBase | Rung::Guard => self.defend_base(obs, me, cmds),
+            Rung::DefendBase | Rung::Guard => self.defend_base(obs, me, None, cmds),
             Rung::Fortify => {
                 self.fortify(obs, me, Some(base), cmds);
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
@@ -3487,7 +3594,7 @@ impl Commander {
                 self.fortify(obs, &me, at, &mut cmds);
                 !cmds.iter().any(|c| matches!(c, Command::FireDirect { .. }))
             }
-            Goal::DefendBase => self.defend_base(obs, &me, &mut cmds),
+            Goal::DefendBase => self.defend_base(obs, &me, map, &mut cmds),
             Goal::Auto => self.auto(obs, &me, &mut cmds),
         };
         cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, gun_free)));

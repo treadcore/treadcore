@@ -218,6 +218,11 @@ weights! {
     // crew's trip when the side's shells run low. 0 turns the run off.
     OreLow "ore_low" 10.0, "ore (game 6): a crew fetches ore when the side's nearest depot holds fewer shells than this; 0 never";
     OreReach "ore_reach" 40.0, "ore (game 6): a deposit within this of the base is worth a smelter and a run, tiles";
+    // GAME 7, THE LOGISTICS OF A BASE: oil runs when the refinery is short, the city the guard builds as
+    // quartermaster, and the first thing supply buys.
+    OilLow "oil_low" 4.0, "oil (game 7): a crew fetches oil when the side's refinery holds less than this; 0 never";
+    CityPlan "city_plan" 3.0, "city (game 7): how far the base's guard builds the city when quiet (choice: none | camp | town | works | city): a camp is the castle and the cycle; a town adds a harvester; the works the stores, the road to the smelter and a refinery; the city a data centre and a workshop";
+    UpStores "w_up_stores" 1.0, "city (game 7): worth of the depot's stores at 60 supply; 0 never buys";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
     CastleInside "castle_inside" 2.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";

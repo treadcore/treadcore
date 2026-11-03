@@ -63,6 +63,16 @@ pub struct Outcome {
     pub ore: u32,
     #[serde(default)]
     pub smelted: u32,
+    /// Game 7: oil the seat pumped; its supply at the end; its workers lost to a splash, and the
+    /// workers of others it took.
+    #[serde(default)]
+    pub oil: u32,
+    #[serde(default)]
+    pub supply: u32,
+    #[serde(default)]
+    pub workers_lost: u32,
+    #[serde(default)]
+    pub workers_taken: u32,
     /// The pillboxes and depots the seat's team held, summed each second.
     pub held_s: u32,
     /// The rewards' counts (LR 84). Direct shells of the seat's main gun
@@ -426,6 +436,21 @@ impl Tally {
                         self.seats[i].smelted += 1;
                     }
                 }
+                Event::Pumped { owner, oil, .. } => {
+                    if let Some(i) = seat(*owner) {
+                        self.seats[i].oil += *oil as u32;
+                    }
+                }
+                Event::WorkerLost { owner, .. } => {
+                    if let Some(i) = seat(*owner) {
+                        self.seats[i].workers_lost += 1;
+                    }
+                }
+                Event::WorkerTaken { by, .. } => {
+                    if let Some(i) = seat(*by) {
+                        self.seats[i].workers_taken += 1;
+                    }
+                }
                 _ => {}
             }
         }
@@ -477,6 +502,10 @@ impl Tally {
                 let (castles, guns) = castles_and_guns(w, ours);
                 o.castle_s += castles;
                 o.held_s += guns + w.depots.iter().filter(|d| ours(d.owner)).count() as u32;
+            }
+            // Game 7: each seat's supply as it stands, so the end's is the last.
+            for (i, o) in self.seats.iter_mut().enumerate() {
+                o.supply = w.players.get(i).map(|p| p.supply).unwrap_or(o.supply);
             }
             // The line, once a second: going in counts once a visit, and a raid when its tank
             // is back on its own side alive.

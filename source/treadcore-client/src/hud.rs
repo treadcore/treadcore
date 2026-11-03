@@ -859,6 +859,16 @@ fn top(view: &View) -> String {
         if let Some(m) = view.map.as_ref() {
             first.push_str(&format!("   {} {:.0} m/tile", m.class(), m.scale_m));
         }
+        // Game 7: the side's stocks, as the plan's stocks page in a line: supply, the depots' shells,
+        // the smelters' ore, the refineries' oil, and the workers on the road.
+        {
+            let ours = |o: Option<treadcore_sim::PlayerId>| o.map(|o| o == obs.player || obs.allied(o)).unwrap_or(false);
+            let shells: u32 = obs.depots.iter().filter(|d| ours(d.owner)).map(|d| d.stock.kinds[STOCK_SHELL] as u32).sum();
+            let ore: u32 = obs.structures.iter().filter(|x| x.kind == StructureKind::Smelter && ours(x.owner)).map(|x| (x.ore + x.shells) as u32).sum();
+            let oil: u32 = obs.structures.iter().filter(|x| x.kind == StructureKind::Refinery && ours(x.owner)).map(|x| x.oil as u32).sum();
+            let workers = obs.carries.iter().filter(|c| ours(Some(c.owner))).count();
+            first.push_str(&format!("   SUPPLY {}  shells {} ore {} oil {} workers {}", obs.supply, shells, ore, oil, workers));
+        }
         // Under a goal (step 11a), what the tank is doing for it.
         if !view.goal.is_empty() {
             first.push_str("   ");

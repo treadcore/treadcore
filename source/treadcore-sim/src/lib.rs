@@ -30,7 +30,7 @@ pub mod lingo;
 pub mod map;
 pub mod rules;
 
-pub use map::{DepotOwner, Map, MapDepot, MapDeposit, MapError, MapPillbox, MapStructure, Terrain, MAP_FORMAT, MAP_H, MAP_W};
+pub use map::{DepotOwner, Map, MapDepot, MapDeposit, MapWell, MapError, MapPillbox, MapStructure, Terrain, MAP_FORMAT, MAP_H, MAP_W};
 pub use rules::*;
 
 /// Simulation rate. Twenty ticks a second is enough for a game whose
@@ -449,6 +449,11 @@ pub struct Structure {
     /// A smelter's ore, brought by the tanks and not yet made into shells (game 6).
     #[serde(default)]
     pub ore: u16,
+    /// A smelter's shells made and waiting for a worker; a refinery's oil (game 7).
+    #[serde(default)]
+    pub shells: u16,
+    #[serde(default)]
+    pub oil: u16,
 }
 
 /// A deposit of ore (game 6): a place on the map with a stock that is
@@ -459,6 +464,60 @@ pub struct Deposit {
     pub id: EntityId,
     pub pos: V2,
     pub stock: u16,
+}
+
+/// A well of oil (game 7): as a deposit, pumped by the squad, carried
+/// to a refinery of the side.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Well {
+    pub id: EntityId,
+    pub pos: V2,
+    pub stock: u16,
+}
+
+/// What a worker carries (game 7).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CarryKind {
+    /// Shells: a smelter's to a depot, a depot's to a pillbox.
+    Shells,
+    /// Supply (game 8): a convoy between two depots that trade.
+    Supply,
+}
+
+/// A worker on the road (game 7): a stock in transit from one thing of
+/// the side to another, along the map's route; lost to a splash, taken
+/// by a hostile tank that drives up to it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Carry {
+    pub id: EntityId,
+    pub owner: PlayerId,
+    pub kind: CarryKind,
+    pub amount: u16,
+    pub pos: V2,
+    /// The way left to walk, nearest first.
+    pub route: Vec<V2>,
+    pub from: EntityId,
+    pub to: EntityId,
+}
+
+/// What supply buys (game 7; PROPOSAL-UPGRADES 1.2, the first of them).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Upgrade {
+    /// The depot holds `STORES_STOCK_MAX` of each kind and makes twice a second.
+    DepotStores,
+}
+
+impl Upgrade {
+    pub fn cost(self) -> u32 {
+        match self {
+            Upgrade::DepotStores => STORES_COST,
+        }
+    }
+    pub fn word(self) -> &'static str {
+        match self {
+            Upgrade::DepotStores => "depot stores",
+        }
+    }
 }
 
 impl Structure {
@@ -560,11 +619,14 @@ pub struct Pillboys {
     /// Ore mined and not yet unloaded at a smelter (game 6), up to `PILLBOY_ORE_MAX`.
     #[serde(default)]
     pub ore: u8,
+    /// Oil pumped and not yet unloaded at a refinery (game 7), up to `PILLBOY_OIL_MAX`.
+    #[serde(default)]
+    pub oil: u8,
 }
 
 impl Pillboys {
     pub fn fresh(pos: V2, material: u8) -> Pillboys {
-        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material, route: Vec::new(), carrying: None, ore: 0 }
+        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material, route: Vec::new(), carrying: None, ore: 0, oil: 0 }
     }
     pub fn deployed(&self) -> bool {
         !self.aboard
@@ -665,6 +727,20 @@ pub struct Depot {
     /// What it has made and no tank has drawn; it starts empty and only an owned depot makes.
     #[serde(default)]
     pub stock: DepotStock,
+    /// Depot stores bought (game 7): it holds `STORES_STOCK_MAX` of each kind and makes twice a second.
+    #[serde(default)]
+    pub stores: bool,
+}
+
+impl Depot {
+    /// What it holds of each kind.
+    pub fn cap(&self) -> u8 {
+        if self.stores {
+            STORES_STOCK_MAX
+        } else {
+            DEPOT_STOCK_MAX
+        }
+    }
 }
 
 /// A depot's store, and the turn it has reached: shells, trees, interceptors, long drones,
@@ -690,17 +766,18 @@ pub const STOCK_STRIKE: usize = 5;
 impl DepotStock {
     /// One more of the next kind that has room; none when all six are full.
     pub fn make(&mut self) {
-        self.make_from(false);
+        self.make_from(false, DEPOT_STOCK_MAX);
     }
 
-    /// The same, passing over shells on an ore map (game 6): those come from a smelter.
-    pub fn make_from(&mut self, ore_game: bool) {
+    /// The same, passing over shells on an ore map (game 6): those come from a smelter; `cap` what
+    /// it holds of each kind (the stores, game 7).
+    pub fn make_from(&mut self, ore_game: bool, cap: u8) {
         for i in 0..self.kinds.len() {
             let k = (self.turn as usize + i) % self.kinds.len();
             if ore_game && k == STOCK_SHELL {
                 continue;
             }
-            if self.kinds[k] < DEPOT_STOCK_MAX {
+            if self.kinds[k] < cap {
                 self.kinds[k] += 1;
                 self.turn = ((k + 1) % self.kinds.len()) as u8;
                 return;
@@ -737,6 +814,10 @@ pub struct Player {
     /// Times this player's tank has come back (`Command::Respawn`).
     #[serde(default)]
     pub respawned: u8,
+    /// Supply (game 7): a side's second count, earned from what it holds and destroys, spent on
+    /// upgrades, moved by trade. The seat's own; an alliance pools nothing.
+    #[serde(default)]
+    pub supply: u32,
     /// The tick of this player's last ping.
     #[serde(default)]
     pub last_ping: Option<Tick>,
@@ -908,6 +989,8 @@ pub enum Command {
     /// Bring my destroyed tank back at my start, when the scenario has
     /// respawns and `RESPAWN_TICKS` have passed since it died.
     Respawn,
+    /// Game 7: spend supply on an upgrade at a depot of my side I am beside.
+    Buy { upgrade: Upgrade, at: EntityId },
     /// Launch from the shore (Paul, 16 October: "tanks usually can build
     /// a boat under it if it is in water"): the squad, aboard, puts a
     /// boat on the water beside the tank and the tank is on it at once,
@@ -999,8 +1082,18 @@ pub enum Event {
     Mined { owner: PlayerId, at: V2, ore: u8, left: u16 },
     /// Game 6: a tank unloaded its ore into a smelter of its side.
     OreUnloaded { tank: EntityId, owner: PlayerId, structure: EntityId, ore: u8 },
-    /// Game 6: a smelter made a shell into a depot of its side.
+    /// Game 6: a smelter made a shell (game 7: into its own store, for a worker to carry).
     Smelted { structure: EntityId, owner: PlayerId, depot: EntityId },
+    /// Game 7: the squad pumped a well; a tank unloaded its oil into a refinery of its side.
+    Pumped { owner: PlayerId, at: V2, oil: u8, left: u16 },
+    OilUnloaded { tank: EntityId, owner: PlayerId, structure: EntityId, oil: u8 },
+    /// Game 7: a worker left with a load, got there, was lost to a splash, or was taken by a tank.
+    WorkerLeft { carry: EntityId, owner: PlayerId, kind: CarryKind, amount: u16, from: EntityId, to: EntityId },
+    WorkerArrived { carry: EntityId, owner: PlayerId, kind: CarryKind, amount: u16, to: EntityId },
+    WorkerLost { carry: EntityId, owner: PlayerId, kind: CarryKind, amount: u16, by: Option<PlayerId> },
+    WorkerTaken { carry: EntityId, owner: PlayerId, kind: CarryKind, amount: u16, by: PlayerId },
+    /// Game 7: supply spent on an upgrade at a depot.
+    Bought { player: PlayerId, upgrade: Upgrade, at: EntityId },
     /// To the layer only.
     MineLaid { mine: EntityId, owner: PlayerId, at: V2 },
     MineExploded { mine: EntityId, owner: PlayerId, at: V2, hits: Vec<EntityId> },
@@ -1265,6 +1358,11 @@ pub struct World {
     /// The ore there is (game 6). Empty on a map that has none, which then plays as game 5.
     #[serde(default)]
     pub deposits: Vec<Deposit>,
+    /// The oil there is (game 7), and the workers on the road.
+    #[serde(default)]
+    pub wells: Vec<Well>,
+    #[serde(default)]
+    pub carries: Vec<Carry>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
@@ -1301,6 +1399,10 @@ impl World {
         if scenario.ore && map.deposits.is_empty() {
             map.seed_deposits();
         }
+        // Game 7: and oil, the same way.
+        if scenario.ore && map.wells.is_empty() {
+            map.seed_wells();
+        }
         let mut w = World {
             tick: 0,
             map,
@@ -1316,6 +1418,8 @@ impl World {
             structures: Vec::new(),
             boats: Vec::new(),
             deposits: Vec::new(),
+            wells: Vec::new(),
+            carries: Vec::new(),
             rng: Rng::new(scenario.seed ^ 0xA5A5_5A5A),
             next_id: 1,
             over: false,
@@ -1332,7 +1436,7 @@ impl World {
                 DepotOwner::Seat(o) if (o as usize) < seats => Some(o),
                 _ => None,
             };
-            w.depots.push(Depot { id, pos: d.pos, owner, capture: 0, capturer: None, stock: DepotStock::default() });
+            w.depots.push(Depot { id, pos: d.pos, owner, capture: 0, capturer: None, stores: false, stock: DepotStock::default() });
         }
         for p in w.map.pillboxes.clone() {
             let id = w.alloc();
@@ -1343,11 +1447,15 @@ impl World {
         for st in w.map.structures.clone() {
             let id = w.alloc();
             let owner = st.owner.filter(|o| (*o as usize) < seats);
-            w.structures.push(Structure { id, kind: st.kind, pos: st.pos, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
+            w.structures.push(Structure { id, kind: st.kind, pos: st.pos, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0, shells: 0, oil: 0 });
         }
         for d in w.map.deposits.clone() {
             let id = w.alloc();
             w.deposits.push(Deposit { id, pos: Map::tile_centre(d.pos), stock: d.stock });
+        }
+        for d in w.map.wells.clone() {
+            let id = w.alloc();
+            w.wells.push(Well { id, pos: Map::tile_centre(d.pos), stock: d.stock });
         }
         // No more seats than the map has starts.
         for (i, (name, is_bot)) in scenario.players.iter().take(seats).enumerate() {
@@ -1385,6 +1493,7 @@ impl World {
                 last_chat: None,
                 respawned: 0,
                 last_ping: None,
+                supply: 0,
             });
 
         }
@@ -1405,6 +1514,7 @@ impl World {
         m.pillboxes = self.pillboxes.iter().map(|p| MapPillbox { pos: p.pos, owner: p.owner }).collect();
         m.structures = self.structures.iter().map(|s| MapStructure { pos: s.pos, kind: s.kind, owner: s.owner }).collect();
         m.deposits = self.deposits.iter().map(|d| MapDeposit { pos: d.pos, stock: d.stock }).collect();
+        m.wells = self.wells.iter().map(|d| MapWell { pos: d.pos, stock: d.stock }).collect();
         m
     }
 
@@ -1412,16 +1522,52 @@ impl World {
     pub fn ore_game(&self) -> bool {
         !self.deposits.is_empty()
     }
+    /// Game 7 is on: the map has oil, so a depot's fuel comes from a refinery with oil.
+    pub fn oil_game(&self) -> bool {
+        !self.wells.is_empty()
+    }
     /// The deposit on this tile, if any.
     pub fn deposit_at(&self, at: V2) -> Option<&Deposit> {
         self.deposits.iter().find(|d| d.pos.tile() == at.tile())
+    }
+    /// The well on this tile, if any.
+    pub fn well_at(&self, at: V2) -> Option<&Well> {
+        self.wells.iter().find(|d| d.pos.tile() == at.tile())
+    }
+    /// A seat's supply (game 7), and its side's: a team spends as one, so a guard may buy with what
+    /// its leader's holdings earned (the proposal's "a fleet can fund its leader", without the hand-over).
+    pub fn supply_of(&self, p: PlayerId) -> u32 {
+        self.players.iter().find(|x| x.id == p).map(|x| x.supply).unwrap_or(0)
+    }
+    pub fn supply_of_side(&self, p: PlayerId) -> u32 {
+        self.players.iter().filter(|x| self.allied(x.id, p)).map(|x| x.supply).sum()
+    }
+    /// Spend from the side: the spender's own first, then the rest of the side, nearest seat first.
+    fn spend_supply(&mut self, p: PlayerId, mut n: u32) {
+        let mut order: Vec<PlayerId> = self.players.iter().filter(|x| self.allied(x.id, p)).map(|x| x.id).collect();
+        order.sort_by_key(|id| (*id != p, *id));
+        for id in order {
+            if n == 0 {
+                break;
+            }
+            if let Some(pl) = self.players.iter_mut().find(|x| x.id == id) {
+                let take = pl.supply.min(n);
+                pl.supply -= take;
+                n -= take;
+            }
+        }
+    }
+    fn pay_supply(&mut self, p: PlayerId, n: u32) {
+        if let Some(pl) = self.players.iter_mut().find(|x| x.id == p) {
+            pl.supply += n;
+        }
     }
     /// Why a works cannot stand here (game 6): a smelter wants a deposit
     /// within `SMELTER_SITE`, a harvester forest within `HARVESTER_SITE`,
     /// both open ground with nothing on it. None when it can.
     pub fn works_site_refused(&self, kind: StructureKind, at: V2) -> Option<&'static str> {
         let here = self.map.at(at);
-        if !here.passable() || here == Terrain::Forest || here == Terrain::Depot || self.deposit_at(at).is_some() {
+        if !here.passable() || here == Terrain::Forest || here == Terrain::Depot || self.deposit_at(at).is_some() || self.well_at(at).is_some() {
             return Some("a works stands on open ground");
         }
         if self.structures.iter().any(|x| x.pos.tile() == at.tile()) || self.pillboxes.iter().any(|p| p.pos.tile() == at.tile()) {
@@ -1674,6 +1820,7 @@ impl World {
         self.step_depots();
         self.step_trees();
         self.step_structures();
+        self.step_carries();
         self.step_swarm();
         self.step_match();
     }
@@ -2007,6 +2154,7 @@ impl World {
                 }
                 let material = squad.material;
                 let ore = squad.ore;
+                let oil = squad.oil;
                 let carrying = squad.carrying.is_some();
                 match task {
                     PillboyTask::Capture { pillbox } if self.pillbox(*pillbox).is_none() => match self.structure(*pillbox) {
@@ -2138,6 +2286,14 @@ impl World {
                             if ore >= PILLBOY_ORE_MAX {
                                 return self.reject(o, "ore is full");
                             }
+                        } else if let Some(wl) = self.well_at(*at) {
+                            // Game 7: a well is pumped the same way.
+                            if wl.stock == 0 {
+                                return self.reject(o, "the well is dry");
+                            }
+                            if oil >= PILLBOY_OIL_MAX {
+                                return self.reject(o, "oil is full");
+                            }
                         } else {
                             if self.map.at(*at) != Terrain::Forest {
                                 return self.reject(o, "no forest there");
@@ -2166,6 +2322,7 @@ impl World {
             }
             Command::Alliance(_) | Command::Propose { .. } | Command::Answer { .. } | Command::Chat { .. } | Command::TakeSeat { .. } | Command::Respawn | Command::Ping { .. } | Command::Request { .. } => {}
             Command::Tow { target } => self.tow(o, tid, *target),
+            Command::Buy { upgrade, at } => self.buy(o, tid, *upgrade, *at),
             Command::Embark => self.embark(o, tid),
         }
     }
@@ -2392,6 +2549,31 @@ impl World {
     /// the prior art's alliance protocol in the proposal's words: a request is a
     /// Join proposal; accepting and declining answer the pending one
     /// from that player; leaving is a side of one's own again.
+    /// Game 7: an upgrade bought with supply at a depot of the buyer's side, the buyer within a
+    /// depot's reach and a little of it.
+    fn buy(&mut self, o: &Order, tid: EntityId, upgrade: Upgrade, at: EntityId) {
+        let Some(t) = self.tank(tid).filter(|t| t.alive) else { return self.reject(o, "tank destroyed") };
+        let pos = t.pos;
+        let Some(d) = self.depots.iter().find(|d| d.id == at) else { return self.reject(o, "no such depot") };
+        if !self.allied_opt(d.owner, o.player) {
+            return self.reject(o, "that depot is not your side's");
+        }
+        if d.pos.dist(pos) > DEPOT_RADIUS + 6.0 {
+            return self.reject(o, "too far from the depot");
+        }
+        if matches!(upgrade, Upgrade::DepotStores) && d.stores {
+            return self.reject(o, "already bought");
+        }
+        if self.supply_of_side(o.player) < upgrade.cost() {
+            return self.reject(o, "supply short");
+        }
+        self.spend_supply(o.player, upgrade.cost());
+        if let Some(d) = self.depots.iter_mut().find(|d| d.id == at) {
+            d.stores = true;
+        }
+        self.events.push(Event::Bought { player: o.player, upgrade, at });
+    }
+
     fn apply_alliance(&mut self, o: &Order, cmd: AllianceCmd) {
         let me = o.player;
         match cmd {
@@ -2518,6 +2700,7 @@ impl World {
             Built(BuildKind, V2),
             Harvested(V2),
             Mined(V2),
+            Pumped(V2),
             Lifted(EntityId),
             Revived(EntityId),
             Abandon(&'static str),
@@ -2535,6 +2718,8 @@ impl World {
         // Game 6: the deposits with ore left, and whether a works may stand at a point.
         let ore_tiles: Vec<(i32, i32)> = self.deposits.iter().filter(|d| d.stock > 0).map(|d| d.pos.tile()).collect();
         let deposit_tiles: Vec<(i32, i32)> = self.deposits.iter().map(|d| d.pos.tile()).collect();
+        let oil_tiles: Vec<(i32, i32)> = self.wells.iter().filter(|d| d.stock > 0).map(|d| d.pos.tile()).collect();
+        let well_tiles: Vec<(i32, i32)> = self.wells.iter().map(|d| d.pos.tile()).collect();
         let works_refused: Vec<(StructureKind, V2, bool)> = self
             .tanks
             .iter()
@@ -2724,9 +2909,16 @@ impl World {
                         done.push((t.id, t.owner, Done::Mined(*at)));
                     }
                 }
+                PillboyTask::Harvest { at } if oil_tiles.contains(&at.tile()) => {
+                    // Game 7: oil, the same.
+                    s.progress += 1;
+                    if s.progress >= OIL_TICKS {
+                        done.push((t.id, t.owner, Done::Pumped(*at)));
+                    }
+                }
                 PillboyTask::Harvest { at } => {
                     if map.at(*at) != Terrain::Forest {
-                        done.push((t.id, t.owner, Done::Abandon(if deposit_tiles.contains(&at.tile()) { "the deposit is worked out" } else { "the forest is gone" })));
+                        done.push((t.id, t.owner, Done::Abandon(if deposit_tiles.contains(&at.tile()) { "the deposit is worked out" } else if well_tiles.contains(&at.tile()) { "the well is dry" } else { "the forest is gone" })));
                     } else {
                         s.progress += 1;
                         if s.progress >= HARVEST_TICKS {
@@ -2800,6 +2992,7 @@ impl World {
                         }
                         if let Some(pl) = self.players.iter_mut().find(|p| p.id == owner) {
                             pl.score += SCORE_CAPTURE;
+                            pl.supply += SUPPLY_CAPTURE;
                         }
                         self.events.push(Event::PillboxCaptured { pillbox: pid, by: owner, from });
                     } else if let Some(t) = self.tank_mut(tid) {
@@ -2825,6 +3018,7 @@ impl World {
                     }
                     if let Some(pl) = self.players.iter_mut().find(|p| p.id == owner) {
                         pl.score += SCORE_CAPTURE;
+                        pl.supply += SUPPLY_CAPTURE;
                     }
                     self.events.push(Event::StructureCaptured { structure: sid, kind, by: owner, from });
                 }
@@ -2895,7 +3089,7 @@ impl World {
                         BuildKind::Concrete => self.set_terrain(at, Terrain::Concrete),
                         BuildKind::Structure(kind) => {
                             let id = self.alloc();
-                            self.structures.push(Structure { id, kind, pos: at, owner: Some(owner), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
+                            self.structures.push(Structure { id, kind, pos: at, owner: Some(owner), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0, shells: 0, oil: 0 });
                             self.events.push(Event::StructureBuilt { structure: id, kind, by: owner, at });
                         }
                         BuildKind::Road if self.map.at(at) == Terrain::Water => {
@@ -2965,6 +3159,18 @@ impl World {
                         t.pillboys.ore += gained;
                     }
                     self.events.push(Event::Mined { owner, at, ore: gained, left });
+                }
+                Done::Pumped(at) => {
+                    let at = Map::tile_centre(at);
+                    let room = self.tank(tid).map(|t| PILLBOY_OIL_MAX - t.pillboys.oil).unwrap_or(0);
+                    let Some(d) = self.wells.iter_mut().find(|d| d.pos.tile() == at.tile()) else { continue };
+                    let gained = OIL_HARVEST.min(room).min(d.stock.min(u8::MAX as u16) as u8);
+                    d.stock -= gained as u16;
+                    let left = d.stock;
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.oil += gained;
+                    }
+                    self.events.push(Event::Pumped { owner, at, oil: gained, left });
                 }
                 Done::Lifted(pid) => {
                     let Some(ix) = self.pillboxes.iter().position(|p| p.id == pid) else { continue };
@@ -3074,23 +3280,32 @@ impl World {
                 p.shells += 1;
             }
         }
-        // Game 5: a depot of the side within reach, with shells in stock, sends one along (the
-        // base's workers). A neutral pillbox has no depot and makes its own alone.
-        if self.tick % PILLBOX_SUPPLY_EVERY == 0 {
-            let mut sends: Vec<(EntityId, EntityId)> = Vec::new();
+        // Game 5: a depot of the side within reach, with shells in stock, sends them along: the
+        // base's workers, since game 7 a worker on the road every `WORKER_EVERY` with up to
+        // `WORKER_LOAD`, not counting what is already on its way. A neutral pillbox has no depot and
+        // makes its own alone.
+        if self.tick % WORKER_EVERY == 0 {
+            let mut sends: Vec<(EntityId, V2, PlayerId, EntityId, V2, u16)> = Vec::new();
             for p in self.pillboxes.iter().filter(|p| p.alive() && p.owner.is_some() && p.shells < PILLBOX_SHELLS) {
-                if let Some(d) = self.depots.iter().filter(|d| d.stock.kinds[STOCK_SHELL] > 0 && d.owner.is_some_and(|o| self.allied_opt(p.owner, o)) && d.pos.dist(p.pos) <= PILLBOX_SUPPLY_REACH).min_by(|a, b| a.pos.dist(p.pos).total_cmp(&b.pos.dist(p.pos))) {
-                    sends.push((p.id, d.id));
-                }
-            }
-            for (pid, did) in sends {
-                let Some(d) = self.depots.iter_mut().find(|d| d.id == did) else { continue };
-                if d.stock.kinds[STOCK_SHELL] == 0 {
+                let coming: u16 = self.carries.iter().filter(|c| c.to == p.id).map(|c| c.amount).sum();
+                let need = (PILLBOX_SHELLS - p.shells).saturating_sub(coming);
+                if need == 0 {
                     continue;
                 }
-                d.stock.kinds[STOCK_SHELL] -= 1;
-                if let Some(p) = self.pillbox_mut(pid) {
-                    p.shells += 1;
+                if let Some(d) = self.depots.iter().filter(|d| d.stock.kinds[STOCK_SHELL] > 0 && d.owner.is_some_and(|o| self.allied_opt(p.owner, o)) && d.pos.dist(p.pos) <= PILLBOX_SUPPLY_REACH).min_by(|a, b| a.pos.dist(p.pos).total_cmp(&b.pos.dist(p.pos))) {
+                    sends.push((p.id, p.pos, d.owner.unwrap(), d.id, d.pos, need.min(WORKER_LOAD).min(d.stock.kinds[STOCK_SHELL] as u16)));
+                }
+            }
+            for (pid, ppos, owner, did, dpos, n) in sends {
+                let have = self.depots.iter().find(|d| d.id == did).map(|d| d.stock.kinds[STOCK_SHELL] as u16).unwrap_or(0);
+                let n = n.min(have);
+                if n == 0 {
+                    continue;
+                }
+                if self.send_worker(owner, CarryKind::Shells, n, did, dpos, pid, ppos) {
+                    if let Some(d) = self.depots.iter_mut().find(|d| d.id == did) {
+                        d.stock.kinds[STOCK_SHELL] -= n as u8;
+                    }
                 }
             }
         }
@@ -3652,6 +3867,8 @@ impl World {
                     // Low-flying drones in the splash go down too. The
                     // bubble does nothing to a shell; the shell does plenty
                     // to the bubble.
+                    // Game 7: the workers in the splash.
+                    self.splash_carries(s.impact, Some(s.owner));
                     let dead: Vec<EntityId> = self.drones.iter().filter(|d| d.pos.dist(s.impact) <= SPLASH_RADIUS * 0.8).map(|d| d.id).collect();
                     for id in dead {
                         let d = self.drones.iter().find(|d| d.id == id).cloned().unwrap();
@@ -3771,7 +3988,28 @@ impl World {
         for (structure, kind, owner, on) in flips {
             self.events.push(Event::StructurePower { structure, kind, owner, on });
         }
-        let working: Vec<(StructureKind, Option<PlayerId>, V2)> = self.structures.iter().filter(|x| x.working()).map(|x| (x.kind, x.owner, x.pos)).collect();
+        // Game 7: oil into a refinery of the side from any tank beside it, before the refinery is
+        // judged working: on an oil map a refinery without oil does nothing.
+        let oil_game = self.oil_game();
+        if oil_game {
+            let mut unloads: Vec<(EntityId, PlayerId, EntityId, u8)> = Vec::new();
+            for t in self.tanks.iter().filter(|t| t.alive && t.pillboys.oil > 0) {
+                if let Some(x) = self.structures.iter().filter(|x| x.kind == StructureKind::Refinery && x.working() && same_side(x.owner, Some(t.owner)) && x.pos.dist(t.pos) <= REFINERY_RANGE).min_by(|a, b| a.pos.dist(t.pos).total_cmp(&b.pos.dist(t.pos))) {
+                    unloads.push((t.id, t.owner, x.id, t.pillboys.oil));
+                }
+            }
+            for (tid, owner, sid, oil) in unloads {
+                if let Some(x) = self.structure_mut(sid) {
+                    x.oil += oil as u16;
+                }
+                if let Some(t) = self.tank_mut(tid) {
+                    t.pillboys.oil = 0;
+                }
+                self.events.push(Event::OilUnloaded { tank: tid, owner, structure: sid, oil });
+            }
+        }
+        let fuelled = |x: &Structure| x.kind != StructureKind::Refinery || !oil_game || x.oil > 0;
+        let working: Vec<(StructureKind, Option<PlayerId>, V2)> = self.structures.iter().filter(|x| x.working() && fuelled(x)).map(|x| (x.kind, x.owner, x.pos)).collect();
         let serves = |kind: StructureKind, p: PlayerId, at: V2, r: f32| working.iter().any(|(k, o, pos)| *k == kind && same_side(*o, Some(p)) && pos.dist(at) <= r);
         // Refinery: the side burns less. Drive_tank burned the full
         // amount this tick; give back the saving.
@@ -3781,12 +4019,17 @@ impl World {
         }
         // The stops: a refinery's fuel and shells, a workshop's repair
         // and bay, at a depot's cadence. On an ore map (game 6) the
-        // refinery's shells are dry: shells come from ore.
+        // refinery's shells are dry: shells come from ore. On an oil map
+        // (game 7) its fuel costs it an oil a stop.
         let ore_game = self.ore_game();
         if tick % RESUPPLY_EVERY == 0 {
+            let mut stops: Vec<EntityId> = Vec::new();
             for t in self.tanks.iter_mut().filter(|t| t.alive) {
                 if serves(StructureKind::Refinery, t.owner, t.pos, REFINERY_RANGE) {
-                    t.fuel = (t.fuel + 40.0).min(TANK_FUEL);
+                    if t.fuel < TANK_FUEL {
+                        t.fuel = (t.fuel + 40.0).min(TANK_FUEL);
+                        stops.push(t.id);
+                    }
                     if !ore_game {
                         t.shells = (t.shells + 1).min(TANK_SHELLS);
                     }
@@ -3804,6 +4047,16 @@ impl World {
                     }
                     if t.pillboys.aboard && t.pillboys.strength < PILLBOY_MAX {
                         t.pillboys.strength += 1;
+                    }
+                }
+            }
+            // Game 7: each stop's fuel costs the refinery an oil.
+            if oil_game {
+                for tid in stops {
+                    let Some(t) = self.tank(tid) else { continue };
+                    let (pos, owner) = (t.pos, t.owner);
+                    if let Some(x) = self.structures.iter_mut().filter(|x| x.kind == StructureKind::Refinery && x.working() && x.oil > 0 && same_side(x.owner, Some(owner)) && x.pos.dist(pos) <= REFINERY_RANGE).min_by(|a, b| a.pos.dist(pos).total_cmp(&b.pos.dist(pos))) {
+                        x.oil -= 1;
                     }
                 }
             }
@@ -3842,26 +4095,46 @@ impl World {
                 }
                 self.events.push(Event::OreUnloaded { tank: tid, owner, structure: sid, ore });
             }
+            // A shell a second from the ore, into the smelter's own store (game 7: a worker carries
+            // it to the depot; before, it appeared there).
             if tick % SMELTER_MAKES_EVERY == 0 {
-                let mut makes: Vec<(EntityId, PlayerId, EntityId)> = Vec::new();
+                let mut makes: Vec<(EntityId, PlayerId)> = Vec::new();
                 for x in self.structures.iter().filter(|x| x.kind == StructureKind::Smelter && x.working() && x.ore > 0) {
                     let Some(owner) = x.owner else { continue };
-                    if let Some(d) = self.depots.iter().filter(|d| d.stock.kinds[STOCK_SHELL] < DEPOT_STOCK_MAX && same_side(d.owner, x.owner) && d.pos.dist(x.pos) <= SMELTER_REACH).min_by(|a, b| a.pos.dist(x.pos).total_cmp(&b.pos.dist(x.pos))) {
-                        makes.push((x.id, owner, d.id));
-                    }
+                    makes.push((x.id, owner));
                 }
-                for (sid, owner, did) in makes {
+                for (sid, owner) in makes {
                     if let Some(x) = self.structure_mut(sid) {
                         x.ore -= 1;
+                        x.shells += 1;
                     }
-                    if let Some(d) = self.depots.iter_mut().find(|d| d.id == did) {
-                        d.stock.kinds[STOCK_SHELL] += 1;
+                    self.events.push(Event::Smelted { structure: sid, owner, depot: sid });
+                }
+            }
+            // Game 7: every `WORKER_EVERY`, a worker leaves each smelter with shells for the nearest
+            // depot of the side within its reach that has room.
+            if tick % WORKER_EVERY == 0 {
+                let mut sends: Vec<(EntityId, PlayerId, V2, EntityId, V2, u16)> = Vec::new();
+                for x in self.structures.iter().filter(|x| x.kind == StructureKind::Smelter && x.working() && x.shells > 0) {
+                    let Some(owner) = x.owner else { continue };
+                    if let Some(d) = self.depots.iter().filter(|d| d.stock.kinds[STOCK_SHELL] < d.cap() && same_side(d.owner, x.owner) && d.pos.dist(x.pos) <= SMELTER_REACH).min_by(|a, b| a.pos.dist(x.pos).total_cmp(&b.pos.dist(x.pos))) {
+                        let room = (d.cap() - d.stock.kinds[STOCK_SHELL]) as u16;
+                        sends.push((x.id, owner, x.pos, d.id, d.pos, x.shells.min(WORKER_LOAD).min(room)));
                     }
-                    self.events.push(Event::Smelted { structure: sid, owner, depot: did });
+                }
+                for (sid, owner, from, did, to, n) in sends {
+                    if n == 0 {
+                        continue;
+                    }
+                    if self.send_worker(owner, CarryKind::Shells, n, sid, from, did, to) {
+                        if let Some(x) = self.structure_mut(sid) {
+                            x.shells -= n;
+                        }
+                    }
                 }
             }
         }
-        // Holding pays while it is held.
+        // Holding pays while it is held: the score, and (game 7) supply.
         if tick % HOLD_EVERY_TICKS == 0 {
             let held: Vec<PlayerId> = self.structures.iter().filter(|x| x.alive()).filter_map(|x| x.owner).collect();
             for o in held {
@@ -3869,6 +4142,106 @@ impl World {
                     pl.score += SCORE_HOLD;
                 }
             }
+            let second = (tick / HOLD_EVERY_TICKS) % 2 == 0;
+            let powered: Vec<PlayerId> = self.structures.iter().filter(|x| x.working()).filter_map(|x| x.owner).collect();
+            for o in powered {
+                if second {
+                    self.pay_supply(o, SUPPLY_STRUCTURE);
+                }
+            }
+        }
+    }
+
+    /// Game 7: a worker sets out with a load from `from` to `to` along the map's route; false, and
+    /// nothing leaves, when there is no way.
+    #[allow(clippy::too_many_arguments)]
+    fn send_worker(&mut self, owner: PlayerId, kind: CarryKind, amount: u16, from: EntityId, at: V2, to: EntityId, dest: V2) -> bool {
+        let route = self.map.route(at, dest);
+        if route.is_empty() && at.dist(dest) > 1.5 {
+            return false;
+        }
+        let id = self.alloc();
+        self.carries.push(Carry { id, owner, kind, amount, pos: at, route, from, to });
+        self.events.push(Event::WorkerLeft { carry: id, owner, kind, amount, from, to });
+        true
+    }
+
+    /// Game 7: the workers walk, deliver, are taken or are lost.
+    fn step_carries(&mut self) {
+        if self.carries.is_empty() {
+            return;
+        }
+        let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
+        let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
+        let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
+        let allied = |a: PlayerId, b: PlayerId| a == b || (team_of(a).is_some() && team_of(a) == team_of(b));
+        let mut arrived: Vec<Carry> = Vec::new();
+        let mut taken: Vec<(Carry, EntityId, PlayerId)> = Vec::new();
+        for c in self.carries.iter_mut() {
+            // A hostile tank on it takes it.
+            if let Some((tid, by, _)) = tanks.iter().find(|(_, o, p)| !allied(*o, c.owner) && p.dist(c.pos) <= WORKER_TAKE) {
+                taken.push((c.clone(), *tid, *by));
+                c.amount = 0;
+                continue;
+            }
+            let step = WORKER_SPEED * DT / self.map.move_cost(c.pos).max(0.1);
+            let next = c.route.first().copied();
+            match next {
+                None => arrived.push(c.clone()),
+                Some(n) => {
+                    let to = n - c.pos;
+                    if to.len() <= step {
+                        c.pos = n;
+                        c.route.remove(0);
+                        if c.route.is_empty() {
+                            arrived.push(c.clone());
+                        }
+                    } else {
+                        c.pos = c.pos + to.norm().scale(step);
+                    }
+                }
+            }
+        }
+        let done: Vec<EntityId> = arrived.iter().map(|c| c.id).chain(taken.iter().map(|(c, _, _)| c.id)).collect();
+        self.carries.retain(|c| !done.contains(&c.id));
+        for c in arrived {
+            match c.kind {
+                CarryKind::Shells => {
+                    if let Some(d) = self.depots.iter_mut().find(|d| d.id == c.to) {
+                        d.stock.kinds[STOCK_SHELL] = (d.stock.kinds[STOCK_SHELL] as u16 + c.amount).min(d.cap() as u16) as u8;
+                    } else if let Some(p) = self.pillboxes.iter_mut().find(|p| p.id == c.to) {
+                        p.shells = (p.shells + c.amount).min(PILLBOX_SHELLS);
+                    }
+                }
+                CarryKind::Supply => self.trade_arrives(&c),
+            }
+            self.events.push(Event::WorkerArrived { carry: c.id, owner: c.owner, kind: c.kind, amount: c.amount, to: c.to });
+        }
+        for (c, tid, by) in taken {
+            match c.kind {
+                CarryKind::Shells => {
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.shells = (t.shells + c.amount).min(TANK_SHELLS);
+                    }
+                }
+                CarryKind::Supply => self.pay_supply(by, c.amount as u32),
+            }
+            self.events.push(Event::WorkerTaken { carry: c.id, owner: c.owner, kind: c.kind, amount: c.amount, by });
+        }
+    }
+
+    /// Game 8: a convoy of supply got to the depot it traded with. Nothing until stage 4.
+    fn trade_arrives(&mut self, _c: &Carry) {}
+
+    /// Game 7: a splash at `at` loses every worker in it.
+    fn splash_carries(&mut self, at: V2, by: Option<PlayerId>) {
+        let lost: Vec<Carry> = self.carries.iter().filter(|c| c.pos.dist(at) <= SPLASH_RADIUS).cloned().collect();
+        if lost.is_empty() {
+            return;
+        }
+        self.carries.retain(|c| c.pos.dist(at) > SPLASH_RADIUS);
+        for c in lost {
+            self.events.push(Event::WorkerLost { carry: c.id, owner: c.owner, kind: c.kind, amount: c.amount, by });
         }
     }
 
@@ -3920,6 +4293,7 @@ impl World {
                 if b != owner {
                     if let Some(p) = self.players.iter_mut().find(|p| p.id == b) {
                         p.score += SCORE_KILL;
+                        p.supply += SUPPLY_KILL;
                     }
                 }
             }
@@ -3946,12 +4320,21 @@ impl World {
 
     fn step_depots(&mut self) {
         if self.tick % DEPOT_MAKES_EVERY == 0 {
-            // Game 6: on an ore map a depot's shells come from a smelter, never from itself.
+            // Game 6: on an ore map a depot's shells come from a smelter, never from itself. Game 7:
+            // a depot with stores holds more and makes twice.
             let ore_game = self.ore_game();
             for dep in self.depots.iter_mut().filter(|d| d.owner.is_some()) {
-                dep.stock.make_from(ore_game);
+                let cap = dep.cap();
+                dep.stock.make_from(ore_game, cap);
+                if dep.stores {
+                    dep.stock.make_from(ore_game, cap);
+                }
             }
         }
+        // Game 7: on an oil map a depot's fuel comes from a refinery of the side within reach that
+        // has oil, an oil a stop; with none, a trickle.
+        let oil_game = self.oil_game();
+        let refineries: Vec<(EntityId, Option<PlayerId>, V2, u16)> = self.structures.iter().filter(|x| x.kind == StructureKind::Refinery && x.working()).map(|x| (x.id, x.owner, x.pos, x.oil)).collect();
         let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
         let teams: Vec<(PlayerId, TeamId)> = self.players.iter().map(|p| (p.id, p.team)).collect();
         let team_of = |p: PlayerId| teams.iter().find(|(id, _)| *id == p).map(|(_, t)| *t);
@@ -4012,14 +4395,28 @@ impl World {
             let tick = self.tick;
             let Some(di) = self.depots.iter().position(|d| d.id == did) else { continue };
             let mut stock = self.depots[di].stock;
+            let (dpos, downer) = (self.depots[di].pos, self.depots[di].owner);
             let t = self.tank_mut(tid).unwrap();
             let before = (t.shells, t.bay, t.armor as i32, t.fuel as i32);
+            let mut oil_used: Option<EntityId> = None;
             if tick % RESUPPLY_EVERY == 0 {
                 if t.shells < TANK_SHELLS && stock.take(STOCK_SHELL) {
                     t.shells += 1;
                 }
                 t.armor = (t.armor + REPAIR_PER_TICK).min(TANK_ARMOR);
-                t.fuel = (t.fuel + 40.0).min(TANK_FUEL);
+                let fuel = if !oil_game {
+                    40.0
+                } else {
+                    match refineries.iter().filter(|(_, o, p, oil)| *oil > 0 && downer.is_some_and(|dp| allied_with(*o, dp)) && p.dist(dpos) <= REFINERY_REACH).min_by(|a, b| a.2.dist(dpos).total_cmp(&b.2.dist(dpos))) {
+                        Some((rid, _, _, _)) if t.fuel < TANK_FUEL => {
+                            oil_used = Some(*rid);
+                            40.0
+                        }
+                        Some(_) => 0.0,
+                        None => DEPOT_FUEL_DRY,
+                    }
+                };
+                t.fuel = (t.fuel + fuel).min(TANK_FUEL);
                 // Interceptors first: the bubble is what keeps the tank alive
                 // long enough to use the rest. A kind the store has none of
                 // does not hold up the next.
@@ -4044,6 +4441,11 @@ impl World {
             }
             let changed = before != (t.shells, t.bay, t.armor as i32, t.fuel as i32);
             self.depots[di].stock = stock;
+            if let Some(rid) = oil_used {
+                if let Some(x) = self.structures.iter_mut().find(|x| x.id == rid && x.oil > 0) {
+                    x.oil -= 1;
+                }
+            }
             if changed && tick % (RESUPPLY_EVERY * 4) == 0 {
                 self.events.push(Event::Resupplied { tank: tid, depot: did });
             }
@@ -4051,8 +4453,20 @@ impl World {
         for (did, by) in captured {
             if let Some(p) = self.players.iter_mut().find(|p| p.id == by) {
                 p.score += SCORE_CAPTURE;
+                p.supply += SUPPLY_CAPTURE;
             }
             self.events.push(Event::DepotCaptured { depot: did, by });
+        }
+        // Game 7: holding pays supply, a pillbox one and a depot two every hold.
+        if self.tick % HOLD_EVERY_TICKS == 0 {
+            let boxes: Vec<PlayerId> = self.pillboxes.iter().filter(|p| p.alive()).filter_map(|p| p.owner).collect();
+            for o in boxes {
+                self.pay_supply(o, SUPPLY_PILLBOX);
+            }
+            let deps: Vec<PlayerId> = self.depots.iter().filter_map(|d| d.owner).collect();
+            for o in deps {
+                self.pay_supply(o, SUPPLY_DEPOT);
+            }
         }
     }
 
@@ -4202,6 +4616,9 @@ impl World {
             mines: self.mines.iter().filter(|m| self.mine_known_to(p, m)).cloned().collect(),
             structures: self.structures.clone(),
             deposits: self.deposits.clone(),
+            wells: self.wells.clone(),
+            carries: self.carries.iter().filter(|c| self.allied(c.owner, p) || self.seen_by(&eyes, c.pos)).cloned().collect(),
+            supply: self.supply_of_side(p),
             forest,
             pads,
             boats,
@@ -4228,6 +4645,9 @@ impl World {
             Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::DroneRetasked { owner, .. } | Event::LinkLost { owner, .. } => self.allied(*owner, p),
             Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => self.allied(*owner, p),
             Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } | Event::Mined { owner, .. } | Event::OreUnloaded { owner, .. } | Event::Smelted { owner, .. } => self.allied(*owner, p),
+            Event::Pumped { owner, .. } | Event::OilUnloaded { owner, .. } | Event::WorkerLeft { owner, .. } | Event::WorkerArrived { owner, .. } | Event::WorkerLost { owner, .. } => self.allied(*owner, p),
+            Event::WorkerTaken { owner, by, .. } => self.allied(*owner, p) || self.allied(*by, p),
+            Event::Bought { player, .. } => self.allied(*player, p),
             Event::Jammed { owner, .. } => self.allied(*owner, p),
             Event::Chat { player, to: ChatTo::Team, .. } => self.allied(*player, p),
             Event::Chat { player, to: ChatTo::Players(mask), .. } => *player == p || (p < 16 && mask & (1 << p) != 0),
@@ -4524,6 +4944,14 @@ pub struct Observation {
     /// Every deposit of ore and what it has left (game 6): public, like a depot.
     #[serde(default)]
     pub deposits: Vec<Deposit>,
+    /// Every well of oil (game 7), the same; the workers of my side and any my eyes see; and my
+    /// supply.
+    #[serde(default)]
+    pub wells: Vec<Well>,
+    #[serde(default)]
+    pub carries: Vec<Carry>,
+    #[serde(default)]
+    pub supply: u32,
     /// The nearest pad tiles to the tank with nothing built on them:
     /// where a Brain with no map can build a structure.
     #[serde(default)]
@@ -4668,7 +5096,7 @@ mod tests {
         let at = Map::tile_centre(at);
         w.map.set(at, Terrain::Pad);
         let id = w.alloc();
-        w.structures.push(Structure { id, kind, pos: at, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
+        w.structures.push(Structure { id, kind, pos: at, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0, shells: 0, oil: 0 });
         id
     }
 
@@ -4705,7 +5133,7 @@ mod tests {
     /// plant takes its side's economy dark; holding scores.
     #[test]
     fn structures_need_power_and_serve_their_side() {
-        let mut w = world();
+        let mut w = World::new(Scenario { swarm_interval: 0, ore: false, ..Scenario::default() });
         w.pillboxes.clear();
         let me = w.players[0].tank;
         let home = w.tank(me).unwrap().pos;
@@ -6554,18 +6982,21 @@ mod tests {
         let at = w.map.center();
         w.pillboxes.push(Pillbox { id: 9001, pos: at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
         w.pillboxes.push(Pillbox { id: 9002, pos: at + V2::new(40.0, 0.0), owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
-        w.depots.push(Depot { id: 9003, pos: at + V2::new(4.0, 0.0), owner: Some(0), capture: 0, capturer: None, stock: DepotStock { kinds: [10, 0, 0, 0, 0, 0], turn: 0 } });
+        w.depots.push(Depot { id: 9003, pos: at + V2::new(4.0, 0.0), owner: Some(0), capture: 0, capturer: None, stores: false, stock: DepotStock { kinds: [10, 0, 0, 0, 0, 0], turn: 0 } });
         w.damage_pillbox(9001, 10.0, Some(1));
         assert_eq!(w.pillbox(9001).unwrap().shells, 0, "the stock went up with the hit");
         assert!(w.pillbox(9001).unwrap().alive(), "and the pillbox stands");
         let before = w.depots.iter().find(|d| d.id == 9003).unwrap().stock.kinds[STOCK_SHELL];
-        for _ in 0..(10 * TICK_HZ) {
+        // Game 7: the workers walk it, one leaving every ten seconds with five.
+        let mut workers = 0;
+        for _ in 0..(20 * TICK_HZ) {
             w.step(&[]);
+            workers += w.events.iter().filter(|e| matches!(e, Event::WorkerArrived { to: 9001, .. })).count();
         }
         let near = w.pillbox(9001).unwrap().shells;
         let far = w.pillbox(9002).unwrap().shells;
-        assert!(near >= 5, "the depot's workers sent {} in ten seconds", near);
-        assert_eq!(far, 1, "with no depot in reach, its own making alone: {}", far);
+        assert!(near >= 5 && workers >= 1, "the depot's workers brought {} in twenty seconds ({} arrived)", near, workers);
+        assert_eq!(far, 2, "with no depot in reach, its own making alone: {}", far);
         assert!(w.depots.iter().find(|d| d.id == 9003).unwrap().stock.kinds[STOCK_SHELL] < before + 10, "the depot's stock paid for it");
     }
 
@@ -6586,8 +7017,8 @@ mod tests {
         let ore_at = open_near(&w, home + V2::new(3.0, 0.0));
         w.deposits.push(Deposit { id: 9101, pos: ore_at, stock: 10 });
         let smelter_at = open_near(&w, ore_at + V2::new(2.0, 2.0));
-        w.structures.push(Structure { id: 9102, kind: StructureKind::Smelter, pos: smelter_at, owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
-        w.depots.push(Depot { id: 9103, pos: open_near(&w, home + V2::new(-6.0, 0.0)), owner: Some(0), capture: 0, capturer: None, stock: DepotStock::default() });
+        w.structures.push(Structure { id: 9102, kind: StructureKind::Smelter, pos: smelter_at, owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0, shells: 0, oil: 0 });
+        w.depots.push(Depot { id: 9103, pos: open_near(&w, home + V2::new(-6.0, 0.0)), owner: Some(0), capture: 0, capturer: None, stores: false, stock: DepotStock::default() });
         w.step(&[]);
         assert!(w.structure(9102).unwrap().working(), "a smelter runs on its own crew, no plant needed");
         w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Harvest { at: ore_at } } }]);
@@ -6611,16 +7042,21 @@ mod tests {
         assert_eq!(shells_before, 0, "the depot made shells of its own on an ore map");
         w.tank_mut(me).unwrap().pos = smelter_at + V2::new(1.0, 0.0);
         let mut unloaded = false;
-        let mut smelted = 0;
-        for _ in 0..(8 * TICK_HZ) {
+        let (mut smelted, mut left, mut arrived) = (0, 0, 0);
+        // Game 7: the smelter's shells reach the depot on a worker, one leaving every ten seconds.
+        for _ in 0..(30 * TICK_HZ) {
             w.step(&[]);
             unloaded |= w.events.iter().any(|e| matches!(e, Event::OreUnloaded { structure: 9102, ore: 4, .. }));
             smelted += w.events.iter().filter(|e| matches!(e, Event::Smelted { structure: 9102, .. })).count();
+            left += w.events.iter().filter(|e| matches!(e, Event::WorkerLeft { from: 9102, kind: CarryKind::Shells, .. })).count();
+            arrived += w.events.iter().filter(|e| matches!(e, Event::WorkerArrived { kind: CarryKind::Shells, .. })).count();
         }
         assert!(unloaded, "the ore never went into the smelter");
         assert_eq!(w.tank(me).unwrap().pillboys.ore, 0);
         assert_eq!(smelted, ORE_HARVEST as usize, "a shell an ore, one a second: {}", smelted);
         assert_eq!(w.structure(9102).unwrap().ore, 0);
+        assert!(left >= 1 && arrived >= 1, "the worker never walked: {} left, {} arrived", left, arrived);
+        assert_eq!(w.structure(9102).unwrap().shells, 0, "shells left at the smelter");
         // Into the nearest depot of the side (the start's own, here): the side's shells are the
         // smelter's and nothing else's.
         let side: Vec<&Depot> = w.depots.iter().filter(|d| d.owner == Some(0)).collect();
@@ -6628,7 +7064,7 @@ mod tests {
         assert!(side.iter().any(|d| d.stock.kinds[STOCK_TREE] > 0), "the depots still make the rest");
         // A match without ore (`ore: false`) plays as game 5: the depot makes shells.
         let mut old = World::new(Scenario { ore: false, ..Scenario::bots(2) });
-        old.depots.push(Depot { id: 9104, pos: open_near(&old, home + V2::new(-6.0, 0.0)), owner: Some(0), capture: 0, capturer: None, stock: DepotStock::default() });
+        old.depots.push(Depot { id: 9104, pos: open_near(&old, home + V2::new(-6.0, 0.0)), owner: Some(0), capture: 0, capturer: None, stores: false, stock: DepotStock::default() });
         for _ in 0..(8 * TICK_HZ) {
             old.step(&[]);
         }
@@ -6673,7 +7109,7 @@ mod tests {
         let tree = open_near(&w, home + V2::new(3.0, 0.0));
         w.map.set(tree, Terrain::Forest);
         let hv = open_near(&w, tree + V2::new(2.0, 1.0));
-        w.structures.push(Structure { id: 9202, kind: StructureKind::Harvester, pos: hv, owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
+        w.structures.push(Structure { id: 9202, kind: StructureKind::Harvester, pos: hv, owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0, shells: 0, oil: 0 });
         w.tank_mut(me).unwrap().pillboys.material = 0;
         w.step(&[]);
         w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Harvest { at: tree } } }]);
@@ -6724,5 +7160,178 @@ mod tests {
         assert!(w.ore_game());
         assert!(World::new(Scenario::bots(2)).ore_game(), "a match has ore");
         assert!(!World::new(Scenario { ore: false, ..Scenario::bots(2) }).ore_game(), "unless told not");
+    }
+
+    /// Game 7: a well is pumped and the oil unloaded at a refinery of the side; a refinery with oil
+    /// fuels the depot's stop at the full rate and costs an oil a stop, one without leaves a trickle;
+    /// a well line reads and writes, and a match seeds wells as it seeds ore.
+    #[test]
+    fn oil_is_pumped_unloaded_and_fuels_the_depot() {
+        let mut w = World::new(Scenario::bots(2));
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let home = w.tank(me).unwrap().pos;
+        assert!(w.oil_game() && !w.wells.is_empty(), "a match has oil");
+        let well_at = open_near(&w, home + V2::new(3.0, 0.0));
+        w.wells.push(Well { id: 9301, pos: well_at, stock: 10 });
+        let depot = w.depots.iter().find(|d| d.owner == Some(0)).unwrap().clone();
+        // A refinery of ours, powered, within the depot's reach; with no oil it is no fuel.
+        let plant = put_structure(&mut w, StructureKind::Power, Some(0), depot.pos + V2::new(-4.0, 0.0));
+        let refinery = put_structure(&mut w, StructureKind::Refinery, Some(0), depot.pos + V2::new(-4.0, 2.0));
+        w.step(&[]);
+        assert!(w.structure(plant).unwrap().working() && w.structure(refinery).unwrap().working());
+        // Dry: a tank on the depot gets the trickle.
+        {
+            let t = w.tank_mut(me).unwrap();
+            t.pos = depot.pos;
+            t.fuel = 100.0;
+        }
+        let before = w.tank(me).unwrap().fuel;
+        for _ in 0..(2 * TICK_HZ) {
+            let t = w.tank_mut(me).unwrap();
+            t.pos = depot.pos;
+            t.goal = None;
+            w.step(&[]);
+        }
+        let dry_gain = w.tank(me).unwrap().fuel - before;
+        assert!(dry_gain > 0.0 && dry_gain <= 4.0 * DEPOT_FUEL_DRY + 1.0, "a dry depot gave {} in two seconds", dry_gain);
+        // Pump the well, unload at the refinery.
+        {
+            let t = w.tank_mut(me).unwrap();
+            t.pos = home;
+            t.fuel = TANK_FUEL;
+        }
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Harvest { at: well_at } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        let mut pumped = None;
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            if let Some(Event::Pumped { oil, left, .. }) = w.events.iter().find(|e| matches!(e, Event::Pumped { .. })) {
+                pumped = Some((*oil, *left));
+            }
+            if pumped.is_some() && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert_eq!(pumped, Some((OIL_HARVEST, 10 - OIL_HARVEST as u16)));
+        assert_eq!(w.tank(me).unwrap().pillboys.oil, OIL_HARVEST);
+        w.tank_mut(me).unwrap().pos = w.structure(refinery).unwrap().pos + V2::new(1.0, 0.0);
+        w.step(&[]);
+        w.step(&[]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::OilUnloaded { structure, oil: 4, .. } if *structure == refinery)) || w.structure(refinery).unwrap().oil == 4, "the oil never went in");
+        assert_eq!((w.tank(me).unwrap().pillboys.oil, w.structure(refinery).unwrap().oil), (0, 4));
+        // Stocked: the depot's stop gives the full forty, and each costs the refinery an oil.
+        {
+            let t = w.tank_mut(me).unwrap();
+            t.pos = depot.pos;
+            t.fuel = 100.0;
+        }
+        let before = w.tank(me).unwrap().fuel;
+        for _ in 0..(2 * TICK_HZ) {
+            let t = w.tank_mut(me).unwrap();
+            t.pos = depot.pos;
+            t.goal = None;
+            w.step(&[]);
+        }
+        let gain = w.tank(me).unwrap().fuel - before;
+        assert!(gain >= 3.0 * 40.0, "a stocked refinery gave {} in two seconds", gain);
+        assert!(w.structure(refinery).unwrap().oil < 4, "the stops cost nothing");
+        // The file.
+        let text = w.map_as_played().to_text();
+        assert!(text.contains("\nwell "));
+        let back = Map::from_text(&text).unwrap();
+        assert_eq!(back.wells.len(), w.wells.len());
+    }
+
+    /// Game 7: a worker on the road is taken by a hostile tank that drives up to it and lost to a
+    /// splash; supply is earned by holding and a kill, and buys the depot its stores.
+    #[test]
+    fn workers_are_taken_and_lost_and_supply_buys_the_stores() {
+        let mut w = World::new(Scenario::bots(3));
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let them = w.players[1].tank;
+        let home = w.tank(me).unwrap().pos;
+        let depot = w.depots.iter().find(|d| d.owner == Some(0)).unwrap().clone();
+        // A pillbox of ours nine tiles from the depot, empty, and the depot stocked: a worker leaves.
+        let pb_at = open_near(&w, depot.pos + V2::new(9.0, 0.0));
+        w.pillboxes.push(Pillbox { id: 9401, pos: pb_at, owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
+        w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().stock.kinds[STOCK_SHELL] = 10;
+        w.tank_mut(me).unwrap().pos = home + V2::new(0.0, 30.0);
+        let mut carry = None;
+        for _ in 0..(12 * TICK_HZ) {
+            w.step(&[]);
+            if let Some(Event::WorkerLeft { carry: c, amount, .. }) = w.events.iter().find(|e| matches!(e, Event::WorkerLeft { .. })) {
+                carry = Some((*c, *amount));
+            }
+            if carry.is_some() {
+                break;
+            }
+        }
+        let (cid, amount) = carry.expect("no worker left the depot");
+        assert_eq!(amount, WORKER_LOAD.min(PILLBOX_SHELLS));
+        // The enemy drives onto it: taken, the shells to the enemy's tank.
+        let at = w.carries.iter().find(|c| c.id == cid).unwrap().pos;
+        {
+            let t = w.tank_mut(them).unwrap();
+            t.pos = at;
+            t.shells = 0;
+        }
+        w.step(&[]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::WorkerTaken { carry, by: 1, .. } if *carry == cid)), "{:?}", w.events.iter().filter(|e| matches!(e, Event::WorkerTaken { .. } | Event::WorkerArrived { .. })).collect::<Vec<_>>());
+        assert_eq!(w.tank(them).unwrap().shells, amount);
+        assert!(w.carries.iter().all(|c| c.id != cid));
+        // The next worker, under a splash: lost.
+        w.tank_mut(them).unwrap().pos = home + V2::new(0.0, -30.0);
+        let mut next = None;
+        for _ in 0..(12 * TICK_HZ) {
+            w.step(&[]);
+            if let Some(Event::WorkerLeft { carry: c, .. }) = w.events.iter().find(|e| matches!(e, Event::WorkerLeft { .. })) {
+                next = Some(*c);
+                break;
+            }
+        }
+        let cid = next.expect("no second worker");
+        let at = w.carries.iter().find(|c| c.id == cid).unwrap().pos;
+        land_shell(&mut w, 1, at);
+        assert!(w.events.iter().any(|e| matches!(e, Event::WorkerLost { carry, .. } if *carry == cid)));
+        assert!(w.carries.iter().all(|c| c.id != cid));
+        // Supply: a pillbox and a depot held pay every ten seconds; a kill pays ten.
+        let s0 = w.supply_of(0);
+        for _ in 0..HOLD_EVERY_TICKS {
+            w.step(&[]);
+        }
+        assert!(w.supply_of(0) >= s0 + SUPPLY_PILLBOX + SUPPLY_DEPOT, "holding paid {}", w.supply_of(0) - s0);
+        let s1 = w.supply_of(0);
+        w.damage(them, 1000.0, Some(0));
+        assert_eq!(w.supply_of(0), s1 + SUPPLY_KILL);
+        // The stores: refused short of supply and far from the depot; bought, the depot holds thirty
+        // and makes twice a second.
+        w.tank_mut(me).unwrap().pos = depot.pos;
+        {
+            let p = w.players.iter_mut().find(|p| p.id == 0).unwrap();
+            p.supply = STORES_COST - 1;
+        }
+        w.step(&[Order { player: 0, cmd: Command::Buy { upgrade: Upgrade::DepotStores, at: depot.id } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "supply short")), "{:?}", w.events);
+        w.players.iter_mut().find(|p| p.id == 0).unwrap().supply = STORES_COST;
+        w.tank_mut(me).unwrap().pos = depot.pos + V2::new(20.0, 0.0);
+        w.step(&[Order { player: 0, cmd: Command::Buy { upgrade: Upgrade::DepotStores, at: depot.id } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "too far from the depot")));
+        w.tank_mut(me).unwrap().pos = depot.pos;
+        w.step(&[Order { player: 0, cmd: Command::Buy { upgrade: Upgrade::DepotStores, at: depot.id } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Bought { upgrade: Upgrade::DepotStores, .. })), "{:?}", w.events);
+        let d = w.depots.iter().find(|d| d.id == depot.id).unwrap();
+        assert!(d.stores && d.cap() == STORES_STOCK_MAX && w.supply_of(0) == 0);
+        w.step(&[Order { player: 0, cmd: Command::Buy { upgrade: Upgrade::DepotStores, at: depot.id } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why == "already bought")));
+        let trees0 = w.depots.iter().find(|d| d.id == depot.id).unwrap().stock.kinds[STOCK_TREE];
+        w.tank_mut(me).unwrap().pos = depot.pos + V2::new(20.0, 0.0);
+        for _ in 0..(10 * TICK_HZ) {
+            w.step(&[]);
+        }
+        let d = w.depots.iter().find(|d| d.id == depot.id).unwrap();
+        let made: u16 = d.stock.kinds.iter().map(|k| *k as u16).sum::<u16>();
+        assert!(made >= 18, "with stores the depot made {} things in ten seconds (trees were {})", made, trees0);
     }
 }

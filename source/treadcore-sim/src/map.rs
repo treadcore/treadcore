@@ -7,7 +7,7 @@
 //! dead. Drones ignore all of it. That asymmetry is most of the game's
 //! texture: the ground is the tank's problem, the air is the drones'.
 
-use crate::rules::DEPOSIT_STOCK;
+use crate::rules::{DEPOSIT_STOCK, WELL_STOCK};
 use crate::{PlayerId, Rng, StructureKind, MAX_PLAYERS, V2};
 use serde::{Deserialize, Serialize};
 
@@ -119,6 +119,13 @@ pub struct MapDeposit {
     pub stock: u16,
 }
 
+/// A well of oil as the map places it (game 7), as a deposit.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MapWell {
+    pub pos: V2,
+    pub stock: u16,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
     pub w: usize,
@@ -149,6 +156,9 @@ pub struct Map {
     /// match is industrial (`seed_deposits`); a map file places its own.
     #[serde(default)]
     pub deposits: Vec<MapDeposit>,
+    /// Wells of oil (game 7), as the deposits.
+    #[serde(default)]
+    pub wells: Vec<MapWell>,
     /// The land's regions (`Regions`), worked out when a route first
     /// asks and forgotten when a tile changes whether it can be driven.
     #[serde(skip)]
@@ -459,7 +469,7 @@ impl Map {
             pillboxes.push(MapPillbox { pos: center + V2::new(dx, dy), owner: None });
         }
 
-        let mut map = Map { w, h, seed, scale_m: default_scale(), tempo: default_tempo(), cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new(), deposits: Vec::new(), regions: Regions::default(), edits: Edits::default() };
+        let mut map = Map { w, h, seed, scale_m: default_scale(), tempo: default_tempo(), cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new(), deposits: Vec::new(), wells: Vec::new(), regions: Regions::default(), edits: Edits::default() };
 
         // Roads: the four sides to the centre, and a ring road round the
         // edge through every start, so each start reaches a spoke. Roads
@@ -546,6 +556,39 @@ impl Map {
                 continue;
             }
             self.deposits.push(MapDeposit { pos: at, stock: DEPOSIT_STOCK });
+        }
+    }
+
+    /// Game 7: the oil, the same way, for the other starts.
+    pub fn seed_wells(&mut self) {
+        let c = self.center();
+        let starts = self.starts.clone();
+        for s in starts.iter().skip(1).step_by(2) {
+            let want = s.lerp(c, 0.6);
+            let open = |x: i32, y: i32| {
+                let t = self.at_tile(x as usize, y as usize);
+                t == Terrain::Grass || t == Terrain::Rubble || t == Terrain::Road
+            };
+            let Some(at) = self.nearest_tiles(want, 8.0, 1, open, None).first().copied() else { continue };
+            if self.depots.iter().any(|d| d.pos.dist(at) < 4.0) || self.deposits.iter().any(|d| d.pos.dist(at) < 3.0) || self.wells.iter().any(|d| d.pos.dist(at) < 6.0) {
+                continue;
+            }
+            self.wells.push(MapWell { pos: at, stock: WELL_STOCK });
+        }
+        // One start: the well goes where the second would have put it, across the centre.
+        if self.wells.is_empty() {
+            if let Some(s) = starts.first() {
+                let want = c + (c - s.lerp(c, 0.6));
+                let open = |x: i32, y: i32| {
+                    let t = self.at_tile(x as usize, y as usize);
+                    t == Terrain::Grass || t == Terrain::Rubble || t == Terrain::Road
+                };
+                if let Some(at) = self.nearest_tiles(want, 8.0, 1, open, None).first().copied() {
+                    if !self.deposits.iter().any(|d| d.pos.dist(at) < 3.0) {
+                        self.wells.push(MapWell { pos: at, stock: WELL_STOCK });
+                    }
+                }
+            }
         }
     }
 
@@ -1273,6 +1316,9 @@ impl Map {
         for d in &self.deposits {
             s.push_str(&format!("deposit {} {} {}\n", d.pos.x, d.pos.y, d.stock));
         }
+        for d in &self.wells {
+            s.push_str(&format!("well {} {} {}\n", d.pos.x, d.pos.y, d.stock));
+        }
         s
     }
 
@@ -1296,6 +1342,7 @@ impl Map {
         let mut pillboxes = Vec::new();
         let mut structures = Vec::new();
         let mut deposits = Vec::new();
+        let mut wells = Vec::new();
         let mut rows_read = 0usize;
         for (n, raw) in lines {
             let line = raw.trim();
@@ -1340,7 +1387,7 @@ impl Map {
                         return Err(err(n, "tempo must be above nothing"));
                     }
                 }
-                "start" | "depot" | "pillbox" | "structure" | "deposit" => {
+                "start" | "depot" | "pillbox" | "structure" | "deposit" | "well" => {
                     if rows_read < h {
                         return Err(err(n, &format!("'{}' before all {} rows were read ({} so far)", head, h, rows_read)));
                     }
@@ -1400,6 +1447,17 @@ impl Map {
                             };
                             deposits.push(MapDeposit { pos: Map::tile_centre(p), stock });
                         }
+                        "well" => {
+                            // Game 7: `well x y [stock]`, on open ground.
+                            if !t.passable() || matches!(t, Terrain::Forest | Terrain::Depot | Terrain::Pad | Terrain::Bridge) {
+                                return Err(err(n, "a well on water, a wall, forest, a pad, a bridge or a depot"));
+                            }
+                            let stock = match words.next() {
+                                None => WELL_STOCK,
+                                Some(s) => s.parse::<u16>().map_err(|_| err(n, "a well's stock is a whole number"))?,
+                            };
+                            wells.push(MapWell { pos: Map::tile_centre(p), stock });
+                        }
                         _ => {
                             if t == Terrain::Water {
                                 return Err(err(n, "a pillbox on water"));
@@ -1435,7 +1493,7 @@ impl Map {
         if starts.len() > MAX_PLAYERS {
             return Err(err(0, &format!("{} starts; the most is {}", starts.len(), MAX_PLAYERS)));
         }
-        Ok(Map { w, h, seed, scale_m, tempo, cells, starts, depots, pillboxes, structures, deposits, regions: Regions::default(), edits: Edits::default() })
+        Ok(Map { w, h, seed, scale_m, tempo, cells, starts, depots, pillboxes, structures, deposits, wells, regions: Regions::default(), edits: Edits::default() })
     }
 }
 

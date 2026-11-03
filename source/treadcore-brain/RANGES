@@ -133,3 +133,5 @@ ping_defend_hold 0.5 5  # times a rally's length
 ping_outnumbered 1 4  # a ratio of tanks
 ore_low 0 20  # a depot holds 20 shells (DEPOT_STOCK_MAX)
 ore_reach 0 128  # the map
+oil_low 0 20  # a refinery holds what the tanks bring
+w_up_stores 0 4

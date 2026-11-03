@@ -776,6 +776,44 @@ pub fn deposit(left: f32) -> Model {
     m
 }
 
+/// The oil's colour: a black that catches the light.
+const OIL: Color = Color::srgb(0.12, 0.1, 0.1);
+
+/// A well of oil (game 7): a derrick over a dark pool, the pool smaller
+/// as the well is pumped out; the frame alone when it is dry.
+pub fn well(left: f32) -> Model {
+    let mut m = Model::new(0.1);
+    let left = left.clamp(0.0, 1.0);
+    let r = (left * 3.0).round() as i8;
+    if r > 0 {
+        m.slab(-r, -r, r - 1, r - 1, 1, OIL);
+    }
+    for (x, y) in [(-2, -2), (2, -2), (-2, 2), (2, 2)] {
+        for z in 1..=6 {
+            m.cube(x, y, z, STEEL.darker(0.2));
+        }
+    }
+    m.slab(-2, -2, 2, 2, 7, STEEL.darker(0.1));
+    m.cube(0, 0, 8, if left > 0.0 { GUN } else { Color::srgb(0.3, 0.3, 0.3) });
+    m
+}
+
+/// A worker on the road (game 7): a small figure in the owner's colour
+/// with its load on its back, shells grey and supply gold.
+pub fn worker(owner: Color, kind: treadcore_sim::CarryKind) -> Model {
+    let mut m = Model::new(0.1);
+    m.cube(0, 0, 1, owner.darker(0.2));
+    m.cube(0, 0, 2, owner);
+    m.cube(0, 0, 3, Color::srgb(0.9, 0.75, 0.6));
+    let load = match kind {
+        treadcore_sim::CarryKind::Shells => STEEL.darker(0.1),
+        treadcore_sim::CarryKind::Supply => Color::srgb(0.95, 0.8, 0.3),
+    };
+    m.cube(-1, 0, 2, load);
+    m.cube(-1, 0, 3, load);
+    m
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
