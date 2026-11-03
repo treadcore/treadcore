@@ -1315,16 +1315,21 @@ mod harness {
     fn agree(rec: &std::path::Path, net: &Net, held_from: u32) {
         use crate::net::HEADS;
         let b = std::fs::read(rec).expect("the recording");
-        assert_eq!(&b[..8], b"TCBC2\0\0\0");
+        // TCBC2 has three mask bytes, TCBC3 the squad's fourth (LR 132).
+        let mb = match &b[..8] {
+            b"TCBC2\0\0\0" => 3,
+            b"TCBC3\0\0\0" => 4,
+            _ => panic!("{}: not a TCBC2 or TCBC3 recording", rec.display()),
+        };
         let ns = u32::from_le_bytes(b[8..12].try_into().unwrap()) as usize;
-        let r = ns * 4 + 7 + 3 + 4;
+        let r = ns * 4 + 7 + mb + 4;
         let n = (b.len() - 16) / r;
         let names = ["drive", "gun", "lead", "mortar", "drone", "squad", "signal"];
         let (mut agree, mut count) = ([0usize; 7], [0usize; 7]);
         let mut x = vec![0f32; ns];
         for i in 0..n {
             let o = 16 + i * r;
-            let seed = u32::from_le_bytes(b[o + ns * 4 + 10..o + ns * 4 + 14].try_into().unwrap());
+            let seed = u32::from_le_bytes(b[o + ns * 4 + 7 + mb..o + ns * 4 + 11 + mb].try_into().unwrap());
             if seed < held_from {
                 continue;
             }
@@ -1332,14 +1337,14 @@ mod harness {
                 x[k] = f32::from_le_bytes(b[o + 4 * k..o + 4 * k + 4].try_into().unwrap());
             }
             let lab = &b[o + ns * 4..o + ns * 4 + 7];
-            let m = &b[o + ns * 4 + 7..o + ns * 4 + 10];
-            let ok = |h: usize, c: usize| c == 0 || match h { 0 | 2 => true, 1 => m[0] >> (c - 1) & 1 == 1, 3 => m[1] >> (c - 1) & 1 == 1, 4 => m[2] >> (c - 1) & 1 == 1, _ => false };
+            let m = &b[o + ns * 4 + 7..o + ns * 4 + 7 + mb];
+            let ok = |h: usize, c: usize| c == 0 || match h { 0 | 2 => true, 1 => m[0] >> (c - 1) & 1 == 1, 3 => m[1] >> (c - 1) & 1 == 1, 4 => m[2] >> (c - 1) & 1 == 1, 5 => mb == 4 && m[3] >> (c - 1) & 1 == 1, _ => false };
             let y = net.forward(&x);
             let mut k = 0;
             for (h, &(_, w)) in HEADS.iter().enumerate() {
                 let l = lab[h] as usize;
-                let choice = match h { 1 => m[0] != 0, 3 => m[1] != 0, 4 => m[2] != 0, _ => true };
-                if h < 5 && l < w && ok(h, l) && choice {
+                let choice = match h { 1 => m[0] != 0, 3 => m[1] != 0, 4 => m[2] != 0, 5 => mb == 4 && m[3] != 0, _ => true };
+                if h < 6 && l < w && ok(h, l) && choice {
                     let pick = (0..w).filter(|&c| ok(h, c)).max_by(|&p, &q| y[k + p].total_cmp(&y[k + q])).unwrap();
                     count[h] += 1;
                     agree[h] += (pick == l) as usize;
@@ -1348,7 +1353,7 @@ mod harness {
             }
         }
         println!("agree: Rust's Net::forward on the held-out samples (seeds from {}):", held_from);
-        for h in 0..5 {
+        for h in 0..6 {
             println!("  {:7} {:6.1}%  of {}", names[h], 100.0 * agree[h] as f64 / count[h].max(1) as f64, count[h]);
         }
     }
@@ -1364,9 +1369,10 @@ mod harness {
     /// head learns "hold", right 99.9% of the time (a direct shot is 0.13%
     /// of samples). Written as `TCBC2\0\0\0`, u32 senses, u32 heads, then
     /// each sample: the senses (f32); a label a head (u8, `HEADS` order;
-    /// Squad from the Deploy given, since LR 131, without a mask yet, so
-    /// the trainer leaves it; Signal 0); the masks (u8 each: gun sectors,
-    /// mortar sectors, drone kinds 1 to 4 as bits 0 to 3); the seed (u32).
+    /// Squad from the Deploy given, since LR 131; Signal 0); the masks (u8
+    /// each: gun sectors, mortar sectors, drone kinds 1 to 4 as bits 0 to 3,
+    /// and since `TCBC3` the squad's choices 1 to 6 as bits 0 to 5, from
+    /// `NetBrain::squad`, LR 132); the seed (u32).
     fn record(path: &std::path::Path, seed0: u64, seeds: u64, secs: u64, threads: usize) {
         use crate::net::{DECIDE_EVERY, HEADS};
         use crate::senses::{self, SECTORS, SENSES};
@@ -1385,7 +1391,7 @@ mod harness {
                 hostiles: Vec<Tank>,
                 /// The deposits and wells seen: a Harvest on one is the squad head's mine.
                 resources: Vec<V2>,
-                masks: [u8; 3],
+                masks: [u8; 4],
                 cmds: Vec<Command>,
             }
             let mut open: Vec<Option<Open>> = (0..crate::fleet::SEATS).map(|_| None).collect();
@@ -1469,7 +1475,7 @@ mod harness {
                             let resources = obs.deposits.iter().map(|d| d.pos).chain(obs.wells.iter().map(|d| d.pos)).collect();
                             // NetBrain's own masks (net.rs, think_on)
                             let ready = me.reload == 0 && me.shells > 0;
-                            let mut masks = [0u8; 3];
+                            let mut masks = [0u8; 4];
                             for k in 0..SECTORS {
                                 if ready && crate::net::NetBrain::gun_target(&obs, &me, k).is_some() {
                                     masks[0] |= 1 << k;
@@ -1481,6 +1487,11 @@ mod harness {
                             for c in 1..=4 {
                                 if crate::net::NetBrain::launch(&obs, &me, c).is_some() {
                                     masks[2] |= 1 << (c - 1);
+                                }
+                            }
+                            for c in 1..=6 {
+                                if crate::net::NetBrain::squad(&obs, &me, Some(&w.map), c).is_some() {
+                                    masks[3] |= 1 << (c - 1);
                                 }
                             }
                             open[p] = Some(Open { x, me, hostiles, resources, masks, cmds: Vec::new() });
@@ -1510,7 +1521,7 @@ mod harness {
         let runs = spread(seeds as usize, threads, &one);
         let mut f = std::io::BufWriter::new(std::fs::File::create(path).expect("the record file"));
         use std::io::Write;
-        f.write_all(b"TCBC2\0\0\0").unwrap();
+        f.write_all(b"TCBC3\0\0\0").unwrap();
         f.write_all(&(SENSES as u32).to_le_bytes()).unwrap();
         f.write_all(&(HEADS.len() as u32).to_le_bytes()).unwrap();
         let mut total = [0u64; 4];
@@ -1522,7 +1533,7 @@ mod harness {
                 total[i] += c[i];
             }
         }
-        let n = bytes / (SENSES * 4 + HEADS.len() + 3 + 4);
+        let n = bytes / (SENSES * 4 + HEADS.len() + 4 + 4);
         println!(
             "record: {} samples from {} seeds of {} s (from {}) in {:.0} s -> {}; moving {:.1}%, gun {:.2}%, mortar {:.2}%, launch {:.2}% of samples",
             n, seeds, secs, seed0, t0.elapsed().as_secs_f64(), path.display(),

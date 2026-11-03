@@ -6,7 +6,7 @@
 //! take it as any other net.
 //!
 //!   treadcore-bc RECORDING OUT.bin [EPOCHS=12] [BATCH=4096] [LR=1e-3]
-//!   RECORDING: a TCBC2 file, or a directory of them (a fleet run's shards)
+//!   RECORDING: a TCBC2 or TCBC3 file, or a directory of them (a fleet run's shards)
 //!   BC_DEVICE=cuda (default) | flex (Burn's pure-Rust CPU backend)
 //!   HELD=9000054-9000059,9001140-9001259   held-out seed ranges, each judged
 //!                                          apart (default: the last tenth)
@@ -41,8 +41,8 @@
 //!
 //! Each trained head is a softmax over the choices NetBrain would allow at
 //! that moment (the recorded masks, as `choose` applies them at play). A
-//! label outside its mask is left out of that head's loss. Squad and Signal
-//! are not trained. At the end, each head's agreement with the scripted brain
+//! label outside its mask is left out of that head's loss. The squad head is
+//! trained where a TCBC3 recording carries its mask (LR 132); Signal is not. At the end, each head's agreement with the scripted brain
 //! on each held-out range is printed beside always choosing the commonest
 //! label.
 use burn::module::{Module, Param};
@@ -55,24 +55,27 @@ use std::time::Instant;
 const SECTORS: usize = 8;
 /// HEADS in net.rs, in output order: drive, gun, lead, mortar, drone, squad, signal.
 const HEADS: [usize; 7] = [1 + SECTORS + 1, 1 + SECTORS, 3, 1 + SECTORS, 5, 7, 4];
-const TRAINED: [bool; 7] = [true, true, true, true, true, false, false];
+const TRAINED: [bool; 7] = [true, true, true, true, true, true, false];
 const NAMES: [&str; 7] = ["drive", "gun", "lead", "mortar", "drone", "squad", "signal"];
 /// The widest head; each head's choices sit in a row of this many slots.
 const SLOT: usize = 10;
 const ROW: usize = 7 * SLOT;
-/// The heads whose choices a mask byte gates: gun, mortar, drone.
-const MASKED: [usize; 3] = [1, 3, 4];
+/// The heads whose choices a mask byte gates: gun, mortar, drone, squad (the fourth byte, TCBC3; a
+/// TCBC2 recording has none, so its squad head is never allowed and never trained).
+const MASKED: [usize; 4] = [1, 3, 4, 5];
 
 struct Data {
     senses: usize,
     x: Vec<f32>,
     labels: Vec<[u8; 7]>,
-    masks: Vec<[u8; 3]>,
+    masks: Vec<[u8; 4]>,
     seeds: Vec<u32>,
 }
 
-/// Every TCBC2 file named, or found in a named directory, read in parallel
-/// straight into one set of arrays.
+/// Every TCBC2 or TCBC3 file named, or found in a named directory, read in
+/// parallel straight into one set of arrays. The senses are the header's; a
+/// TCBC2 sample has three mask bytes (gun, mortar, drone), a TCBC3 four (and
+/// the squad), and every file must agree on the senses.
 fn read(path: &str, threads: usize) -> Data {
     let p = std::path::Path::new(path);
     let mut files: Vec<std::path::PathBuf> = if p.is_dir() {
@@ -82,28 +85,39 @@ fn read(path: &str, threads: usize) -> Data {
     };
     files.sort();
     assert!(!files.is_empty(), "no recordings in {path}");
-    let senses = 143usize;
-    let rec = senses * 4 + 7 + 3 + 4;
-    let counts: Vec<usize> = files
+    // (senses, mask bytes, samples) a file, from its header and length.
+    let heads: Vec<(usize, usize, usize)> = files
         .iter()
         .map(|f| {
+            let mut h = [0u8; 16];
+            std::io::Read::read_exact(&mut std::fs::File::open(f).expect("a recording"), &mut h).expect("a header");
+            let mb = match &h[..8] {
+                b"TCBC2\0\0\0" => 3,
+                b"TCBC3\0\0\0" => 4,
+                _ => panic!("{} is not a TCBC2 or TCBC3 recording", f.display()),
+            };
+            let senses = u32::from_le_bytes(h[8..12].try_into().unwrap()) as usize;
+            assert_eq!(u32::from_le_bytes(h[12..16].try_into().unwrap()), 7, "{}: seven heads", f.display());
+            let rec = senses * 4 + 7 + mb + 4;
             let len = std::fs::metadata(f).expect("a recording").len() as usize;
             assert_eq!((len - 16) % rec, 0, "{} is not whole samples", f.display());
-            (len - 16) / rec
+            (senses, mb, (len - 16) / rec)
         })
         .collect();
-    let n: usize = counts.iter().sum();
-    let mut d = Data { senses, x: vec![0f32; n * senses], labels: vec![[0u8; 7]; n], masks: vec![[0u8; 3]; n], seeds: vec![0u32; n] };
+    let senses = heads[0].0;
+    assert!(heads.iter().all(|h| h.0 == senses), "the recordings differ in their senses");
+    let n: usize = heads.iter().map(|h| h.2).sum();
+    let mut d = Data { senses, x: vec![0f32; n * senses], labels: vec![[0u8; 7]; n], masks: vec![[0u8; 4]; n], seeds: vec![0u32; n] };
     // Disjoint slices a file, handed to threads a file at a time.
     let mut jobs = Vec::new();
     {
         let (mut x, mut l, mut m, mut s) = (&mut d.x[..], &mut d.labels[..], &mut d.masks[..], &mut d.seeds[..]);
-        for (f, &c) in files.iter().zip(&counts) {
+        for (f, &(_, mb, c)) in files.iter().zip(&heads) {
             let (x0, x1) = x.split_at_mut(c * senses);
             let (l0, l1) = l.split_at_mut(c);
             let (m0, m1) = m.split_at_mut(c);
             let (s0, s1) = s.split_at_mut(c);
-            jobs.push((f.clone(), x0, l0, m0, s0));
+            jobs.push((f.clone(), mb, x0, l0, m0, s0));
             (x, l, m, s) = (x1, l1, m1, s1);
         }
     }
@@ -111,10 +125,9 @@ fn read(path: &str, threads: usize) -> Data {
     std::thread::scope(|sc| {
         for _ in 0..threads.max(1) {
             sc.spawn(|| loop {
-                let Some((f, x, l, m, s)) = jobs.lock().unwrap().pop() else { break };
+                let Some((f, mb, x, l, m, s)) = jobs.lock().unwrap().pop() else { break };
                 let b = std::fs::read(&f).expect("a recording");
-                assert_eq!(&b[..8], b"TCBC2\0\0\0", "{} is not a TCBC2 recording", f.display());
-                assert_eq!(u32::from_le_bytes(b[8..12].try_into().unwrap()) as usize, senses);
+                let rec = senses * 4 + 7 + mb + 4;
                 for i in 0..l.len() {
                     let o = 16 + i * rec;
                     for k in 0..senses {
@@ -123,20 +136,20 @@ fn read(path: &str, threads: usize) -> Data {
                     }
                     let o = o + senses * 4;
                     l[i] = b[o..o + 7].try_into().unwrap();
-                    m[i] = b[o + 7..o + 10].try_into().unwrap();
-                    s[i] = u32::from_le_bytes(b[o + 10..o + 14].try_into().unwrap());
+                    m[i][..mb].copy_from_slice(&b[o + 7..o + 7 + mb]);
+                    s[i] = u32::from_le_bytes(b[o + 7 + mb..o + 11 + mb].try_into().unwrap());
                 }
             });
         }
     });
-    println!("bc: {} recordings", files.len());
+    println!("bc: {} recordings, {} senses", files.len(), senses);
     d
 }
 
 /// Is choice c of head h allowed for this sample? Hold (0) always; drive and
-/// lead always; gun, mortar and drone by their masks; squad and signal never
+/// lead always; gun, mortar, drone and squad by their masks; signal never
 /// (not trained).
-fn allowed(h: usize, c: usize, m: &[u8; 3]) -> bool {
+fn allowed(h: usize, c: usize, m: &[u8; 4]) -> bool {
     if c == 0 {
         return true;
     }
@@ -145,6 +158,7 @@ fn allowed(h: usize, c: usize, m: &[u8; 3]) -> bool {
         1 => m[0] >> (c - 1) & 1 == 1,
         3 => m[1] >> (c - 1) & 1 == 1,
         4 => m[2] >> (c - 1) & 1 == 1,
+        5 => m[3] >> (c - 1) & 1 == 1,
         _ => false,
     }
 }
@@ -252,13 +266,13 @@ fn columns() -> Vec<i32> {
 /// The additive masks, built once: a base row (0 where a slot may be chosen
 /// whatever the masks say, or is gated by one; -1e9 where it never may) and,
 /// for each gated head, a table of 256 rows, one a mask byte, adding -1e9 to
-/// that head's choices the byte forbids. base + the three rows a sample's
+/// that head's choices the byte forbids. base + the four rows a sample's
 /// bytes pick = `allowed` for every slot.
-fn mask_tables() -> (Vec<f32>, [Vec<f32>; 3]) {
+fn mask_tables() -> (Vec<f32>, [Vec<f32>; 4]) {
     let mut base = vec![0f32; ROW];
     for (h, &w) in HEADS.iter().enumerate() {
         for c in 0..SLOT {
-            let never = c >= w || (c > 0 && !matches!(h, 0..=4));
+            let never = c >= w || (c > 0 && !matches!(h, 0..=5));
             if never {
                 base[h * SLOT + c] = -1e9;
             }
@@ -298,10 +312,10 @@ struct HostBlock {
 /// Rows `idx` of the data, assembled on `threads` threads.
 fn assemble(d: &Data, idx: &[usize], threads: usize) -> HostBlock {
     let (n, s) = (idx.len(), d.senses);
-    let mut hb = HostBlock { x: vec![0f32; n * s], slot: vec![0i32; n * 7], valid: vec![0f32; n * 7], mask: vec![0i32; n * 3] };
+    let mut hb = HostBlock { x: vec![0f32; n * s], slot: vec![0i32; n * 7], valid: vec![0f32; n * 7], mask: vec![0i32; n * 4] };
     let per = n.div_ceil(threads.max(1)).max(1);
     std::thread::scope(|sc| {
-        let parts = hb.x.chunks_mut(per * s).zip(hb.slot.chunks_mut(per * 7)).zip(hb.valid.chunks_mut(per * 7)).zip(hb.mask.chunks_mut(per * 3)).zip(idx.chunks(per));
+        let parts = hb.x.chunks_mut(per * s).zip(hb.slot.chunks_mut(per * 7)).zip(hb.valid.chunks_mut(per * 7)).zip(hb.mask.chunks_mut(per * 4)).zip(idx.chunks(per));
         for ((((x, sl), va), mk), ids) in parts {
             sc.spawn(move || {
                 for (r, &i) in ids.iter().enumerate() {
@@ -313,8 +327,8 @@ fn assemble(d: &Data, idx: &[usize], threads: usize) -> HostBlock {
                         sl[r * 7 + h] = (h * SLOT + if ok { l } else { 0 }) as i32;
                         va[r * 7 + h] = ok as u8 as f32;
                     }
-                    for k in 0..3 {
-                        mk[r * 3 + k] = m[k] as i32;
+                    for k in 0..4 {
+                        mk[r * 4 + k] = m[k] as i32;
                     }
                 }
             });
@@ -333,7 +347,7 @@ fn upload(hb: HostBlock, s: usize, dev: &Device) -> Block {
         x: Tensor::<1>::from_data(TensorData::new(hb.x, [n * s]), dev).reshape([n, s]),
         slot: Tensor::from_data(TensorData::new(hb.slot, [n, 7]), dev),
         valid: Tensor::from_data(TensorData::new(hb.valid, [n, 7]), dev),
-        mask: Tensor::from_data(TensorData::new(hb.mask, [n, 3]), dev),
+        mask: Tensor::from_data(TensorData::new(hb.mask, [n, 4]), dev),
     }
 }
 
@@ -347,7 +361,7 @@ fn ints(v: &[usize], dev: &Device) -> Tensor<1, Int> {
 struct Loss {
     cols: Tensor<1, Int>,
     base: Tensor<2>,
-    tables: [Tensor<2>; 3],
+    tables: [Tensor<2>; 4],
 }
 
 impl Loss {
@@ -357,7 +371,7 @@ impl Loss {
         let b = slot.dims()[0];
         let y = model.forward(x).select(1, self.cols.clone());
         let mut m = self.base.clone();
-        for k in 0..3 {
+        for k in 0..4 {
             let byte = mask.clone().slice([0..b, k..k + 1]).reshape([b]);
             m = m + self.tables[k].clone().select(0, byte);
         }
@@ -432,7 +446,7 @@ fn main() {
     };
 
     // On the device once, or streamed (see the head of this file).
-    let per_sample = d.senses * 4 + 7 * 4 + 7 * 4 + 3 * 4;
+    let per_sample = d.senses * 4 + 7 * 4 + 7 * 4 + 4 * 4;
     // No single upload over MAX_ROWS samples: CubeCL refused one buffer of
     // 3.7 GB on an 11 GB card with 0.6 GB in use (LR 108).
     const MAX_ROWS: usize = 2_000_000;
@@ -571,8 +585,8 @@ fn main() {
                 let mut k = 0;
                 for (h, &w) in HEADS.iter().enumerate() {
                     let l = d.labels[i][h] as usize;
-                    // gun, mortar and drone are judged only where they had a choice
-                    let choice = match h { 1 => m[0] != 0, 3 => m[1] != 0, 4 => m[2] != 0, _ => true };
+                    // gun, mortar, drone and squad are judged only where they had a choice
+                    let choice = match h { 1 => m[0] != 0, 3 => m[1] != 0, 4 => m[2] != 0, 5 => m[3] != 0, _ => true };
                     if TRAINED[h] && l < w && allowed(h, l, m) && choice {
                         let row = &y[r * outs + k..r * outs + k + w];
                         let pick = (0..w).filter(|&c| allowed(h, c, m)).max_by(|&p, &q| row[p].total_cmp(&row[q])).unwrap();

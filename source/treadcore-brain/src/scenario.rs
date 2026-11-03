@@ -349,6 +349,12 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
     if let Some(s) = seed {
         sc.seed = s;
     }
+    // `map = "maps/naval.map"`: the fleet's own map, with its deposits and wells, in place of one
+    // generated from the seed (LR 132: a course on the fleet's maps). The seed still deals the seats.
+    if let Some(m) = doc.top.get("map").and_then(Value::str) {
+        let text = std::fs::read_to_string(find(m)).map_err(|e| format!("map {}: {}", m, e))?;
+        sc.map = MapSource::Text(text);
+    }
     let mut w = World::new(sc);
     if doc.top.get("pillboxes") == Some(&Value::Bool(false)) {
         w.pillboxes.clear();

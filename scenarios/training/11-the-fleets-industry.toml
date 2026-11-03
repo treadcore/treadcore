@@ -1,0 +1,51 @@
+# A course on the fleet's maps (LR 132; Paul, 3 November: "a course on the fleet's maps with the squad
+# on, since a net that mines in a field of two may not among sixteen"): the industry map as the fleet plays
+# it, with its own deposits and wells, nine seats in three sides, the learner at seat 0 as its base's
+# guard and eight scripted Commanders on Auto round it, four minutes. The reward is the economy's
+# first leg by the learner's own hand (ore mined, shells smelted of it, oil pumped and in) and staying
+# alive; it passes when it mined at all. Read by the trainer with the five logistics gauntlets.
+name = "the fleet's industry: ore among nine"
+reaction = "move"
+floor = 0.5
+players = 9
+teams = [0, 1, 2, 0, 1, 2, 0, 1, 2]
+seconds = 240
+map = "maps/industry.map"
+board = true
+[[brain]]
+seat = 0
+kind = "net"
+file = "nets/logistics.bin"
+goal = "defend_base"
+[[brain]]
+seat = 1
+kind = "commander"
+[[brain]]
+seat = 2
+kind = "commander"
+[[brain]]
+seat = 3
+kind = "commander"
+[[brain]]
+seat = 4
+kind = "commander"
+[[brain]]
+seat = 5
+kind = "commander"
+[[brain]]
+seat = 6
+kind = "commander"
+[[brain]]
+seat = 7
+kind = "commander"
+[[brain]]
+seat = 8
+kind = "commander"
+[expect]
+ore = { seat = 0, at_least = 4 }
+[reward]
+ore = 0.25
+smelted = 0.5
+oil = 0.25
+oil_in = 0.5
+alive = 1

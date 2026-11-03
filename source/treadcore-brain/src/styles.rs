@@ -59,7 +59,7 @@ pub struct Style {
 /// plays: it stands on a hill of the terrain or on a style's census read where there is one, and says
 /// "unread" where there is not. Every dial it does not name rides the line, so a persona stays fresh
 /// as the fleet moves the defaults. Its certificate is its own census (the plan, chapter 10).
-pub const ROSTER: [Style; 16] = [
+pub const ROSTER: [Style; 17] = [
     Style { slot: 0, name: "Fleet", about: "the brain the fleet's search has carried: today's defaults", kind: Kind::Rules("") },
     Style { slot: 1, name: "Raider", about: "goes and fights: leans to expanding, closes at even odds, picks off the wounded", kind: Kind::Rules(include_str!("../../../profiles/raider.weights")) },
     Style { slot: 2, name: "Castle", about: "holds its ground: leans to fortifying and defending", kind: Kind::Rules(include_str!("../../../profiles/castle.weights")) },
@@ -76,6 +76,9 @@ pub const ROSTER: [Style; 16] = [
     Style { slot: 13, name: "Japan", about: "bushido: fights at full strength however hurt, and does not go home", kind: Kind::Rules(include_str!("../../../profiles/persona-japan.weights")) },
     Style { slot: 14, name: "Polynesia", about: "the sea: island hops, boats and beaches, a navy's patience", kind: Kind::Rules(include_str!("../../../profiles/persona-polynesia.weights")) },
     Style { slot: 15, name: "Assyria", about: "siege: shells every pillbox in reach, longshots without pause, strikes out in threes", kind: Kind::Rules(include_str!("../../../profiles/persona-assyria.weights")) },
+    // Slot 16 (3 November, LR 131, 132): the first learned tank with its squad, so a census can read
+    // what a trained squad head does to a side's ore and smelted lines among sixteen seats.
+    Style { slot: 16, name: "Quartermaster", about: "a learned tank with its squad: trained on the logistics courses, it mines, pumps and raids convoys", kind: Kind::Net(include_bytes!("../../../nets/logistics.bin")) },
 ];
 
 /// A style by its number or name, in any case.
@@ -356,7 +359,7 @@ mod tests {
 
     #[test]
     fn sixteen_styles_each_by_number_and_by_name_and_none_share_either() {
-        assert_eq!(ROSTER.len(), 16, "eight styles and eight personas");
+        assert_eq!(ROSTER.len(), 17, "eight styles, eight personas, and the quartermaster");
         for (i, s) in ROSTER.iter().enumerate() {
             assert_eq!(s.slot, i, "a slot keeps its place");
             assert_eq!(find(&i.to_string()), Some(s));
@@ -364,7 +367,8 @@ mod tests {
             assert!(!s.about.is_empty());
             assert_eq!(ROSTER.iter().filter(|o| o.name == s.name).count(), 1);
         }
-        assert_eq!(find("16"), None);
+        assert_eq!(find("16").map(|s| s.name), Some("Quartermaster"));
+        assert_eq!(find("17"), None);
         assert_eq!(find("nobody"), None);
         assert_eq!(find("rome").map(|s| s.slot), Some(8), "a persona by name");
     }
