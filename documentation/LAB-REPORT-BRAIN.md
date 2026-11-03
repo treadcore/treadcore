@@ -9820,3 +9820,54 @@ Thirty epochs at half the step on the same forty matches: squad 96.0 against the
 **The census.** Style 16, the Quartermaster, is `nets/logistics.bin` in `styles.rs`, so a census trial of `bot_style = 16` reads it among sixteen seats on the fleet's maps. Asked of the fleet at 03:06 (`fleet-queue.py grove new census trial="bot_style = 16" name=quartermaster seeds=400 adopt=no`, run r0155); it was running on saskatchewan by 03:15. Its lines, `ore`, `smelted`, `oil` and `supply` on the composition line beside `kills` and `built`, are what section 130 asked for; they will stand on the console's Results → Personas page beside the eight personas when the four hundred seeds are in. Nothing is read from it in this section; it is the fleet's to finish.
 
 **What is next.** The first minute: a course on the fleet's maps that pays leaving a pillbox's ring and taking it (`pillbox_taken`, `damage_taken`) before the ore, from the phase nets; a longer run than 28 generations on the Mac, or the fleet's `train` kind on a machine with the hours; weighting the rare labels in `tools/bc` if a clone is ever to mine, or recording matches where the guard is short (`ore_low` high) so the scripted brain mines on the record.
+
+## 133. The first minute, the rare labels, the short guard, and the Quartermaster's census read, 3 November
+
+Paul: "a first-minute course on the fleet's maps (leave the ring, take the pillbox) before the ore; rare labels weighted in the clone trainer, or matches recorded with the guard kept short so the scripted brain mines on the record; the census's lines when r0155 finishes." The three next lines of section 132, the same morning.
+
+**The census read first, since it was in.** Run r0155, `bot_style = 16`, 400 seeds on the twelve maps, finished on saskatchewan by 06:49. The pooled score of the Quartermaster's team is **−30.71 ± 0.68 a seat** against the defaults (naval −13, europe −56), the worst of the net slots as every whole net has been (the Scholar read about −20 under the rules of its day). The lines Paul asked for, pooled over the 1,200 matches' team lines, the trial team against the two default teams in the same matches:
+
+| line | the Quartermaster's team | the default teams |
+| --- | --- | --- |
+| score | 20.53 ± 0.47 | 51.24 ± 0.56 |
+| kills | 4.37 ± 0.13 | 17.39 ± 0.16 |
+| deaths | 16.39 ± 0.12 | 13.25 ± 0.16 |
+| built | 0.49 ± 0.04 | 23.89 ± 0.52 |
+| road | 0.00 | 8.75 ± 0.26 |
+| **ore** | **7.78 ± 0.32** | 6.01 ± 0.27 |
+| **smelted** | 0.46 ± 0.07 | **5.08 ± 0.26** |
+| **oil** | **5.05 ± 0.25** | 0.01 ± 0.01 |
+| supply | 1,668 ± 58 | 2,371 ± 47 |
+| held | 2.54 ± 0.07 | 4.74 ± 0.06 |
+| workers lost | 0.24 | 0.73 |
+| workers taken | 2.08 | 2.06 |
+| pillboxes taken | 1.92 | 2.62 |
+
+The trained squad head does among sixteen what it learned in the field of two: a team of Quartermasters mines more ore than a team of the rules and pumps oil where the rules pump none (the rules' oil run waits on a refinery of the side in reach, which they seldom have in ten minutes; the net pumps when a well is within eight tiles). It smelts a tenth of what the rules smelt, because a team of nets builds nothing (0.49 a match against 23.9): no smelter stands for its ore, and the squad head's build choice is offered only beside a deposit with the material and no smelter of the side within thirty, which among sixteen it reaches seldom. The ore is mined and carried and not delivered; the ore line is up and the smelted line is down. It takes a pillbox and a worker as often as the rules do, and dies more (16.4 for 13.3) and kills a quarter as much, which is the −31. The Results → Personas page carries the slot.
+
+**The guard kept short: not the lever.** `RECORD_TRIAL="ore_low = 20"` gives every scripted brain of a recorded match dials over the defaults (`fleet::with_settings` round `fleet::brain`; a bad name panics, `roles = 2` changes the record, so the dials reach the brains). Forty matches so recorded are byte for byte the forty of section 132: 1,708,039 samples, 169 mines. `ore_reach = 128` beside it, the same. The guard of a dealt match is short already (a depot on an ore map starts with no shells and `ore_low` is 10); what keeps it from the ore is the smelter, which wants four material and a tank of the side with it beside a deposit within reach of the base, and in ten minutes a side builds about one. No dial of the ore run puts more mines on a record of dealt matches.
+
+**The courses on the record.** `RECORD_COURSE=g13,g14,g17` (files, in turn, a seed each) records the scripted brain on a course's learner seat as a match is recorded: a `Recorder` brain round the Commander the file would deal (`course_brain`: the file's goal, the defaults), opening a window every `DECIDE_EVERY` with `open_window` and closing it with `write_sample`, the two halves of the match recorder lifted out so both use one. Three hundred runs of the three in 3 s: 119,700 samples, **1,023 mines** and 663 builds of a smelter (G17 has none to begin with), mine offered 22,148 times (the squad is out or the tank is driving for most of a run), so the scripted brain mines in one offered window in twenty-two. Six times the mines of forty matches, in a fourteenth of the samples.
+
+**The rare labels weighted.** `RARE=cap` in `tools/bc`: a sample with label l of head h counts the head's commonest label's count over l's, no more than cap, in the loss (`label_weights`, into `valid`); `RARE_HEADS=squad` for some heads only. On the forty matches at `RARE=20` over every head: drive 73.1 (78.0 without), gun 76.4, mortar 83.4 (92.5), drone 66.4 (92.2), squad 88.5 (95.8); every frequent-label head agrees less, as it must when a shot counts twenty. On the gauntlet it is the better brain all the same: G1 10 of 10 (`bc3` 8), G2 10 (8), G3 10 (8), G8 10 (0), G16 4 (0), and G13, G14, G17 still 0: a weight of twenty on a hundred and sixty-nine mines is not a policy either.
+
+**The matches and the courses together.** `tools/bc` on the directory of both (1,827,739 samples; held out the matches' last four seeds and the courses' last thirty): on the matches drive 77.9, gun 86.2, mortar 92.5, drone 92.3, squad 96.2 (floor 96.6); on the courses drive 96.7 (floor 61.7), drone 99.7, squad 98.8 (floor 98.8). Rust's forward pass agrees to the decimal on the courses' range. With `RARE=20 RARE_HEADS=squad` the squad head reads 93.1 on the matches and 94.9 on the courses, the rest within a point. The clone of both is `nets/bc4.bin`.
+
+| gauntlet | scripted | bc3 | bc4 | bc4 rare squad | logistics |
+| --- | --- | --- | --- | --- | --- |
+| G1 fire at an enemy in reach | 10 | 8 | 9 | 2 | 10 |
+| G2 an enemy behind | 10 | 8 | 0 | 0 | 10 |
+| G3 a shell on a standing tank | 9 | 8 | 10 | 8 | 10 |
+| G4 a strike drone coming | 10 | 10 | 10 | 10 | 7 |
+| G5 low armour, home in sight | 10 | 0 | 1 | 0 | 1 |
+| G8 out of a pillbox's ring | 3 | 0 | 4 | 7 | 4 |
+| G13 ore to the smelter | 10 | 0 | 0 | 0 | 10 |
+| G14 oil to the refinery | 10 | 0 | **1** | 0 | 10 |
+| G16 the raider takes the convoy | 10 | 0 | 0 | 0 | 8 |
+| G17 the chain to the city | 10 | 0 | **2** | **3** | 10 |
+
+(G6, G7, G9 to G12 and G15 as in the table above: 0, 0, 0, 0, 0, 0 and 10 for every clone.) The first clone that mines at all: two and three of ten on G17, one on G14, where no clone had one, and G2 lost (8 to 0) to the mixing, a course of one seat and no enemy behind it making a seventh of the samples. A clone's squad head wants its share of mines in the data, and the data wants the match's fights beside the course's runs in a proportion this morning did not find; the course trained by reward (section 131) is ten of ten on all three and remains the net that mines.
+
+**The first-minute course.** `scenarios/training/12-the-first-minute-{industry,island,naval}`: the nine seats of course 11 for ninety seconds, paid two for a pillbox taken (the new count `pillboxes`, any pillbox the learner captured, the map's own included, beside `pillbox_taken` which counts the placed ones), one for being alive, a hundredth back for each point of damage taken; passed when a pillbox is taken. Held out, ten seeds: the logistics net 7 of 10 on industry, 7 on island (reward 0.64: the pillbox is taken and the tank is dead by ninety seconds, 76 points taken on average), 0 on naval (no pillbox within its squad's reach of the start; alive, reward 1.00). Forty generations from it with the five gauntlets in the course (36 s a generation beside the recorder): the population's mean 5.18, 5.19, 4.87, 6.06, 4.92 at 0, 10, 20, 30, 40, the net's pass share 0.62 to 0.81 and back, and the checkpoint at 40 reads what the start read: 7, 7, 0, the gauntlets kept (G14 9, G16 6). The net takes the pillbox already; what it does not do is live, and ninety seconds of nine seats pays "alive" once at the end, a signal the search did not find in forty generations. The course is kept for a longer run with a potential on the armour (`armor_gained`) and `damage_taken` weighted more.
+
+**What is next.** The first minute wants the armour paid as a potential and a run of hundreds of generations on a machine with the hours (the fleet's `train` kind); a clone that mines wants the courses in proportion (the matches' fights kept, the courses' mines a tenth of the squad labels, not a hundredth); the census of r0155 wants a smelter the Quartermaster's side can deliver to, which is the quartermaster of the rules on its team: a census of a mixed team, two of the rules and one Quartermaster, is the next read.

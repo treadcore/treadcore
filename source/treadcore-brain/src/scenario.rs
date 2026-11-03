@@ -802,6 +802,8 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
                 Event::WorkerTaken { by, .. } => *out.advance.entry((*by, "taken")).or_insert(0) += 1,
                 Event::WorkerLost { owner, .. } => *out.advance.entry((*owner, "lost")).or_insert(0) += 1,
                 Event::Built { owner, what: BuildKind::Road, .. } => *out.advance.entry((*owner, "road")).or_insert(0) += 1,
+                // Any pillbox taken, the map's own included (the first-minute courses, LR 133); `pillbox_taken` counts the placed ones.
+                Event::PillboxCaptured { by, .. } => *out.advance.entry((*by, "pillboxes")).or_insert(0) += 1,
                 Event::Rejected { player, why, .. } if brains.iter().any(|(s, _)| s == player) => {
                     out.refused.push((w.tick as f64 / TICK_HZ as f64, *player, why.to_string()));
                 }
@@ -981,7 +983,7 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
             // The economy's counts (games 6 to 8), `{ seat, at_least }`: ore mined, shells smelted,
             // oil pumped and `oil_in` unloaded, `delivered` shells a worker brought the side,
             // `convoys` of supply that arrived, workers `taken` from others, workers `lost`.
-            "ore" | "smelted" | "oil" | "oil_in" | "delivered" | "convoys" | "taken" | "lost" => {
+            "ore" | "smelted" | "oil" | "oil_in" | "delivered" | "convoys" | "taken" | "lost" | "pillboxes" => {
                 let s = seat.ok_or(format!("{}: a seat", key))?;
                 let n = out.advance.iter().find(|((p, w), _)| *p == s && *w == key.as_str()).map_or(0.0, |(_, n)| *n as f64);
                 if let Some(m) = field(t, "at_least").filter(|m| n < *m) {
@@ -1124,7 +1126,7 @@ pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
                 let to = v.table().and_then(|t| t.get("to")).and_then(Value::num).unwrap_or(1.0) as PlayerId;
                 out.station.get(&(me, to)).map(|(near, ticks)| if *ticks > 0 { *near as f32 / *ticks as f32 } else { 0.0 }).unwrap_or(0.0)
             }
-            "called" | "chained" | "wood" | "road" | "ore" | "smelted" | "oil" | "oil_in" | "delivered" | "convoys" | "taken" | "lost" => out.advance.iter().find(|((s, w), _)| *s == me && *w == k.as_str()).map_or(0.0, |(_, n)| *n as f32),
+            "called" | "chained" | "wood" | "road" | "ore" | "smelted" | "oil" | "oil_in" | "delivered" | "convoys" | "taken" | "lost" | "pillboxes" => out.advance.iter().find(|((s, w), _)| *s == me && *w == k.as_str()).map_or(0.0, |(_, n)| *n as f32),
             "alive" => out.alive.get(&me).copied().unwrap_or(false) as u8 as f32,
             "damage_taken" => out.hits.iter().zip(&out.hit_damage).filter(|((_, on), _)| *on == me).map(|(_, d)| *d).sum(),
             "damage_given" => out.hits.iter().zip(&out.hit_damage).filter(|((by, on), _)| *by == Some(me) && *on != me).map(|(_, d)| *d).sum(),

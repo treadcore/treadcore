@@ -1,0 +1,50 @@
+# The first minute on the fleet's industry map (LR 133; Paul, 3 November: "a first-minute course on the
+# fleet's maps (leave the ring, take the pillbox) before the ore"): the same nine seats as course 11,
+# the learner at seat 0 as its base's guard, ninety seconds. On these maps the learner drove from its
+# start into the ring of a neutral pillbox and was shelled dead before it reached any ore (LR 132);
+# the scripted brain's first act is to take that pillbox with its squad. The reward pays a pillbox
+# taken (the map's own: `pillboxes`), being alive, and takes back a hundredth of every point of
+# damage taken; it passes when a pillbox is taken.
+name = "the fleet's industry: the first minute"
+reaction = "move"
+floor = 0.5
+players = 9
+teams = [0, 1, 2, 0, 1, 2, 0, 1, 2]
+seconds = 90
+map = "maps/industry.map"
+board = true
+[[brain]]
+seat = 0
+kind = "net"
+file = "nets/logistics.bin"
+goal = "defend_base"
+[[brain]]
+seat = 1
+kind = "commander"
+[[brain]]
+seat = 2
+kind = "commander"
+[[brain]]
+seat = 3
+kind = "commander"
+[[brain]]
+seat = 4
+kind = "commander"
+[[brain]]
+seat = 5
+kind = "commander"
+[[brain]]
+seat = 6
+kind = "commander"
+[[brain]]
+seat = 7
+kind = "commander"
+[[brain]]
+seat = 8
+kind = "commander"
+[expect]
+pillboxes = { seat = 0, at_least = 1 }
+[reward]
+pillboxes = 2
+alive = 1
+damage_taken = -0.01

@@ -42,7 +42,12 @@
 //! Each trained head is a softmax over the choices NetBrain would allow at
 //! that moment (the recorded masks, as `choose` applies them at play). A
 //! label outside its mask is left out of that head's loss. The squad head is
-//! trained where a TCBC3 recording carries its mask (LR 132); Signal is not. At the end, each head's agreement with the scripted brain
+//! trained where a TCBC3 recording carries its mask (LR 132); Signal is not.
+//! `RARE=cap` weights each head's rare labels in the loss (LR 133; `RARE_HEADS=squad`
+//! for some heads only): a sample
+//! with label l of head h counts (the head's commonest label's count over
+//! l's), no more than cap; without it every sample counts one and a head
+//! whose labels run 1.6 million to 169 learns the commonest. At the end, each head's agreement with the scripted brain
 //! on each held-out range is printed beside always choosing the commonest
 //! label.
 use burn::module::{Module, Param};
@@ -309,8 +314,37 @@ struct HostBlock {
     mask: Vec<i32>,
 }
 
-/// Rows `idx` of the data, assembled on `threads` threads.
-fn assemble(d: &Data, idx: &[usize], threads: usize) -> HostBlock {
+/// Each head's label weights for the loss: one, or with `RARE=cap` the
+/// commonest allowed label's count over this label's, no more than cap,
+/// counted over the training rows.
+fn label_weights(d: &Data, train: &[usize]) -> [[f32; SLOT]; 7] {
+    let mut w = [[1f32; SLOT]; 7];
+    let Some(cap) = std::env::var("RARE").ok().and_then(|c| c.parse::<f32>().ok()).filter(|c| *c > 1.0) else { return w };
+    // RARE_HEADS=squad,gun: only these heads weighted (every trained head without it).
+    let only: Vec<String> = std::env::var("RARE_HEADS").unwrap_or_default().split(',').map(|h| h.trim().to_string()).filter(|h| !h.is_empty()).collect();
+    for (h, &n) in HEADS.iter().enumerate() {
+        if !only.is_empty() && !only.iter().any(|o| o == NAMES[h]) {
+            continue;
+        }
+        let mut c = vec![0usize; n];
+        for &i in train {
+            let l = d.labels[i][h] as usize;
+            if l < n && allowed(h, l, &d.masks[i]) {
+                c[l] += 1;
+            }
+        }
+        let top = c.iter().copied().max().unwrap_or(0) as f32;
+        for l in 0..n {
+            w[h][l] = if c[l] > 0 { (top / c[l] as f32).min(cap) } else { 1.0 };
+        }
+    }
+    w
+}
+
+/// Rows `idx` of the data, assembled on `threads` threads; a sample's
+/// `valid` is its label's weight (one, or `RARE`'s), zero where the label
+/// is masked out or the head untrained.
+fn assemble(d: &Data, idx: &[usize], lw: &[[f32; SLOT]; 7], threads: usize) -> HostBlock {
     let (n, s) = (idx.len(), d.senses);
     let mut hb = HostBlock { x: vec![0f32; n * s], slot: vec![0i32; n * 7], valid: vec![0f32; n * 7], mask: vec![0i32; n * 4] };
     let per = n.div_ceil(threads.max(1)).max(1);
@@ -325,7 +359,7 @@ fn assemble(d: &Data, idx: &[usize], threads: usize) -> HostBlock {
                         let l = d.labels[i][h] as usize;
                         let ok = TRAINED[h] && l < w && allowed(h, l, m);
                         sl[r * 7 + h] = (h * SLOT + if ok { l } else { 0 }) as i32;
-                        va[r * 7 + h] = ok as u8 as f32;
+                        va[r * 7 + h] = if ok { lw[h][l] } else { 0.0 };
                     }
                     for k in 0..4 {
                         mk[r * 4 + k] = m[k] as i32;
@@ -438,6 +472,14 @@ fn main() {
         None => Mlp::new(&dev, d.senses, outs),
     };
     let mut opt = AdamConfig::new().init();
+    let lw = label_weights(&d, &train);
+    if std::env::var("RARE").is_ok() {
+        for (h, &n) in HEADS.iter().enumerate() {
+            if TRAINED[h] {
+                println!("bc: {} label weights {:?}", NAMES[h], &lw[h][..n].iter().map(|w| format!("{:.1}", w)).collect::<Vec<_>>());
+            }
+        }
+    }
     let (base, tables) = mask_tables();
     let loss = Loss {
         cols: Tensor::from_data(TensorData::new(columns(), [ROW]), &dev),
@@ -455,7 +497,7 @@ fn main() {
     let chunk = chunk.min(MAX_ROWS).max(bsz);
     let t_up = Instant::now();
     let whole = if resident {
-        let b = upload(assemble(&d, &train, threads), d.senses, &dev);
+        let b = upload(assemble(&d, &train, &lw, threads), d.senses, &dev);
         let _ = b.valid.clone().slice([0..1, 0..1]).into_data(); // wait for the upload
         Some(b)
     } else {
@@ -505,13 +547,13 @@ fn main() {
             // The next chunk is assembled on the CPU while the device trains
             // on this one.
             let chunks: Vec<&[usize]> = order.chunks(chunk).collect();
-            let mut next = Some(assemble(&d, chunks[0], threads));
+            let mut next = Some(assemble(&d, chunks[0], &lw, threads));
             for k in 0..chunks.len() {
                 let tu = Instant::now();
                 let b = upload(next.take().unwrap(), d.senses, &dev);
                 up_s += tu.elapsed().as_secs_f64();
                 std::thread::scope(|sc| {
-                    let pre = (k + 1 < chunks.len()).then(|| sc.spawn(|| assemble(&d, chunks[k + 1], threads)));
+                    let pre = (k + 1 < chunks.len()).then(|| sc.spawn(|| assemble(&d, chunks[k + 1], &lw, threads)));
                     let mut s0 = 0;
                     while s0 < b.n {
                         let s1 = (s0 + bsz).min(b.n);
@@ -577,7 +619,7 @@ fn main() {
         }
         let (mut agree, mut base_agree, mut count) = ([0usize; 7], [0usize; 7], [0usize; 7]);
         for part in rows.chunks(1 << 20) {
-            let hb = assemble(&d, part, threads);
+            let hb = assemble(&d, part, &lw, threads);
             let x = Tensor::<2>::from_data(TensorData::new(hb.x, [part.len(), d.senses]), &gdev);
             let y: Vec<f32> = infer.forward(x).into_data().try_to_vec::<f32>().unwrap();
             for (r, &i) in part.iter().enumerate() {

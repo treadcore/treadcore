@@ -1,0 +1,44 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Tue, 03 Nov 2026 16:30:00 +0000
+Subject: [JOURNAL 0109] The first minute, the rare labels, the courses on the record, and the Quartermaster's census read
+Message-ID: <0109.20261103@treadcore.org>
+In-Reply-To: <0108.20261103@treadcore.org>
+Organization: treadcore.org
+Keywords: census, quartermaster, first minute, rare labels, course recorder, clone
+
+## Abstract
+
+Paul's three lines from journal 0108. The census of the Quartermaster
+was in by morning: −30.7 a seat over 400 seeds, and the lines he asked
+for say the trained squad head works among sixteen (ore 7.8 a team
+against the rules' 6.0, oil 5.1 against 0.0) and that nothing is smelted
+of it, since a team of nets builds no smelter. The first-minute course
+on the fleet's maps: the logistics net takes the pillbox already on two
+maps and dies all the same, and forty generations did not move it. The
+clone: the guard kept short put no more mines on the record (it was
+short already; the smelter is the limit), so the recorder learned to
+record the scripted brain on the courses themselves, where it mines six
+times as often in a fourteenth of the samples; rare labels weighted up
+to twenty make a better fighter of the clone and no miner; the matches
+and the courses together make nets/bc4.bin, the first clone that mines
+at all, two of ten on G17.
+
+## Session
+
+The census first, pooled from its 1,200 team lines against the default
+teams in the same matches. Then the `pillboxes` count and the three
+courses of ninety seconds, and a trainer run beside the rest. Then
+RECORD_TRIAL, proved to reach the brains with a dial that changes the
+deal, and byte for byte the same recording with the ore dials; the
+course recorder, a Recorder brain round the Commander the file would
+deal, the match recorder's window lifted into two functions both use;
+RARE and RARE_HEADS in tools/bc, a rebuild, three clones and their
+gauntlets.
+
+## Next
+
+The first minute with the armour as a potential and hundreds of
+generations on the fleet; the courses in proportion on the clone's
+record; a census of a mixed team, two of the rules and one
+Quartermaster, so its ore has a smelter.
