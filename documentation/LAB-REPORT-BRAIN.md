@@ -9871,3 +9871,28 @@ The trained squad head does among sixteen what it learned in the field of two: a
 **The first-minute course.** `scenarios/training/12-the-first-minute-{industry,island,naval}`: the nine seats of course 11 for ninety seconds, paid two for a pillbox taken (the new count `pillboxes`, any pillbox the learner captured, the map's own included, beside `pillbox_taken` which counts the placed ones), one for being alive, a hundredth back for each point of damage taken; passed when a pillbox is taken. Held out, ten seeds: the logistics net 7 of 10 on industry, 7 on island (reward 0.64: the pillbox is taken and the tank is dead by ninety seconds, 76 points taken on average), 0 on naval (no pillbox within its squad's reach of the start; alive, reward 1.00). Forty generations from it with the five gauntlets in the course (36 s a generation beside the recorder): the population's mean 5.18, 5.19, 4.87, 6.06, 4.92 at 0, 10, 20, 30, 40, the net's pass share 0.62 to 0.81 and back, and the checkpoint at 40 reads what the start read: 7, 7, 0, the gauntlets kept (G14 9, G16 6). The net takes the pillbox already; what it does not do is live, and ninety seconds of nine seats pays "alive" once at the end, a signal the search did not find in forty generations. The course is kept for a longer run with a potential on the armour (`armor_gained`) and `damage_taken` weighted more.
 
 **What is next.** The first minute wants the armour paid as a potential and a run of hundreds of generations on a machine with the hours (the fleet's `train` kind); a clone that mines wants the courses in proportion (the matches' fights kept, the courses' mines a tenth of the squad labels, not a hundredth); the census of r0155 wants a smelter the Quartermaster's side can deliver to, which is the quartermaster of the rules on its team: a census of a mixed team, two of the rules and one Quartermaster, is the next read.
+
+## 134. The armour as a potential, the courses in proportion, and a mixed team for the census, 3 November
+
+Paul: "the first minute with the armour paid as a potential and hundreds of generations on the fleet's train kind; the courses in proportion on the clone's record, the matches' fights kept; a census of a mixed team, two of the rules and one Quartermaster, so its ore has a smelter to go to." The three next lines of section 133.
+
+**The first minute, to the fleet.** The three courses `12-the-first-minute-*` pay `armor_gained` one (the armour at the end less at the start, a share of full: a potential the search feels before "alive", which pays once at the end) and take back two hundredths a point of damage. Asked of the fleet as its `train` kind: run r0158, from `nets/logistics.bin`, the five gauntlets and the three courses, 400 generations, 32 pairs, 16 episodes a generation, 20 held out; its net and log come back to `out/r0158-train` when a machine has had the hours. Nothing is read from it here.
+
+**The courses in proportion.** A thousand runs of G13, G14 and G17 on the record (398,900 samples, 4 s), beside the forty matches (1,708,039): the courses a fifth of the samples, where the morning's three hundred were a fourteenth; the fights kept by `RARE=5 RARE_HEADS=gun,mortar,drone`, so a shot, a lob or a launch counts up to five where a hold counts one. Held out, the matches' last four seeds: drive 77.5, gun 75.6, mortar 92.2, drone 90.8, squad 96.2; the courses' last hundred: drive 98.6, squad 98.9 (floor 98.8). The clone is `nets/bc5.bin`.
+
+| gauntlet | scripted | bc3 | bc4 | bc5 | logistics |
+| --- | --- | --- | --- | --- | --- |
+| G1 fire at an enemy in reach | 10 | 8 | 9 | 6 | 10 |
+| G2 an enemy behind | 10 | 8 | 0 | 1 | 10 |
+| G3 a shell on a standing tank | 9 | 8 | 10 | 0 | 10 |
+| G4 a strike drone coming | 10 | 10 | 10 | 10 | 7 |
+| G7 a pillbox from outside its ring | 9 | 0 | 0 | 4 | 3 |
+| G8 out of a pillbox's ring | 3 | 0 | 4 | 7 | 4 |
+| G13 ore to the smelter | 10 | 0 | 0 | **2** | 10 |
+| G14 oil to the refinery | 10 | 0 | 1 | **3** | 10 |
+| G16 the raider takes the convoy | 10 | 0 | 0 | 0 | 8 |
+| G17 the chain to the city | 10 | 0 | 2 | **9** | 10 |
+
+(G5 0, 0, 1, 0, 1; G6, G9 to G12 0 for every net; G15 10 for all.) The clone mines now: nine of ten on the chain, three on the oil, two on the ore, where the morning's had two, one and none. It paid for it in the lone fight: G3 0 where `bc4` had 10, G2 1, G1 6. Five times the fights in the loss did not hold them against a fifth of the samples with no enemy in them. A clone's heads pull against each other through the shared hidden layers when the data for one head comes from a world the other head's data never sees; the course trained by reward has no such seam, and remains ten of ten on all three with its fights kept. The proportion that keeps both is not found; what is found is that it is a proportion, and that the record of a course of one seat teaches the fight to hold.
+
+**The mixed team.** `bot_mix`, a choice (all | one | two | half): how many seats of a census's trial team play its `bot_style`, the rest the rules; the style goes to the team's last seats, so the leader and the guard, which build the base and the smelter, stay the rules. Asked of the fleet: run r0159, `bot_style = 16`, `bot_mix = one`, 400 seeds, named quartermaster-one; its ore and smelted lines against r0155's will say whether a Quartermaster whose side builds the smelter delivers what it mines. Nothing is read from it here.

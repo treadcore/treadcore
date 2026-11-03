@@ -4,3 +4,4 @@ nets/patches/1.bin	5 Overrider	the queue grove, patches/1.bin, run r0070 in prog
 nets/duelist.bin	7 Duelist	crucible hybrid, island boburner-cuda, generation 140350, 84% against the yardstick	2,340 floats, replace with any hybrid champion
 nets/bc3.bin	(none)	tools/bc, imitation of the rules on 40 matches of game 8, the squad head in the loss (LR 132)	the clone with the squad head: G1 8 and G3 8 of 10 for bc2's 2 and 0; its squad head learned hold, as the labels run 1.6 million to 169 mines
 nets/bc4.bin	(none)	tools/bc, the forty matches and three hundred runs of G13, G14 and G17 together (LR 133)	the first clone that mines at all: G17 2 and G14 1 of 10; G2 0 for bc3's 8
+nets/bc5.bin	(none)	tools/bc, the forty matches and a thousand runs of G13, G14 and G17, the fights weighted five (LR 134)	the clone that mines: G17 9, G14 3, G13 2 of 10; the lone fight lost (G1 6, G2 1, G3 0)
