@@ -251,6 +251,8 @@ pub enum Group {
     Longshot,
     Squad,
     Material,
+    /// The ore the tank carries for a smelter (game 6).
+    Ore,
     /// The ledger (step 10d): my side's structures, mine first.
     Structure,
     /// The lamp beside an order tile.
@@ -569,6 +571,10 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
                                 small_label(c, "MATERIAL");
                                 lamp_row(c, Group::Material, PILLBOY_MATERIAL_MAX as usize, false, 4);
                             });
+                            r.spawn(Node { flex_direction: FlexDirection::Column, ..default() }).with_children(|c| {
+                                small_label(c, "ORE");
+                                lamp_row(c, Group::Ore, PILLBOY_ORE_MAX as usize, false, 4);
+                            });
                         });
                         // Armour and fuel, each a label beside its bar.
                         for (word, which) in [("ARMOR", Bar::Armor), ("FUEL", Bar::Fuel)] {
@@ -757,6 +763,8 @@ fn update(
                 true,
             ),
             Group::Material => (if tank.map(|t| l.1 < t.pillboys.material as usize).unwrap_or(false) { Color::srgb(0.3, 0.75, 0.35) } else { DIM }, true),
+            // Game 6: the ore the tank carries for a smelter, rust-coloured.
+            Group::Ore => (if tank.map(|t| l.1 < t.pillboys.ore as usize).unwrap_or(false) { Color::srgb(0.8, 0.45, 0.25) } else { DIM }, true),
             Group::Structure => match obs.and_then(|o| ledger(o).into_iter().nth(l.1)) {
                 Some(x) => (ledger_color(x, if Some(x.owner) == Some(me) { mine } else { GREEN }), true),
                 None => (DIM, false),

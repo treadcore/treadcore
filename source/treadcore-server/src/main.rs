@@ -72,6 +72,8 @@ struct Args {
     advantage: bool,
     /// Give a map with no structures an economy (`--industry`, step 10f).
     industry: bool,
+    /// Game 6 off: no ore on the map, shells from depots as before (`--no-ore`).
+    ore: bool,
     /// Times a destroyed tank may come back (`--respawns N|unlimited`).
     respawns: u8,
     /// A map file's text, read and checked at start (`--map`).
@@ -116,6 +118,7 @@ fn parse() -> Args {
         game_type: GameType::Open,
         advantage: false,
         industry: false,
+        ore: true,
         respawns: 0,
         map: None,
         save_map: None,
@@ -153,6 +156,7 @@ fn parse() -> Args {
             "--teams" => a.teams = parse_num(&val()),
             "--advantage" => a.advantage = true,
             "--industry" => a.industry = true,
+            "--no-ore" => a.ore = false,
             "--respawns" => a.respawns = treadcore_sim::parse_respawns(&val()).unwrap_or_else(|| usage("--respawns wants a number or unlimited")),
             "--game-type" => {
                 let v = val();
@@ -235,6 +239,8 @@ const HELP: &str = "treadcore-server -- headless host, bot match, or bot seat
   --industry         give a map with no structures of its own an economy:
                      pad zones with neutral power plants, refineries and
                      data centres (roadmap step 10f)
+  --no-ore           play game 5: no deposits of ore, depots making shells
+                     of their own (game 6 is the default)
   --map FILE       play on this map file (documentation/MAPS.md)
                      instead of the one generated from --seed
   --save-map FILE    when the match ends, write the map as played
@@ -687,6 +693,9 @@ fn narrate(world: &World, events: &[Event]) {
             Event::PillboxFired { pillbox, owner, tank, damage } => log::info!("[{:>6} {:>6.1}s] {} pillbox #{} hits tank #{} for {:.0}", t, s, if *owner == NEUTRAL { "neutral".to_string() } else { format!("p{}", owner) }, pillbox, tank, damage),
             Event::Built { owner, what, at } => log::info!("[{:>6} {:>6.1}s] p{} builds {:?} at ({:.0},{:.0})", t, s, owner, what, at.x, at.y),
             Event::Harvested { owner, at, material } => log::info!("[{:>6} {:>6.1}s] p{} harvests ({:.0},{:.0}) +{} material", t, s, owner, at.x, at.y, material),
+            Event::Mined { owner, at, ore, left } => log::info!("[{:>6} {:>6.1}s] p{} mines ({:.0},{:.0}) +{} ore, {} left", t, s, owner, at.x, at.y, ore, left),
+            Event::OreUnloaded { owner, structure, ore, .. } => log::info!("[{:>6} {:>6.1}s] p{} unloads {} ore into smelter #{}", t, s, owner, ore, structure),
+            Event::Smelted { structure, depot, .. } => log::trace!("[{:>6} {:>6.1}s] smelter #{} makes a shell into depot #{}", t, s, structure, depot),
             Event::MineLaid { owner, at, .. } => log::info!("[{:>6} {:>6.1}s] p{} lays a mine at ({:.0},{:.0})", t, s, owner, at.x, at.y),
             Event::MineExploded { owner, at, hits, .. } => log::warn!("[{:>6} {:>6.1}s] MINE (p{}) at ({:.0},{:.0}) hits {:?}", t, s, owner, at.x, at.y, hits),
             Event::StructureBuilt { structure, kind, by, at } => log::warn!("[{:>6} {:>6.1}s] p{} BUILDS {} #{} at ({:.0},{:.0})", t, s, by, kind.word(), structure, at.x, at.y),
@@ -779,7 +788,7 @@ fn scenario_from(args: &Args, names: Vec<(String, bool)>) -> Scenario {
         Some(text) => MapSource::Text(text.clone()),
         None => MapSource::FromScenarioSeed,
     };
-    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, advantage: args.advantage, swarm_interval: args.swarm, industry: args.industry, respawns: args.respawns, ..Scenario::default() };
+    let mut s = Scenario { seed: args.seed, map, game_type: args.game_type, advantage: args.advantage, swarm_interval: args.swarm, industry: args.industry, ore: args.ore, respawns: args.respawns, ..Scenario::default() };
     if args.ticks > 0 {
         s.time_limit = args.ticks;
     }

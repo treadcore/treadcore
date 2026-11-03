@@ -32,6 +32,7 @@ match can start where this one ended.
 | `depot x y` | a refuelling depot; the first N depots belong to the first N seats at the start, the rest are neutral |
 | `pillbox x y [seat\|neutral]` | a pillbox, neutral unless a seat number (0 to 15) is given; a seat the scenario does not seat makes it neutral |
 | `structure x y kind [seat\|neutral]` | a structure on a pad (roadmap step 10b): `power`, `refinery`, `datacentre`, `workshop` or `jammer`; owned as a pillbox is |
+| `deposit x y [stock]` | game 6: a deposit of ore on open ground (not water, a wall, forest, a pad, a bridge or a depot), `stock` the ore there is, 120 unsaid. A map that places none is given one for every second start, six tenths of the way to the centre |
 | `# ...` | a comment; blank lines are ignored |
 
 Positions are tile coordinates, `x` east and `y` south, as floats; the

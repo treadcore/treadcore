@@ -7,6 +7,7 @@
 //! dead. Drones ignore all of it. That asymmetry is most of the game's
 //! texture: the ground is the tank's problem, the air is the drones'.
 
+use crate::rules::DEPOSIT_STOCK;
 use crate::{PlayerId, Rng, StructureKind, MAX_PLAYERS, V2};
 use serde::{Deserialize, Serialize};
 
@@ -110,6 +111,14 @@ pub struct MapStructure {
     pub owner: Option<PlayerId>,
 }
 
+/// A deposit of ore as the map places it (game 6): where, and how much
+/// there is, which is all there will be.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MapDeposit {
+    pub pos: V2,
+    pub stock: u16,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
     pub w: usize,
@@ -136,6 +145,10 @@ pub struct Map {
     /// is industrialised; a map file places its own.
     #[serde(default)]
     pub structures: Vec<MapStructure>,
+    /// Deposits of ore (game 6): none on a generated island unless the
+    /// match is industrial (`seed_deposits`); a map file places its own.
+    #[serde(default)]
+    pub deposits: Vec<MapDeposit>,
     /// The land's regions (`Regions`), worked out when a route first
     /// asks and forgotten when a tile changes whether it can be driven.
     #[serde(skip)]
@@ -446,7 +459,7 @@ impl Map {
             pillboxes.push(MapPillbox { pos: center + V2::new(dx, dy), owner: None });
         }
 
-        let mut map = Map { w, h, seed, scale_m: default_scale(), tempo: default_tempo(), cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new(), regions: Regions::default(), edits: Edits::default() };
+        let mut map = Map { w, h, seed, scale_m: default_scale(), tempo: default_tempo(), cells, starts: starts.clone(), depots: depots.clone(), pillboxes: pillboxes.clone(), structures: Vec::new(), deposits: Vec::new(), regions: Regions::default(), edits: Edits::default() };
 
         // Roads: the four sides to the centre, and a ring road round the
         // edge through every start, so each start reaches a spoke. Roads
@@ -511,6 +524,28 @@ impl Map {
             zone(self, at, 3, 2);
             self.structures.push(MapStructure { pos: at, kind: StructureKind::Power, owner: None });
             self.structures.push(MapStructure { pos: at + V2::new(2.0, 0.0), kind: StructureKind::DataCentre, owner: None });
+        }
+    }
+
+    /// Game 6: the ore of an industrial match on a map that places none.
+    /// One deposit for every second start, on the nearest open ground
+    /// six tenths of the way from that start to the centre: between two
+    /// bases rather than at either, so each is a place to hold, and fewer
+    /// of them than sides. `DEPOSIT_STOCK` each.
+    pub fn seed_deposits(&mut self) {
+        let c = self.center();
+        let starts = self.starts.clone();
+        for s in starts.iter().step_by(2) {
+            let want = s.lerp(c, 0.6);
+            let open = |x: i32, y: i32| {
+                let t = self.at_tile(x as usize, y as usize);
+                t == Terrain::Grass || t == Terrain::Rubble || t == Terrain::Road
+            };
+            let Some(at) = self.nearest_tiles(want, 8.0, 1, open, None).first().copied() else { continue };
+            if self.depots.iter().any(|d| d.pos.dist(at) < 4.0) || self.deposits.iter().any(|d| d.pos.dist(at) < 6.0) {
+                continue;
+            }
+            self.deposits.push(MapDeposit { pos: at, stock: DEPOSIT_STOCK });
         }
     }
 
@@ -1235,6 +1270,9 @@ impl Map {
                 None => s.push_str(&format!("structure {} {} {} neutral\n", st.pos.x, st.pos.y, st.kind.word())),
             }
         }
+        for d in &self.deposits {
+            s.push_str(&format!("deposit {} {} {}\n", d.pos.x, d.pos.y, d.stock));
+        }
         s
     }
 
@@ -1257,6 +1295,7 @@ impl Map {
         let mut depots = Vec::new();
         let mut pillboxes = Vec::new();
         let mut structures = Vec::new();
+        let mut deposits = Vec::new();
         let mut rows_read = 0usize;
         for (n, raw) in lines {
             let line = raw.trim();
@@ -1301,7 +1340,7 @@ impl Map {
                         return Err(err(n, "tempo must be above nothing"));
                     }
                 }
-                "start" | "depot" | "pillbox" | "structure" => {
+                "start" | "depot" | "pillbox" | "structure" | "deposit" => {
                     if rows_read < h {
                         return Err(err(n, &format!("'{}' before all {} rows were read ({} so far)", head, h, rows_read)));
                     }
@@ -1350,6 +1389,17 @@ impl Map {
                             };
                             structures.push(MapStructure { pos: p, kind, owner });
                         }
+                        "deposit" => {
+                            // Game 6: `deposit x y [stock]`, on open ground.
+                            if !t.passable() || matches!(t, Terrain::Forest | Terrain::Depot | Terrain::Pad | Terrain::Bridge) {
+                                return Err(err(n, "a deposit on water, a wall, forest, a pad, a bridge or a depot"));
+                            }
+                            let stock = match words.next() {
+                                None => DEPOSIT_STOCK,
+                                Some(s) => s.parse::<u16>().map_err(|_| err(n, "a deposit's stock is a whole number"))?,
+                            };
+                            deposits.push(MapDeposit { pos: Map::tile_centre(p), stock });
+                        }
                         _ => {
                             if t == Terrain::Water {
                                 return Err(err(n, "a pillbox on water"));
@@ -1385,7 +1435,7 @@ impl Map {
         if starts.len() > MAX_PLAYERS {
             return Err(err(0, &format!("{} starts; the most is {}", starts.len(), MAX_PLAYERS)));
         }
-        Ok(Map { w, h, seed, scale_m, tempo, cells, starts, depots, pillboxes, structures, regions: Regions::default(), edits: Edits::default() })
+        Ok(Map { w, h, seed, scale_m, tempo, cells, starts, depots, pillboxes, structures, deposits, regions: Regions::default(), edits: Edits::default() })
     }
 }
 

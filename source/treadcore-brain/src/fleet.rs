@@ -594,6 +594,78 @@ mod tests {
         assert!(held.iter().sum::<usize>() >= 4, "depots {:?}", held);
     }
 
+    /// Game 6, end to end on the fleet's own bots: on the naval map, with the depots making no
+    /// shells of their own, a side builds a smelter beside its ore, mines it, unloads, and the
+    /// smelter's shells reach a depot; and no tank stands at a dry depot for the match.
+    #[test]
+    fn the_bots_build_a_smelter_mine_and_smelt() {
+        use treadcore_sim::*;
+        let seed = 0x6_0000_0001_u64;
+        let seats = 9;
+        let team = |s: usize| (0..seats).filter(|x| x % 3 == s % 3).collect::<Vec<usize>>();
+        let names: Vec<(String, bool)> = (0..seats).map(|i| (format!("s{}", i), true)).collect();
+        let map = MapSource::Text(include_str!("../../../maps/naval.map").into());
+        let sc = Scenario { seed, players: names, map, respawns: 3, time_limit: 0, ..Scenario::default() }.with_teams(3);
+        let mut w = World::new(sc);
+        assert!(w.ore_game() && !w.deposits.is_empty(), "the naval map was given no ore");
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats)
+            .map(|i| {
+                let t = team(i);
+                (i as PlayerId, team_brain(i, &t, seed ^ i as u64, false, &format!("s{}", i)))
+            })
+            .collect();
+        let (mut smelters, mut mined, mut unloaded, mut smelted, mut refused) = (0, 0u32, 0, 0, Vec::new());
+        let mut dry_stand: std::collections::HashMap<PlayerId, Tick> = Default::default();
+        let mut longest_dry = 0;
+        let mut dry_status = String::new();
+        let (mut ore_runs, mut run_words): (u32, Vec<String>) = (0, Vec::new());
+        while w.tick < 10 * 60 * TICK_HZ as Tick && !w.over {
+            let orders = crate::run_bots(&w, &mut bots);
+            w.step(&orders);
+            for e in &w.events {
+                match e {
+                    Event::StructureBuilt { kind: StructureKind::Smelter, .. } => smelters += 1,
+                    Event::Mined { ore, .. } => mined += *ore as u32,
+                    Event::OreUnloaded { .. } => unloaded += 1,
+                    Event::Smelted { .. } => smelted += 1,
+                    Event::Rejected { player, why, .. } if why.contains("ore") || why.contains("smelter") || why.contains("works") => refused.push((w.tick / TICK_HZ as Tick, *player, why.clone())),
+                    _ => {}
+                }
+            }
+            // A tank waiting to fill up on a depot of its side that has no shells, its armour whole:
+            // how long that lasts at a stretch, and what it said it was doing.
+            if w.tick % TICK_HZ as Tick == 0 {
+                for t in w.tanks.iter().filter(|t| t.alive) {
+                    let on_dry = w.depots.iter().any(|d| d.owner.is_some_and(|o| w.allied(o, t.owner)) && d.pos.dist(t.pos) <= DEPOT_RADIUS && d.stock.kinds[STOCK_SHELL] == 0);
+                    let status = bots.iter().find(|(p, _)| *p == t.owner).map(|(_, b)| b.status()).unwrap_or_default();
+                    if status.contains("ore run") {
+                        ore_runs += 1;
+                        if run_words.len() < 4 && !run_words.iter().any(|w: &String| w[..20.min(w.len())] == status[..20.min(status.len())]) {
+                            run_words.push(format!("{} s seat {}: {}", w.tick / TICK_HZ as Tick, t.owner, status.chars().take(70).collect::<String>()));
+                        }
+                    }
+                    if on_dry && t.armor >= TANK_ARMOR * 0.95 && t.shells < TANK_SHELLS && status.contains("resupply") {
+                        let e = dry_stand.entry(t.owner).or_insert(0);
+                        *e += 1;
+                        if *e > longest_dry {
+                            longest_dry = *e;
+                            dry_status = status.chars().take(60).collect();
+                        }
+                    } else {
+                        dry_stand.insert(t.owner, 0);
+                    }
+                }
+            }
+        }
+        let shells: Vec<u8> = w.depots.iter().filter(|d| d.owner.is_some()).map(|d| d.stock.kinds[STOCK_SHELL]).collect();
+        eprintln!("the_bots_build_a_smelter_mine_and_smelt: {} smelters built, {} ore mined, {} unloads, {} smelted; depots' shells {:?}; longest wait at a dry depot {} s ({}); {} tank-seconds on ore runs {:?}; refusals {:?}", smelters, mined, unloaded, smelted, shells, longest_dry, dry_status, ore_runs, run_words, refused.iter().take(6).collect::<Vec<_>>());
+        assert!(smelters > 0, "no side built a smelter");
+        assert!(mined > 0, "nobody mined");
+        assert!(unloaded > 0, "no ore reached a smelter");
+        assert!(smelted > 0, "no shell was smelted");
+        assert!(longest_dry <= 40, "a tank stood {} s at a depot with no shells to give", longest_dry);
+    }
+
     /// The quad match headless (scripts/quad.sh): fifteen seats, three
     /// teams, each led by a window's autopilot (a fleet commander on
     /// Auto), respawns without limit. Every 30 s each seat's place and
@@ -1231,7 +1303,7 @@ mod tests {
                 let score: f32 = rs.iter().map(|r| r.score).sum::<f32>() / rs.len().max(1) as f32;
                 let rewards: f32 = rs.iter().map(|r| crate::ledger::rewards(&r.outcome, &k)).sum::<f32>() / rs.len().max(1) as f32;
                 eprintln!(
-                    "  team {}{}: score {:.2}, kills {}, deaths {}, revives {}, built {}, road {}, bridge {}, held {:.1}, rewards {:.2} (direct hits {}, pillbox damage {:.1}, pillboxes taken {} neutral {} hostile, defends {}, all neutral {})",
+                    "  team {}{}: score {:.2}, kills {}, deaths {}, revives {}, built {}, road {}, bridge {}, ore {}, smelted {}, held {:.1}, rewards {:.2} (direct hits {}, pillbox damage {:.1}, pillboxes taken {} neutral {} hostile, defends {}, all neutral {})",
                     t,
                     if t == lucky { " (trial)" } else { "" },
                     score,
@@ -1241,6 +1313,8 @@ mod tests {
                     sum(&|o| o.built),
                     sum(&|o| o.road_tiles),
                     sum(&|o| o.bridge_tiles),
+                    sum(&|o| o.ore),
+                    sum(&|o| o.smelted),
                     rs.first().map(|r| r.outcome.held_s as f32 / r.seconds.max(1) as f32).unwrap_or(0.0),
                     rewards,
                     sum(&|o| o.direct_hits),

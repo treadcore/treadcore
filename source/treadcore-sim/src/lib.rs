@@ -30,7 +30,7 @@ pub mod lingo;
 pub mod map;
 pub mod rules;
 
-pub use map::{DepotOwner, Map, MapDepot, MapError, MapPillbox, MapStructure, Terrain, MAP_FORMAT, MAP_H, MAP_W};
+pub use map::{DepotOwner, Map, MapDepot, MapDeposit, MapError, MapPillbox, MapStructure, Terrain, MAP_FORMAT, MAP_H, MAP_W};
 pub use rules::*;
 
 /// Simulation rate. Twenty ticks a second is enough for a game whose
@@ -384,15 +384,21 @@ pub enum StructureKind {
     /// Electronic warfare: no drone near it keeps its link, its own
     /// side's included.
     Jammer,
+    /// Game 6: turns the ore brought to it into a depot's shells, one a
+    /// second. Stands beside its deposit, on open ground.
+    Smelter,
+    /// Game 6: a harvest near it yields six, and the tree grows back in
+    /// a minute. Stands beside the wood, on open ground.
+    Harvester,
 }
 
 impl StructureKind {
-    pub const ALL: [StructureKind; 5] = [StructureKind::Power, StructureKind::Refinery, StructureKind::DataCentre, StructureKind::Workshop, StructureKind::Jammer];
+    pub const ALL: [StructureKind; 7] = [StructureKind::Power, StructureKind::Refinery, StructureKind::DataCentre, StructureKind::Workshop, StructureKind::Jammer, StructureKind::Smelter, StructureKind::Harvester];
     pub fn cost(self) -> u8 {
         match self {
-            StructureKind::Power | StructureKind::Refinery => 4,
+            StructureKind::Power | StructureKind::Refinery | StructureKind::Smelter => 4,
             StructureKind::DataCentre => 6,
-            StructureKind::Workshop => 3,
+            StructureKind::Workshop | StructureKind::Harvester => 3,
             StructureKind::Jammer => 5,
         }
     }
@@ -404,14 +410,22 @@ impl StructureKind {
             StructureKind::DataCentre => "datacentre",
             StructureKind::Workshop => "workshop",
             StructureKind::Jammer => "jammer",
+            StructureKind::Smelter => "smelter",
+            StructureKind::Harvester => "harvester",
         }
     }
     pub fn from_word(w: &str) -> Option<StructureKind> {
         StructureKind::ALL.iter().copied().find(|k| k.word() == w.to_ascii_lowercase())
     }
-    /// The power plant runs itself; everything else wants one in reach.
+    /// The power plant runs itself, and so do the works at a resource
+    /// (their own crew, not the grid); everything else wants a plant in reach.
     pub fn needs_power(self) -> bool {
-        self != StructureKind::Power
+        !matches!(self, StructureKind::Power | StructureKind::Smelter | StructureKind::Harvester)
+    }
+    /// Sited by its resource (a deposit, the wood) on open ground rather
+    /// than on a pad (game 6).
+    pub fn at_resource(self) -> bool {
+        matches!(self, StructureKind::Smelter | StructureKind::Harvester)
     }
 }
 
@@ -432,6 +446,19 @@ pub struct Structure {
     /// Owned, standing, and a standing power plant of the side within
     /// `POWER_RANGE` (or itself one). Set every tick.
     pub powered: bool,
+    /// A smelter's ore, brought by the tanks and not yet made into shells (game 6).
+    #[serde(default)]
+    pub ore: u16,
+}
+
+/// A deposit of ore (game 6): a place on the map with a stock that is
+/// all the ore there is there. Mined by a squad as a tree is felled;
+/// never removed, empty when its stock is gone. Public, like a depot.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Deposit {
+    pub id: EntityId,
+    pub pos: V2,
+    pub stock: u16,
 }
 
 impl Structure {
@@ -482,7 +509,7 @@ pub enum PillboyTask {
     Repair { target: EntityId },
     /// Raise an emplacement at a point, for material.
     Build { what: BuildKind, at: V2 },
-    /// Fell a forest tile for material.
+    /// Fell a forest tile for material; on a deposit, mine it for ore (game 6).
     Harvest { at: V2 },
     /// Pick up a pillbox of my own side, live or dead, to set it down
     /// elsewhere with a Build of a pillbox (step 11h).
@@ -530,11 +557,14 @@ pub struct Pillboys {
     /// A pillbox lifted and not yet set down: its health (step 11h).
     /// Lost with the squad or the tank, it falls where they were, dead.
     pub carrying: Option<f32>,
+    /// Ore mined and not yet unloaded at a smelter (game 6), up to `PILLBOY_ORE_MAX`.
+    #[serde(default)]
+    pub ore: u8,
 }
 
 impl Pillboys {
     pub fn fresh(pos: V2, material: u8) -> Pillboys {
-        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material, route: Vec::new(), carrying: None }
+        Pillboys { strength: PILLBOY_MAX, aboard: true, pos, task: None, progress: 0, material, route: Vec::new(), carrying: None, ore: 0 }
     }
     pub fn deployed(&self) -> bool {
         !self.aboard
@@ -660,8 +690,16 @@ pub const STOCK_STRIKE: usize = 5;
 impl DepotStock {
     /// One more of the next kind that has room; none when all six are full.
     pub fn make(&mut self) {
+        self.make_from(false);
+    }
+
+    /// The same, passing over shells on an ore map (game 6): those come from a smelter.
+    pub fn make_from(&mut self, ore_game: bool) {
         for i in 0..self.kinds.len() {
             let k = (self.turn as usize + i) % self.kinds.len();
+            if ore_game && k == STOCK_SHELL {
+                continue;
+            }
             if self.kinds[k] < DEPOT_STOCK_MAX {
                 self.kinds[k] += 1;
                 self.turn = ((k + 1) % self.kinds.len()) as u8;
@@ -957,6 +995,12 @@ pub enum Event {
     /// The squad finished a wall, road, bridge or pillbox.
     Built { owner: PlayerId, what: BuildKind, at: V2 },
     Harvested { owner: PlayerId, at: V2, material: u8 },
+    /// Game 6: the squad mined a deposit; `left` is what the deposit has after.
+    Mined { owner: PlayerId, at: V2, ore: u8, left: u16 },
+    /// Game 6: a tank unloaded its ore into a smelter of its side.
+    OreUnloaded { tank: EntityId, owner: PlayerId, structure: EntityId, ore: u8 },
+    /// Game 6: a smelter made a shell into a depot of its side.
+    Smelted { structure: EntityId, owner: PlayerId, depot: EntityId },
     /// To the layer only.
     MineLaid { mine: EntityId, owner: PlayerId, at: V2 },
     MineExploded { mine: EntityId, owner: PlayerId, at: V2, hits: Vec<EntityId> },
@@ -1106,6 +1150,10 @@ pub struct Scenario {
     /// (`Map::industrialise`, roadmap step 10f).
     #[serde(default)]
     pub industry: bool,
+    /// Game 6: the map has ore (deposits seeded where the file places none), so shells come from
+    /// smelters and nowhere else. Off, the match plays as game 5. On unless a scenario says otherwise.
+    #[serde(default = "ore_default")]
+    pub ore: bool,
     /// How many times a destroyed tank may come back, each
     /// `RESPAWN_TICKS` after it died, at its start (on a landing craft
     /// if the start is at sea, SPEC TNK-08). 0 is the prior art's
@@ -1157,6 +1205,11 @@ impl Scenario {
     }
 }
 
+/// Game 6 is the game: a scenario that does not say plays with ore.
+fn ore_default() -> bool {
+    true
+}
+
 impl Default for Scenario {
     fn default() -> Scenario {
         Scenario {
@@ -1171,6 +1224,7 @@ impl Default for Scenario {
             swarm_size: 4,
             time_limit: 15 * 60 * TICK_HZ as Tick,
             industry: false,
+            ore: true,
             respawns: 0,
         }
     }
@@ -1208,6 +1262,9 @@ pub struct World {
     /// Boats moored and empty.
     #[serde(default)]
     pub boats: Vec<Boat>,
+    /// The ore there is (game 6). Empty on a map that has none, which then plays as game 5.
+    #[serde(default)]
+    pub deposits: Vec<Deposit>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
@@ -1240,6 +1297,10 @@ impl World {
         if scenario.industry && map.structures.is_empty() {
             map.industrialise();
         }
+        // Game 6: a match has ore unless the scenario says not. A map file that places its own deposits keeps them.
+        if scenario.ore && map.deposits.is_empty() {
+            map.seed_deposits();
+        }
         let mut w = World {
             tick: 0,
             map,
@@ -1254,6 +1315,7 @@ impl World {
             proposals: Vec::new(),
             structures: Vec::new(),
             boats: Vec::new(),
+            deposits: Vec::new(),
             rng: Rng::new(scenario.seed ^ 0xA5A5_5A5A),
             next_id: 1,
             over: false,
@@ -1281,7 +1343,11 @@ impl World {
         for st in w.map.structures.clone() {
             let id = w.alloc();
             let owner = st.owner.filter(|o| (*o as usize) < seats);
-            w.structures.push(Structure { id, kind: st.kind, pos: st.pos, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+            w.structures.push(Structure { id, kind: st.kind, pos: st.pos, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
+        }
+        for d in w.map.deposits.clone() {
+            let id = w.alloc();
+            w.deposits.push(Deposit { id, pos: Map::tile_centre(d.pos), stock: d.stock });
         }
         // No more seats than the map has starts.
         for (i, (name, is_bot)) in scenario.players.iter().take(seats).enumerate() {
@@ -1338,7 +1404,34 @@ impl World {
         let mut m = self.map.clone();
         m.pillboxes = self.pillboxes.iter().map(|p| MapPillbox { pos: p.pos, owner: p.owner }).collect();
         m.structures = self.structures.iter().map(|s| MapStructure { pos: s.pos, kind: s.kind, owner: s.owner }).collect();
+        m.deposits = self.deposits.iter().map(|d| MapDeposit { pos: d.pos, stock: d.stock }).collect();
         m
+    }
+
+    /// Game 6 is on: the map has ore, so shells come only from smelters.
+    pub fn ore_game(&self) -> bool {
+        !self.deposits.is_empty()
+    }
+    /// The deposit on this tile, if any.
+    pub fn deposit_at(&self, at: V2) -> Option<&Deposit> {
+        self.deposits.iter().find(|d| d.pos.tile() == at.tile())
+    }
+    /// Why a works cannot stand here (game 6): a smelter wants a deposit
+    /// within `SMELTER_SITE`, a harvester forest within `HARVESTER_SITE`,
+    /// both open ground with nothing on it. None when it can.
+    pub fn works_site_refused(&self, kind: StructureKind, at: V2) -> Option<&'static str> {
+        let here = self.map.at(at);
+        if !here.passable() || here == Terrain::Forest || here == Terrain::Depot || self.deposit_at(at).is_some() {
+            return Some("a works stands on open ground");
+        }
+        if self.structures.iter().any(|x| x.pos.tile() == at.tile()) || self.pillboxes.iter().any(|p| p.pos.tile() == at.tile()) {
+            return Some("something is already there");
+        }
+        match kind {
+            StructureKind::Smelter if !self.deposits.iter().any(|d| d.pos.dist(at) <= SMELTER_SITE) => Some("a smelter stands beside its ore"),
+            StructureKind::Harvester if self.map.forest_near(at, HARVESTER_SITE, 1).is_empty() => Some("a harvester stands beside the wood"),
+            _ => None,
+        }
     }
 
     pub fn tank(&self, id: EntityId) -> Option<&Tank> {
@@ -1913,6 +2006,7 @@ impl World {
                     return self.reject(o, "squad already out");
                 }
                 let material = squad.material;
+                let ore = squad.ore;
                 let carrying = squad.carrying.is_some();
                 match task {
                     PillboyTask::Capture { pillbox } if self.pillbox(*pillbox).is_none() => match self.structure(*pillbox) {
@@ -1995,6 +2089,14 @@ impl World {
                                     return self.reject(o, "a boat is there");
                                 }
                             }
+                            BuildKind::Structure(kind) if kind.at_resource() => {
+                                if let Some(why) = self.works_site_refused(*kind, *at) {
+                                    return self.reject(o, why);
+                                }
+                                if self.tanks.iter().any(|t| t.alive && t.pos.tile() == at.tile()) {
+                                    return self.reject(o, "a tank is there");
+                                }
+                            }
                             BuildKind::Structure(_) => {
                                 if here != Terrain::Pad {
                                     return self.reject(o, "structures go on a pad");
@@ -2025,11 +2127,24 @@ impl World {
                         }
                     }
                     PillboyTask::Harvest { at } => {
-                        if !self.map.in_bounds(*at) || self.map.at(*at) != Terrain::Forest {
+                        if !self.map.in_bounds(*at) {
                             return self.reject(o, "no forest there");
                         }
-                        if material >= PILLBOY_MATERIAL_MAX {
-                            return self.reject(o, "material is full");
+                        if let Some(d) = self.deposit_at(*at) {
+                            // Game 6: a deposit is mined as a tree is felled.
+                            if d.stock == 0 {
+                                return self.reject(o, "the deposit is worked out");
+                            }
+                            if ore >= PILLBOY_ORE_MAX {
+                                return self.reject(o, "ore is full");
+                            }
+                        } else {
+                            if self.map.at(*at) != Terrain::Forest {
+                                return self.reject(o, "no forest there");
+                            }
+                            if material >= PILLBOY_MATERIAL_MAX {
+                                return self.reject(o, "material is full");
+                            }
                         }
                     }
                     PillboyTask::Return => unreachable!(),
@@ -2402,6 +2517,7 @@ impl World {
             Mended(EntityId),
             Built(BuildKind, V2),
             Harvested(V2),
+            Mined(V2),
             Lifted(EntityId),
             Revived(EntityId),
             Abandon(&'static str),
@@ -2416,6 +2532,17 @@ impl World {
         let tank_tiles: Vec<(i32, i32)> = self.tanks.iter().filter(|t| t.alive).map(|t| t.pos.tile()).collect();
         let boat_tiles: Vec<(i32, i32)> = self.boats.iter().map(|b| b.pos.tile()).collect();
         let mine_tiles: Vec<(i32, i32)> = self.mines.iter().map(|m| m.pos.tile()).collect();
+        // Game 6: the deposits with ore left, and whether a works may stand at a point.
+        let ore_tiles: Vec<(i32, i32)> = self.deposits.iter().filter(|d| d.stock > 0).map(|d| d.pos.tile()).collect();
+        let deposit_tiles: Vec<(i32, i32)> = self.deposits.iter().map(|d| d.pos.tile()).collect();
+        let works_refused: Vec<(StructureKind, V2, bool)> = self
+            .tanks
+            .iter()
+            .filter_map(|t| match &t.pillboys.task {
+                Some(PillboyTask::Build { what: BuildKind::Structure(k), at }) if k.at_resource() => Some((*k, *at, self.works_site_refused(*k, *at).is_some())),
+                _ => None,
+            })
+            .collect();
         // Tanks a squad may be reviving: where, and whether still down.
         let wrecks: Vec<(EntityId, V2, bool, bool)> = self.tanks.iter().map(|t| (t.id, t.pos, t.alive, self.downed(t))).collect();
         // A hostile mine under a walking squad: found the hard way.
@@ -2559,6 +2686,7 @@ impl World {
                     let blocked = match what {
                         BuildKind::Pillbox => pillboxes.iter().any(|p| p.pos.dist(*at) < PILLBOX_SPACING),
                         BuildKind::Wall | BuildKind::Concrete => !map.at(*at).passable() || tank_tiles.iter().any(|tt| *tt == at.tile()),
+                        BuildKind::Structure(k) if k.at_resource() => works_refused.iter().any(|(wk, wat, refused)| *wk == *k && wat.tile() == at.tile() && *refused),
                         BuildKind::Structure(_) => map.at(*at) != Terrain::Pad || structures.iter().any(|x| x.pos.tile() == at.tile()),
                         BuildKind::Road => matches!(map.at(*at), Terrain::Road | Terrain::Bridge | Terrain::Wall | Terrain::Concrete | Terrain::Pad),
                         BuildKind::Mine => !map.at(*at).passable() || mine_tiles.iter().any(|mt| *mt == at.tile()),
@@ -2589,9 +2717,16 @@ impl World {
                         }
                     }
                 }
+                PillboyTask::Harvest { at } if ore_tiles.contains(&at.tile()) => {
+                    // Game 6: ore, as a tree is felled, a little slower.
+                    s.progress += 1;
+                    if s.progress >= ORE_TICKS {
+                        done.push((t.id, t.owner, Done::Mined(*at)));
+                    }
+                }
                 PillboyTask::Harvest { at } => {
                     if map.at(*at) != Terrain::Forest {
-                        done.push((t.id, t.owner, Done::Abandon("the forest is gone")));
+                        done.push((t.id, t.owner, Done::Abandon(if deposit_tiles.contains(&at.tile()) { "the deposit is worked out" } else { "the forest is gone" })));
                     } else {
                         s.progress += 1;
                         if s.progress >= HARVEST_TICKS {
@@ -2760,7 +2895,7 @@ impl World {
                         BuildKind::Concrete => self.set_terrain(at, Terrain::Concrete),
                         BuildKind::Structure(kind) => {
                             let id = self.alloc();
-                            self.structures.push(Structure { id, kind, pos: at, owner: Some(owner), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+                            self.structures.push(Structure { id, kind, pos: at, owner: Some(owner), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
                             self.events.push(Event::StructureBuilt { structure: id, kind, by: owner, at });
                         }
                         BuildKind::Road if self.map.at(at) == Terrain::Water => {
@@ -2808,13 +2943,28 @@ impl World {
                 Done::Harvested(at) => {
                     let at = Map::tile_centre(at);
                     self.set_terrain(at, Terrain::Grass);
-                    self.felled.push((at, self.tick + TREE_REGROW_TICKS));
+                    // Game 6: by a working harvester of the side, more, and the tree back sooner.
+                    let harvester = self.serves(owner, StructureKind::Harvester, at, HARVESTER_RANGE);
+                    let (yield_, regrow) = if harvester { (HARVESTER_MATERIAL, HARVESTER_REGROW_TICKS) } else { (HARVEST_MATERIAL, TREE_REGROW_TICKS) };
+                    self.felled.push((at, self.tick + regrow));
                     let mut gained = 0;
                     if let Some(t) = self.tank_mut(tid) {
-                        gained = HARVEST_MATERIAL.min(PILLBOY_MATERIAL_MAX - t.pillboys.material);
+                        gained = yield_.min(PILLBOY_MATERIAL_MAX - t.pillboys.material);
                         t.pillboys.material += gained;
                     }
                     self.events.push(Event::Harvested { owner, at, material: gained });
+                }
+                Done::Mined(at) => {
+                    let at = Map::tile_centre(at);
+                    let room = self.tank(tid).map(|t| PILLBOY_ORE_MAX - t.pillboys.ore).unwrap_or(0);
+                    let Some(d) = self.deposits.iter_mut().find(|d| d.pos.tile() == at.tile()) else { continue };
+                    let gained = ORE_HARVEST.min(room).min(d.stock.min(u8::MAX as u16) as u8);
+                    d.stock -= gained as u16;
+                    let left = d.stock;
+                    if let Some(t) = self.tank_mut(tid) {
+                        t.pillboys.ore += gained;
+                    }
+                    self.events.push(Event::Mined { owner, at, ore: gained, left });
                 }
                 Done::Lifted(pid) => {
                     let Some(ix) = self.pillboxes.iter().position(|p| p.id == pid) else { continue };
@@ -3630,12 +3780,16 @@ impl World {
             t.fuel = (t.fuel + FUEL_PER_TILE * t.speed * DT * (1.0 - REFINERY_FUEL_BURN)).min(TANK_FUEL);
         }
         // The stops: a refinery's fuel and shells, a workshop's repair
-        // and bay, at a depot's cadence.
+        // and bay, at a depot's cadence. On an ore map (game 6) the
+        // refinery's shells are dry: shells come from ore.
+        let ore_game = self.ore_game();
         if tick % RESUPPLY_EVERY == 0 {
             for t in self.tanks.iter_mut().filter(|t| t.alive) {
                 if serves(StructureKind::Refinery, t.owner, t.pos, REFINERY_RANGE) {
                     t.fuel = (t.fuel + 40.0).min(TANK_FUEL);
-                    t.shells = (t.shells + 1).min(TANK_SHELLS);
+                    if !ore_game {
+                        t.shells = (t.shells + 1).min(TANK_SHELLS);
+                    }
                 }
                 if serves(StructureKind::Workshop, t.owner, t.pos, WORKSHOP_RANGE) {
                     t.armor = (t.armor + REPAIR_PER_TICK * 2.0).min(TANK_ARMOR);
@@ -3667,6 +3821,43 @@ impl World {
             if let Some(o) = x.owner {
                 if serves(StructureKind::Workshop, o, x.pos, WORKSHOP_MEND_RANGE) {
                     x.health = (x.health + mend).min(STRUCTURE_HEALTH);
+                }
+            }
+        }
+        // Game 6: ore into a smelter of the side from any tank beside it; a smelter's ore into a
+        // depot of the side in reach, a shell a second.
+        if ore_game {
+            let mut unloads: Vec<(EntityId, PlayerId, EntityId, u8)> = Vec::new();
+            for t in self.tanks.iter().filter(|t| t.alive && t.pillboys.ore > 0) {
+                if let Some(x) = self.structures.iter().filter(|x| x.kind == StructureKind::Smelter && x.working() && same_side(x.owner, Some(t.owner)) && x.pos.dist(t.pos) <= SMELTER_RANGE).min_by(|a, b| a.pos.dist(t.pos).total_cmp(&b.pos.dist(t.pos))) {
+                    unloads.push((t.id, t.owner, x.id, t.pillboys.ore));
+                }
+            }
+            for (tid, owner, sid, ore) in unloads {
+                if let Some(x) = self.structure_mut(sid) {
+                    x.ore += ore as u16;
+                }
+                if let Some(t) = self.tank_mut(tid) {
+                    t.pillboys.ore = 0;
+                }
+                self.events.push(Event::OreUnloaded { tank: tid, owner, structure: sid, ore });
+            }
+            if tick % SMELTER_MAKES_EVERY == 0 {
+                let mut makes: Vec<(EntityId, PlayerId, EntityId)> = Vec::new();
+                for x in self.structures.iter().filter(|x| x.kind == StructureKind::Smelter && x.working() && x.ore > 0) {
+                    let Some(owner) = x.owner else { continue };
+                    if let Some(d) = self.depots.iter().filter(|d| d.stock.kinds[STOCK_SHELL] < DEPOT_STOCK_MAX && same_side(d.owner, x.owner) && d.pos.dist(x.pos) <= SMELTER_REACH).min_by(|a, b| a.pos.dist(x.pos).total_cmp(&b.pos.dist(x.pos))) {
+                        makes.push((x.id, owner, d.id));
+                    }
+                }
+                for (sid, owner, did) in makes {
+                    if let Some(x) = self.structure_mut(sid) {
+                        x.ore -= 1;
+                    }
+                    if let Some(d) = self.depots.iter_mut().find(|d| d.id == did) {
+                        d.stock.kinds[STOCK_SHELL] += 1;
+                    }
+                    self.events.push(Event::Smelted { structure: sid, owner, depot: did });
                 }
             }
         }
@@ -3755,8 +3946,10 @@ impl World {
 
     fn step_depots(&mut self) {
         if self.tick % DEPOT_MAKES_EVERY == 0 {
+            // Game 6: on an ore map a depot's shells come from a smelter, never from itself.
+            let ore_game = self.ore_game();
             for dep in self.depots.iter_mut().filter(|d| d.owner.is_some()) {
-                dep.stock.make();
+                dep.stock.make_from(ore_game);
             }
         }
         let tanks: Vec<(EntityId, PlayerId, V2)> = self.tanks.iter().filter(|t| t.alive).map(|t| (t.id, t.owner, t.pos)).collect();
@@ -4008,6 +4201,7 @@ impl World {
             pillboxes: self.pillboxes.clone(),
             mines: self.mines.iter().filter(|m| self.mine_known_to(p, m)).cloned().collect(),
             structures: self.structures.clone(),
+            deposits: self.deposits.clone(),
             forest,
             pads,
             boats,
@@ -4033,7 +4227,7 @@ impl World {
             Event::ShellLaunched { owner, .. } => self.allied(*owner, p),
             Event::DroneLaunched { owner, .. } | Event::DroneRecovered { owner, .. } | Event::DroneRetasked { owner, .. } | Event::LinkLost { owner, .. } => self.allied(*owner, p),
             Event::PillboysDeployed { owner, .. } | Event::PillboysReturned { owner, .. } | Event::PillboysAbandoned { owner, .. } => self.allied(*owner, p),
-            Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } => self.allied(*owner, p),
+            Event::MineLaid { owner, .. } | Event::Harvested { owner, .. } | Event::Mined { owner, .. } | Event::OreUnloaded { owner, .. } | Event::Smelted { owner, .. } => self.allied(*owner, p),
             Event::Jammed { owner, .. } => self.allied(*owner, p),
             Event::Chat { player, to: ChatTo::Team, .. } => self.allied(*player, p),
             Event::Chat { player, to: ChatTo::Players(mask), .. } => *player == p || (p < 16 && mask & (1 << p) != 0),
@@ -4327,6 +4521,9 @@ pub struct Observation {
     /// Every structure, like every pillbox: an economy is public.
     #[serde(default)]
     pub structures: Vec<Structure>,
+    /// Every deposit of ore and what it has left (game 6): public, like a depot.
+    #[serde(default)]
+    pub deposits: Vec<Deposit>,
     /// The nearest pad tiles to the tank with nothing built on them:
     /// where a Brain with no map can build a structure.
     #[serde(default)]
@@ -4471,7 +4668,7 @@ mod tests {
         let at = Map::tile_centre(at);
         w.map.set(at, Terrain::Pad);
         let id = w.alloc();
-        w.structures.push(Structure { id, kind, pos: at, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+        w.structures.push(Structure { id, kind, pos: at, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
         id
     }
 
@@ -5104,7 +5301,7 @@ mod tests {
 
     #[test]
     fn a_tank_on_a_depot_gets_only_what_the_depot_has_made() {
-        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) };
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ore: false, ..Scenario::bots(2) };
         let mut w = World::new(sc);
         let owner = w.tanks[0].owner;
         let di = w.depots.iter().position(|d| d.owner == Some(owner)).unwrap();
@@ -6370,5 +6567,162 @@ mod tests {
         assert!(near >= 5, "the depot's workers sent {} in ten seconds", near);
         assert_eq!(far, 1, "with no depot in reach, its own making alone: {}", far);
         assert!(w.depots.iter().find(|d| d.id == 9003).unwrap().stock.kinds[STOCK_SHELL] < before + 10, "the depot's stock paid for it");
+    }
+
+    /// Open ground near `near`, as a tile centre.
+    fn open_near(w: &World, near: V2) -> V2 {
+        w.map.terrain_near(Terrain::Grass, near, 10.0, 1).first().copied().expect("grass near there")
+    }
+
+    /// Game 6: a deposit is mined by the squad as a tree is felled; the ore goes into a smelter of
+    /// the side from the tank beside it; the smelter makes a shell a second into the depot of the
+    /// side in reach; and on an ore map the depot makes no shells of its own.
+    #[test]
+    fn ore_is_mined_unloaded_and_smelted_into_a_depots_shells() {
+        let mut w = World::new(Scenario::bots(2));
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let home = w.tank(me).unwrap().pos;
+        let ore_at = open_near(&w, home + V2::new(3.0, 0.0));
+        w.deposits.push(Deposit { id: 9101, pos: ore_at, stock: 10 });
+        let smelter_at = open_near(&w, ore_at + V2::new(2.0, 2.0));
+        w.structures.push(Structure { id: 9102, kind: StructureKind::Smelter, pos: smelter_at, owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
+        w.depots.push(Depot { id: 9103, pos: open_near(&w, home + V2::new(-6.0, 0.0)), owner: Some(0), capture: 0, capturer: None, stock: DepotStock::default() });
+        w.step(&[]);
+        assert!(w.structure(9102).unwrap().working(), "a smelter runs on its own crew, no plant needed");
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Harvest { at: ore_at } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        let mut mined = None;
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            if let Some(Event::Mined { ore, left, .. }) = w.events.iter().find(|e| matches!(e, Event::Mined { .. })) {
+                mined = Some((*ore, *left));
+            }
+            if mined.is_some() && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert_eq!(mined, Some((ORE_HARVEST, 10 - ORE_HARVEST as u16)), "mined");
+        let (ore, left) = (w.tank(me).unwrap().pillboys.ore, w.deposits.iter().find(|d| d.id == 9101).unwrap().stock);
+        assert_eq!((ore, left), (ORE_HARVEST, 10 - ORE_HARVEST as u16));
+        // The tank drives to the smelter; beside it, the ore goes in, and a shell a second comes out
+        // into the depot. Nothing else made a shell: on an ore map the depot's own making skips them.
+        let shells_before = w.depots.iter().find(|d| d.id == 9103).unwrap().stock.kinds[STOCK_SHELL];
+        assert_eq!(shells_before, 0, "the depot made shells of its own on an ore map");
+        w.tank_mut(me).unwrap().pos = smelter_at + V2::new(1.0, 0.0);
+        let mut unloaded = false;
+        let mut smelted = 0;
+        for _ in 0..(8 * TICK_HZ) {
+            w.step(&[]);
+            unloaded |= w.events.iter().any(|e| matches!(e, Event::OreUnloaded { structure: 9102, ore: 4, .. }));
+            smelted += w.events.iter().filter(|e| matches!(e, Event::Smelted { structure: 9102, .. })).count();
+        }
+        assert!(unloaded, "the ore never went into the smelter");
+        assert_eq!(w.tank(me).unwrap().pillboys.ore, 0);
+        assert_eq!(smelted, ORE_HARVEST as usize, "a shell an ore, one a second: {}", smelted);
+        assert_eq!(w.structure(9102).unwrap().ore, 0);
+        // Into the nearest depot of the side (the start's own, here): the side's shells are the
+        // smelter's and nothing else's.
+        let side: Vec<&Depot> = w.depots.iter().filter(|d| d.owner == Some(0)).collect();
+        assert_eq!(side.iter().map(|d| d.stock.kinds[STOCK_SHELL] as u16).sum::<u16>(), ORE_HARVEST as u16, "the side's shells are the smelter's");
+        assert!(side.iter().any(|d| d.stock.kinds[STOCK_TREE] > 0), "the depots still make the rest");
+        // A match without ore (`ore: false`) plays as game 5: the depot makes shells.
+        let mut old = World::new(Scenario { ore: false, ..Scenario::bots(2) });
+        old.depots.push(Depot { id: 9104, pos: open_near(&old, home + V2::new(-6.0, 0.0)), owner: Some(0), capture: 0, capturer: None, stock: DepotStock::default() });
+        for _ in 0..(8 * TICK_HZ) {
+            old.step(&[]);
+        }
+        assert!(old.depots.iter().find(|d| d.id == 9104).unwrap().stock.kinds[STOCK_SHELL] > 0);
+    }
+
+    /// Game 6: a works stands beside its resource on open ground, not on a pad; far from one it is
+    /// refused; a harvester makes the wood near it yield six and grow back in a minute.
+    #[test]
+    fn a_works_stands_by_its_resource_and_a_harvester_improves_the_wood() {
+        let mut w = World::new(Scenario::bots(2));
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let home = w.tank(me).unwrap().pos;
+        w.tank_mut(me).unwrap().pillboys.material = PILLBOY_MATERIAL_MAX;
+        let ore_at = open_near(&w, home + V2::new(4.0, 0.0));
+        w.deposits.push(Deposit { id: 9201, pos: ore_at, stock: DEPOSIT_STOCK });
+        let far = open_near(&w, home + V2::new(-8.0, 0.0));
+        assert!(far.dist(ore_at) > SMELTER_SITE);
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Structure(StructureKind::Smelter), at: far } } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { why, .. } if why.contains("beside its ore"))), "{:?}", w.events);
+        let beside = open_near(&w, ore_at + V2::new(1.0, 1.0));
+        assert!(beside.dist(ore_at) <= SMELTER_SITE && w.map.at(beside) == Terrain::Grass);
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Build { what: BuildKind::Structure(StructureKind::Smelter), at: beside } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        let mut built = false;
+        for _ in 0..(60 * TICK_HZ) {
+            w.step(&[]);
+            built |= w.events.iter().any(|e| matches!(e, Event::StructureBuilt { kind: StructureKind::Smelter, .. }));
+            if built && w.tank(me).unwrap().pillboys.aboard {
+                break;
+            }
+        }
+        assert!(built, "the smelter was never built on the grass by the ore");
+        assert_eq!(w.tank(me).unwrap().pillboys.material, PILLBOY_MATERIAL_MAX - StructureKind::Smelter.cost());
+        assert!(w.structures.iter().any(|x| x.kind == StructureKind::Smelter && x.pos == beside && x.owner == Some(0)));
+        // The harvester: a tree felled within its reach yields six, and grows back in a minute.
+        let mut w = World::new(Scenario::bots(2));
+        w.pillboxes.clear();
+        let me = w.players[0].tank;
+        let home = w.tank(me).unwrap().pos;
+        let tree = open_near(&w, home + V2::new(3.0, 0.0));
+        w.map.set(tree, Terrain::Forest);
+        let hv = open_near(&w, tree + V2::new(2.0, 1.0));
+        w.structures.push(Structure { id: 9202, kind: StructureKind::Harvester, pos: hv, owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
+        w.tank_mut(me).unwrap().pillboys.material = 0;
+        w.step(&[]);
+        w.step(&[Order { player: 0, cmd: Command::Deploy { task: PillboyTask::Harvest { at: tree } } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "{:?}", w.events);
+        let mut got = None;
+        for _ in 0..(40 * TICK_HZ) {
+            w.step(&[]);
+            if let Some(Event::Harvested { material, .. }) = w.events.iter().find(|e| matches!(e, Event::Harvested { .. })) {
+                got = Some((*material, w.tick));
+                break;
+            }
+        }
+        let (material, when) = got.expect("never felled");
+        assert_eq!(material, HARVESTER_MATERIAL);
+        let (_, back) = w.felled.iter().find(|(at, _)| at.tile() == tree.tile()).copied().expect("not in the felled list");
+        assert_eq!(back - when, HARVESTER_REGROW_TICKS);
+    }
+
+    /// Game 6: a map file carries its deposits and reads them back; an industrial match on a map
+    /// without any seeds them on open ground, fewer than the starts.
+    #[test]
+    fn deposits_read_write_and_seed() {
+        let mut m = Map::generate(7);
+        assert!(m.deposits.is_empty());
+        m.seed_deposits();
+        assert!(!m.deposits.is_empty() && m.deposits.len() <= m.starts.len().div_ceil(2), "{} deposits for {} starts", m.deposits.len(), m.starts.len());
+        for d in &m.deposits {
+            assert!(matches!(m.at(d.pos), Terrain::Grass | Terrain::Rubble | Terrain::Road), "a deposit on {:?}", m.at(d.pos));
+            assert_eq!(d.stock, DEPOSIT_STOCK);
+        }
+        let text = m.to_text();
+        assert!(text.contains("\ndeposit "));
+        let back = Map::from_text(&text).unwrap();
+        assert_eq!(back.deposits, m.deposits);
+        // By hand, with a stock; on water, refused.
+        let mut lines: Vec<String> = text.lines().filter(|l| !l.starts_with("deposit ")).map(String::from).collect();
+        let open = m.terrain_near(Terrain::Grass, m.center(), 20.0, 1)[0];
+        lines.push(format!("deposit {} {} 40", open.x.floor(), open.y.floor()));
+        let m2 = Map::from_text(&lines.join("\n")).unwrap();
+        assert_eq!(m2.deposits, vec![MapDeposit { pos: Map::tile_centre(open), stock: 40 }]);
+        let water = m.terrain_near(Terrain::Water, m.center(), 80.0, 1)[0];
+        lines.push(format!("deposit {} {}", water.x.floor(), water.y.floor()));
+        assert!(Map::from_text(&lines.join("\n")).is_err());
+        // A world on it keeps the file's deposits rather than seeding more; a match has ore unless
+        // its scenario says not.
+        let w = World::new(Scenario { map: MapSource::Text(m2.to_text()), ..Scenario::bots(2) });
+        assert_eq!(w.deposits.len(), 1);
+        assert!(w.ore_game());
+        assert!(World::new(Scenario::bots(2)).ore_game(), "a match has ore");
+        assert!(!World::new(Scenario { ore: false, ..Scenario::bots(2) }).ore_game(), "unless told not");
     }
 }

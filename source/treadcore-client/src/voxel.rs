@@ -718,8 +718,61 @@ pub fn structure(kind: treadcore_sim::StructureKind, owner: Option<Color>, healt
             }
             m.cube(0, 0, 10, if powered { MINE } else { lamp });
         }
+        K::Smelter => {
+            // A furnace block, a chimney, and the ore heap beside it (game 6).
+            m.slab(-5, -4, -1, 1, 1, STEEL.darker(0.2));
+            m.slab(-5, -4, -1, 1, 2, STEEL.darker(0.1));
+            m.slab(-4, -3, -2, 0, 3, STEEL.darker(0.25));
+            for z in 1..=8 {
+                m.cube(-3, 3, z, CONCRETE.darker(0.1));
+            }
+            m.cube(-3, 3, 9, if powered { GUN } else { lamp });
+            for (x, y, z) in [(2, -2, 1), (3, -2, 1), (2, -1, 1), (3, -1, 1), (2, 1, 1), (3, 1, 1), (3, 2, 1), (2, 2, 1), (3, -2, 2), (2, 1, 2)] {
+                m.cube(x, y, z, ORE);
+            }
+            m.cube(-1, -2, 3, lamp);
+        }
+        K::Harvester => {
+            // A sawmill shed, a log pile and the saw's wheel (game 6).
+            m.slab(-5, -4, 0, 2, 1, TAN_DARK);
+            m.slab(-5, -4, 0, 2, 2, TAN_DARK.lighter(0.05));
+            m.slab(-4, -3, -1, 1, 3, TAN_DARK.lighter(0.1));
+            for (y, z) in [(-3, 1), (-1, 1), (1, 1), (3, 1), (-2, 2), (0, 2), (2, 2), (-1, 3), (1, 3)] {
+                for x in 2..=4 {
+                    m.cube(x, y, z, Color::srgb(0.5, 0.33, 0.16));
+                }
+            }
+            for d in -1..=1 {
+                m.cube(1, d, 4, STEEL);
+                m.cube(1, 0, 4 + d, STEEL);
+            }
+            m.cube(-2, -1, 4, lamp);
+        }
     }
     m.chip((1.0 - health.clamp(0.0, 1.0)) * 0.5);
+    m
+}
+
+/// The ore's colour: rust and iron.
+const ORE: Color = Color::srgb(0.55, 0.3, 0.18);
+
+/// A deposit of ore (game 6): a heap on the ground, lower as it is
+/// worked out; a ring of rock when it is gone.
+pub fn deposit(left: f32) -> Model {
+    let mut m = Model::new(0.1);
+    let left = left.clamp(0.0, 1.0);
+    let rock = Color::srgb(0.42, 0.4, 0.37);
+    for (x, y) in [(-4, -2), (-3, 2), (3, -3), (4, 1), (0, 4), (-1, -4)] {
+        m.cube(x, y, 1, rock);
+    }
+    let layers = (left * 4.0).ceil() as i8;
+    for z in 1..=layers {
+        let r = 4 - z;
+        m.slab(-r, -r, r - 1, r - 1, z, if z % 2 == 0 { ORE } else { ORE.darker(0.08) });
+    }
+    if layers > 0 {
+        m.cube(0, -1, layers + 1, ORE.lighter(0.1));
+    }
     m
 }
 

@@ -131,3 +131,5 @@ posts_max 0 20  # there are twenty neutral pillboxes
 strikes_max 0 4  # the bay holds 3 and a fourth cannot launch: a decree candidate
 ping_defend_hold 0.5 5  # times a rally's length
 ping_outnumbered 1 4  # a ratio of tanks
+ore_low 0 20  # a depot holds 20 shells (DEPOT_STOCK_MAX)
+ore_reach 0 128  # the map

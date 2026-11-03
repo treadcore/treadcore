@@ -746,6 +746,8 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
                 Event::Pinged { player, kind: PingKind::Help, .. } => *out.advance.entry((*player, "called")).or_insert(0) += 1,
                 Event::Chained { owner, on: true, .. } => *out.advance.entry((*owner, "chained")).or_insert(0) += 1,
                 Event::Harvested { owner, .. } => *out.advance.entry((*owner, "wood")).or_insert(0) += 1,
+                Event::Mined { owner, ore, .. } => *out.advance.entry((*owner, "ore")).or_insert(0) += *ore as u32,
+                Event::Smelted { owner, .. } => *out.advance.entry((*owner, "smelted")).or_insert(0) += 1,
                 Event::Built { owner, what: BuildKind::Road, .. } => *out.advance.entry((*owner, "road")).or_insert(0) += 1,
                 Event::Rejected { player, why, .. } if brains.iter().any(|(s, _)| s == player) => {
                     out.refused.push((w.tick as f64 / TICK_HZ as f64, *player, why.to_string()));
@@ -1056,7 +1058,7 @@ pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
                 let to = v.table().and_then(|t| t.get("to")).and_then(Value::num).unwrap_or(1.0) as PlayerId;
                 out.station.get(&(me, to)).map(|(near, ticks)| if *ticks > 0 { *near as f32 / *ticks as f32 } else { 0.0 }).unwrap_or(0.0)
             }
-            "called" | "chained" | "wood" | "road" => out.advance.iter().find(|((s, w), _)| *s == me && *w == k.as_str()).map_or(0.0, |(_, n)| *n as f32),
+            "called" | "chained" | "wood" | "road" | "ore" | "smelted" => out.advance.iter().find(|((s, w), _)| *s == me && *w == k.as_str()).map_or(0.0, |(_, n)| *n as f32),
             "alive" => out.alive.get(&me).copied().unwrap_or(false) as u8 as f32,
             "damage_taken" => out.hits.iter().zip(&out.hit_damage).filter(|((_, on), _)| *on == me).map(|(_, d)| *d).sum(),
             "damage_given" => out.hits.iter().zip(&out.hit_damage).filter(|((by, on), _)| *by == Some(me) && *on != me).map(|(_, d)| *d).sum(),

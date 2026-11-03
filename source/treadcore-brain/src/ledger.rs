@@ -58,6 +58,11 @@ pub struct Outcome {
     pub built: u32,
     pub road_tiles: u32,
     pub bridge_tiles: u32,
+    /// Game 6: ore the seat's squad mined, and shells its side's smelters made from it.
+    #[serde(default)]
+    pub ore: u32,
+    #[serde(default)]
+    pub smelted: u32,
     /// The pillboxes and depots the seat's team held, summed each second.
     pub held_s: u32,
     /// The rewards' counts (LR 84). Direct shells of the seat's main gun
@@ -409,6 +414,16 @@ impl Tally {
                 Event::PillboxBuilt { by, .. } | Event::StructureBuilt { by, .. } => {
                     if let Some(i) = seat(*by) {
                         self.seats[i].built += 1;
+                    }
+                }
+                Event::Mined { owner, ore, .. } => {
+                    if let Some(i) = seat(*owner) {
+                        self.seats[i].ore += *ore as u32;
+                    }
+                }
+                Event::Smelted { owner, .. } => {
+                    if let Some(i) = seat(*owner) {
+                        self.seats[i].smelted += 1;
                     }
                 }
                 _ => {}

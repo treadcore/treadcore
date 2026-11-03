@@ -213,6 +213,11 @@ weights! {
     Mend "w_mend" 0.5, "improvement: worth of mending the most hurt pillbox of the base";
     Mine "w_mine" 0.860887, "improvement: worth of a mine on the moat";
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
+    // GAME 6, THE ORE (Paul, 2 November: "a fun zero-sum economy, where every mineral but the growing trees
+    // is finite"). A smelter by the ore is an improvement the cycle offers at w_works; the ore run is a
+    // crew's trip when the side's shells run low. 0 turns the run off.
+    OreLow "ore_low" 10.0, "ore (game 6): a crew fetches ore when the side's nearest depot holds fewer shells than this; 0 never";
+    OreReach "ore_reach" 40.0, "ore (game 6): a deposit within this of the base is worth a smelter and a run, tiles";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
     UpgradeVsMend "upgrade_vs_mend" 0.5, "improvement: share of the slot for 11g's upgrades once they exist, against mend, mines and works";
     CastleInside "castle_inside" 2.0, "castle: pillboxes inside the wall, then it stops filling (rounded)";

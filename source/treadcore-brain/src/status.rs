@@ -214,6 +214,8 @@ pub enum Act {
     Relieved,
     Relieving,
     Scoot,
+    /// Game 6: fetching ore for the side's smelter.
+    OreRun,
     TakeCommand,
     Crew,
     Hop(HopAct),
@@ -284,6 +286,7 @@ impl Act {
             Act::Relieved => "relieved",
             Act::Relieving => "relieving",
             Act::Scoot => "scoot",
+            Act::OreRun => "ore_run",
             Act::TakeCommand => "take_command",
             Act::Crew => "crew",
             Act::TeamBridge => "team_bridge",

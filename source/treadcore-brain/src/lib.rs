@@ -2460,7 +2460,7 @@ mod tests {
                 w.map.set(zone + V2::new(dx as f32, dy as f32), Terrain::Pad);
             }
         }
-        w.structures.push(Structure { id: 60_002, kind: StructureKind::Refinery, pos: zone, owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+        w.structures.push(Structure { id: 60_002, kind: StructureKind::Refinery, pos: zone, owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
         w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
         let mut bot = RuleBot::new(17, "rulebot");
         let mut power = None;
@@ -2494,7 +2494,7 @@ mod tests {
                 w.map.set(zone + V2::new(dx as f32, dy as f32), Terrain::Pad);
             }
         }
-        w.structures.push(Structure { id: 60_001, kind: StructureKind::Refinery, pos: Map::tile_centre(zone + V2::new(2.0, 2.0)), owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+        w.structures.push(Structure { id: 60_001, kind: StructureKind::Refinery, pos: Map::tile_centre(zone + V2::new(2.0, 2.0)), owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
         w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
         let mut bot = RuleBot::new(13, "rulebot");
         let mut built: Vec<StructureKind> = Vec::new();
@@ -2530,7 +2530,7 @@ mod tests {
             }
         }
         let mut put = |kind: StructureKind, at: V2, id: EntityId| {
-            w.structures.push(Structure { id, kind, pos: Map::tile_centre(at), owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false });
+            w.structures.push(Structure { id, kind, pos: Map::tile_centre(at), owner: Some(0), health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0 });
             id
         };
         let plant = put(StructureKind::Power, zone, 60_000);

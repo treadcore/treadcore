@@ -241,12 +241,12 @@ in the column's lower half, in the order the prior art had them.
 
 | key | mode | on the square |
 | --- | --- | --- |
-| `4` | farm | fells the forest there: four material a tile, in four seconds. Only on forest. |
+| `4` | farm | fells the forest there: four material a tile, in four seconds. Only on forest; on a **deposit of ore** (game 6, the rust-coloured heap) it mines instead: four ore in six seconds, eight carried, the ORE lamps. Section 6b, the ore. |
 | `5` | road | lays a road; on water, a bridge. With Shift held, on water beside the bank, it builds a **boat** instead: five material (a little over one tile of forest felled), five seconds. Section 5b. |
 | `6` | wall | raises a wall three levels high. Blocks tanks, shots and a pillbox's line of fire; a shell's splash knocks it to rubble. Armed with Shift held (or clicked with Shift), it pours **concrete** instead: two material, pale grey, and a splash only cracks it to a plain wall, so it takes two. |
 | `7` | pillbox | on open ground, builds one. On a pillbox: repairs it, whoever owns it; if it is dead or nobody's, captures it (ten seconds standing on it). Shift-click one of **yours** and the squad lifts it (five seconds) and carries it; the next pillbox you build is that one set down, in five seconds, for no material, at the health it had. One at a time. If the squad or the tank is lost with it, it falls there, dead, still yours to mend. |
 | `8` | mine | buries a mine. Hidden until found; set off by a tank, a shell or a neighbouring mine; ignored by drones. |
-| `0` | works | on a pad (the dark grey foundations), builds the structure the row names; `B` steps the kind. On a structure: mends ours, or takes one that is nobody's or wrecked. Section 6b. |
+| `0` | works | on a pad (the dark grey foundations), builds the structure the row names; `B` steps the kind. A **smelter** goes on open ground beside a deposit and a **harvester** beside the wood, no pad. On a structure: mends ours, or takes one that is nobody's or wrecked. Section 6b. |
 | `9` | return | brings the squad home. |
 
 ![The squad lamps amber while it is out, the material lamps beside them](../reports/images/guide-squad.png)
@@ -367,6 +367,8 @@ works for your side while it stands:
 | data centre | a blind shell aimed within 40 tiles scatters half as far; hostile drones within 30 tiles are on your screen | yes |
 | workshop | within 3 tiles, armour mended twice as fast as at a depot and the bay restocked, longshots first; pillboxes and structures within 8 mend slowly | yes |
 | jammer | no drone within 7 tiles keeps its link, **yours included**: recon and strikes turn for home, a longshot lands off its point | yes |
+| smelter | game 6: beside a deposit of ore, on open ground; turns the ore your tanks bring (drive within 3 tiles with ore aboard) into a shell a second in your nearest depot within 30 tiles | no |
+| harvester | game 6: beside the wood, on open ground; a tree felled within 8 tiles yields six material and grows back in a minute | no |
 
 Every standing structure scores its owner two points every ten
 seconds, so at the time limit the side with the economy is ahead. A
@@ -401,6 +403,26 @@ The **minimap** at the foot of the right column is the whole map:
 the ground dimmed where your side cannot see, every depot, pillbox
 and structure in its owner's colour, the tanks you can see, your own
 in white. Click it, or hold the button and drag, to move the view.
+
+**The ore** (game 6). The rust-coloured heaps on open ground are
+deposits of ore, labelled with what is left; each is all the ore there
+is there, and the map has fewer of them than it has sides. On a map
+with ore a depot makes no shells of its own and a refinery gives fuel
+alone: every shell was once ore that a squad mined and a smelter made.
+Farm (`4`) on a deposit and the squad mines it, four ore in six
+seconds, eight aboard at most, the ORE lamps beside MATERIAL. Build a
+smelter (works, `B` to the kind) on open ground beside the deposit;
+it needs no power plant. Drive within three tiles of your side's
+smelter with ore aboard and it is unloaded; the smelter makes a shell
+a second into your nearest depot within thirty tiles, and the depot
+hands them to tanks and to the base's pillboxes as before. A harvester,
+built beside the wood the same way, makes every tree felled within
+eight tiles of it worth six and brings it back in a minute. Trees
+grow back; ore does not: a side that holds the deposits holds the
+guns, and a depot with no shells does not keep your tank. The bots
+run the same economy: a base's guard builds the smelter and fetches
+ore whenever the depot runs short. `treadcore-server --no-ore` plays
+the old game.
 
 ## 6c. Tank speak
 

@@ -113,12 +113,29 @@ impl Cycle {
         out
     }
 
+    /// Game 6: where a smelter for this deposit stands: the open tile beside it (grass, rubble or
+    /// road, with nothing built on it) nearest the base; without a map, the nearest free tile.
+    pub fn smelter_site(obs: &Observation, deposit: V2, base: V2, map: Option<&Map>) -> Option<V2> {
+        let open = |p: V2| {
+            map.map(|m| m.in_bounds(p) && matches!(m.at(p), Terrain::Grass | Terrain::Rubble | Terrain::Road)).unwrap_or(true)
+                && !obs.structures.iter().any(|x| x.pos.tile() == p.tile())
+                && !obs.deposits.iter().any(|o| o.pos.tile() == p.tile())
+                && !obs.pillboxes.iter().any(|x| x.pos.tile() == p.tile())
+        };
+        (-1..=1)
+            .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
+            .filter(|(dx, dy)| (*dx, *dy) != (0, 0))
+            .map(|(dx, dy)| Map::tile_centre(deposit + V2::new(dx as f32, dy as f32)))
+            .filter(|p| open(*p))
+            .min_by(|a, b| a.dist(base).total_cmp(&b.dist(base)))
+    }
+
     /// The improvement the base most wants, by weight (`w_mend`,
     /// `w_mine`, `w_works`): the most hurt pillbox of the base mended
     /// (worth its hurt); a mine on the approach, past the wall facing
     /// the threat and off the road (worth half, at most `MINES`); works
     /// on a free pad by the base, a power plant first (worth half).
-    pub fn improvement(obs: &Observation, base: V2, facing: Option<V2>, s: &Settings, material: u8, mines: u8) -> Option<(PillboyTask, CycleAct)> {
+    pub fn improvement(obs: &Observation, base: V2, facing: Option<V2>, s: &Settings, material: u8, mines: u8, map: Option<&Map>) -> Option<(PillboyTask, CycleAct)> {
         let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
         let mut best: Option<(f32, PillboyTask, CycleAct)> = None;
         let mut offer = |u: f32, t: PillboyTask, w: CycleAct| {
@@ -126,6 +143,18 @@ impl Cycle {
                 best = Some((u, t, w));
             }
         };
+        // Game 6: a smelter beside the nearest ore within `ore_reach`, when the side has none within
+        // the smelter's reach of this base; on the open tile by the deposit nearest the base. Worth
+        // the works' full weight: without it the side's guns run dry.
+        if !obs.deposits.is_empty() && s.w[W::OreReach] > 0.0 && material >= StructureKind::Smelter.cost() {
+            let has = obs.structures.iter().any(|x| ours(x.owner) && x.kind == StructureKind::Smelter && x.alive() && x.pos.dist(base) <= SMELTER_REACH);
+            let dep = obs.deposits.iter().filter(|d| d.stock > 0 && d.pos.dist(base) <= s.w[W::OreReach]).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base)));
+            if let (false, Some(d)) = (has, dep) {
+                if let Some(at) = Self::smelter_site(obs, d.pos, base, map) {
+                    offer(s.w[W::Works], PillboyTask::Build { what: BuildKind::Structure(StructureKind::Smelter), at }, CycleAct::Works);
+                }
+            }
+        }
         if let Some(p) = obs.pillboxes.iter().filter(|p| ours(p.owner) && p.pos.dist(base) <= CONNECT_NEAR && p.health < PILLBOX_HEALTH * MEND_BELOW).min_by(|a, b| a.health.total_cmp(&b.health).then(a.id.cmp(&b.id))) {
             if material >= 1 {
                 offer(s.w[W::Mend] * (1.0 - p.health / PILLBOX_HEALTH), PillboyTask::Repair { target: p.id }, CycleAct::Mend);
@@ -266,7 +295,7 @@ impl Cycle {
             // a mine, or works, each by its weight times how much it is
             // wanted; `upgrade_vs_mend` will give 11g's upgrades their
             // share of the slot once there are upgrades to buy.
-            match Self::improvement(obs, base, facing, s, squad.material, self.mines).filter(|_| s.w[W::GiveUpgrade] > 0.0) {
+            match Self::improvement(obs, base, facing, s, squad.material, self.mines, map).filter(|_| s.w[W::GiveUpgrade] > 0.0) {
                 Some((task, act)) => {
                     if matches!(task, PillboyTask::Build { what: BuildKind::Mine, .. }) {
                         self.mines += 1;
@@ -327,7 +356,7 @@ mod tests {
     /// next friendly pillbox, a tile a trip.
     #[test]
     fn a_full_tank_gives_the_base_an_item() {
-        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(1) };
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ore: false, ..Scenario::bots(1) };
         let mut w = World::new(sc);
         let base = Map::tile_centre(w.tanks[0].pos);
         // Open ground round the base, a pillbox of ours 20 tiles east.
@@ -380,7 +409,7 @@ mod tests {
     /// nothing.
     #[test]
     fn the_improvement_goes_by_its_weights() {
-        let sc = Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(1) };
+        let sc = Scenario { swarm_interval: 0, time_limit: 0, ore: false, ..Scenario::bots(1) };
         let mut w = World::new(sc);
         let base = Map::tile_centre(w.tanks[0].pos);
         w.pillboxes.clear();
@@ -391,12 +420,12 @@ mod tests {
         let mut s = Settings::default();
         s.w[W::Mend] = 1.0;
         s.w[W::Mine] = 0.5;
-        assert!(matches!(Cycle::improvement(&obs, base, f, &s, 8, 0), Some((PillboyTask::Repair { .. }, _))));
+        assert!(matches!(Cycle::improvement(&obs, base, f, &s, 8, 0, None), Some((PillboyTask::Repair { .. }, _))));
         s.w[W::Mend] = 0.0;
-        assert!(matches!(Cycle::improvement(&obs, base, f, &s, 8, 0), Some((PillboyTask::Build { what: BuildKind::Mine, .. }, _))));
+        assert!(matches!(Cycle::improvement(&obs, base, f, &s, 8, 0, None), Some((PillboyTask::Build { what: BuildKind::Mine, .. }, _))));
         s.w[W::Mine] = 0.0;
-        assert!(Cycle::improvement(&obs, base, f, &s, 8, 0).is_none() || obs.pads.iter().any(|p| p.dist(base) <= CONNECT_NEAR));
-        assert!(Cycle::improvement(&obs, base, f, &Settings::default(), 8, MINES).map(|(t, _)| !matches!(t, PillboyTask::Build { what: BuildKind::Mine, .. })).unwrap_or(true), "no more than MINES");
+        assert!(Cycle::improvement(&obs, base, f, &s, 8, 0, None).is_none() || obs.pads.iter().any(|p| p.dist(base) <= CONNECT_NEAR));
+        assert!(Cycle::improvement(&obs, base, f, &Settings::default(), 8, MINES, None).map(|(t, _)| !matches!(t, PillboyTask::Build { what: BuildKind::Mine, .. })).unwrap_or(true), "no more than MINES");
     }
 
     /// Posts on the line between two bases, beside the road, every

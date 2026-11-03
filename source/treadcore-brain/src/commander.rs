@@ -72,6 +72,23 @@ pub const WING_LEASH: f32 = 20.0;
 pub const WING_GREED: f32 = 16.0;
 pub const WING_THREAT: f32 = 10.0;
 pub const WING_AHEAD: f32 = 16.0;
+/// Game 6, the ore run: the tank stands this near the deposit while the squad mines; a run is
+/// given up after this long on one stage; a tank standing at a dry depot leaves after `FILL_PATIENCE`
+/// with no shell gained and does not come home for shells again for `DRY_FOR`.
+pub const ORE_STAND: f32 = 3.0;
+pub const ORE_RUN_PATIENCE: Tick = 120 * TICK_HZ as Tick;
+pub const FILL_PATIENCE: Tick = 10 * TICK_HZ as Tick;
+pub const DRY_FOR: Tick = 60 * TICK_HZ as Tick;
+
+/// An ore run under way (game 6): the deposit, the smelter, the stage (0 to the deposit, 1 the squad
+/// mining, 2 to the smelter) and when the stage began.
+#[derive(Clone, Copy, Debug)]
+struct OreRun {
+    deposit: V2,
+    smelter: V2,
+    stage: u8,
+    since: Tick,
+}
 const WING_COMMIT: Tick = 3 * TICK_HZ as Tick;
 /// Ask the leader in no oftener than this.
 const ASK_EVERY: Tick = 30 * TICK_HZ as Tick;
@@ -323,6 +340,13 @@ pub struct Commander {
     fetching: Option<EntityId>,
     /// The plan could not be fed (no forest): fortify steps aside.
     starved: bool,
+    /// Game 6: the ore run under way, if any; the shells seen at the last think and when they changed
+    /// (a dry depot does not hold a tank); and until when a dry depot is not asked for shells.
+    ore_run: Option<OreRun>,
+    /// Game 6: a fill-up just ended, so one ore run is due, as one base cycle is.
+    ore_due: bool,
+    fill_watch: (u16, Tick),
+    dry_until: Tick,
     /// Expand's depot, and the depots it could not reach.
     depot_target: Option<EntityId>,
     depots_given_up: crate::memory::Forget<EntityId>,
@@ -495,7 +519,7 @@ impl Commander {
     pub fn new(seed: u64, name: &str) -> Commander {
         let mut inner = RuleBot::new(seed, name);
         inner.tactics = Some(crate::tactics::Tactician::default());
-        let mut c = Commander { temper_retreat: 1.0, forward: None, raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None };
+        let mut c = Commander { temper_retreat: 1.0, forward: None, raid_laid: None, raid_next: 0, patch: None, name: name.into(), goal: Goal::Manual, inner, target: None, bearing: None, given_up: Default::default(), last_move: None, resupplying: false, fired: None, walked: 0, task: None, social: false, asked: None, total_since: None, plan: None, gun_reserved: false, doing: String::new(), act: Act::Idle, ladder: [true; 6], rung: None, why: Default::default(), base: None, base_owner: None, threatened: None, alarm_until: 0, alarm_at: None, fetching: None, starved: false, depot_target: None, depots_given_up: Default::default(), hold_fire_until: 0, scoot: None, scoot_left: false, gun_seen_at: None, pings: false, answers_pings: false, rally: None, rally_from: None, rally_seen: None, kite_held: None, rally_cool: 0, rally_order: false, slot: None, members: Vec::new(), gather_since: None, gather_cool: 0, bridge_asked: 0, last_ping: 0, heard: Vec::new(), say: Vec::new(), said: 0, helping: None, last_hitch: 0, fleet: Default::default(), crew: Default::default(), dodge: crate::Dodge { metered: true, ..Default::default() }, dodges: true, focus_said: 0, refused: Vec::new(), leader_down: None, reviving: None, called_down: 0, revive_failed: Default::default(), rotation: Default::default(), settings: Default::default(), desire: Default::default(), facts: Default::default(), board: None, cycle: Default::default(), on_bridge: false, posts_at: 0, rung_challenger: None, cap_held: CapHeld::default(), duck_to: None, guns_seen: Vec::new(), rung_now: None, ore_run: None, ore_due: false, fill_watch: (0, 0), dry_until: 0 };
         // The default Settings applied, not only held: a Commander built
         // here plays as a dealt one does (LR 50: one built without this
         // ran the landfall's weights at 0 while its Settings said 30).
@@ -785,7 +809,7 @@ impl Commander {
     /// Whether to go home to resupply: once low on shells or armour
     /// (the constants blended to the weights by `w_smooth`), until full
     /// again; held between thinks in `resupplying`.
-    fn needs_home(&mut self, me: &Tank) -> bool {
+    fn needs_home(&mut self, me: &Tank, now: Tick) -> bool {
         // The retreat thresholds blend from the constants (0) to the
         // weights (1) by `w_smooth` (LR 46).
         let share = self.settings.smooth();
@@ -796,13 +820,144 @@ impl Commander {
         } else {
             (LOW_SHELLS, LOW_ARMOR)
         };
-        if me.shells <= low_shells || me.armor <= low_armor {
+        // A depot found dry (game 6) is not asked for shells again until `dry_until`.
+        if (me.shells <= low_shells && now >= self.dry_until) || me.armor <= low_armor {
             self.resupplying = true;
         }
         if self.resupplying && me.shells >= TANK_SHELLS && me.armor >= TANK_ARMOR * 0.95 {
             self.resupplying = false;
         }
         self.resupplying
+    }
+
+    /// Game 6, the ore run (the plan's chapter 13, stage 2): when the side's nearest depot is short
+    /// of shells (`ore_low`) and the side has a working smelter within its reach of the base, a tank
+    /// that is quiet, idle and not in its cycle drives to the nearest deposit within `ore_reach`,
+    /// sends the squad to mine, drives to the smelter and unloads beside it. Some(orders) while the
+    /// run has the tank; the run ends when the ore is in, the deposit is worked out, the smelter
+    /// falls, a fight comes near, or its patience runs out.
+    fn ore_run(&mut self, obs: &Observation, me: &Tank, map: Option<&Map>) -> Option<Vec<Command>> {
+        use crate::weights::W;
+        let on = !obs.deposits.is_empty() && self.settings.w[W::OreLow] > 0.0 && self.caps().has(crate::weights::Caps::CYCLE) && matches!(self.goal, Goal::Auto | Goal::Fortify(_) | Goal::DefendBase);
+        let quiet = !obs.hostile_tanks().any(|t| t.alive && t.pos.dist(me.pos) <= crate::hop::FIGHT_NEAR);
+        if !on || !quiet || me.pillboys.strength == 0 || me.boat {
+            self.ore_run = None;
+            return None;
+        }
+        let ours = |o: Option<PlayerId>| Self::mine_or_allied(obs, o);
+        let smelters = || obs.structures.iter().filter(|x| x.kind == StructureKind::Smelter && x.working() && ours(x.owner));
+        if self.ore_run.is_none() {
+            // The base this tank keeps, else the nearest depot of the side: a ranger has no base of its own.
+            let base = self.base.or_else(|| self.home(obs, me))?;
+            if !me.pillboys.aboard || me.pillboys.task.is_some() || self.cycle.active() || self.resupplying {
+                return None;
+            }
+            let carrying = me.pillboys.ore > 0;
+            // One run a fill-up, as one cycle; the base's guard runs ore whenever the depot is short, which
+            // is the logistics of a base; a tank with ore aboard finishes its delivery regardless.
+            if !(self.ore_due || matches!(self.goal, Goal::DefendBase)) && !carrying {
+                return None;
+            }
+            self.ore_due = false;
+            let deposit = obs.deposits.iter().filter(|d| d.stock > 0 && d.pos.dist(base) <= self.settings.w[W::OreReach]).map(|d| d.pos).min_by(|a, b| a.dist(me.pos).total_cmp(&b.dist(me.pos)));
+            match smelters().map(|x| x.pos).filter(|s| s.dist(base) <= SMELTER_REACH).min_by(|a, b| a.dist(base).total_cmp(&b.dist(base))) {
+                Some(smelter) => {
+                    let short = obs.depots.iter().filter(|d| ours(d.owner)).min_by(|a, b| a.pos.dist(base).total_cmp(&b.pos.dist(base))).map(|d| (d.stock.kinds[STOCK_SHELL] as f32) < self.settings.w[W::OreLow]).unwrap_or(false);
+                    if !(short || carrying) {
+                        return None;
+                    }
+                    let deposit = deposit.or(if carrying { Some(me.pos) } else { None })?;
+                    self.ore_run = Some(OreRun { deposit, smelter, stage: if carrying { 2 } else { 0 }, since: obs.tick });
+                }
+                None => {
+                    // No smelter yet: the side's nearest tank to the ore, with the material, goes and
+                    // builds one beside it; the rest wait for it to stand.
+                    let deposit = deposit?;
+                    if me.pillboys.material < StructureKind::Smelter.cost() {
+                        return None;
+                    }
+                    let nearest = obs.tanks.iter().filter(|t| t.alive && !t.boat && ours(Some(t.owner)) && t.pillboys.material >= StructureKind::Smelter.cost()).min_by(|a, b| a.pos.dist(deposit).total_cmp(&b.pos.dist(deposit)).then(a.owner.cmp(&b.owner)));
+                    if nearest.map(|t| t.owner) != Some(obs.player) {
+                        return None;
+                    }
+                    let site = crate::cycle::Cycle::smelter_site(obs, deposit, base, map)?;
+                    self.ore_run = Some(OreRun { deposit, smelter: site, stage: 3, since: obs.tick });
+                }
+            }
+        }
+        let mut run = self.ore_run.take()?;
+        let building = run.stage >= 3;
+        if (!building && !smelters().any(|x| x.pos.dist(run.smelter) < 1.0)) || obs.tick.saturating_sub(run.since) > ORE_RUN_PATIENCE {
+            return None;
+        }
+        let mut cmds = Vec::new();
+        match run.stage {
+            3 => {
+                if me.pos.dist(run.smelter) > ORE_STAND {
+                    let to = obs.clamp(run.smelter + (me.pos - run.smelter).norm().scale(ORE_STAND * 0.7));
+                    self.go(obs, me, to, &mut cmds);
+                    self.set_doing(Act::OreRun, format!("ore run: to build the smelter, {:.0} tiles", me.pos.dist(run.smelter)));
+                } else if me.pillboys.aboard && me.pillboys.task.is_none() {
+                    if smelters().any(|x| x.pos.dist(run.smelter) < 1.0) {
+                        run.stage = 0;
+                    } else if me.pillboys.material >= StructureKind::Smelter.cost() {
+                        cmds.push(Command::Deploy { task: PillboyTask::Build { what: BuildKind::Structure(StructureKind::Smelter), at: run.smelter } });
+                        run.stage = 4;
+                    } else {
+                        return None;
+                    }
+                    run.since = obs.tick;
+                    self.set_doing(Act::OreRun, "ore run: the squad is building the smelter".into());
+                }
+            }
+            4 => {
+                if me.pillboys.aboard && me.pillboys.task.is_none() {
+                    if !smelters().any(|x| x.pos.dist(run.smelter) < 1.0) {
+                        return None;
+                    }
+                    run.stage = 0;
+                    run.since = obs.tick;
+                }
+                self.set_doing(Act::OreRun, "ore run: the squad is building the smelter".into());
+            }
+            0 => {
+                if me.pos.dist(run.deposit) > ORE_STAND {
+                    let to = obs.clamp(run.deposit + (me.pos - run.deposit).norm().scale(ORE_STAND * 0.7));
+                    self.go(obs, me, to, &mut cmds);
+                    self.set_doing(Act::OreRun, format!("ore run: to the deposit, {:.0} tiles", me.pos.dist(run.deposit)));
+                } else if me.pillboys.aboard && me.pillboys.task.is_none() {
+                    if !obs.deposits.iter().any(|d| d.pos.tile() == run.deposit.tile() && d.stock > 0) {
+                        return None;
+                    }
+                    cmds.push(Command::Deploy { task: PillboyTask::Harvest { at: run.deposit } });
+                    run.stage = 1;
+                    run.since = obs.tick;
+                    self.set_doing(Act::OreRun, "ore run: the squad is mining".into());
+                }
+            }
+            1 => {
+                if me.pillboys.aboard && me.pillboys.task.is_none() {
+                    if me.pillboys.ore == 0 {
+                        return None;
+                    }
+                    run.stage = 2;
+                    run.since = obs.tick;
+                }
+                self.set_doing(Act::OreRun, format!("ore run: the squad is mining, {} ore aboard", me.pillboys.ore));
+            }
+            _ => {
+                if me.pillboys.ore == 0 {
+                    return None;
+                }
+                if me.pos.dist(run.smelter) > SMELTER_RANGE * 0.7 {
+                    let to = obs.clamp(run.smelter + (me.pos - run.smelter).norm().scale(SMELTER_RANGE * 0.5));
+                    self.go(obs, me, to, &mut cmds);
+                }
+                self.set_doing(Act::OreRun, format!("ore run: {} ore to the smelter, {:.0} tiles", me.pillboys.ore, me.pos.dist(run.smelter)));
+            }
+        }
+        self.ore_run = Some(run);
+        Some(cmds)
     }
 
     /// What the inner doctrine may still do under a goal: drones always;
@@ -896,7 +1051,10 @@ impl Commander {
             .find(|s| others.iter().all(|o| o.dist(*s) > PILLBOX_RANGE + 0.8))
             .unwrap_or_else(|| snap(p.pos + V2::from_heading(base).scale(HUNT_STANDOFF)));
         let live_theirs = p.alive() && p.owner.is_some();
-        self.gun_reserved = live_theirs;
+        // A live target keeps the gun: a hostile one is the hunter's to shell, a neutral one the
+        // squad's to take, and the doctrine's `shell_boxes` lob at it would cost a shell for nothing
+        // (seen when game 6 stopped the depot replacing it).
+        self.gun_reserved = p.alive();
         if live_theirs {
             let d = me.pos.dist(p.pos);
             // From the firing point only: after a refusal the point moves
@@ -2823,7 +2981,12 @@ impl Commander {
         if self.goal == Goal::Manual {
             return cmds;
         }
+        let cycling = self.cycle.active();
         self.cycle.watch(self.resupplying, obs.tick);
+        if !cycling && self.cycle.active() {
+            // Game 6: a fill just ended; after the cycle, one ore run.
+            self.ore_due = true;
+        }
         self.refused.retain(|(_, t)| obs.tick < t + REFUSED_FOR);
         for e in &obs.events {
             if let Event::Rejected { player, cmd: Command::FireDirect { .. }, why } = e {
@@ -3187,7 +3350,22 @@ impl Commander {
             self.scoot = None;
             self.last_move = None;
         }
-        if self.needs_home(&me) {
+        // Game 6: a depot with no shells to give does not hold a tank for ever. Standing at home with
+        // its armour whole and no shell gained for `FILL_PATIENCE`, it goes back out with what it has
+        // and does not come home for shells again for `DRY_FOR`.
+        if self.resupplying && !obs.deposits.is_empty() {
+            if me.shells != self.fill_watch.0 {
+                self.fill_watch = (me.shells, obs.tick);
+            }
+            let at_home = self.home(obs, &me).map(|h| h.dist(me.pos) <= DEPOT_RADIUS).unwrap_or(false);
+            if at_home && me.armor >= TANK_ARMOR * 0.95 && obs.tick.saturating_sub(self.fill_watch.1) >= FILL_PATIENCE {
+                self.resupplying = false;
+                self.dry_until = obs.tick + DRY_FOR;
+            }
+        } else {
+            self.fill_watch = (me.shells, obs.tick);
+        }
+        if self.needs_home(&me, obs.tick) {
             if let Some(home) = self.home(obs, &me) {
                 self.set_doing(Act::Resupply, format!("home to resupply, {:.0} tiles", me.pos.dist(home)));
                 self.go(obs, &me, home, &mut cmds);
@@ -3248,6 +3426,12 @@ impl Commander {
                 }
                 _ => self.cycle.stage = crate::cycle::Stage::Idle,
             }
+        }
+        // Game 6: the ore run (the plan's chapter 13, stage 2).
+        if let Some(c) = self.ore_run(obs, &me, map) {
+            cmds.extend(c);
+            cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+            return cmds;
         }
         let gun_free = match self.goal {
             Goal::Manual => true,
@@ -3973,7 +4157,7 @@ mod tests {
         for _ in 0..seconds * TICK_HZ {
             let obs = w.observe(0);
             let orders: Vec<Order> = c.think(&obs).into_iter().map(|cmd| Order { player: 0, cmd }).collect();
-            if std::env::var("COMMANDER_TRACE").is_ok() && (w.tick % (5 * TICK_HZ as Tick) == 0 || orders.iter().any(|o| matches!(o.cmd, Command::FireDirect { .. }))) {
+            if std::env::var("COMMANDER_TRACE").is_ok() && (w.tick % (5 * TICK_HZ as Tick) == 0 || orders.iter().any(|o| matches!(o.cmd, Command::FireDirect { .. } | Command::FireIndirect { .. }))) {
                 eprintln!("[{:>5}] at {:?} armor {} shells {} reload {} doing '{}' orders {:?}", w.tick, w.tanks[0].pos, w.tanks[0].armor, w.tanks[0].shells, w.tanks[0].reload, c.doing, orders.iter().map(|o| &o.cmd).collect::<Vec<_>>());
             }
             w.step(&orders);

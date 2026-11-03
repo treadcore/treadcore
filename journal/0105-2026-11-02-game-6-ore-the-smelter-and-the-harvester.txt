@@ -1,0 +1,54 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Sun, 02 Nov 2026 19:30:00 +0000
+Subject: [JOURNAL 0105] Game 6: ore, the smelter and the harvester
+Message-ID: <0105.20261102@treadcore.org>
+In-Reply-To: <0104.20261102@treadcore.org>
+Organization: treadcore.org
+Keywords: game 6, ore, smelter, harvester, economy, zero-sum
+
+## Abstract
+
+The plan's second stage of the economy is built. A map holds deposits
+of ore, each a finite stock; on such a map a depot makes no shells and
+a refinery gives fuel alone, so every shell was once ore a squad mined
+and a smelter made. The smelter and the harvester stand beside their
+resource on open ground; a harvest near a harvester yields six and the
+tree returns in a minute. The scripted brain runs the supply: the base's
+guard builds the smelter and fetches ore whenever the depot is short,
+every other tank once after a fill-up, and no tank waits at a dry depot.
+On the naval map for ten minutes the fleet's own bots built five
+smelters, mined forty ore and smelted thirty-six shells. GAME_VERSION
+is 6; the simulator's 64 tests and the brain's 153 pass. An old fault
+came out under the new rule: the hunter lobbed one blind shell at a
+neutral pillbox the squad was taking, which the depot's free shell had
+hidden; a live target keeps the gun now.
+
+## Session
+
+Paul: "continue. implement the economy. commit and push."
+
+The simulator first: Deposit on the world and the observation, the
+deposit line in a map file and seeded deposits for maps that place
+none, the scenario's ore flag (on unless said), the depot's rule, the
+mine, the unload, the smelt, the two works at their resource, the
+harvester's yield. Four tests, one of which found its own bug (the
+test read the wrong deposit: the world had seeded eight of its own).
+
+Then the brain: the ore run as a small state machine with a building
+stage, two weights inside RANGES, the dry-depot rule. The end-to-end
+test on the naval map found two things in turn: with the run gated on
+a fill-up alone, no tank ever filled up in ten quiet minutes, so no
+smelter was built; and before that, with the run free, the commander
+in the neutral-pillbox scenario went off to build a smelter. The rule
+that holds: the guard runs ore whenever the depot is short, the rest
+once a fill-up.
+
+Then the census line, the window, the chair's refusals, the records,
+the book's chapter 13, and orrery's reading of ore and smelted.
+
+## Next
+
+Stage 3: workers as stock in transit, the city's shapes, the
+quartermaster. The fleet reads game 6 from here; the trade guard will
+want an ore floor once the first censuses are in.

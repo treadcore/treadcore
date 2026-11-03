@@ -316,6 +316,39 @@ pub const PILLBOX_SHELL_REGEN_TICKS: u64 = 10 * TICK_HZ as u64;
 pub const PILLBOX_SUPPLY_REACH: f32 = 12.0;
 pub const PILLBOX_SUPPLY_EVERY: u64 = 2 * TICK_HZ as u64;
 
+// ---- game 6: ore, the smelter, the harvester ----------------------------
+/// GAME 6, THE ZERO-SUM ECONOMY (Paul, 2 November: "a fun zero-sum economy, where every mineral but
+/// the growing trees is finite ... bonuses for refineries, smelters and wood harvesters"; the plan's
+/// chapter 13, stage 2). A map may hold deposits of ore, each with a stock that is all the ore there
+/// is. On such a map a depot makes no shells of its own and a refinery's shell stop is dry: shells
+/// come from a smelter of the side, one a second from the ore brought to it, into a depot of the side
+/// in its reach, and from there to the tanks and the pillboxes as before. Trees stay renewable, so a
+/// side can always build; a side without ore loses its guns within minutes. A map without deposits
+/// plays as game 5.
+/// A deposit's stock when the map file names none: thirty harvests, as many shells.
+pub const DEPOSIT_STOCK: u16 = 120;
+/// The squad mines a deposit as it fells a tree: it stands on it this long for this much ore, which
+/// the tank carries beside its material, up to `PILLBOY_ORE_MAX`.
+pub const ORE_TICKS: u16 = 6 * TICK_HZ as u16;
+pub const ORE_HARVEST: u8 = 4;
+pub const PILLBOY_ORE_MAX: u8 = 8;
+/// A tank within this of a working smelter of its side unloads its ore into it.
+pub const SMELTER_RANGE: f32 = 3.0;
+/// A smelter turns one ore into one shell every `SMELTER_MAKES_EVERY`, into the nearest depot of its
+/// side within `SMELTER_REACH` that has room (the base's workers, abstracted, as game 5's); with none
+/// in reach the ore waits in it. It stands within `SMELTER_SITE` of its deposit, on any open ground:
+/// a works is sited by its resource, not by a pad, and runs on its own crew, not the grid.
+pub const SMELTER_MAKES_EVERY: u64 = TICK_HZ as u64;
+pub const SMELTER_REACH: f32 = 30.0;
+pub const SMELTER_SITE: f32 = 3.0;
+/// The harvester stands within `HARVESTER_SITE` of forest, the same way. A harvest within
+/// `HARVESTER_RANGE` of a working one of the side yields `HARVESTER_MATERIAL` rather than four, and
+/// the tree grows back in `HARVESTER_REGROW_TICKS` rather than two minutes.
+pub const HARVESTER_SITE: f32 = 3.0;
+pub const HARVESTER_RANGE: f32 = 8.0;
+pub const HARVESTER_MATERIAL: u8 = 6;
+pub const HARVESTER_REGROW_TICKS: u64 = 60 * TICK_HZ as u64;
+
 /// A shell's splash over a deployed squad costs it this many Pillboys.
 pub const PILLBOY_SPLASH_LOSS: u8 = 2;
 /// Within this of the tank the squad is back aboard.

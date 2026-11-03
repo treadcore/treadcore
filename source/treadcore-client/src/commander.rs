@@ -56,6 +56,8 @@ pub fn name(k: StructureKind) -> &'static str {
         StructureKind::DataCentre => "data centre",
         StructureKind::Workshop => "workshop",
         StructureKind::Jammer => "jammer",
+        StructureKind::Smelter => "smelter",
+        StructureKind::Harvester => "harvester",
     }
 }
 

@@ -115,6 +115,8 @@ pub fn terrain_color(t: Terrain) -> Color {
 /// The ground's colours, sampled from WinBolo's sprites.
 /// The bearing ring's radius round the own tank, tiles.
 const BEARING_RING: f32 = 3.2;
+/// A deposit drawn full (game 6): the file's default stock; one placed richer stays a full heap longer.
+const DEPOT_STOCK_FULL: f32 = DEPOSIT_STOCK as f32;
 pub const GRASS: Color = Color::srgb(0.0, 0.44, 0.125);
 pub const FOREST: Color = Color::srgb(0.12, 0.69, 0.06);
 pub const ROAD: Color = Color::srgb(0.42, 0.42, 0.42);
@@ -344,6 +346,14 @@ fn sync_entities(
         let owner = d.owner.map(player_color);
         let c = owner.unwrap_or(Color::srgb(0.7, 0.7, 0.7));
         place(&mut commands, d.id, to_screen(d.pos), 0.0, model_key(7, c, d.owner.is_some() as u32), &|| voxel::depot(owner), 1.0, Some(("depot".into(), c)));
+    }
+    // Deposits of ore (game 6): a heap that lowers as it is worked out, labelled with what is left.
+    for d in &obs.deposits {
+        let left = d.stock as f32 / DEPOT_STOCK_FULL;
+        let bucket = (left.clamp(0.0, 1.0) * 4.0).ceil() as u32;
+        let c = if d.stock > 0 { Color::srgb(0.8, 0.45, 0.25) } else { Color::srgb(0.45, 0.42, 0.4) };
+        let label = if d.stock > 0 { format!("ore {}", d.stock) } else { "ore gone".to_string() };
+        place(&mut commands, d.id, to_screen(d.pos), 0.0, model_key(12, c, bucket), &|| voxel::deposit(left), 1.0, Some((label, c)));
     }
     // Pillboxes: Bolo's pyramid, tinted by the owner, the gun on top
     // while it has more than half its health; labelled with health.
@@ -690,6 +700,10 @@ fn overlay(mut gizmos: Gizmos, view: Res<View>, hud: Res<HudState>, window: Quer
                 }
             }
         }
+    }
+    // A smelter's unloading ring (game 6): drive inside it with ore aboard.
+    for x in obs.structures.iter().filter(|x| x.kind == StructureKind::Smelter && x.working() && x.owner.map(|o| o == me || obs.allied(o)).unwrap_or(false)) {
+        gizmos.circle_2d(to_screen(x.pos), SMELTER_RANGE * TILE, Color::srgba(0.8, 0.45, 0.25, 0.25));
     }
     // Depot capture rings.
 
