@@ -4,7 +4,8 @@
 # start into the ring of a neutral pillbox and was shelled dead before it reached any ore (LR 132);
 # the scripted brain's first act is to take that pillbox with its squad. The reward pays a pillbox
 # taken (the map's own: `pillboxes`), being alive, and takes back a hundredth of every point of
-# damage taken; it passes when a pillbox is taken.
+# damage taken, and the armour at the end less at the start as a potential (LR 134: a tank that
+# lives has armour, and the search feels it before it feels "alive"); it passes when a pillbox is taken.
 name = "the fleet's island: the first minute"
 reaction = "move"
 floor = 0.5
@@ -47,4 +48,5 @@ pillboxes = { seat = 0, at_least = 1 }
 [reward]
 pillboxes = 2
 alive = 1
-damage_taken = -0.01
+damage_taken = -0.02
+armor_gained = 1

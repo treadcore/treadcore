@@ -1123,7 +1123,19 @@ mod tests {
                     }
                     // The aggro seat stays the aggro bot: a team of its own.
                     let style = if teams()[i] == lucky { trial_style } else { base_style };
-                    if let Some(st) = style.filter(|_| i != AGGRO) {
+                    // `bot_mix`: the style on the team's last seats only, the rest the rules.
+                    let mixed_in = |s: &Settings| -> bool {
+                        let team = TEAMS.iter().find(|t| t.contains(&i)).map(|t| &t[..]).unwrap_or(&[]);
+                        let n = match s.choice(crate::weights::W::BotMix) {
+                            1 => 1,
+                            2 => 2,
+                            3 => team.len() / 2,
+                            _ => team.len(),
+                        };
+                        team.iter().position(|s| *s == i).map(|r| r + n >= team.len()).unwrap_or(true)
+                    };
+                    let own = if teams()[i] == lucky { &trial } else { &base };
+                    if let Some(st) = style.filter(|_| i != AGGRO && mixed_in(own)) {
                         let s = if teams()[i] == lucky { trial.clone() } else { base.clone() };
                         let made = crate::styles::make(st, &s, &name(i), || brain(i, seed ^ i as u64, false));
                         return (i as PlayerId, made);
