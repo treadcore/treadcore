@@ -1364,8 +1364,9 @@ mod harness {
     /// head learns "hold", right 99.9% of the time (a direct shot is 0.13%
     /// of samples). Written as `TCBC2\0\0\0`, u32 senses, u32 heads, then
     /// each sample: the senses (f32); a label a head (u8, `HEADS` order;
-    /// Squad and Signal 0); the masks (u8 each: gun sectors, mortar sectors,
-    /// drone kinds 1 to 4 as bits 0 to 3); the seed (u32).
+    /// Squad from the Deploy given, since LR 131, without a mask yet, so
+    /// the trainer leaves it; Signal 0); the masks (u8 each: gun sectors,
+    /// mortar sectors, drone kinds 1 to 4 as bits 0 to 3); the seed (u32).
     fn record(path: &std::path::Path, seed0: u64, seeds: u64, secs: u64, threads: usize) {
         use crate::net::{DECIDE_EVERY, HEADS};
         use crate::senses::{self, SECTORS, SENSES};
@@ -1382,6 +1383,8 @@ mod harness {
                 x: [f32; SENSES],
                 me: Tank,
                 hostiles: Vec<Tank>,
+                /// The deposits and wells seen: a Harvest on one is the squad head's mine.
+                resources: Vec<V2>,
                 masks: [u8; 3],
                 cmds: Vec<Command>,
             }
@@ -1398,9 +1401,26 @@ mod harness {
                     _ if me.speed.abs() < 0.05 => 1 + SECTORS,
                     _ => sector_of(me.pos + V2::from_heading(me.heading)),
                 };
-                let (mut gun, mut lead, mut mortar, mut drone) = (0usize, 0usize, 0usize, 0usize);
+                let (mut gun, mut lead, mut mortar, mut drone, mut squad) = (0usize, 0usize, 0usize, 0usize, 0usize);
                 for c in &o.cmds {
                     match c {
+                        // The squad head's choices (net.rs): a Harvest on a deposit or a well is mine.
+                        Command::Deploy { task } if squad == 0 => {
+                            squad = match task {
+                                PillboyTask::Capture { .. } => 1,
+                                PillboyTask::Build { .. } => 2,
+                                PillboyTask::Repair { .. } => 3,
+                                PillboyTask::Harvest { at } => {
+                                    if o.resources.iter().any(|r| r.tile() == at.tile()) {
+                                        5
+                                    } else {
+                                        4
+                                    }
+                                }
+                                PillboyTask::Return => 6,
+                                PillboyTask::Lift { .. } => 0,
+                            }
+                        }
                         Command::FireDirect { at } if gun == 0 => {
                             gun = sector_of(*at);
                             if let Some(t) = o.hostiles.iter().filter(|t| t.pos.dist(*at) < 4.0).min_by(|a, b| a.pos.dist(*at).total_cmp(&b.pos.dist(*at))) {
@@ -1430,7 +1450,7 @@ mod harness {
                     out.extend_from_slice(&v.to_le_bytes());
                 }
                 // HEADS order: drive, gun, lead, mortar, drone, squad, signal
-                out.extend_from_slice(&[drive as u8, gun as u8, lead as u8, mortar as u8, drone as u8, 0, 0]);
+                out.extend_from_slice(&[drive as u8, gun as u8, lead as u8, mortar as u8, drone as u8, squad as u8, 0]);
                 out.extend_from_slice(&o.masks);
                 out.extend_from_slice(&(seed as u32).to_le_bytes());
             };
@@ -1446,6 +1466,7 @@ mod harness {
                         let Some(me) = obs.me.clone().filter(|t| t.alive) else { continue };
                         if let Some(x) = senses::sense(&obs, Some(&w.map), None, &[]) {
                             let hostiles = obs.hostile_tanks().cloned().collect();
+                            let resources = obs.deposits.iter().map(|d| d.pos).chain(obs.wells.iter().map(|d| d.pos)).collect();
                             // NetBrain's own masks (net.rs, think_on)
                             let ready = me.reload == 0 && me.shells > 0;
                             let mut masks = [0u8; 3];
@@ -1462,7 +1483,7 @@ mod harness {
                                     masks[2] |= 1 << (c - 1);
                                 }
                             }
-                            open[p] = Some(Open { x, me, hostiles, masks, cmds: Vec::new() });
+                            open[p] = Some(Open { x, me, hostiles, resources, masks, cmds: Vec::new() });
                         }
                     }
                 }
@@ -1515,7 +1536,8 @@ mod harness {
     /// `CHECK=file` a net is read on the held-out seeds only; with
     /// `BASELINE=1` the scripted brain is read first. Settings from the
     /// environment: GENS, PAIRS, SEEDS, SIGMA, RATE, DECAY, THREADS,
-    /// START (a net to begin from, else `Net::tank(NET_SEED)`), OUT (the
+    /// START (a net to begin from, else `Net::tank(NET_SEED)`), RESET
+    /// (heads of the start net begun at zero, `squad,signal`), OUT (the
     /// folder for the net and the log), NAME (the net's file name),
     /// HELD (held-out episodes a course; a file's `held` wins).
     #[test]
@@ -1591,11 +1613,25 @@ mod harness {
         let es = Es { pairs: env("PAIRS", 48), seeds: env("SEEDS", 12), sigma: env("SIGMA", 0.05), rate: env("RATE", 0.02), decay: env("DECAY", 0.0005), threads };
         let out = std::path::PathBuf::from(env("OUT", "build/train".to_string()));
         std::fs::create_dir_all(&out).unwrap();
-        let shape = match std::env::var("START") {
+        let mut shape = match std::env::var("START") {
             // A net of the senses before the shell contact, widened (LR 100).
             Ok(f) if !f.is_empty() => Net::load(std::path::Path::new(&f)).expect("START: a net").widen(crate::senses::SENSES),
             _ => Net::tank(env("NET_SEED", 1)),
         };
+        // RESET=squad,signal: heads the start net never trained, begun at zero (LR 131).
+        for h in std::env::var("RESET").unwrap_or_default().split(',').map(str::trim).filter(|h| !h.is_empty()) {
+            let head = match h {
+                "drive" => crate::net::Head::Drive,
+                "gun" => crate::net::Head::Gun,
+                "lead" => crate::net::Head::Lead,
+                "mortar" => crate::net::Head::Mortar,
+                "drone" => crate::net::Head::Drone,
+                "squad" => crate::net::Head::Squad,
+                "signal" => crate::net::Head::Signal,
+                _ => panic!("RESET: no head {}", h),
+            };
+            shape = shape.zero_head(head);
+        }
         let gens: usize = env("GENS", 200);
         let first: usize = env("GEN0", 0);
         println!("train: {} on [{}], {} weights, {:?}, {} generations from {}", name, courses.iter().map(|c| c.name()).collect::<Vec<_>>().join(", "), shape.parameters(), es, gens, first);

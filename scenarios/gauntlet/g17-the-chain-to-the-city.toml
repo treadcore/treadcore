@@ -63,3 +63,6 @@ ore = 0.25
 smelted = 0.5
 delivered = 0.5
 convoys = 1
+# The drive paid as a potential (LR 131): the share of the way from where the tank began to the works
+# that takes the load, start to end, so the search feels the way west before the first unload pays.
+closer = { at = "centre", offset = [-8, 0], worth = 1 }

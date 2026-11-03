@@ -13,7 +13,7 @@ use crate::senses::{self, SECTORS, SENSES};
 use crate::Brain;
 use std::io::{Read, Write};
 use treadcore_sim::map::Map;
-use treadcore_sim::rules::{DIRECT_RANGE, DRONE_LINK, INDIRECT_MAX_RANGE, INDIRECT_MIN_RANGE};
+use treadcore_sim::rules::{DIRECT_RANGE, DRONE_LINK, INDIRECT_MAX_RANGE, INDIRECT_MIN_RANGE, PILLBOX_HEALTH, PILLBOX_REPAIR_COST, PILLBOY_OIL_MAX, PILLBOY_ORE_MAX, SMELTER_REACH, STRUCTURE_HEALTH, STRUCTURE_REPAIR_COST};
 use treadcore_sim::*;
 
 /// The action heads, in the order of the net's outputs, each a short
@@ -36,7 +36,9 @@ pub enum Head {
     /// or a longshot (at the nearest hostile structure, pillbox or tank).
     /// On since LR 100: without its bubble a tank is killed by drones.
     Drone,
-    /// Hold, capture, build, mend, harvest, mine, home (phase 8).
+    /// Hold, capture, build, mend, harvest, mine, home: an order to the
+    /// squad (`NetBrain::squad`), each offered when there is one to give
+    /// within `SQUAD_REACH`. Held until the logistics gauntlets (LR 131).
     Squad,
     /// Hold, or call friends (calls.rs): help (come to me), attack (the
     /// nearest enemy), take (the nearest thing to take).
@@ -77,6 +79,12 @@ pub const DRIVE_STEP: f32 = 6.0;
 /// Ticks a drive is kept before the same choice is given again (a Move
 /// costs the world a route; a tank driving one way says so every 2 s).
 pub const DRIVE_RENEW: Tick = 2 * TICK_HZ as Tick;
+
+/// How far from the tank the squad head's work may be, tiles: the squad
+/// walks (`PILLBOY_SPEED`), so the tank need not stand on the deposit,
+/// but a long walk is a long time without a squad, so the drive head
+/// has to bring the tank near first.
+pub const SQUAD_REACH: f32 = 8.0;
 
 /// One layer: `out` rows of `inp` weights, and `out` biases.
 #[derive(Clone, Debug, PartialEq)]
@@ -141,6 +149,29 @@ impl Net {
             }
             l.w = w;
             l.inp = inputs;
+        }
+        n
+    }
+
+    /// The same net with one head's output rows and biases at zero (LR
+    /// 131): a head that was never trained but rode along through a
+    /// thousand generations of the search has rows at the search's scale
+    /// (map7 scores hold at -9 and mine at -238), which no step the
+    /// search takes will ever flip; at zero its choices tie, `choose`
+    /// takes hold, and a step of 0.05 is a choice. The other heads are
+    /// untouched.
+    pub fn zero_head(&self, head: Head) -> Net {
+        let mut n = self.clone();
+        let l = n.layers.last_mut().expect("a net has a layer");
+        let mut k = 0;
+        for (h, count) in HEADS {
+            if h == head {
+                for o in k..k + count {
+                    l.w[o * l.inp..(o + 1) * l.inp].fill(0.0);
+                    l.b[o] = 0.0;
+                }
+            }
+            k += count;
         }
         n
     }
@@ -253,8 +284,8 @@ pub fn choose(scores: &[f32], allowed: &dyn Fn(Head, usize) -> bool) -> Vec<(Hea
 
 /// A Brain that drives by a net (phase 0 and on, LR 96): five times a
 /// second it feels (senses.rs), scores, and acts. Drive, gun, lead and
-/// mortar act now; the drone, squad and signal heads are scored and
-/// held until their phases.
+/// mortar from the first; the drone since LR 100, the signal since the
+/// calls, the squad since the logistics gauntlets (LR 131).
 pub struct NetBrain {
     pub net: Net,
     name: String,
@@ -347,6 +378,64 @@ impl NetBrain {
         }
     }
 
+    /// The squad head's order for choice c, if there is one to give now
+    /// (LR 131): 1 capture the nearest pillbox or structure within
+    /// `SQUAD_REACH` that is neutral or dead and not ours; 2 build a
+    /// smelter beside the nearest deposit in reach that has no working
+    /// smelter of the side within `SMELTER_REACH`, where the cycle would
+    /// site it, with the material; 3 mend the nearest damaged pillbox or
+    /// structure of the side in reach, with the material; 4 fell the
+    /// nearest forest tile in reach; 5 mine the nearest deposit, or pump
+    /// the nearest well, in reach that the squad has room for (the ore
+    /// and the oil unload themselves at a smelter or a refinery of the
+    /// side the tank drives within range of); 6 call the squad home
+    /// while it is out. None without a squad, and 1 to 5 none while it
+    /// is out (the world refuses a second order but Return).
+    pub(crate) fn squad(obs: &Observation, me: &Tank, map: Option<&Map>, c: usize) -> Option<Command> {
+        let s = &me.pillboys;
+        if s.strength == 0 {
+            return None;
+        }
+        if c == 6 {
+            return (!s.aboard).then_some(Command::Deploy { task: PillboyTask::Return });
+        }
+        if !s.aboard || s.task.is_some() {
+            return None;
+        }
+        let near = |a: &V2, b: &V2| a.dist(me.pos).total_cmp(&b.dist(me.pos));
+        let in_reach = |p: V2| p.dist(me.pos) <= SQUAD_REACH;
+        let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
+        let task = match c {
+            1 => {
+                let boxes = obs.pillboxes.iter().filter(|b| in_reach(b.pos) && b.owner != Some(obs.player) && (b.owner.is_none() || !b.alive())).map(|b| (b.id, b.pos));
+                let works = obs.structures.iter().filter(|x| in_reach(x.pos) && x.owner != Some(obs.player) && (x.owner.is_none() || !x.alive())).map(|x| (x.id, x.pos));
+                boxes.chain(works).min_by(|a, b| near(&a.1, &b.1)).map(|(id, _)| PillboyTask::Capture { pillbox: id })
+            }
+            2 => {
+                if s.material < StructureKind::Smelter.cost() {
+                    return None;
+                }
+                let served = |d: V2| obs.structures.iter().any(|x| x.kind == StructureKind::Smelter && x.working() && ours(x.owner) && x.pos.dist(d) <= SMELTER_REACH);
+                let deposit = obs.deposits.iter().filter(|d| d.stock > 0 && in_reach(d.pos) && !served(d.pos)).map(|d| d.pos).min_by(near)?;
+                let base = obs.depots.iter().filter(|d| ours(d.owner)).map(|d| d.pos).min_by(near).unwrap_or(me.pos);
+                crate::cycle::Cycle::smelter_site(obs, deposit, base, map).map(|at| PillboyTask::Build { what: BuildKind::Structure(StructureKind::Smelter), at })
+            }
+            3 => {
+                let boxes = obs.pillboxes.iter().filter(|b| in_reach(b.pos) && ours(b.owner) && b.health < PILLBOX_HEALTH && s.material >= PILLBOX_REPAIR_COST).map(|b| (b.id, b.pos));
+                let works = obs.structures.iter().filter(|x| in_reach(x.pos) && ours(x.owner) && x.alive() && x.health < STRUCTURE_HEALTH && s.material >= STRUCTURE_REPAIR_COST).map(|x| (x.id, x.pos));
+                boxes.chain(works).min_by(|a, b| near(&a.1, &b.1)).map(|(id, _)| PillboyTask::Repair { target: id })
+            }
+            4 => obs.forest.iter().copied().filter(|p| in_reach(*p)).min_by(near).map(|at| PillboyTask::Harvest { at }),
+            5 => {
+                let ore = obs.deposits.iter().filter(|d| d.stock > 0 && in_reach(d.pos) && s.ore < PILLBOY_ORE_MAX).map(|d| d.pos);
+                let oil = obs.wells.iter().filter(|d| d.stock > 0 && in_reach(d.pos) && s.oil < PILLBOY_OIL_MAX).map(|d| d.pos);
+                ore.chain(oil).min_by(near).map(|at| PillboyTask::Harvest { at })
+            }
+            _ => None,
+        }?;
+        Some(Command::Deploy { task })
+    }
+
     /// The strongest hostile in sector k the mortar can reach: a tank,
     /// else a live hostile pillbox.
     pub(crate) fn mortar_target(obs: &Observation, me: &Tank, k: usize) -> Option<V2> {
@@ -383,8 +472,7 @@ impl Brain for NetBrain {
             Head::Mortar => ready && Self::mortar_target(obs, &me, c - 1).is_some(),
             Head::Signal => self.called.map(|t| obs.tick >= t + CALL_EVERY).unwrap_or(true) && Self::call_at(obs, &me, CALL_KINDS[c - 1]).is_some(),
             Head::Drone => Self::launch(obs, &me, c).is_some(),
-            // Its phase: held until then.
-            Head::Squad => false,
+            Head::Squad => Self::squad(obs, &me, map, c).is_some(),
         };
         let picks = choose(&scores, &allowed);
         let pick = |h: Head| picks.iter().find(|(g, _)| *g == h).map(|p| p.1).unwrap_or(0);
@@ -425,6 +513,9 @@ impl Brain for NetBrain {
             cmds.push(Command::FireIndirect { at });
         }
         if let Some(cmd) = Some(pick(Head::Drone)).filter(|c| *c > 0).and_then(|c| Self::launch(obs, &me, c)) {
+            cmds.push(cmd);
+        }
+        if let Some(cmd) = Some(pick(Head::Squad)).filter(|c| *c > 0).and_then(|c| Self::squad(obs, &me, map, c)) {
             cmds.push(cmd);
         }
         if let Some(kind) = Some(pick(Head::Signal)).filter(|c| *c > 0).map(|c| CALL_KINDS[c - 1]) {
@@ -524,6 +615,84 @@ mod tests {
         let obs = w.observe(0);
         if t.bay.strike > 0 {
             assert!(matches!(NetBrain::launch(&obs, &t, 3), Some(Command::Launch { kind: DroneKind::Strike, .. })));
+        }
+    }
+
+    /// The squad head (LR 131): mine is offered for a deposit in reach
+    /// and is the order to mine it; capture for a dead hostile pillbox
+    /// in reach; nothing for a deposit beyond `SQUAD_REACH`; once the
+    /// squad is out, only home.
+    #[test]
+    fn the_squad_head_orders_what_is_in_reach() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        w.pillboxes.clear();
+        w.structures.clear();
+        // The generated map seeds deposits and wells of its own (game 6, 7).
+        w.deposits.clear();
+        w.wells.clear();
+        let me = w.tanks[0].pos;
+        w.tanks[1].pos = me + V2::new(0.0, 40.0);
+        let ore_at = Map::tile_centre(me + V2::new(4.0, 0.0));
+        w.deposits.push(Deposit { id: 9101, pos: ore_at, stock: 10 });
+        w.pillboxes.push(Pillbox { id: 9102, pos: me + V2::new(0.0, 5.0), owner: Some(1), health: 0.0, reload: 0, capture: 0, capturer: None, shells: 0 });
+        let obs = w.observe(0);
+        let t = w.tanks[0].clone();
+        assert_eq!(NetBrain::squad(&obs, &t, None, 5), Some(Command::Deploy { task: PillboyTask::Harvest { at: ore_at } }));
+        assert_eq!(NetBrain::squad(&obs, &t, None, 1), Some(Command::Deploy { task: PillboyTask::Capture { pillbox: 9102 } }));
+        assert_eq!(NetBrain::squad(&obs, &t, None, 6), None, "the squad is aboard");
+        w.deposits[0].pos = Map::tile_centre(me + V2::new(SQUAD_REACH + 3.0, 0.0));
+        let obs = w.observe(0);
+        assert_eq!(NetBrain::squad(&obs, &t, None, 5), None, "beyond reach");
+        let mut out = t.clone();
+        out.pillboys.aboard = false;
+        assert_eq!(NetBrain::squad(&obs, &out, None, 1), None);
+        assert_eq!(NetBrain::squad(&obs, &out, None, 6), Some(Command::Deploy { task: PillboyTask::Return }));
+    }
+
+    /// A zeroed head (LR 131) scores every choice nothing and the other
+    /// heads what they scored.
+    #[test]
+    fn a_zeroed_head_ties_and_leaves_the_rest() {
+        let a = Net::tank(7);
+        let z = a.zero_head(Head::Squad);
+        let x: Vec<f32> = (0..SENSES).map(|i| (i % 7) as f32 / 7.0).collect();
+        let (sa, sz) = (a.forward(&x), z.forward(&x));
+        let k: usize = HEADS.iter().take_while(|(h, _)| *h != Head::Squad).map(|(_, n)| n).sum();
+        for i in 0..OUTPUTS {
+            if (k..k + 7).contains(&i) {
+                assert_eq!(sz[i], 0.0, "squad {}", i - k);
+            } else {
+                assert_eq!(sz[i], sa[i], "output {}", i);
+            }
+        }
+        assert!(sa[k..k + 7].iter().any(|s| *s != 0.0), "the seed's squad head scored something");
+        let pick = choose(&sz, &|_, _| true).into_iter().find(|(h, _)| *h == Head::Squad).unwrap().1;
+        assert_eq!(pick, 0, "a tie is hold");
+    }
+
+    /// A probe, not a test (LR 131): what a net's squad head scores for hold and
+    /// mine at the start of G13's situation, a deposit eight tiles ahead.
+    /// `NETS=a.bin,b.bin cargo test ... --ignored squad_head_margin --nocapture`.
+    #[test]
+    #[ignore]
+    fn squad_head_margin() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        w.pillboxes.clear();
+        w.structures.clear();
+        w.deposits.clear();
+        w.wells.clear();
+        w.tanks[0].heading = 0.0;
+        let me = w.tanks[0].pos;
+        w.tanks[1].pos = me + V2::new(0.0, 40.0);
+        w.deposits.push(Deposit { id: 9101, pos: Map::tile_centre(me + V2::new(8.0, 0.0)), stock: 40 });
+        let obs = w.observe(0);
+        let t = w.tanks[0].clone();
+        let x = senses::sense(&obs, Some(&w.map), None, &[]).unwrap();
+        let k: usize = HEADS.iter().take_while(|(h, _)| *h != Head::Squad).map(|(_, n)| n).sum();
+        for f in std::env::var("NETS").unwrap_or_default().split(',').filter(|f| !f.is_empty()) {
+            let net = Net::load(std::path::Path::new(f)).unwrap().widen(SENSES);
+            let s = net.forward(&x);
+            println!("squad head of {}: hold {:.2} capture {:.2} build {:.2} mend {:.2} harvest {:.2} mine {:.2} home {:.2}; mine offered: {}", f, s[k], s[k + 1], s[k + 2], s[k + 3], s[k + 4], s[k + 5], s[k + 6], NetBrain::squad(&obs, &t, Some(&w.map), 5).is_some());
         }
     }
 

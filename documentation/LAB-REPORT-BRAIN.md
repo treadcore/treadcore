@@ -9736,3 +9736,47 @@ The scripted brain passes all five; the nets pass none that needs the squad (no 
 
 **What the fleet will read.** Every census from here is game 8. The trade guard's floors (built, road, kd) stand; `ore`, `smelted`, `oil`, `supply` are on the composition line and read by orrery, not yet floors. The first thing to watch is supply's scale (hundreds a seat in ten minutes with one thing to buy) and whether the quartermaster's city costs the guard its guard.
 
+
+## 131. The nets on the logistics gauntlets: the squad head wired, and what the search found, 2 November
+
+Paul: "train the nets on the gauntlets." The first thing the attempt found was in the code, not the training: `NetBrain` scored the squad head and never acted on it (`Head::Squad => false`, "held until its phase"), so no net could order a mine, and the zeros of section 130 on G13, G14 and G17 were the mask's, not the nets'.
+
+**The squad head.** `NetBrain::squad(obs, me, map, c)` gives the head's seven choices their orders, each offered only when there is one to give within `SQUAD_REACH` eight tiles (the squad walks at `PILLBOY_SPEED`, so the tank need not stand on the work, but a long walk is a long time without a squad, so the drive head has to bring the tank near): 1 capture the nearest pillbox or structure that is neutral or dead and not ours; 2 build a smelter where `Cycle::smelter_site` would put it, beside the nearest deposit that has no working smelter of the side within `SMELTER_REACH`, with the material; 3 mend the nearest damaged pillbox or structure of the side, with the material; 4 fell the nearest forest tile; 5 mine the nearest deposit, or pump the nearest well, that the squad has room for (the load unloads itself when the tank drives within range of the side's smelter or refinery, as the scripted brain's run relies on); 6 home while the squad is out. None without a squad; 1 to 5 none while it is out, since the world refuses a second order but Return. The recorder (`record`) now labels the squad head from the Deploy the scripted brain gave (a Harvest on a deposit or a well is 5, on wood 4), without a mask, so `tools/bc` still leaves the head. Test: `the_squad_head_orders_what_is_in_reach`.
+
+**The courses.** G13, G14 and G17 pay the drive as a potential beside the counts: `closer = { at = "centre", offset = [-8, 0], worth = 1 }`, the share of the way from where the tank began to the works that takes the load, start to end, so the search feels the way west before the first unload pays. The pass conditions did not change; the scripted brain's 10 of 10 stands.
+
+**The training.** `GROUND=` the five files, `train` as built (48 pairs, 12 episodes a generation, sigma 0.05, Adam 0.02, decay 0.0005, 8 threads; 4.3 s a generation on this Mac), 20 held-out seeds a course.
+
+- From `bc2` (the clone): flat from generation 6, every perturbation 3.000 exactly, the net's own 3.000, passed 0.17. The clone stands still in an empty field with nothing in sight; its squad mines eight ore where it stands (a quarter each, the 2.0 of the 3.0) and the tank never drives, so the potential is zero everywhere near its weights and the search has no gradient. Stopped at 17.
+- From `map7` (the evolution milestone that drives to things), 300 generations, 22 minutes: the population's mean 1.46 to 2.64, best 1.95 to 2.88. Held out: G15 20 of 20 (reward 6.25); **G16 20 of 20** (2.35: it raids the convoys, where the untrained net read 7 of 10 and `map7` 9); G13 0 of 20, reward 0.78; G14 0 of 20, 0.83; G17 0 of 20, 4.73 (the world's four convoys and the drive). The net learned the drive west, the potential, and not the mine: the mine is one choice of one head at the one moment the deposit is within reach, before the drive carries the tank off, and a step of 0.05 on seventeen thousand weights seldom flips a head whose rows were never trained.
+- From the 300th net, 300 more at sigma 0.1: mean 2.43 to 2.75; G16's reward 3.10 (more taken), G13 0.82, G14 0.91, G17 4.88; the same zeros. A wider step did not find the mine either.
+
+**The cause, measured.** A probe (`squad_head_margin`, ignored, `NETS=` a list) senses G13's start, a deposit eight tiles ahead, and prints what each net's squad head scores. The clone `bc2`: hold 0.44, mine 4.58; it mines. `map7`: hold -8.9, mine -237.6; the 300th net from it: hold -80, mine -277; the 600th: hold 12, mine -290. A head that was never trained but rode along through a thousand generations of the search has rows at the search's scale, and a margin of two hundred is not crossed by a step of a twentieth on any weight: the search was moving the rows, in the wrong direction as often as the right, and the drive it could feel.
+
+**The reset.** `Net::zero_head(head)`: one head's output rows and biases at zero, the rest untouched; its choices tie, `choose` takes hold, and a step of 0.05 is a choice. `RESET=squad` in `train` applies it to the start net. Test: `a_zeroed_head_ties_and_leaves_the_rest`. From `map7` with the squad head at zero, 300 generations, 20 minutes: passed 0.25 at generation 0, 0.92 at 4, 1.00 at 20; the mean 2.34 to a high of 10.02 at 200, 7.68 at the end (the mean moves with the dozen seeds drawn a generation). **Held out, every course PASS:** G13 19 of 20 (reward 8.93), G14 20 of 20 (10.02), G15 20 of 20 (6.05), G16 17 of 20 (1.50), G17 20 of 20 (17.41). The one G13 miss and the three G16 misses are the seeds' geometry (the heading is "any"); G16 gave back some of what the second net had (3.10 to 1.50) for the mine, which pays more. The net is `nets/logistics.bin`, 160 inputs, 64, 64, the heads; the gauntlet reads it by name.
+
+**Read, ten seeds a cell, the whole gauntlet, with the clone and the new net.**
+
+| gauntlet | scripted | untrained | phase1 | phase3 | map4 | map7a | map5 | map7 | bc2 | logistics |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| G1 fire at an enemy in reach | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 2 | 10 |
+| G2 an enemy behind | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 |
+| G3 a shell on a standing tank | 9 | 9 | 9 | 10 | 10 | 9 | 10 | 8 | 0 | 10 |
+| G4 a strike drone coming | 10 | 0 | 9 | 9 | 10 | 10 | 10 | 8 | 10 | 7 |
+| G5 low armour, home in sight | 10 | 0 | 0 | 1 | 3 | 4 | 2 | 1 | 0 | 1 |
+| G6 a depot to take | 10 | 0 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 |
+| G7 a pillbox from outside its ring | 9 | 4 | 4 | 4 | 5 | 4 | 4 | 3 | 0 | 3 |
+| G8 out of a pillbox's ring | 3 | 2 | 8 | 9 | 10 | 10 | 10 | 6 | 2 | 4 |
+| G9 a depot across the water | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| G10 keep station on a moving leader | 10 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| G11 cover the leader against what appears ahead | 8 | 0 | 5 | 5 | 0 | 1 | 1 | 0 | 0 | 0 |
+| G12 come back after a shell | 10 | 0 | 6 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| G13 ore to the smelter | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **10** |
+| G14 oil to the refinery | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **10** |
+| G15 the convoy comes through | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 |
+| G16 the raider takes the convoy | 10 | 6 | 10 | 9 | 10 | 9 | 10 | 9 | 0 | 8 |
+| G17 the chain to the city | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **10** |
+
+The logistics net passes the three squad gauntlets ten of ten, where every net before it had none, and keeps its parent's G1 to G3; it gave back some of `map7`'s G4 (8 to 7), G8 (6 to 4) and G16 (9 to 8) to the five courses it was trained on, as a net trained on one course does (LR 102). The clone `bc2` beside it, read on the gauntlet for the first time: G1 2 of 10, G3 0, G16 0, a brain that imitates sixteen-seat matches and does not shoot a lone tank in an empty field, which is why the search from it was flat. The console's Results → Gauntlet page reads `build/train/gauntlet.tsv`.
+
+**What is next.** A mask byte for the squad head in the recording (a `TCBC3`) so `tools/bc` can clone it; a course of the fleet's maps with the squad on, since a net that mines in a field of two may not among sixteen; the census to read what a trained squad head does to a side's ore and smelted lines; `RESET=signal` the same way when the calls are trained.

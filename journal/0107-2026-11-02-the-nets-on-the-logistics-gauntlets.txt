@@ -1,0 +1,43 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Mon, 03 Nov 2026 06:30:00 +0000
+Subject: [JOURNAL 0107] The nets on the logistics gauntlets: the squad head wired, a head reset, every course passed
+Message-ID: <0107.20261103@treadcore.org>
+In-Reply-To: <0106.20261102@treadcore.org>
+Organization: treadcore.org
+Keywords: nets, squad head, gauntlets, evolution strategies, reset, logistics
+
+## Abstract
+
+Paul: "train the nets on the gauntlets." The learned tank could not: its
+squad head was scored and never acted on, so the zeros of games 6 to 8
+on G13, G14 and G17 were the mask's. The head is wired (capture, build a
+smelter, mend, fell, mine or pump, home, each offered within eight
+tiles), the three courses pay the drive to the works as a potential, and
+the trainer took the five files as a course. From the clone the search
+was flat; from the evolution milestone it learned the drive and the raid
+and never the mine, because an untrained head carried through a thousand
+generations scores its choices two hundred apart. A head reset to zero
+at the start of training is the fix: from map7 with the squad head at
+zero, every course passed held out in 300 generations, G13 19 of 20, G14
+20, G15 20, G16 17, G17 20. The net is nets/logistics.bin.
+
+## Session
+
+The squad head first, with its test and the recorder's label. A probe of
+two generations showed the trainer at four seconds a generation and the
+nets mining where they stood without driving, so the courses gained the
+`closer` potential toward the works. Three runs of 300: from bc2, every
+perturbation 3.000 from generation 6 (a clone that stands still in an
+empty field has no gradient); from map7, the raid learned to 20 of 20
+and the drive west, no mine; from the 300th net at a wider step, the
+same. The probe `squad_head_margin` gave the cause in numbers: bc2
+scores mine over hold by four, map7 scores hold over mine by 229. The
+reset (`Net::zero_head`, `RESET=squad`) and the third run from map7:
+passed 1.00 by generation 20, every course held out.
+
+## Next
+
+The gauntlet table with the net beside the milestones is LR 131; the
+clone's squad head wants a mask and a trained head in tools/bc; a net
+trained on the fleet's maps with the squad on is the census's to read.
