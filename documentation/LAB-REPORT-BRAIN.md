@@ -9780,3 +9780,43 @@ Paul: "train the nets on the gauntlets." The first thing the attempt found was i
 The logistics net passes the three squad gauntlets ten of ten, where every net before it had none, and keeps its parent's G1 to G3; it gave back some of `map7`'s G4 (8 to 7), G8 (6 to 4) and G16 (9 to 8) to the five courses it was trained on, as a net trained on one course does (LR 102). The clone `bc2` beside it, read on the gauntlet for the first time: G1 2 of 10, G3 0, G16 0, a brain that imitates sixteen-seat matches and does not shoot a lone tank in an empty field, which is why the search from it was flat. The console's Results → Gauntlet page reads `build/train/gauntlet.tsv`.
 
 **What is next.** A mask byte for the squad head in the recording (a `TCBC3`) so `tools/bc` can clone it; a course of the fleet's maps with the squad on, since a net that mines in a field of two may not among sixteen; the census to read what a trained squad head does to a side's ore and smelted lines; `RESET=signal` the same way when the calls are trained.
+
+## 132. The squad head cloned, a course on the fleet's maps, and the Quartermaster's census, 3 November
+
+Paul: "a mask byte for the squad head so tools/bc can clone it; a course on the fleet's maps with the squad on, since a net that mines in a field of two may not among sixteen; the census to read what the trained head does to a side's ore and smelted lines." The three next lines of section 131, the same night.
+
+**The mask byte.** A recording is `TCBC3`: the header as before, and each sample's masks are four bytes, the fourth the squad head's choices 1 to 6 as bits 0 to 5, from `NetBrain::squad` at the moment the window opened, as the gun's, the mortar's and the drone's come from their own target functions. `tools/bc` reads `TCBC2` and `TCBC3` alike, a file at a time (a `TCBC2` sample's fourth byte is zero, so its squad head is never allowed and never trained), takes the senses from the header rather than assuming 143 (the proof of section 127 was of the old width; today's recordings are 160 wide), and trains the squad head where its mask allows, as the others. `agree` in the harness reads both and prints six heads. Proved as section 127 was: eight matches of 180 s recorded in 6 s (108,207 samples), trained on the Mac's CPU in 7 s, and Rust's `Net::forward` agrees with the trainer's held-out figures to the decimal on every head, the squad's included (drive 73.9, gun 78.1, lead 99.9, mortar 91.5, drone 95.0, squad 95.1).
+
+**What the clone's squad head learned: the floor.** Forty matches of 600 s (1,708,039 samples, recorded in 106 s, trained in 311 s on the CPU), held out the last four seeds: drive 78.0% (always-9 55.8), gun 67.5 (41.5), mortar 92.5 (92.3), drone 92.2 (87.9), **squad 95.8 against an always-hold floor of 96.6**. The recording says why. Of 1.7 million samples the squad head's labels are hold 1,630,160, capture 1,861, build 13,053, mend 17,698, fell 7,106, **mine 169**, home 37,992; where it had a choice (1,497,295 samples) the offers were capture 182,461, build 13,013, mend 132,517, fell 415,734, mine 35,942, home 1,014,933. The scripted brain in a dealt match of sixteen mines a hundred and sixty-nine times in forty matches: its guard runs ore only when the depot is short, and a dealt match's depots are seldom short of shells. A cross-entropy over that learns hold, and no clone of these matches will mine; the squad head that mines is the one the courses trained (section 131). The clone with the squad head is `nets/bc3.bin` (`styles.tsv`); Scholar stays `bc2` until Paul says otherwise.
+
+**Read, ten seeds a cell, the clones beside the logistics net.**
+
+| gauntlet | scripted | map7 | bc2 | bc3 | logistics |
+| --- | --- | --- | --- | --- | --- |
+| G1 fire at an enemy in reach | 10 | 10 | 2 | 8 | 10 |
+| G2 an enemy behind | 10 | 10 | 10 | 8 | 10 |
+| G3 a shell on a standing tank | 9 | 8 | 0 | 8 | 10 |
+| G4 a strike drone coming | 10 | 8 | 10 | 10 | 7 |
+| G5 low armour, home in sight | 10 | 1 | 0 | 0 | 1 |
+| G6 a depot to take | 10 | 1 | 0 | 0 | 0 |
+| G7 a pillbox from outside its ring | 9 | 3 | 0 | 0 | 3 |
+| G8 out of a pillbox's ring | 3 | 6 | 2 | 0 | 4 |
+| G9 a depot across the water | 10 | 0 | 0 | 0 | 0 |
+| G10 keep station on a moving leader | 10 | 0 | 0 | 0 | 0 |
+| G11 cover the leader against what appears ahead | 8 | 0 | 0 | 0 | 0 |
+| G12 come back after a shell | 10 | 0 | 0 | 0 | 0 |
+| G13 ore to the smelter | 10 | 0 | 0 | 0 | 10 |
+| G14 oil to the refinery | 10 | 0 | 0 | 0 | 10 |
+| G15 the convoy comes through | 10 | 10 | 10 | 10 | 10 |
+| G16 the raider takes the convoy | 10 | 9 | 0 | 0 | 8 |
+| G17 the chain to the city | 10 | 0 | 0 | 0 | 10 |
+
+`bc3` is a better clone than `bc2` on a lone fight (G1 8 for 2, G3 8 for 0: forty matches for the four of `bc2`'s day, and the economy's senses) and mines nowhere, as its labels said it would.
+
+Thirty epochs at half the step on the same forty matches: squad 96.0 against the floor's 96.6, drive 77.7, gun 77.2, the rest as before. More passes over the same labels do not make a hundred and sixty-nine mines a policy.
+
+**A course on the fleet's maps.** A scenario file may now say `map = "maps/naval.map"`: the fleet's own map in place of one generated from the seed, with its deposits and wells as `seed_maps.py` wrote them, the seed still dealing the seats. Three courses in `scenarios/training/`, `11-the-fleets-industry`, `-island`, `-naval`: nine seats in three sides, the learner at seat 0 as its base's guard, eight scripted Commanders on Auto round it sharing their team boards, four minutes; paid a quarter an ore, a half a shell smelted, the same for oil, and one for being alive at the end; passed when it mined four. An episode of nine seats and four minutes runs in about three tenths of a second, so a generation of the eight courses together (32 pairs, 16 episodes) took 17 s alone and about a minute beside the recorder. From `nets/logistics.bin`, with the five gauntlets in the same course so they are not forgotten, 28 generations before it was stopped for this record: the five gauntlets held (at generation 20: G13 10 of 10, G14 10, G15 10, G16 7, G17 10), and **the fleet's maps 0 of 10 each**, the same as the start net: on industry and island the reward is 0.00, the learner dead at the end of every seed; on naval 1.00, alive and idle on its island. A trace on industry says how it dies: it drives from its start into the ring of a neutral pillbox (the map's) and is shelled for 15 three times in the first fourteen seconds, then a hostile tank finds it at 24 s. The scripted brain's first act on these maps is to take that pillbox with its squad. The net has the capture choice now and no reason yet to use it; the course pays only the ore. Paul's premise holds in the reading: a net that mines in a field of two does not among sixteen, and the thing between them is not the mine but the first minute of a dealt match, which is what the phase courses and the gauntlets G5 to G9 are about and the nets read 0 to 6 on.
+
+**The census.** Style 16, the Quartermaster, is `nets/logistics.bin` in `styles.rs`, so a census trial of `bot_style = 16` reads it among sixteen seats on the fleet's maps. Asked of the fleet at 03:06 (`fleet-queue.py grove new census trial="bot_style = 16" name=quartermaster seeds=400 adopt=no`, run r0155); it was running on saskatchewan by 03:15. Its lines, `ore`, `smelted`, `oil` and `supply` on the composition line beside `kills` and `built`, are what section 130 asked for; they will stand on the console's Results → Personas page beside the eight personas when the four hundred seeds are in. Nothing is read from it in this section; it is the fleet's to finish.
+
+**What is next.** The first minute: a course on the fleet's maps that pays leaving a pillbox's ring and taking it (`pillbox_taken`, `damage_taken`) before the ore, from the phase nets; a longer run than 28 generations on the Mac, or the fleet's `train` kind on a machine with the hours; weighting the rare labels in `tools/bc` if a clone is ever to mine, or recording matches where the guard is short (`ore_low` high) so the scripted brain mines on the record.

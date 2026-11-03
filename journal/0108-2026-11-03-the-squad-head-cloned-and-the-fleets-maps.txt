@@ -1,0 +1,41 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Tue, 03 Nov 2026 11:45:00 +0000
+Subject: [JOURNAL 0108] The squad head cloned, a course on the fleet's maps, and the Quartermaster's census
+Message-ID: <0108.20261103@treadcore.org>
+In-Reply-To: <0107.20261103@treadcore.org>
+Organization: treadcore.org
+Keywords: clone, TCBC3, squad head, fleet maps, census, quartermaster
+
+## Abstract
+
+Paul's three next lines from journal 0107. The recording carries the
+squad head's mask (TCBC3) and tools/bc trains the head: proved to the
+decimal in Rust on eight matches, then forty. The clone's squad head
+learned the floor, hold, because the scripted brain mines 169 times in
+1.7 million samples of dealt matches; the clone itself is a better lone
+fighter than bc2 and ships as nets/bc3.bin. A scenario may name a fleet
+map; three courses seat the learner among nine on industry, island and
+naval, where the logistics net and its 28-generation child read 0 of 10,
+dead in the first minute to a neutral pillbox's ring on two of the maps
+and idle on the third. Style 16, the Quartermaster, is the logistics
+net; the census of it (r0155) is running on the fleet.
+
+## Session
+
+The mask byte first, with the parity read on eight matches (squad 95.1
+against a floor of 95.5), then forty matches in 106 s and a clone in
+311 s on the Mac's CPU (squad 95.8 against 96.6; thirty epochs 96.0).
+The label count explained it. The fleet-map course next: the scenario
+form's `map` key, three files, an episode in three tenths of a second,
+and a reading that did not move in 28 generations, the learner shelled
+in a pillbox's ring before it could reach a deposit thirty tiles off.
+The census last: slot 16 in styles.rs, pushed with the proof queue
+empty, asked of the fleet, and taken by saskatchewan within ten minutes.
+
+## Next
+
+The first minute on a dealt map (leave the ring, take the pillbox)
+before the ore; rare labels weighted, or matches recorded with the guard
+short, if a clone is to mine; the census's lines when the four hundred
+seeds are in.
