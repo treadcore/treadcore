@@ -218,6 +218,8 @@ pub enum Act {
     OreRun,
     /// Game 7: the guard building the city.
     City,
+    /// Game 8: driving onto a convoy of another side.
+    Raid,
     TakeCommand,
     Crew,
     Hop(HopAct),
@@ -290,6 +292,7 @@ impl Act {
             Act::Scoot => "scoot",
             Act::OreRun => "ore_run",
             Act::City => "city",
+            Act::Raid => "raid",
             Act::TakeCommand => "take_command",
             Act::Crew => "crew",
             Act::TeamBridge => "team_bridge",

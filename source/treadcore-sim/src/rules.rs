@@ -385,6 +385,24 @@ pub const SUPPLY_CAPTURE: u32 = 5;
 pub const STORES_COST: u32 = 60;
 pub const STORES_STOCK_MAX: u8 = 30;
 
+// ---- game 8: trade ----------------------------------------------------------
+/// GAME 8, TRADE (the plan's chapter 13, stage 4; the game Paul described: ports trade with ports,
+/// a payout that grows with distance and is highest between allies, trade units that are captured or
+/// protected). Two depots of one side (a seat's own, or its team's) trade: from `TRADE_FIRST` after
+/// the start and every `TRADE_EVERY`, a convoy of supply leaves each depot for its nearest partner
+/// of the side, by the map's route on land, or straight over the water when both are ports (a depot within `PORT_WATER` of
+/// water). Its load is the distance times the rate, `TRADE_RATE_OWN` a tile between a seat's own two
+/// depots and `TRADE_RATE_TEAM` between two seats of a side, and when it arrives both ends are paid
+/// it. A convoy is a worker: a splash loses it and a hostile tank that drives up takes it, the supply
+/// to the taker. A road is a thing to hold and an ally a thing to keep.
+pub const TRADE_FIRST: u64 = 20 * TICK_HZ as u64;
+pub const TRADE_EVERY: u64 = 60 * TICK_HZ as u64;
+pub const TRADE_RATE_OWN: f32 = 0.25;
+pub const TRADE_RATE_TEAM: f32 = 0.5;
+pub const PORT_WATER: f32 = 2.0;
+/// A convoy over the water moves at this many tiles a second.
+pub const CONVOY_SEA_SPEED: f32 = 2.0;
+
 /// A shell's splash over a deployed squad costs it this many Pillboys.
 pub const PILLBOY_SPLASH_LOSS: u8 = 2;
 /// Within this of the tank the squad is back aboard.

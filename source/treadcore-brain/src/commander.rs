@@ -79,6 +79,10 @@ pub const ORE_STAND: f32 = 3.0;
 pub const ORE_RUN_PATIENCE: Tick = 120 * TICK_HZ as Tick;
 pub const FILL_PATIENCE: Tick = 10 * TICK_HZ as Tick;
 pub const DRY_FOR: Tick = 60 * TICK_HZ as Tick;
+/// Game 8: a convoy of another side this near is worth driving onto.
+pub const RAID_REACH: f32 = 16.0;
+/// Game 8: a convoy of ours this near is covered when a hostile tank is near its way.
+pub const COVER_REACH: f32 = 40.0;
 
 /// An ore run under way (game 6): the deposit, the smelter, the stage (0 to the deposit, 1 the squad
 /// mining, 2 to the smelter) and when the stage began.
@@ -3532,6 +3536,37 @@ impl Commander {
                     }
                 }
                 _ => self.cycle.stage = crate::cycle::Stage::Idle,
+            }
+        }
+        // Game 8: a convoy of another side within reach, nothing else pressing: drive onto it, and
+        // its supply is ours (the raider's half of the trade; the gauntlet G16).
+        if matches!(self.goal, Goal::Auto | Goal::HuntPillboxes) && !self.resupplying {
+            let quiet = !obs.hostile_tanks().any(|t| t.alive && t.pos.dist(me.pos) <= crate::hop::FIGHT_NEAR);
+            // The other half: a convoy of ours on the road with a hostile tank near its way is
+            // covered, the tank driven at (the gauntlet G15). The doctrine's gun does the rest.
+            if let Some((c, t)) = obs
+                .carries
+                .iter()
+                .filter(|c| obs.allied(c.owner) && c.pos.dist(me.pos) <= COVER_REACH)
+                .filter_map(|c| obs.hostile_tanks().filter(|t| t.alive && (t.pos.dist(c.pos) <= RAID_REACH || c.route.iter().any(|w| w.dist(t.pos) <= WORKER_TAKE * 3.0))).min_by(|a, b| a.pos.dist(c.pos).total_cmp(&b.pos.dist(c.pos))).map(|t| (c, t)))
+                .min_by(|a, b| a.0.pos.dist(me.pos).total_cmp(&b.0.pos.dist(me.pos)))
+            {
+                let to = obs.clamp(t.pos + (me.pos - t.pos).norm().scale(DIRECT_RANGE * 0.7));
+                self.go(obs, &me, to, &mut cmds);
+                self.set_doing(Act::Raid, format!("covering a convoy of {} supply: a tank {:.0} tiles from it", c.amount, t.pos.dist(c.pos)));
+                cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                return cmds;
+            }
+            if quiet {
+                if let Some(c) = obs.carries.iter().filter(|c| c.kind == CarryKind::Supply && !obs.allied(c.owner) && c.pos.dist(me.pos) <= RAID_REACH).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+                    // Ahead of it on its road, so the tank meets it rather than chases it.
+                    let ahead = c.route.first().copied().unwrap_or(c.pos);
+                    let to = obs.clamp(if ahead.dist(me.pos) < c.pos.dist(me.pos) { ahead } else { c.pos });
+                    self.go(obs, &me, to, &mut cmds);
+                    self.set_doing(Act::Raid, format!("raiding a convoy of {} supply, {:.0} tiles", c.amount, c.pos.dist(me.pos)));
+                    cmds.extend(doctrine.into_iter().filter(|c| Self::keep_inner(c, true)));
+                    return cmds;
+                }
             }
         }
         // Game 6: the ore run (the plan's chapter 13, stage 2).

@@ -424,6 +424,30 @@ run the same economy: a base's guard builds the smelter and fetches
 ore whenever the depot runs short. `treadcore-server --no-ore` plays
 the old game.
 
+**Oil, the workers, supply and trade** (games 7 and 8). The derricks
+are wells of oil, pumped as a deposit is mined (`4` on the well) and
+unloaded within three tiles of your side's refinery; a refinery with
+oil halves the side's fuel burn and is a fuel stop, one without is
+neither, and on a map with wells your depots' fuel comes from a stocked
+refinery within thirty tiles, an oil a stop, else a trickle. Shells no
+longer appear where they are wanted: a smelter's shells and a depot's
+shells for its pillboxes travel on **workers**, the small figures on
+the road, five at a time, one leaving every ten seconds, faster on a
+road; a shell's splash loses one, and a hostile tank that drives up to
+one takes its load. **Supply** is your side's second count, on the top
+strip beside the shells, ore, oil and workers: a live pillbox pays one
+every ten seconds, a depot two, a powered structure one every twenty, a
+kill ten, a capture five; your side spends it as one. `F6` beside a
+depot of your side buys its **stores** for sixty: it holds thirty of
+each kind and makes twice a second. Every twenty seconds and then every
+minute each depot of a side sends a **convoy** of supply to its nearest
+partner, by road or, between two depots on the shore, over the water;
+its load grows with the distance, and both ends are paid when it
+arrives. A convoy is a worker: a raider that drives onto it takes the
+supply. The bots' guard is the base's quartermaster: quiet, it builds
+the town, the works and the city before it rotates, and their rangers
+raid a convoy they see.
+
 ## 6c. Tank speak
 
 The newswire and the bots talk like a crew that has been at it all
@@ -820,6 +844,7 @@ orders column and the hints under it show your keys, not these.
 | `V` | respawn, when the match allows it and the wait is over (section 6e) |
 | `Q`, middle button | ping the cursor for your side: allied bots converge and attack (section 1) |
 | `F1` `F2` `F3` `F4` `F5` | the fleet messages: form up on me, hold here (the cursor, else where you are), screen ahead of me, go home (your side's nearest depot), spread out. Each is a typed ping your side's bots read by kind; a person is always heard. Key Setup rebinds them |
+| `F6` | buy the depot's stores (game 7): sixty supply, beside a depot of your side; it holds thirty of each kind and makes twice a second |
 | `C` | chain on the nearest pillbox or depot of your side in reach, or let go; two tanks of a side haul it (section 1) |
 | `E` | on the shore, launch a boat beside the tank and board it (five material; section 5b) |
 | Shift-click a pillbox of yours in pillbox mode | lift it, to set it down with the next pillbox built |

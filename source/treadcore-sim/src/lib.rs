@@ -1820,6 +1820,7 @@ impl World {
         self.step_depots();
         self.step_trees();
         self.step_structures();
+        self.step_trade();
         self.step_carries();
         self.step_swarm();
         self.step_match();
@@ -4184,7 +4185,8 @@ impl World {
                 c.amount = 0;
                 continue;
             }
-            let step = WORKER_SPEED * DT / self.map.move_cost(c.pos).max(0.1);
+            // Over the water (a convoy between ports) at the sea's pace; on land at the terrain's.
+            let step = if self.map.in_bounds(c.pos) && self.map.at(c.pos) == Terrain::Water { CONVOY_SEA_SPEED * DT } else { WORKER_SPEED * DT / self.map.move_cost(c.pos).max(0.1) };
             let next = c.route.first().copied();
             match next {
                 None => arrived.push(c.clone()),
@@ -4230,8 +4232,55 @@ impl World {
         }
     }
 
-    /// Game 8: a convoy of supply got to the depot it traded with. Nothing until stage 4.
-    fn trade_arrives(&mut self, _c: &Carry) {}
+    /// Game 8: a convoy of supply got to the depot it traded with: both ends are paid its load.
+    fn trade_arrives(&mut self, c: &Carry) {
+        let to_owner = self.depots.iter().find(|d| d.id == c.to).and_then(|d| d.owner);
+        self.pay_supply(c.owner, c.amount as u32);
+        if let Some(o) = to_owner.filter(|o| *o != c.owner) {
+            self.pay_supply(o, c.amount as u32);
+        }
+    }
+
+    /// A depot within `PORT_WATER` of water is a port (game 8): it trades over the sea.
+    pub fn is_port(&self, at: V2) -> bool {
+        let r = PORT_WATER.ceil() as i32;
+        let (x, y) = at.tile();
+        (-r..=r).any(|dy| (-r..=r).any(|dx| {
+            let p = V2::new((x + dx) as f32 + 0.5, (y + dy) as f32 + 0.5);
+            p.dist(at) <= PORT_WATER && self.map.in_bounds(p) && self.map.at(p) == Terrain::Water
+        }))
+    }
+
+    /// Game 8: the convoys. From `TRADE_FIRST` and every `TRADE_EVERY`, each pair of depots of one
+    /// side sends a convoy each way: by the map's route on land, straight over the water between two
+    /// ports; nothing between depots with neither.
+    fn step_trade(&mut self) {
+        if self.tick < TRADE_FIRST || (self.tick - TRADE_FIRST) % TRADE_EVERY != 0 {
+            return;
+        }
+        // Each depot trades with its nearest partner of the side, one convoy a round: a side of many
+        // depots is not paid by the square of them.
+        let owned: Vec<(EntityId, PlayerId, V2)> = self.depots.iter().filter_map(|d| d.owner.map(|o| (d.id, o, d.pos))).collect();
+        let mut sends: Vec<(PlayerId, u16, EntityId, V2, EntityId, V2, Option<Vec<V2>>)> = Vec::new();
+        for a in owned.iter() {
+            let Some(b) = owned.iter().filter(|b| b.0 != a.0 && self.allied(a.1, b.1)).min_by(|x, y| x.2.dist(a.2).total_cmp(&y.2.dist(a.2))) else { continue };
+            let rate = if a.1 == b.1 { TRADE_RATE_OWN } else { TRADE_RATE_TEAM };
+            let land = self.map.route(a.2, b.2);
+            let sea = land.is_empty() && self.is_port(a.2) && self.is_port(b.2);
+            if land.is_empty() && !sea {
+                continue;
+            }
+            let dist = if sea { a.2.dist(b.2) } else { land.iter().fold((a.2, 0.0f32), |(p, d), q| (*q, d + p.dist(*q))).1 };
+            let load = (dist * rate).round().max(1.0) as u16;
+            sends.push((a.1, load, a.0, a.2, b.0, b.2, if sea { None } else { Some(land) }));
+        }
+        for (owner, load, from, at, to, dest, route) in sends {
+            let route = route.unwrap_or_else(|| vec![dest]);
+            let id = self.alloc();
+            self.carries.push(Carry { id, owner, kind: CarryKind::Supply, amount: load, pos: at, route, from, to });
+            self.events.push(Event::WorkerLeft { carry: id, owner, kind: CarryKind::Supply, amount: load, from, to });
+        }
+    }
 
     /// Game 7: a splash at `at` loses every worker in it.
     fn splash_carries(&mut self, at: V2, by: Option<PlayerId>) {

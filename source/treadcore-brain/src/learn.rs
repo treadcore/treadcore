@@ -288,7 +288,7 @@ pub enum Course {
 }
 
 /// The `[reward]` terms a training map may use (`scenario::reward`).
-pub const REWARDS: [&str; 12] = ["pass", "alive", "damage_taken", "damage_given", "killed", "depot_taken", "pillbox_taken", "pillbox_killed", "closer", "alive_time", "armor_gained", "station"];
+pub const REWARDS: [&str; 20] = ["pass", "alive", "damage_taken", "damage_given", "killed", "depot_taken", "pillbox_taken", "pillbox_killed", "closer", "alive_time", "armor_gained", "station", "ore", "smelted", "oil", "oil_in", "delivered", "convoys", "taken", "lost"];
 
 impl Course {
     /// `phase1`, `phase3`, or a scenario file's path.

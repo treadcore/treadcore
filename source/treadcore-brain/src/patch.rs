@@ -108,16 +108,36 @@ impl Patch {
             return Err("not a patch".to_string());
         }
         let word = |at: usize| u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]) as usize;
-        // Senses added since it was trained would feed it the wrong numbers.
-        if word(8) != INPUTS {
-            return Err(format!("made for {} inputs, these are {}", word(8), INPUTS));
+        // Senses added since it was trained go last in the senses block (senses.rs), before the
+        // waves, the rules' answer and the base sense: a transform made for fewer is widened with
+        // zero columns there, as `Net::widen` widens a net, and reads what it did. One made for more
+        // is from a later game and cannot be read.
+        let (old_inputs, steps) = (word(8), word(4));
+        let extras = crate::bio::WAVES + RULES + crate::front::BASE_SENSE;
+        if old_inputs > INPUTS || old_inputs < extras {
+            return Err(format!("made for {} inputs, these are {}", old_inputs, INPUTS));
         }
-        let shape = Patch::zero(word(4));
         let v: Vec<f32> = b[12..].chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
-        if v.len() != shape.flat().len() {
-            return Err(format!("{} numbers, wanted {}", v.len(), shape.flat().len()));
+        let old_row = old_inputs + OUTPUTS;
+        if v.len() != steps * (OUTPUTS * old_row + OUTPUTS) {
+            return Err(format!("{} numbers, wanted {}", v.len(), steps * (OUTPUTS * old_row + OUTPUTS)));
         }
-        Ok(shape.with_flat(&v))
+        let added = INPUTS - old_inputs;
+        let old_senses = old_inputs - extras;
+        let mut p = Patch::zero(steps);
+        let mut at = 0;
+        for s in &mut p.steps {
+            for r in 0..OUTPUTS {
+                let src = &v[at + r * old_row..at + (r + 1) * old_row];
+                let dst = &mut s.a[r * (INPUTS + OUTPUTS)..(r + 1) * (INPUTS + OUTPUTS)];
+                dst[..old_senses].copy_from_slice(&src[..old_senses]);
+                dst[old_senses + added..].copy_from_slice(&src[old_senses..]);
+            }
+            at += OUTPUTS * old_row;
+            s.b.copy_from_slice(&v[at..at + OUTPUTS]);
+            at += OUTPUTS;
+        }
+        Ok(p)
     }
 }
 

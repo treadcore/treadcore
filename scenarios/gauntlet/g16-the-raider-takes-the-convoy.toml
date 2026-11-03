@@ -1,0 +1,50 @@
+# The logistics gauntlet: the raider takes the convoy. Two depots of another side forty tiles apart
+# on a road, their tanks far off; the tank sits six tiles from the road. A convoy leaves each end at
+# twenty seconds. Decision: drive onto it. Passed: a worker taken within the ninety seconds.
+name = "G16 the raider takes the convoy"
+reaction = "move"
+floor = 0.5
+players = 3
+teams = [0, 1, 1]
+seconds = 90
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-20, 20]
+[[terrain]]
+near = "centre"
+kind = "road"
+x = [-20, 20]
+y = [0, 0]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [0, 6]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [-28, -18]
+[[tank]]
+seat = 2
+at = "centre"
+offset = [28, -18]
+[[depot]]
+at = "centre"
+offset = [-20, 0]
+owner = 1
+[[depot]]
+at = "centre"
+offset = [20, 0]
+owner = 2
+[[brain]]
+seat = 0
+kind = "net"
+goal = "hunt_pillboxes"
+[expect]
+taken = { seat = 0, at_least = 1 }
+[reward]
+taken = 1

@@ -1,0 +1,51 @@
+# The logistics gauntlet: the convoy comes through. Two depots of the tank's side twenty-four tiles apart
+# on a road; a hostile tank sits by the road between them, where the first convoy (twenty seconds in)
+# will pass, and sits, a fifth of its armour left (no brain: a rule bot took the far depot, and a side
+# of one depot trades with nobody; a third tank of its side sits far off so the match does not end
+# with it). Decision: kill it before the convoy reaches it, or the next one. Passed: a convoy arrived within the two and a half minutes (a convoy leaves at 20 s and every minute after).
+# The reward pays a convoy through, a kill half, and takes half back for each worker lost.
+name = "G15 the convoy comes through"
+reaction = "move"
+floor = 0.5
+players = 3
+teams = [0, 1, 1]
+seconds = 150
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-20, 20]
+[[terrain]]
+near = "centre"
+kind = "road"
+x = [-20, 20]
+y = [0, 0]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-6, -6]
+heading = "any"
+
+seat = 2
+at = "centre"
+offset = [0, 60]
+[[depot]]
+at = "centre"
+offset = [-12, 0]
+owner = 0
+[[depot]]
+at = "centre"
+offset = [12, 0]
+owner = 0
+[[brain]]
+seat = 0
+kind = "net"
+goal = "auto"
+[expect]
+convoys = { seat = 0, at_least = 1 }
+[reward]
+convoys = 1
+killed = 0.5
+lost = -0.5

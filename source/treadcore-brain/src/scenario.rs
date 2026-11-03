@@ -380,6 +380,7 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
             "water" => Terrain::Water,
             "grass" => Terrain::Grass,
             "forest" => Terrain::Forest,
+            "road" => Terrain::Road,
             k => return Err(format!("terrain: no kind {}", k)),
         };
         let span = |k: &str| match t.get(k) {
@@ -470,6 +471,46 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
     // start, the side holding none).
     if doc.top.get("depots") == Some(&Value::Bool(false)) {
         w.depots.retain(|d| depots.iter().any(|(id, _)| *id == d.id));
+    }
+    // Games 6 to 8: `[[deposit]]` and `[[well]]` (`at`, `offset`, `stock`) and `[[structure]]`
+    // (`kind`, `owner`, `at`, `offset`; a pad is laid under one that wants a pad, and it is powered
+    // where its kind needs no plant or `powered = true` gives it one beside).
+    for (word, is_well) in [("deposit", false), ("well", true)] {
+        for d in list(word) {
+            let at = Map::tile_centre(place(&w, &depots, &pillboxes, d.get("at").and_then(Value::str).unwrap_or("centre"), d.get("offset"))?);
+            if !w.map.at(at).passable() {
+                return Err(format!("{} at ({:.0},{:.0}): not open ground", word, at.x, at.y));
+            }
+            w.map.set(at, Terrain::Grass);
+            let stock = num(d, "stock", 120.0) as u16;
+            let id = w.next_id;
+            w.next_id += 1;
+            if is_well {
+                w.wells.push(Well { id, pos: at, stock });
+            } else {
+                w.deposits.push(Deposit { id, pos: at, stock });
+            }
+        }
+    }
+    for x in list("structure") {
+        let kind = x.get("kind").and_then(Value::str).and_then(StructureKind::from_word).ok_or("structure: a kind (power, refinery, datacentre, workshop, jammer, smelter, harvester)")?;
+        let at = Map::tile_centre(place(&w, &depots, &pillboxes, x.get("at").and_then(Value::str).unwrap_or("centre"), x.get("offset"))?);
+        if kind.at_resource() {
+            w.map.set(at, Terrain::Grass);
+        } else {
+            w.map.set(at, Terrain::Pad);
+        }
+        let owner = x.get("owner").and_then(Value::num).map(|o| o as PlayerId);
+        let id = w.next_id;
+        w.next_id += 1;
+        w.structures.push(Structure { id, kind, pos: at, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: num(x, "ore", 0.0) as u16, shells: 0, oil: num(x, "oil", 0.0) as u16 });
+        if x.get("powered") == Some(&Value::Bool(true)) && kind.needs_power() {
+            let pad = Map::tile_centre(at + V2::new(0.0, 2.0));
+            w.map.set(pad, Terrain::Pad);
+            let pid = w.next_id;
+            w.next_id += 1;
+            w.structures.push(Structure { id: pid, kind: StructureKind::Power, pos: pad, owner, health: STRUCTURE_HEALTH, capture: 0, capturer: None, powered: false, ore: 0, shells: 0, oil: 0 });
+        }
     }
     for (k, p) in list("pillbox").iter().enumerate() {
         // As the hand-written tests place one: `away` tiles from the
@@ -749,6 +790,11 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
                 Event::Mined { owner, ore, .. } => *out.advance.entry((*owner, "ore")).or_insert(0) += *ore as u32,
                 Event::Smelted { owner, .. } => *out.advance.entry((*owner, "smelted")).or_insert(0) += 1,
                 Event::Pumped { owner, oil, .. } => *out.advance.entry((*owner, "oil")).or_insert(0) += *oil as u32,
+                Event::OilUnloaded { owner, oil, .. } => *out.advance.entry((*owner, "oil_in")).or_insert(0) += *oil as u32,
+                Event::WorkerArrived { owner, kind: CarryKind::Shells, amount, .. } => *out.advance.entry((*owner, "delivered")).or_insert(0) += *amount as u32,
+                Event::WorkerArrived { owner, kind: CarryKind::Supply, .. } => *out.advance.entry((*owner, "convoys")).or_insert(0) += 1,
+                Event::WorkerTaken { by, .. } => *out.advance.entry((*by, "taken")).or_insert(0) += 1,
+                Event::WorkerLost { owner, .. } => *out.advance.entry((*owner, "lost")).or_insert(0) += 1,
                 Event::Built { owner, what: BuildKind::Road, .. } => *out.advance.entry((*owner, "road")).or_insert(0) += 1,
                 Event::Rejected { player, why, .. } if brains.iter().any(|(s, _)| s == player) => {
                     out.refused.push((w.tick as f64 / TICK_HZ as f64, *player, why.to_string()));
@@ -926,6 +972,19 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                     None => failed.push(format!("seat {} took none of the depots", s)),
                 }
             }
+            // The economy's counts (games 6 to 8), `{ seat, at_least }`: ore mined, shells smelted,
+            // oil pumped and `oil_in` unloaded, `delivered` shells a worker brought the side,
+            // `convoys` of supply that arrived, workers `taken` from others, workers `lost`.
+            "ore" | "smelted" | "oil" | "oil_in" | "delivered" | "convoys" | "taken" | "lost" => {
+                let s = seat.ok_or(format!("{}: a seat", key))?;
+                let n = out.advance.iter().find(|((p, w), _)| *p == s && *w == key.as_str()).map_or(0.0, |(_, n)| *n as f64);
+                if let Some(m) = field(t, "at_least").filter(|m| n < *m) {
+                    failed.push(format!("seat {} {} {}, at least {} expected", s, key, n, m));
+                }
+                if let Some(m) = field(t, "max").filter(|m| n > *m) {
+                    failed.push(format!("seat {} {} {}, at most {} expected", s, key, n, m));
+                }
+            }
             "ends_near" => {
                 let s = seat.ok_or("ends_near: a seat")?;
                 let at = out.points.get("ends_near").copied().ok_or("ends_near: no point")?;
@@ -1059,7 +1118,7 @@ pub fn reward(doc: &Doc, out: &Outcome, failed: &[String]) -> f32 {
                 let to = v.table().and_then(|t| t.get("to")).and_then(Value::num).unwrap_or(1.0) as PlayerId;
                 out.station.get(&(me, to)).map(|(near, ticks)| if *ticks > 0 { *near as f32 / *ticks as f32 } else { 0.0 }).unwrap_or(0.0)
             }
-            "called" | "chained" | "wood" | "road" | "ore" | "smelted" | "oil" => out.advance.iter().find(|((s, w), _)| *s == me && *w == k.as_str()).map_or(0.0, |(_, n)| *n as f32),
+            "called" | "chained" | "wood" | "road" | "ore" | "smelted" | "oil" | "oil_in" | "delivered" | "convoys" | "taken" | "lost" => out.advance.iter().find(|((s, w), _)| *s == me && *w == k.as_str()).map_or(0.0, |(_, n)| *n as f32),
             "alive" => out.alive.get(&me).copied().unwrap_or(false) as u8 as f32,
             "damage_taken" => out.hits.iter().zip(&out.hit_damage).filter(|((_, on), _)| *on == me).map(|(_, d)| *d).sum(),
             "damage_given" => out.hits.iter().zip(&out.hit_damage).filter(|((by, on), _)| *by == Some(me) && *on != me).map(|(_, d)| *d).sum(),
@@ -1302,7 +1361,7 @@ mod tests {
         for (at, seat, why) in out.refused.iter().take(10) {
             eprintln!("  {:>5.1} s  seat {} refused: {}", at, seat, why);
         }
-        eprintln!("  hits {:?}; pillbox damage {:?}; start {:?}; end {:?}; landed {:?}", out.hits, out.pillbox_damage, out.start, out.end, out.landed);
+        eprintln!("  hits {:?}; pillbox damage {:?}; start {:?}; end {:?}; landed {:?}; counts {:?}", out.hits, out.pillbox_damage, out.start, out.end, out.landed, out.advance);
         assert!(failed.is_empty(), "{}: {}", path, failed.join("; "));
         eprintln!("scenario {}: holds", path);
     }

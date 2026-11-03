@@ -1,0 +1,54 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Sun, 02 Nov 2026 23:30:00 +0000
+Subject: [JOURNAL 0106] Games 7 and 8: oil, the workers, supply, the quartermaster, trade, and the logistics gauntlets
+Message-ID: <0106.20261102@treadcore.org>
+In-Reply-To: <0105.20261102@treadcore.org>
+Organization: treadcore.org
+Keywords: game 7, game 8, oil, workers, supply, trade, gauntlets, quartermaster
+
+## Abstract
+
+The plan's last two stages of the economy, the same night as the second.
+Game 7: wells of oil for the refineries and the depots' fuel; the workers
+as stock in transit, a smelter's shells and a depot's shells for its
+pillboxes on figures that walk the roads, lost to a splash, taken by a
+tank; supply earned from what a side holds and destroys and spent as one
+side on the depot's stores; the guard as quartermaster, building the
+town, the works and the city when quiet. Game 8: convoys of supply
+between a side's depots by road or by sea, both ends paid by the
+distance; a raider that takes them and a cover that drives at the
+raider. Five logistics gauntlets from the deposit through the factory
+and the port to the city, with the reward terms a course can name, and
+seventeen senses so a net can learn them. The scripted brain passes all
+five at ten of ten; the nets pass none that needs the squad. The lab
+report of the economy is on the site.
+
+## Session
+
+Stage 3 first: the sim's wells, workers, supply and the stores, with the
+tests; then the brain's city and the oil run; the first end-to-end run
+showed no oil pumped because the zone's refineries were neutral and
+wanted their plant, and that the guard could not buy with its own
+supply, so a side spends as one and the city takes the plant first.
+
+Stage 4: trade. The first cut paid every pair of a side's depots both
+ways every minute: 16,951 supply for one team in five minutes. One
+convoy a depot a round, to its nearest partner, at half the rate.
+
+Then Paul's gauntlets. G13, G14, G16 and G17 held on the first write.
+G15 took four: a rule bot by the road took the far depot (a side of one
+depot trades with nobody); a sitter at full armour outlived two convoys;
+a sitter ten tiles out of sight was never covered; the sitter's death
+ended a two-player match before the first convoy left. It reads every
+brain alike now, and wants a depot a scenario can hold against capture.
+
+The senses grew by seventeen, which broke the shipped transform (made
+for 153 inputs) and the widening of old nets (a constant written as
+"the senses less the last two blocks"); both read again.
+
+## Next
+
+The fleet reads game 8. The trade guard wants ore and smelted as floors;
+supply wants more to buy or a steeper price; the nets want a course on
+G13 to G17; a scenario wants `held` depots; the stocks page wants a page.

@@ -42,9 +42,16 @@ pub const AIR: usize = 5;
 /// the hints, the shell contact, the air contact. Each block added since
 /// LR 97 goes last, so an older net is widened with zeros
 /// (`Net::widen`) and computes what it did.
-pub const SENSES: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS + SHELL + AIR;
+pub const SENSES: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS + SHELL + AIR + ECON;
+/// The economy's numbers (games 6 to 8, the logistics gauntlets): the nearest deposit with ore
+/// (sine, cosine, nearness, its stock as a share of 120), the nearest well the same, the nearest
+/// smelter of the side (sine, cosine, nearness), the nearest refinery of the side the same, the
+/// ore and the oil aboard as shares of eight, the side's supply as a share of 200.
+pub const ECON: usize = 4 + 4 + 3 + 3 + 3;
+/// Where the economy starts.
+pub const AT_ECON: usize = AT_AIR + AIR;
 /// The senses before the shell contact (LR 97 to 99).
-pub const SENSES_BEFORE_SHELL: usize = SENSES - SHELL - AIR;
+pub const SENSES_BEFORE_SHELL: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS;
 /// Where the instruments start.
 pub const AT_NAV: usize = SECTORS * CHANNELS + BODY;
 /// Where the periscope starts.
@@ -356,6 +363,30 @@ pub fn sense(obs: &Observation, map: Option<&Map>, hints: Option<&Hints>, calls:
     }
     let mine = obs.drones.iter().filter(|d| d.owner == obs.player && d.kind == DroneKind::Interceptor).count();
     s[AT_AIR + 4] = (mine as f32 / BUBBLE_FULL as f32).min(1.0);
+    // The economy (games 6 to 8): where the ore, the oil and the works that take them are, what
+    // the squad carries, and the side's supply.
+    {
+        let near = |p: V2| (1.0 - p.dist(me.pos) / 64.0).clamp(0.0, 1.0);
+        let k = AT_ECON;
+        if let Some(d) = obs.deposits.iter().filter(|d| d.stock > 0).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+            let (sn, cs, _) = bearing(me, d.pos);
+            s[k..k + 4].copy_from_slice(&[sn, cs, near(d.pos), (d.stock as f32 / 120.0).min(1.0)]);
+        }
+        if let Some(d) = obs.wells.iter().filter(|d| d.stock > 0).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+            let (sn, cs, _) = bearing(me, d.pos);
+            s[k + 4..k + 8].copy_from_slice(&[sn, cs, near(d.pos), (d.stock as f32 / 120.0).min(1.0)]);
+        }
+        let ours = |o: Option<PlayerId>| o.map(|o| obs.allied(o)).unwrap_or(false);
+        for (i, kind) in [(8usize, StructureKind::Smelter), (11, StructureKind::Refinery)] {
+            if let Some(x) = obs.structures.iter().filter(|x| x.kind == kind && x.working() && ours(x.owner)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+                let (sn, cs, _) = bearing(me, x.pos);
+                s[k + i..k + i + 3].copy_from_slice(&[sn, cs, near(x.pos)]);
+            }
+        }
+        s[k + 14] = me.pillboys.ore as f32 / PILLBOY_ORE_MAX as f32;
+        s[k + 15] = me.pillboys.oil as f32 / PILLBOY_OIL_MAX as f32;
+        s[k + 16] = (obs.supply as f32 / 200.0).min(1.0);
+    }
     if let Some(h) = hints {
         let k = AT_HINTS;
         s[k..k + 5].copy_from_slice(&h.posture.map(|v| v.clamp(0.0, 1.0)));

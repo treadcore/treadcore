@@ -1,0 +1,47 @@
+# The logistics gauntlet: oil to the refinery. A well eight tiles east; a refinery of the tank's
+# side eight tiles west, with its plant, dry; the side's depot beside it. Decision: send the squad
+# to the well, bring the oil to the refinery. Passed: oil unloaded within the minute. The scripted
+# brain runs it as the oil run (the refinery holds less than oil_low); a net must have learned it.
+name = "G14 oil to the refinery"
+reaction = "move"
+floor = 0.5
+players = 2
+seconds = 60
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 60]
+[[depot]]
+at = "centre"
+offset = [-8, 5]
+owner = 0
+[[well]]
+at = "centre"
+offset = [8, 0]
+stock = 40
+[[structure]]
+kind = "refinery"
+owner = 0
+powered = true
+at = "centre"
+offset = [-8, 0]
+[[brain]]
+seat = 0
+kind = "net"
+goal = "defend_base"
+[expect]
+oil_in = { seat = 0, at_least = 1 }
+[reward]
+oil = 0.25
+oil_in = 1
