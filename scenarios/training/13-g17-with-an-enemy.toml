@@ -1,0 +1,74 @@
+# For the record, not the gauntlet (LR 135): the same course with a scripted enemy on Auto
+# eighteen tiles off, so a clone of it learns the mine and the fight from one world.
+# The logistics gauntlet, the whole chain (Paul: "trains moving from oil refinery to factory, to
+# port, to city"): ore from the deposit to the factory (the smelter), the smelter's shells on a
+# worker to the port (the side's depot on the shore), and the port's convoy to the city (the side's
+# depot inland, up the road). The tank's part is the first leg; the workers and the convoys are the
+# world's once the ore is in. Passed: shells delivered to a depot and a convoy arrived, in two
+# minutes. The reward pays each leg.
+name = "G17 with an enemy: the chain to the city"
+reaction = "move"
+floor = 0.5
+players = 2
+seconds = 120
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-40, 20]
+[[terrain]]
+near = "centre"
+kind = "water"
+x = [-30, -22]
+y = [-40, 20]
+[[terrain]]
+near = "centre"
+kind = "road"
+x = [-18, -18]
+y = [-30, 0]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [18, 14]
+[[deposit]]
+at = "centre"
+offset = [8, 0]
+stock = 40
+[[structure]]
+kind = "smelter"
+owner = 0
+at = "centre"
+offset = [-8, 0]
+[[depot]]
+at = "centre"
+offset = [-20, 0]
+owner = 0
+[[depot]]
+at = "centre"
+offset = [-18, -30]
+owner = 0
+[[brain]]
+seat = 1
+kind = "commander"
+goal = "auto"
+[[brain]]
+seat = 0
+kind = "net"
+goal = "defend_base"
+[expect]
+delivered = { seat = 0, at_least = 1 }
+convoys = { seat = 0, at_least = 1 }
+[reward]
+ore = 0.25
+smelted = 0.5
+delivered = 0.5
+convoys = 1
+# The drive paid as a potential (LR 131): the share of the way from where the tank began to the works
+# that takes the load, start to end, so the search feels the way west before the first unload pays.
+closer = { at = "centre", offset = [-8, 0], worth = 1 }

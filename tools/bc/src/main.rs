@@ -43,6 +43,7 @@
 //! that moment (the recorded masks, as `choose` applies them at play). A
 //! label outside its mask is left out of that head's loss. The squad head is
 //! trained where a TCBC3 recording carries its mask (LR 132); Signal is not.
+//! `TRAIN_HEADS=squad` puts only those heads in the loss, from a `START` clone (LR 135).
 //! `RARE=cap` weights each head's rare labels in the loss (LR 133; `RARE_HEADS=squad`
 //! for some heads only): a sample
 //! with label l of head h counts (the head's commonest label's count over
@@ -314,6 +315,18 @@ struct HostBlock {
     mask: Vec<i32>,
 }
 
+/// `TRAIN_HEADS=squad`: only these heads in the loss (LR 135, a head trained
+/// apart: with `START=` a clone, the rest keep what they learned).
+fn trained(h: usize) -> bool {
+    if !TRAINED[h] {
+        return false;
+    }
+    match std::env::var("TRAIN_HEADS").ok().filter(|t| !t.is_empty()) {
+        Some(t) => t.split(',').any(|n| n.trim() == NAMES[h]),
+        None => true,
+    }
+}
+
 /// Each head's label weights for the loss: one, or with `RARE=cap` the
 /// commonest allowed label's count over this label's, no more than cap,
 /// counted over the training rows.
@@ -357,7 +370,7 @@ fn assemble(d: &Data, idx: &[usize], lw: &[[f32; SLOT]; 7], threads: usize) -> H
                     let m = &d.masks[i];
                     for (h, &w) in HEADS.iter().enumerate() {
                         let l = d.labels[i][h] as usize;
-                        let ok = TRAINED[h] && l < w && allowed(h, l, m);
+                        let ok = trained(h) && l < w && allowed(h, l, m);
                         sl[r * 7 + h] = (h * SLOT + if ok { l } else { 0 }) as i32;
                         va[r * 7 + h] = if ok { lw[h][l] } else { 0.0 };
                     }

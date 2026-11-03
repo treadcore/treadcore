@@ -1,0 +1,59 @@
+# For the record, not the gauntlet (LR 135): the same course with a scripted enemy on Auto
+# eighteen tiles off, so a clone of it learns the mine and the fight from one world.
+# The logistics gauntlet (games 6 to 8; Paul, 2 November: "a series of gauntlets to train the AI
+# (both), to reward trains moving from oil refinery to factory, to port, to city"): ore to the
+# smelter. A deposit eight tiles east of the tank with forty ore in it; a smelter of the tank's side
+# eight tiles west, and the side's depot beside the smelter, empty of shells. Decision: send the
+# squad to the deposit, bring the ore to the smelter. Passed: a shell was smelted within the minute.
+# Read by `make gauntlet` for the scripted brain (seat 0 as a Commander on defend_base, whose guard
+# runs ore when the depot is short) and for every net (which has the economy's senses and must have
+# learned the run).
+name = "G13 with an enemy: ore to the smelter"
+reaction = "move"
+floor = 0.5
+players = 2
+seconds = 60
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [18, 14]
+[[depot]]
+at = "centre"
+offset = [-8, 5]
+owner = 0
+[[deposit]]
+at = "centre"
+offset = [8, 0]
+stock = 40
+[[structure]]
+kind = "smelter"
+owner = 0
+at = "centre"
+offset = [-8, 0]
+[[brain]]
+seat = 1
+kind = "commander"
+goal = "auto"
+[[brain]]
+seat = 0
+kind = "net"
+goal = "defend_base"
+[expect]
+smelted = { seat = 0, at_least = 1 }
+[reward]
+ore = 0.25
+smelted = 1
+# The drive paid as a potential (LR 131): the share of the way from where the tank began to the works
+# that takes the load, start to end, so the search feels the way west before the first unload pays.
+closer = { at = "centre", offset = [-8, 0], worth = 1 }

@@ -1,0 +1,33 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Tue, 03 Nov 2026 20:00:00 +0000
+Subject: [JOURNAL 0111] The clone's two levers: the courses with an enemy in them, and the squad head trained apart
+Message-ID: <0111.20261103@treadcore.org>
+In-Reply-To: <0110.20261103@treadcore.org>
+Organization: treadcore.org
+Keywords: clone, record, enemy, TRAIN_HEADS, shared layers
+
+## Abstract
+
+Paul's two levers for the clone, read while the fleet runs r0158 and
+r0159. Courses with a scripted enemy in them put the fight on the
+record beside the mine (1,052 mines, 366 shots in 126,097 samples), and
+the clone of them keeps the fight and mines nowhere. The squad head
+trained apart, from bc3 with only its head in the loss, keeps the squad
+head's figures and drifts the drive head from 78 to 35 per cent through
+the shared hidden layers. Of the day's four clones none has both the
+fight and the mine; the net trained by reward has both. The next step
+for a clone is a frozen trunk, not another recording.
+
+## Session
+
+Three recording courses, a thousand runs in three seconds; the fleet-map
+courses recorded too, as sparse in mines as a dealt match; TRAIN_HEADS in
+tools/bc and a rebuild; two clones, one gauntlet, the table. Nothing new
+shipped; the files are on the Mac.
+
+## Next
+
+r0158's net and r0159's lines when the fleet returns them (estimated
+09:00 and 12:00 to 14:00); a frozen trunk in tools/bc if a clone that
+mines is still wanted.
