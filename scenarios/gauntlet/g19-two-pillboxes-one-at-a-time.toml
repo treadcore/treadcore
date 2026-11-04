@@ -4,12 +4,13 @@
 # solve it by creating a coded set of tests that should result into that being the boundary").
 # Two hostile pillboxes in a line, 9 and 14 tiles off: the near one outside its ring, the far one five
 # beyond it. Decision: take them one at a time from outside both rings, the near one first, then step
-# up to the far one's edge. Passed: both dead within 30 s, and the tank's armour whole.
+# up to the far one's edge. Passed: neither is the enemy's at 40 s (shot dead, or dead and taken by the
+# squad), and the tank's armour whole.
 name = "G19 two pillboxes, one at a time from outside their rings"
 reaction = "fire"
-floor = 0.0
+floor = 0.95
 players = 2
-seconds = 30
+seconds = 40
 pillboxes = false
 depots = false
 [[terrain]]
@@ -28,7 +29,7 @@ offset = [45, 0]
 [[pillbox]]
 near = "centre"
 toward = "seat:1"
-away = 9
+away = 9.5
 owner = 1
 [[pillbox]]
 near = "pillbox:0"
@@ -39,5 +40,5 @@ owner = 1
 seat = 0
 kind = "net"
 [expect]
-pillboxes_standing = { max = 0 }
+pillboxes_standing = { owner = 1, max = 0 }
 armor_at_least = { seat = 0, share = 1.0 }

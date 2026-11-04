@@ -10,7 +10,7 @@
 # of seven tenths the scripted brain held 0 of 30.
 name = "G10 keep station on a moving leader"
 reaction = "move"
-floor = 0.8
+floor = 0.95
 players = 2
 teams = [0, 0]
 seconds = 60

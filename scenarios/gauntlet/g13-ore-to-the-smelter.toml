@@ -8,7 +8,7 @@
 # learned the run).
 name = "G13 ore to the smelter"
 reaction = "move"
-floor = 0.5
+floor = 0.95
 players = 2
 seconds = 60
 pillboxes = false

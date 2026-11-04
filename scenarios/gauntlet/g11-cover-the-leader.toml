@@ -5,7 +5,7 @@
 # eight tenths of the run.
 name = "G11 cover the leader against what appears ahead"
 reaction = "fire"
-floor = 0.7
+floor = 0.90
 players = 3
 teams = [0, 0, 1]
 seconds = 45

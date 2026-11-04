@@ -6,7 +6,7 @@
 # minutes. The reward pays each leg.
 name = "G17 the chain to the city"
 reaction = "move"
-floor = 0.5
+floor = 0.95
 players = 2
 seconds = 120
 pillboxes = false

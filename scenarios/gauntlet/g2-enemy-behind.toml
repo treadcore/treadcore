@@ -5,7 +5,7 @@
 # `reaction`.
 name = "G2 an enemy behind"
 reaction = "fire"
-floor = 0.9
+floor = 0.95
 players = 2
 seconds = 6
 pillboxes = false

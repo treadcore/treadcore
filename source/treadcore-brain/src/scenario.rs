@@ -281,6 +281,9 @@ pub struct Outcome {
     /// By seat: calls for help, chains put on, trees cut, road tiles built, in `reward`'s words.
     pub advance: BTreeMap<(PlayerId, &'static str), u32>,
     pub pillbox_alive: Vec<bool>,
+    /// Each placed pillbox's owner at the end (LR 144: a pillbox shot dead and taken stands again, the
+    /// taker's).
+    pub pillbox_owner: Vec<Option<PlayerId>>,
     /// Each placed depot: the tick each seat first owned it.
     pub depot_owned: Vec<BTreeMap<PlayerId, Tick>>,
     /// Every 5 s: each thinking seat's status code.
@@ -897,6 +900,7 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
     }
     for id in &pillboxes {
         out.pillbox_alive.push(w.pillboxes.iter().find(|p| p.id == *id).map(|p| p.alive()).unwrap_or(false));
+        out.pillbox_owner.push(w.pillboxes.iter().find(|p| p.id == *id).and_then(|p| p.owner));
     }
     let failed = check(&doc.expect, &out)?;
     Ok((out, failed))
@@ -1052,8 +1056,16 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
             }
             // `pillboxes_standing = { max = 0 }`: how many placed pillboxes stand at the end (LR 141: both
             // of a pair taken, where `pillbox_alive` names one).
+            // `owner = 1`: only those still that seat's (LR 144: one shot dead and taken is not the
+            // enemy's any more, and G19 asked them all dead, which failed the rules for taking them).
             "pillboxes_standing" => {
-                let n = out.pillbox_alive.iter().filter(|a| **a).count() as f64;
+                let owner = field(t, "owner").map(|o| o as PlayerId);
+                let n = out
+                    .pillbox_alive
+                    .iter()
+                    .zip(out.pillbox_owner.iter().chain(std::iter::repeat(&None)))
+                    .filter(|(a, o)| **a && owner.map(|w| **o == Some(w)).unwrap_or(true))
+                    .count() as f64;
                 if let Some(m) = field(t, "max").filter(|m| n > *m) {
                     failed.push(format!("{} placed pillboxes stand at the end, at most {} expected", n, m));
                 }

@@ -6,7 +6,7 @@
 # The reward pays a convoy through, a kill half, and takes half back for each worker lost.
 name = "G15 the convoy comes through"
 reaction = "move"
-floor = 0.5
+floor = 0.95
 players = 3
 teams = [0, 1, 1]
 seconds = 150

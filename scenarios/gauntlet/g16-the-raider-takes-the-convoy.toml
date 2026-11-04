@@ -3,7 +3,7 @@
 # twenty seconds. Decision: drive onto it. Passed: a worker taken within the ninety seconds.
 name = "G16 the raider takes the convoy"
 reaction = "move"
-floor = 0.5
+floor = 0.95
 players = 3
 teams = [0, 1, 1]
 seconds = 90

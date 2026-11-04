@@ -1385,6 +1385,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     CI-092.) Built: GAUNTLET_BRAINS, GAUNTLET_WEIGHTS; in orrery the guard
     and the promotion job's gauntlet; G3 and G8 floors to today's. State:
     built. Next: each floor raised as the rules earn it.
+86. Two boundary tests corrected; every floor today's success. (4
+    November; LR 144, CI-093.) The rules meet G18 and G19; the nets do
+    not, the ring their lesson. Next: G21, G22 taught to the rules; the
+    ring as a sense.
 
 ## Sequencing
 

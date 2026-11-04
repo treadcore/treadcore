@@ -5,7 +5,7 @@
 # `reaction`.
 name = "G5 low armour, home in sight"
 reaction = "move"
-floor = 0.9
+floor = 0.95
 players = 2
 seconds = 15
 pillboxes = false

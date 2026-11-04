@@ -5,7 +5,7 @@
 # `reaction`.
 name = "G9 a depot across the water"
 reaction = "move"
-floor = 0.8
+floor = 0.95
 players = 2
 seconds = 30
 pillboxes = false

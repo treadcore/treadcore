@@ -32,7 +32,7 @@ structure as built is `checkins/`.
 | [`net.rs`](#netrs) | 767 | 24 | 0 | 10 | A learned tank (LR 95, 96): a small net from the senses (senses.rs) to an action, and the Brain that drives by it. |
 | [`patch.rs`](#patchrs) | 209 | 8 | 2 | 3 | The last stage of Algorhythm: a learned transform over what the rules decided (docs/algorhythm.md). |
 | [`rotation.rs`](#rotationrs) | 301 | 7 | 0 | 3 | Rotation (Paul, 17 October: "every bot should have a push point, and a defense point. |
-| [`scenario.rs`](#scenariors) | 1421 | 23 | 0 | 8 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
+| [`scenario.rs`](#scenariors) | 1433 | 23 | 0 | 8 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
 | [`senses.rs`](#sensesrs) | 559 | 8 | 0 | 7 | The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map. |
 | [`status.rs`](#statusrs) | 366 | 9 | 0 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
 | [`styles.rs`](#stylesrs) | 813 | 36 | 2 | 21 | Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. |
@@ -894,32 +894,32 @@ Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48
 | 138 | `value_of` |  |  | One value from the front of `s`, and what is left after it. |
 | 212 | `snap` |  | yes | A frame of the world as it stands (the clips, LR 102). |
 | 232 | `round` | Recording | yes | A recording of `half` tiles each way round `centre`, the map's tiles there kept once. |
-| 305 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
-| 314 | `run_seeded` |  | yes | As `run`, on a seed: the world's (`Scenario::seed`, so its map outside what the file carves) and every brain's (theirs xor it), so a run over many seeds samples the scenario's chances (`many`). |
-| 321 | `run_net` |  | yes | As `run_seeded`, with a net for each `kind = "net"` brain that names no `file` (the trainer's, LR 99). |
-| 327 | `run_with` |  | yes | As `run_net`, with `make` giving the brain for each `kind = "net"` seat instead (a probe of the net's actions, LR 100). |
-| 333 | `run_record` |  | yes | As `run_net`, recording a frame every `every` ticks round the learner's start (LR 102, the clips). |
-| 340 | `run_inner` |  |  | Every run's body: `run_with`'s, recording into `rec` when given. |
-| 906 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
-| 915 | `check` |  |  | Every expectation that failed, in words. |
-| 1135 | `reaction` |  | yes | The reaction a file measures (`reaction = "fire"`, `"lob"`, `"move"`, or `"launch:interceptor"`), for the learner, seconds; none when it never came (LR 102, the gauntlet). |
-| 1163 | `reward` |  | yes | What a training episode earned (LR 99): the sum of the file's `[reward]` terms for the learner's seat (`learner`, 0). |
-| 1197 | `many` |  | yes | A scenario over `runs` seeds (`first`, `first + 1`, ...): how many held, the share, and its standard error, sqrt(p (1 - p) / n). |
-| 1220 | `set_weights` |  | yes | `SCENARIO_SET="name=value ..."`: those weights set on every brain in the file that holds them (a RuleBot, only the landfall's three), added to its `weights` or a new one, so two settings run on the same seeds. |
-| 1255 | `find` |  | yes | A path as given, or from the top of the tree when it is not found there (`cargo test` runs in the crate's folder). |
-| 1264 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
-| 1285 | `dir` |  |  | The scenarios, at the top of the tree. |
+| 308 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
+| 317 | `run_seeded` |  | yes | As `run`, on a seed: the world's (`Scenario::seed`, so its map outside what the file carves) and every brain's (theirs xor it), so a run over many seeds samples the scenario's chances (`many`). |
+| 324 | `run_net` |  | yes | As `run_seeded`, with a net for each `kind = "net"` brain that names no `file` (the trainer's, LR 99). |
+| 330 | `run_with` |  | yes | As `run_net`, with `make` giving the brain for each `kind = "net"` seat instead (a probe of the net's actions, LR 100). |
+| 336 | `run_record` |  | yes | As `run_net`, recording a frame every `every` ticks round the learner's start (LR 102, the clips). |
+| 343 | `run_inner` |  |  | Every run's body: `run_with`'s, recording into `rec` when given. |
+| 910 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
+| 919 | `check` |  |  | Every expectation that failed, in words. |
+| 1147 | `reaction` |  | yes | The reaction a file measures (`reaction = "fire"`, `"lob"`, `"move"`, or `"launch:interceptor"`), for the learner, seconds; none when it never came (LR 102, the gauntlet). |
+| 1175 | `reward` |  | yes | What a training episode earned (LR 99): the sum of the file's `[reward]` terms for the learner's seat (`learner`, 0). |
+| 1209 | `many` |  | yes | A scenario over `runs` seeds (`first`, `first + 1`, ...): how many held, the share, and its standard error, sqrt(p (1 - p) / n). |
+| 1232 | `set_weights` |  | yes | `SCENARIO_SET="name=value ..."`: those weights set on every brain in the file that holds them (a RuleBot, only the landfall's three), added to its `weights` or a new one, so two settings run on the same seeds. |
+| 1267 | `find` |  | yes | A path as given, or from the top of the tree when it is not found there (`cargo test` runs in the crate's folder). |
+| 1276 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
+| 1297 | `dir` |  |  | The scenarios, at the top of the tree. |
 
 Tests (8):
 
-- `the_advance_scenario_earns_the_call_the_chain_and_the_capture` (line 1274)
-- `a_weight_is_set_on_every_brain` (line 1294): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
-- `a_switch_is_set_on_every_commander` (line 1308): A switch's A/B reaches the families: the form the fleet writes, its space and all, turns the switch off on a Commander and leaves a RuleBot alone, and a misspelt switch stops the read.
-- `the_subset_reads_values_tables_and_lists` (line 1320)
-- `every_scenario_holds` (line 1332): Every file under `scenarios/` holds.
-- `scenario_many` (line 1352): One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with `SCENARIO_SET` applied: how often it holds.
-- `every_family_holds_its_floor` (line 1373): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
-- `scenario_one` (line 1404): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
+- `the_advance_scenario_earns_the_call_the_chain_and_the_capture` (line 1286)
+- `a_weight_is_set_on_every_brain` (line 1306): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
+- `a_switch_is_set_on_every_commander` (line 1320): A switch's A/B reaches the families: the form the fleet writes, its space and all, turns the switch off on a Commander and leaves a RuleBot alone, and a misspelt switch stops the read.
+- `the_subset_reads_values_tables_and_lists` (line 1332)
+- `every_scenario_holds` (line 1344): Every file under `scenarios/` holds.
+- `scenario_many` (line 1364): One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with `SCENARIO_SET` applied: how often it holds.
+- `every_family_holds_its_floor` (line 1385): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
+- `scenario_one` (line 1416): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
 
 ## senses.rs
 

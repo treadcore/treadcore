@@ -4,7 +4,7 @@
 # brain runs it as the oil run (the refinery holds less than oil_low); a net must have learned it.
 name = "G14 oil to the refinery"
 reaction = "move"
-floor = 0.5
+floor = 0.95
 players = 2
 seconds = 60
 pillboxes = false

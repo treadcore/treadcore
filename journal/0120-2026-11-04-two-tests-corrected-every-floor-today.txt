@@ -1,0 +1,28 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 01:30:00 +0000
+Subject: [JOURNAL 0120] Two of the boundary's tests corrected, and every floor today's success
+Message-ID: <0120.20261105@treadcore.org>
+In-Reply-To: <0119.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: gauntlet, G18, G19, placer, floors
+
+## Abstract
+
+Teaching the rules G18, a tank with no brain was hit in the first tick:
+the hostile pillbox stood 8.0 tiles off, not 9, from the placer's
+rounding. G18 and G19 moved it to nine; G19 counts only the enemy's
+standing pillboxes, since one taken stands again. The rules then pass
+both every time, so the account of their failures there is withdrawn;
+the nets do not, and the ring is theirs to learn. Every floor became
+the rules' share less two errors where that is higher: fifteen raised.
+
+## Session
+
+Files: g18, g19, every floor. Code: pillbox_owner, the owner filter.
+Reads: idle-tank checks, the rules on G19 traced, the gauntlet at 200
+seeds. LR 144, CI-093, CHANGELOG, ROADMAP 86, this entry.
+
+## Next
+
+G21 and G22 taught to the rules; the ring as a sense for the nets.

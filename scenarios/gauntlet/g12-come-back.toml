@@ -4,7 +4,7 @@
 # within the leash (twenty tiles) of the leader for eight tenths of the run.
 name = "G12 come back after a shell"
 reaction = "move"
-floor = 0.8
+floor = 0.95
 players = 3
 teams = [0, 0, 1]
 seconds = 60
