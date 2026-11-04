@@ -10039,4 +10039,6 @@ No gate passes the rule: the default stays 0. At 0.6, a champion kept to the fig
 
 **The game's styles in crucible's arena** (crucible `cab1adf`). A world island's sparring partner now draws a style besides its aim and range: the script as it was, or treadcore's Raider (closes to four and presses while it is not the weaker or the enemy is hurt), Castle (holds its ground and fires on what comes into reach), Expander (shells the nearest live pillbox first) or Timid (turns away unless the odds are well on its side). The yardstick and the hybrid's own answer stay the script, and a build without WORLD trains row for row as before.
 
-**Not done.** The gate's read at 0.6 on the fleet's 400 seeds; the champions trained against the styles, which the bridge will read as they come.
+**The fleet's read** (run r0174, macmini, 400 seeds from 82,000,000, every map; the trial team the Gladiator at gate 0.6, the base teams the Gladiator at gate 0, so the census is the difference itself): **+0.08 ± 0.40 a seat**, inside the noise; naval alone +2.18 ± 0.60, every other map inside its noise. The 48 seeds' lean (+1.61 ± 1.50) was luck. The default stays 0, as the rule written before both reads says.
+
+**Not done.** The champions trained against the styles, which the bridge will read as they come.
