@@ -1379,6 +1379,12 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     "Teach the rules the five"; LR 142, CI-091.) Built: `w_shooter` (2),
     the shooter heeded in the target score and in defence. State: built;
     G20 44 to 72%, the census inside the noise. Next: G18, G19, G21, G22.
+85. The gauntlet guards every promotion. (4 November; cause: Paul,
+    "adjust the floors to be what we have now as sucess, so we can create
+    generations from here forwards", "Yes, a guard on promotions"; LR 143,
+    CI-092.) Built: GAUNTLET_BRAINS, GAUNTLET_WEIGHTS; in orrery the guard
+    and the promotion job's gauntlet; G3 and G8 floors to today's. State:
+    built. Next: each floor raised as the rules earn it.
 
 ## Sequencing
 

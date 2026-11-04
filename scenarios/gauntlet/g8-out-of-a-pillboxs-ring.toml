@@ -5,7 +5,7 @@
 # `reaction`.
 name = "G8 out of a pillbox's ring"
 reaction = "move"
-floor = 0.9
+floor = 0.30
 players = 2
 seconds = 10
 pillboxes = false

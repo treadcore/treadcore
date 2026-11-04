@@ -933,6 +933,12 @@ mod harness {
     /// passed with its error, and the median reaction where it came.
     /// Written to `OUT/gauntlet.tsv` as well.
     fn gauntlet(out: &std::path::Path, threads: usize) {
+        // GAUNTLET_BRAINS=scripted: the rules alone (LR 143: orrery reads each candidate so, with its
+        // dials by GAUNTLET_WEIGHTS, before it promotes; a minute where every brain is ten).
+        if std::env::var("GAUNTLET_BRAINS").map(|v| v.trim() == "scripted").unwrap_or(false) {
+            gauntlet_of(&[("scripted".into(), None)], out, "gauntlet.tsv", threads);
+            return;
+        }
         let mut who: Vec<(String, Option<Net>)> = vec![("scripted".into(), None), ("untrained".into(), Some(Net::tank(1)))];
         // GAUNTLET_NETS=bc1,bc2: nets beyond the milestones, by name in nets/
         // (LR 108: the clones are read here without being milestones).
@@ -945,6 +951,33 @@ mod harness {
             }
         }
         gauntlet_of(&who, out, "gauntlet.tsv", threads);
+    }
+
+    /// The rules with a candidate's dials (LR 143): `GAUNTLET_WEIGHTS=file`, a weights file as the
+    /// census reads one, given to the learner's commander as its `weights` table, so the gauntlet reads
+    /// the rules a promotion would make. Without it, the doc as it was.
+    fn with_dials(mut d: crate::scenario::Doc) -> crate::scenario::Doc {
+        use crate::scenario::Value;
+        let Some(path) = std::env::var("GAUNTLET_WEIGHTS").ok().filter(|p| !p.is_empty()) else { return d };
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("GAUNTLET_WEIGHTS={}: {}", path, e));
+        let mut dials = std::collections::BTreeMap::new();
+        for line in text.lines() {
+            let bare = line.split('#').next().unwrap_or("").trim();
+            let Some((k, v)) = bare.split_once('=') else { continue };
+            let (k, v) = (k.trim(), v.trim());
+            if k == "caps" {
+                dials.insert(k.to_string(), Value::Str(v.to_string()));
+            } else if let Ok(x) = v.parse::<f64>() {
+                dials.insert(k.to_string(), Value::Num(x));
+            }
+        }
+        let learner = d.top.get("learner").and_then(Value::num).unwrap_or(0.0);
+        for b in d.lists.get_mut("brain").into_iter().flatten() {
+            if b.get("seat").and_then(Value::num) == Some(learner) {
+                b.insert("weights".into(), Value::Table(dials.clone()));
+            }
+        }
+        d
     }
 
     /// The gauntlet for these brains (None the scripted brain), to
@@ -960,7 +993,7 @@ mod harness {
             let Course::File { name, doc } = &c else { continue };
             let title = doc.top.get("name").and_then(crate::scenario::Value::str).unwrap_or(name).to_string();
             for (w, net) in who {
-                let d = if net.is_some() { doc.clone() } else { c.scripted().expect("a file") };
+                let d = if net.is_some() { doc.clone() } else { with_dials(c.scripted().expect("a file")) };
                 let seeds: Vec<u64> = (9_500_000..9_500_000 + runs).collect();
                 let res = spread(seeds.len(), threads, &|k| {
                     let (o, failed) = crate::scenario::run_net(&d, Some(seeds[k]), net.as_ref()).unwrap_or_else(|e| panic!("{}: {}", name, e));

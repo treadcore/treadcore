@@ -1,0 +1,28 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 00:30:00 +0000
+Subject: [JOURNAL 0119] The gauntlet's floors guard every promotion; every floor today's success
+Message-ID: <0119.20261105@treadcore.org>
+In-Reply-To: <0118.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: gauntlet, floors, promotion, guard, GAUNTLET_WEIGHTS
+
+## Abstract
+
+Paul asked that the floors guard every promotion, so generations go
+forward from today's success. The gauntlet reads the rules alone with a
+candidate's dials (GAUNTLET_BRAINS, GAUNTLET_WEIGHTS); orrery holds a
+candidate under any floor and reads the batch again before it commits.
+Two floors of the first seventeen stood above the rules' own play (G3
+0.95 for 76.5%, G8 0.9 for 40.5%) and are now today's (0.65, 0.30), so
+today's rules hold every floor and the line can move.
+
+## Session
+
+Code: learn.rs (GAUNTLET_BRAINS, with_dials). Floors: G3, G8. In orrery:
+guard_jobs, guard_holds, the promotion job's gauntlet. LR 143, CI-092,
+CHANGELOG, ROADMAP 85, this entry, the brain map.
+
+## Next
+
+G18, G19, G21, G22 taught to the rules; each floor raised as it is earned.

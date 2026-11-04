@@ -10090,3 +10090,13 @@ The first of the boundary's five decisions taught to the rules (section 141; Pau
 **Read.** Census, `w_shooter` 2 against 0: −0.57 ± 0.77 a seat, inside the noise; every family holds its floor. The gauntlet for the rules, 200 seeds, every file before and after: G20 44.0% to 72.0%, every other file the same to the seed (G22 53.5% to 52.5%). G20's floor rises with it to today's success, 0.60, as Paul asked of the floors ("adjust the floors to be what we have now as sucess, so we can create generations from here forwards").
 
 **Not done.** The four other decisions: G18 (keep out of a neutral pillbox's ring, leave it to the squad), G19 (one pillbox at a time from outside the other's ring), G21 (kite alone), G22 (stand with backup).
+
+## 143. The gauntlet's floors guard every promotion, and every floor is today's success, 4 November
+
+Paul, of the floors: "adjust the floors to be what we have now as sucess, so we can create generations from here forwards", and asked whether they should guard every promotion as the families do: "Yes, a guard on promotions."
+
+**The gauntlet reads a candidate.** `GAUNTLET_BRAINS=scripted` reads the rules alone (twenty-one seconds for every file at a hundred seeds on this Mac, where every brain is ten times that), and `GAUNTLET_WEIGHTS=file` gives the learner's commander a weights file's dials, so the gauntlet reads the rules a promotion would make. With `w_shooter = 0` the rules read G20 at 51%, under its floor of 0.60: a candidate that undid section 142 would be held.
+
+**orrery guards the line with it** (`tools/plans/treadcore.py`, `guard_jobs`, `guard_holds`): each candidate past its reads and its families is read so at the fleet's commit, and auto promotion takes only one whose rules stand on every file's floor; a candidate under one waits, with a flag naming the files. The promotion job reads the gauntlet again on the batch it commits, beside the brain's tests and the families, and commits nothing under a floor.
+
+**Every floor today's success.** Read so against the rules of section 142 (200 seeds), two of the first seventeen floors stood above the rules' own play, and the guard would have held every candidate: G3 a shell on a standing tank (the rules 76.5%, floor 0.95) and G8 out of a pillbox's ring (40.5%, floor 0.9). They are now today's success as section 141's are, the rules' share less two errors of a hundred seeds, to the twentieth below: **G3 0.65, G8 0.30**. The other fifteen stand under what the rules play and are kept. The rules of today hold every floor.

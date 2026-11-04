@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-28 files, 616 functions (10 with no doc comment; 59 more are a trait's, documented by it), 180 tests.
+28 files, 617 functions (10 with no doc comment; 59 more are a trait's, documented by it), 180 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ structure as built is `checkins/`.
 | [`front.rs`](#frontrs) | 162 | 8 | 1 | 5 | Battle lines (Paul, 30 October: "We would need to have the concept of battle lines"). |
 | [`hop.rs`](#hoprs) | 938 | 25 | 0 | 1 | Island hopping: a bot that has taken everything it can reach goes for what it cannot, across the water. |
 | [`intent.rs`](#intentrs) | 186 | 9 | 0 | 3 | Holding a decision (roadmap step 12d, LAB-REPORT-BRAIN.md section 7). |
-| [`learn.rs`](#learnrs) | 1762 | 56 | 1 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
+| [`learn.rs`](#learnrs) | 1795 | 57 | 1 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
 | [`ledger.rs`](#ledgerrs) | 940 | 15 | 0 | 5 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
 | [`lib.rs`](#librs) | 2957 | 67 | 1 | 20 | treadcore-brain -- the controller interface, and one controller. |
 | [`memory.rs`](#memoryrs) | 101 | 10 | 0 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
@@ -576,23 +576,24 @@ Training the learned tank (LR 95, 97): the phases' training grounds and evolutio
 | 834 | `sim_dodge` |  |  | The bound by simulation (LR 100): map 5's situation built here (the tank rolling at full speed on a heading the seed draws, a shell landing within 2.5 tiles of it in 1.5 to 3.5 s), and every 0.2 s each of the nine dri... |
 | 918 | `probe` |  |  | `PROBE=oracle GROUND=map`: the oracle in the net's seat on the held-out seeds. |
 | 935 | `gauntlet` |  |  | `make gauntlet` (LR 102): every file in `scenarios/gauntlet/`, for the scripted brain, the untrained net and each milestone net, on the same `GAUNTLET_RUNS` seeds (200) from 9,500,000: the share passed with its error,... |
-| 952 | `gauntlet_of` |  |  | The gauntlet for these brains (None the scripted brain), to `out/file`. |
-| 987 | `gif` |  |  | A recording drawn and made a GIF (LR 102): each frame to a PPM, then `ffmpeg` with a palette of its own. |
-| 1012 | `match_clip` |  |  | The match clip (LR 102): seat 9 of a dealt match given to `net`, recorded round its start for `secs`. |
-| 1056 | `clips` |  |  | `make clips` (LR 102): a short GIF of each milestone at work, on its defining test, the first held-out seed it passes (the untrained net on the first seed), and the newest net in a real match. |
-| 1124 | `timing` |  |  | `TIMING=1` (LR 102): what the learned tank costs alone, on one thread: a decision (the senses and the forward pass); a one-tank episode of phase 3's ground; and 120 s of a 16-seat match with every seat a net against e... |
-| 1176 | `read_course` |  |  | A course read on its held-out seeds by a net: the share passed (for a built ground the lowest of its targets'), its error, and the course's floor (LR 103). |
-| 1206 | `school` |  |  | `make school` (LR 103): the learned tank's curriculum, run until stopped, as `make converge` runs the scripted brain's census. |
-| 1315 | `agree` |  |  | Parity, check 1 (LEARNING-DESIGN.md VII): `AGREE=recording.bin`, `CHECK=net.bin`, `HELD_FROM` (9,000,054): the net run by Rust's own `Net::forward` on the recording's held-out samples, each head's choice the best-scor... |
-| 1392 | `open_window` |  |  | A window opened on a living tank: the senses, the tank, what it sees, and NetBrain's own masks now (net.rs, think_on). |
-| 1424 | `write_sample` |  |  | A window closed into one sample of the recording: the labels from what the brain did since it opened (LR 106, A), the masks, the seed. |
-| 1502 | `name` |  |  | *(the `Brain` trait's)* |
-| 1505 | `think` |  |  | *(the `Brain` trait's)* |
-| 1508 | `think_on` |  |  | *(the `Brain` trait's)* |
-| 1525 | `dead` |  |  | *(the `Brain` trait's)* |
-| 1528 | `status` |  |  | *(the `Brain` trait's)* |
-| 1535 | `course_brain` |  |  | The scripted brain a course's `kind = "net"` seat would get from `Course::scripted`: a Commander on the file's goal. |
-| 1549 | `record` |  |  |  |
+| 959 | `with_dials` |  |  | The rules with a candidate's dials (LR 143): `GAUNTLET_WEIGHTS=file`, a weights file as the census reads one, given to the learner's commander as its `weights` table, so the gauntlet reads the rules a promotion would... |
+| 985 | `gauntlet_of` |  |  | The gauntlet for these brains (None the scripted brain), to `out/file`. |
+| 1020 | `gif` |  |  | A recording drawn and made a GIF (LR 102): each frame to a PPM, then `ffmpeg` with a palette of its own. |
+| 1045 | `match_clip` |  |  | The match clip (LR 102): seat 9 of a dealt match given to `net`, recorded round its start for `secs`. |
+| 1089 | `clips` |  |  | `make clips` (LR 102): a short GIF of each milestone at work, on its defining test, the first held-out seed it passes (the untrained net on the first seed), and the newest net in a real match. |
+| 1157 | `timing` |  |  | `TIMING=1` (LR 102): what the learned tank costs alone, on one thread: a decision (the senses and the forward pass); a one-tank episode of phase 3's ground; and 120 s of a 16-seat match with every seat a net against e... |
+| 1209 | `read_course` |  |  | A course read on its held-out seeds by a net: the share passed (for a built ground the lowest of its targets'), its error, and the course's floor (LR 103). |
+| 1239 | `school` |  |  | `make school` (LR 103): the learned tank's curriculum, run until stopped, as `make converge` runs the scripted brain's census. |
+| 1348 | `agree` |  |  | Parity, check 1 (LEARNING-DESIGN.md VII): `AGREE=recording.bin`, `CHECK=net.bin`, `HELD_FROM` (9,000,054): the net run by Rust's own `Net::forward` on the recording's held-out samples, each head's choice the best-scor... |
+| 1425 | `open_window` |  |  | A window opened on a living tank: the senses, the tank, what it sees, and NetBrain's own masks now (net.rs, think_on). |
+| 1457 | `write_sample` |  |  | A window closed into one sample of the recording: the labels from what the brain did since it opened (LR 106, A), the masks, the seed. |
+| 1535 | `name` |  |  | *(the `Brain` trait's)* |
+| 1538 | `think` |  |  | *(the `Brain` trait's)* |
+| 1541 | `think_on` |  |  | *(the `Brain` trait's)* |
+| 1558 | `dead` |  |  | *(the `Brain` trait's)* |
+| 1561 | `status` |  |  | *(the `Brain` trait's)* |
+| 1568 | `course_brain` |  |  | The scripted brain a course's `kind = "net"` seat would get from `Course::scripted`: a Commander on the file's goal. |
+| 1582 | `record` |  |  |  |
 
 Tests (5):
 
@@ -600,7 +601,7 @@ Tests (5):
 - `a_straight_drive_reaches_and_a_still_tank_does_not` (line 539): The ground is fair: a brain that drives straight at the target reaches each kind well inside the minute; one that holds never does; and an enemy shot at from inside the gun's reach is hit.
 - `a_training_map_is_a_course` (line 582): The training maps (LR 99): every file under `scenarios/training/` reads as a course (a net seat, known reward terms); a net plays one the same way twice; its scripted reading puts a Commander in the net's seat; a rewa...
 - `evolution_moves_the_weights_the_same_way_twice` (line 610): Evolution moves the weights: on a few grounds, a handful of generations raise the score, and a generation's seed gives the same move twice.
-- `train` (line 1652): The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a comma list of courses (`phase1`, `phase3`, training maps' paths) trained together, each episode the next course in turn.
+- `train` (line 1685): The trainer (LR 97, 99): `make train PHASE=1`, or `GROUND=` a comma list of courses (`phase1`, `phase3`, training maps' paths) trained together, each episode the next course in turn.
 
 ## ledger.rs
 
