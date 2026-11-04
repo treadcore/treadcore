@@ -556,6 +556,37 @@ __device__ void place(Tank& t, Rng& r, float x0, float x1, const Arena& w) {
 #endif
 }
 
+// A duel's arena and both tanks' places, drawn from r: training's and the
+// trace's, one function so the two can never draw different worlds.
+__device__ inline void lay_out(Arena& w, Tank& A, Tank& B, Rng& r) {
+#pragma unroll
+    for (int p = 0; p < PILLARS; p++) { w.px[p] = r.in(14.0f, 50.0f); w.py[p] = r.in(6.0f, 58.0f); w.pr[p] = r.in(1.5f, 3.5f); }
+#ifdef WORLD
+    // The pillboxes in the middle band, x 24 to 40: their 8 tiles reach 16
+    // and 48, short of where the tanks start (x 3 to 14 and 50 to 61), so a
+    // duel begins out of range and the ring is something to cross or take.
+    // Clear of the pillars, and PILLBOX_SPACING (3) apart.
+    for (int k = 0; k < PILLBOXES; k++) {
+        for (int tries = 0; tries < 16; tries++) {
+            w.bx[k] = r.in(24.0f, 40.0f); w.by[k] = r.in(6.0f, 58.0f);
+            bool ok = true;
+            for (int p = 0; p < PILLARS; p++) {
+                float dx = w.bx[k] - w.px[p], dy = w.by[k] - w.py[p];
+                if (dx * dx + dy * dy < (w.pr[p] + 1.5f) * (w.pr[p] + 1.5f)) ok = false;
+            }
+            for (int j = 0; j < k; j++) {
+                float dx = w.bx[k] - w.bx[j], dy = w.by[k] - w.by[j];
+                if (dx * dx + dy * dy < 9.0f) ok = false;
+            }
+            if (ok) break;
+        }
+        w.bhp[k] = PB_HEALTH; w.brl[k] = 0.0f;
+    }
+#endif
+    place(A, r, 3.0f, 14.0f, w);
+    place(B, r, 50.0f, 61.0f, w);
+}
+
 // ---- one generation's play ----------------------------------------------------------
 
 struct Totals {
@@ -612,33 +643,8 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
 
     Rng r{mix(mix(mix(seed, gen), blockIdx.x), threadIdx.x + 1)};
     Arena w;
-#pragma unroll
-    for (int p = 0; p < PILLARS; p++) { w.px[p] = r.in(14.0f, 50.0f); w.py[p] = r.in(6.0f, 58.0f); w.pr[p] = r.in(1.5f, 3.5f); }
-#ifdef WORLD
-    // The pillboxes in the middle band, x 24 to 40: their 8 tiles reach 16
-    // and 48, short of where the tanks start (x 3 to 14 and 50 to 61), so a
-    // duel begins out of range and the ring is something to cross or take.
-    // Clear of the pillars, and PILLBOX_SPACING (3) apart.
-    for (int k = 0; k < PILLBOXES; k++) {
-        for (int tries = 0; tries < 16; tries++) {
-            w.bx[k] = r.in(24.0f, 40.0f); w.by[k] = r.in(6.0f, 58.0f);
-            bool ok = true;
-            for (int p = 0; p < PILLARS; p++) {
-                float dx = w.bx[k] - w.px[p], dy = w.by[k] - w.py[p];
-                if (dx * dx + dy * dy < (w.pr[p] + 1.5f) * (w.pr[p] + 1.5f)) ok = false;
-            }
-            for (int j = 0; j < k; j++) {
-                float dx = w.bx[k] - w.bx[j], dy = w.by[k] - w.by[j];
-                if (dx * dx + dy * dy < 9.0f) ok = false;
-            }
-            if (ok) break;
-        }
-        w.bhp[k] = PB_HEALTH; w.brl[k] = 0.0f;
-    }
-#endif
     Tank A, B;
-    place(A, r, 3.0f, 14.0f, w);
-    place(B, r, 50.0f, 61.0f, w);
+    lay_out(w, A, B, r);
 
     float in[NIN], actA[NOUT], actB[NOUT];
     float aim = 0;
@@ -706,6 +712,76 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
     }
 }
 
+#ifdef WORLD
+// ---- the trace: one champion's duels, every step of every one -----------------------------
+//
+// Paul, 4 November: "a montage of kill shots and pillbox fights ... watch the
+// multitudes of permutations in the same world such that the camera following
+// the best winning tank as it grows via generations ... All the other
+// permutations are ghosts." --trace plays each champion named, a block of
+// --trace-duels duels, IN ONE ARENA FROM ONE START: the pillars, the pillboxes
+// and both tanks' places drawn once from --trace-seed. The dice choose each
+// duel's opponent as training's do, a sparring partner of drawn skill or a
+// milestone, and the dice are the duel's index, not the champion's: duel d is
+// the same contest in every chapter, so a montage compares like with like.
+// Nothing here is training's: play() is untouched, and the arena is lay_out(),
+// training's own. Each step of each duel is TREC floats: both tanks (x, y,
+// heading, armour, shell x, shell y, shell life), the pillboxes' health, what
+// each tank's shell did that step (fly_world's 0 to 3), and how many pillbox
+// shots struck each tank.
+#define TREC 22
+__global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ champ, const float* __restrict__ opps, int n_opps, int steps,
+                                                     uint32_t seed, float drawv, float* rec, int* outcome, int* lasted, float* fit, int* opp_of,
+                                                     float* arena_out) {
+    int d = threadIdx.x;
+    Rng r{mix(seed, 0x7a11u)};
+    Arena w;
+    Tank A, B;
+    lay_out(w, A, B, r);
+    Rng dice{mix(seed, (uint32_t)d + 1u)};
+    Skill skill = YARDSTICK;
+    const float* opp = nullptr;
+    int oi = -1;
+    if (dice.u() >= 0.5f && n_opps > 0) { oi = min((int)(dice.u() * n_opps), n_opps - 1); opp = opps + (size_t)oi * NW; }
+    else skill = Skill{dice.in(0.05f, 0.6f), dice.in(SPAR_NEAR, SPAR_FAR)};
+    opp_of[d] = oi;
+    if (d == 0) {
+        for (int p = 0; p < PILLARS; p++) { arena_out[p] = w.px[p]; arena_out[PILLARS + p] = w.py[p]; arena_out[2 * PILLARS + p] = w.pr[p]; }
+        for (int k = 0; k < PILLBOXES; k++) { arena_out[3 * PILLARS + k] = w.bx[k]; arena_out[3 * PILLARS + PILLBOXES + k] = w.by[k]; }
+    }
+    float in[NIN], actA[NOUT], actB[NOUT];
+    float aim = 0;
+    unsigned int hit_tank = 0;
+    float* out = rec + (size_t)d * steps * TREC;
+    int t = 0;
+    for (; t < steps; t++) {
+        if (A.hp <= 0.0f || B.hp <= 0.0f) break;
+        decide(champ, A, B, w, in, actA);
+        aim += in[29] > 0.0f ? in[29] * (in[28] * in[28] < 0.01f ? 1.0f : 0.2f) : 0.0f;
+        if (opp) decide(opp, B, A, w, in, actB);
+        else scripted(B, A, skill, actB);
+        drive(A, actA, w);
+        drive(B, actB, w);
+        int fa = fly_world(A, B, w);
+        int fb = fly_world(B, A, w);
+        float bh = B.hp;
+        int pa = guns(w, A, B);
+        int pb = (int)((bh - B.hp) / PB_DAMAGE + 0.5f);
+        if (fa == 1) hit_tank++;
+        float* o = out + (size_t)t * TREC;
+        o[0] = A.x; o[1] = A.y; o[2] = A.a; o[3] = A.hp; o[4] = A.sx; o[5] = A.sy; o[6] = A.slife;
+        o[7] = B.x; o[8] = B.y; o[9] = B.a; o[10] = B.hp; o[11] = B.sx; o[12] = B.sy; o[13] = B.slife;
+        for (int k = 0; k < PILLBOXES; k++) o[14 + k] = w.bhp[k];
+        o[18] = (float)fa; o[19] = (float)fb; o[20] = (float)pa; o[21] = (float)pb;
+    }
+    bool won = B.hp <= 0.0f && A.hp > 0.0f, lost = A.hp <= 0.0f && B.hp > 0.0f, drew = !won && !lost;
+    float dealt = (float)hit_tank, taken = (HP - fmaxf(A.hp, 0.0f)) / DAMAGE;
+    lasted[d] = t;
+    outcome[d] = won ? 1 : lost ? -1 : 0;
+    fit[d] = dealt - taken + (won ? 2.0f : 0.0f) - (lost ? 2.0f : 0.0f) + (drew ? drawv : 0.0f) + 0.5f * aim / steps;
+}
+#endif
+
 // ---- the next generation ----------------------------------------------------------------
 
 // The parent of every child: the elite keep their place, the rest are drawn
@@ -749,6 +825,9 @@ struct Opt {
     int exam_eps = 2048;
     uint32_t seed = 1;
     std::string out = "", save = "", load = "", exp = "", imp = "", ladder = "", exam = "";
+    std::string trace = "", champs = "", opps = "";
+    int trace_duels = 64;
+    uint32_t trace_seed = 7;
     bool bench = false;
 };
 
@@ -758,12 +837,15 @@ static void usage() {
             "         [--sigma S] [--spar P] [--seed N] [--yard K] [--out FILE.tsv] [--save FILE] [--load FILE] [--bench]\n"
             "         [--export CHAMP.bin] [--import A.bin,B.bin,...] [--ladder M1.bin,M2.bin,...] [--lad P]\n"
             "         [--exam FILE.tsv] [--exam-eps N] [--draw V]\n"
+            "crucible --trace OUT.bin --champions C1.bin,C2.bin,... [--opponents M1.bin,...] [--trace-duels N] [--trace-seed S]\n"
             "  --export writes the last generation's champion (its weights, as floats);\n"
             "  --import puts other islands' champions into the hall of fame first;\n"
             "  --ladder loads milestones (oldest first): opponents with chance --lad, and a yardstick;\n"
             "  --exam writes the final champion's score against each milestone and the yardstick;\n"
             "  --draw is a drawn duel's worth in training (a win is +2, a loss -2, besides damage).\n"
-            "  A state or champion of a smaller net is widened into this one, every new weight zero.\n");
+            "  A state or champion of a smaller net is widened into this one, every new weight zero.\n"
+            "  --trace (WORLD builds) plays each champion's N duels in one arena from one start, the\n"
+            "    dice choosing each duel's opponent, and writes every step of every duel (montage.py).\n");
     exit(2);
 }
 
@@ -870,6 +952,95 @@ static bool read_champion(const std::string& path, std::vector<float>& w, std::s
     return true;
 }
 
+static std::vector<std::string> split(const std::string& s) {
+    std::vector<std::string> v;
+    for (size_t a = 0; a <= s.size();) {
+        size_t b = s.find(',', a);
+        if (b == std::string::npos) b = s.size();
+        if (b > a) v.push_back(s.substr(a, b - a));
+        a = b + 1;
+    }
+    return v;
+}
+
+// --trace: the file montage.py reads. A header of ints -- the mark 0x63747231
+// ("ctr1"), the version, champions, duels, steps, TREC, PILLARS, PILLBOXES, NW
+// -- then floats DT, ARENA, HP, PB_HEALTH, GUN_RANGE, PB_RANGE; the arena
+// (pillars' x, y, r, pillboxes' x, y); each duel's opponent (-1 a sparring
+// partner, else the --opponents index); then for each champion its duels'
+// outcomes (1 won, -1 lost, 0 drawn), steps played and fitness, and every
+// step of every duel, TREC floats. A duel that ends early stops there: its
+// later steps are zero, and `steps played` says where.
+static int run_trace(const Opt& o) {
+#ifndef WORLD
+    fprintf(stderr, "--trace is for the WORLD build: make WORLD=1\n");
+    return 2;
+#else
+    std::vector<std::string> cs = split(o.champs), os = split(o.opps);
+    int nd = o.trace_duels;
+    if (cs.empty() || nd < 1 || nd > 256) { fprintf(stderr, "--trace needs --champions, and 1 to 256 --trace-duels\n"); return 2; }
+    std::vector<float> champs, opps;
+    for (auto& path : cs) {
+        std::vector<float> w; std::string note;
+        if (!read_champion(path, w, &note)) { fprintf(stderr, "%s: not a champion of this net\n", path.c_str()); return 1; }
+        champs.insert(champs.end(), w.begin(), w.end());
+    }
+    for (auto& path : os) {
+        std::vector<float> w; std::string note;
+        if (!read_champion(path, w, &note)) { fprintf(stderr, "%s: not a champion of this net\n", path.c_str()); return 1; }
+        opps.insert(opps.end(), w.begin(), w.end());
+    }
+    size_t recn = (size_t)nd * o.steps * TREC;
+    float *d_ch, *d_op = nullptr, *d_rec, *d_fit, *d_ar;
+    int *d_out, *d_last, *d_opp;
+    CK(cudaMalloc(&d_ch, champs.size() * sizeof(float)));
+    CK(cudaMemcpy(d_ch, champs.data(), champs.size() * sizeof(float), cudaMemcpyHostToDevice));
+    if (!opps.empty()) {
+        CK(cudaMalloc(&d_op, opps.size() * sizeof(float)));
+        CK(cudaMemcpy(d_op, opps.data(), opps.size() * sizeof(float), cudaMemcpyHostToDevice));
+    }
+    CK(cudaMalloc(&d_rec, recn * sizeof(float)));
+    CK(cudaMalloc(&d_fit, nd * sizeof(float)));
+    CK(cudaMalloc(&d_ar, (3 * PILLARS + 2 * PILLBOXES) * sizeof(float)));
+    CK(cudaMalloc(&d_out, nd * sizeof(int)));
+    CK(cudaMalloc(&d_last, nd * sizeof(int)));
+    CK(cudaMalloc(&d_opp, nd * sizeof(int)));
+    FILE* f = fopen(o.trace.c_str(), "wb");
+    if (!f) { perror(o.trace.c_str()); return 1; }
+    int hdr[9] = {0x63747231, 1, (int)cs.size(), nd, o.steps, TREC, PILLARS, PILLBOXES, NW};
+    float con[6] = {DT, ARENA, HP, PB_HEALTH, GUN_RANGE, PB_RANGE};
+    fwrite(hdr, sizeof(int), 9, f);
+    fwrite(con, sizeof(float), 6, f);
+    std::vector<float> rec(recn), fit(nd), ar(3 * PILLARS + 2 * PILLBOXES);
+    std::vector<int> out(nd), last(nd), opp(nd);
+    for (size_t c = 0; c < cs.size(); c++) {
+        CK(cudaMemset(d_rec, 0, recn * sizeof(float)));
+        trace_play<<<1, nd>>>(d_ch + c * NW, d_op, (int)os.size(), o.steps, o.trace_seed, o.draw, d_rec, d_out, d_last, d_fit, d_opp, d_ar);
+        CK(cudaGetLastError());
+        CK(cudaDeviceSynchronize());
+        CK(cudaMemcpy(rec.data(), d_rec, recn * sizeof(float), cudaMemcpyDeviceToHost));
+        CK(cudaMemcpy(fit.data(), d_fit, nd * sizeof(float), cudaMemcpyDeviceToHost));
+        CK(cudaMemcpy(out.data(), d_out, nd * sizeof(int), cudaMemcpyDeviceToHost));
+        CK(cudaMemcpy(last.data(), d_last, nd * sizeof(int), cudaMemcpyDeviceToHost));
+        if (c == 0) {
+            CK(cudaMemcpy(ar.data(), d_ar, ar.size() * sizeof(float), cudaMemcpyDeviceToHost));
+            CK(cudaMemcpy(opp.data(), d_opp, nd * sizeof(int), cudaMemcpyDeviceToHost));
+            fwrite(ar.data(), sizeof(float), ar.size(), f);
+            fwrite(opp.data(), sizeof(int), nd, f);
+        }
+        fwrite(out.data(), sizeof(int), nd, f);
+        fwrite(last.data(), sizeof(int), nd, f);
+        fwrite(fit.data(), sizeof(float), nd, f);
+        fwrite(rec.data(), sizeof(float), recn, f);
+        int w = 0, l = 0;
+        for (int d = 0; d < nd; d++) { w += out[d] == 1; l += out[d] == -1; }
+        printf("# trace %s: %d duels, %d won, %d lost, %d drawn\n", cs[c].c_str(), nd, w, l, nd - w - l);
+    }
+    fclose(f);
+    return 0;
+#endif
+}
+
 static double now() { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 
 int main(int argc, char** argv) {
@@ -899,6 +1070,11 @@ int main(int argc, char** argv) {
         else if (a == "--exam") o.exam = val();
         else if (a == "--exam-eps") o.exam_eps = atoi(val());
         else if (a == "--bench") o.bench = true;
+        else if (a == "--trace") o.trace = val();
+        else if (a == "--champions") o.champs = val();
+        else if (a == "--opponents") o.opps = val();
+        else if (a == "--trace-duels") o.trace_duels = atoi(val());
+        else if (a == "--trace-seed") o.trace_seed = (uint32_t)atol(val());
         else usage();
     }
 
@@ -923,6 +1099,7 @@ int main(int argc, char** argv) {
 #ifdef WORLD
     printf("# world: treadcore's rules, %d pillboxes, %d steps a duel (%.0f s)\n", PILLBOXES, o.steps, o.steps * DT);
 #endif
+    if (!o.trace.empty()) return run_trace(o);
 
     size_t pop_b = (size_t)o.pop * NW * sizeof(float), hall_b = (size_t)o.cap * NW * sizeof(float);
     printf("# memory: population %.1f MB x2, hall of fame %.1f MB (%d champions)\n", pop_b / 1e6, hall_b / 1e6, o.cap);
