@@ -21,6 +21,15 @@
 //! That is honest about the gap: the arena has one enemy, six pillars and no base, and a champion knows
 //! nothing else, so it speaks only when a hostile tank is near and the rules keep everything else.
 //!
+//! A WORLD CHAMPION SEES WHAT THE GAME'S TANK SEES (4 November, LR 138; Paul: "yes do step 2, the
+//! duelist with world senses"). Since 3 November crucible's world islands train under the game's
+//! rules -- its tank, its gun, eyes of ten tiles, four neutral pillboxes -- with 55 inputs and two
+//! hidden layers of 48. Such a champion is read by its size, and its twenty more inputs are built here
+//! as crucible.cu's `sense` builds them: the rays to live pillboxes, the nearest pillbox's bearing,
+//! reach, reload, health and whether it has the tank, and the tank's own shells and reload. Its turn is
+//! a heading error and its throttle has no reverse, as crucible's world driver. It plays as Gladiator,
+//! slot 17, beside the hybrid Duelist, so a census reads the two on one binary and the same seeds.
+//!
 //! SHIPPED, NOT LOCATED. The files are in the binary: a package has no fleet to find them on. Nothing
 //! here moves a default; style 0 is the brain exactly as it was.
 
@@ -28,8 +37,11 @@ use crate::fleet::with_settings;
 use crate::net::{Net, NetBrain};
 use crate::weights::{Settings, W};
 use crate::Brain;
-use treadcore_sim::rules::{TANK_ARMOR, TANK_SPEED};
-use treadcore_sim::{wrap_angle, Command, Map, Observation, Tank, Terrain, V2};
+use treadcore_sim::rules::{
+    DIRECT_HIT_RADIUS, DIRECT_RANGE, PILLBOX_HEALTH, PILLBOX_RANGE, PILLBOX_RELOAD_TICKS, RELOAD_TICKS, TANK_ARMOR, TANK_SHELLS, TANK_SPEED,
+    TANK_VISION,
+};
+use treadcore_sim::{wrap_angle, Command, Map, Observation, ShellKind, Tank, Terrain, V2};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Kind {
@@ -59,7 +71,7 @@ pub struct Style {
 /// plays: it stands on a hill of the terrain or on a style's census read where there is one, and says
 /// "unread" where there is not. Every dial it does not name rides the line, so a persona stays fresh
 /// as the fleet moves the defaults. Its certificate is its own census (the plan, chapter 10).
-pub const ROSTER: [Style; 17] = [
+pub const ROSTER: [Style; 18] = [
     Style { slot: 0, name: "Fleet", about: "the brain the fleet's search has carried: today's defaults", kind: Kind::Rules("") },
     Style { slot: 1, name: "Raider", about: "goes and fights: leans to expanding, closes at even odds, picks off the wounded", kind: Kind::Rules(include_str!("../../../profiles/raider.weights")) },
     Style { slot: 2, name: "Castle", about: "holds its ground: leans to fortifying and defending", kind: Kind::Rules(include_str!("../../../profiles/castle.weights")) },
@@ -79,6 +91,9 @@ pub const ROSTER: [Style; 17] = [
     // Slot 16 (3 November, LR 131, 132): the first learned tank with its squad, so a census can read
     // what a trained squad head does to a side's ore and smelted lines among sixteen seats.
     Style { slot: 16, name: "Quartermaster", about: "a learned tank with its squad: trained on the logistics courses, it mines, pumps and raids convoys", kind: Kind::Net(include_bytes!("../../../nets/logistics.bin")) },
+    // Slot 17 (4 November, LR 138): the Duelist's bridge for a champion of crucible's WORLD islands,
+    // trained under the game's own rules and pillboxes; style 7 keeps the hybrid it has always played.
+    Style { slot: 17, name: "Gladiator", about: "the rules, with a champion of crucible's world islands in every fight: it trained under the game's rules, pillboxes and all", kind: Kind::Duel(include_bytes!("../../../nets/gladiator.bin")) },
 ];
 
 /// A style by its number or name, in any case.
@@ -129,8 +144,30 @@ pub fn make(style: &Style, base: &Settings, name: &str, rules: impl FnOnce() -> 
     match style.kind {
         Kind::Rules(_) | Kind::Transform(_) => with_settings(settings_for(style, base), rules),
         Kind::Net(bytes) => Box::new(NetBrain::new(Net::from_bytes(bytes).expect("a shipped net reads"), name)),
-        Kind::Duel(bytes) => Box::new(Duelist::new(Champion::from_bytes(bytes).expect("a shipped champion reads"), with_settings(base.clone(), rules))),
+        Kind::Duel(bytes) => {
+            let champion = match gladiator_file(style) {
+                Some(c) => c,
+                None => Champion::from_bytes(bytes).expect("a shipped champion reads"),
+            };
+            Box::new(Duelist::new(champion, with_settings(base.clone(), rules)))
+        }
     }
+}
+
+/// THE FLEET'S READ OF A CHAMPION NOT YET SHIPPED (LR 138): `GLADIATOR=path` makes slot 17 play that
+/// world champion instead of the shipped one, as `CENSUS_WEIGHTS` makes a census play dials not yet
+/// promoted. orrery's bridge reads each new milestone of crucible's world islands so, against the
+/// shipped one on the same seeds, before anyone ships it. A file that is not a world champion stops
+/// the match with a sentence: a census on the wrong net would be read as the right one.
+fn gladiator_file(style: &Style) -> Option<Champion> {
+    if style.slot != 17 {
+        return None;
+    }
+    let path = std::env::var("GLADIATOR").ok().filter(|p| !p.is_empty())?;
+    let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("GLADIATOR={}: {}", path, e));
+    let c = Champion::from_bytes(&bytes).unwrap_or_else(|e| panic!("GLADIATOR={}: {}", path, e));
+    assert!(c.world(), "GLADIATOR={}: a hybrid champion, not a world one: style 7 plays those", path);
+    Some(c)
 }
 
 // ---- the bridge -----------------------------------------------------------------------------
@@ -140,50 +177,75 @@ const H: usize = 32;
 const NOUT: usize = 4;
 /// crucible.cu's NW for a hybrid build. A champion is exactly this many floats, and nothing else.
 pub const CHAMPION_WEIGHTS: usize = NIN * H + H + H * H + H + H * NOUT + NOUT;
+/// A world hybrid's: 55 in (the 35 and twenty of the world's), 48, 48, 4 out (make WORLD=1 HYBRID=1 H=48).
+const W_NIN: usize = 55;
+const W_H: usize = 48;
+pub const WORLD_CHAMPION_WEIGHTS: usize = W_NIN * W_H + W_H + W_H * W_H + W_H + W_H * NOUT + NOUT;
+/// Where crucible.cu's world inputs begin (its AT_WORLD with the hybrid's three).
+const AT_WORLD: usize = 35;
 /// crucible.cu: how far its rays and its senses reach, and its scripted yardstick's range and aim.
 const RANGE: f32 = 40.0;
 const YARD_RANGE: f32 = 11.0;
 const YARD_TOL: f32 = 0.12;
+/// The world's yardstick stands inside the gun's ten, as a treadcore bot stands off.
+const W_YARD_RANGE: f32 = 8.0;
 const RAYS: usize = 12;
 const TANK_R: f32 = 0.75;
+/// crucible.cu's TANK_R, the world's rays meeting a tank; its pillbox is struck this near (PB_HIT).
+const W_TANK_R: f32 = 1.0;
+const PB_HIT: f32 = DIRECT_HIT_RADIUS + 0.5;
 /// Five times a second, as a NetBrain: the arena's step is a tenth, and a Move takes time to bite.
 const DECIDE_EVERY: u64 = treadcore_sim::TICK_HZ as u64 / 5;
 /// How far a full throttle reaches at each decision, and how far a full turn swings it.
 const STRIDE: f32 = 6.0;
 const SWING: f32 = 1.0;
 
-/// A hybrid champion from crucible: 35 in, 32, 32, 4 out, tanh throughout, as crucible.cu's `think`.
+/// A champion from crucible, tanh throughout, as crucible.cu's `think`: a hybrid (35 in, 32, 32, 4
+/// out) or a world hybrid (55, 48, 48, 4), told apart by its size. A champion without the gate (a
+/// plain build's 3 outputs) is not a Duelist's: it would take every fight, and is refused.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Champion {
+    nin: usize,
+    h: usize,
     w: Vec<f32>,
 }
 
 impl Champion {
+    /// A champion as crucible exports it, bare floats with no header: its kind is its size.
     pub fn from_bytes(bytes: &[u8]) -> Result<Champion, String> {
-        if bytes.len() != CHAMPION_WEIGHTS * 4 {
-            return Err(format!("a hybrid champion is {} bytes, this is {}", CHAMPION_WEIGHTS * 4, bytes.len()));
+        let (nin, h) = match bytes.len() / 4 {
+            n if n * 4 != bytes.len() => (0, 0),
+            CHAMPION_WEIGHTS => (NIN, H),
+            WORLD_CHAMPION_WEIGHTS => (W_NIN, W_H),
+            _ => (0, 0),
+        };
+        if nin == 0 {
+            return Err(format!(
+                "a hybrid champion is {} bytes and a world hybrid {}, this is {}",
+                CHAMPION_WEIGHTS * 4,
+                WORLD_CHAMPION_WEIGHTS * 4,
+                bytes.len()
+            ));
         }
-        Ok(Champion { w: bytes.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect() })
+        Ok(Champion { nin, h, w: bytes.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect() })
     }
 
-    pub fn think(&self, x: &[f32; NIN]) -> [f32; NOUT] {
-        let w = &self.w;
-        let (b1, w2) = (NIN * H, NIN * H + H);
-        let (b2, w3) = (w2 + H * H, w2 + H * H + H);
-        let b3 = w3 + H * NOUT;
-        let mut h1 = [0f32; H];
-        for j in 0..H {
-            let s: f32 = w[b1 + j] + (0..NIN).map(|i| w[j * NIN + i] * x[i]).sum::<f32>();
-            h1[j] = s.tanh();
-        }
-        let mut h2 = [0f32; H];
-        for j in 0..H {
-            let s: f32 = w[b2 + j] + (0..H).map(|i| w[w2 + j * H + i] * h1[i]).sum::<f32>();
-            h2[j] = s.tanh();
-        }
+    /// A world island's champion: it reads the twenty world inputs and drives as the world's tank.
+    pub fn world(&self) -> bool {
+        self.nin == W_NIN
+    }
+
+    /// crucible.cu's `think`: the inputs through two hidden layers to four outputs, tanh throughout.
+    pub fn think(&self, x: &[f32]) -> [f32; NOUT] {
+        let (w, nin, h) = (&self.w, self.nin, self.h);
+        let (b1, w2) = (nin * h, nin * h + h);
+        let (b2, w3) = (w2 + h * h, w2 + h * h + h);
+        let b3 = w3 + h * NOUT;
+        let h1: Vec<f32> = (0..h).map(|j| (w[b1 + j] + (0..nin).map(|i| w[j * nin + i] * x[i]).sum::<f32>()).tanh()).collect();
+        let h2: Vec<f32> = (0..h).map(|j| (w[b2 + j] + (0..h).map(|i| w[w2 + j * h + i] * h1[i]).sum::<f32>()).tanh()).collect();
         let mut out = [0f32; NOUT];
         for k in 0..NOUT {
-            let s: f32 = w[b3 + k] + (0..H).map(|i| w[w3 + k * H + i] * h2[i]).sum::<f32>();
+            let s: f32 = w[b3 + k] + (0..h).map(|i| w[w3 + k * h + i] * h2[i]).sum::<f32>();
             out[k] = s.tanh();
         }
         out
@@ -251,6 +313,80 @@ pub fn senses(obs: &Observation, map: Option<&Map>, me: &Tank, en: &Tank) -> [f3
     x
 }
 
+/// crucible's `scripted` at the WORLD yardstick: the turn is the bearing itself as a heading error
+/// (-1..1 is -pi..pi), it stands off inside the gun's reach, and it fires when aimed within the gun's.
+fn scripted_world(bearing: f32, d: f32) -> [f32; 3] {
+    [
+        (bearing / std::f32::consts::PI).clamp(-1.0, 1.0),
+        if d > W_YARD_RANGE + 3.0 { 1.0 } else if d < W_YARD_RANGE - 3.0 { -0.5 } else { 0.0 },
+        if bearing.abs() < YARD_TOL && d < DIRECT_RANGE { 1.0 } else { -1.0 },
+    ]
+}
+
+/// Where a shell is at this tick: along its flight, from launch to impact.
+fn shell_at(s: &treadcore_sim::Shell, tick: treadcore_sim::Tick) -> V2 {
+    let span = s.impact_tick.saturating_sub(s.launch_tick).max(1) as f32;
+    let f = (tick.saturating_sub(s.launch_tick) as f32 / span).clamp(0.0, 1.0);
+    s.from + (s.impact - s.from).scale(f)
+}
+
+/// crucible's `sense` under WORLD, and the hybrid's three: 55 inputs from what a tank here can see.
+/// The thirty-two of the arena, as the hybrid's but that a tank further than TANK_VISION is not seen
+/// on any ray (its bearing and armour still are, as crucible gives them); the yardstick at the world's
+/// range; then from AT_WORLD the twenty: twelve rays to a live pillbox that would fire on this tank (a
+/// neutral one or an enemy's), the nearest such pillbox -- its bearing as a sine and a cosine, its
+/// reach, its reload and health as shares, and 1 when it has the tank (in its range, a clear line) --
+/// and the tank's shells and reload as shares.
+pub fn world_senses(obs: &Observation, map: Option<&Map>, me: &Tank, en: &Tank) -> [f32; W_NIN] {
+    let mut x = [0f32; W_NIN];
+    let threat: Vec<&treadcore_sim::Pillbox> =
+        obs.pillboxes.iter().filter(|p| p.health > 0.0 && !p.owner.map(|o| obs.allied(o)).unwrap_or(false)).collect();
+    for r in 0..RAYS {
+        let dir = V2::from_heading(me.heading + r as f32 * std::f32::consts::TAU / RAYS as f32);
+        let tw = ray_wall(map, me.pos, dir);
+        let mut te = ray_circle(me.pos, dir, en.pos, W_TANK_R);
+        if te > TANK_VISION {
+            te = f32::MAX;
+        }
+        let tp = threat.iter().map(|p| ray_circle(me.pos, dir, p.pos, PB_HIT)).fold(f32::MAX, f32::min);
+        x[AT_WORLD + r] = if tp < tw && tp < RANGE { 1.0 - tp / RANGE } else { 0.0 };
+        let near = tw.min(te).min(RANGE);
+        x[2 * r] = 1.0 - near / RANGE;
+        x[2 * r + 1] = if te < tw && te < RANGE { 1.0 - te / RANGE } else { 0.0 };
+    }
+    let b = wrap_angle((en.pos - me.pos).heading() - me.heading);
+    let d = me.pos.dist(en.pos);
+    x[24] = me.speed / TANK_SPEED;
+    x[25] = me.armor / TANK_ARMOR;
+    x[26] = if me.reload == 0 { 1.0 } else { 0.0 };
+    x[27] = en.armor / TANK_ARMOR;
+    x[28] = b.sin();
+    x[29] = b.cos();
+    let shell = obs
+        .shells
+        .iter()
+        .filter(|s| s.kind == ShellKind::Direct && !obs.allied(s.owner))
+        .map(|s| shell_at(s, obs.tick).dist(me.pos))
+        .fold(f32::MAX, f32::min);
+    x[30] = if shell < 10.0 { 1.0 - shell / 10.0 } else { 0.0 };
+    x[31] = 1.0;
+    x[32..35].copy_from_slice(&scripted_world(b, d));
+    let o = AT_WORLD + RAYS;
+    if let Some(p) = threat.iter().min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+        let pb = wrap_angle((p.pos - me.pos).heading() - me.heading);
+        let nd = p.pos.dist(me.pos);
+        x[o] = pb.sin();
+        x[o + 1] = pb.cos();
+        x[o + 2] = (1.0 - nd / RANGE).max(0.0);
+        x[o + 3] = p.reload as f32 / PILLBOX_RELOAD_TICKS as f32;
+        x[o + 4] = p.health / PILLBOX_HEALTH;
+        x[o + 5] = if nd <= PILLBOX_RANGE && map.map(|m| m.line_clear(p.pos, me.pos)).unwrap_or(true) { 1.0 } else { 0.0 };
+    }
+    x[o + 6] = me.shells as f32 / TANK_SHELLS as f32;
+    x[o + 7] = me.reload as f32 / RELOAD_TICKS as f32;
+    x
+}
+
 /// The rules, with a champion in the fight. THE GATE IS THE CHAMPION'S OWN: shut, this seat is the
 /// Commander to the last command, as the arena's hybrid tank plays its script.
 pub struct Duelist {
@@ -273,6 +409,22 @@ impl Duelist {
         let en = obs.hostile_tanks().filter(|t| t.alive).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))?;
         if me.pos.dist(en.pos) >= RANGE {
             return None;
+        }
+        if self.champion.world() {
+            // crucible's world driver: the turn names a heading error (-1..1 is -pi..pi) and the
+            // throttle has no reverse, so a throttle at or under nothing holds the tank where it is.
+            let x = world_senses(obs, map, me, en);
+            let y = self.champion.think(&x);
+            if y[3] <= 0.0 {
+                return None;
+            }
+            let turn = (x[32] + y[0]).clamp(-1.0, 1.0);
+            let go = (x[33] + y[1]).clamp(0.0, 1.0);
+            if go < 0.05 {
+                return Some(vec![Command::Stop]);
+            }
+            let dir = V2::from_heading(me.heading + turn * std::f32::consts::PI);
+            return Some(vec![Command::Move { to: obs.clamp(me.pos + dir.scale(go * STRIDE)) }]);
         }
         let x = senses(obs, map, me, en);
         let y = self.champion.think(&x);
@@ -359,7 +511,7 @@ mod tests {
 
     #[test]
     fn sixteen_styles_each_by_number_and_by_name_and_none_share_either() {
-        assert_eq!(ROSTER.len(), 17, "eight styles, eight personas, and the quartermaster");
+        assert_eq!(ROSTER.len(), 18, "eight styles, eight personas, the quartermaster and the gladiator");
         for (i, s) in ROSTER.iter().enumerate() {
             assert_eq!(s.slot, i, "a slot keeps its place");
             assert_eq!(find(&i.to_string()), Some(s));
@@ -368,7 +520,8 @@ mod tests {
             assert_eq!(ROSTER.iter().filter(|o| o.name == s.name).count(), 1);
         }
         assert_eq!(find("16").map(|s| s.name), Some("Quartermaster"));
-        assert_eq!(find("17"), None);
+        assert_eq!(find("17").map(|s| s.name), Some("Gladiator"));
+        assert_eq!(find("18"), None);
         assert_eq!(find("nobody"), None);
         assert_eq!(find("rome").map(|s| s.slot), Some(8), "a persona by name");
     }
@@ -436,9 +589,101 @@ mod tests {
         // All zeros but one bias: tanh of nothing is nothing, and the confidence is that bias's tanh.
         let mut w = vec![0f32; CHAMPION_WEIGHTS];
         w[CHAMPION_WEIGHTS - 1] = 0.6;
-        let y = Champion { w }.think(&[0.5; NIN]);
+        let y = Champion { nin: NIN, h: H, w }.think(&[0.5; NIN]);
         assert_eq!(&y[..3], &[0.0, 0.0, 0.0]);
         assert!((y[3] - 0.6f32.tanh()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_world_champion_is_read_by_its_size_and_a_gateless_one_is_refused() {
+        assert_eq!(WORLD_CHAMPION_WEIGHTS, 5236, "crucible.cu's NW at 55 in, 48, 48, 4 out");
+        let c = Champion::from_bytes(&vec![0u8; WORLD_CHAMPION_WEIGHTS * 4]).unwrap();
+        assert!(c.world());
+        assert!(!Champion::from_bytes(&vec![0u8; CHAMPION_WEIGHTS * 4]).unwrap().world());
+        // A plain world build, 52 in and 3 out: no gate, so no Duelist.
+        let plain = 52 * 48 + 48 + 48 * 48 + 48 + 48 * 3 + 3;
+        assert!(Champion::from_bytes(&vec![0u8; plain * 4]).is_err());
+        let gladiator = ROSTER.iter().find(|s| s.name == "Gladiator").unwrap();
+        let Kind::Duel(b) = gladiator.kind else { panic!("the gladiator duels") };
+        assert!(Champion::from_bytes(b).unwrap().world(), "the shipped gladiator is a world champion");
+    }
+
+    #[test]
+    fn a_world_champions_arithmetic_is_crucibles() {
+        let mut w = vec![0f32; WORLD_CHAMPION_WEIGHTS];
+        w[WORLD_CHAMPION_WEIGHTS - 1] = -0.4;
+        let y = Champion { nin: W_NIN, h: W_H, w }.think(&[0.5; W_NIN]);
+        assert_eq!(&y[..3], &[0.0, 0.0, 0.0]);
+        assert!((y[3] - (-0.4f32).tanh()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn the_world_yardstick_turns_by_the_bearing_and_fires_inside_the_guns_reach() {
+        assert_eq!(scripted_world(0.0, 4.0), [0.0, -0.5, 1.0], "close: back off, and it is aimed");
+        assert_eq!(scripted_world(std::f32::consts::FRAC_PI_2, 30.0), [0.5, 1.0, -1.0], "a quarter turn off and far: half a heading error");
+        assert_eq!(scripted_world(0.0, 12.0)[2], -1.0, "aimed but past the gun's ten");
+    }
+
+    /// Seat 0, an enemy six tiles ahead of it (at the start nobody is in sight on naval), and the
+    /// observation with that enemy alone and every pillbox taken away.
+    fn seat_and_enemy() -> (World, Observation, Tank, Tank) {
+        let w = world();
+        let mut obs = w.observe(0);
+        obs.pillboxes.clear();
+        let me = obs.me.clone().unwrap();
+        let foe = (1..4u8).find(|p| !obs.allied(*p)).expect("an enemy side");
+        let mut en = me.clone();
+        en.owner = foe;
+        en.pos = me.pos + V2::from_heading(me.heading).scale(6.0);
+        obs.tanks.retain(|t| t.owner == 0);
+        obs.tanks.push(en.clone());
+        (w, obs, me, en)
+    }
+
+    #[test]
+    fn a_world_tank_does_not_see_an_enemy_past_its_eyes_but_knows_its_bearing() {
+        let (w, obs, me, mut en) = seat_and_enemy();
+        en.pos = me.pos + V2::from_heading(me.heading).scale(TANK_VISION + 5.0);
+        let x = world_senses(&obs, Some(&w.map), &me, &en);
+        assert!((0..RAYS).all(|r| x[2 * r + 1] == 0.0), "no ray's enemy channel past the eyes");
+        assert!((x[29] - 1.0).abs() < 1e-4, "dead ahead, by bearing");
+        en.pos = me.pos + V2::from_heading(me.heading).scale(4.0);
+        let x = world_senses(&obs, Some(&w.map), &me, &en);
+        assert!(x[1] > 0.0, "ahead and near: the forward ray sees it");
+        assert!(x[32].abs() < 1e-5 && x[33] == -0.5 && x[34] == 1.0, "the world's yardstick: aimed, too close: {:?}", &x[32..35]);
+    }
+
+    #[test]
+    fn a_world_tank_sees_the_pillbox_that_has_it_and_not_its_own() {
+        let (w, mut obs, me, en) = seat_and_enemy();
+        let mut p = w.pillboxes.first().cloned().expect("naval has pillboxes");
+        p.pos = me.pos + V2::from_heading(me.heading).scale(3.0);
+        p.owner = None;
+        p.health = PILLBOX_HEALTH;
+        p.reload = 0;
+        obs.pillboxes = vec![p.clone()];
+        let x = world_senses(&obs, None, &me, &en);
+        let o = AT_WORLD + RAYS;
+        assert!(x[AT_WORLD] > 0.9, "the forward ray meets it");
+        assert!(x[o].abs() < 1e-4 && (x[o + 1] - 1.0).abs() < 1e-4, "ahead");
+        assert!((x[o + 2] - (1.0 - 3.0 / RANGE)).abs() < 1e-4, "three tiles off");
+        assert_eq!((x[o + 3], x[o + 4], x[o + 5]), (0.0, 1.0, 1.0), "loaded, whole, and it has the tank");
+        p.owner = Some(0);
+        obs.pillboxes = vec![p];
+        let x = world_senses(&obs, None, &me, &en);
+        assert!(x[AT_WORLD..AT_WORLD + RAYS + 6].iter().all(|v| *v == 0.0), "a pillbox of its own side fires on nobody of it");
+        assert!((x[o + 6] - me.shells as f32 / TANK_SHELLS as f32).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_world_duelist_with_its_gate_open_and_no_throttle_holds_its_ground() {
+        // The gate open, and the throttle's output pinned under the yardstick's: no reverse, so Stop.
+        let mut w = vec![0f32; WORLD_CHAMPION_WEIGHTS];
+        w[WORLD_CHAMPION_WEIGHTS - 1] = 9.0;
+        w[WORLD_CHAMPION_WEIGHTS - 3] = -9.0;
+        let (world, obs, _, _) = seat_and_enemy();
+        let b = Duelist::new(Champion { nin: W_NIN, h: W_H, w }, Box::new(Marked(vec![])));
+        assert_eq!(format!("{:?}", b.duel(&obs, Some(&world.map))), format!("{:?}", Some(vec![Command::Stop])));
     }
 
     #[test]
@@ -477,7 +722,7 @@ mod tests {
         let mut w = vec![0f32; CHAMPION_WEIGHTS];
         w[CHAMPION_WEIGHTS - 1] = -9.0;
         let said = vec![Command::Move { to: V2::new(5.0, 5.0) }];
-        let mut b = Duelist::new(Champion { w }, Box::new(Marked(said.clone())));
+        let mut b = Duelist::new(Champion { nin: NIN, h: H, w }, Box::new(Marked(said.clone())));
         let w = world();
         for p in 0..4 {
             assert_eq!(format!("{:?}", b.think_on(&w.observe(p), Some(&w.map))), format!("{:?}", said));
@@ -489,7 +734,7 @@ mod tests {
         let mut w = vec![0f32; CHAMPION_WEIGHTS];
         w[CHAMPION_WEIGHTS - 1] = 9.0;
         let said = vec![Command::Stop];
-        let mut b = Duelist::new(Champion { w }, Box::new(Marked(said.clone())));
+        let mut b = Duelist::new(Champion { nin: NIN, h: H, w }, Box::new(Marked(said.clone())));
         let world = world();
         let mut obs = world.observe(0);
         obs.tanks.retain(|t| t.owner == 0);

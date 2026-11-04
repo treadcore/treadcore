@@ -1339,6 +1339,17 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     game version 5); the game-side slot for a net; fleet messages and a
     wingman stance as elements; the shape watch for the transform; the
     pinned-test lint; a playtest afternoon.
+80. The Duelist with world senses. (4 November; cause: Paul, "yes do
+    step 2, the duelist with world senses", of orrery's three GPU steps;
+    LR 138, CI-087.) Built: style 17, Gladiator, a world champion of
+    crucible's islands with its twenty world senses built from what a
+    tank sees; `GLADIATOR=file` for the fleet's read of one not yet
+    shipped; in orrery, the bridge that reads each new world milestone
+    against the shipped one and a Ship press that commits it. State:
+    built; read +4.99 ± 2.08 a seat over the hybrid Duelist on every map.
+    Next: the bridge's first reads on the fleet once this is on main;
+    the Gladiator's own gap to the defaults; a GPU behaviour-cloning
+    stage (Paul's step 3), its net and its judge to be chosen.
 
 ## Sequencing
 

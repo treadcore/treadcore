@@ -1,0 +1,44 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Wed, 04 Nov 2026 19:00:00 +0000
+Subject: [JOURNAL 0114] The Duelist with world senses: the Gladiator, style 17, and the bridge that reads each new world champion
+Message-ID: <0114.20261104@treadcore.org>
+In-Reply-To: <0113.20261104@treadcore.org>
+Organization: treadcore.org
+Keywords: crucible, world, bridge, Duelist, Gladiator, styles, census
+
+## Abstract
+
+Paul chose the second of orrery's three GPU steps: "yes do step 2, the
+duelist with world senses." crucible's islands have trained under the
+game's rules since the evening before (55 inputs, 48, 48, 4 out), and
+the bridge of LR 126 read only the toy arena's hybrid. The bridge now
+reads a world champion too: its twenty world inputs built from what a
+tank sees as crucible's world sense builds them, its eyes ending at ten
+tiles, a heading-error turn and no reverse. A new slot, 17, the
+Gladiator, ships the world milestone M0015, so style 7 keeps the hybrid
+and one binary reads both. On the same 48 seeds the Gladiator reads
++4.99 +/- 2.08 a seat over the Duelist on every map, and +11.56 +/- 1.75 on the
+generated maps. GLADIATOR=file lets the fleet read a champion not yet
+shipped; orrery's bridge reads each new world milestone against the
+shipped one, and shipping is a press.
+
+## Session
+
+Code: styles.rs (Champion of either size, world_senses, scripted_world,
+shell_at, the world drive, slot 17, gladiator_file), weights.rs (the
+dial's choices), nets/gladiator.bin, nets/styles.tsv; seven tests new.
+Reads: two pairs of censuses, 48 seeds each, on this Mac; the first
+pair's every-map fell to the generated map (BSD paste, by hand), both
+alike, so it stands; the second pair on every map. In orrery: the
+bridge stage (bridge_jobs, bridge.json, the Pipeline's bridge task),
+tools/bridge.py ship, the Growth page's bridge line and Ship. LR 138,
+CI-087, CHANGELOG, ROADMAP 80, this entry, the brain map.
+
+## Next
+
+Once this is on main the bridge reads the islands' next milestone on
+the fleet. The Gladiator's own gap to the defaults is the next thing a
+champion must close; the GPU behaviour-cloning stage (Paul's step 3)
+waits on his choice of net and judge. The client's two failing tests
+(key setup, the tune page) were failing before this and are untouched.
