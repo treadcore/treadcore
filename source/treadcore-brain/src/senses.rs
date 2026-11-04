@@ -14,11 +14,12 @@
 //! plot reads a contact); and the scripted brain's conclusions as hints.
 //! Nothing here is the world's raw lists: a net that learns from these
 //! learns what a tank in the field could feel. Every number is 0 to 1
-//! but the contacts' bearings, a sine and a cosine, -1 to 1.
+//! but the contacts' bearings, a sine and a cosine, -1 to 1. Last, the
+//! ring (LR 146): the nearest pillbox that fires on the tank, and whose.
 
 use treadcore_sim::map::{Map, Terrain};
 use crate::calls::{Call, CALL_KINDS, CALL_LIFE};
-use treadcore_sim::rules::{INDIRECT_RELOAD_TICKS, BAY_FULL, DIRECT_RANGE, PILLBOX_RANGE, SPLASH_RADIUS, PILLBOY_MATERIAL_MAX, TANK_ARMOR, TANK_SHELLS, TANK_SPEED};
+use treadcore_sim::rules::{INDIRECT_RELOAD_TICKS, BAY_FULL, DIRECT_RANGE, PILLBOX_HEALTH, PILLBOX_RANGE, PILLBOX_RELOAD_TICKS, SPLASH_RADIUS, PILLBOY_MATERIAL_MAX, TANK_ARMOR, TANK_SHELLS, TANK_SPEED};
 use treadcore_sim::*;
 
 /// The compass's sectors.
@@ -42,7 +43,7 @@ pub const AIR: usize = 5;
 /// the hints, the shell contact, the air contact. Each block added since
 /// LR 97 goes last, so an older net is widened with zeros
 /// (`Net::widen`) and computes what it did.
-pub const SENSES: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS + SHELL + AIR + ECON;
+pub const SENSES: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS + SHELL + AIR + ECON + RING;
 /// The economy's numbers (games 6 to 8, the logistics gauntlets): the nearest deposit with ore
 /// (sine, cosine, nearness, its stock as a share of 120), the nearest well the same, the nearest
 /// smelter of the side (sine, cosine, nearness), the nearest refinery of the side the same, the
@@ -50,6 +51,10 @@ pub const SENSES: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS + S
 pub const ECON: usize = 4 + 4 + 3 + 3 + 3;
 /// Where the economy starts.
 pub const AT_ECON: usize = AT_AIR + AIR;
+/// The ring's numbers (`Ring`, LR 146).
+pub const RING: usize = 6;
+/// Where the ring starts.
+pub const AT_RING: usize = AT_ECON + ECON;
 /// The senses before the shell contact (LR 97 to 99).
 pub const SENSES_BEFORE_SHELL: usize = SECTORS * CHANNELS + BODY + NAV + CONTACTS + HINTS;
 /// Where the instruments start.
@@ -165,6 +170,30 @@ pub enum ShellContact {
     Soon,
     /// 1 if the tank stands inside the splash now.
     Inside,
+}
+
+/// The ring, in order from `AT_RING` (LR 146; Paul, 4 November: "perhaps the sensor will indicate a
+/// ring, as it would indicate and identify the foe"): the nearest live pillbox that fires on the tank,
+/// an enemy's or a neutral one (a neutral one fires on everyone). The compass's HostilePillbox channel
+/// is 1 anywhere inside an enemy's ring and says nothing of which pillbox, how deep, or that a neutral
+/// one has a ring too; G18 asks the tank to shoot the foe from outside its ring and keep out of the
+/// neutral one's, and G19 to take two rings one at a time. The rules pass both every time; the best
+/// net passed G18 72% and G19 45%.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ring {
+    /// Its bearing from the heading, sine (right +) and cosine (ahead +).
+    Sin,
+    Cos,
+    /// Where the tank stands against its ring: 1 on the pillbox, 0.5 on the ring's edge
+    /// (`PILLBOX_RANGE`), 0 a ring's breadth or more outside it.
+    Edge,
+    /// Whose: 1 an enemy's, a foe to shoot dead from outside its ring; 0 a neutral one, which a squad
+    /// takes whole and the gun spares.
+    Foe,
+    /// Its gun, as the flash of its last shot tells it: 1 loaded, 0 just fired.
+    Ready,
+    /// Its health, a share of full: how many shells it still wants.
+    Health,
 }
 
 /// The air contact, in order from `AT_AIR` (LR 100): the nearest
@@ -387,6 +416,19 @@ pub fn sense(obs: &Observation, map: Option<&Map>, hints: Option<&Hints>, calls:
         s[k + 15] = me.pillboys.oil as f32 / PILLBOY_OIL_MAX as f32;
         s[k + 16] = (obs.supply as f32 / 200.0).min(1.0);
     }
+    // The ring (LR 146): the nearest live pillbox that is not the side's own.
+    if let Some(b) = obs.pillboxes.iter().filter(|b| b.alive() && !b.owner.map(|o| obs.allied(o)).unwrap_or(false)).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
+        let (sn, cs, _) = bearing(me, b.pos);
+        let d = b.pos.dist(me.pos);
+        s[AT_RING..AT_RING + RING].copy_from_slice(&[
+            sn,
+            cs,
+            (1.0 - d / (2.0 * PILLBOX_RANGE)).clamp(0.0, 1.0),
+            if b.owner.is_some() { 1.0 } else { 0.0 },
+            1.0 - (b.reload as f32 / PILLBOX_RELOAD_TICKS as f32).clamp(0.0, 1.0),
+            (b.health / PILLBOX_HEALTH).clamp(0.0, 1.0),
+        ]);
+    }
     if let Some(h) = hints {
         let k = AT_HINTS;
         s[k..k + 5].copy_from_slice(&h.posture.map(|v| v.clamp(0.0, 1.0)));
@@ -437,6 +479,33 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// The ring (LR 146): the nearest live pillbox that fires on the tank, as its bearing, where the
+    /// tank stands against its ring, whose it is, its gun and its health; a dead one, or one of the
+    /// side's own, is no ring; with none, the block is zeros.
+    #[test]
+    fn the_ring_reads_the_nearest_live_gun_and_whose_it_is() {
+        let mut w = World::new(Scenario { swarm_interval: 0, time_limit: 0, ..Scenario::bots(2) });
+        w.depots.clear();
+        assert!(w.pillboxes.len() >= 2, "a map with pillboxes");
+        w.pillboxes.truncate(2);
+        w.tanks[0].heading = 0.0;
+        let me = w.tanks[0].pos;
+        let ring = |w: &World| sense(&w.observe(0), None, None, &[]).expect("a tank")[AT_RING..AT_RING + RING].to_vec();
+        // An enemy's four tiles dead ahead, loaded, at half health; a neutral one twelve off, just fired.
+        (w.pillboxes[0].pos, w.pillboxes[0].owner, w.pillboxes[0].health, w.pillboxes[0].reload) = (me + V2::new(4.0, 0.0), Some(1), PILLBOX_HEALTH * 0.5, 0);
+        (w.pillboxes[1].pos, w.pillboxes[1].owner, w.pillboxes[1].health, w.pillboxes[1].reload) = (me + V2::new(0.0, 12.0), None, PILLBOX_HEALTH, PILLBOX_RELOAD_TICKS);
+        let r = ring(&w);
+        assert!(r[Ring::Sin as usize].abs() < 1e-4 && (r[Ring::Cos as usize] - 1.0).abs() < 1e-4, "dead ahead: {:?}", r);
+        assert!((r[Ring::Edge as usize] - 0.75).abs() < 1e-4 && r[Ring::Foe as usize] == 1.0 && r[Ring::Ready as usize] == 1.0 && (r[Ring::Health as usize] - 0.5).abs() < 1e-4, "inside a foe's ring, loaded, half: {:?}", r);
+        // Shot dead it is no ring; the neutral one is, outside its own (12 tiles: 1 - 12 / 16), just fired.
+        w.pillboxes[0].health = 0.0;
+        let r = ring(&w);
+        assert!((r[Ring::Edge as usize] - 0.25).abs() < 1e-4 && r[Ring::Foe as usize] == 0.0 && r[Ring::Ready as usize] == 0.0, "the neutral one: {:?}", r);
+        // The side's own is no ring either; with none, zeros.
+        w.pillboxes[1].owner = Some(0);
+        assert!(ring(&w).iter().all(|x| *x == 0.0), "{:?}", ring(&w));
     }
 
     /// The body: armour, shells and reload read as shares; a dead tank
