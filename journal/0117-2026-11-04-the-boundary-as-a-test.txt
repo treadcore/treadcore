@@ -1,0 +1,35 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Wed, 04 Nov 2026 23:00:00 +0000
+Subject: [JOURNAL 0117] The boundary as a test: gauntlets G18 to G22, which pillbox to shoot, which tank to answer, when to kite or stand
+Message-ID: <0117.20261104@treadcore.org>
+In-Reply-To: <0116.20261104@treadcore.org>
+Organization: treadcore.org
+Keywords: gauntlet, pillboxes, neutral, kite, backup, first hit, boundary
+
+## Abstract
+
+Paul asked for a coded set of tests that is the boundary of smart play:
+attack some pillboxes and avoid others, answer the enemy that last
+attacked, kite it alone, stand and fight with backup. Five gauntlets,
+G18 to G22, drawn on the game's own rules (a gun of ten against a ring
+of eight; a live hostile pillbox shot dead before it is taken, a live
+neutral one taken whole). Three expectations new to the scenario form.
+On 50 seeds no brain meets them; the rules read 24, 0, 48, 34 and 56%,
+each failing as its file says. The 400-seed read of the Gladiator's gate
+at 0.6 (+0.08 +/- 0.40) left its default at 0.
+
+## Session
+
+Code: scenario.rs (pillbox_struck, first_hit, pillboxes_standing).
+Files: scenarios/gauntlet/g18 to g22. Reads: the gauntlet for the rules,
+the untrained net, the milestones, bc2 and logistics, 50 seeds; each
+file played by the rules on 20 seeds for its failures in words; G22
+corrected twice (friends that escorted, two hits too many). LR 141,
+CI-090, CHANGELOG, ROADMAP 83, this entry, the brain map. In orrery the
+trade guard's floors for building and road became shares (10%).
+
+## Next
+
+The styles in the gauntlet; the rules taught these five; crucible's
+arena with a hostile and a neutral pillbox.

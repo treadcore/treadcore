@@ -10042,3 +10042,33 @@ No gate passes the rule: the default stays 0. At 0.6, a champion kept to the fig
 **The fleet's read** (run r0174, macmini, 400 seeds from 82,000,000, every map; the trial team the Gladiator at gate 0.6, the base teams the Gladiator at gate 0, so the census is the difference itself): **+0.08 ± 0.40 a seat**, inside the noise; naval alone +2.18 ± 0.60, every other map inside its noise. The 48 seeds' lean (+1.61 ± 1.50) was luck. The default stays 0, as the rule written before both reads says.
 
 **Not done.** The champions trained against the styles, which the bridge will read as they come.
+
+## 141. The boundary as a test: five gauntlets of which pillbox to shoot, which tank to answer, and when to kite or stand, 4 November
+
+Paul, of the montage's first film, where the champions fought only one pillbox in twelve chapters: "we need to setup a goal where it would be smart to attack some pillboxes while avoiding others. like enemy preference, last attacked enemy we would kite and dance, unless we have backup with fleet allies nearby. we should solve it by creating a coded set of tests that should result into that being the boudray of your question." The gauntlet (section 102) is that form already: one decision a file, little else on the map, read for the scripted brain and every net on the same seeds, a floor a file.
+
+**The game's own rules draw the line.** A tank's gun reaches ten tiles and a pillbox's ring eight, so a pillbox can always be shot from outside its ring. A live hostile pillbox must be shot dead before a squad can take it ("pillbox is live and theirs: shoot it dead first"), but a live neutral one is taken whole, and fires on whoever enters its ring. So the smart thing with a hostile pillbox is to shoot it from the edge of the gun's reach, and with a neutral one to keep out of its ring and leave it to the squad.
+
+| File | The decision | Passed | Floor |
+| --- | --- | --- | --- |
+| G18 shoot the hostile pillbox, spare the neutral one | a hostile and a neutral pillbox 9 tiles off either way | the hostile one dead in 12 s, the neutral one untouched, the armour whole | 0.8 |
+| G19 two pillboxes, one at a time | two hostile pillboxes in a line at 9 and 14 | both dead in 30 s, the armour whole | 0.7 |
+| G20 the one that shot you | a passive enemy at 7, one at 9 that opens fire while the tank's gun reloads | its first hit is on the attacker | 0.7 |
+| G21 alone: kite the one that shot you | a Raider of the same armour closing from 9 | more hits given than taken in 40 s, and alive | 0.6 |
+| G22 with friends near: stand and fight | as G21, two friends beside it holding their ground | the attacker dead in 30 s, more hits given than taken, within 10 tiles of a friend for seven tenths | 0.7 |
+
+G21 and G22 are a pair: alone the smart tank kites, with backup it stands; a brain that does one in both places fails one of them. The scenario form gained three expectations: `pillbox_struck` (the damage a placed pillbox took), `first_hit` (of the tanks a seat hit, the first) and `pillboxes_standing` (how many placed pillboxes stand at the end). Two were found weak and changed before this record: G22's friends first escorted the tank, so staying with them was theirs and not its choice (an untrained net passed 44%), and they now hold their ground; and two hits asked of the tank were most of a kill that friends share (the rules 14%), so it now asks the tank to outscore the attacker.
+
+**Read** (this Mac, 50 seeds from 9,500,000, the share passed):
+
+| | the rules | untrained | map7 | map5 | bc2 | logistics |
+| --- | --- | --- | --- | --- | --- | --- |
+| G18 | 24% | 0% | 0% | 0% | 0% | 0% |
+| G19 | 0% | 0% | 6% | 0% | 0% | 0% |
+| G20 | 48% | 0% | 8% | 4% | 0% | 2% |
+| G21 | 34% | 2% | 0% | 26% | 0% | 6% |
+| G22 | 56% | 30% | 20% | 40% | 16% | 8% |
+
+No brain reaches the boundary, the rules included, and each fails as its file says: the rules drive into the neutral pillbox's ring to take it and trade fire with it (G18: 55 to 65 damage to it, 45% of the tank's armour gone); they take the near pillbox of the pair and walk into the far one's ring (G19); they answer the nearer tank that did nothing (G20); and alone they trade blow for blow and die (G21). The floors are the boundary and are left above every brain: these five are red on the Gauntlet page until a brain earns them.
+
+**Not done.** The styles (the Duelist, the Gladiator) in the gauntlet beside the rules and the nets; the rules taught these decisions; crucible's arena given a hostile and a neutral pillbox, so its champions meet G18's choice.

@@ -1,0 +1,44 @@
+# The boundary (LAB-REPORT-BRAIN.md section 141; Paul, 4 November: "we need to setup a goal where
+# it would be smart to attack some pillboxes while avoiding others. like enemy preference, last
+# attacked enemy we would kite and dance, unless we have backup with fleet allies nearby. we should
+# solve it by creating a coded set of tests that should result into that being the boundary").
+# Two enemy tanks: one 7 tiles off that does nothing, one 9 tiles off that opens fire. The tank's gun is
+# reloading for its first two seconds, so the farther one shoots first. Decision: answer the one that
+# shot you, not the nearer one that did not. Passed: its first hit is on the attacker, within 12 s.
+name = "G20 the one that shot you, before the nearer one"
+reaction = "fire"
+floor = 0.7
+players = 3
+teams = [0, 1, 1]
+seconds = 12
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-20, 20]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+reload = 2
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [7, 0]
+around = true
+[[tank]]
+seat = 2
+at = "seat:0"
+offset = [9, 0]
+around = true
+[[brain]]
+seat = 2
+kind = "commander"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+first_hit = { by = 0, on = 2 }
+hits = { by = 0, on = 2, at_least = 1 }

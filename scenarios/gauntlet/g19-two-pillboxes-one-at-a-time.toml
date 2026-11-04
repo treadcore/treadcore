@@ -1,0 +1,43 @@
+# The boundary (LAB-REPORT-BRAIN.md section 141; Paul, 4 November: "we need to setup a goal where
+# it would be smart to attack some pillboxes while avoiding others. like enemy preference, last
+# attacked enemy we would kite and dance, unless we have backup with fleet allies nearby. we should
+# solve it by creating a coded set of tests that should result into that being the boundary").
+# Two hostile pillboxes in a line, 9 and 14 tiles off: the near one outside its ring, the far one five
+# beyond it. Decision: take them one at a time from outside both rings, the near one first, then step
+# up to the far one's edge. Passed: both dead within 30 s, and the tank's armour whole.
+name = "G19 two pillboxes, one at a time from outside their rings"
+reaction = "fire"
+floor = 0.7
+players = 2
+seconds = 30
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-20, 30]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [45, 0]
+[[pillbox]]
+near = "centre"
+toward = "seat:1"
+away = 9
+owner = 1
+[[pillbox]]
+near = "pillbox:0"
+toward = "seat:1"
+away = 5
+owner = 1
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillboxes_standing = { max = 0 }
+armor_at_least = { seat = 0, share = 1.0 }

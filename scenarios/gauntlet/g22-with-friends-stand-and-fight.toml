@@ -1,0 +1,57 @@
+# The boundary (LAB-REPORT-BRAIN.md section 141; Paul, 4 November: "we need to setup a goal where
+# it would be smart to attack some pillboxes while avoiding others. like enemy preference, last
+# attacked enemy we would kite and dance, unless we have backup with fleet allies nearby. we should
+# solve it by creating a coded set of tests that should result into that being the boundary").
+# As G21, but two of the tank's own side stand beside it and hold their ground, fighting what comes
+# (they do not follow it: staying with them is the tank's own choice). Decision: with backup, do not kite
+# away from it: stand with the friends and kill the attacker together. Passed: the attacker dead
+# within 30 s, the tank hitting it more often than it was hit by it, and within 10 tiles of a friend for seven
+# tenths of it.
+name = "G22 with friends near: stand and fight"
+reaction = "fire"
+floor = 0.7
+players = 4
+teams = [0, 0, 0, 1]
+seconds = 30
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-30, 30]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+reload = 2
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [-3, 3]
+[[tank]]
+seat = 2
+at = "seat:0"
+offset = [-3, -3]
+[[tank]]
+seat = 3
+at = "seat:0"
+offset = [9, 0]
+around = true
+[[brain]]
+seat = 1
+kind = "commander"
+[[brain]]
+seat = 2
+kind = "commander"
+[[brain]]
+seat = 3
+kind = "commander"
+weights = { w_posture = 0.9, w_pos_expand = 3.0, press_odds = 1.1, engage_odds = 0.5, retreat_armor = 25, w_wounded = 1.6, w_finish = 1.2 }
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+dead = { seat = 3 }
+outscores = { by = 0, on = 3 }
+station = { seat = 0, to = 1, within = 10, at_least = 0.7 }

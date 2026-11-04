@@ -1,0 +1,40 @@
+# The boundary (LAB-REPORT-BRAIN.md section 141; Paul, 4 November: "we need to setup a goal where
+# it would be smart to attack some pillboxes while avoiding others. like enemy preference, last
+# attacked enemy we would kite and dance, unless we have backup with fleet allies nearby. we should
+# solve it by creating a coded set of tests that should result into that being the boundary").
+# Alone, an enemy tank of the same armour 9 tiles off that closes in to fight (the Raider's dials); the
+# tank's gun is reloading its first two seconds. Decision: kite it, dance in to fire when the gun is
+# loaded and out while it reloads, so its shots fall short. Passed: more hits given than taken in 40 s,
+# and alive.
+name = "G21 alone: kite the one that shot you"
+reaction = "fire"
+floor = 0.6
+players = 2
+seconds = 40
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-30, 30]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+reload = 2
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [9, 0]
+around = true
+[[brain]]
+seat = 1
+kind = "commander"
+weights = { w_posture = 0.9, w_pos_expand = 3.0, press_odds = 1.1, engage_odds = 0.5, retreat_armor = 25, w_wounded = 1.6, w_finish = 1.2 }
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+outscores = { by = 0, on = 1 }
+alive = { seat = 0 }

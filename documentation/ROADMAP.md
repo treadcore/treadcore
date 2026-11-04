@@ -1368,6 +1368,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     0 (0.6 reads +1.61 +/- 1.50 over it). Next: the gate at 0.6 read on
     the fleet's 400 seeds; the bridge's reads of champions trained
     against the styles.
+83. The boundary as a test. (4 November; cause: Paul, "attack some
+    pillboxes while avoiding others ... kite and dance, unless we have
+    backup ... a coded set of tests"; LR 141, CI-090.) Built: gauntlets
+    G18 to G22; three expectations. State: built; no brain meets them
+    (the rules 24, 0, 48, 34, 56%). Next: the styles in the gauntlet;
+    the rules taught the five decisions; crucible's arena with a hostile
+    and a neutral pillbox.
 
 ## Sequencing
 

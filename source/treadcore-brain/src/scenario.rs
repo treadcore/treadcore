@@ -275,6 +275,9 @@ pub struct Outcome {
     /// owned it, and whether it stands at the end.
     pub pillbox_damage: Vec<f32>,
     pub pillbox_owned: Vec<BTreeMap<PlayerId, Tick>>,
+    /// Each placed pillbox: the damage it took (LR 141, the pillbox gauntlets: one to shoot, one to
+    /// spare).
+    pub pillbox_struck: Vec<f32>,
     /// By seat: calls for help, chains put on, trees cut, road tiles built, in `reward`'s words.
     pub advance: BTreeMap<(PlayerId, &'static str), u32>,
     pub pillbox_alive: Vec<bool>,
@@ -701,7 +704,7 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
         };
         brains.push((seat, brain));
     }
-    let mut out = Outcome { pillbox_damage: vec![0.0; pillboxes.len()], pillbox_owned: vec![BTreeMap::new(); pillboxes.len()], depot_owned: vec![BTreeMap::new(); depots.len()], ..Default::default() };
+    let mut out = Outcome { pillbox_damage: vec![0.0; pillboxes.len()], pillbox_struck: vec![0.0; pillboxes.len()], pillbox_owned: vec![BTreeMap::new(); pillboxes.len()], depot_owned: vec![BTreeMap::new(); depots.len()], ..Default::default() };
     for t in &w.tanks {
         out.start.insert(t.owner, (t.pos, t.shells));
         out.armor.insert(t.owner, (t.armor, t.armor));
@@ -824,6 +827,11 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
                 Event::PillboxFired { pillbox, damage, .. } => {
                     if let Some(k) = pillboxes.iter().position(|p| p == pillbox) {
                         out.pillbox_damage[k] += damage;
+                    }
+                }
+                Event::PillboxDamaged { pillbox, damage, .. } => {
+                    if let Some(k) = pillboxes.iter().position(|p| p == pillbox) {
+                        out.pillbox_struck[k] += damage;
                     }
                 }
                 _ => {}
@@ -1028,6 +1036,36 @@ fn check(expect: &BTreeMap<String, Value>, out: &Outcome) -> Result<Vec<String>,
                     (Some(d), Some(m)) if d <= m => failed.push(format!("seat {} first hit seat {} {:.1} tiles from the point, more than {} expected", by, on, d, m)),
                     (None, _) => failed.push(format!("seat {} never hit seat {}", by, on)),
                     _ => {}
+                }
+            }
+            // `pillbox_struck = { pillbox = 1, max = 0 }`: the damage a placed pillbox took, at most
+            // (a neutral one spared, to be taken whole) or `at_least` (LR 141).
+            "pillbox_struck" => {
+                let k = field(t, "pillbox").unwrap_or(0.0) as usize;
+                let d = out.pillbox_struck.get(k).copied().unwrap_or(0.0) as f64;
+                if let Some(m) = field(t, "max").filter(|m| d > *m) {
+                    failed.push(format!("pillbox {} took {} damage, at most {} expected", k, d, m));
+                }
+                if let Some(m) = field(t, "at_least").filter(|m| d < *m) {
+                    failed.push(format!("pillbox {} took {} damage, at least {} expected", k, d, m));
+                }
+            }
+            // `pillboxes_standing = { max = 0 }`: how many placed pillboxes stand at the end (LR 141: both
+            // of a pair taken, where `pillbox_alive` names one).
+            "pillboxes_standing" => {
+                let n = out.pillbox_alive.iter().filter(|a| **a).count() as f64;
+                if let Some(m) = field(t, "max").filter(|m| n > *m) {
+                    failed.push(format!("{} placed pillboxes stand at the end, at most {} expected", n, m));
+                }
+            }
+            // `first_hit = { by = 0, on = 2 }`: of the tanks `by` hit, the first was `on` (LR 141: the
+            // one that shot it, before the nearer one that did not).
+            "first_hit" => {
+                let (by, on) = (field(t, "by").ok_or("first_hit: by")? as PlayerId, field(t, "on").ok_or("first_hit: on")? as PlayerId);
+                match out.hits.iter().find(|(b, o)| *b == Some(by) && *o != by) {
+                    Some((_, o)) if *o == on => {}
+                    Some((_, o)) => failed.push(format!("seat {} hit seat {} first, seat {} expected", by, o, on)),
+                    None => failed.push(format!("seat {} hit nobody", by)),
                 }
             }
             "pillbox_damage" => {
