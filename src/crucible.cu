@@ -394,22 +394,25 @@ __device__ void think(const float* __restrict__ w, const float* in, float* out) 
 // A scripted tank: turn to the enemy, close to its range, fire when aimed
 // within `tol` radians. The yardstick is (0.12, 11); a sparring partner
 // draws both per block, so the learner meets bots good and bad.
-struct Skill { float tol, range; };
+// A scripted tank's skill: how true it must aim before it fires, the range it stands off at, and
+// under WORLD its style (STYLES: 0 the script as it always was, the yardstick's and the hybrid's own).
+struct Skill { float tol, range; int style; };
 #ifdef WORLD
 // Inside the gun's 10, as a treadcore bot stands off; sparring partners
 // stand anywhere from 4 to 9.
-#define YARDSTICK Skill{0.12f, 8.0f}
+#define YARDSTICK Skill{0.12f, 8.0f, 0}
+#define STYLES 5               // the sparring partners' styles: the script, Raider, Castle, Expander, Timid
 #define SPAR_NEAR 4.0f
 #define SPAR_FAR 9.0f
 #define FIRE_REACH GUN_RANGE
 #else
-#define YARDSTICK Skill{0.12f, 11.0f}
+#define YARDSTICK Skill{0.12f, 11.0f, 0}
 #define SPAR_NEAR 6.0f
 #define SPAR_FAR 20.0f
 #define FIRE_REACH 35.0f
 #endif
 
-__device__ void scripted(const Tank& me, const Tank& en, Skill k, float* out) {
+__device__ void scripted(const Tank& me, const Tank& en, Skill k, const Arena& w, float* out) {
     float dx = en.x - me.x, dy = en.y - me.y;
     float d = sqrtf(dx * dx + dy * dy);
     float b = wrap(atan2f(dy, dx) - me.a);
@@ -421,6 +424,39 @@ __device__ void scripted(const Tank& me, const Tank& en, Skill k, float* out) {
 #endif
     out[1] = d > k.range + 3.0f ? 1.0f : (d < k.range - 3.0f ? -0.5f : 0.0f);
     out[2] = (fabsf(b) < k.tol && d < FIRE_REACH) ? 1.0f : -1.0f;
+#ifdef WORLD
+    // THE GAME'S STYLES (Paul, 4 November, of the Gladiator's gap: "Islands meet the game's styles").
+    // A sparring partner plays one of treadcore's rules styles as a duel can show it, so a champion
+    // learns the fights the game will give it: 1 Raider, goes and fights, closes to four and presses
+    // while it is not the weaker or the enemy is hurt; 2 Castle, holds its ground and fires on what
+    // comes into reach, never chasing; 3 Expander, takes the map, the nearest live pillbox shelled
+    // first; 4 Timid, keeps away unless the odds are well on its side. 0 is the script above.
+    if (k.style == 1) {
+        if (me.hp >= en.hp || en.hp < 0.5f * HP) out[1] = d > 4.0f ? 1.0f : 0.0f;
+    } else if (k.style == 2) {
+        out[1] = 0.0f;
+    } else if (k.style == 3) {
+        int nk = -1;
+        float nd = 1e9f;
+        for (int q = 0; q < PILLBOXES; q++) {
+            if (w.bhp[q] <= 0.0f) continue;
+            float px = w.bx[q] - me.x, py = w.by[q] - me.y, pd = sqrtf(px * px + py * py);
+            if (pd < nd) { nd = pd; nk = q; }
+        }
+        if (nk >= 0) {
+            float pb = wrap(atan2f(w.by[nk] - me.y, w.bx[nk] - me.x) - me.a);
+            out[0] = fmaxf(-1.0f, fminf(1.0f, pb / 3.14159265f));
+            out[1] = nd > GUN_RANGE - 2.0f ? 1.0f : 0.0f;
+            out[2] = (fabsf(pb) < k.tol && nd < GUN_RANGE) ? 1.0f : -1.0f;
+        }
+    } else if (k.style == 4) {
+        if (!(me.hp > en.hp + 0.3f * HP) && d < 14.0f) {
+            float away = wrap(b + 3.14159265f);
+            out[0] = fmaxf(-1.0f, fminf(1.0f, away / 3.14159265f));
+            out[1] = 1.0f;
+        }
+    }
+#endif
 }
 
 // What a net-driven tank does. Returns 1 when the net's own say reached the tank.
@@ -428,7 +464,7 @@ __device__ int decide(const float* __restrict__ wt, const Tank& me, const Tank& 
     sense(me, en, w, in);
 #ifdef HYBRID
     float rules[3];
-    scripted(me, en, YARDSTICK, rules);
+    scripted(me, en, YARDSTICK, w, rules);
     in[32] = rules[0]; in[33] = rules[1]; in[34] = rules[2];
     think(wt, in, out);
     bool open = out[3] > 0.0f;
@@ -660,7 +696,12 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
     const float* opp = nullptr;
     if (opp_mode == 0) {
         float u = br.u();
-        if (u < spar) skill = Skill{br.in(0.05f, 0.6f), br.in(SPAR_NEAR, SPAR_FAR)};
+        if (u < spar) {
+            skill = Skill{br.in(0.05f, 0.6f), br.in(SPAR_NEAR, SPAR_FAR), 0};
+#ifdef WORLD
+            skill.style = min((int)(br.u() * STYLES), STYLES - 1);
+#endif
+        }
         else if (u < spar + lad && ladder_n > 0) opp = ladder + (size_t)min((int)(br.u() * ladder_n), ladder_n - 1) * NW;
         else {
             bool recent = br.u() < 0.5f;
@@ -696,7 +737,7 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
         opened += decide(wA, A, B, w, in, actA);
         aim += in[29] > 0.0f ? in[29] * (in[28] * in[28] < 0.01f ? 1.0f : 0.2f) : 0.0f;
         if (net_opp) decide(wB, B, A, w, in, actB);
-        else scripted(B, A, skill, actB);
+        else scripted(B, A, skill, w, actB);
         drive(A, actA, w);
         drive(B, actB, w);
 #ifdef WORLD
@@ -781,7 +822,11 @@ __global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ c
     const float* opp = nullptr;
     int oi = -1;
     if (dice.u() >= 0.5f && n_opps > 0) { oi = min((int)(dice.u() * n_opps), n_opps - 1); opp = opps + (size_t)oi * NW; }
-    else skill = Skill{dice.in(0.05f, 0.6f), dice.in(SPAR_NEAR, SPAR_FAR)};
+    else {
+        skill = Skill{dice.in(0.05f, 0.6f), dice.in(SPAR_NEAR, SPAR_FAR), 0};
+        skill.style = min((int)(dice.u() * STYLES), STYLES - 1);
+        oi = -1 - skill.style;
+    }
     opp_of[d] = oi;
     if (d == 0) {
         for (int p = 0; p < PILLARS; p++) { arena_out[p] = w.px[p]; arena_out[PILLARS + p] = w.py[p]; arena_out[2 * PILLARS + p] = w.pr[p]; }
@@ -797,7 +842,7 @@ __global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ c
         decide(champ, A, B, w, in, actA);
         aim += in[29] > 0.0f ? in[29] * (in[28] * in[28] < 0.01f ? 1.0f : 0.2f) : 0.0f;
         if (opp) decide(opp, B, A, w, in, actB);
-        else scripted(B, A, skill, actB);
+        else scripted(B, A, skill, w, actB);
         drive(A, actA, w);
         drive(B, actB, w);
         int fa = fly_world(A, B, w);
@@ -1004,8 +1049,8 @@ static std::vector<std::string> split(const std::string& s) {
 // --trace: the file montage.py reads. A header of ints -- the mark 0x63747231
 // ("ctr1"), the version, champions, duels, steps, TREC, PILLARS, PILLBOXES, NW
 // -- then floats DT, ARENA, HP, PB_HEALTH, GUN_RANGE, PB_RANGE; the arena
-// (pillars' x, y, r, pillboxes' x, y); each duel's opponent (-1 a sparring
-// partner, else the --opponents index); then for each champion its duels'
+// (pillars' x, y, r, pillboxes' x, y); each duel's opponent (-1 - style a
+// sparring partner of that style, 0 the script to 4 Timid; else the --opponents index); then for each champion its duels'
 // outcomes (1 won, -1 lost, 0 drawn), steps played and fitness, and every
 // step of every duel, TREC floats. A duel that ends early stops there: its
 // later steps are zero, and `steps played` says where.
