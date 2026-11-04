@@ -1360,6 +1360,14 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     w8466 reads -0.42 +/- 0.15 a seat under it against the old score.
     Next: the fleet's reads under the new score; whether the guard's
     floors move; the new counts as scenario reward terms.
+82. The gate a dial, the clone beside the rules. (4 November; cause:
+    Paul, "The gate as a dial", "Islands meet the game's styles", "One
+    seat beside the rules"; LR 140, CI-089.) Built: `duel_gate`;
+    `SCHOLAR=file`; in crucible, sparring partners in the game's styles;
+    in orrery, the clone judged on one seat. State: built; the gate stays
+    0 (0.6 reads +1.61 +/- 1.50 over it). Next: the gate at 0.6 read on
+    the fleet's 400 seeds; the bridge's reads of champions trained
+    against the styles.
 
 ## Sequencing
 

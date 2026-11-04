@@ -143,7 +143,7 @@ pub fn settings_for(style: &Style, base: &Settings) -> Settings {
 pub fn make(style: &Style, base: &Settings, name: &str, rules: impl FnOnce() -> Box<dyn Brain>) -> Box<dyn Brain> {
     match style.kind {
         Kind::Rules(_) | Kind::Transform(_) => with_settings(settings_for(style, base), rules),
-        Kind::Net(bytes) => Box::new(NetBrain::new(Net::from_bytes(bytes).expect("a shipped net reads"), name)),
+        Kind::Net(bytes) => Box::new(NetBrain::new(scholar_file(style).unwrap_or_else(|| Net::from_bytes(bytes).expect("a shipped net reads")), name)),
         Kind::Duel(bytes) => {
             let champion = match gladiator_file(style) {
                 Some(c) => c,
@@ -152,6 +152,19 @@ pub fn make(style: &Style, base: &Settings, name: &str, rules: impl FnOnce() -> 
             Box::new(Duelist::new(champion, with_settings(base.clone(), rules)))
         }
     }
+}
+
+/// THE FLEET'S READ OF A CLONE NOT YET SHIPPED (LR 140): `SCHOLAR=path` makes slot 6 play that net
+/// instead of the shipped one, as `GLADIATOR` does for slot 17. orrery's clone stage judges a clone of
+/// the rules as one seat beside them (`bot_style = 6`, `bot_mix = one`; Paul, 4 November: "One seat
+/// beside the rules"), which `CENSUS_NET`, a whole team of nets, cannot say. A file that is not a net
+/// stops the match with a sentence.
+fn scholar_file(style: &Style) -> Option<Net> {
+    if style.slot != 6 {
+        return None;
+    }
+    let path = std::env::var("SCHOLAR").ok().filter(|p| !p.is_empty())?;
+    Some(Net::load(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("SCHOLAR={}: {}", path, e)))
 }
 
 /// THE FLEET'S READ OF A CHAMPION NOT YET SHIPPED (LR 138): `GLADIATOR=path` makes slot 17 play that
@@ -403,6 +416,14 @@ impl Duelist {
         Duelist { champion, rules, open: false, errand: None }
     }
 
+    /// THE GATE IS A DIAL (LR 140; Paul, 4 November, of the Gladiator's gap to the defaults: "The gate
+    /// as a dial"): the champion's confidence must pass `duel_gate`, 0 being its own gate as trained. A
+    /// higher gate keeps it to the fights it is surest of and leaves the rest to the rules; the census
+    /// reads where the line is. The rules' settings carry it, as every dial of a seat.
+    fn gate(&self) -> f32 {
+        self.rules.settings().map(|s| s.w[W::DuelGate]).unwrap_or(0.0)
+    }
+
     /// Its say this decision, if the gate opens: what to do instead of the rules' moving and firing.
     fn duel(&self, obs: &Observation, map: Option<&Map>) -> Option<Vec<Command>> {
         let me = obs.me.as_ref().filter(|t| t.alive)?;
@@ -415,7 +436,7 @@ impl Duelist {
             // throttle has no reverse, so a throttle at or under nothing holds the tank where it is.
             let x = world_senses(obs, map, me, en);
             let y = self.champion.think(&x);
-            if y[3] <= 0.0 {
+            if y[3] <= self.gate() {
                 return None;
             }
             let turn = (x[32] + y[0]).clamp(-1.0, 1.0);
@@ -428,7 +449,7 @@ impl Duelist {
         }
         let x = senses(obs, map, me, en);
         let y = self.champion.think(&x);
-        if y[3] <= 0.0 {
+        if y[3] <= self.gate() {
             return None;
         }
         let act: Vec<f32> = (0..2).map(|i| (x[32 + i] + y[i]).clamp(-1.0, 1.0)).collect();
@@ -687,6 +708,23 @@ mod tests {
     }
 
     #[test]
+    fn the_gate_is_a_dial_and_a_sure_champion_passes_a_higher_one() {
+        // A champion whose confidence is tanh(0.6), about 0.54, and whose throttle output is pinned low.
+        let mut w = vec![0f32; WORLD_CHAMPION_WEIGHTS];
+        w[WORLD_CHAMPION_WEIGHTS - 1] = 0.6;
+        w[WORLD_CHAMPION_WEIGHTS - 3] = -9.0;
+        let (world, obs, _, _) = seat_and_enemy();
+        let at = |gate: f32| {
+            let mut s = Settings::default();
+            s.w[W::DuelGate] = gate;
+            let b = Duelist::new(Champion { nin: W_NIN, h: W_H, w: w.clone() }, Box::new(Dialed(s)));
+            b.duel(&obs, Some(&world.map)).is_some()
+        };
+        assert!(at(0.0) && at(0.5), "0.54 passes its own gate and one at a half");
+        assert!(!at(0.6), "and not one at 0.6: the rules keep that fight");
+    }
+
+    #[test]
     fn a_ray_meets_what_is_in_front_and_misses_what_is_not() {
         let d = V2::new(1.0, 0.0);
         let hit = ray_circle(V2::new(0.0, 0.0), d, V2::new(10.0, 0.0), 1.0);
@@ -699,6 +737,20 @@ mod tests {
     fn the_yardstick_turns_closes_and_fires_as_crucibles() {
         assert_eq!(scripted(0.0, 5.0), [0.0, -0.5, 1.0], "close: back off, and it is aimed");
         assert_eq!(scripted(1.0, 30.0), [1.0, 1.0, -1.0], "far and off: turn, close, hold fire");
+    }
+
+    /// Stands in for the rules with a seat's dials, as the Commander carries them: the gate reads there.
+    struct Dialed(Settings);
+    impl Brain for Dialed {
+        fn name(&self) -> &str {
+            "dialed"
+        }
+        fn think(&mut self, _: &Observation) -> Vec<Command> {
+            vec![]
+        }
+        fn settings(&self) -> Option<&Settings> {
+            Some(&self.0)
+        }
     }
 
     /// Stands in for the rules, and says so: every Command of its own is one the duel may replace.

@@ -1,0 +1,33 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Wed, 04 Nov 2026 22:00:00 +0000
+Subject: [JOURNAL 0116] The Duelist's gate a dial, a clone judged beside the rules, crucible's partners in the game's styles
+Message-ID: <0116.20261104@treadcore.org>
+In-Reply-To: <0115.20261104@treadcore.org>
+Organization: treadcore.org
+Keywords: Duelist, Gladiator, duel_gate, Scholar, clone, bot_mix, crucible, styles
+
+## Abstract
+
+Three of Paul's answers of the afternoon. The Duelist's gate is a dial,
+duel_gate: a champion takes the fight only when its confidence is over
+it. Swept for the Gladiator on 48 seeds: -2.58 a seat at 0, -2.50 at
+0.3, -0.97 at 0.6, the last +1.61 +/- 1.50 over its own gate, inside
+two errors, so the default stays 0. SCHOLAR=file swaps slot 6's net,
+so orrery's clone stage judges a clone on one seat beside the rules,
+not as a whole team of nets that loses forty a seat for want of a
+base. crucible's world sparring partners now play the game's styles.
+
+## Session
+
+Code: weights.rs (DuelGate), RANGES (duel_gate -1 1), styles.rs
+(Duelist::gate, scholar_file), a test of the gate. crucible cab1adf.
+orrery 7b3bf3c (the clone's one-seat judge). Reads: the gate at 0, 0.3
+and 0.6 on 48 seeds. LR 140, CI-089, CHANGELOG, ROADMAP 82, this entry,
+the brain map.
+
+## Next
+
+The gate at 0.6 against 0 on the fleet's 400 seeds; the clone stage's
+next round judged on one seat; the bridge's reads of champions trained
+against the styles.

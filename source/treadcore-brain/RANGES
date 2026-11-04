@@ -57,6 +57,7 @@ focus_blend 0 1
 assist 0 1
 bio_amount 0 1
 patch_confidence 0 1
+duel_gate -1 1  # the champion's confidence is a tanh
 site_poor -1 1  # a site score runs -1 to 1
 
 # PHYSICAL CONSTRAINTS (Paul, 2 November 2026: "we start this process by locking physical constraints

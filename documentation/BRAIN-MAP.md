@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-28 files, 610 functions (10 with no doc comment; 56 more are a trait's, documented by it), 179 tests.
+28 files, 615 functions (10 with no doc comment; 59 more are a trait's, documented by it), 180 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -35,9 +35,9 @@ structure as built is `checkins/`.
 | [`scenario.rs`](#scenariors) | 1383 | 23 | 0 | 8 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
 | [`senses.rs`](#sensesrs) | 559 | 8 | 0 | 7 | The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map. |
 | [`status.rs`](#statusrs) | 366 | 9 | 0 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
-| [`styles.rs`](#stylesrs) | 761 | 31 | 2 | 20 | Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. |
+| [`styles.rs`](#stylesrs) | 813 | 36 | 2 | 21 | Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. |
 | [`tactics.rs`](#tacticsrs) | 735 | 17 | 1 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
-| [`weights.rs`](#weightsrs) | 796 | 33 | 0 | 9 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
+| [`weights.rs`](#weightsrs) | 797 | 33 | 0 | 9 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
 
 ## bio.rs
 
@@ -976,55 +976,61 @@ Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. And naming ... right now 
 | 115 | `names` |  | yes | "0 Fleet, 1 Raider, ...": what a refusal offers. |
 | 122 | `settings_for` |  | yes | A style's dials over `base`. |
 | 143 | `make` |  | yes | A seat's brain in this style. |
-| 162 | `gladiator_file` |  |  | THE FLEET'S READ OF A CHAMPION NOT YET SHIPPED (LR 138): `GLADIATOR=path` makes slot 17 play that world champion instead of the shipped one, as `CENSUS_WEIGHTS` makes a census play dials not yet promoted. |
-| 215 | `from_bytes` | Champion | yes | A champion as crucible exports it, bare floats with no header: its kind is its size. |
-| 234 | `world` | Champion | yes | A world island's champion: it reads the twenty world inputs and drives as the world's tank. |
-| 239 | `think` | Champion | yes | crucible.cu's `think`: the inputs through two hidden layers to four outputs, tanh throughout. |
-| 256 | `ray_wall` |  |  | How far along a ray before something blocks a tank, in tiles; RANGE if nothing does, or no map. |
-| 270 | `ray_circle` |  |  | Where a ray from `from` first meets a circle. |
-| 281 | `scripted` |  |  | crucible's `scripted` at its yardstick: turn to the enemy, close to range, fire when aimed. |
-| 290 | `senses` |  | yes | crucible's `sense` and the hybrid's three inputs, from what a tank here can see. |
-| 318 | `scripted_world` |  |  | crucible's `scripted` at the WORLD yardstick: the turn is the bearing itself as a heading error (-1..1 is -pi..pi), it stands off inside the gun's reach, and it fires when aimed within the gun's. |
-| 327 | `shell_at` |  |  | Where a shell is at this tick: along its flight, from launch to impact. |
-| 340 | `world_senses` |  | yes | crucible's `sense` under WORLD, and the hybrid's three: 55 inputs from what a tank here can see. |
-| 402 | `new` | Duelist | yes |  |
-| 407 | `duel` | Duelist |  | Its say this decision, if the gate opens: what to do instead of the rules' moving and firing. |
-| 445 | `fight_order` |  |  | What the rules said that the duel now says instead: where to be. |
-| 450 | `name` | Duelist |  | *(the `Brain` trait's)* |
-| 454 | `think` | Duelist |  | *(the `Brain` trait's)* |
-| 458 | `think_on` | Duelist |  | *(the `Brain` trait's)* |
-| 485 | `status` | Duelist |  | *(the `Brain` trait's)* |
-| 489 | `settings` | Duelist |  | *(the `Brain` trait's)* |
-| 493 | `act` | Duelist |  | *(the `Brain` trait's)* |
-| 497 | `rung` | Duelist |  | *(the `Brain` trait's)* |
-| 501 | `stance` | Duelist |  | *(the `Brain` trait's)* |
-| 629 | `seat_and_enemy` |  |  | Seat 0, an enemy six tiles ahead of it (at the start nobody is in sight on naval), and the observation with that enemy alone and every pillbox taken away. |
-| 707 | `name` |  |  | *(the `Brain` trait's)* |
-| 710 | `think` |  |  | *(the `Brain` trait's)* |
-| 715 | `world` |  |  |  |
+| 162 | `scholar_file` |  |  | THE FLEET'S READ OF A CLONE NOT YET SHIPPED (LR 140): `SCHOLAR=path` makes slot 6 play that net instead of the shipped one, as `GLADIATOR` does for slot 17. |
+| 175 | `gladiator_file` |  |  | THE FLEET'S READ OF A CHAMPION NOT YET SHIPPED (LR 138): `GLADIATOR=path` makes slot 17 play that world champion instead of the shipped one, as `CENSUS_WEIGHTS` makes a census play dials not yet promoted. |
+| 228 | `from_bytes` | Champion | yes | A champion as crucible exports it, bare floats with no header: its kind is its size. |
+| 247 | `world` | Champion | yes | A world island's champion: it reads the twenty world inputs and drives as the world's tank. |
+| 252 | `think` | Champion | yes | crucible.cu's `think`: the inputs through two hidden layers to four outputs, tanh throughout. |
+| 269 | `ray_wall` |  |  | How far along a ray before something blocks a tank, in tiles; RANGE if nothing does, or no map. |
+| 283 | `ray_circle` |  |  | Where a ray from `from` first meets a circle. |
+| 294 | `scripted` |  |  | crucible's `scripted` at its yardstick: turn to the enemy, close to range, fire when aimed. |
+| 303 | `senses` |  | yes | crucible's `sense` and the hybrid's three inputs, from what a tank here can see. |
+| 331 | `scripted_world` |  |  | crucible's `scripted` at the WORLD yardstick: the turn is the bearing itself as a heading error (-1..1 is -pi..pi), it stands off inside the gun's reach, and it fires when aimed within the gun's. |
+| 340 | `shell_at` |  |  | Where a shell is at this tick: along its flight, from launch to impact. |
+| 353 | `world_senses` |  | yes | crucible's `sense` under WORLD, and the hybrid's three: 55 inputs from what a tank here can see. |
+| 415 | `new` | Duelist | yes |  |
+| 423 | `gate` | Duelist |  | THE GATE IS A DIAL (LR 140; Paul, 4 November, of the Gladiator's gap to the defaults: "The gate as a dial"): the champion's confidence must pass `duel_gate`, 0 being its own gate as trained. |
+| 428 | `duel` | Duelist |  | Its say this decision, if the gate opens: what to do instead of the rules' moving and firing. |
+| 466 | `fight_order` |  |  | What the rules said that the duel now says instead: where to be. |
+| 471 | `name` | Duelist |  | *(the `Brain` trait's)* |
+| 475 | `think` | Duelist |  | *(the `Brain` trait's)* |
+| 479 | `think_on` | Duelist |  | *(the `Brain` trait's)* |
+| 506 | `status` | Duelist |  | *(the `Brain` trait's)* |
+| 510 | `settings` | Duelist |  | *(the `Brain` trait's)* |
+| 514 | `act` | Duelist |  | *(the `Brain` trait's)* |
+| 518 | `rung` | Duelist |  | *(the `Brain` trait's)* |
+| 522 | `stance` | Duelist |  | *(the `Brain` trait's)* |
+| 650 | `seat_and_enemy` |  |  | Seat 0, an enemy six tiles ahead of it (at the start nobody is in sight on naval), and the observation with that enemy alone and every pillbox taken away. |
+| 745 | `name` |  |  | *(the `Brain` trait's)* |
+| 748 | `think` |  |  | *(the `Brain` trait's)* |
+| 751 | `settings` |  |  | *(the `Brain` trait's)* |
+| 759 | `name` |  |  | *(the `Brain` trait's)* |
+| 762 | `think` |  |  | *(the `Brain` trait's)* |
+| 767 | `world` |  |  |  |
 
-Tests (20):
+Tests (21):
 
-- `sixteen_styles_each_by_number_and_by_name_and_none_share_either` (line 513): *(the `Brain` trait's)*
-- `the_dial_names_the_roster_in_its_order` (line 530): *(the `Brain` trait's)*
-- `a_team_may_be_one_style_or_several_and_a_mistake_says_what_there_is` (line 537): *(the `Brain` trait's)*
-- `style_zero_is_the_brain_as_it_was` (line 545): *(the `Brain` trait's)*
-- `a_style_of_rules_keeps_the_seats_skill` (line 552): *(the `Brain` trait's)*
-- `the_overrider_changes_only_the_slot_on_todays_brain` (line 561): *(the `Brain` trait's)*
-- `every_shipped_file_reads` (line 570): *(the `Brain` trait's)*
-- `a_champion_of_the_wrong_size_is_refused_not_misread` (line 582): *(the `Brain` trait's)*
-- `the_champions_arithmetic_is_crucibles` (line 588): *(the `Brain` trait's)*
-- `a_world_champion_is_read_by_its_size_and_a_gateless_one_is_refused` (line 598): *(the `Brain` trait's)*
-- `a_world_champions_arithmetic_is_crucibles` (line 612): *(the `Brain` trait's)*
-- `the_world_yardstick_turns_by_the_bearing_and_fires_inside_the_guns_reach` (line 621): *(the `Brain` trait's)*
-- `a_world_tank_does_not_see_an_enemy_past_its_eyes_but_knows_its_bearing` (line 644): *(the `Brain` trait's)*
-- `a_world_tank_sees_the_pillbox_that_has_it_and_not_its_own` (line 657): *(the `Brain` trait's)*
-- `a_world_duelist_with_its_gate_open_and_no_throttle_holds_its_ground` (line 679): *(the `Brain` trait's)*
-- `a_ray_meets_what_is_in_front_and_misses_what_is_not` (line 690): *(the `Brain` trait's)*
-- `the_yardstick_turns_closes_and_fires_as_crucibles` (line 699): *(the `Brain` trait's)*
-- `with_its_gate_shut_a_duelist_is_the_rules_to_the_last_command` (line 720)
-- `no_enemy_to_see_means_the_rules_alone` (line 733)
-- `every_style_plays_a_match_to_its_end_without_a_fault` (line 746)
+- `sixteen_styles_each_by_number_and_by_name_and_none_share_either` (line 534): *(the `Brain` trait's)*
+- `the_dial_names_the_roster_in_its_order` (line 551): *(the `Brain` trait's)*
+- `a_team_may_be_one_style_or_several_and_a_mistake_says_what_there_is` (line 558): *(the `Brain` trait's)*
+- `style_zero_is_the_brain_as_it_was` (line 566): *(the `Brain` trait's)*
+- `a_style_of_rules_keeps_the_seats_skill` (line 573): *(the `Brain` trait's)*
+- `the_overrider_changes_only_the_slot_on_todays_brain` (line 582): *(the `Brain` trait's)*
+- `every_shipped_file_reads` (line 591): *(the `Brain` trait's)*
+- `a_champion_of_the_wrong_size_is_refused_not_misread` (line 603): *(the `Brain` trait's)*
+- `the_champions_arithmetic_is_crucibles` (line 609): *(the `Brain` trait's)*
+- `a_world_champion_is_read_by_its_size_and_a_gateless_one_is_refused` (line 619): *(the `Brain` trait's)*
+- `a_world_champions_arithmetic_is_crucibles` (line 633): *(the `Brain` trait's)*
+- `the_world_yardstick_turns_by_the_bearing_and_fires_inside_the_guns_reach` (line 642): *(the `Brain` trait's)*
+- `a_world_tank_does_not_see_an_enemy_past_its_eyes_but_knows_its_bearing` (line 665): *(the `Brain` trait's)*
+- `a_world_tank_sees_the_pillbox_that_has_it_and_not_its_own` (line 678): *(the `Brain` trait's)*
+- `a_world_duelist_with_its_gate_open_and_no_throttle_holds_its_ground` (line 700): *(the `Brain` trait's)*
+- `the_gate_is_a_dial_and_a_sure_champion_passes_a_higher_one` (line 711): *(the `Brain` trait's)*
+- `a_ray_meets_what_is_in_front_and_misses_what_is_not` (line 728): *(the `Brain` trait's)*
+- `the_yardstick_turns_closes_and_fires_as_crucibles` (line 737): *(the `Brain` trait's)*
+- `with_its_gate_shut_a_duelist_is_the_rules_to_the_last_command` (line 772)
+- `no_enemy_to_see_means_the_rules_alone` (line 785)
+- `every_style_plays_a_match_to_its_end_without_a_fault` (line 798)
 
 ## tactics.rs
 
@@ -1068,42 +1074,42 @@ Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5
 | 63 | `choices` |  | yes | A choice's versions, 0 first, from its doc's `(choice: a / b / ...)`; None for a weight that scales. |
 | 69 | `by_name` |  | yes | The weight of that name, if any. |
 | 75 | `step` |  | yes | A slider's step (the coordination screen, backlog 15): one for a rounded weight, else a tenth of the default taken to 1, 2 or 5 of its power of ten; a tenth for nothing. |
-| 284 | `default` | Weights |  | *(the `Default` trait's)* |
-| 291 | `index` | Weights |  | *(the `Index` trait's)* |
-| 297 | `index_mut` | Weights |  | *(the `IndexMut` trait's)* |
-| 316 | `doc` | Weights | yes | What a capability does, for the sliders' page. |
-| 346 | `default` | Caps |  | *(the `Default` trait's)* |
-| 353 | `has` | Caps | yes | Every bit of `c` is on. |
-| 357 | `with` | Caps | yes | These, and `c` on. |
-| 361 | `without` | Caps | yes | These, and `c` off. |
-| 365 | `all` | Caps | yes | Every capability, the new ones too. |
-| 369 | `by_name` | Caps | yes | The capability of that name, as a weights file spells it. |
-| 373 | `names` | Caps | yes | The names of the bits that are on, comma-separated. |
-| 386 | `fmt` | WeightsError |  | *(the `Display` trait's)* |
-| 392 | `ranges` |  |  | RANGES' lines, as (name, min, max). |
-| 407 | `default` | Settings |  | *(the `Default` trait's)* |
-| 421 | `parse` | Settings | yes | Read the file form. |
-| 469 | `hold` | Settings | yes | Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are not adjusted beyond their max or under their min range"). |
-| 481 | `choice` | Settings | yes | A choice's version: its weight rounded, held to the versions it has (0 for a weight that is not a choice and below a half). |
-| 487 | `smooth` | Settings | yes | How much the bot smooths (`w_smooth`), 0 to 1. |
-| 493 | `smooth_alpha` | Settings | yes | The share of a move's new pull taken a think: all of it at `w_smooth` 0, `alpha` at 1, in a line between. |
-| 498 | `smooth_on` | Settings | yes | The yes-or-no parts of smoothing: on above 0.5. |
-| 503 | `to_text` | Settings | yes | The file form: every weight, and the capabilities. |
-| 512 | `diff` | Settings | yes | The weights that differ from the defaults: what makes a genome. |
-| 518 | `nudge` | Settings | yes | A slider moved `by` steps: never under nothing, and kept to four places so a step back is the number it was. |
-| 524 | `ticks` | Settings | yes | Seconds into ticks, for the time weights. |
-| 531 | `from_weights` | Tactics | yes | The tactics the weights describe. |
-| 589 | `eval` | Curve | yes | The curve at `x`, clamped to 0..1 both ways; a value that is not finite reads 0. |
-| 609 | `utility` |  | yes | An action's utility (LR 4): its weight times the geometric mean of its considerations, raised by `commit` if it is the intent held now. |
+| 285 | `default` | Weights |  | *(the `Default` trait's)* |
+| 292 | `index` | Weights |  | *(the `Index` trait's)* |
+| 298 | `index_mut` | Weights |  | *(the `IndexMut` trait's)* |
+| 317 | `doc` | Weights | yes | What a capability does, for the sliders' page. |
+| 347 | `default` | Caps |  | *(the `Default` trait's)* |
+| 354 | `has` | Caps | yes | Every bit of `c` is on. |
+| 358 | `with` | Caps | yes | These, and `c` on. |
+| 362 | `without` | Caps | yes | These, and `c` off. |
+| 366 | `all` | Caps | yes | Every capability, the new ones too. |
+| 370 | `by_name` | Caps | yes | The capability of that name, as a weights file spells it. |
+| 374 | `names` | Caps | yes | The names of the bits that are on, comma-separated. |
+| 387 | `fmt` | WeightsError |  | *(the `Display` trait's)* |
+| 393 | `ranges` |  |  | RANGES' lines, as (name, min, max). |
+| 408 | `default` | Settings |  | *(the `Default` trait's)* |
+| 422 | `parse` | Settings | yes | Read the file form. |
+| 470 | `hold` | Settings | yes | Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are not adjusted beyond their max or under their min range"). |
+| 482 | `choice` | Settings | yes | A choice's version: its weight rounded, held to the versions it has (0 for a weight that is not a choice and below a half). |
+| 488 | `smooth` | Settings | yes | How much the bot smooths (`w_smooth`), 0 to 1. |
+| 494 | `smooth_alpha` | Settings | yes | The share of a move's new pull taken a think: all of it at `w_smooth` 0, `alpha` at 1, in a line between. |
+| 499 | `smooth_on` | Settings | yes | The yes-or-no parts of smoothing: on above 0.5. |
+| 504 | `to_text` | Settings | yes | The file form: every weight, and the capabilities. |
+| 513 | `diff` | Settings | yes | The weights that differ from the defaults: what makes a genome. |
+| 519 | `nudge` | Settings | yes | A slider moved `by` steps: never under nothing, and kept to four places so a step back is the number it was. |
+| 525 | `ticks` | Settings | yes | Seconds into ticks, for the time weights. |
+| 532 | `from_weights` | Tactics | yes | The tactics the weights describe. |
+| 590 | `eval` | Curve | yes | The curve at `x`, clamped to 0..1 both ways; a value that is not finite reads 0. |
+| 610 | `utility` |  | yes | An action's utility (LR 4): its weight times the geometric mean of its considerations, raised by `commit` if it is the intent held now. |
 
 Tests (9):
 
-- `every_range_reads_and_holds_its_own_default` (line 630)
-- `no_trial_can_move_a_decreed_value` (line 651)
-- `default_weights_are_todays_constants` (line 660)
-- `a_weights_file_round_trips_and_names_its_mistakes` (line 671)
-- `smooth_is_a_weight_that_blends_and_thresholds` (line 691): `w_smooth` (LR 46): the default is near off, the desire vector blends in a line, and the yes-or-no parts turn on above 0.5.
-- `the_geometric_mean_compensates_and_vetoes` (line 710)
-- `a_slider_steps_and_steps_back` (line 720)
-- `a_test_that_uses_the_defaults_names_the_weights_it_tests` (line 748): THE PINNED-TEST LINT (the plan of 2 November, chapter 15).
-- `every_profile_reads_and_differs` (line 782)
+- `every_range_reads_and_holds_its_own_default` (line 631)
+- `no_trial_can_move_a_decreed_value` (line 652)
+- `default_weights_are_todays_constants` (line 661)
+- `a_weights_file_round_trips_and_names_its_mistakes` (line 672)
+- `smooth_is_a_weight_that_blends_and_thresholds` (line 692): `w_smooth` (LR 46): the default is near off, the desire vector blends in a line, and the yes-or-no parts turn on above 0.5.
+- `the_geometric_mean_compensates_and_vetoes` (line 711)
+- `a_slider_steps_and_steps_back` (line 721)
+- `a_test_that_uses_the_defaults_names_the_weights_it_tests` (line 749): THE PINNED-TEST LINT (the plan of 2 November, chapter 15).
+- `every_profile_reads_and_differs` (line 783)

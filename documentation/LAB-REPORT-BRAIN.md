@@ -10016,3 +10016,27 @@ The team's terms are each of its seats', as castles are. `CENSUS_REWARDS=0` is s
 **Read** (this Mac, every map, 48 seeds, 900 s, respawns 3): w8466 +1.95 ± 1.20 a seat under the old score, +1.54 ± 1.20 under the new, **paired −0.42 ± 0.15** (2.8 errors). The rule is met: the new score sees the trade, and w8466 still reads above the defaults, so the guard, not the score, is what holds a candidate that builds a team's worth less. Over the 432 teams of that census the new terms run, a team a match: 21.5 built (to 98), 4.7 repairs, 1.45 loads of wood near a base, pillbox life 0.13 and the longest 0.26 of the match, 0.05 turret kills, guns ready 0.16 of the match. Building carries the most points; turret kills are rare enough that their rate weighs little yet.
 
 **Not done.** A scenario's reward terms do not name the new counts; the trade guard's floors are unchanged (1 built, 0.5 road a team, 0.1 kills less deaths a seat); the weights are Paul's, not the search's, as the rewards of section 84 are.
+
+## 140. The Duelist's gate a dial, a clone judged on one seat beside the rules, and crucible's partners in the game's styles, 4 November
+
+Two of Paul's answers of the afternoon. Of the Gladiator, still under the defaults by about two and a half a seat (section 138): "The gate as a dial" and "Islands meet the game's styles". Of orrery's clone stage, whose first round read the fresh clone −42.7 a seat as a whole team of nets against −39.9 for the shipped Scholar, inside the noise: "One seat beside the rules".
+
+**The gate as a dial.** `duel_gate` (weights.rs, `RANGES` −1 to 1, the champion's confidence being a tanh): a champion takes the fight only when its confidence is over it, for styles 7 and 17 alike; 0 is the gate as trained, so nothing plays differently by default. The rules' settings carry it, as every dial of a seat, and `Duelist::gate` reads them there.
+
+**The rule before the run:** a gate above 0 becomes the Gladiator's default only if it reads better than gate 0 on the same 48 seeds by more than two errors of the paired difference.
+
+**Read** (this Mac, every map, 48 seeds, 900 s, respawns 3; the score of section 139), the trial team all Gladiator at each gate against the defaults:
+
+| Gate | Read, a seat | Less gate 0, paired |
+| --- | --- | --- |
+| 0 | −2.58 ± 1.27 | |
+| 0.3 | −2.50 ± 1.16 | +0.08 ± 1.37 |
+| 0.6 | −0.97 ± 1.52 | +1.61 ± 1.50 |
+
+No gate passes the rule: the default stays 0. At 0.6, a champion kept to the fights it is surest of, the Gladiator reads inside the noise of the defaults; it leans one error better than its own gate, which is the read a larger census must settle.
+
+**One seat beside the rules.** `SCHOLAR=path` makes slot 6 play that net instead of the shipped one, as `GLADIATOR` does for slot 17. orrery's clone stage now judges a clone by `bot_style = 6` with `bot_mix = one`: the clone on the team's last seat, its leader and guard the rules, against the shipped Scholar on the same seat and seeds. A whole team of nets loses forty a seat for want of building and crews, and that gap drowned the difference the stage is there to read.
+
+**The game's styles in crucible's arena** (crucible `cab1adf`). A world island's sparring partner now draws a style besides its aim and range: the script as it was, or treadcore's Raider (closes to four and presses while it is not the weaker or the enemy is hurt), Castle (holds its ground and fires on what comes into reach), Expander (shells the nearest live pillbox first) or Timid (turns away unless the odds are well on its side). The yardstick and the hybrid's own answer stay the script, and a build without WORLD trains row for row as before.
+
+**Not done.** The gate's read at 0.6 on the fleet's 400 seeds; the champions trained against the styles, which the bridge will read as they come.
