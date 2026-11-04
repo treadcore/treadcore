@@ -127,28 +127,66 @@ static_assert(2 * NW * sizeof(float) <= 49152, "two nets must fit 48 KB of share
 #define RANGE 40.0f
 #define DT 0.1f
 #ifdef WORLD
-// treadcore-sim's rules.rs, by name.
+// treadcore-sim's rules.rs, by name. EACH MAY BE GIVEN AT BUILD TIME
+// (make R_VMAX=4.5f ...): the coordinator reads rules.rs at the
+// fleet's commit and passes every one, so the world the islands train in is
+// the game's as it is now, not as it was when this file was written (Paul,
+// 4 November: "the GPU build always looks like the perfect world in
+// treadcore"). The numbers here are the game's of 3 November, for a build
+// by hand.
+#ifndef VMAX
 #define VMAX 4.0f              // TANK_SPEED, tiles/s
+#endif
+#ifndef ACCEL
 #define ACCEL 4.0f             // TANK_ACCEL
+#endif
+#ifndef BRAKE
 #define BRAKE 6.0f             // TANK_BRAKE
+#endif
+#ifndef TURN
 #define TURN 3.0f              // TANK_TURN, rad/s
+#endif
 #define TURN_BRAKE_ANGLE 0.6f  // a heading error past this eases off
 #define TURN_CRAWL 0.35f       // down to this share of speed for a turn right round
 #define TURN_PIVOT 2.0f        // past this it pivots where it stands
+#ifndef GUN_RANGE
 #define GUN_RANGE 10.0f        // DIRECT_RANGE
+#endif
+#ifndef SSPEED
 #define SSPEED 40.0f           // SHELL_SPEED_DIRECT
+#endif
 #define SLIFE (GUN_RANGE / SSPEED)
+#ifndef RELOAD
 #define RELOAD 4.0f            // RELOAD_TICKS, in seconds
+#endif
+#ifndef HP
 #define HP 100.0f              // TANK_ARMOR
+#endif
+#ifndef DAMAGE
 #define DAMAGE 45.0f           // DIRECT_DAMAGE: a hit, the unit fitness counts in
+#endif
+#ifndef HIT_R
 #define HIT_R 0.8f             // DIRECT_HIT_RADIUS
+#endif
+#ifndef SHELLS
 #define SHELLS 24.0f           // TANK_SHELLS
+#endif
+#ifndef VISION
 #define VISION 10.0f           // TANK_VISION: own eyes, as far as the gun
+#endif
 #define PILLBOXES 4
+#ifndef PB_RANGE
 #define PB_RANGE 8.0f          // PILLBOX_RANGE
+#endif
+#ifndef PB_DAMAGE
 #define PB_DAMAGE 15.0f        // PILLBOX_DAMAGE
+#endif
+#ifndef PB_RELOAD
 #define PB_RELOAD 2.0f         // PILLBOX_RELOAD_TICKS, in seconds
+#endif
+#ifndef PB_HEALTH
 #define PB_HEALTH 60.0f        // PILLBOX_HEALTH: two direct hits
+#endif
 #define PB_HIT (HIT_R + 0.5f)  // a shell strikes a pillbox this near, as treadcore's does
 #define PB_R 0.5f              // its body, to drive round
 #define STEPS_DEFAULT 1200     // two minutes: with a 4 s reload, 600 steps is fifteen shots
@@ -1098,6 +1136,9 @@ int main(int argc, char** argv) {
            shape(HERE).c_str(), KIND, NW, NW * 4 / 1024.0, fa.numRegs, shm, per_sm, o.eps, 100.0 * per_sm * o.eps / dp.maxThreadsPerMultiProcessor);
 #ifdef WORLD
     printf("# world: treadcore's rules, %d pillboxes, %d steps a duel (%.0f s)\n", PILLBOXES, o.steps, o.steps * DT);
+    printf("# rules: speed %g accel %g brake %g turn %g; armour %g, %g shells; gun %g tiles at %g/s for %g every %g s, hit radius %g; "
+           "vision %g; pillboxes %g tiles for %g every %g s, health %g\n",
+           VMAX, ACCEL, BRAKE, TURN, HP, SHELLS, GUN_RANGE, SSPEED, DAMAGE, RELOAD, HIT_R, VISION, PB_RANGE, PB_DAMAGE, PB_RELOAD, PB_HEALTH);
 #endif
     if (!o.trace.empty()) return run_trace(o);
 
