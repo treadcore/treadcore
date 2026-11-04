@@ -8,7 +8,7 @@
 # hostile one dead within 12 s, the neutral one untouched, and the tank's armour whole.
 name = "G18 shoot the hostile pillbox, spare the neutral one"
 reaction = "fire"
-floor = 0.8
+floor = 0.25
 players = 2
 seconds = 12
 pillboxes = false

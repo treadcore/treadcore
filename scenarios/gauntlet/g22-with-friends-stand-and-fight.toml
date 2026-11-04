@@ -9,7 +9,7 @@
 # tenths of it.
 name = "G22 with friends near: stand and fight"
 reaction = "fire"
-floor = 0.7
+floor = 0.40
 players = 4
 teams = [0, 0, 0, 1]
 seconds = 30

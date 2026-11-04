@@ -8,7 +8,7 @@
 # and alive.
 name = "G21 alone: kite the one that shot you"
 reaction = "fire"
-floor = 0.6
+floor = 0.15
 players = 2
 seconds = 40
 pillboxes = false

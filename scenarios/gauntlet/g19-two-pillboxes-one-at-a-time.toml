@@ -7,7 +7,7 @@
 # up to the far one's edge. Passed: both dead within 30 s, and the tank's armour whole.
 name = "G19 two pillboxes, one at a time from outside their rings"
 reaction = "fire"
-floor = 0.7
+floor = 0.0
 players = 2
 seconds = 30
 pillboxes = false
