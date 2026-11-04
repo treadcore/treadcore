@@ -63,6 +63,10 @@ pub struct Outcome {
     pub ore: u32,
     #[serde(default)]
     pub smelted: u32,
+    /// Ore the seat unloaded at a smelter (LR 137): `smelted` is the smelter's owner's, so a seat that
+    /// mines and never arrives shows only here, as a gap between `ore` and `ore_in`.
+    #[serde(default)]
+    pub ore_in: u32,
     /// Game 7: oil the seat pumped; its supply at the end; its workers lost to a splash, and the
     /// workers of others it took.
     #[serde(default)]
@@ -434,6 +438,11 @@ impl Tally {
                 Event::Smelted { owner, .. } => {
                     if let Some(i) = seat(*owner) {
                         self.seats[i].smelted += 1;
+                    }
+                }
+                Event::OreUnloaded { owner, ore, .. } => {
+                    if let Some(i) = seat(*owner) {
+                        self.seats[i].ore_in += *ore as u32;
                     }
                 }
                 Event::Pumped { owner, oil, .. } => {

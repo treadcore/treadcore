@@ -1,0 +1,42 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Wed, 04 Nov 2026 00:30:00 +0000
+Subject: [JOURNAL 0113] The three follow-ups of LR 136: the first minute reshaped, the delivery course, the census seat by seat
+Message-ID: <0113.20261104@treadcore.org>
+In-Reply-To: <0112.20261103@treadcore.org>
+Organization: treadcore.org
+Keywords: first minute, alive_time, naval, delivery, ore_in, census, bot_mix
+
+## Abstract
+
+The follow-up list of LR 136, handed back as the job. The first-minute
+courses pay alive_time as a potential and take back half a hundredth a
+point of damage: the same 7 of 10 on industry and island, the reward now
+positive (0.58 for -1.6). The pillbox placer lets an anchor at sea skip
+the land-route check, so naval has a pillbox on its island; no brain
+takes it (0 of 10 for the net and the scripted brain, at 90 and 180 s),
+so naval stays out of the train run. A delivery course, eight ore aboard
+and the side's smelter far: the logistics net delivers 10 of 10 at 24
+tiles, 6 at 40, 0 at 60; the course is set at 60, which is the forty
+tiles between the deposit and the base's smelter that r0155 and r0159
+read among sixteen. The census prints the trial team seat by seat, with
+ore in (the ore a seat unloaded, new in the ledger) beside ore and
+smelted. Three fleet runs asked.
+
+## Session
+
+Code: ledger ore_in and the OreUnloaded tally; scenario ore_in term,
+`ore = N` on a tank, the afloat placer; REWARDS 22; fleet.rs mixed_in
+hoisted, styled, the seat lines. Courses: the three first-minute files,
+14-the-delivery. Reads: eleven held-out runs of ten seeds. The brain
+crate's tests. LR 137, CHANGELOG, this entry; commit and push; then the
+fleet asked.
+
+## Next
+
+r0160s: first-minute-2 (from first-minute.bin, 400 gens), delivery (from
+logistics.bin, 300 gens), quartermaster-one-seats (400 seeds). Read the
+delivery run's net on the delivery course held out and on the ten-seed
+gauntlet; if it drives sixty tiles, put it on style 16 and census it.
+The naval landing as a course of its own. Watch the rules' drift
+(r0155 ore 6.0 to r0159 4.3) across the next censuses.

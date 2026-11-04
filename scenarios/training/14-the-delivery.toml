@@ -1,0 +1,49 @@
+# The delivery (LR 137; after LR 136, where one Quartermaster beside two of the rules mined what a
+# rules seat mines and the team smelted two thirds: the net carries ore it does not bring to the
+# works). G13 taught the mine with the smelter eight tiles off, and in a dealt match the smelter the
+# leader builds stands far from where the net mined. Here there is no deposit: the tank starts with
+# eight ore aboard and the side's smelter stands sixty tiles west, its depot beside it, empty; the
+# logistics net delivers ten of ten at twenty-four tiles, six at forty and none at sixty, and the
+# scripted brain ten at every distance, so sixty is where the course teaches something.
+# Decision: drive to the works and unload. Passed: a shell was smelted within the two minutes. The
+# drive is paid as a potential (`closer`) and the unload by the ore in (`ore_in`), the shell last.
+name = "the delivery"
+reaction = "move"
+floor = 0.5
+players = 2
+seconds = 120
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-70, 30]
+y = [-20, 20]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+ore = 8
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 60]
+[[depot]]
+at = "centre"
+offset = [-60, 5]
+owner = 0
+[[structure]]
+kind = "smelter"
+owner = 0
+at = "centre"
+offset = [-60, 0]
+[[brain]]
+seat = 0
+kind = "net"
+goal = "defend_base"
+[expect]
+smelted = { seat = 0, at_least = 1 }
+[reward]
+ore_in = 0.25
+smelted = 1
+closer = { at = "centre", offset = [-60, 0], worth = 1 }

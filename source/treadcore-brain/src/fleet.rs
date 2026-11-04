@@ -1116,6 +1116,26 @@ mod tests {
             let calls = crate::calls::Calls::new();
             // A model's team has its own queue of calls, as the net's has.
             let team_calls: Vec<crate::calls::Calls> = (0..TEAMS.len()).map(|_| crate::calls::Calls::new()).collect();
+            // `bot_mix`: the style on the team's last seats only, the rest the rules.
+            let mixed_in = |i: usize, s: &Settings| -> bool {
+                let team = TEAMS.iter().find(|t| t.contains(&i)).map(|t| &t[..]).unwrap_or(&[]);
+                let n = match s.choice(crate::weights::W::BotMix) {
+                    1 => 1,
+                    2 => 2,
+                    3 => team.len() / 2,
+                    _ => team.len(),
+                };
+                team.iter().position(|s| *s == i).map(|r| r + n >= team.len()).unwrap_or(true)
+            };
+            // Which seats play the style, for the per-seat lines below (LR 137): a mixed team's team
+            // line is the team's, and the seat's share was a difference of columns until now.
+            let styled: Vec<bool> = (0..SEATS)
+                .map(|i| {
+                    let on_trial = teams()[i] == lucky;
+                    let (style, own) = if on_trial { (trial_style, &trial) } else { (base_style, &base) };
+                    !(net.is_some() && on_trial) && style.is_some() && i != AGGRO && mixed_in(i, own)
+                })
+                .collect();
             let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS)
                 .map(|i| {
                     if let Some(n) = net.as_ref().filter(|_| teams()[i] == lucky) {
@@ -1123,19 +1143,8 @@ mod tests {
                     }
                     // The aggro seat stays the aggro bot: a team of its own.
                     let style = if teams()[i] == lucky { trial_style } else { base_style };
-                    // `bot_mix`: the style on the team's last seats only, the rest the rules.
-                    let mixed_in = |s: &Settings| -> bool {
-                        let team = TEAMS.iter().find(|t| t.contains(&i)).map(|t| &t[..]).unwrap_or(&[]);
-                        let n = match s.choice(crate::weights::W::BotMix) {
-                            1 => 1,
-                            2 => 2,
-                            3 => team.len() / 2,
-                            _ => team.len(),
-                        };
-                        team.iter().position(|s| *s == i).map(|r| r + n >= team.len()).unwrap_or(true)
-                    };
                     let own = if teams()[i] == lucky { &trial } else { &base };
-                    if let Some(st) = style.filter(|_| i != AGGRO && mixed_in(own)) {
+                    if let Some(st) = style.filter(|_| i != AGGRO && mixed_in(i, own)) {
                         let s = if teams()[i] == lucky { trial.clone() } else { base.clone() };
                         let made = crate::styles::make(st, &s, &name(i), || brain(i, seed ^ i as u64, false));
                         return (i as PlayerId, made);
@@ -1350,6 +1359,21 @@ mod tests {
                     sum(&|o| o.defends),
                     if rs.iter().any(|r| r.outcome.all_neutral) { "yes" } else { "no" }
                 );
+                // The trial team seat by seat when a style is on it (LR 137): with `bot_mix` the team
+                // line mixes the style's seats with the rules', and the read of one Quartermaster beside
+                // two of the rules (LR 136) had to take the seat's share as a difference. `ore in` is
+                // the ore the seat unloaded; `smelted` stays the smelter owner's.
+                if t == lucky && trial_style.is_some() {
+                    for r in &rs {
+                        let o = &r.outcome;
+                        eprintln!(
+                            "    seat {} ({}): score {:.2}, kills {}, deaths {}, built {}, ore {}, ore in {}, smelted {}, oil {}, supply {}",
+                            r.seat,
+                            if styled.get(r.seat as usize).copied().unwrap_or(false) { trial_style.map(|s| s.name).unwrap_or("style") } else { "rules" },
+                            r.score, o.kills, o.deaths, o.built, o.ore, o.ore_in, o.smelted, o.oil, o.supply
+                        );
+                    }
+                }
                 let e = &mut by_seed[(n - seed0) as usize];
                 if t == lucky {
                     trial_score += score;
