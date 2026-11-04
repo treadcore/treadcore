@@ -133,7 +133,34 @@ pub struct Outcome {
     /// Stages of the advance done within `ADVANCE_FOR` of a capture: a call, a chain, wood, road.
     #[serde(default)]
     pub advance_stages: u32,
+    /// The base (LR 139, Paul, 4 November: "for bases, repair rate"): pillboxes and structures of the
+    /// side the seat's squad mended, a finished repair each.
+    #[serde(default)]
+    pub repairs: u32,
+    /// "Workers mining forests around bases should receive reward, because now base fills faster":
+    /// trees the seat's squad felled for wood within `BASE_REACH` of a depot of its side.
+    #[serde(default)]
+    pub wood_near: u32,
+    /// The team's guns, shared by its seats as its castles are ("give well defended pillboxes average
+    /// time duration and longest best turret survival and its killrate"): the share of the match its
+    /// pillboxes stood, averaged over every pillbox it held; the longest-standing one's share; hostile
+    /// tanks its pillboxes killed; and those kills a pillbox per ten minutes.
+    #[serde(default)]
+    pub pillbox_life: f32,
+    #[serde(default)]
+    pub turret_longest: f32,
+    #[serde(default)]
+    pub turret_kills: u32,
+    #[serde(default)]
+    pub turret_rate: f32,
+    /// The share of the match the base's guns stood ready: the team's pillboxes within `BASE_REACH` of
+    /// a depot of its side, alive and holding shells, of all of them ("useful rate": its guns ready).
+    #[serde(default)]
+    pub guns_ready: f32,
 }
+
+/// How far a base reaches (LR 139): its guns, and the wood it is filled from, within this of a depot.
+pub const BASE_REACH: f32 = 16.0;
 
 /// A kill this near a live pillbox of the killer's team defends it
 /// (LR 84): twice a pillbox's reach.
@@ -190,6 +217,18 @@ pub struct ScoreWeights {
     pub enemy_taken: f32,
     pub defend: f32,
     pub all_neutral: f32,
+    /// Building and the base counted (LR 139; Paul, 4 November: "Count Building the score"): a repair, a
+    /// load of wood felled near a base, the guns' average life and the longest one's (a whole match of
+    /// each), a turret's kill, its rate (at a kill a pillbox every ten minutes), and the base's guns
+    /// ready a whole match. A thing built went from 0.1 to 0.5, half a kill: the search had bought its
+    /// points by building less (every candidate of 4 November held by the trade guard).
+    pub repair: f32,
+    pub wood_near: f32,
+    pub pillbox_life: f32,
+    pub turret_longest: f32,
+    pub turret_kill: f32,
+    pub turret_rate: f32,
+    pub guns_ready: f32,
 }
 
 impl Default for ScoreWeights {
@@ -199,7 +238,7 @@ impl Default for ScoreWeights {
             kill: 1.0,
             death: 1.0,
             held: 2.0,
-            build: 0.1,
+            build: 0.5,
             road: 0.05,
             direct_hit: 1.5,
             pillbox_damage: 1.5,
@@ -218,6 +257,13 @@ impl Default for ScoreWeights {
             enemy_taken: 6.0,
             defend: 1.5,
             all_neutral: 15.0,
+            repair: 0.25,
+            wood_near: 0.2,
+            pillbox_life: 3.0,
+            turret_longest: 2.0,
+            turret_kill: 1.0,
+            turret_rate: 2.0,
+            guns_ready: 3.0,
         }
     }
 }
@@ -233,15 +279,22 @@ impl ScoreWeights {
         ScoreWeights { win: 10.0 * short, kill: short, death: short, held: 4.0 * lg, ..ScoreWeights::default() }
     }
 
-    /// The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`.
+    /// The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`, a thing built back at its 0.1.
     pub fn without_rewards(self) -> ScoreWeights {
-        ScoreWeights { advance: 0.0, tow: 0.0, forward_build: 0.0, advance_stage: 0.0, full_sortie: 0.0, low_return: 0.0, rotation: 0.0, castle: 0.0, base_entry: 0.0, raid: 0.0, mine_hit: 0.0, direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
+        ScoreWeights { build: 0.1, repair: 0.0, wood_near: 0.0, pillbox_life: 0.0, turret_longest: 0.0, turret_kill: 0.0, turret_rate: 0.0, guns_ready: 0.0, advance: 0.0, tow: 0.0, forward_build: 0.0, advance_stage: 0.0, full_sortie: 0.0, low_return: 0.0, rotation: 0.0, castle: 0.0, base_entry: 0.0, raid: 0.0, mine_hit: 0.0, direct_hit: 0.0, pillbox_damage: 0.0, neutral_taken: 0.0, enemy_taken: 0.0, defend: 0.0, all_neutral: 0.0, ..self }
     }
 }
 
 /// The rewards' part of a seat's score (LR 84).
 pub fn rewards(o: &Outcome, k: &ScoreWeights) -> f32 {
     k.advance * o.advanced as f32 + k.tow * o.towed as f32 + k.forward_build * o.forward_built as f32 + k.advance_stage * o.advance_stages as f32 + k.full_sortie * o.full_sorties as f32 + k.low_return * o.low_returns as f32 + k.rotation * o.rotations as f32 + k.base_entry * o.base_entries as f32 + k.raid * o.raids as f32 + k.mine_hit * o.mine_hits as f32 + k.direct_hit * o.direct_hits as f32 + k.pillbox_damage * o.pillbox_damage + k.neutral_taken * o.neutral_taken as f32 + k.enemy_taken * o.enemy_taken as f32 + k.defend * o.defends as f32 + if o.all_neutral { k.all_neutral } else { 0.0 }
+        + k.repair * o.repairs as f32
+        + k.wood_near * o.wood_near as f32
+        + k.pillbox_life * o.pillbox_life
+        + k.turret_longest * o.turret_longest
+        + k.turret_kill * o.turret_kills as f32
+        + k.turret_rate * o.turret_rate
+        + k.guns_ready * o.guns_ready
 }
 
 /// A seat's match score: the win, kills less deaths, ground held over
@@ -275,6 +328,12 @@ pub struct Tally {
     /// By seat: when its last capture's advance ends, and the stages done, a bit each.
     advance_until: Vec<Tick>,
     advance_done: Vec<u8>,
+    /// The guns, by team (LR 139): each pillbox's seconds alive in the team's hands, the team's
+    /// pillbox-seconds, its pillboxes' kills, and the sum of each second's share of base guns ready.
+    pb_life: std::collections::HashMap<(TeamId, EntityId), u32>,
+    pb_secs: std::collections::HashMap<TeamId, u32>,
+    turret_kills: std::collections::HashMap<TeamId, u32>,
+    ready_sum: std::collections::HashMap<TeamId, f32>,
 }
 
 const FORWARD_BUILD: f32 = 20.0;
@@ -328,6 +387,10 @@ impl Tally {
             closest: Default::default(),
             advance_until: vec![0; w.players.len()],
             advance_done: vec![0; w.players.len()],
+            pb_life: Default::default(),
+            pb_secs: Default::default(),
+            turret_kills: Default::default(),
+            ready_sum: Default::default(),
         }
     }
 
@@ -337,8 +400,23 @@ impl Tally {
         let seat = |p: PlayerId| -> Option<usize> { ((p as usize) < n).then_some(p as usize) };
         // Two players hostile: both on teams, not the same one.
         let hostile = |a: PlayerId, b: PlayerId| matches!((w.team_of(a), w.team_of(b)), (Some(x), Some(y)) if x != y);
+        // A pillbox's shot this tick, by the tank it struck: a tank destroyed in the same tick by that
+        // pillbox's owner was the turret's kill (the owner's seat counts it among its kills as well).
+        let struck: std::collections::HashMap<EntityId, PlayerId> =
+            w.events.iter().filter_map(|e| if let Event::PillboxFired { tank, owner, .. } = e { Some((*tank, *owner)) } else { None }).collect();
         for e in &w.events {
             match e {
+                Event::PillboxRepaired { by, .. } | Event::StructureRepaired { by, .. } => {
+                    if let Some(i) = seat(*by) {
+                        self.seats[i].repairs += 1;
+                    }
+                }
+                Event::Harvested { owner, at, material } if *material > 0 => {
+                    let near = w.depots.iter().any(|d| d.owner.is_some_and(|o| w.allied(o, *owner)) && d.pos.dist(*at) <= BASE_REACH);
+                    if let (true, Some(i)) = (near, seat(*owner)) {
+                        self.seats[i].wood_near += 1;
+                    }
+                }
                 Event::MineLaid { owner, at, .. } => {
                     if let Some(i) = seat(*owner).filter(|_| world_side(w, *owner, *at).is_some_and(|s| s < 0.0)) {
                         self.laid_out[i] += 1;
@@ -351,6 +429,13 @@ impl Tally {
                     }
                 }
                 Event::TankDestroyed { tank, owner, by } => {
+                    if let (Some(pb), Some(k)) = (struck.get(tank), by) {
+                        if pb == k && hostile(*owner, *k) {
+                            if let Some(t) = w.team_of(*k) {
+                                *self.turret_kills.entry(t).or_insert(0) += 1;
+                            }
+                        }
+                    }
                     if let Some(i) = seat(*owner) {
                         self.seats[i].deaths += 1;
                         self.laid_out[i] = 0;
@@ -512,6 +597,28 @@ impl Tally {
                 o.castle_s += castles;
                 o.held_s += guns + w.depots.iter().filter(|d| ours(d.owner)).count() as u32;
             }
+            // The guns (LR 139): each pillbox alive in a team's hands a second more; and the base's
+            // guns ready this second, those within BASE_REACH of a depot of the team, alive and stocked.
+            for p in &w.pillboxes {
+                let Some(t) = p.owner.and_then(|o| w.team_of(o)) else { continue };
+                if p.alive() {
+                    *self.pb_life.entry((t, p.id)).or_insert(0) += 1;
+                    *self.pb_secs.entry(t).or_insert(0) += 1;
+                }
+            }
+            let teams: std::collections::BTreeSet<TeamId> = self.seats.iter().filter_map(|o| o.team).collect();
+            for t in teams {
+                let base: Vec<&Pillbox> = w
+                    .pillboxes
+                    .iter()
+                    .filter(|p| p.owner.and_then(|o| w.team_of(o)) == Some(t))
+                    .filter(|p| w.depots.iter().any(|d| d.owner.and_then(|o| w.team_of(o)) == Some(t) && d.pos.dist(p.pos) <= BASE_REACH))
+                    .collect();
+                if !base.is_empty() {
+                    let ready = base.iter().filter(|p| p.alive() && p.shells > 0).count();
+                    *self.ready_sum.entry(t).or_insert(0.0) += ready as f32 / base.len() as f32;
+                }
+            }
             // Game 7: each seat's supply as it stands, so the end's is the last.
             for (i, o) in self.seats.iter_mut().enumerate() {
                 o.supply = w.players.get(i).map(|p| p.supply).unwrap_or(o.supply);
@@ -577,8 +684,19 @@ impl Tally {
     /// The match is over (or out of time): a line per seat with a genome.
     pub fn records(&mut self, w: &World, map: &str, genomes: &[(PlayerId, Genome)], k: &ScoreWeights) -> Vec<Record> {
         let seconds = (w.tick / TICK_HZ as Tick) as u32;
+        let secs = seconds.max(1) as f32;
         for o in self.seats.iter_mut() {
             o.won = w.winning_team.is_some() && o.team == w.winning_team;
+            let Some(t) = o.team else { continue };
+            let lives: Vec<f32> = self.pb_life.iter().filter(|((tt, _), _)| *tt == t).map(|(_, s)| *s as f32 / secs).collect();
+            o.pillbox_life = if lives.is_empty() { 0.0 } else { lives.iter().sum::<f32>() / lives.len() as f32 };
+            o.turret_longest = lives.iter().copied().fold(0.0, f32::max);
+            o.turret_kills = self.turret_kills.get(&t).copied().unwrap_or(0);
+            // Kills a pillbox per ten minutes, over at least ten pillbox-minutes: one pillbox that
+            // stood a minute and killed once is not ten times the castle that stood the match.
+            let pb_min = self.pb_secs.get(&t).copied().unwrap_or(0) as f32 / 60.0;
+            o.turret_rate = o.turret_kills as f32 * 10.0 / pb_min.max(10.0);
+            o.guns_ready = self.ready_sum.get(&t).copied().unwrap_or(0.0) / secs;
         }
         genomes
             .iter()
@@ -729,6 +847,54 @@ mod tests {
     /// Each reward counts what it says, for the seat that did it, and
     /// only against a hostile (LR 84); `without_rewards` is the score
     /// before them.
+    #[test]
+    fn the_base_and_its_guns_count_repairs_wood_near_life_turret_kills_and_guns_ready() {
+        let mut w = World::new(Scenario::bots(4).with_teams(2));
+        assert_eq!(w.team_of(0), w.team_of(2), "0 and 2 a team");
+        assert!(!w.depots.is_empty(), "a match has depots");
+        let base = V2::new(30.5, 30.5);
+        w.depots[0].owner = Some(0);
+        w.depots[0].pos = base;
+        let mk = |owner: PlayerId, at: V2, id: EntityId, shells: u16| Pillbox { id, pos: at, owner: Some(owner), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells };
+        // Team 0's two guns at the base, one stocked and one dry; team 1's one far off.
+        w.pillboxes = vec![mk(0, base + V2::new(3.0, 0.0), 91_001, 5), mk(2, base + V2::new(5.0, 0.0), 91_002, 0), mk(1, V2::new(90.5, 90.5), 91_003, 5)];
+        let mut t = Tally::new(&w);
+        let t1 = w.tanks.iter().find(|x| x.owner == 1).unwrap().id;
+        w.events = vec![
+            Event::PillboxRepaired { pillbox: 91_001, by: 0 },
+            Event::StructureRepaired { structure: 5, kind: StructureKind::Harvester, by: 2 },
+            // Wood felled by seat 0's squad: near the base, far from it, and near it but nothing gained.
+            Event::Harvested { owner: 0, at: base + V2::new(2.0, 2.0), material: 4 },
+            Event::Harvested { owner: 0, at: V2::new(80.5, 80.5), material: 4 },
+            Event::Harvested { owner: 0, at: base + V2::new(1.0, 1.0), material: 0 },
+            // Seat 0's pillbox kills seat 1's tank: the seat's kill, and team 0's turret kill.
+            Event::PillboxFired { pillbox: 91_001, owner: 0, tank: t1, damage: PILLBOX_DAMAGE },
+            Event::TankDestroyed { tank: t1, owner: 1, by: Some(0) },
+        ];
+        // From one second in: at tick 0 an advance's window (the capture's ninety seconds) reads as open.
+        for sec in 1..=60u64 {
+            w.tick = sec * TICK_HZ as Tick;
+            t.hear(&w);
+            w.events.clear();
+        }
+        w.tick = 60 * TICK_HZ as Tick;
+        // A genome is only what the line records beside the outcome: no weights are read here.
+        let g: Vec<(PlayerId, Genome)> = (0..4u8).map(|p| (p, Genome { id: format!("seat{}", p), weights: vec![], caps: 0, seed: 1, role: "test".into(), parent: None })).collect();
+        let k = ScoreWeights::default();
+        let r = t.records(&w, "test", &g, &k);
+        let (a, c, b) = (&r[0].outcome, &r[2].outcome, &r[1].outcome);
+        assert_eq!((a.repairs, c.repairs, a.wood_near), (1, 1, 1), "a repair each, one load near the base");
+        assert_eq!((a.kills, a.turret_kills, c.turret_kills, b.turret_kills), (1, 1, 1, 0), "the seat's kill, and its team's turret's");
+        assert!((a.pillbox_life - 1.0).abs() < 1e-6 && (a.turret_longest - 1.0).abs() < 1e-6, "both guns stood the whole minute");
+        assert!((a.guns_ready - 0.5).abs() < 1e-6, "one of the base's two guns ready: {}", a.guns_ready);
+        assert!((a.turret_rate - 1.0).abs() < 1e-6, "a kill over two pillbox-minutes, counted over ten: {}", a.turret_rate);
+        assert_eq!(b.guns_ready, 0.0, "team 1 has no depot: no base");
+        let want = 0.25 + 0.2 + 3.0 + 2.0 + 1.0 + 2.0 * 1.0 + 3.0 * 0.5;
+        assert!((rewards(a, &k) - want).abs() < 1e-5, "{} for {}", rewards(a, &k), want);
+        assert_eq!(rewards(a, &k.without_rewards()), 0.0);
+        assert_eq!((k.build, k.without_rewards().build), (0.5, 0.1), "a thing built is half a kill; the old score keeps its tenth");
+    }
+
     #[test]
     fn the_rewards_count_their_events() {
         let mut w = World::new(Scenario::bots(4).with_teams(2));

@@ -1350,6 +1350,16 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Next: the bridge's first reads on the fleet once this is on main;
     the Gladiator's own gap to the defaults; a GPU behaviour-cloning
     stage (Paul's step 3), its net and its judge to be chosen.
+81. The score counts building and the base. (4 November; cause: Paul,
+    "Count Building the score ... well defended pillboxes ... repair rate
+    and usefull rate ... workers mining forrests around bases should
+    receive reward", every candidate held by the trade guard; LR 139,
+    CI-088.) Built: a thing built 0.5; repairs; wood near a base; the
+    guns' life, the longest turret, turret kills and their rate; base
+    guns ready; SCORE_VERSION, so the fleet reads anew. State: built;
+    w8466 reads -0.42 +/- 0.15 a seat under it against the old score.
+    Next: the fleet's reads under the new score; whether the guard's
+    floors move; the new counts as scenario reward terms.
 
 ## Sequencing
 

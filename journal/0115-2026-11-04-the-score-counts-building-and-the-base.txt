@@ -1,0 +1,35 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Wed, 04 Nov 2026 21:00:00 +0000
+Subject: [JOURNAL 0115] The score counts building and the base: built half a kill, the guns' life and kills, repairs, wood by the base, guns ready
+Message-ID: <0115.20261104@treadcore.org>
+In-Reply-To: <0114.20261104@treadcore.org>
+Organization: treadcore.org
+Keywords: score, ledger, building, pillboxes, repairs, trade guard, SCORE_VERSION
+
+## Abstract
+
+Every candidate of the morning was held by the trade guard: each
+scored more by building less, since a thing built was worth a tenth of
+a kill. Paul chose to count building and the base in the score, and its
+numbers: a thing built 0.5; a repair 0.25; a load of wood felled within
+16 tiles of a depot 0.2; the team's pillboxes' average life (3), the
+longest one (2), turret kills (1) and their rate (2); the base's guns
+ready (3). The score is versioned (SCORE_VERSION), and orrery reads
+anew under it. On the same 48 seeds w8466 reads -0.42 +/- 0.15 a seat
+under the new score against the old: the new score sees its trade.
+
+## Session
+
+Code: ledger.rs (seven counts on the Outcome, seven weights, the
+tally's turret kills, pillbox seconds and guns ready), fleet.rs (the
+`base of team` line), SCORE_VERSION; a test of its own; the pinned-test
+lint met by a genome that reads no defaults. Reads: a two-seed census
+for the line; w8466 under both scores on 48 seeds. In orrery: game_at
+reads the score's version. LR 139, CI-088, CHANGELOG, ROADMAP 81, this
+entry, the brain map.
+
+## Next
+
+The fleet reads the candidates again under the new score once this is
+on main; the guard's floors stay until those reads say otherwise.

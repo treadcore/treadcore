@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-28 files, 610 functions (10 with no doc comment; 56 more are a trait's, documented by it), 178 tests.
+28 files, 610 functions (10 with no doc comment; 56 more are a trait's, documented by it), 179 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -19,13 +19,13 @@ structure as built is `checkins/`.
 | [`crew.rs`](#crewrs) | 597 | 20 | 0 | 1 | The fleet commander and its crews (Paul, 16 October: "each side has a fleet commander and they request and organize fort construction"). |
 | [`cycle.rs`](#cyclers) | 481 | 10 | 0 | 4 | The base cycle (roadmap step 12f1, LAB-REPORT-BRAIN.md section 6.1; Paul, 18 October: "after they fill up on base resources, add to the base 1 item, 1 improvement, and attempt to build roads to other established bases... |
 | [`facts.rs`](#factsrs) | 222 | 10 | 0 | 2 | What the map says, worked out once (roadmap steps 12b and 12f2, LAB-REPORT-BRAIN.md sections 5 and 6.2). |
-| [`fleet.rs`](#fleetrs) | 1665 | 20 | 0 | 12 | Fleets (Paul, 15 October: "can we start a game with ... 3 teams of base building, 5 on each, and 1 random aggro bot"): sixteen seats dealt into three teams of five neighbours round the map's edge and one RuleBot alone... |
+| [`fleet.rs`](#fleetrs) | 1671 | 20 | 0 | 12 | Fleets (Paul, 15 October: "can we start a game with ... 3 teams of base building, 5 on each, and 1 random aggro bot"): sixteen seats dealt into three teams of five neighbours round the map's edge and one RuleBot alone... |
 | [`fortify.rs`](#fortifyrs) | 679 | 25 | 0 | 2 | Fortification to a plan (roadmap step 11b): a castle's gate. |
 | [`front.rs`](#frontrs) | 162 | 8 | 1 | 5 | Battle lines (Paul, 30 October: "We would need to have the concept of battle lines"). |
 | [`hop.rs`](#hoprs) | 938 | 25 | 0 | 1 | Island hopping: a bot that has taken everything it can reach goes for what it cannot, across the water. |
 | [`intent.rs`](#intentrs) | 186 | 9 | 0 | 3 | Holding a decision (roadmap step 12d, LAB-REPORT-BRAIN.md section 7). |
 | [`learn.rs`](#learnrs) | 1762 | 56 | 1 | 5 | Training the learned tank (LR 95, 97): the phases' training grounds and evolution strategies over a `Net`'s weights, in plain Rust on threads. |
-| [`ledger.rs`](#ledgerrs) | 774 | 15 | 0 | 4 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
+| [`ledger.rs`](#ledgerrs) | 940 | 15 | 0 | 5 | The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). |
 | [`lib.rs`](#librs) | 2957 | 67 | 1 | 20 | treadcore-brain -- the controller interface, and one controller. |
 | [`memory.rs`](#memoryrs) | 101 | 10 | 0 | 1 | Memories that run out (roadmap step 12b, finding L6 of LAB-REPORT-BRAIN.md). |
 | [`meter.rs`](#meterrs) | 558 | 30 | 0 | 4 | What the brain spends (roadmap step 12a, LAB-REPORT-BRAIN.md section 5, "measure first"). |
@@ -410,8 +410,8 @@ Tests (12):
 - `the_bots_build_a_smelter_mine_and_smelt` (line 601): Game 6, end to end on the fleet's own bots: on the naval map, with the depots making no shells of their own, a side builds a smelter beside its ore, mines it, unloads, and the smelter's shells reach a depot; and no ta...
 - `quad_census` (line 690): The quad match headless (scripts/quad.sh): fifteen seats, three teams, each led by a window's autopilot (a fleet commander on Auto), respawns without limit.
 - `brain_census` (line 969): The brain census (roadmap 12a and 12g): sixteen seats dealt as `--fleets` deals them, one team on the trial settings and the other two on the baseline, the trial team turned round the three over the seeds so no start...
-- `three_fleets_build` (line 1484): Sixteen seats as the window deals them with `--fleets`, seat 0 on Auto as a person under the coordination screen would be.
-- `supply_trace` (line 1547): Trace 1 of PROPOSAL-UPGRADES.md section 6 (goal 5, 11g): supply counted and nothing bought.
+- `three_fleets_build` (line 1490): Sixteen seats as the window deals them with `--fleets`, seat 0 on Auto as a person under the coordination screen would be.
+- `supply_trace` (line 1553): Trace 1 of PROPOSAL-UPGRADES.md section 6 (goal 5, 11g): supply counted and nothing bought.
 
 ## fortify.rs
 
@@ -609,27 +609,28 @@ The ledger (roadmap step 12g, LAB-REPORT-BRAIN.md section 8). Every census match
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
 | 33 | `of` | Genome | yes | The genome of these Settings in this role, its id their hash. |
-| 196 | `default` | ScoreWeights |  | *(the `Default` trait's)* |
-| 230 | `from_long_game` | ScoreWeights | yes | The score between elimination and holding ground (`long_game`, roadmap 12h): 0 weighs the win and kills half as much again and the holdings not at all; 1 the win and kills half as much and the holdings twice; 0.5 is t... |
-| 237 | `without_rewards` | ScoreWeights | yes | The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`. |
-| 243 | `rewards` |  | yes | The rewards' part of a seat's score (LR 84). |
-| 250 | `score` |  | yes | A seat's match score: the win, kills less deaths, ground held over the match's length, works built and road laid, and the rewards, each at its weight. |
-| 292 | `castles_and_guns` |  |  | Groups of a team's guns, as the sim's crowding has them: how many castles it stands, a castle being a gun among walls, however many guns; and what it holds, a group counting at most `TURRETS_FREE`, so a ring of eight... |
-| 309 | `world_side` |  |  | How far `p` stands on `seat`'s side of the battle line, as `front::side`, from the world. |
-| 317 | `new` | Tally | yes | An empty count for each seat of the world, with its team. |
-| 335 | `hear` | Tally | yes | After each `step`: the tick's events; once a second, the holdings. |
-| 578 | `records` | Tally | yes | The match is over (or out of time): a line per seat with a genome. |
-| 595 | `write` |  | yes | Append records to `dir/ledger.jsonl`. |
-| 606 | `read` |  | yes | Read a ledger; bad lines are skipped. |
-| 613 | `mean_se` |  | yes | The mean of a sample and its standard error (the sample's standard deviation over the root of its size); the error is 0 for fewer than two. |
-| 629 | `ratings` |  | yes | Elo ratings by genome over the ledger's matches: within a match, each genome's best seat score against every other genome's, a win for the higher. |
+| 235 | `default` | ScoreWeights |  | *(the `Default` trait's)* |
+| 276 | `from_long_game` | ScoreWeights | yes | The score between elimination and holding ground (`long_game`, roadmap 12h): 0 weighs the win and kills half as much again and the holdings not at all; 1 the win and kills half as much and the holdings twice; 0.5 is t... |
+| 283 | `without_rewards` | ScoreWeights | yes | The score before the rewards (LR 8 to 83): `CENSUS_REWARDS=0`, a thing built back at its 0.1. |
+| 289 | `rewards` |  | yes | The rewards' part of a seat's score (LR 84). |
+| 303 | `score` |  | yes | A seat's match score: the win, kills less deaths, ground held over the match's length, works built and road laid, and the rewards, each at its weight. |
+| 351 | `castles_and_guns` |  |  | Groups of a team's guns, as the sim's crowding has them: how many castles it stands, a castle being a gun among walls, however many guns; and what it holds, a group counting at most `TURRETS_FREE`, so a ring of eight... |
+| 368 | `world_side` |  |  | How far `p` stands on `seat`'s side of the battle line, as `front::side`, from the world. |
+| 376 | `new` | Tally | yes | An empty count for each seat of the world, with its team. |
+| 398 | `hear` | Tally | yes | After each `step`: the tick's events; once a second, the holdings. |
+| 685 | `records` | Tally | yes | The match is over (or out of time): a line per seat with a genome. |
+| 713 | `write` |  | yes | Append records to `dir/ledger.jsonl`. |
+| 724 | `read` |  | yes | Read a ledger; bad lines are skipped. |
+| 731 | `mean_se` |  | yes | The mean of a sample and its standard error (the sample's standard deviation over the root of its size); the error is 0 for fewer than two. |
+| 747 | `ratings` |  | yes | Elo ratings by genome over the ledger's matches: within a match, each genome's best seat score against every other genome's, a win for the higher. |
 
-Tests (4):
+Tests (5):
 
-- `ledger_ratings` (line 681): The hall of fame: the ledger's genomes by Elo, best first, with the weights each changed (`LEDGER`, default reports/ledger/ledger.jsonl).
-- `the_standard_error_of_a_sample` (line 693)
-- `a_ledger_line_round_trips_and_rates` (line 703)
-- `the_rewards_count_their_events` (line 733): Each reward counts what it says, for the seat that did it, and only against a hostile (LR 84); `without_rewards` is the score before them.
+- `ledger_ratings` (line 799): The hall of fame: the ledger's genomes by Elo, best first, with the weights each changed (`LEDGER`, default reports/ledger/ledger.jsonl).
+- `the_standard_error_of_a_sample` (line 811)
+- `a_ledger_line_round_trips_and_rates` (line 821)
+- `the_base_and_its_guns_count_repairs_wood_near_life_turret_kills_and_guns_ready` (line 851): Each reward counts what it says, for the seat that did it, and only against a hostile (LR 84); `without_rewards` is the score before them.
+- `the_rewards_count_their_events` (line 899)
 
 ## lib.rs
 

@@ -1331,6 +1331,12 @@ mod tests {
                 // Every reward by name: "rewards" in the line below hid what europe's +18 was made of.
                 eprintln!("  rewards of team {}{}: advanced {}, towed {}, forward built {}, stages {}, sorties {}, low returns {}, rotations {}, entries {}, raids {}, mine hits {}, castle {}", t, if t == lucky { " (trial)" } else { "" },
                     sum(&|o| o.advanced), sum(&|o| o.towed), sum(&|o| o.forward_built), sum(&|o| o.advance_stages), sum(&|o| o.full_sorties), sum(&|o| o.low_returns), sum(&|o| o.rotations), sum(&|o| o.base_entries), sum(&|o| o.raids), sum(&|o| o.mine_hits), sum(&|o| o.castle_s));
+                // The base and its guns (LR 139), a line of its own: orrery's readers take "team N" and
+                // "rewards of team N" from the start of a line, and this begins with "base".
+                if let Some(o) = rs.first().map(|r| &r.outcome) {
+                    eprintln!("  base of team {}{}: built {}, repairs {}, wood near {}, pillbox life {:.2}, longest turret {:.2}, turret kills {}, turret rate {:.2}, guns ready {:.2}", t, if t == lucky { " (trial)" } else { "" },
+                        sum(&|o| o.built), sum(&|o| o.repairs), sum(&|o| o.wood_near), o.pillbox_life, o.turret_longest, o.turret_kills, o.turret_rate, o.guns_ready);
+                }
                 let score: f32 = rs.iter().map(|r| r.score).sum::<f32>() / rs.len().max(1) as f32;
                 let rewards: f32 = rs.iter().map(|r| crate::ledger::rewards(&r.outcome, &k)).sum::<f32>() / rs.len().max(1) as f32;
                 eprintln!(

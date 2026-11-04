@@ -9989,3 +9989,30 @@ The rule is met on both pairs: +11.56 ± 1.75 (6.6 errors) on the generated maps
 **On the fleet: the bridge** (orrery `tools/plans/treadcore.py`, `bridge_jobs`; `tools/bridge.py`). The game carries its champion in its binary, so the fleet reads a champion not yet shipped by `GLADIATOR=file`, which makes slot 17 play that file (`gladiator_file`; a file that is not a world champion stops the match with a sentence, since a census on the wrong net would be read as the right one). Each new milestone of the world islands is read so: two censuses on the first fast machine, the candidate and the shipped Gladiator, the same 48 fresh seeds from 80,000,000, every map. Better by more than two errors of the difference raises a flag to ship it; shipping is a commit, so it is a person's press (`fleet-queue.py QUEUE bridge ship LABEL`, or Ship on orrery's Results, Growth), which tests and commits on a worktree of `origin/main` and pushes. The bridge waits until this commit is on main.
 
 **Not done.** The twenty senses match crucible's arithmetic by reading the two side by side and by the tests here (a pillbox ahead that has the tank, one of the side's own that is nobody's threat, an enemy past the eyes); crucible's own `sense` was not run on a game state, as it runs only on a card. The client's tests `key_setup_shows_the_pick_and_the_wait` and `the_page_moves_a_weight_and_puts_it_back` fail on main before this change and after it, untouched here.
+
+## 139. The score counts building and the base: a thing built half a kill, the guns' life and kills, repairs, wood by the base, and guns ready; the score versioned, 4 November
+
+Every candidate the search had made by the morning of 4 November was held by the trade guard of section 127 (orrery, `trades_away`): each scored more by building less, w8466 +1.27 a seat held out for 1.48 fewer things built a team, w8669 +2.42 for 3.07 fewer and less road. A thing built was worth a tenth (a kill is 1, a win 10), so the search sold building cheaply and the guard held the line still. Asked whether to promote one by hand, raise the floor, keep holding, or count building, Paul: "Count Building the score. give well defended pillboxes average time duration and longest best turrent survivial and its killrate and for bases, repair rate and usefull rate. in fact, workers mining forrests around bases should receive reward, because now base fills faster." Asked the numbers, he chose each of these.
+
+**What the score counts now** (`ledger.rs`, `ScoreWeights`, all in `rewards` but the build, which is the score's own term):
+
+| Term | Worth | What it is |
+| --- | --- | --- |
+| a thing built | 0.5 (was 0.1) | half a kill |
+| repairs | 0.25 a repair | a pillbox or structure of the side mended by the seat's squad (`PillboxRepaired`, `StructureRepaired`) |
+| wood near a base | 0.2 a load | a tree the seat's squad felled with wood gained, within `BASE_REACH` 16 tiles of a depot of its side (`Harvested`) |
+| pillbox life | 3 at the whole match | the team's: the share of the match each pillbox it held stood alive in its hands, averaged over them |
+| the longest turret | 2 at the whole match | the team's: its longest-standing pillbox's share |
+| turret kills | 1 a kill | the team's: a hostile tank its pillbox killed (a `PillboxFired` on that tank in the tick it was destroyed by the pillbox's owner); the owner's seat counts the kill among its own as before |
+| turret rate | 2 at a kill a pillbox every ten minutes | the team's turret kills over its pillbox-minutes, never fewer than ten |
+| guns ready | 3 at the whole match | the team's: each second, the share of its pillboxes within 16 tiles of a depot of its side that stand alive with shells ("useful rate": its guns ready) |
+
+The team's terms are each of its seats', as castles are. `CENSUS_REWARDS=0` is still the score of sections 8 to 83, a thing built at its tenth. The census prints a line a team beginning `base of team`, which orrery's readers (anchored at `team` and `rewards of team`) read past.
+
+**Versioned.** `source/treadcore-brain/SCORE_VERSION` (1) beside `GAME_VERSION`. Paul, asked whether reads under the old score should keep counting: "Start anew". orrery's planner now takes a commit's game as both numbers, so a read of the old score is no evidence about the new, as a read of an old game is not: the waiting candidates are read again before any promotes.
+
+**The rule before the run:** under the new score, w8466 against the defaults on the same 48 seeds reads under its read of the old score by more than two errors of the paired difference, if the new terms see what it gives away.
+
+**Read** (this Mac, every map, 48 seeds, 900 s, respawns 3): w8466 +1.95 ± 1.20 a seat under the old score, +1.54 ± 1.20 under the new, **paired −0.42 ± 0.15** (2.8 errors). The rule is met: the new score sees the trade, and w8466 still reads above the defaults, so the guard, not the score, is what holds a candidate that builds a team's worth less. Over the 432 teams of that census the new terms run, a team a match: 21.5 built (to 98), 4.7 repairs, 1.45 loads of wood near a base, pillbox life 0.13 and the longest 0.26 of the match, 0.05 turret kills, guns ready 0.16 of the match. Building carries the most points; turret kills are rare enough that their rate weighs little yet.
+
+**Not done.** A scenario's reward terms do not name the new counts; the trade guard's floors are unchanged (1 built, 0.5 road a team, 0.1 kills less deaths a seat); the weights are Paul's, not the search's, as the rewards of section 84 are.
