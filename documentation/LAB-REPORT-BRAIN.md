@@ -9906,3 +9906,46 @@ Paul: "For the clone, a record of the courses with an enemy in them, or the squa
 **The squad head trained apart.** `TRAIN_HEADS=squad` in `tools/bc`: only the named heads in the loss, from a `START` clone. From `bc3` on the forty matches and the thousand enemy-free runs (`bc7`): the squad head reads 96.2 and 99.5 (floor 98.8), and the drive head, out of the loss, fell from 78.0 to 34.7 on the matches and to 18.2 on the courses. The hidden layers are shared: training one head moves what every head reads, and the others, out of the loss, drift wherever the squad's gradient takes the layers. On the gauntlet `bc7` fires (G1 10, G2 10) and mines nowhere, and G4 fell to 0. A head trained apart wants the hidden layers frozen, which the trainer does not do; the fix is a flag on the layers, not another recording.
 
 **The reading of the four clones of the day.** `bc3` (matches) fights and holds; `bc5` (matches and the squad courses) mines and loses the fight; `bc6` (with an enemy in the courses) fights and holds; `bc7` (the squad apart) fires and drifts. No clone has both, and the net trained by reward on the five courses has both. The clone's road to the mine is a frozen trunk or a separate net for the squad head; neither is built, and neither is needed while the reward-trained net plays. `bc6` and `bc7` are not shipped; the data files are under `build/bc/` on this Mac. The `13-*-with-an-enemy` files stay as recording courses.
+
+## 136. The fleet's two reads: the first minute at 400 generations, and one Quartermaster beside two of the rules, 3 November
+
+Paul: "pool the census team lines, write LR 136." The two runs asked in section 134 came back from the fleet by early afternoon: r0158 (saskatchewan, the first minute, 400 generations, 3 h 57 m) and r0159 (macmini, the mixed-team census, 400 seeds).
+
+**The first minute, 400 generations.** From `nets/logistics.bin` on the five logistics gauntlets and the three first-minute courses with `armor_gained` paid one: the population's mean 4.66 at generation 0, 5.83 at 100, 5.46 at 200, 5.30 at 300, 6.21 at 350 and 5.43 at 399; the best of a generation between 5.4 and 7.9; the net's own pass share between 0.69 and 0.81 the whole run, where it began at 0.81. The checkpoint is `nets/first-minute.bin`. Held out on twenty seeds:
+
+| course | passed of 20 | reward | at the start (10 seeds, LR 133) |
+| --- | --- | --- | --- |
+| G13 ore to the smelter | 20 | 9.42 | 10 |
+| G14 oil to the refinery | 19 | 9.72 | 10 |
+| G15 the convoy comes through | 20 | 6.00 | 10 |
+| G16 the raider takes the convoy | 15 | 1.15 | 8 |
+| G17 the chain to the city | 20 | 22.27 | 10 |
+| 12 the first minute, industry | 14 | −1.61 | 7 |
+| 12 the first minute, island | 14 | −1.51 | 7 |
+| 12 the first minute, naval | 0 | 1.00 | 0 |
+
+Four hundred generations read what forty read and what the start net read: seven of ten on industry and island, none on naval. The reward on the two passed maps is negative: the pillbox is taken (two) and the tank is dead by ninety seconds, the damage taken back at two hundredths a point outweighing the pillbox and the armour, so the potential paid on the armour did not give the search a gradient toward living, and the mean of the population wandered within a point of where it began. Naval has no pillbox within the squad's reach of the start, and the net sits alive for 1.00 every time: there is nothing on that map for ninety seconds to pay for, which is a fault of the course, not the net. The ten-seed gauntlet beside the logistics net: the first minute net keeps the squad (G13, G14, G15, G17 ten of ten; G16 10 where logistics has 8) and the fight (G2 10, G3 10, G4 10 where logistics has 7; G1 9), and loses a point on G5 (0 for 1) and G7 (1 for 3). It is the better net on the gauntlets and no better in the first minute. The search as run, 32 pairs and sigma 0.05 on 17,519 weights, does not find "survive ninety seconds among nine" from a reward that pays the pillbox once and the damage every tick; what the course wants is either a shorter horizon (the pillbox taken and then home) or the damage paid less and the ninety seconds alive paid as a potential too, and either is a change to the course before another four hours of a machine.
+
+**One Quartermaster beside two of the rules.** Run r0159, `bot_style = 16`, `bot_mix = one`, 400 seeds on the twelve maps, finished on macmini. The pooled score of the trial team is **−5.05 ± 0.47 a seat** against the defaults, where the whole team of Quartermasters read −30.71 (section 133). By map: naval +0.13 and constanine −0.47 inside the noise; island −3.2, fortressislesx −3.4, generated −4.2, fidos-airstrip −4.7, industry −6.0, fortressisles2 −6.9, atlantic −7.8, europe −8.5, big-lizard −10.5, every one outside the noise. The lines, pooled over the 1,200 matches' team lines (the trial team's lines are the whole team's: two of the rules and the one Quartermaster; the seat's own share is the difference between the columns):
+
+| line | one Quartermaster, two of the rules | the default teams | difference | r0155, a team of Quartermasters |
+| --- | --- | --- | --- | --- |
+| score | 42.45 ± 0.74 | 47.50 ± 0.55 | −5.05 | 20.53 |
+| kills | 13.41 ± 0.21 | 16.60 ± 0.17 | −3.2 | 4.37 |
+| deaths | 17.58 ± 0.19 | 15.23 ± 0.14 | +2.3 | 16.39 |
+| built | 10.54 ± 0.32 | 13.61 ± 0.29 | −3.1 | 0.49 |
+| road | 6.05 ± 0.25 | 8.18 ± 0.24 | −2.1 | 0.00 |
+| **ore** | 3.99 ± 0.25 | 4.26 ± 0.21 | −0.3 | 7.78 |
+| **smelted** | 2.25 ± 0.20 | 3.42 ± 0.19 | **−1.2** | 0.46 |
+| **oil** | **0.58 ± 0.06** | 0.01 ± 0.00 | +0.6 | 5.05 |
+| supply | 2,011 ± 59 | 2,098 ± 44 | −86 | 1,668 |
+| held | 3.99 ± 0.08 | 4.10 ± 0.06 | −0.1 | 2.54 |
+| workers lost | 0.77 | 0.91 | −0.1 | 0.24 |
+| workers taken | 2.29 | 2.25 | 0.0 | 2.08 |
+| pillboxes taken | 2.45 | 2.33 | +0.1 | 1.92 |
+
+The question of section 134 was whether a Quartermaster whose side builds the smelter delivers what it mines: it does not. With the leader and the guard of the rules on its team the smelter stands (built 10.5 a match, where a team of nets built 0.5), the team's ore is what a team of the rules mines (4.0 for 4.3), and the team's smelted line is two thirds of the rules' (2.25 for 3.42). The seat the Quartermaster took was one of the rules' ore runners (every tank of the rules runs ore once after each fill-up), and in its place the net mines about as much and delivers 1.2 shells less a match: the ore it carries does not come to the smelter, which is what r0155 said at a larger scale (ore up, smelted a tenth) and the field of two does not say (G13 ten of ten). The oil line is the one thing the seat adds, 0.58 a match where the rules pump 0.01, and nothing uses it: the refinery of a ten-minute match seldom stands. The rest of the seat's cost is the fight: three kills fewer and two deaths more a match than a rules seat, and three builds and two road tiles fewer, which is the −5. So one Quartermaster costs a team five points a seat where sixteen cost thirty-one, and the saving is the rules' leader and guard, not anything the net does better in company.
+
+Two notes on the read. The rules' own lines moved between r0155 and r0159 (ore 6.0 to 4.3, smelted 5.1 to 3.4, score 51.2 to 47.5 for the default teams), with no change to the rules between the two commits that was meant to move them; the two runs are compared within themselves above, and the drift is a thing to watch across the next censuses of game 8. And the trial team's lines in a `bot_mix` census are the team's, so a seat's share is read as a difference; a per-seat ore and smelted line in the census log would make the next such read direct.
+
+**What is next.** The first-minute course wants its reward reshaped (the damage paid less, alive paid as a potential, or a shorter horizon ending at the pillbox) and a pillbox placed within reach on naval, before another train run. The Quartermaster's squad head wants the delivery, not the mine: a course where the smelter is the side's and far, with the ore aboard at the start, so the drive to the works is what the reward pays; and the census log a per-seat ore and smelted. `nets/first-minute.bin` is shipped as the better gauntlet net; style 16 stays the logistics net until a net reads better among sixteen.

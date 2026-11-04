@@ -1,0 +1,40 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Tue, 03 Nov 2026 22:30:00 +0000
+Subject: [JOURNAL 0112] The fleet's two reads: the first minute at 400 generations, and one Quartermaster beside two of the rules
+Message-ID: <0112.20261103@treadcore.org>
+In-Reply-To: <0111.20261103@treadcore.org>
+Organization: treadcore.org
+Keywords: fleet, train, first minute, census, bot_mix, Quartermaster
+
+## Abstract
+
+The two fleet runs asked in the afternoon came back and were read. r0158,
+400 generations of the first-minute courses from the logistics net with
+the armour paid as a potential, reads what the start net read: 14 of 20
+on industry and island, 0 of 20 on naval; the five logistics gauntlets
+kept, and the better net on the ten-seed gauntlet (G4 10, G16 10), so
+nets/first-minute.bin is shipped. r0159, one Quartermaster beside two of
+the rules, 400 seeds: -5.05 +/- 0.47 a seat where a whole team of them
+read -30.71. The team's smelted line is two thirds of the rules' (2.25
+for 3.42) with the ore the same (4.0 for 4.3): the net mines and does not
+deliver, even when its side's smelter stands. The saving is the rules'
+leader and guard, not anything the net does in company.
+
+## Session
+
+The two results read from the grove queue's results directory; the team
+lines pooled with the regex of LR 133; the ten-seed gauntlet run on both
+nets. LR 136 in LAB-REPORT-BRAIN.md; the economy report's fifth addendum
+and the book's chapter 13 in orrery; CHANGELOG. One file shipped,
+nets/first-minute.bin.
+
+## Next
+
+The first-minute course's reward reshaped (damage paid less, alive as a
+potential, or the horizon ending at the pillbox) and a pillbox within
+reach on naval, before another train run. A delivery course for the squad
+head: the smelter far and the ore aboard at the start. A per-seat ore and
+smelted line in the census log, so a bot_mix read is direct. The rules'
+own lines drifted between r0155 and r0159 (ore 6.0 to 4.3) with no rule
+changed; watch it across the next censuses.
