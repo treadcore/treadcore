@@ -34,8 +34,8 @@ fleet asked.
 
 ## Next
 
-r0160s: first-minute-2 (from first-minute.bin, 400 gens), delivery (from
-logistics.bin, 300 gens), quartermaster-one-seats (400 seeds). Read the
+r0163 first-minute-2 (from first-minute.bin, 400 gens), r0164 delivery
+(from logistics.bin, 300 gens), r0165 quartermaster-one-seats (400 seeds). Read the
 delivery run's net on the delivery course held out and on the ten-seed
 gauntlet; if it drives sixty tiles, put it on style 16 and census it.
 The naval landing as a course of its own. Watch the rules' drift
