@@ -7,7 +7,7 @@
 # shot you, not the nearer one that did not. Passed: its first hit is on the attacker, within 12 s.
 name = "G20 the one that shot you, before the nearer one"
 reaction = "fire"
-floor = 0.30
+floor = 0.60
 players = 3
 teams = [0, 1, 1]
 seconds = 12

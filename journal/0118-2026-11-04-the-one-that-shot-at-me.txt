@@ -1,0 +1,36 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 00:00:00 +0000
+Subject: [JOURNAL 0118] The one that shot at me answered first: w_shooter, the first of the five taught to the rules
+Message-ID: <0118.20261105@treadcore.org>
+In-Reply-To: <0117.20261104@treadcore.org>
+Organization: treadcore.org
+Keywords: w_shooter, target, defence, gauntlet G20, floors
+
+## Abstract
+
+The first of the boundary's five decisions taught to the rules: answer
+the tank that shot at you before a nearer one that has not. The
+tactician heeds hostile direct shells aimed at it and remembers the
+shooter ten seconds; the target score and the defence's choice of
+threat both lean to it by w_shooter, default 2 from a sweep. G20 for the
+rules 44% to 72% on 200 seeds, every other gauntlet unchanged; the
+census of 2 against 0 inside the noise; the families hold. The floors
+of G18 to G22 became today's success at Paul's word, and G20's rises
+to 0.60 with it.
+
+## Session
+
+Code: tactics.rs (w_shooter, heed_shots, SHOOTER_MEMORY, the SHOT_ME
+tag), commander.rs (defend_within), weights.rs (Shooter). The first
+dial did nothing: the tank in G20 was defending, where the nearest
+hostile was the threat by itself. Reads: G20 swept at seven weights;
+the census of 2 against 0; the families; the gauntlet before and after.
+LR 141's floors set to the rules' share less two errors. LR 142,
+CI-091, CHANGELOG, ROADMAP 84, this entry, the brain map.
+
+## Next
+
+G18, G19, G21, G22 taught to the rules in turn, each with its sweep,
+census and families; then crucible's arena with a hostile and a
+neutral pillbox; then the styles in the gauntlet.

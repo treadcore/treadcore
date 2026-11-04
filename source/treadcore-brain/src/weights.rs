@@ -106,6 +106,7 @@ weights! {
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
     BaseR "base_r" 6.15272, "target: the base's reach for w_threat, tiles";
     Stick "w_stick" 0.322391, "target: the one already chosen";
+    Shooter "w_shooter" 2.0, "target: the tank that last shot at this one, for ten seconds (LR 142, the gauntlet's G20)";
     FocusBlend "focus_blend" 0.25, "target (LR 117): 0 the near tank in range, 1 the wounded one a teammate is on; 0.5 both as before (each side's terms doubled toward its end)";
     // Tactics: the engagement and assignment.
     OddsR "odds_r" 14.0, "odds: tanks this near the fight count, tiles";
@@ -546,6 +547,7 @@ impl Tactics {
             w_threat: w[W::Threat],
             base_r: w[W::BaseR],
             w_stick: w[W::Stick],
+            w_shooter: w[W::Shooter],
             // Off, the blend sits at 0.5: the target is scored as before LR 117.
             focus_blend: if s.caps.has(Caps::FOCUS_BLEND) { w[W::FocusBlend] } else { 0.5 },
             odds_r: w[W::OddsR],

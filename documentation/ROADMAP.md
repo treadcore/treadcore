@@ -1375,6 +1375,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     (the rules 24, 0, 48, 34, 56%). Next: the styles in the gauntlet;
     the rules taught the five decisions; crucible's arena with a hostile
     and a neutral pillbox.
+84. The one that shot at me answered first. (4 November; cause: Paul,
+    "Teach the rules the five"; LR 142, CI-091.) Built: `w_shooter` (2),
+    the shooter heeded in the target score and in defence. State: built;
+    G20 44 to 72%, the census inside the noise. Next: G18, G19, G21, G22.
 
 ## Sequencing
 

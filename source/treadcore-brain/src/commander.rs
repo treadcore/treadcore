@@ -2701,11 +2701,22 @@ impl Commander {
     fn defend_within(&mut self, obs: &Observation, me: &Tank, at: V2, leash: f32, mend: Option<EntityId>, cmds: &mut Vec<Command>) {
         // A hostile tank inside the leash and in direct reach is shot
         // here; beyond, the inner doctrine's indirect fire answers.
+        // THE ONE THAT SHOT AT ME FIRST (LR 142; Paul, 4 November: "last attacked enemy"; G20): it
+        // counts as `w_shooter` four tiles nearer than it is, so it is answered before a nearer tank
+        // that has not fired, and not before one far nearer. 0 is the nearest alone, as before.
+        if let Some(tc) = self.inner.tactics.as_mut() {
+            tc.heed_shots(obs, me);
+        }
+        let (shooter, pull) = match self.inner.tactics.as_ref() {
+            Some(tc) => (tc.shooter.filter(|(_, when)| obs.tick.saturating_sub(*when) <= crate::tactics::SHOOTER_MEMORY).map(|(o, _)| o), tc.w.w_shooter * 4.0),
+            None => (None, 0.0),
+        };
+        let near = |t: &Tank| t.pos.dist(me.pos) - if Some(t.owner) == shooter { pull } else { 0.0 };
         let threat = obs
             .tanks
             .iter()
             .filter(|t| t.alive && !obs.allied(t.owner) && t.pos.dist(at) <= leash)
-            .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)).then(a.id.cmp(&b.id)));
+            .min_by(|a, b| near(a).total_cmp(&near(b)).then(a.id.cmp(&b.id)));
         // Kiting it (tactics.rs), from the side of what is defended and
         // on the leash: in range, the gun; the tank steps in only while
         // its gun cannot answer. Without the weights, stand and trade.

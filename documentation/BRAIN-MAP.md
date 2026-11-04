@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-28 files, 615 functions (10 with no doc comment; 59 more are a trait's, documented by it), 180 tests.
+28 files, 616 functions (10 with no doc comment; 59 more are a trait's, documented by it), 180 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -15,7 +15,7 @@ structure as built is `checkins/`.
 | [`calls.rs`](#callsrs) | 117 | 4 | 0 | 1 | Calls to friends (LR 97): a team's shared queue of requests, so a learned tank can ask its teammates for something and hear what they ask of it. |
 | [`city.rs`](#cityrs) | 189 | 4 | 1 | 1 | The city (game 7; the plan of 2 November, chapter 13): what a base's quartermaster builds next, in the order a base grows, read from what stands near it. |
 | [`clip.rs`](#cliprs) | 270 | 12 | 0 | 1 | Clips (LR 102): a recorded run (`scenario::Recording`) drawn frame by frame into pixels, for short animated pictures of the learned tank at work. |
-| [`commander.rs`](#commanderrs) | 5034 | 89 | 0 | 34 | The Commander (roadmap step 11a): a Brain for the player's own seat. |
+| [`commander.rs`](#commanderrs) | 5045 | 89 | 0 | 34 | The Commander (roadmap step 11a): a Brain for the player's own seat. |
 | [`crew.rs`](#crewrs) | 597 | 20 | 0 | 1 | The fleet commander and its crews (Paul, 16 October: "each side has a fleet commander and they request and organize fort construction"). |
 | [`cycle.rs`](#cyclers) | 481 | 10 | 0 | 4 | The base cycle (roadmap step 12f1, LAB-REPORT-BRAIN.md section 6.1; Paul, 18 October: "after they fill up on base resources, add to the base 1 item, 1 improvement, and attempt to build roads to other established bases... |
 | [`facts.rs`](#factsrs) | 222 | 10 | 0 | 2 | What the map says, worked out once (roadmap steps 12b and 12f2, LAB-REPORT-BRAIN.md sections 5 and 6.2). |
@@ -36,8 +36,8 @@ structure as built is `checkins/`.
 | [`senses.rs`](#sensesrs) | 559 | 8 | 0 | 7 | The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map. |
 | [`status.rs`](#statusrs) | 366 | 9 | 0 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
 | [`styles.rs`](#stylesrs) | 813 | 36 | 2 | 21 | Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. |
-| [`tactics.rs`](#tacticsrs) | 735 | 17 | 1 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
-| [`weights.rs`](#weightsrs) | 797 | 33 | 0 | 9 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
+| [`tactics.rs`](#tacticsrs) | 765 | 18 | 1 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
+| [`weights.rs`](#weightsrs) | 799 | 33 | 0 | 9 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
 
 ## bio.rs
 
@@ -231,68 +231,68 @@ The Commander (roadmap step 11a): a Brain for the player's own seat.  A person c
 | 2681 | `blocked` | Commander |  | No line from here: round the target to the next firing point; a whole circle and a half without one, and it is given up. |
 | 2693 | `defend` | Commander |  | Hold by a point, fight what comes, mend what is ours there. |
 | 2701 | `defend_within` | Commander |  | Defend `at` within `leash`: the nearest hostile tank inside it kited from the defended side, shot in direct reach or met between it and `at`; with none, to the post and on guard. |
-| 2773 | `style_carries` |  | yes | Which kinds of ping a `ping_style` calls and hears (0, as built, knows only help). |
-| 2786 | `kind_of` | Commander |  | What a hostile tank at `at` is, to call it: at our base, defend; more of them than us, help; two or more, warn; further than a fight, caution; else, news. |
-| 2807 | `patched` | Commander |  | The last stage: the transform reads the senses, the waves and the rules' own point, and moves the point if it is confident. |
-| 2843 | `name` | Commander |  | *(the `Brain` trait's)* |
-| 2847 | `settings` | Commander |  | *(the `Brain` trait's)* |
-| 2851 | `set_settings` | Commander |  | *(the `Brain` trait's)* |
-| 2855 | `rung` | Commander |  | *(the `Brain` trait's)* |
-| 2859 | `stance` | Commander |  | The inner RuleBot's: the doctrine runs the landfall. |
-| 2863 | `beach` | Commander |  | *(the `Brain` trait's)* |
-| 2866 | `dead` | Commander |  | *(the `Brain` trait's)* |
-| 2871 | `act` | Commander |  | *(the `Brain` trait's)* |
-| 2875 | `status` | Commander |  | *(the `Brain` trait's)* |
-| 2884 | `think` | Commander |  | *(the `Brain` trait's)* |
-| 2888 | `think_on` | Commander |  | *(the `Brain` trait's)* |
-| 2900 | `think_released` | Commander |  | The think, then `dodge_release` (lib.rs `Dodge::release`, LR 53): an errand that would drive back under a dodged shell before it lands waits, and is asked for again (`last_move` cleared); and `dodge_fire` (`Dodge::hol... |
-| 2959 | `blunt` | Commander |  | Under full skill (LR 67), what the Commander says, made worse where every path to the gun and the hangar meets: a shell's aim off by up to (1 - skill) of a rookie's scatter (a direct shot a quarter of that), and no dr... |
-| 2977 | `think_map` | Commander |  | The think: the inner doctrine every tick, then the goal (Auto's ladder, or the person's), and of the doctrine's orders only what the goal leaves it (`keep_inner`). |
-| 3647 | `connect_left` |  | yes | Connect's score: the slots still waiting, in full only if there is a pillbox to bring (1 November). |
-| 4106 | `hears` |  |  | A world of two allied bots, and a Commander in seat 1 hearing seat 0's ping. |
-| 4269 | `bastions` |  |  | The settings with the castle of 11b and 11h: three towers and two bastions, no cap. |
-| 4277 | `one_pillbox` |  |  | Two seats, no swarm, no time limit, no pillboxes but one placed `away` tiles from seat 0 toward the middle, owned by `owner`. |
-| 4295 | `run` |  |  | Run seat 0 under `goal` for `seconds`; the other seat sits still. |
-| 4360 | `a_pair` |  |  | Three seats: 0 the leader, 1 its wingman on the same side, 2 the enemy; the wingman starts beside the leader, nobody else moves. |
-| 4379 | `fly` |  |  | Step `w` for `ticks` with seat 1 thinking, `each` after a step. |
-| 4599 | `free_near` |  |  | A free tile about `r` from `from`: open ground, off depots and pillboxes' spacing. |
+| 2784 | `style_carries` |  | yes | Which kinds of ping a `ping_style` calls and hears (0, as built, knows only help). |
+| 2797 | `kind_of` | Commander |  | What a hostile tank at `at` is, to call it: at our base, defend; more of them than us, help; two or more, warn; further than a fight, caution; else, news. |
+| 2818 | `patched` | Commander |  | The last stage: the transform reads the senses, the waves and the rules' own point, and moves the point if it is confident. |
+| 2854 | `name` | Commander |  | *(the `Brain` trait's)* |
+| 2858 | `settings` | Commander |  | *(the `Brain` trait's)* |
+| 2862 | `set_settings` | Commander |  | *(the `Brain` trait's)* |
+| 2866 | `rung` | Commander |  | *(the `Brain` trait's)* |
+| 2870 | `stance` | Commander |  | The inner RuleBot's: the doctrine runs the landfall. |
+| 2874 | `beach` | Commander |  | *(the `Brain` trait's)* |
+| 2877 | `dead` | Commander |  | *(the `Brain` trait's)* |
+| 2882 | `act` | Commander |  | *(the `Brain` trait's)* |
+| 2886 | `status` | Commander |  | *(the `Brain` trait's)* |
+| 2895 | `think` | Commander |  | *(the `Brain` trait's)* |
+| 2899 | `think_on` | Commander |  | *(the `Brain` trait's)* |
+| 2911 | `think_released` | Commander |  | The think, then `dodge_release` (lib.rs `Dodge::release`, LR 53): an errand that would drive back under a dodged shell before it lands waits, and is asked for again (`last_move` cleared); and `dodge_fire` (`Dodge::hol... |
+| 2970 | `blunt` | Commander |  | Under full skill (LR 67), what the Commander says, made worse where every path to the gun and the hangar meets: a shell's aim off by up to (1 - skill) of a rookie's scatter (a direct shot a quarter of that), and no dr... |
+| 2988 | `think_map` | Commander |  | The think: the inner doctrine every tick, then the goal (Auto's ladder, or the person's), and of the doctrine's orders only what the goal leaves it (`keep_inner`). |
+| 3658 | `connect_left` |  | yes | Connect's score: the slots still waiting, in full only if there is a pillbox to bring (1 November). |
+| 4117 | `hears` |  |  | A world of two allied bots, and a Commander in seat 1 hearing seat 0's ping. |
+| 4280 | `bastions` |  |  | The settings with the castle of 11b and 11h: three towers and two bastions, no cap. |
+| 4288 | `one_pillbox` |  |  | Two seats, no swarm, no time limit, no pillboxes but one placed `away` tiles from seat 0 toward the middle, owned by `owner`. |
+| 4306 | `run` |  |  | Run seat 0 under `goal` for `seconds`; the other seat sits still. |
+| 4371 | `a_pair` |  |  | Three seats: 0 the leader, 1 its wingman on the same side, 2 the enemy; the wingman starts beside the leader, nobody else moves. |
+| 4390 | `fly` |  |  | Step `w` for `ticks` with seat 1 thinking, `each` after a step. |
+| 4610 | `free_near` |  |  | A free tile about `r` from `from`: open ground, off depots and pillboxes' spacing. |
 
 Tests (34):
 
-- `skill_spoils_the_aim_and_holds_the_drones` (line 3660): LR 67: under full skill the Commander's shells land off its aim and its drones wait; in full, nothing it says is touched; under half, no kite.
-- `a_capped_castle_fills_then_lines_the_road` (line 3687): Paul's castle in play (roadmap 12h): alone, the capped castle goes up with two pillboxes inside, the first outlying pillbox is carried to the slot on its road, and the rest to posts on the road toward the side's secon...
-- `a_far_fetch_gathers_the_fleet` (line 3748): The escort (roadmap 12f): with `escort` on, a leader whose fetch trip runs past `fetch_gather` waits at the base for its wingman before it goes, and the pillbox still comes home.
-- `a_nan_does_not_panic_the_brain` (line 3797): Backlog 19 (LR 23): a NaN anywhere in what a tank sees used to panic the brain at the first `partial_cmp().unwrap()` that met it.
-- `a_tank_ducks_a_gun_ready_before_its_own` (line 3829): The duck (roadmap 12d, LR 19): a hostile gun in range and line, ready before mine, is ducked out of range; not when my gun is ready first, not with `w_duck` at 0, not with the switch off.
-- `a_teammate_finishes_a_part_laid_bridge` (line 3913): A part-laid bridge on the team board (roadmap 12f, LR 6.2): a teammate on Auto with material, nothing to do but guard, takes it and lays the rest, and it comes off the board.
-- `connect_scores_work_that_can_be_done` (line 3971): The posture leans the ladder (LR 24): with no posture or a weight of 0 the pick is the first rung that holds, for every one of the 4096 combinations; at 0.25 a leaned rung climbs one rung, at 0.5 (and the default 0.95...
-- `the_posture_leans_the_ladder` (line 3980)
-- `each_ladder_puts_the_base_first_and_reorders_the_middle` (line 4017): The ladder's choice (weights.rs `ladder`): each order is the six rungs, defend base first and guard last; 0 is the ladder as built; the file names a version or numbers it, and a number past the versions is the last.
-- `a_fleet_crosses_a_bridge_in_file` (line 4048): On a bridge a wingman's slot is in file straight behind the leader (roadmap 12f3); off it, the wedge; without the capability, the wedge on the bridge too.
-- `a_switch_comes_back_and_a_slider_keeps_the_target` (line 4083): The sliders (backlog 15): a switch off and on again mid-match gives the role's own setting back, and a weight moved keeps the turret's target.
-- `after_a_capture_forward_calls_chains_cuts_and_builds_in_order` (line 4134)
-- `at_style_0_with_pings_off_a_bot_answers_no_bot` (line 4163)
-- `with_pings_on_as_built_a_bot_comes_to_any_ping` (line 4168)
-- `a_person_is_answered_whatever_the_bots_own_pings_are` (line 4174)
-- `each_kind_of_ping_does_what_it_says` (line 4182)
-- `a_style_hears_only_the_kinds_it_carries_and_reach_is_a_dial` (line 4198)
-- `a_patch_moves_the_rules_only_when_it_is_confident` (line 4209)
-- `a_switch_off_before_the_deal_is_off_after_it` (line 4244): A switch off by default stays off through the deal, and comes back: `new`, then the role's fields, then the settings, with no change of the switch for `set_settings` to see.
-- `a_commander_takes_a_pillbox` (line 4329): 11a's proof: a live pillbox of the enemy's, 25 tiles off, is shot dead from outside its ring and taken by the squad inside ninety seconds, and it never lands a shell on the tank.
-- `a_commander_walks_round_a_wall_to_a_line` (line 4340): A wall on the near side of the pillbox: the first firing point has no line, so the hunter walks round to one that has.
-- `a_wingman_covers_its_leader` (line 4391): The wingman's first rule: a hostile tank that comes up to the leader is hit, and the wingman never leaves the leash to do it.
-- `a_wingman_takes_the_pillbox_by_its_leader` (line 4440): The pillbox by the leader is the wingman's to take; one far from the leader is not.
-- `a_wingman_leaves_only_at_one_hundred_percent` (line 4477): The defection gate: with one pillbox not the side's, never; with all of them and every depot, after `TOTAL_HOLD` and not before.
-- `a_commander_fortifies_its_depot` (line 4513): 11b's proof: alone on the island for five minutes, the squad builds the castle round the home depot: the towers and the rear pillbox, most of the wall, the gate left open, and a route from the front into the depot com...
-- `a_commander_defends_its_base` (line 4610): Defend the base: a tank parked 12 tiles out is a threat (beyond DefendDepot's leash, inside the base's alarm); it is met under the base's guns and shot, and the hurt pillbox is mended once it is gone.
-- `a_commander_scoots_from_unseen_fire` (line 4655): Shelled from twenty tiles, beyond sight: the tank scoots off the spot inside a second, puts a recon up, and so sees the shooter.
-- `a_bot_answers_a_chain` (line 4715): Chain help: a person who chains a pillbox alone is answered by the nearest bot of the side, which hitches on and hauls beside them, so the pillbox moves when the person drives off.
-- `a_bot_revives_a_downed_ally` (line 4761): Revive: a bot whose ally goes down twelve tiles off drives over, sends its squad and has the ally back at half armour inside the twenty seconds.
-- `two_crews_haul_a_pillbox` (line 4802): Haul: two crews given the same job chain an ally's pillbox and drag it to the spot, then let go.
-- `a_commander_climbs_the_ladder` (line 4858): Auto, alone: fortify first; once the castle stands and the base has been quiet, the two outlying pillboxes of ours are lifted and set down in the turrets; a tank at the base sends it to defend.
-- `the_ladder_in_a_match` (line 4941): The window's solo match, headless: the map in LADDER_MAP, seat 0 on Auto against three RuleBots seeded as the window seeds them.
-- `a_commander_takes_a_neutral_pillbox_without_a_shot` (line 4984): A neutral pillbox is not shot at all: the squad takes it live.
-- `a_commander_defends_its_depot` (line 4998): Defend depot: an intruder that drives up to the depot is engaged, and the defender never strays past the leash.
+- `skill_spoils_the_aim_and_holds_the_drones` (line 3671): LR 67: under full skill the Commander's shells land off its aim and its drones wait; in full, nothing it says is touched; under half, no kite.
+- `a_capped_castle_fills_then_lines_the_road` (line 3698): Paul's castle in play (roadmap 12h): alone, the capped castle goes up with two pillboxes inside, the first outlying pillbox is carried to the slot on its road, and the rest to posts on the road toward the side's secon...
+- `a_far_fetch_gathers_the_fleet` (line 3759): The escort (roadmap 12f): with `escort` on, a leader whose fetch trip runs past `fetch_gather` waits at the base for its wingman before it goes, and the pillbox still comes home.
+- `a_nan_does_not_panic_the_brain` (line 3808): Backlog 19 (LR 23): a NaN anywhere in what a tank sees used to panic the brain at the first `partial_cmp().unwrap()` that met it.
+- `a_tank_ducks_a_gun_ready_before_its_own` (line 3840): The duck (roadmap 12d, LR 19): a hostile gun in range and line, ready before mine, is ducked out of range; not when my gun is ready first, not with `w_duck` at 0, not with the switch off.
+- `a_teammate_finishes_a_part_laid_bridge` (line 3924): A part-laid bridge on the team board (roadmap 12f, LR 6.2): a teammate on Auto with material, nothing to do but guard, takes it and lays the rest, and it comes off the board.
+- `connect_scores_work_that_can_be_done` (line 3982): The posture leans the ladder (LR 24): with no posture or a weight of 0 the pick is the first rung that holds, for every one of the 4096 combinations; at 0.25 a leaned rung climbs one rung, at 0.5 (and the default 0.95...
+- `the_posture_leans_the_ladder` (line 3991)
+- `each_ladder_puts_the_base_first_and_reorders_the_middle` (line 4028): The ladder's choice (weights.rs `ladder`): each order is the six rungs, defend base first and guard last; 0 is the ladder as built; the file names a version or numbers it, and a number past the versions is the last.
+- `a_fleet_crosses_a_bridge_in_file` (line 4059): On a bridge a wingman's slot is in file straight behind the leader (roadmap 12f3); off it, the wedge; without the capability, the wedge on the bridge too.
+- `a_switch_comes_back_and_a_slider_keeps_the_target` (line 4094): The sliders (backlog 15): a switch off and on again mid-match gives the role's own setting back, and a weight moved keeps the turret's target.
+- `after_a_capture_forward_calls_chains_cuts_and_builds_in_order` (line 4145)
+- `at_style_0_with_pings_off_a_bot_answers_no_bot` (line 4174)
+- `with_pings_on_as_built_a_bot_comes_to_any_ping` (line 4179)
+- `a_person_is_answered_whatever_the_bots_own_pings_are` (line 4185)
+- `each_kind_of_ping_does_what_it_says` (line 4193)
+- `a_style_hears_only_the_kinds_it_carries_and_reach_is_a_dial` (line 4209)
+- `a_patch_moves_the_rules_only_when_it_is_confident` (line 4220)
+- `a_switch_off_before_the_deal_is_off_after_it` (line 4255): A switch off by default stays off through the deal, and comes back: `new`, then the role's fields, then the settings, with no change of the switch for `set_settings` to see.
+- `a_commander_takes_a_pillbox` (line 4340): 11a's proof: a live pillbox of the enemy's, 25 tiles off, is shot dead from outside its ring and taken by the squad inside ninety seconds, and it never lands a shell on the tank.
+- `a_commander_walks_round_a_wall_to_a_line` (line 4351): A wall on the near side of the pillbox: the first firing point has no line, so the hunter walks round to one that has.
+- `a_wingman_covers_its_leader` (line 4402): The wingman's first rule: a hostile tank that comes up to the leader is hit, and the wingman never leaves the leash to do it.
+- `a_wingman_takes_the_pillbox_by_its_leader` (line 4451): The pillbox by the leader is the wingman's to take; one far from the leader is not.
+- `a_wingman_leaves_only_at_one_hundred_percent` (line 4488): The defection gate: with one pillbox not the side's, never; with all of them and every depot, after `TOTAL_HOLD` and not before.
+- `a_commander_fortifies_its_depot` (line 4524): 11b's proof: alone on the island for five minutes, the squad builds the castle round the home depot: the towers and the rear pillbox, most of the wall, the gate left open, and a route from the front into the depot com...
+- `a_commander_defends_its_base` (line 4621): Defend the base: a tank parked 12 tiles out is a threat (beyond DefendDepot's leash, inside the base's alarm); it is met under the base's guns and shot, and the hurt pillbox is mended once it is gone.
+- `a_commander_scoots_from_unseen_fire` (line 4666): Shelled from twenty tiles, beyond sight: the tank scoots off the spot inside a second, puts a recon up, and so sees the shooter.
+- `a_bot_answers_a_chain` (line 4726): Chain help: a person who chains a pillbox alone is answered by the nearest bot of the side, which hitches on and hauls beside them, so the pillbox moves when the person drives off.
+- `a_bot_revives_a_downed_ally` (line 4772): Revive: a bot whose ally goes down twelve tiles off drives over, sends its squad and has the ally back at half armour inside the twenty seconds.
+- `two_crews_haul_a_pillbox` (line 4813): Haul: two crews given the same job chain an ally's pillbox and drag it to the spot, then let go.
+- `a_commander_climbs_the_ladder` (line 4869): Auto, alone: fortify first; once the castle stands and the base has been quiet, the two outlying pillboxes of ours are lifted and set down in the turrets; a tank at the base sends it to defend.
+- `the_ladder_in_a_match` (line 4952): The window's solo match, headless: the map in LADDER_MAP, seat 0 on Auto against three RuleBots seeded as the window seeds them.
+- `a_commander_takes_a_neutral_pillbox_without_a_shot` (line 4995): A neutral pillbox is not shot at all: the squad takes it live.
+- `a_commander_defends_its_depot` (line 5009): Defend depot: an intruder that drives up to the depot is engaged, and the defender never strays past the leash.
 
 ## crew.rs
 
@@ -1038,29 +1038,30 @@ Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to coll
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 142 | `default` | Tactics |  | *(the `Default` trait's)* |
-| 197 | `ratio` | Odds | yes | Lanchester's square law: ours squared over theirs squared. |
-| 226 | `reach` |  | yes | How far a hostile tank's gun reaches now: its direct gun while it has shells. |
-| 235 | `ready_in` |  | yes | Seconds until a tank can fire again. |
-| 289 | `worth` |  |  | A tank's worth in a fight: armour, and none without shells. |
-| 299 | `with` | Tactician | yes | A Tactician of these weights, with nothing heard yet. |
-| 304 | `hear` | Tactician | yes | Every tick: a teammate's ping is a call on what is under it. |
-| 317 | `score` | Tactician | yes | A target's score and the reasons that made it. |
-| 325 | `value` | Tactician | yes | The score alone: what `pick` asks of every candidate, with no words built for the ones that lose (roadmap 12b). |
-| 331 | `rate` | Tactician |  | A target's score; the reasons pushed to `why` when it is Some, and their tags set in `tags` (`score` wants them, `value` not). |
-| 396 | `pick` | Tactician | yes | The hostile tank to shoot, of those `fair` allows; the reason kept. |
-| 448 | `odds` | Tactician | yes | The odds at a fight round `at`, me counted as there. |
-| 472 | `stance` | Tactician | yes | Mass, engage or press, by the odds; massing ends after `mass_for` seconds whether or not the team came. |
-| 478 | `stance_now` | Tactician |  |  |
-| 533 | `kite` | Tactician | yes | Kiting `target`, coming in on `from`, at `stance`: the step in when the target's gun cannot answer it, else the waiting ring (module notes). |
-| 579 | `enough_answer` | Tactician | yes | Teammates nearer a ping than me: past `answer_cap` I stay. |
-| 589 | `stand` | Tactician | yes | Where to stand against `target` at `range`, coming in on `from` (a unit bearing from the target): of seven points on the arc within 60 degrees of it, the one with the fewest other guns on it, the bearing breaking ties. |
+| 145 | `default` | Tactics |  | *(the `Default` trait's)* |
+| 201 | `ratio` | Odds | yes | Lanchester's square law: ours squared over theirs squared. |
+| 230 | `reach` |  | yes | How far a hostile tank's gun reaches now: its direct gun while it has shells. |
+| 239 | `ready_in` |  | yes | Seconds until a tank can fire again. |
+| 300 | `worth` |  |  | A tank's worth in a fight: armour, and none without shells. |
+| 310 | `with` | Tactician | yes | A Tactician of these weights, with nothing heard yet. |
+| 315 | `hear` | Tactician | yes | Every tick: a teammate's ping is a call on what is under it. |
+| 328 | `score` | Tactician | yes | A target's score and the reasons that made it. |
+| 336 | `value` | Tactician | yes | The score alone: what `pick` asks of every candidate, with no words built for the ones that lose (roadmap 12b). |
+| 342 | `rate` | Tactician |  | A target's score; the reasons pushed to `why` when it is Some, and their tags set in `tags` (`score` wants them, `value` not). |
+| 413 | `heed_shots` | Tactician | yes | Who shot at me: a hostile direct shell in the air aimed within two tiles of me, its owner remembered with the tick (the newest wins). |
+| 425 | `pick` | Tactician | yes | The hostile tank to shoot, of those `fair` allows; the reason kept. |
+| 478 | `odds` | Tactician | yes | The odds at a fight round `at`, me counted as there. |
+| 502 | `stance` | Tactician | yes | Mass, engage or press, by the odds; massing ends after `mass_for` seconds whether or not the team came. |
+| 508 | `stance_now` | Tactician |  |  |
+| 563 | `kite` | Tactician | yes | Kiting `target`, coming in on `from`, at `stance`: the step in when the target's gun cannot answer it, else the waiting ring (module notes). |
+| 609 | `enough_answer` | Tactician | yes | Teammates nearer a ping than me: past `answer_cap` I stay. |
+| 619 | `stand` | Tactician | yes | Where to stand against `target` at `range`, coming in on `from` (a unit bearing from the target): of seven points on the arc within 60 degrees of it, the one with the fewest other guns on it, the bearing breaking ties. |
 
 Tests (3):
 
-- `focus_fire_picks_the_wounded_tank_a_teammate_is_on` (line 620): Two tanks with a pillbox-free field: a fresh near one, a far wounded one an ally is already shooting.
-- `kiting_steps_in_only_when_the_gun_cannot_answer` (line 659): Kiting's forks, one at a time: the target loaded holds us past its reach; reloading lets us step in; a second loaded gun on the spot holds us again; our own gun not loaded by the time we would be in holds us; massing...
-- `the_square_law` (line 714)
+- `focus_fire_picks_the_wounded_tank_a_teammate_is_on` (line 650): Two tanks with a pillbox-free field: a fresh near one, a far wounded one an ally is already shooting.
+- `kiting_steps_in_only_when_the_gun_cannot_answer` (line 689): Kiting's forks, one at a time: the target loaded holds us past its reach; reloading lets us step in; a second loaded gun on the spot holds us again; our own gun not loaded by the time we would be in holds us; massing...
+- `the_square_law` (line 744)
 
 ## weights.rs
 
@@ -1074,42 +1075,42 @@ Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5
 | 63 | `choices` |  | yes | A choice's versions, 0 first, from its doc's `(choice: a / b / ...)`; None for a weight that scales. |
 | 69 | `by_name` |  | yes | The weight of that name, if any. |
 | 75 | `step` |  | yes | A slider's step (the coordination screen, backlog 15): one for a rounded weight, else a tenth of the default taken to 1, 2 or 5 of its power of ten; a tenth for nothing. |
-| 285 | `default` | Weights |  | *(the `Default` trait's)* |
-| 292 | `index` | Weights |  | *(the `Index` trait's)* |
-| 298 | `index_mut` | Weights |  | *(the `IndexMut` trait's)* |
-| 317 | `doc` | Weights | yes | What a capability does, for the sliders' page. |
-| 347 | `default` | Caps |  | *(the `Default` trait's)* |
-| 354 | `has` | Caps | yes | Every bit of `c` is on. |
-| 358 | `with` | Caps | yes | These, and `c` on. |
-| 362 | `without` | Caps | yes | These, and `c` off. |
-| 366 | `all` | Caps | yes | Every capability, the new ones too. |
-| 370 | `by_name` | Caps | yes | The capability of that name, as a weights file spells it. |
-| 374 | `names` | Caps | yes | The names of the bits that are on, comma-separated. |
-| 387 | `fmt` | WeightsError |  | *(the `Display` trait's)* |
-| 393 | `ranges` |  |  | RANGES' lines, as (name, min, max). |
-| 408 | `default` | Settings |  | *(the `Default` trait's)* |
-| 422 | `parse` | Settings | yes | Read the file form. |
-| 470 | `hold` | Settings | yes | Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are not adjusted beyond their max or under their min range"). |
-| 482 | `choice` | Settings | yes | A choice's version: its weight rounded, held to the versions it has (0 for a weight that is not a choice and below a half). |
-| 488 | `smooth` | Settings | yes | How much the bot smooths (`w_smooth`), 0 to 1. |
-| 494 | `smooth_alpha` | Settings | yes | The share of a move's new pull taken a think: all of it at `w_smooth` 0, `alpha` at 1, in a line between. |
-| 499 | `smooth_on` | Settings | yes | The yes-or-no parts of smoothing: on above 0.5. |
-| 504 | `to_text` | Settings | yes | The file form: every weight, and the capabilities. |
-| 513 | `diff` | Settings | yes | The weights that differ from the defaults: what makes a genome. |
-| 519 | `nudge` | Settings | yes | A slider moved `by` steps: never under nothing, and kept to four places so a step back is the number it was. |
-| 525 | `ticks` | Settings | yes | Seconds into ticks, for the time weights. |
-| 532 | `from_weights` | Tactics | yes | The tactics the weights describe. |
-| 590 | `eval` | Curve | yes | The curve at `x`, clamped to 0..1 both ways; a value that is not finite reads 0. |
-| 610 | `utility` |  | yes | An action's utility (LR 4): its weight times the geometric mean of its considerations, raised by `commit` if it is the intent held now. |
+| 286 | `default` | Weights |  | *(the `Default` trait's)* |
+| 293 | `index` | Weights |  | *(the `Index` trait's)* |
+| 299 | `index_mut` | Weights |  | *(the `IndexMut` trait's)* |
+| 318 | `doc` | Weights | yes | What a capability does, for the sliders' page. |
+| 348 | `default` | Caps |  | *(the `Default` trait's)* |
+| 355 | `has` | Caps | yes | Every bit of `c` is on. |
+| 359 | `with` | Caps | yes | These, and `c` on. |
+| 363 | `without` | Caps | yes | These, and `c` off. |
+| 367 | `all` | Caps | yes | Every capability, the new ones too. |
+| 371 | `by_name` | Caps | yes | The capability of that name, as a weights file spells it. |
+| 375 | `names` | Caps | yes | The names of the bits that are on, comma-separated. |
+| 388 | `fmt` | WeightsError |  | *(the `Display` trait's)* |
+| 394 | `ranges` |  |  | RANGES' lines, as (name, min, max). |
+| 409 | `default` | Settings |  | *(the `Default` trait's)* |
+| 423 | `parse` | Settings | yes | Read the file form. |
+| 471 | `hold` | Settings | yes | Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are not adjusted beyond their max or under their min range"). |
+| 483 | `choice` | Settings | yes | A choice's version: its weight rounded, held to the versions it has (0 for a weight that is not a choice and below a half). |
+| 489 | `smooth` | Settings | yes | How much the bot smooths (`w_smooth`), 0 to 1. |
+| 495 | `smooth_alpha` | Settings | yes | The share of a move's new pull taken a think: all of it at `w_smooth` 0, `alpha` at 1, in a line between. |
+| 500 | `smooth_on` | Settings | yes | The yes-or-no parts of smoothing: on above 0.5. |
+| 505 | `to_text` | Settings | yes | The file form: every weight, and the capabilities. |
+| 514 | `diff` | Settings | yes | The weights that differ from the defaults: what makes a genome. |
+| 520 | `nudge` | Settings | yes | A slider moved `by` steps: never under nothing, and kept to four places so a step back is the number it was. |
+| 526 | `ticks` | Settings | yes | Seconds into ticks, for the time weights. |
+| 533 | `from_weights` | Tactics | yes | The tactics the weights describe. |
+| 592 | `eval` | Curve | yes | The curve at `x`, clamped to 0..1 both ways; a value that is not finite reads 0. |
+| 612 | `utility` |  | yes | An action's utility (LR 4): its weight times the geometric mean of its considerations, raised by `commit` if it is the intent held now. |
 
 Tests (9):
 
-- `every_range_reads_and_holds_its_own_default` (line 631)
-- `no_trial_can_move_a_decreed_value` (line 652)
-- `default_weights_are_todays_constants` (line 661)
-- `a_weights_file_round_trips_and_names_its_mistakes` (line 672)
-- `smooth_is_a_weight_that_blends_and_thresholds` (line 692): `w_smooth` (LR 46): the default is near off, the desire vector blends in a line, and the yes-or-no parts turn on above 0.5.
-- `the_geometric_mean_compensates_and_vetoes` (line 711)
-- `a_slider_steps_and_steps_back` (line 721)
-- `a_test_that_uses_the_defaults_names_the_weights_it_tests` (line 749): THE PINNED-TEST LINT (the plan of 2 November, chapter 15).
-- `every_profile_reads_and_differs` (line 783)
+- `every_range_reads_and_holds_its_own_default` (line 633)
+- `no_trial_can_move_a_decreed_value` (line 654)
+- `default_weights_are_todays_constants` (line 663)
+- `a_weights_file_round_trips_and_names_its_mistakes` (line 674)
+- `smooth_is_a_weight_that_blends_and_thresholds` (line 694): `w_smooth` (LR 46): the default is near off, the desire vector blends in a line, and the yes-or-no parts turn on above 0.5.
+- `the_geometric_mean_compensates_and_vetoes` (line 713)
+- `a_slider_steps_and_steps_back` (line 723)
+- `a_test_that_uses_the_defaults_names_the_weights_it_tests` (line 751): THE PINNED-TEST LINT (the plan of 2 November, chapter 15).
+- `every_profile_reads_and_differs` (line 785)

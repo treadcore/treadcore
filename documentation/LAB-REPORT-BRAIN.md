@@ -10074,3 +10074,19 @@ No brain reaches the boundary, the rules included, and each fails as its file sa
 **The floors, today's success** (the same evening; Paul: "ajust your floors, keep what we got, maybe normalize some, but it should worke. adjust the floors to be what we have now as sucess, so we can create generations from here forwards"). The five were read again on 200 seeds: the rules 35.0 ± 3.4% on G18, 0% on G19 (map7a the best, 18.5%), 44.0 ± 3.5% on G20, 24.5 ± 3.0% on G21, 53.5 ± 3.5% on G22. Each floor is now the rules' share less two errors of the fleet's hundred seeds, to the twentieth below: **G18 0.25, G19 0, G20 0.30, G21 0.15, G22 0.40**. The pass conditions stay the boundary; the floors are where play stands today, so a generation that falls below one is a step back, and every one above it is a step on. G19's stays 0 until the rules earn one. The floors of G1 to G17 are kept as they were.
 
 **Not done.** The styles (the Duelist, the Gladiator) in the gauntlet beside the rules and the nets; the rules taught these decisions; crucible's arena given a hostile and a neutral pillbox, so its champions meet G18's choice.
+
+## 142. The one that shot at me answered first: `w_shooter`, the first of the five taught to the rules, 4 November
+
+The first of the boundary's five decisions taught to the rules (section 141; Paul, asked which first: "Teach the rules the five", then crucible, then the styles in the gauntlet). G20: two enemy tanks, a passive one at 7 tiles and one at 9 that opens fire while the tank's gun reloads; the rules answered the nearer one about half the time.
+
+**Why the rules missed it.** The tactician's target score (`Tactician::rate`) has no term for who is shooting, and in G20 the tank is not even asking it: hostile tanks near its start put it in defence (`defend_within`), whose threat is the nearest hostile tank inside the leash and nothing else. A first dial in `rate` alone moved nothing at any weight (51 of 100 at 0, 1, 2 and 4), which is how the defence path was found.
+
+**What changed.** `Tactician::heed_shots`, each think: a hostile direct shell in the air aimed within two tiles of the tank names its owner, remembered for `SHOOTER_MEMORY` ten seconds (two of a gun's reloads and a half; a shell that misses still says who is shooting). The target score adds `w_shooter` for that tank ("it shot at me"), and the defence takes it as `w_shooter` four tiles nearer than it is, so it is answered before a nearer tank that has not fired and not before one far nearer. `w_shooter` (weights.rs) is a target dial as `w_threat` is.
+
+**The starting number, from a sweep** (G20 for the rules, 200 seeds): 0 (as before) 44.0%, 0.5 45.0%, 1 53.5%, 2 72.0%, 3, 4 and 6 73.0%. The default is 2.
+
+**The rule before the run:** at 2 against 0, the census on the same 48 seeds of every map must not read worse by more than two errors, and the families must hold.
+
+**Read.** Census, `w_shooter` 2 against 0: −0.57 ± 0.77 a seat, inside the noise; every family holds its floor. The gauntlet for the rules, 200 seeds, every file before and after: G20 44.0% to 72.0%, every other file the same to the seed (G22 53.5% to 52.5%). G20's floor rises with it to today's success, 0.60, as Paul asked of the floors ("adjust the floors to be what we have now as sucess, so we can create generations from here forwards").
+
+**Not done.** The four other decisions: G18 (keep out of a neutral pillbox's ring, leave it to the squad), G19 (one pillbox at a time from outside the other's ring), G21 (kite alone), G22 (stand with backup).

@@ -81,6 +81,9 @@ pub struct Tactics {
     pub base_r: f32,
     /// The target already chosen: switching costs a drive and a reload.
     pub w_stick: f32,
+    /// The tank that last shot at me, for `SHOOTER_MEMORY` (LR 142; Paul, 4 November: "last attacked
+    /// enemy"; the gauntlet's G20): answered before a nearer one that has not fired.
+    pub w_shooter: f32,
     /// Focus fire or the near tank (LR 117, Paul: "make it a scalar"):
     /// 1 doubles the team's terms (wounded, one shot, a teammate on it)
     /// and drops the near ones (distance, in range); 0 the reverse; 0.5
@@ -155,6 +158,7 @@ impl Default for Tactics {
             w_threat: 0.6,
             base_r: 6.15272,
             w_stick: 0.322391,
+            w_shooter: 2.0,
             focus_blend: 0.25,
             odds_r: 14.0,
             pillbox_worth: 0.7,
@@ -243,6 +247,8 @@ impl Tags {
     pub const ONE_SHOT: u8 = 1;
     pub const CALLED: u8 = 2;
     pub const ON_IT: u8 = 4;
+    /// It shot at me (`w_shooter`, LR 142).
+    pub const SHOT_ME: u8 = 8;
     /// A focus call is worth making: the team's pick, or a kill.
     pub const FOCUS: u8 = Tags::ONE_SHOT | Tags::CALLED | Tags::ON_IT;
 }
@@ -283,7 +289,12 @@ pub struct Tactician {
     held_stance: Option<Stance>,
     /// The last stance taken and when, for a census to read: it decides nothing.
     pub last_stance: Option<(Tick, Stance)>,
+    /// The hostile tank whose direct shell last came at me, and when it was seen (`w_shooter`).
+    pub shooter: Option<(PlayerId, Tick)>,
 }
+
+/// How long the tank that shot at me stays the one that shot at me: two of its reloads and a half.
+pub const SHOOTER_MEMORY: Tick = 10 * TICK_HZ as Tick;
 
 /// A tank's worth in a fight: armour, and none without shells.
 fn worth(t: &Tank) -> f32 {
@@ -384,6 +395,11 @@ impl Tactician {
         if self.target == Some(t.id) {
             s += w.w_stick;
         }
+        if self.shooter.is_some_and(|(o, at)| o == t.owner && obs.tick.saturating_sub(at) <= SHOOTER_MEMORY) {
+            s += w.w_shooter;
+            *tags |= Tags::SHOT_ME;
+            say(&|| "it shot at me".into());
+        }
         // At 0.5 this adds exactly zero, so the default plays as before.
         let lean = 2.0 * w.focus_blend - 1.0;
         if lean != 0.0 {
@@ -392,8 +408,22 @@ impl Tactician {
         s
     }
 
+    /// Who shot at me: a hostile direct shell in the air aimed within two tiles of me, its owner
+    /// remembered with the tick (the newest wins). A shell that misses still says who is shooting.
+    pub fn heed_shots(&mut self, obs: &Observation, me: &Tank) {
+        let shot = obs
+            .shells
+            .iter()
+            .filter(|s| s.kind == ShellKind::Direct && !obs.allied(s.owner) && s.aim.dist(me.pos) <= 2.0)
+            .max_by_key(|s| s.launch_tick);
+        if let Some(s) = shot {
+            self.shooter = Some((s.owner, obs.tick));
+        }
+    }
+
     /// The hostile tank to shoot, of those `fair` allows; the reason kept.
     pub fn pick<'a>(&mut self, obs: &'a Observation, me: &Tank, fair: impl Fn(&Tank) -> bool) -> Option<&'a Tank> {
+        self.heed_shots(obs, me);
         let best = obs
             .hostile_tanks()
             .filter(|t| t.alive && fair(t))
