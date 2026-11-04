@@ -77,6 +77,7 @@ coming_r 10 256  # a teammate beyond the largest map is not coming; 221 today me
 crew_reach 5 128  # the map's width
 kite_margin 0 10  # past the target's reach, within direct range
 kite_in 0 10
+kite_in_alone 0 10
 jitter 0 20
 bridge_soft 0 30
 site_reach 0 128

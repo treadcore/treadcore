@@ -8,7 +8,7 @@
 # and alive.
 name = "G21 alone: kite the one that shot you"
 reaction = "fire"
-floor = 0.15
+floor = 0.25
 players = 2
 seconds = 40
 pillboxes = false
@@ -31,7 +31,9 @@ around = true
 [[brain]]
 seat = 1
 kind = "commander"
-weights = { w_posture = 0.9, w_pos_expand = 3.0, press_odds = 1.1, engage_odds = 0.5, retreat_armor = 25, w_wounded = 1.6, w_finish = 1.2 }
+# The enemy as the file was written: kite_in_alone (LR 145) pinned at its value then, so the
+# yardstick does not move with the rules it measures.
+weights = { w_posture = 0.9, w_pos_expand = 3.0, press_odds = 1.1, engage_odds = 0.5, retreat_armor = 25, w_wounded = 1.6, w_finish = 1.2, kite_in_alone = 2.25 }
 [[brain]]
 seat = 0
 kind = "net"

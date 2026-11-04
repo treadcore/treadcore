@@ -123,6 +123,7 @@ weights! {
     Kite "kite" 1.0, "kite: on (1) or off (0) (rounded)";
     KiteMargin "kite_margin" 1.5, "kite: the waiting ring past the target's reach, tiles";
     KiteIn "kite_in" 2.25, "kite: the ring a step in ends on, tiles";
+    KiteInAlone "kite_in_alone" 6.0, "kite: the ring a step in ends on with no friend inside `odds_r` of the target, tiles: alone, a shallow step in fires from near the target's reach and is out again before its gun is loaded; with friends, the step in closes (LR 145, the gauntlet's G21 and G22; Paul: \"kite and dance, unless we have backup\")";
     KiteTurn "kite_turn" 0.8, "kite: seconds a step in takes beyond the drive";
     KiteSpare "kite_spare" 0.4, "kite: seconds of the target's reload to spare";
     // Smoothing (LR 7).
@@ -564,6 +565,7 @@ impl Tactics {
             kite: w[W::Kite] >= 0.5 && s.caps.has(Caps::KITE),
             kite_margin: w[W::KiteMargin],
             kite_in: w[W::KiteIn],
+            kite_in_alone: w[W::KiteInAlone],
             kite_turn: w[W::KiteTurn],
             kite_spare: w[W::KiteSpare],
             shell_boxes: w[W::ShellBoxes] >= 0.5,

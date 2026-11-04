@@ -14,6 +14,7 @@
 //! seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed),
 //! and `"centre"` (the map's middle).
 //! `depots = false` keeps only the depots placed (LR 62).
+//! `drones = false` empties every bay and the sky: a duel of the tanks themselves (LR 145).
 //! `board = true` gives each team's Commanders one team board, a
 //! Commander's `rungs = [...]` the ladder's rungs on, and a `[[depot]]`'s
 //! `at` and `offset` move it there (LR 58). A family
@@ -463,6 +464,14 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
         if tank.speed > 0.0 {
             tank.goal = Some(tank.pos + V2::from_heading(tank.heading).scale(num(t, "drive", 20.0) as f32));
         }
+    }
+    // `drones = false`: every bay empty and none in the air (LR 145), a duel of the tanks themselves.
+    // In G21 the strike drones decided a third of the seeds before the tank could choose anything.
+    if doc.top.get("drones") == Some(&Value::Bool(false)) {
+        for t in w.tanks.iter_mut() {
+            t.bay = Bay::default();
+        }
+        w.drones.clear();
     }
     for d in list("depot") {
         let near = place(&w, &depots, &pillboxes, d.get("near").and_then(Value::str).unwrap_or("seat:0"), None)?;

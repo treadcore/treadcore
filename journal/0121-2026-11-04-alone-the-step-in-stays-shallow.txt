@@ -1,0 +1,32 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 02:30:00 +0000
+Subject: [JOURNAL 0121] Alone, the step in stays shallow
+Message-ID: <0121.20261105@treadcore.org>
+In-Reply-To: <0120.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: gauntlet, G21, G22, kite, drones, census
+
+## Abstract
+
+G21 read hit by hit: the rules lost it on the direct gun, out-hit two
+to one after the opening shot, while their drones won theirs. The kite
+waited on the mortar's ring, mortared (12 s of reload since 30
+October), and its step in was open a quarter second of each enemy
+reload. Without drones the duel cannot be won from behind: sight and
+reach are both ten tiles. Two designs dropped (duck_alone, the mortar
+held); one kept: kite_in_alone, the step in's end with no friend near
+the target, 6 tiles. G21 24.5% to 35.5%, G22 the same, the census
+inside the noise, the families hold. The enemy pins the dial.
+
+## Session
+
+Code: kite_in_alone (weights, tactics, RANGES), drones = false in the
+scenario form, one test. Files: G21 floor 0.25, G21 and G22 enemies
+pinned. Reads: G21 and G22 sweeps, 400 held-out seeds, the families,
+the gauntlet twice, two censuses (the first, under zsh, generated maps
+only). LR 145, CI-094, CHANGELOG, ROADMAP 87, this entry.
+
+## Next
+
+The ring as a sense for the nets; G22 taught to the rules.

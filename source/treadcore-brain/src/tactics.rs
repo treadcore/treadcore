@@ -39,7 +39,9 @@
 //! reach (its direct gun while it has shells), when it can fire again,
 //! and which other guns would cover the spot a step in ends on. The bot
 //! waits on the ring just past that reach, where its own indirect gun
-//! still works (12.5 tiles); it steps in to 9 tiles, fires direct and
+//! still works (12.5 tiles); it steps in (to `kite_in` of the target with
+//! a friend near it, `kite_in_alone` without: LR 145, Paul's "kite and
+//! dance, unless we have backup"), fires direct and
 //! steps out again only while the target's gun is reloading for longer
 //! than the trip takes, no other loaded gun covers the spot, and its
 //! own gun is loaded. Pressing (the square law in our favour), it also
@@ -124,6 +126,9 @@ pub struct Tactics {
     pub kite_margin: f32,
     /// The ring a step in ends on.
     pub kite_in: f32,
+    /// The ring a step in ends on with no friend inside `odds_r` of the
+    /// target (LR 145): alone, kite and dance; with backup, close.
+    pub kite_in_alone: f32,
     /// Seconds a step in takes beyond the drive: turning and the shot.
     pub kite_turn: f32,
     /// Seconds of the target's reload to spare past the trip.
@@ -174,6 +179,7 @@ impl Default for Tactics {
             kite: true,
             kite_margin: 1.5,
             kite_in: 2.25,
+            kite_in_alone: 6.0,
             kite_turn: 0.8,
             kite_spare: 0.4,
             shell_boxes: true,
@@ -568,8 +574,12 @@ impl Tactician {
         let out = (reach(target) + w.kite_margin).max(INDIRECT_MIN_RANGE + 0.5);
         let d = me.pos.dist(target.pos);
         let into = (me.pos - target.pos).norm();
-        let in_at = obs.clamp(target.pos + into.scale(w.kite_in));
-        let trip = (d - w.kite_in).max(0.0) / TANK_SPEED + w.kite_turn;
+        // Alone (no friend inside `odds_r` of the target), the step in ends on `kite_in_alone` (LR 145):
+        // Paul, 4 November, "last attacked enemy we would kite and dance, unless we have backup".
+        let alone = !obs.allied_tanks().any(|a| a.alive && a.owner != obs.player && a.pos.dist(target.pos) <= w.odds_r);
+        let kite_in = if alone { w.kite_in_alone } else { w.kite_in };
+        let in_at = obs.clamp(target.pos + into.scale(kite_in));
+        let trip = (d - kite_in).max(0.0) / TANK_SPEED + w.kite_turn;
         // Any other gun on the spot by the time we are there: a tank
         // loaded by then, or a live hostile pillbox (it reloads in 2 s).
         let others = obs.hostile_tanks().filter(|t| t.id != target.id && reach(t) > 0.0 && t.pos.dist(in_at) <= reach(t) + 0.5 && ready_in(t) <= trip + 1.0).count()
@@ -581,7 +591,7 @@ impl Tactician {
         // ring fires every reload, so a gun loaded now was rarely the
         // case when the target's window opened (the quad: no step in on
         // a window in ten minutes).
-        let loaded = me.shells > 0 && ready_in(me) <= (d - w.kite_in).max(0.0) / TANK_SPEED + 0.1;
+        let loaded = me.shells > 0 && ready_in(me) <= (d - kite_in).max(0.0) / TANK_SPEED + 0.1;
         let step = loaded && others == 0 && (harmless || open || (stance == Stance::Press && crowd));
         if step {
             let step = if harmless {
@@ -677,6 +687,42 @@ mod tests {
         }
         let mut plain = Tactician { w: Tactics { w_wounded: 0.0, w_finish: 0.0, w_focus: 0.0, w_threat: 0.0, ..Tactics::default() }, ..Tactician::default() };
         assert_eq!(plain.pick(&obs, &me, |_| true).map(|x| x.owner), Some(1), "{}", plain.reason);
+    }
+
+    /// `kite_in_alone` (LR 145): the target reloading, the step in ends on `kite_in_alone` with no friend
+    /// inside `odds_r` of the target, and on `kite_in` with one there (Paul: "kite and dance, unless we
+    /// have backup").
+    #[test]
+    fn alone_the_step_in_stays_shallow() {
+        let names = (0..4).map(|i| (format!("p{}", i), true)).collect();
+        let mut w = World::new(Scenario { seed: 7, players: names, swarm_interval: 0, ..Scenario::default() }.with_teams(2));
+        let c = w.map.center();
+        let place = |w: &mut World, p: PlayerId, at: V2| {
+            let t = w.tanks.iter_mut().find(|t| t.owner == p).unwrap();
+            t.pos = at;
+            t.reload = 0;
+        };
+        w.pillboxes.clear();
+        place(&mut w, 0, c + V2::new(-9.0, 0.0));
+        place(&mut w, 1, c);
+        place(&mut w, 2, c + V2::new(-40.0, 30.0));
+        place(&mut w, 3, c + V2::new(40.0, 30.0));
+        w.tanks.iter_mut().find(|t| t.owner == 1).unwrap().reload = RELOAD_TICKS;
+        let mut t = Tactician::default();
+        (t.w.kite_in, t.w.kite_in_alone) = (2.25, 6.0);
+        let look = |w: &World| {
+            let obs = w.observe(0);
+            let me = obs.me.clone().unwrap();
+            let e = obs.tanks.iter().find(|x| x.owner == 1).unwrap().clone();
+            let k = t.kite(&obs, &me, &e, (me.pos - e.pos).norm(), Stance::Engage, DIRECT_RANGE * 1.8);
+            (k, k.to.dist(e.pos))
+        };
+        let (k, d) = look(&w);
+        assert!(k.stepping_in && (d - 6.0).abs() < 0.5, "alone: {:?} at {:.1}", k, d);
+        place(&mut w, 2, c + V2::new(-9.0, 4.0));
+        w.tanks.iter_mut().find(|t| t.owner == 1).unwrap().reload = RELOAD_TICKS;
+        let (k, d) = look(&w);
+        assert!(k.stepping_in && (d - 2.25).abs() < 0.5, "a friend by: {:?} at {:.1}", k, d);
     }
 
     /// Kiting's forks, one at a time: the target loaded holds us past

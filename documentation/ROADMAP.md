@@ -1389,6 +1389,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     November; LR 144, CI-093.) The rules meet G18 and G19; the nets do
     not, the ring their lesson. Next: G21, G22 taught to the rules; the
     ring as a sense.
+87. Alone, the step in stays shallow: `kite_in_alone` 6. (4 November;
+    LR 145, CI-094.) G21 24.5% to 35.5%, G22 the same; two designs
+    dropped. Next: the ring as a sense for the nets; G22 taught.
 
 ## Sequencing
 

@@ -10112,3 +10112,53 @@ Teaching the rules G18 and G19 (Paul: "its risky, we will recover ... 2. yes. pe
 **The rules meet both.** Corrected, the rules pass G18 and G19 on every one of 200 seeds: they shoot a hostile pillbox from outside its ring, spare the neutral one, and take the dead ones with the squad. Section 141's account of their failures there (into the neutral one's ring, into the far one's) was the misplaced pillbox's doing and is withdrawn; its readings of G20 to G22 stand. The nets do not meet them (G18 the best 72%, G19 45%): the ring is the nets' lesson, and Paul's sensor for it.
 
 **Every floor today's success** ("keep what we got ... adjust the floors to be what we have now as sucess"): read again on 200 seeds, each file's floor is the rules' share less two errors of a hundred seeds, to the twentieth below, wherever that is above the floor it had; none is lowered. G1, G2, G5, G6, G9, G10, G12 to G19 0.95; G11 0.90; G3 0.65, G4 0.90, G7 0.80, G8 0.30, G20 0.60, G21 0.15, G22 0.40 as they were. Today's rules hold every floor, and the promotion guard of section 143 holds every generation to them.
+
+## 145. The kite redesigned for a tank alone: what G21 is made of, three designs tried, and `kite_in_alone`, 4 November
+
+Paul, of teaching the rules the boundary's last two decisions (section 141): "its risky, we will recover. i think it indicates faster training." G21 (alone, an enemy of the same armour that shot first: kite it) and G22 (the same with two friends holding their ground beside the tank: stand and fight) read the rules at 24.5% and 52.5% on their 200 seeds. They are a pair by design: a brain that kites in both places fails G22, one that stands in both fails G21. This section is the redesign of how the rules kite when alone, and the reading of the test that made it, failures first.
+
+**What G21 is made of.** Before changing the rules, the rules' 200 seeds of G21 were read hit by hit. They died in 93, and 37 of those inside six seconds, of the opening direct shot (45) and one or two of the enemy's strike drones (35), before any choice of theirs could matter. Hits by what fired them:
+
+| | direct | strike drone | splash | longshot |
+| --- | --- | --- | --- | --- |
+| taken | 291 (200 the opening shot) | 121 | 78 | 21 |
+| given | 44 | 191 | 130 | 5 |
+
+The rules' drones out-hit the enemy's, and their mortars its mortars; their direct gun was out-hit two to one after the opening. G21 is lost or won on the direct gun, and the direct gun is what the kite moves.
+
+**Why the kite as built did not work alone.** The kite (section on tactics.rs, Paul, 17 October) waits on a ring just past the target's reach, never inside the mortar's minimum, so at 12.5 tiles, and steps in only while the target's gun reloads for longer than the trip. It was designed when a mortar reloaded in 4 s, and from that ring it lobbed one each reload. Two things have changed under it since. A mortar ties the gun up 12 s (rules.rs, 30 October), time for the kited tank to step into direct reach and fire three shots unanswered: one seed (9,500,007) shows the mortar from the ring at 2.5 s, the enemy's direct hit at 11.8 s while the gun was still reloading, a second mortar, and death at 16.7 s. And the trip that opens a step in is measured to `kite_in` from the target, 2.25 tiles (the fleet's number; the module notes still say 9), so from the ring it is (12.5 − 2.25) / 4 + 0.8 s of turning = 3.4 s, and with `kite_spare` 3.8 s of the target's 4 s reload: THE WINDOW WAS OPEN ONLY ITS FIRST QUARTER OF A SECOND. The kite almost never stepped in; it waited, mortared, and was stepped in on.
+
+**A mirror duel cannot be won from behind, and sight is the reason.** To see what the tank itself could do, the scenario form gained `drones = false` (every bay and the sky empty) and G21 was read without drones. The rules held 1 seed in 200 and died in 191; in 157 they took three hits and gave two. The trace is the same each time: the enemy fires first, ducks out of reach while its gun reloads (the duck, section 19: a gun loaded before one's own is stepped away from), both tanks lose sight of each other, and they meet again with both guns loaded and fire on the same tick, a hit for a hit, until the one that started behind is dead. Sight and the direct gun's reach are both 10 tiles, so WITHOUT A RECON DRONE A GUN IS FIRST SEEN INSIDE ITS OWN REACH, and no rule can step away from a shot it learns of as it is fired. Kiting needs the drones' eyes. G21 keeps its drones; the switch stays as the instrument that showed it.
+
+**Three designs, the rule written before each: two dropped, one kept.**
+
+| Design | The argument | G21 | G22 | Verdict |
+| --- | --- | --- | --- | --- |
+| `duck_alone` | alone, and needing fewer hits to die than the enemy, duck a gun loaded no later than one's own, not only one loaded sooner | 24.5% to 24.0%; without drones 0.5% to 1.0% at every radius from 5 to 30 | unchanged | dropped: the gun is seen inside its reach, too late to duck |
+| `kite_mortar` off | no mortar at the kited tank from the ring, and the ring just past its reach (11.5) | 24.5% to 19.0% | unchanged | dropped: the mortar's splash hits were a third of what the rules gave, and they count |
+| `kite_in`, the one dial | step in shallower, so the trip is shorter and the window opens | 5: 30.5%, 7: 32.5%, 9: 29.0% | 5: 34.5%, 7: 32.5%, 9: 28.5% | the boundary itself: right alone, wrong with friends |
+| **`kite_in_alone`** | the step in's end with no friend inside `odds_r` (14 tiles) of the target; `kite_in` stays the step in with one | 2.25: 24.5%, 5: 30.5%, **6: 35.5%**, 7: 32.5%, 8: 29.5% | 52.5% at every value | **kept, at 6** |
+
+The single `kite_in` sweep is the clearest reading of the boundary this record has: the same shallow step in that gains a third on G21 costs a third on G22. With friends beside it the tank should close, because the target has one gun and three of them in its face (the square law, tactics.rs); alone it should fire from near the target's reach and be out before that gun is loaded again. The split dial is Paul's sentence as a number: "last attacked enemy we would kite and dance, unless we have backup with fleet allies nearby." `odds_r` is the radius the odds already count friends in, so "alone" here means what it means to the stance. From the ring, a step in to 6 tiles takes (12.5 − 6) / 4 + 0.8 = 2.4 s, and with the spare the window is open the first 1.2 s of the target's reload instead of a quarter second.
+
+**Held out, and paired.** Six could be the best of five values on 200 seeds by chance, so it was read again on 400 seeds the gauntlet never plays (from 9,700,000): 2.25 24.5%, 5 25.0%, 6 31.5%, 7 28.2%. Seed by seed, 6 against 2.25:
+
+| Seeds | 2.25 | 6 | Paired difference | Deaths |
+| --- | --- | --- | --- | --- |
+| the gauntlet's 200 | 24.5% | 35.5% | +11.0 ± 4.4 points | 46.5% to 39.5% |
+| held out, 400 | 24.5% | 31.5% | +7.0 ± 3.2 | 49.5% to 40.5% |
+| all 600 | 24.5% | 32.8% | **+8.3 ± 2.6 (3.2 errors)** | 48.5% to 40.2% |
+
+Over the 600, the rules' direct hits rose from 152 to 214 and their strike drones' from 545 to 663 (a tank alive longer launches and guides more); the longshots they took fell from 65 to 15 and the direct hits from 881 to 839. The gain is where the tally said G21 was lost: the direct gun.
+
+**The rule, before the census:** 6 becomes the default if the census of `kite_in_alone = 6` against 2.25 on 48 seeds of every map is not worse by more than two standard errors, every family holds, and every other gauntlet reads the same.
+
+**The census** (the trial `kite_in_alone = 6`, the base 2.25, 48 seeds from 0, every map, 900 s, respawns 3): **−1.12 ± 0.92 a seat**, 1.2 errors, inside the noise. The rule is met, and 6 is the default. Every map is inside the noise but europe, −11.76 ± 4.78 on its four seeds (2.5 errors); one map in twelve outside two errors is what chance gives nearly half the time, and it is named here to be watched, not explained away.
+
+**The families hold**, with `kite_in_alone = 6` on every brain: a duel in the open 84.2% to 87.2%, a tank under a ready gun 81.3% to 82.1%, the other seven the same to the seed. **The gauntlet** for the rules with the dial (`GAUNTLET_WEIGHTS`, 200 seeds): G21 24.5% to 35.5%, G20 72.0% to 71.5% (one seed, above its 0.60 floor), every other file the same to the seed; read again with 6 the default on every brain, G11 95.0% to 94.5% as well (one seed, above its 0.90), and every one of the 22 floors holds. The brain's 165 tests pass, one new (`alone_the_step_in_stays_shallow`). G21's floor rises from 0.15 to **0.25**, today's success: 35.5% less two errors of a hundred seeds, to the twentieth below. G22 stays at 52.5% and its floor at 0.40; it is not yet taught. The enemy in G21 and G22 is a commander, with the Raider's dials in its file and the defaults for the rest, so a default changed reaches it as well: with 6 on every brain, G21 reads 34.5% and G22 50.5% (the lone attacker of G22 steps in shallower too, and is harder to kill). A BOUNDARY TEST'S YARDSTICK MUST NOT MOVE WITH THE RULES IT MEASURES: both files pin the enemy's `kite_in_alone` at 2.25, its value when they were written, and a dial added after a file is pinned so from now on. G22's friends are never alone, and the dial does not reach them.
+
+**What it says about the tests.** Section 144 corrected two of the boundary's files whose pillbox stood on the ring's edge; G21 needed no correction but a reading. Its pass condition (more hits given than taken, and alive) asks a tank one hit down to win the exchange from there, against an equal that also ducks, and with the drones in play about a fifth of its seeds are decided before the tank chooses anything. A third of the seeds passed is near what the decision can buy, and the floor is now where the rules stand. The nets do not kite at all (section 141: the best, map5, 26% on 50 seeds); what they lack is the same as what G18 and G19 ask of them: where a gun's ring is, and whose.
+
+**A census by hand on a Mac** needs the paste shim, and the shim needs bash: the first census of this record ran in zsh, where `export -f` does nothing, and played the generated maps only (−0.73 ± 0.62 a seat, inside the noise). It was played again under bash.
+
+**Not done.** G22 taught (the rules stand with friends at 52.5%; with drones off, 34.5%); the ring as a sense for the nets (Paul: "perhaps the sensor will indicate a ring, as it would indicate and identify the foe"), next; whether the waiting ring should stay at the mortar's minimum now that the mortar reloads in 12 s, a question `kite_mortar` answered no to only on G21.

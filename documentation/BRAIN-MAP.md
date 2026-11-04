@@ -6,7 +6,7 @@ first sentence of its own doc comment. Written by
 design and its review are `LAB-REPORT-BRAIN.md`; the review of the
 structure as built is `checkins/`.
 
-28 files, 617 functions (10 with no doc comment; 59 more are a trait's, documented by it), 180 tests.
+28 files, 617 functions (10 with no doc comment; 59 more are a trait's, documented by it), 181 tests.
 
 | File | Lines | Functions | Undocumented | Tests | What it is |
 | --- | --- | --- | --- | --- | --- |
@@ -32,12 +32,12 @@ structure as built is `checkins/`.
 | [`net.rs`](#netrs) | 767 | 24 | 0 | 10 | A learned tank (LR 95, 96): a small net from the senses (senses.rs) to an action, and the Brain that drives by it. |
 | [`patch.rs`](#patchrs) | 209 | 8 | 2 | 3 | The last stage of Algorhythm: a learned transform over what the rules decided (docs/algorhythm.md). |
 | [`rotation.rs`](#rotationrs) | 301 | 7 | 0 | 3 | Rotation (Paul, 17 October: "every bot should have a push point, and a defense point. |
-| [`scenario.rs`](#scenariors) | 1433 | 23 | 0 | 8 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
+| [`scenario.rs`](#scenariors) | 1442 | 23 | 0 | 8 | Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). |
 | [`senses.rs`](#sensesrs) | 559 | 8 | 0 | 7 | The senses (LR 95, 96): what a learned tank feels, as about a hundred numbers from 0 to 1, the same on every map and every size of map. |
 | [`status.rs`](#statusrs) | 366 | 9 | 0 | 1 | Status as codes (roadmap step 12b, finding L3 of LAB-REPORT-BRAIN.md, section 22). |
 | [`styles.rs`](#stylesrs) | 813 | 36 | 2 | 21 | Bot styles (Paul, 1 November: "We want Bot 0-7 Styles. |
-| [`tactics.rs`](#tacticsrs) | 765 | 18 | 1 | 3 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
-| [`weights.rs`](#weightsrs) | 799 | 33 | 0 | 9 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
+| [`tactics.rs`](#tacticsrs) | 811 | 18 | 1 | 4 | Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. |
+| [`weights.rs`](#weightsrs) | 801 | 33 | 0 | 9 | Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5). |
 
 ## bio.rs
 
@@ -882,44 +882,44 @@ Tests (3):
 
 ## scenario.rs
 
-Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). A playtest written as text and run headless: the world, the seats that think and how, what is placed and what happens when, and what must hold at the end. Every file under `scenarios/` is a test (`every_scenario_holds`); `make scenario S=file` runs one and prints its trace.  The form is a small part of TOML, read here so the brain takes no new crate: `key = value` lines, `[expect]`, and `[[brain]]`, `[[pillbox]]`, `[[depot]]`, `[[shell]]` and `[[event]]` tables; values are numbers, "strings", true or false, `[lists]` and `{ inline = tables }`. Positions are an anchor and an offset in tiles: `"seat:0"` (where a seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed), and `"centre"` (the map's middle). `depots = false` keeps only the depots placed (LR 62). `board = true` gives each team's Commanders one team board, a Commander's `rungs = [...]` the ladder's rungs on, and a `[[depot]]`'s `at` and `offset` move it there (LR 58). A family (`scenarios/families/`) has `runs` and the `floor` it must hold over them (`make families`, backlog 47). A `[[tank]]`'s `toward` heads it at a place, and `met_beyond` asks how far from a point a seat first hit another (LR 61). A Commander's `pings = true` calls what it sees and answers calls (a rally), and `outscores` asks that a seat hit another more often than it was hit back (LR 66).  ```toml name = "a bot drives out from under a shell" players = 2 seconds = 4 [[brain]] seat = 0 kind = "rulebot" [[shell]] owner = 1 at = "seat:0" from = [30, 0] lands_in = 3 [expect] hits_on = { seat = 0, max = 0 } moved = { seat = 0, more_than = 2.5 } ```
+Scenario files (roadmap backlog 24, CI-001 VII.B, LAB-REPORT-BRAIN.md section 48; Paul, 18 October: "is there a way to create description and try to attempt these via playtests faster"). A playtest written as text and run headless: the world, the seats that think and how, what is placed and what happens when, and what must hold at the end. Every file under `scenarios/` is a test (`every_scenario_holds`); `make scenario S=file` runs one and prints its trace.  The form is a small part of TOML, read here so the brain takes no new crate: `key = value` lines, `[expect]`, and `[[brain]]`, `[[pillbox]]`, `[[depot]]`, `[[shell]]` and `[[event]]` tables; values are numbers, "strings", true or false, `[lists]` and `{ inline = tables }`. Positions are an anchor and an offset in tiles: `"seat:0"` (where a seat's tank starts), `"depot:0"` and `"pillbox:0"` (the first placed), and `"centre"` (the map's middle). `depots = false` keeps only the depots placed (LR 62). `drones = false` empties every bay and the sky: a duel of the tanks themselves (LR 145). `board = true` gives each team's Commanders one team board, a Commander's `rungs = [...]` the ladder's rungs on, and a `[[depot]]`'s `at` and `offset` move it there (LR 58). A family (`scenarios/families/`) has `runs` and the `floor` it must hold over them (`make families`, backlog 47). A `[[tank]]`'s `toward` heads it at a place, and `met_beyond` asks how far from a point a seat first hit another (LR 61). A Commander's `pings = true` calls what it sees and answers calls (a rally), and `outscores` asks that a seat hit another more often than it was hit back (LR 66).  ```toml name = "a bot drives out from under a shell" players = 2 seconds = 4 [[brain]] seat = 0 kind = "rulebot" [[shell]] owner = 1 at = "seat:0" from = [30, 0] lands_in = 3 [expect] hits_on = { seat = 0, max = 0 } moved = { seat = 0, more_than = 2.5 } ```
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 61 | `num` | Value | yes | A number, or None. |
-| 65 | `str` | Value | yes | A string, or None. |
-| 69 | `table` | Value | yes | An inline table, or None. |
-| 85 | `parse` |  | yes | Read the TOML subset; an error names its line. |
-| 125 | `strip_comment` |  |  | A line without its `#` comment (a `#` inside a string stays). |
-| 138 | `value_of` |  |  | One value from the front of `s`, and what is left after it. |
-| 212 | `snap` |  | yes | A frame of the world as it stands (the clips, LR 102). |
-| 232 | `round` | Recording | yes | A recording of `half` tiles each way round `centre`, the map's tiles there kept once. |
-| 308 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
-| 317 | `run_seeded` |  | yes | As `run`, on a seed: the world's (`Scenario::seed`, so its map outside what the file carves) and every brain's (theirs xor it), so a run over many seeds samples the scenario's chances (`many`). |
-| 324 | `run_net` |  | yes | As `run_seeded`, with a net for each `kind = "net"` brain that names no `file` (the trainer's, LR 99). |
-| 330 | `run_with` |  | yes | As `run_net`, with `make` giving the brain for each `kind = "net"` seat instead (a probe of the net's actions, LR 100). |
-| 336 | `run_record` |  | yes | As `run_net`, recording a frame every `every` ticks round the learner's start (LR 102, the clips). |
-| 343 | `run_inner` |  |  | Every run's body: `run_with`'s, recording into `rec` when given. |
-| 910 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
-| 919 | `check` |  |  | Every expectation that failed, in words. |
-| 1147 | `reaction` |  | yes | The reaction a file measures (`reaction = "fire"`, `"lob"`, `"move"`, or `"launch:interceptor"`), for the learner, seconds; none when it never came (LR 102, the gauntlet). |
-| 1175 | `reward` |  | yes | What a training episode earned (LR 99): the sum of the file's `[reward]` terms for the learner's seat (`learner`, 0). |
-| 1209 | `many` |  | yes | A scenario over `runs` seeds (`first`, `first + 1`, ...): how many held, the share, and its standard error, sqrt(p (1 - p) / n). |
-| 1232 | `set_weights` |  | yes | `SCENARIO_SET="name=value ..."`: those weights set on every brain in the file that holds them (a RuleBot, only the landfall's three), added to its `weights` or a new one, so two settings run on the same seeds. |
-| 1267 | `find` |  | yes | A path as given, or from the top of the tree when it is not found there (`cargo test` runs in the crate's folder). |
-| 1276 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
-| 1297 | `dir` |  |  | The scenarios, at the top of the tree. |
+| 62 | `num` | Value | yes | A number, or None. |
+| 66 | `str` | Value | yes | A string, or None. |
+| 70 | `table` | Value | yes | An inline table, or None. |
+| 86 | `parse` |  | yes | Read the TOML subset; an error names its line. |
+| 126 | `strip_comment` |  |  | A line without its `#` comment (a `#` inside a string stays). |
+| 139 | `value_of` |  |  | One value from the front of `s`, and what is left after it. |
+| 213 | `snap` |  | yes | A frame of the world as it stands (the clips, LR 102). |
+| 233 | `round` | Recording | yes | A recording of `half` tiles each way round `centre`, the map's tiles there kept once. |
+| 309 | `run` |  | yes | Run a scenario: the outcome, and every expectation that failed (none is a pass). |
+| 318 | `run_seeded` |  | yes | As `run`, on a seed: the world's (`Scenario::seed`, so its map outside what the file carves) and every brain's (theirs xor it), so a run over many seeds samples the scenario's chances (`many`). |
+| 325 | `run_net` |  | yes | As `run_seeded`, with a net for each `kind = "net"` brain that names no `file` (the trainer's, LR 99). |
+| 331 | `run_with` |  | yes | As `run_net`, with `make` giving the brain for each `kind = "net"` seat instead (a probe of the net's actions, LR 100). |
+| 337 | `run_record` |  | yes | As `run_net`, recording a frame every `every` ticks round the learner's start (LR 102, the clips). |
+| 344 | `run_inner` |  |  | Every run's body: `run_with`'s, recording into `rec` when given. |
+| 919 | `offset` |  |  | An offset in tiles, `[x, y]`; none is no offset. |
+| 928 | `check` |  |  | Every expectation that failed, in words. |
+| 1156 | `reaction` |  | yes | The reaction a file measures (`reaction = "fire"`, `"lob"`, `"move"`, or `"launch:interceptor"`), for the learner, seconds; none when it never came (LR 102, the gauntlet). |
+| 1184 | `reward` |  | yes | What a training episode earned (LR 99): the sum of the file's `[reward]` terms for the learner's seat (`learner`, 0). |
+| 1218 | `many` |  | yes | A scenario over `runs` seeds (`first`, `first + 1`, ...): how many held, the share, and its standard error, sqrt(p (1 - p) / n). |
+| 1241 | `set_weights` |  | yes | `SCENARIO_SET="name=value ..."`: those weights set on every brain in the file that holds them (a RuleBot, only the landfall's three), added to its `weights` or a new one, so two settings run on the same seeds. |
+| 1276 | `find` |  | yes | A path as given, or from the top of the tree when it is not found there (`cargo test` runs in the crate's folder). |
+| 1285 | `run_file` |  | yes | Read and run a file: its failures, or the error that stopped it. |
+| 1306 | `dir` |  |  | The scenarios, at the top of the tree. |
 
 Tests (8):
 
-- `the_advance_scenario_earns_the_call_the_chain_and_the_capture` (line 1286)
-- `a_weight_is_set_on_every_brain` (line 1306): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
-- `a_switch_is_set_on_every_commander` (line 1320): A switch's A/B reaches the families: the form the fleet writes, its space and all, turns the switch off on a Commander and leaves a RuleBot alone, and a misspelt switch stops the read.
-- `the_subset_reads_values_tables_and_lists` (line 1332)
-- `every_scenario_holds` (line 1344): Every file under `scenarios/` holds.
-- `scenario_many` (line 1364): One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with `SCENARIO_SET` applied: how often it holds.
-- `every_family_holds_its_floor` (line 1385): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
-- `scenario_one` (line 1416): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
+- `the_advance_scenario_earns_the_call_the_chain_and_the_capture` (line 1295)
+- `a_weight_is_set_on_every_brain` (line 1315): The TOML subset: strings with a `#`, numbers, lists, inline tables, `[[tables]]`, `[expect]`, and errors that name the line.
+- `a_switch_is_set_on_every_commander` (line 1329): A switch's A/B reaches the families: the form the fleet writes, its space and all, turns the switch off on a Commander and leaves a RuleBot alone, and a misspelt switch stops the read.
+- `the_subset_reads_values_tables_and_lists` (line 1341)
+- `every_scenario_holds` (line 1353): Every file under `scenarios/` holds.
+- `scenario_many` (line 1373): One file over many seeds (`RUNS`, 100, from `SEED0`, 1), with `SCENARIO_SET` applied: how often it holds.
+- `every_family_holds_its_floor` (line 1394): Every family (`scenarios/families/`, backlog 47) over its `runs` seeds (200) from 1, with `SCENARIO_SET` applied: each must hold at least its `floor` (a share, 0 to 1; none is only reported).
+- `scenario_one` (line 1425): One file, with its trace: `SCENARIO=path cargo test -p treadcore-brain --release -- --ignored scenario_one --nocapture` (`make scenario S=path`).
 
 ## senses.rs
 
@@ -1035,34 +1035,35 @@ Tests (21):
 
 ## tactics.rs
 
-Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. research ... fleet tactics in rts"). Three decisions a team's bots made by distance alone, each now a score of weighted considerations with the reasons kept for the status line, the log and team chat:  1. Which hostile tank to shoot (target selection). The RTS rule is focus fire: a side that puts its shots on one tank at a time takes tanks out of the fight sooner, and a tank out of the fight shoots no more (Lanchester's square law, below). So a target scores for being near, wounded, one shot from dead, afloat (a boat sinks at one hit), called by a teammate's ping, already under a teammate's gun, in range now, and threatening a teammate; and it scores less once more of us are on it than it takes (overkill: the rest pick the next). Uriarte and Ontañón score StarCraft targets the same way, by distance, threat and damage; the GA micro bots by health alone. 2. Whether to close (the engagement). Lanchester's square law: with aimed fire, a side's strength is its number squared times its quality, so three tanks beat two by more than three to two, and a side that arrives one at a time is beaten one at a time. The odds at a fight are ours squared over theirs squared; below `engage_odds` with teammates on the way a bot holds off and masses with them ("don't trickle in"), above `press_odds` it closes. 3. Who answers a call (assignment). A ping drew every bot in reach, the base's too. Now the first `answer_cap` teammates nearer to it than this bot are enough, and a crew on a job answers only inside `crew_reach`.  And where to stand (the path's end): of the flank's firing points round a target, the one least exposed to its friends' guns and to hostile pillboxes, as an influence map would pick it, without one.  And kiting (Paul, 17 October: "more directed kiting, where we estimate the range of the opponent and avoid getting hit while aggressing closer in a group"). Every tank's direct gun reaches the same 10 tiles and reloads in 4 s, and a tank's reload is in the observation (a window shows it), so the estimate is the target's reach (its direct gun while it has shells), when it can fire again, and which other guns would cover the spot a step in ends on. The bot waits on the ring just past that reach, where its own indirect gun still works (12.5 tiles); it steps in to 9 tiles, fires direct and steps out again only while the target's gun is reloading for longer than the trip takes, no other loaded gun covers the spot, and its own gun is loaded. Pressing (the square law in our favour), it also steps in while a teammate is already inside the target's reach: the target has one gun and many of us. Massing, it never does.  The considerations add; each is a weight times a value in 0..1, so a weight reads as "worth this many of the others". `Tactics::default` is the team's; a test or a bot of another temper changes the numbers.
+Fleet tactics (Paul, 16 October: "we want a bunch of scalars and reasons to collaborative bot behavior. research ... fleet tactics in rts"). Three decisions a team's bots made by distance alone, each now a score of weighted considerations with the reasons kept for the status line, the log and team chat:  1. Which hostile tank to shoot (target selection). The RTS rule is focus fire: a side that puts its shots on one tank at a time takes tanks out of the fight sooner, and a tank out of the fight shoots no more (Lanchester's square law, below). So a target scores for being near, wounded, one shot from dead, afloat (a boat sinks at one hit), called by a teammate's ping, already under a teammate's gun, in range now, and threatening a teammate; and it scores less once more of us are on it than it takes (overkill: the rest pick the next). Uriarte and Ontañón score StarCraft targets the same way, by distance, threat and damage; the GA micro bots by health alone. 2. Whether to close (the engagement). Lanchester's square law: with aimed fire, a side's strength is its number squared times its quality, so three tanks beat two by more than three to two, and a side that arrives one at a time is beaten one at a time. The odds at a fight are ours squared over theirs squared; below `engage_odds` with teammates on the way a bot holds off and masses with them ("don't trickle in"), above `press_odds` it closes. 3. Who answers a call (assignment). A ping drew every bot in reach, the base's too. Now the first `answer_cap` teammates nearer to it than this bot are enough, and a crew on a job answers only inside `crew_reach`.  And where to stand (the path's end): of the flank's firing points round a target, the one least exposed to its friends' guns and to hostile pillboxes, as an influence map would pick it, without one.  And kiting (Paul, 17 October: "more directed kiting, where we estimate the range of the opponent and avoid getting hit while aggressing closer in a group"). Every tank's direct gun reaches the same 10 tiles and reloads in 4 s, and a tank's reload is in the observation (a window shows it), so the estimate is the target's reach (its direct gun while it has shells), when it can fire again, and which other guns would cover the spot a step in ends on. The bot waits on the ring just past that reach, where its own indirect gun still works (12.5 tiles); it steps in (to `kite_in` of the target with a friend near it, `kite_in_alone` without: LR 145, Paul's "kite and dance, unless we have backup"), fires direct and steps out again only while the target's gun is reloading for longer than the trip takes, no other loaded gun covers the spot, and its own gun is loaded. Pressing (the square law in our favour), it also steps in while a teammate is already inside the target's reach: the target has one gun and many of us. Massing, it never does.  The considerations add; each is a weight times a value in 0..1, so a weight reads as "worth this many of the others". `Tactics::default` is the team's; a test or a bot of another temper changes the numbers.
 
 | Line | Function | Of | Pub | What it does (its doc comment) |
 | --- | --- | --- | --- | --- |
-| 145 | `default` | Tactics |  | *(the `Default` trait's)* |
-| 201 | `ratio` | Odds | yes | Lanchester's square law: ours squared over theirs squared. |
-| 230 | `reach` |  | yes | How far a hostile tank's gun reaches now: its direct gun while it has shells. |
-| 239 | `ready_in` |  | yes | Seconds until a tank can fire again. |
-| 300 | `worth` |  |  | A tank's worth in a fight: armour, and none without shells. |
-| 310 | `with` | Tactician | yes | A Tactician of these weights, with nothing heard yet. |
-| 315 | `hear` | Tactician | yes | Every tick: a teammate's ping is a call on what is under it. |
-| 328 | `score` | Tactician | yes | A target's score and the reasons that made it. |
-| 336 | `value` | Tactician | yes | The score alone: what `pick` asks of every candidate, with no words built for the ones that lose (roadmap 12b). |
-| 342 | `rate` | Tactician |  | A target's score; the reasons pushed to `why` when it is Some, and their tags set in `tags` (`score` wants them, `value` not). |
-| 413 | `heed_shots` | Tactician | yes | Who shot at me: a hostile direct shell in the air aimed within two tiles of me, its owner remembered with the tick (the newest wins). |
-| 425 | `pick` | Tactician | yes | The hostile tank to shoot, of those `fair` allows; the reason kept. |
-| 478 | `odds` | Tactician | yes | The odds at a fight round `at`, me counted as there. |
-| 502 | `stance` | Tactician | yes | Mass, engage or press, by the odds; massing ends after `mass_for` seconds whether or not the team came. |
-| 508 | `stance_now` | Tactician |  |  |
-| 563 | `kite` | Tactician | yes | Kiting `target`, coming in on `from`, at `stance`: the step in when the target's gun cannot answer it, else the waiting ring (module notes). |
-| 609 | `enough_answer` | Tactician | yes | Teammates nearer a ping than me: past `answer_cap` I stay. |
-| 619 | `stand` | Tactician | yes | Where to stand against `target` at `range`, coming in on `from` (a unit bearing from the target): of seven points on the arc within 60 degrees of it, the one with the fewest other guns on it, the bearing breaking ties. |
+| 150 | `default` | Tactics |  | *(the `Default` trait's)* |
+| 207 | `ratio` | Odds | yes | Lanchester's square law: ours squared over theirs squared. |
+| 236 | `reach` |  | yes | How far a hostile tank's gun reaches now: its direct gun while it has shells. |
+| 245 | `ready_in` |  | yes | Seconds until a tank can fire again. |
+| 306 | `worth` |  |  | A tank's worth in a fight: armour, and none without shells. |
+| 316 | `with` | Tactician | yes | A Tactician of these weights, with nothing heard yet. |
+| 321 | `hear` | Tactician | yes | Every tick: a teammate's ping is a call on what is under it. |
+| 334 | `score` | Tactician | yes | A target's score and the reasons that made it. |
+| 342 | `value` | Tactician | yes | The score alone: what `pick` asks of every candidate, with no words built for the ones that lose (roadmap 12b). |
+| 348 | `rate` | Tactician |  | A target's score; the reasons pushed to `why` when it is Some, and their tags set in `tags` (`score` wants them, `value` not). |
+| 419 | `heed_shots` | Tactician | yes | Who shot at me: a hostile direct shell in the air aimed within two tiles of me, its owner remembered with the tick (the newest wins). |
+| 431 | `pick` | Tactician | yes | The hostile tank to shoot, of those `fair` allows; the reason kept. |
+| 484 | `odds` | Tactician | yes | The odds at a fight round `at`, me counted as there. |
+| 508 | `stance` | Tactician | yes | Mass, engage or press, by the odds; massing ends after `mass_for` seconds whether or not the team came. |
+| 514 | `stance_now` | Tactician |  |  |
+| 569 | `kite` | Tactician | yes | Kiting `target`, coming in on `from`, at `stance`: the step in when the target's gun cannot answer it, else the waiting ring (module notes). |
+| 619 | `enough_answer` | Tactician | yes | Teammates nearer a ping than me: past `answer_cap` I stay. |
+| 629 | `stand` | Tactician | yes | Where to stand against `target` at `range`, coming in on `from` (a unit bearing from the target): of seven points on the arc within 60 degrees of it, the one with the fewest other guns on it, the bearing breaking ties. |
 
-Tests (3):
+Tests (4):
 
-- `focus_fire_picks_the_wounded_tank_a_teammate_is_on` (line 650): Two tanks with a pillbox-free field: a fresh near one, a far wounded one an ally is already shooting.
-- `kiting_steps_in_only_when_the_gun_cannot_answer` (line 689): Kiting's forks, one at a time: the target loaded holds us past its reach; reloading lets us step in; a second loaded gun on the spot holds us again; our own gun not loaded by the time we would be in holds us; massing...
-- `the_square_law` (line 744)
+- `focus_fire_picks_the_wounded_tank_a_teammate_is_on` (line 660): Two tanks with a pillbox-free field: a fresh near one, a far wounded one an ally is already shooting.
+- `alone_the_step_in_stays_shallow` (line 696): `kite_in_alone` (LR 145): the target reloading, the step in ends on `kite_in_alone` with no friend inside `odds_r` of the target, and on `kite_in` with one there (Paul: "kite and dance, unless we have backup").
+- `kiting_steps_in_only_when_the_gun_cannot_answer` (line 735): Kiting's forks, one at a time: the target loaded holds us past its reach; reloading lets us step in; a second loaded gun on the spot holds us again; our own gun not loaded by the time we would be in holds us; massing...
+- `the_square_law` (line 790)
 
 ## weights.rs
 
@@ -1076,42 +1077,42 @@ Weights and capabilities (roadmap step 12c, LAB-REPORT-BRAIN.md sections 4 and 5
 | 63 | `choices` |  | yes | A choice's versions, 0 first, from its doc's `(choice: a / b / ...)`; None for a weight that scales. |
 | 69 | `by_name` |  | yes | The weight of that name, if any. |
 | 75 | `step` |  | yes | A slider's step (the coordination screen, backlog 15): one for a rounded weight, else a tenth of the default taken to 1, 2 or 5 of its power of ten; a tenth for nothing. |
-| 286 | `default` | Weights |  | *(the `Default` trait's)* |
-| 293 | `index` | Weights |  | *(the `Index` trait's)* |
-| 299 | `index_mut` | Weights |  | *(the `IndexMut` trait's)* |
-| 318 | `doc` | Weights | yes | What a capability does, for the sliders' page. |
-| 348 | `default` | Caps |  | *(the `Default` trait's)* |
-| 355 | `has` | Caps | yes | Every bit of `c` is on. |
-| 359 | `with` | Caps | yes | These, and `c` on. |
-| 363 | `without` | Caps | yes | These, and `c` off. |
-| 367 | `all` | Caps | yes | Every capability, the new ones too. |
-| 371 | `by_name` | Caps | yes | The capability of that name, as a weights file spells it. |
-| 375 | `names` | Caps | yes | The names of the bits that are on, comma-separated. |
-| 388 | `fmt` | WeightsError |  | *(the `Display` trait's)* |
-| 394 | `ranges` |  |  | RANGES' lines, as (name, min, max). |
-| 409 | `default` | Settings |  | *(the `Default` trait's)* |
-| 423 | `parse` | Settings | yes | Read the file form. |
-| 471 | `hold` | Settings | yes | Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are not adjusted beyond their max or under their min range"). |
-| 483 | `choice` | Settings | yes | A choice's version: its weight rounded, held to the versions it has (0 for a weight that is not a choice and below a half). |
-| 489 | `smooth` | Settings | yes | How much the bot smooths (`w_smooth`), 0 to 1. |
-| 495 | `smooth_alpha` | Settings | yes | The share of a move's new pull taken a think: all of it at `w_smooth` 0, `alpha` at 1, in a line between. |
-| 500 | `smooth_on` | Settings | yes | The yes-or-no parts of smoothing: on above 0.5. |
-| 505 | `to_text` | Settings | yes | The file form: every weight, and the capabilities. |
-| 514 | `diff` | Settings | yes | The weights that differ from the defaults: what makes a genome. |
-| 520 | `nudge` | Settings | yes | A slider moved `by` steps: never under nothing, and kept to four places so a step back is the number it was. |
-| 526 | `ticks` | Settings | yes | Seconds into ticks, for the time weights. |
-| 533 | `from_weights` | Tactics | yes | The tactics the weights describe. |
-| 592 | `eval` | Curve | yes | The curve at `x`, clamped to 0..1 both ways; a value that is not finite reads 0. |
-| 612 | `utility` |  | yes | An action's utility (LR 4): its weight times the geometric mean of its considerations, raised by `commit` if it is the intent held now. |
+| 287 | `default` | Weights |  | *(the `Default` trait's)* |
+| 294 | `index` | Weights |  | *(the `Index` trait's)* |
+| 300 | `index_mut` | Weights |  | *(the `IndexMut` trait's)* |
+| 319 | `doc` | Weights | yes | What a capability does, for the sliders' page. |
+| 349 | `default` | Caps |  | *(the `Default` trait's)* |
+| 356 | `has` | Caps | yes | Every bit of `c` is on. |
+| 360 | `with` | Caps | yes | These, and `c` on. |
+| 364 | `without` | Caps | yes | These, and `c` off. |
+| 368 | `all` | Caps | yes | Every capability, the new ones too. |
+| 372 | `by_name` | Caps | yes | The capability of that name, as a weights file spells it. |
+| 376 | `names` | Caps | yes | The names of the bits that are on, comma-separated. |
+| 389 | `fmt` | WeightsError |  | *(the `Display` trait's)* |
+| 395 | `ranges` |  |  | RANGES' lines, as (name, min, max). |
+| 410 | `default` | Settings |  | *(the `Default` trait's)* |
+| 424 | `parse` | Settings | yes | Read the file form. |
+| 472 | `hold` | Settings | yes | Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are not adjusted beyond their max or under their min range"). |
+| 484 | `choice` | Settings | yes | A choice's version: its weight rounded, held to the versions it has (0 for a weight that is not a choice and below a half). |
+| 490 | `smooth` | Settings | yes | How much the bot smooths (`w_smooth`), 0 to 1. |
+| 496 | `smooth_alpha` | Settings | yes | The share of a move's new pull taken a think: all of it at `w_smooth` 0, `alpha` at 1, in a line between. |
+| 501 | `smooth_on` | Settings | yes | The yes-or-no parts of smoothing: on above 0.5. |
+| 506 | `to_text` | Settings | yes | The file form: every weight, and the capabilities. |
+| 515 | `diff` | Settings | yes | The weights that differ from the defaults: what makes a genome. |
+| 521 | `nudge` | Settings | yes | A slider moved `by` steps: never under nothing, and kept to four places so a step back is the number it was. |
+| 527 | `ticks` | Settings | yes | Seconds into ticks, for the time weights. |
+| 534 | `from_weights` | Tactics | yes | The tactics the weights describe. |
+| 594 | `eval` | Curve | yes | The curve at `x`, clamped to 0..1 both ways; a value that is not finite reads 0. |
+| 614 | `utility` |  | yes | An action's utility (LR 4): its weight times the geometric mean of its considerations, raised by `commit` if it is the intent held now. |
 
 Tests (9):
 
-- `every_range_reads_and_holds_its_own_default` (line 633)
-- `no_trial_can_move_a_decreed_value` (line 654)
-- `default_weights_are_todays_constants` (line 663)
-- `a_weights_file_round_trips_and_names_its_mistakes` (line 674)
-- `smooth_is_a_weight_that_blends_and_thresholds` (line 694): `w_smooth` (LR 46): the default is near off, the desire vector blends in a line, and the yes-or-no parts turn on above 0.5.
-- `the_geometric_mean_compensates_and_vetoes` (line 713)
-- `a_slider_steps_and_steps_back` (line 723)
-- `a_test_that_uses_the_defaults_names_the_weights_it_tests` (line 751): THE PINNED-TEST LINT (the plan of 2 November, chapter 15).
-- `every_profile_reads_and_differs` (line 785)
+- `every_range_reads_and_holds_its_own_default` (line 635)
+- `no_trial_can_move_a_decreed_value` (line 656)
+- `default_weights_are_todays_constants` (line 665)
+- `a_weights_file_round_trips_and_names_its_mistakes` (line 676)
+- `smooth_is_a_weight_that_blends_and_thresholds` (line 696): `w_smooth` (LR 46): the default is near off, the desire vector blends in a line, and the yes-or-no parts turn on above 0.5.
+- `the_geometric_mean_compensates_and_vetoes` (line 715)
+- `a_slider_steps_and_steps_back` (line 725)
+- `a_test_that_uses_the_defaults_names_the_weights_it_tests` (line 753): THE PINNED-TEST LINT (the plan of 2 November, chapter 15).
+- `every_profile_reads_and_differs` (line 787)
