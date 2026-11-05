@@ -533,6 +533,7 @@ GAMETYPE, MAP, INDUSTRY, BRAIN.
 | reports/2026-11-01-bot-styles.html | eight named minds: bot styles 0 to 7, the game reading a transform, the bridge from crucible, each read by the census (reports/styles/) |
 | reports/2026-11-01-double-report.html | the double report: the whole line, then how a match becomes a dial and senses become a command, and a user guide to every screen of orrery, pictured (reports/double/) |
 | reports/2026-11-01-the-whole-line.html | how the fleet's work reaches this game: each training method, what each stage takes, gives and simulates, what stops it, the schedule, how to store generations (orrery's report; the source is `docs/whole-line-lab-report.md` there) |
+| reports/2026-11-05-the-duty-cycle.html | the fleet's duty cycle: the machines 98% busy, where the waiting goes (the GPU buffer, the planner's pass, the CPU's last two percent), the round table, four changes with estimates, and a background job designed to ask for nothing (orrery's report; the source is `docs/duty-cycle-lab-report.md` there, and `reports/2026-11-05-the-duty-cycle.md` here) |
 | reports/2026-10-27-generations.html | the learned tank's generations: a clip of each, the gauntlet, real matches, the census, the cost (reports/clips/) |
 | reports/2026-10-26-the-weight-ledger.html | every weight over time, every default changed and why, the screen, the censuses |
 | reports/2026-10-26-big-lizard.html | the big-lizard map from its file, the route forecast's cost there and its fix |
