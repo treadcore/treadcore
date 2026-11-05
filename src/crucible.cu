@@ -807,11 +807,16 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
 // training's own. Each step of each duel is TREC floats: both tanks (x, y,
 // heading, armour, shell x, shell y, shell life), the pillboxes' health, what
 // each tank's shell did that step (fly_world's 0 to 3), and how many pillbox
-// shots struck each tank.
+// shots struck each tank. Version 2 (Paul, 4 November: "show all the inputs,
+// transform and output ... the activation of the circuits"): each step also
+// TNET floats of the champion's mind, the NIN numbers its net read and the
+// NOUT it drove with, so the film can draw the net thinking; the hidden
+// layers are recomputed from its weights, the forward pass being exact.
 #define TREC 22
+#define TNET (NIN + NOUT)
 __global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ champ, const float* __restrict__ opps, int n_opps, int steps,
                                                      uint32_t seed, float drawv, float* rec, int* outcome, int* lasted, float* fit, int* opp_of,
-                                                     float* arena_out) {
+                                                     float* arena_out, float* mind) {
     int d = threadIdx.x;
     Rng r{mix(seed, 0x7a11u)};
     Arena w;
@@ -836,11 +841,16 @@ __global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ c
     float aim = 0;
     unsigned int hit_tank = 0;
     float* out = rec + (size_t)d * steps * TREC;
+    float* thought = mind + (size_t)d * steps * TNET;
     int t = 0;
     for (; t < steps; t++) {
         if (A.hp <= 0.0f || B.hp <= 0.0f) break;
         decide(champ, A, B, w, in, actA);
         aim += in[29] > 0.0f ? in[29] * (in[28] * in[28] < 0.01f ? 1.0f : 0.2f) : 0.0f;
+        // The mind before the opponent's turn reuses `in`.
+        float* m = thought + (size_t)t * TNET;
+        for (int i = 0; i < NIN; i++) m[i] = in[i];
+        for (int k = 0; k < NOUT; k++) m[NIN + k] = actA[k];
         if (opp) decide(opp, B, A, w, in, actB);
         else scripted(B, A, skill, w, actB);
         drive(A, actA, w);
@@ -1053,7 +1063,9 @@ static std::vector<std::string> split(const std::string& s) {
 // sparring partner of that style, 0 the script to 4 Timid; else the --opponents index); then for each champion its duels'
 // outcomes (1 won, -1 lost, 0 drawn), steps played and fitness, and every
 // step of every duel, TREC floats. A duel that ends early stops there: its
-// later steps are zero, and `steps played` says where.
+// later steps are zero, and `steps played` says where. Version 2: after the
+// floats, the net's NIN, H and NOUT as ints, and after each champion's steps
+// its mind, TNET floats a step of every duel.
 static int run_trace(const Opt& o) {
 #ifndef WORLD
     fprintf(stderr, "--trace is for the WORLD build: make WORLD=1\n");
@@ -1073,8 +1085,8 @@ static int run_trace(const Opt& o) {
         if (!read_champion(path, w, &note)) { fprintf(stderr, "%s: not a champion of this net\n", path.c_str()); return 1; }
         opps.insert(opps.end(), w.begin(), w.end());
     }
-    size_t recn = (size_t)nd * o.steps * TREC;
-    float *d_ch, *d_op = nullptr, *d_rec, *d_fit, *d_ar;
+    size_t recn = (size_t)nd * o.steps * TREC, mindn = (size_t)nd * o.steps * TNET;
+    float *d_ch, *d_op = nullptr, *d_rec, *d_fit, *d_ar, *d_mind;
     int *d_out, *d_last, *d_opp;
     CK(cudaMalloc(&d_ch, champs.size() * sizeof(float)));
     CK(cudaMemcpy(d_ch, champs.data(), champs.size() * sizeof(float), cudaMemcpyHostToDevice));
@@ -1083,6 +1095,7 @@ static int run_trace(const Opt& o) {
         CK(cudaMemcpy(d_op, opps.data(), opps.size() * sizeof(float), cudaMemcpyHostToDevice));
     }
     CK(cudaMalloc(&d_rec, recn * sizeof(float)));
+    CK(cudaMalloc(&d_mind, mindn * sizeof(float)));
     CK(cudaMalloc(&d_fit, nd * sizeof(float)));
     CK(cudaMalloc(&d_ar, (3 * PILLARS + 2 * PILLBOXES) * sizeof(float)));
     CK(cudaMalloc(&d_out, nd * sizeof(int)));
@@ -1090,18 +1103,22 @@ static int run_trace(const Opt& o) {
     CK(cudaMalloc(&d_opp, nd * sizeof(int)));
     FILE* f = fopen(o.trace.c_str(), "wb");
     if (!f) { perror(o.trace.c_str()); return 1; }
-    int hdr[9] = {0x63747231, 1, (int)cs.size(), nd, o.steps, TREC, PILLARS, PILLBOXES, NW};
+    int hdr[9] = {0x63747231, 2, (int)cs.size(), nd, o.steps, TREC, PILLARS, PILLBOXES, NW};
     float con[6] = {DT, ARENA, HP, PB_HEALTH, GUN_RANGE, PB_RANGE};
+    int shape[3] = {NIN, H, NOUT};
     fwrite(hdr, sizeof(int), 9, f);
     fwrite(con, sizeof(float), 6, f);
-    std::vector<float> rec(recn), fit(nd), ar(3 * PILLARS + 2 * PILLBOXES);
+    fwrite(shape, sizeof(int), 3, f);
+    std::vector<float> rec(recn), mind(mindn), fit(nd), ar(3 * PILLARS + 2 * PILLBOXES);
     std::vector<int> out(nd), last(nd), opp(nd);
     for (size_t c = 0; c < cs.size(); c++) {
         CK(cudaMemset(d_rec, 0, recn * sizeof(float)));
-        trace_play<<<1, nd>>>(d_ch + c * NW, d_op, (int)os.size(), o.steps, o.trace_seed, o.draw, d_rec, d_out, d_last, d_fit, d_opp, d_ar);
+        CK(cudaMemset(d_mind, 0, mindn * sizeof(float)));
+        trace_play<<<1, nd>>>(d_ch + c * NW, d_op, (int)os.size(), o.steps, o.trace_seed, o.draw, d_rec, d_out, d_last, d_fit, d_opp, d_ar, d_mind);
         CK(cudaGetLastError());
         CK(cudaDeviceSynchronize());
         CK(cudaMemcpy(rec.data(), d_rec, recn * sizeof(float), cudaMemcpyDeviceToHost));
+        CK(cudaMemcpy(mind.data(), d_mind, mindn * sizeof(float), cudaMemcpyDeviceToHost));
         CK(cudaMemcpy(fit.data(), d_fit, nd * sizeof(float), cudaMemcpyDeviceToHost));
         CK(cudaMemcpy(out.data(), d_out, nd * sizeof(int), cudaMemcpyDeviceToHost));
         CK(cudaMemcpy(last.data(), d_last, nd * sizeof(int), cudaMemcpyDeviceToHost));
@@ -1115,6 +1132,7 @@ static int run_trace(const Opt& o) {
         fwrite(last.data(), sizeof(int), nd, f);
         fwrite(fit.data(), sizeof(float), nd, f);
         fwrite(rec.data(), sizeof(float), recn, f);
+        fwrite(mind.data(), sizeof(float), mindn, f);
         int w = 0, l = 0;
         for (int d = 0; d < nd; d++) { w += out[d] == 1; l += out[d] == -1; }
         printf("# trace %s: %d duels, %d won, %d lost, %d drawn\n", cs[c].c_str(), nd, w, l, nd - w - l);
