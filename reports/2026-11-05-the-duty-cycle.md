@@ -167,11 +167,36 @@ The answer to "can we use the wait time" is therefore mostly about time, not mac
 
 ## IX. What Paul decides
 
-Which of A to C to build, and in what order (the recommendation: A, then B on the transform and the held-out reads only, then C); and whether to run the background job of VII as an experiment once they are in. The round table is built and live.
+Which of A to C to build, and in what order (the recommendation: A, then B on the transform and the held-out reads only, then C); and whether to run the background job of VII as an experiment once they are in. The round table is built and live. Paul chose the same morning: "build A, then B" (section XI). C and the background job wait.
 
 ## X. Addendum: the Values page had stopped
 
 Reading the pipeline document for this report found the **Values** page empty since 4 November: a value added that day (`size_warn_gb`, read by growth.py, not the planner) has no attribute name, and the planner asked for it by name, which failed and dropped the whole table from `pipeline.json`. It now reads such a value from `tuning.json` or its default, and all 37 values are back.
+
+## XI. Addendum, the same morning: A and B built
+
+Paul: "build A, then B. commit push.."
+
+**A, in the keeper.** The low water counts only the queued jobs a CPU machine could take (`cpu_queued`); the GPU islands' buffer no longer holds it up. Twenty seconds at least between two passes it starts (`low_min_s`), so a planner with nothing to add is not asked each poll.
+
+**B, in the keeper and the planner.** The planner marks a transform's step and a held-out read `replan` (`chain_marks`), and a transform's step goes ahead of new trials, as a held-out read already did. When a job marked so comes back, the keeper asks the planner fifteen seconds later (`replan_after_s`), the returns of those seconds gathered into one pass. A trial's read-ons are left to the regular pass: one pass each for their 1,500 returns a day would take most of the Mac's core.
+
+**Checked.** A new check, `tools/plan-check.sh`, runs a real keeper with a stub planner that writes down each time it is asked. With eight GPU jobs queued and the CPU's queue empty, the keeper asked four times in twelve seconds, each `low_min_s` at most; the keeper before this asked none. A step marked `replan` came back and the planner was asked two seconds later (`replan_after_s` 2, `plan_s` an hour); the keeper before this did not ask. `board-check.py` holds which jobs carry the mark. The keeper's other checks pass: the queue's buttons, the breaker, the handover and the idle flag.
+
+**Live, from 10:26.** The keeper took the new code at 10:26:23 and handed over its eleven running jobs; none ran again.
+
+*Table VI. Before and after, measured.*
+
+| Measure | Before (09:45 to 10:25) | After (10:27 on) |
+|---|---|---|
+| CPU busy | 95.0% | **99.3%** |
+| CPU gaps over 30 s | 6, 8.7 lane-minutes | **0** |
+| A transform step: planner, queue, work | 3.2 + 2.6 + 1.8 min | **1.2 + 0.2 + 0.8 min** (medians of seven) |
+| A transform step, end to end | 7.6 min | **about 2.3 min** |
+
+**What the estimate missed: the pass.** Section VI took a pass to be about 40 seconds, from the handoff's 3.2 minutes less the polling server's 2.5. The keeper now writes each pass's length into its events, and a pass took 80 to 106 seconds. Asked sooner, the planner was running most of the time and a step's handoff waited on a pass already under way. A profile of one pass (`plan/profile-next` makes the next pass write `plan/profile.txt`) found half of it in the file system: 27,000 fetched censuses globbed sixteen times a pass (44 seconds), and every finished job's record loaded five and seven times over by two functions (25 seconds). The planner is a fresh process each pass and a fetched census does not change, so each is now read once a pass (`census_dirs`, `done_titles`, and each census's commit and one-map verdict); the outputs are the same to the byte, checked against the code before on the live queue, and a commit's game version is kept in the state between passes. **A pass went from 105 seconds to 43.** At that length a step's handoff is about a minute, half of it the pass itself; the thirty steps of a transform 70 to 90 minutes (as their work runs 0.8 to 1.8 minutes a step), against 3.8 hours.
+
+**What stays open.** C (the held-out read in pieces) and the background job of VII. The planner now passes about once every one and a half minutes, about half the Mac's one core; a pass under 43 seconds would shorten every handoff again, and its remaining cost is spread over many small reads and 450 git calls.
 
 ## References
 
