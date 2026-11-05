@@ -8,13 +8,13 @@ Companions: `tools/plans/treadcore.py` (the planner: `blame_view`, `handoffs`, `
 
 ## Abstract
 
-Paul looked at the Pipeline's four screens on the morning of 5 November and asked whether the fleet's waiting is a backlog of CUDA work that will clean up with time, or whether it will always be there, and, if it will, whether the waiting time can be put to use: "a constant low priority background job that can be worked on piecemeal". **The machines do not wait.** Over the last twelve hours the eight CPU lanes were busy 97.7% of the time (96.2% to 98.5% each) and the three GPU lanes 99.8%; no job anywhere waited on another machine. **The work waits instead,** in three places: the GPU islands' fifteen queued segments, a buffer the planner keeps on purpose (six segments ahead a card, one running and five queued) that will never clear and should not; the chains of the line, whose next step is asked only at the planner's next pass, five minutes apart, so the transform's thirty steps take 3.8 hours for 54 minutes of work, and a trial's path from first read to held-out verdict spends 15 of its 36 minutes between its own jobs; and the CPU lanes' last two percent, idle about a minute at a time, because the keeper's low-water trigger counts the GPU buffer and so never sees the CPU queue run dry. **The bottleneck is latency on a few chains, not capacity,** and each part has a remedy with an estimate: the low water counted by kind of lane (about two percent more CPU work); chains advanced when they return, not at the next pass (the transform from 3.8 to about 1.6 hours, a trial's path from 36 to about 25 minutes); the held-out read in four pooled pieces (about 17 minutes off each generation's path); and the background job Paul asked for, designed so that every piece is stamped, pooled only with its own kind, weighed by the generation it read, and depended on by nothing. A new Pipeline page, **Blame**, draws the machines round a table, the queue in the middle, and every wait as an arrow: today it shows no arrow between two machines, three loops of GPU segments waiting their turn, one run handed back to the planner, and every machine's help going back to the queue. Built and checked here: the page and its data. Built the same morning at Paul's word and measured live (section XI): the CPU's own low water (A) and chains that ask for their next step when they return (B), with the planner's pass cut from 105 seconds to 43; **the CPU went from 95.0% busy to 99.3%, and a transform's step from 7.6 minutes to about 2.3.** Paul accepted them. Section XII sets each problem beside its solution; section XIII draws the data flow as it now runs, step by step. Then, at Paul's word, the held-out read in pieces (C) and the background job, both built and live (section XIV).
+Paul looked at the Pipeline's four screens on the morning of 5 November and asked whether the fleet's waiting is a backlog of CUDA work that will clean up with time, or whether it will always be there, and, if it will, whether the waiting time can be put to use: "a constant low-priority background job that can be worked on piecemeal". **The machines do not wait.** Over the last twelve hours the eight CPU lanes were busy 97.7% of the time (96.2% to 98.5% each) and the three GPU lanes 99.8%; no job anywhere waited on another machine. **The work waits instead,** in three places: the GPU islands' fifteen queued segments, a buffer the planner keeps on purpose (six segments ahead a card, one running and five queued) that will never clear and should not; the chains of the line, whose next step is asked only at the planner's next pass, five minutes apart, so the transform's thirty steps take 3.8 hours for 54 minutes of work, and a trial's path from first read to held-out verdict spends 15 of its 36 minutes between its own jobs; and the CPU lanes' last two percent, idle about a minute at a time, because the keeper's low-water trigger counts the GPU buffer and so never sees the CPU queue run dry. **The bottleneck is latency on a few chains, not capacity,** and each part has a remedy with an estimate: the low water counted by kind of lane (about two percent more CPU work); chains advanced when they return, not at the next pass (the transform from 3.8 to about 1.6 hours, a trial's path from 36 to about 25 minutes); the held-out read in four pooled pieces (about 17 minutes off each generation's path); and the background job Paul asked for, designed so that every piece is stamped, pooled only with its own kind, weighed by the generation it read, and depended on by nothing. A new Pipeline page, **Blame**, draws the machines round a table, the queue in the middle, and every wait as an arrow: today it shows no arrow between two machines, three loops of GPU segments waiting their turn, one run handed back to the planner, and every machine's help going back to the queue. Built and checked here: the page and its data. Built the same morning at Paul's word and measured live (section XI): the CPU's own low water (A) and chains that ask for their next step when they return (B), with the planner's pass cut from 105 seconds to 43; **the CPU went from 95.0% busy to 99.3%, and a transform's step from 7.6 minutes to about 2.3.** Paul accepted them. Section XII sets each problem beside its solution; section XIII draws the data flow as it now runs, step by step. Then, at Paul's word, the held-out read in pieces (C) and the background job, both built and live (section XIV).
 
 *Index Terms*: duty cycle, utilization, queueing, Little's law, polling server, critical path, work-conserving schedule, speculative execution, pooled estimates.
 
 ## I. The question
 
-Paul, with four screenshots of the Pipeline (the Board, the Timeline, the Flow and the Queued list): "describe the hold up on waiting. is this caused by the backlog of cuda computations. this one run is going very long ... describe if we can add other steps to improve the utalization of all GPUs and CPUs by scheduling approprate intervals or search depth ... the question mainly is will this clean up with time. is it because we had an unnatural backlog, or will this waiting always be happening. If so, is there a way to use the time, the wait time, as a backup research for something." And then: "also create a blame tab ... the computers point at each other saying who they are waiting on. On their other hand, shows their backup help, where it can reach out back to the queue to assist in small jobs of improvement, piecemeal in returnable incriments."
+Paul, with four screenshots of the Pipeline (the Board, the Timeline, the Flow and the Queued list): "Describe the hold-up on waiting. Is this caused by the backlog of CUDA computations? This one run is going very long ... Describe if we can add other steps to improve the utilization of all GPUs and CPUs by scheduling appropriate intervals or search depth ... The question mainly is: will this clean up with time? Is it because we had an unnatural backlog, or will this waiting always be happening? If so, is there a way to use the time, the wait time, as a backup research for something?" And then: "Also create a Blame tab ... the computers point at each other, saying who they are waiting on. On their other hand, it shows their backup help, where it can reach out back to the queue to assist in small jobs of improvement, piecemeal in returnable increments."
 
 Then, for this report: "If we can't improve the bottleneck, can we use the extra compute time on something usefull if we guess right. Like a constant low priory background job that can be worked on piecemeal. Each of these additions needs to allow discrepencies of to consolidate their start times and generation weights. We want to prevent creating circular depdencies. We want to analyze the overall work duty cycle."
 
@@ -167,7 +167,7 @@ The answer to "can we use the wait time" is therefore mostly about time, not mac
 
 ## IX. What Paul decides
 
-Which of A to C to build, and in what order (the recommendation: A, then B on the transform and the held-out reads only, then C); and whether to run the background job of VII as an experiment once they are in. The round table is built and live. Paul chose the same morning: "build A, then B" (section XI), and, with them built and measured, "accepted."; then "build C, then the background job" (section XIV).
+Which of A to C to build, and in what order (the recommendation: A, then B on the transform and the held-out reads only, then C); and whether to run the background job of VII as an experiment once they are in. The round table is built and live. Paul chose the same morning: "Build A, then B" (section XI), and, with them built and measured, "Accepted."; then "Build C, then the background job" (section XIV).
 
 ## X. Addendum: the Values page had stopped
 
@@ -175,7 +175,7 @@ Reading the pipeline document for this report found the **Values** page empty si
 
 ## XI. Addendum, the same morning: A and B built
 
-Paul: "build A, then B. commit push.."
+Paul: "Build A, then B. Commit, push."
 
 **A, in the keeper.** The low water counts only the queued jobs a CPU machine could take (`cpu_queued`); the GPU islands' buffer no longer holds it up. Twenty seconds at least between two passes it starts (`low_min_s`), so a planner with nothing to add is not asked each poll.
 
@@ -200,7 +200,7 @@ Paul: "build A, then B. commit push.."
 
 ## XII. The solutions, accepted
 
-Paul: "ammend the last lab report with your imporvements and your solutions. accepted."
+Paul: "Amend the last lab report with your improvements and your solutions. Accepted."
 
 *Table VII. Each problem this report found, its solution, and where it stands.*
 
@@ -237,7 +237,7 @@ Each step, with where it lives and what it takes:
 
 ## XIV. Addendum, the same day: C and the background job built
 
-Paul: "build C, then the background job. commit push."
+Paul: "Build C, then the background job. Commit, push."
 
 **C, in the planner.** A held-out read is asked as four jobs of 100 seeds (`held_read`, `held_piece`), on any CPU machine, each its quarter of the read's seeds: piece i plays seeds SEED0 + 100(i − 1) to SEED0 + 100i − 1. When all four are back, the next pass (B asks for it fifteen seconds after each piece returns) copies the four pieces' per-seed logs into one folder under the read's own id, writes its `run.env` as the whole read's, and pools them with treadcore's `scripts/pool.sh`, which was written for a census split over jobs (`held_merge`, `merge_pieces`). A seed plays the map of its own number, n mod k, so the pieces play exactly the games the one job would have, and the merged read is the same census. **Tested on a real read:** h0796's 400 seeds dealt out as four pieces and merged gave its `pooled.txt` back to the character, −0.37 ± 0.41 over 400 seeds. Everything that reads a held-out read (whether it passes, the candidate's evidence, the second read, the families, the found flags, the trace) reads the merged census as it read the one job; the pieces are not reads of their own, so the fit's ledger does not count a seed twice. A piece that fails is asked again, twice at most, then the read is dropped and a flag says so; a piece read on other defaults than the newest of its read weighs nothing and is asked again.
 
@@ -263,7 +263,7 @@ Paul: "build C, then the background job. commit push."
 
 ## XV. Addendum, the same afternoon: the Timeline zoomed, its milestones, and each machine's queue at the round table
 
-Paul, in four asks: "in the queue. can we see arrows how the job moves from one to the other ... On highlight of cell, highlight all the chain elements associated"; then "when i highlight i don't see any combination of gray. is the cuda block used. Is there a syncronization of cuda to game rules ... show seperation of major milestones of generation. Cause I don't understand when the CUDA will return. also maybe we can zoom timeline in and out. months, weeks, days, day, hours, hour"; then "describe why so many cuda are a backlog for GPU island, is there an exponential growth ... Is it limited"; and "add more accordians to blame first, to show the job depdency on hover. i want to see job arrow amongst the blame circle, with jobs shown, and a filtered job queue for each machine." All built, committed in orrery `0fcffbc` and `8c8bb46`. Every figure of this section is the console's own `--frame` render of the live `pipeline.json` of 13:42, but Fig. 16, which says how it was made.
+Paul, in four asks: "In the queue, can we see arrows of how the job moves from one to the other? ... On highlight of a cell, highlight all the chain elements associated"; then "When I highlight, I don't see any combination of gray. Is the CUDA block used? Is there a synchronization of CUDA to game rules? ... Show separation of major milestones of generation, 'cause I don't understand when the CUDA will return. Also, maybe we can zoom the timeline in and out: months, weeks, days, day, hours, hour"; then "Describe why so many CUDA are a backlog for the GPU island. Is there an exponential growth? ... Is it limited?"; and "Add more accordions to Blame first, to show the job dependency on hover. I want to see job arrows amongst the Blame circle, with jobs shown, and a filtered job queue for each machine." All built, committed in orrery `0fcffbc` and `8c8bb46`. Every figure of this section is the console's own `--frame` render of the live `pipeline.json` of 13:42, but Fig. 16, which says how it was made.
 
 ### A. Following a chain
 
@@ -364,6 +364,118 @@ The planner now writes each machine's queue with the round table (`blame_view`'s
 ### G. Checked
 
 `board-check.py`: each kind of job named to its chain; the event log's bins read on from a half-written line the same as read whole, a failed job's time as `failed`; a day's bins on the five minutes; the 25-hour day's ticks and its shift; the return's climb, median, best and hours from a lineage made to climb one error an hour; a bridge read linked after its milestone's segment; each machine's filtered queue and the job each waits on. The console's tests (401): a chain's links across machines and a link the planner names before the clock; a zoom's bins, its dates in summer time and its CUDA boxes read; each machine's queue and what each job says it waits on.
+
+## XVI. Addendum, the same evening: the fleet's watts, the Lineup and the Hit Parade
+
+Paul, in three asks, his words spell-checked: "Use the assessment of CPU power, and general Gold-efficiency power supplies; use GPU power and CPU estimates. Perhaps there is a sensor, and perhaps we can have a general guess at full-tilt CPU, 'cause things like the macmini are minimal watts, where the 48-core server CPU is power hungry. Can we get general estimates, and also have each computer report its power-estimate participation to the graph as it hands it off? Perhaps tracking this, to give this a general cost per kWh. Build it into an underlay graph underneath the timeline, showing graph color from blue to white to purple to yellow to red." Then: "Add another visualization, a tab. It has all the same elements as the Timeline does, but it rearranges each chain into its own Gantt chart, with the blocks of the chain reassembled on each row, with machines' names in the job block (also showing job info). But this would unscramble the net trace of arrows, to have each dead end and each success clearly shown, and forks looking like nested accordions already open, showing arrows and sub-rows." And: "Generate a graph, a rate of type per machine, and keep the statistic in a chart: a new screen; it's like a success counter matrix, a wall of success. Approved by Von Glurt. Take pictures, add to the lab report addendum. Spell-check my quotes, and in the lab report show this history in its new form. Give it a nifty 1950s-style name for the tab; I'm at a loss what to call it. It's a timeline, but a different reorder of a timeline."
+
+Two new tabs, named for the television of the 1950s: **the Lineup** (after *The Lineup*, 1954: every chain stands in its own row) and **the Hit Parade** (after *Your Hit Parade*, the decade's countdown of hits). Every figure of this section is the console's `--frame` render of the live `pipeline.json` of 14:56; none is constructed.
+
+### A. The fleet's watts, and what they cost
+
+**What is measured, and what is not.** Every five minutes the keeper reads each box's CPU use (two reads of `/proc/stat` two seconds apart; `top` on the Mac) and each GPU's draw (`nvidia-smi`), with which of its lanes was running a job (`tools/power.py sample`, one of the keeper's chores). The CPUs' own watts are not measured: five boxes have an energy counter (Intel's and AMD's RAPL) and all five keep it for root; the two Xeon servers, of 2010, have none; and no box has a meter at the wall. So a CPU's watts are its model's (`tools/plans/power.json`, from its maker's figures) at the use measured. A box at the wall = (the rest of it + its CPU at idle + the CPU's use × its full tilt less idle + its GPU) ÷ its supply's efficiency, 0.88 for 80 Plus Gold (at least 87% at a fifth of its rating, 90% at half, 87% at full); the Mac mini by Apple's own figures at the wall. Until a box has six samples the model's guess stands (90% of its cores busy, a card at 60% of its limit): one two-second read had caught jaguaribe at 9%, in the last seeds of a job.
+
+*Table X. Each box at 14:56, at the wall: its full tilt, now, and its cores' busy share while it runs a job, measured.*
+
+| Box | CPU | Full tilt | Now | Cores busy in a job | Its card in a segment |
+|---|---|---|---|---|---|
+| saskatchewan | Core i7-13700F, 24 threads | 222 W | 141 W | 50% | |
+| boburner | Ryzen 7 3700X, 16 threads | 220 W | 207 W | 53% | 71 W (GTX 1070 Ti, limit 180) |
+| columbia | Core i3-N300, 8 cores | 21 W | 15 W | 77% | |
+| calber | Core i7-9700F, 8 cores | 315 W | 293 W | 93% | 143 W (GTX 1080 Ti, limit 250) |
+| whitewolf | Core i7-6700K, 8 threads | 251 W | 214 W | 91% | 96 W (GTX 1080, limit 215) |
+| jaguaribe | 2 × Xeon X5670, 24 threads | 301 W | 283 W | 33% | |
+| bosporus | 2 × Xeon E5645, 24 threads | 267 W | 152 W | 29% | |
+| macmini | Apple M4, 10 cores | 38 W | 35 W | 79% | |
+| **the fleet** | | **1,635 W** | **1,340 W** | | |
+
+**The last 24 hours drew 30.7 kWh, $5.22 at $0.17 a kWh: about $157 a month.** The price is the US average residential of 2025, a guess until Paul sets his own (Settings, Long run, `power_usd_kwh`).
+
+**Two findings.** First, a busy machine is not a machine at full tilt: a census job runs its seeds in parallel and ends in a tail where the last few run alone, so **the two 24-thread Xeon servers run a third of their threads while they work** (33% and 29%), the 24-thread i7-13700F and the 16-thread Ryzen half, and calber and whitewolf nine tenths. Second, **energy a job is lopsided:** today the Mac mini drew 0.72 Wh a job, columbia 1.68, boburner 4.42, saskatchewan 4.72, calber 7.44, whitewolf 10.4, jaguaribe 11.2 and bosporus 13.9; a GPU segment 18 to 23 Wh. Jobs are not all the same size (the fast machines take the long held-out reads), so the ratio is a strong hint, not a measurement: sixteen to nineteen times the Mac mini's energy for a Xeon server's job. Today's earlier jobs were charged at the model's first guess, before the six samples; the figures settle as the samples go on.
+
+**Each job reports its part as it is handed off.** The planner charges a job its lane's watts busy for the minutes it ran (a CPU lane its box's rest and CPU, a GPU lane its card), and keeps the day's total by lane and kind of job. On the Timeline each row's foot is its own watts, its name says its watts now, and under the rows the fleet's watts stand a column a bin, coloured as Paul asked from blue (none) through white, purple and yellow to red (full tilt). A machine off draws nothing: from the keeper finding it unreachable or powering it off until it is back, its time counts zero, and the fleet's shutdown of 31 October shows as a fall to 360 W (Fig. 18). Following a chain on the Timeline adds up its watt-hours; the round table's queues and pane say each machine's.
+
+![The Timeline with the fleet's watts under it](https://vonglurt.github.io/orrery/docs/site/shots/pipe-power-hours.png)
+
+*Fig. 17. Six hours with the fleet's watts under the rows: each row's foot its own watts, each name its watts now; on the right, now, full tilt, the last day's kWh and a month like it.*
+
+![The Timeline at days, with the fleet's watts over a week](https://vonglurt.github.io/orrery/docs/site/shots/pipe-power-days.png)
+
+*Fig. 18. A week of watts in half-hour bins: the fleet's shutdown of 31 October, its return on 1 November, and the GPU islands' days.*
+
+![The fleet's watts on the inspector](https://vonglurt.github.io/orrery/docs/site/shots/pipe-power-tip.png)
+
+*Fig. 19. The cost box on the inspector: the formula, what is measured and what is estimated, and each box now and at full tilt.*
+
+![jaguaribe at the round table, its power in the pane](https://vonglurt.github.io/orrery/docs/site/shots/pipe-blame-power.png)
+
+*Fig. 20. jaguaribe kept at the round table: its watts now, its box at full tilt, and its jobs, kWh and dollars today in the pane; every queue's header its watts.*
+
+**Not done, and Paul's to decide:** the CPUs' own counters can be read by a rule as root on the five machines that have them (a change to those machines); the two Xeons can be measured only by a meter at the wall.
+
+### B. The Lineup: every chain in its own rows
+
+The planner says how each chain ended or where it stands (`chain_meta`). A trial is **won** when it was promoted (and says when it is on main); **a dead end** when its promotion failed, when its held-out read did not pass, or when it was dropped after its reads; **going** when it is reading, in its held-out read, or a candidate waiting its promotion. A run is won when done, a dead end when failed; a build is won when every machine built it; a clone round is won when it shipped. The page stands each chain in its own rows: a head row with how it ended, and under it its jobs where they ran, each block its machine and its job; a fork (jobs of the chain that ran at once: a held-out read's pieces, a record run's shards) stands open on sub-rows of its own, as an accordion; an arrow runs from each job to the next. A red wall marks where a chain died, a green tag where it won, an amber one where it goes on, with hollow blocks for what the forecast deals it next. Three zooms: the hour and the six hours share the Timeline's clock, its milestones and the fleet's watts; **each its own** stretches every chain across the width, its own Gantt chart, so every block has room for its machine and job. Filters choose the kind (trials, runs, builds, islands, all) and the ending (going, won, dead ends).
+
+**The six hours to 14:56, in the new form.**
+
+*Table XI. Every chain of the six hours, by how it ended.*
+
+| Chains | Won | Going | Dead ends |
+|---|---|---|---|
+| 382 trials | 1: w10839, promoted as r0196 | 17: 12 reading on, 4 in held-out reads, 1 candidate waiting | 364 |
+| 5 builds | 5, each on 8 machines | | |
+| 6 runs | 4: transforms r0187, r0191, r0195; record r0192 | 1: transform r0197 | 1: promotion r0194 |
+| 1 clone round | | | 1: clone-003, not shipped |
+| 4 proofs, 3 islands, 5 others | | 12: no end to say yet | |
+
+**How the 364 trials died:** 343 dropped after their reads, 200 of them after one read (55 seeds), 51 after two, 40 after three, 22 after four and 30 after five to nine; and 21 whose held-out read did not pass. That is the search doing its work: **a first read decides most trials by itself, and a trial that reaches a held-out read passes about one time in eleven** (one won and one candidate against 21 that did not).
+
+![The Lineup, each chain its own](https://vonglurt.github.io/orrery/docs/site/shots/pipe-lineup.png)
+
+*Fig. 21. The Lineup, each its own, going first: trials reading on, each block its machine and job; held-out reads open on their sub-rows, their pieces hollow where the forecast deals them.*
+
+![The Lineup's won chains](https://vonglurt.github.io/orrery/docs/site/shots/pipe-lineup-won.png)
+
+*Fig. 22. Every chain that won: transforms, every build on its eight machines (each its own arrow from the machine that built first), record r0192's shards open as an accordion, and w10839 from its first read to its promotion.*
+
+![The Lineup's dead ends](https://vonglurt.github.io/orrery/docs/site/shots/pipe-lineup-dead.png)
+
+*Fig. 23. Dead ends, each at its red wall: trials dropped after one to eight reads, and w11080, whose held-out read in pieces did not pass.*
+
+![The Lineup's runs](https://vonglurt.github.io/orrery/docs/site/shots/pipe-lineup-runs.png)
+
+*Fig. 24. The runs: transform r0197 going, the line's proofs, the transforms won, the promotion r0194 that failed and clone-003 not shipped.*
+
+![The Lineup on the six hours' clock](https://vonglurt.github.io/orrery/docs/site/shots/pipe-lineup-hours.png)
+
+*Fig. 25. The same chains on the Timeline's clock, with its milestones and the fleet's watts under them.*
+
+### C. The Hit Parade: a wall of counters
+
+The planner keeps a tally of every job as it is handed off, a day, a machine and a kind of job at a time: done, not done (failed, stopped or sent back), its minutes and its watt-hours (`parade_view`; the tally lives with the event log's bins and is kept as long as they are). The page is a wall: every machine a row, every kind of job a column, each counter the jobs done large, the share that came back done (green at 99% and up, amber from 90%, red below), its rate an hour and its watt-hours a job, and a lamp along its top as bright as its count against its column's most. Beside the wall each machine's rate by kind as one bar; under it a bar a day since the log began, done in green with the not done in red; over it the scoreboard, and the Von Glurt seal: approved.
+
+*Table XII. The scoreboard.*
+
+| Window | Hours | Done | Not done | Came back done | An hour | kWh |
+|---|---|---|---|---|---|---|
+| Today | 14.9 | 2,706 | 3 | 99.89% | 181 | 19.1 ($3.25) |
+| The last 7 days | 159.9 | 24,623 | 334 | 98.66% | 154 | 141.9 |
+| Since 28 October, 09:34 | 198.4 | 28,289 | 366 | 98.72% | 143 | 168.8 |
+
+**Today the Mac mini did the most:** 607 jobs, 40.6 an hour, then saskatchewan 433 and boburner 330. **The wall's weakest counters, since the log began,** are the promotions on the Mac (25 done of 39, 64%: the faults of 3 and 4 November, sections X and XI), the held-out reads on whitewolf (22 of 28, 79%), columbia (34 of 39, 87%) and calber (49 of 54, 91%): a long read on a slower machine is the one most often stopped or sent back.
+
+![The Hit Parade since the log began](https://vonglurt.github.io/orrery/docs/site/shots/pipe-parade.png)
+
+*Fig. 26. The Hit Parade since 28 October: 28,289 jobs done and 366 not, 98.7% back done; the wall of every machine by kind, each machine's rate beside it, a bar a day under it, and the seal.*
+
+![The Hit Parade today](https://vonglurt.github.io/orrery/docs/site/shots/pipe-parade-today.png)
+
+*Fig. 27. Today: 2,706 done and 3 not, 99.9%; the Mac mini's 607 jobs at 40.6 an hour lead the parade.*
+
+### D. Checked
+
+`board-check.py`: the model's watts (saskatchewan at full tilt, the Mac mini's 4 W idle), the probe read on Linux and on the Mac, the model's guess under six samples and the samples' mean at six, a GPU lane its card; the event log's off machine counting nothing, its GPU lane with it, and a job's watt-hours on its day; each trial's end said (promoted, its promotion failed, dropped, its held-out read not passing, a candidate, still reading with its forecast); the tally's windows and hours. The console's tests (403): the watts read and coloured blue to red; a chain's end and its forecast read; the tally read; both pieces of a fork following the same read-on. Live: the keeper samples every five minutes; the planner writes the watts, the chains and the tally at every pass.
 
 ## References
 
