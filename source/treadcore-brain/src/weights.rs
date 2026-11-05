@@ -104,7 +104,7 @@ weights! {
     Overkill "w_overkill" 0.6, "target: off for each teammate past the cap";
     InRange "w_in_range" 1.4, "target: in direct range now";
     Threat "w_threat" 0.6, "target: menacing a teammate or the base";
-    BaseR "base_r" 6.15272, "target: the base's reach for w_threat, tiles";
+    BaseR "base_r" 4.48349, "target: the base's reach for w_threat, tiles";
     Stick "w_stick" 0.322391, "target: the one already chosen";
     Shooter "w_shooter" 2.0, "target: the tank that last shot at this one, for ten seconds (LR 142, the gauntlet's G20)";
     FocusBlend "focus_blend" 0.25, "target (LR 117): 0 the near tank in range, 1 the wounded one a teammate is on; 0.5 both as before (each side's terms doubled toward its end)";
@@ -116,7 +116,7 @@ weights! {
     PressOdds "press_odds" 1.33767, "odds: above these, close in";
     ComingR "coming_r" 221.036, "odds: teammates this near are coming, tiles";
     MassFor "mass_for" 12.0, "odds: seconds to hold off for them";
-    AnswerCap "answer_cap" 3.0, "pings: this many nearer teammates answer instead (rounded)";
+    AnswerCap "answer_cap" 1.5176, "pings: this many nearer teammates answer instead (rounded)";
     CrewReach "crew_reach" 40.0, "pings: a crew on a job answers only this near, tiles";
     Exposure "w_exposure" 0.605073, "stand: cost per gun covering a firing point";
     Flank "w_flank" 0.3, "stand: cost of leaving the flank's bearing";
@@ -131,7 +131,7 @@ weights! {
     // insignificant coefficient"), once the capability `smooth`.
     SmoothShare "w_smooth" 0.05, "smooth: how much the bot smooths, 0 to 1. The move's desire vector and the retreat thresholds blend by it; the rung's and the turret's confirmation, the stance's advance scalar and resupply by the doctrine alone act above 0.5 (yes or no). 0 is the capability off, 1 on";
     Alpha "alpha" 0.179532, "smooth: the move's desire vector, share of the new pull a think";
-    Beta "beta" 0.304865, "smooth: the advance scalar, share of the new pull a think";
+    Beta "beta" 0.652432, "smooth: the advance scalar, share of the new pull a think";
     Margin "margin" 0.15, "smooth: a challenger must beat the intent by this share";
     Confirm "confirm" 2.0, "smooth: thinks in a row a challenger must win (rounded)";
     ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target (rounded)";
@@ -187,7 +187,7 @@ weights! {
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
     PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
-    PostureFortify "w_pos_fortify" 0.1875, "posture: worth of Fortify's score, the share of the castle not yet built";
+    PostureFortify "w_pos_fortify" 0.046875, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
     DefendGround "w_defend_ground" 3.0, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
     ConnectIdle "connect_idle" 1.0, "posture: how much of Connect's score stands when this tank has no pillbox to bring in: 1 as built, 0 a score only for work that can be done";
