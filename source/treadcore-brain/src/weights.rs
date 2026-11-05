@@ -271,11 +271,11 @@ weights! {
     // escort mission"). A person's two wingmen kept station by five numbers nobody could move: not the
     // person, not a persona, not the search. As weights they are sliders on the U page and dials the
     // census reads; the defaults are the constants, so nothing plays differently until someone moves one.
-    EscortDistance "escort_distance" crate::commander::ESCORT_DISTANCE, "wingman: the station behind the leader, tiles";
-    WingLeash "wing_leash" crate::commander::WING_LEASH, "wingman: nothing takes it further than this from its leader, tiles";
-    WingGreed "wing_greed" crate::commander::WING_GREED, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
-    WingThreat "wing_threat" crate::commander::WING_THREAT, "wingman: anything hostile this near the leader is its first job, tiles";
-    WingAhead "wing_ahead" crate::commander::WING_AHEAD, "wingman: it hits what is ahead of the leader within this, tiles";
+    EscortDistance "escort_distance" 4.0, "wingman: the station behind the leader, tiles";
+    WingLeash "wing_leash" 20.0, "wingman: nothing takes it further than this from its leader, tiles";
+    WingGreed "wing_greed" 16.0, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
+    WingThreat "wing_threat" 10.0, "wingman: anything hostile this near the leader is its first job, tiles";
+    WingAhead "wing_ahead" 16.0, "wingman: it hits what is ahead of the leader within this, tiles";
     WingStance "wing_stance" 0.0, "wingman: where its station is (choice: shadow | flank | screen): shadow behind the leader as built; flank off its side, each wingman its own side; screen ahead of it";
 }
 
@@ -871,6 +871,23 @@ mod tests {
         }
         assert!(seen > 100, "{} tests read", seen);
         assert!(offenders.is_empty(), "a unit test plays the pinned brain (Settings::pinned, Tactician::pinned, Commander::pinned), or a promotion fails on it: {}", offenders.join("; "));
+    }
+
+    /// Every default in the `weights!` table is a number written there (LR 149). The wingman's five
+    /// were the names of constants in commander.rs from 2 November, which set-defaults.py, the
+    /// planner and the ledger read as no default at all: a candidate that moved `wing_leash`
+    /// (grove/w10839, held out +0.96 on 5 November) could not be promoted.
+    #[test]
+    fn every_default_in_the_table_is_a_number() {
+        let src = include_str!("weights.rs");
+        let start = src.find("weights! {").expect("the weights! table");
+        let table = &src[start..start + src[start..].find("\n}\n").expect("its end")];
+        let not: Vec<&str> = table.lines().filter(|l| {
+            let t = l.trim_start();
+            t.starts_with(|c: char| c.is_ascii_uppercase()) && t.contains('"')
+                && t.splitn(3, '"').nth(2).map(|r| r.trim_start().split(',').next().unwrap_or("").trim().parse::<f32>().is_err()).unwrap_or(false)
+        }).collect();
+        assert!(not.is_empty(), "a default not written as a number: {:?}", not);
     }
 
     /// A weights text read over a brain keeps the brain's numbers where it names none, and its

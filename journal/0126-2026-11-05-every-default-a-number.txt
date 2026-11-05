@@ -1,0 +1,29 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 20:20:00 +0000
+Subject: [JOURNAL 0126] Every default a number
+Message-ID: <0126.20261105@treadcore.org>
+In-Reply-To: <0125.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: weights, promotion, set-defaults, wingman
+
+## Abstract
+
+grove/w10839, held out +0.96, could not be promoted: `wing_leash`'s
+default in the weights table was the name of a constant, which the
+promotion's writer read as no default. The wingman's five defaults are
+numbers now, a test holds every default to that, and w10839's moves
+pass the brain's tests.
+
+## Session
+
+Code: weights.rs (five defaults as numbers; the test
+`every_default_in_the_table_is_a_number`), commander.rs (the constants
+gone; the leash test reads the pinned brain), scripts/set-defaults.py (a
+clearer error). LR 149, CI-098, CHANGELOG, ROADMAP 91, BRAIN-MAP, this
+entry.
+
+## Next
+
+w10839 tried again by orrery once main moves; its families and gauntlet
+in the promotion job.

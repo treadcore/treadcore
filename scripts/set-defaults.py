@@ -80,6 +80,10 @@ def main():
                 print("%s %s -> %s" % (name, number(old), number(new)))
     missing = sorted((set(want) | {"caps:" + c for c in caps}) - seen)
     if missing:
+        # A weight whose default is not a number in the table reads as missing: say which it is.
+        named = [m for m in missing if re.search(r'^\s*[A-Z][A-Za-z0-9]*\s+"%s"\s' % re.escape(m), "\n".join(lines), re.M)]
+        if named:
+            sys.exit("a default in weights.rs is not a number, so it cannot be set: %s (nothing written)" % ", ".join(named))
         sys.exit("no such weight in weights.rs: %s (nothing written)" % ", ".join(missing))
     # Tactics::default(): a field named for a changed weight or switch gets what
     # `Tactics::from_weights` makes of the defaults this file leaves. A number is

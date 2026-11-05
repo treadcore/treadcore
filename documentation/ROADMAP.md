@@ -1474,6 +1474,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     Next: w10040 tried again when main moves; Paul's word on the
     top-level scenario files; G22 taught.
 
+91. Every default a number. (5 November; LR 149, CI-098.) The wingman's
+    five defaults written as numbers in the weights table, so a
+    promotion can move them; a test holds every default to it. Next:
+    w10839 tried again by orrery.
+
 ## Sequencing
 
 ```

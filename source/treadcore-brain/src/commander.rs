@@ -57,21 +57,13 @@ const STEP_ROUND: f32 = std::f32::consts::FRAC_PI_4;
 /// further than `DEFEND_LEASH` from it.
 pub const DEFEND_HOLD: f32 = 3.0;
 pub const DEFEND_LEASH: f32 = 12.0;
-/// An escort keeps this far from the tank it follows.
-pub const ESCORT_DISTANCE: f32 = 4.0;
-/// The wingman (Goal::Escort). Nothing it does takes it further than
-/// `WING_LEASH` from its leader; what it wants is within `WING_GREED`
-/// of the leader; a threat to the leader is anything hostile within
-/// `WING_THREAT` of it; ahead is the leader's heading within 60 degrees
-/// out to `WING_AHEAD`. A task is kept `WING_COMMIT` before another
-/// below it in the order may take its place. SINCE 2 NOVEMBER THESE ARE
-/// THE DEFAULTS OF WEIGHTS (`escort_distance`, `wing_leash`, `wing_greed`,
-/// `wing_threat`, `wing_ahead` in weights.rs): `fly_wing` reads the
-/// settings, so a person, a persona or the search can move them.
-pub const WING_LEASH: f32 = 20.0;
-pub const WING_GREED: f32 = 16.0;
-pub const WING_THREAT: f32 = 10.0;
-pub const WING_AHEAD: f32 = 16.0;
+/// The wingman (Goal::Escort): an escort keeps `escort_distance` from the tank it follows; nothing
+/// it does takes it further than `wing_leash` from its leader; what it wants is within `wing_greed`
+/// of the leader; a threat to the leader is anything hostile within `wing_threat` of it; ahead is
+/// the leader's heading within 60 degrees out to `wing_ahead`. Weights since 2 November, read by
+/// `fly_wing` from the settings; since LR 149 their defaults are numbers in weights.rs like every
+/// other weight's, not constants here, which set-defaults.py could not move. A task is kept
+/// `WING_COMMIT` before another below it in the order may take its place.
 /// Game 6, the ore run: the tank stands this near the deposit while the squad mines; a run is
 /// given up after this long on one stage; a tank standing at a dry depot leaves after `FILL_PATIENCE`
 /// with no shell gained and does not come home for shells again for `DRY_FOR`.
@@ -4460,7 +4452,9 @@ mod tests {
         });
         eprintln!("a_wingman_covers_its_leader: {} hits on the intruder, furthest {:.1} tiles from the leader", hits, furthest);
         assert!(hits >= 2, "the intruder was hit {} times", hits);
-        assert!(furthest <= WING_LEASH, "left the leash: {:.1} tiles", furthest);
+        // The leash of the brain the test plays (LR 147's pinned brain), not today's default.
+        let leash = crate::weights::Settings::pinned().w[crate::weights::W::WingLeash];
+        assert!(furthest <= leash, "left the leash: {:.1} tiles", furthest);
     }
 
     /// The pillbox by the leader is the wingman's to take; one far from
