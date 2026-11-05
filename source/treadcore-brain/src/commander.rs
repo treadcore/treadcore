@@ -545,6 +545,15 @@ impl Commander {
         c
     }
 
+    /// A wingman of the pinned brain, for the tests: `wingman` is made by `new`, on the defaults
+    /// (LR 148: every weight at its max, a pillbox shot the wingman of
+    /// `a_wingman_takes_the_pillbox_by_its_leader`).
+    pub fn pinned_wingman(seed: u64, name: &str, leader: PlayerId) -> Commander {
+        let mut c = Commander::wingman(seed, name, leader);
+        c.set_settings(crate::weights::Settings::pinned());
+        c
+    }
+
     /// The weights for its fights (tactics.rs); None shoots the nearest
     /// and answers every ping, as before them.
     pub fn set_tactics(&mut self, t: Option<crate::tactics::Tactics>) {
@@ -3786,7 +3795,7 @@ mod tests {
         c.set_settings(s.clone());
         c.set_goal(Goal::Auto);
         c.members = vec![2];
-        let mut wing = Commander::wingman(23, "wing", 0);
+        let mut wing = Commander::pinned_wingman(23, "wing", 0);
         wing.slot = Some(0);
         wing.set_settings(s);
         let (mut gathered, mut lifted) = (false, 0);
@@ -4049,7 +4058,7 @@ mod tests {
         holds[Rung::Hunt.index()] = true;
         holds[Rung::Expand.index()] = true;
         let at = |s: &str, holds: &[bool; 6]| {
-            let s = crate::weights::Settings::parse(s).unwrap();
+            let s = crate::weights::Settings::pinned_with(s).unwrap();
             Rung::pick_in(&Rung::order(s.choice(crate::weights::W::Ladder)), &on, holds, None, 0.0)
         };
         assert_eq!(at("ladder = as_built", &holds), Rung::Fortify, "as built");
@@ -4058,7 +4067,7 @@ mod tests {
         assert_eq!(at("ladder = 9", &holds), Rung::Expand, "past the versions, the last");
         holds[Rung::DefendBase.index()] = true;
         assert_eq!(at("ladder = hunt_first", &holds), Rung::DefendBase, "the base is never passed");
-        assert!(crate::weights::Settings::parse("ladder = sideways").is_err());
+        assert!(crate::weights::Settings::pinned_with("ladder = sideways").is_err());
     }
 
     /// On a bridge a wingman's slot is in file straight behind the
@@ -4076,7 +4085,7 @@ mod tests {
         for dx in -12..=12 {
             map.set(V2::new(64.5 + dx as f32, 64.5), Terrain::Grass);
         }
-        let mut c = Commander::wingman(1, "w", 0);
+        let mut c = Commander::pinned_wingman(1, "w", 0);
         c.slot = Some(1);
         let wedge = c.slot_point(&leader, Some(&map)).unwrap();
         let mut s = crate::weights::Settings::pinned();
@@ -4139,7 +4148,7 @@ mod tests {
         let at = V2::new(me.x + at_dist, me.y);
         w.step(&[Order { player: 0, cmd: Command::Ping { at, kind } }]);
         let mut c = Commander::pinned(1, "t");
-        let s = crate::weights::Settings::parse(text).unwrap();
+        let s = crate::weights::Settings::pinned_with(text).unwrap();
         c.set_settings(s.clone());
         // As the deal does it: the role's fields, then the settings.
         (c.pings, c.answers_pings) = (true, answers);
@@ -4416,7 +4425,7 @@ mod tests {
         while !w.map.at(at).passable() {
             at = Map::tile_centre(at + toward);
         }
-        let mut c = Commander::wingman(3, "wing", 0);
+        let mut c = Commander::pinned_wingman(3, "wing", 0);
         c.social = false;
         let (mut hits, mut furthest) = (0, 0.0f32);
         fly(&mut w, &mut c, 60 * TICK_HZ, |w, _| {
@@ -4473,7 +4482,7 @@ mod tests {
         let far = place(&w, lp, side, 40.0);
         w.pillboxes.push(Pillbox { id: 70_010, pos: near, owner: Some(2), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
         w.pillboxes.push(Pillbox { id: 70_011, pos: far, owner: Some(2), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
-        let mut c = Commander::wingman(4, "wing", 0);
+        let mut c = Commander::pinned_wingman(4, "wing", 0);
         c.social = false;
         let mut hurt = 0.0;
         fly(&mut w, &mut c, 120 * TICK_HZ, |w, _| {
@@ -4502,7 +4511,7 @@ mod tests {
         for d in w.depots.iter_mut() {
             d.owner = Some(0);
         }
-        let mut c = Commander::wingman(5, "wing", 0);
+        let mut c = Commander::pinned_wingman(5, "wing", 0);
         let leaves = |c: &mut Commander, w: &World| {
             let mut cmds = Vec::new();
             c.alliances(&w.observe(1), &mut cmds);

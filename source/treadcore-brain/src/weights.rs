@@ -430,7 +430,15 @@ impl Settings {
     /// replaces the capabilities with the names listed (`baseline` and
     /// `all` stand for those sets, `-name` takes one off).
     pub fn parse(text: &str) -> Result<Settings, WeightsError> {
-        let mut s = Settings::default();
+        Settings::parse_over(Settings::default(), text)
+    }
+
+    /// The file form read over a brain: a name not given keeps the brain's number, and `baseline` in
+    /// a caps line stands for the brain's capabilities. `parse` reads over the defaults,
+    /// `pinned_with` over the pinned brain.
+    pub fn parse_over(base: Settings, text: &str) -> Result<Settings, WeightsError> {
+        let mut s = base;
+        let baseline = s.caps;
         for (i, raw) in text.lines().enumerate() {
             let line = raw.split('#').next().unwrap_or("").trim();
             if line.is_empty() {
@@ -449,7 +457,7 @@ impl Settings {
                         continue;
                     }
                     caps = match c {
-                        "baseline" => caps.with(Caps::BASELINE),
+                        "baseline" => caps.with(baseline),
                         "all" => caps.with(Caps::all()),
                         _ if c.starts_with('-') => caps.without(Caps::by_name(&c[1..]).ok_or_else(|| bad(format!("no capability {}", &c[1..])))?),
                         _ => caps.with(Caps::by_name(c).ok_or_else(|| bad(format!("no capability {}", c)))?),
@@ -479,6 +487,14 @@ impl Settings {
     /// ranges as any brain is. A weight the file does not name plays its default.
     pub fn pinned() -> Settings {
         Settings::parse(PINNED).expect("pinned.weights reads")
+    }
+
+    /// A unit test's brain with the numbers it is about: `text` read over the pinned brain, so what
+    /// the test does not name is the pinned brain's, `baseline` its capabilities (LR 148). Over the
+    /// defaults, as `Settings::parse` reads, a test of "pings as built" played warn the day the fleet
+    /// promoted `ping_style` 0 -> 2, and held back the night's best candidate (5 November, r0185).
+    pub fn pinned_with(text: &str) -> Result<Settings, WeightsError> {
+        Settings::parse_over(Settings::pinned(), text)
     }
 
     /// Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are
@@ -687,19 +703,25 @@ mod tests {
         let d = Tactics::default();
         assert_eq!(format!("{:?}", t), format!("{:?}", d), "the weights at their defaults are the Tactics of 17 October");
         assert_eq!(s.caps, Caps::BASELINE);
-        assert!(s.caps.has(Caps::KITE) && !s.smooth_on());
-        assert!(s.caps.has(Caps::CASTLE_CAP), "Paul's castle is the default (18 October)");
+        // Which switches are on, and whether the bot smooths, are the fleet's to move (LR 148; Paul,
+        // 5 November: "drop assertions."). Kite on, smooth off and the castle on were asserted here,
+        // and no decree held them: the fleet tried each the other way every generation, and a winner
+        // would have failed its promotion on this test. A number a person holds is a decree in RANGES.
     }
 
     #[test]
     fn a_weights_file_round_trips_and_names_its_mistakes() {
         let mut s = Settings::default();
-        s.w[W::Wounded] = 1.5;
-        s.w[W::SmoothShare] = 1.0;
+        // Two numbers away from their defaults, whatever the fleet has made them (LR 148: smooth
+        // promoted to 1 would have left this test's 1 at the default, and out of the diff).
+        let wounded = s.w[W::Wounded] + 0.5;
+        let smooth = if s.smooth_on() { 0.0 } else { 1.0 };
+        s.w[W::Wounded] = wounded;
+        s.w[W::SmoothShare] = smooth;
         s.caps = s.caps.without(Caps::KITE);
         let back = Settings::parse(&s.to_text()).unwrap();
         assert_eq!(back, s);
-        assert_eq!(back.diff(), vec![(W::Wounded, 1.5), (W::SmoothShare, 1.0)]);
+        assert_eq!(back.diff(), vec![(W::Wounded, wounded), (W::SmoothShare, smooth)]);
         let e = Settings::parse("w_near = 1\nw_nope = 2\n").unwrap_err();
         assert_eq!(e.line, 2);
         // `smooth`, a capability before LR 46, reads as the weight.
@@ -745,7 +767,8 @@ mod tests {
         // A step is a tenth of the default, rounded to a nice number: the fleet moves the defaults.
         for w in [W::Alpha, W::NearScale, W::ForgetFor, W::Margin] {
             let (step, d) = (w.step(), w.default_value().abs());
-            assert!(step >= d / 20.0 && step <= d / 5.0, "{}: {} on {}", w.name(), step, d);
+            // A default of nothing has no tenth: it steps by 0.1 (LR 148: every weight at its min).
+            assert!(if d == 0.0 { step == 0.1 } else { step >= d / 20.0 && step <= d / 5.0 }, "{}: {} on {}", w.name(), step, d);
         }
         assert_eq!((W::CastleInside.step(), W::Confirm.step(), W::Kite.step()), (1.0, 1.0, 1.0), "a rounded weight steps by one");
         let mut s = Settings::default();
@@ -769,8 +792,13 @@ mod tests {
     /// before it stand; r0176 and r0177 (c_boat 5 -> 3.45) failed on one of the sixteen, the hop test.
     /// The rule since LR 147: a unit test outside this file plays the pinned brain. It may not read
     /// `Settings::default()`, `Tactics::default()`, `Tactician::default()`, a weight's
-    /// `default_value()`, `Caps::BASELINE` or `Commander::new`; a test that deals bots through the
-    /// fleet (`team_brain`, `brain`, `brain_as`, `commander_as`) sets their brain with
+    /// `default_value()`, `Caps::BASELINE`, `Commander::new` or `Commander::wingman` (made by `new`;
+    /// `Commander::pinned_wingman`, LR 148), nor read a weights text over the
+    /// defaults with `Settings::parse` (LR 148: `Settings::pinned_with` reads it over the pinned
+    /// brain; r0185's ping_style 0 -> 2 failed on a parse the first rule let by); a test that deals bots through the
+    /// fleet (`team_brain`, `brain`, `brain_as`, `commander_as`), or asks it a seat's role (`role`,
+    /// `role_by_rank`, `team_role`, `equip`: they read the fleet's `settings()`, the defaults when
+    /// none is set; LR 148), sets their brain with
     /// `with_settings`, and one that plays a scenario file (`run`, `run_file`) with `with_base`. A
     /// helper in a test module is read when a unit test calls it. An ignored test (a census, a family,
     /// a ladder) measures the brain as it ships and is not read; nor are this file's tests, which are
@@ -783,9 +811,9 @@ mod tests {
             body.match_indices(f).any(|(i, _)| !body[..i].ends_with(|c: char| c.is_alphanumeric() || c == '_' || c == '.'))
         };
         let reads = |body: &str, file: &str| {
-            let mut why: Vec<String> = ["Settings::default()", "Tactics::default()", "Tactician::default()", "default_value()", "Caps::BASELINE", "Commander::new("]
+            let mut why: Vec<String> = ["Settings::default()", "Tactics::default()", "Tactician::default()", "default_value()", "Caps::BASELINE", "Commander::new(", "Commander::wingman(", "Settings::parse("]
                 .iter().filter(|d| body.contains(**d)).map(|d| d.to_string()).collect();
-            if ["team_brain(", "brain(", "brain_as(", "commander_as("].iter().any(|f| calls(body, f)) && !body.contains("with_settings(") {
+            if ["team_brain(", "brain(", "brain_as(", "commander_as(", "role(", "role_by_rank(", "team_role(", "equip("].iter().any(|f| calls(body, f)) && !body.contains("with_settings(") {
                 why.push("a fleet brain without with_settings".into());
             }
             if file == "scenario.rs" && ["run(", "run_file("].iter().any(|f| calls(body, f)) && !body.contains("with_base(") {
@@ -843,6 +871,23 @@ mod tests {
         }
         assert!(seen > 100, "{} tests read", seen);
         assert!(offenders.is_empty(), "a unit test plays the pinned brain (Settings::pinned, Tactician::pinned, Commander::pinned), or a promotion fails on it: {}", offenders.join("; "));
+    }
+
+    /// A weights text read over a brain keeps the brain's numbers where it names none, and its
+    /// `baseline` is that brain's capabilities, not the code's (LR 148). Over the defaults, `parse`
+    /// reads as it always has.
+    #[test]
+    fn a_text_reads_over_its_brain_and_baseline_is_that_brains() {
+        let mut base = Settings::pinned();
+        base.w[W::PingStyle] = 2.0;
+        base.caps = base.caps.without(Caps::DODGE);
+        let s = Settings::parse_over(base.clone(), "caps = baseline, pings\nladder = hunt_first").unwrap();
+        assert_eq!(s.caps, base.caps.with(Caps::PINGS), "baseline is the brain's own");
+        assert_eq!(s.w[W::PingStyle], 2.0, "a number not named is the brain's");
+        assert_eq!(s.choice(W::Ladder), 2);
+        assert_eq!(Settings::pinned_with("").unwrap(), Settings::pinned());
+        assert_eq!(Settings::parse("caps = baseline").unwrap().caps, Caps::BASELINE, "over the defaults, as before");
+        assert!(Settings::pinned_with("ladder = sideways").is_err());
     }
 
     /// The pinned brain names every weight and the capabilities, so no test of it reads a default by

@@ -1399,6 +1399,13 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     promotion moves the game and not the unit tests; the families and
     the gauntlet judge the defaults. Next: Paul's word on reading the
     top-level scenario files at the candidate's defaults; G22 taught.
+90. A test's text reads over the pinned brain. (5 November; LR 148,
+    CI-097.) `Settings::pinned_with`; the fleet's role tests pinned; a
+    scenario's switches read over its own brain; `set-defaults.py`
+    writes the tactics' true/false fields and switches. The stresses
+    now move the choices and the switches as well as the numbers.
+    Next: w10040 tried again when main moves; Paul's word on the
+    top-level scenario files; G22 taught.
 
 ## Sequencing
 

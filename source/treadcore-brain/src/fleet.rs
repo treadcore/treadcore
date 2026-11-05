@@ -304,11 +304,14 @@ mod tests {
         }
         assert_eq!(t[AGGRO], 3);
         assert_eq!(t.iter().filter(|x| **x == 3).count(), 1);
-        assert_eq!(role(0, true), (Role::Leader, 0));
-        assert_eq!(role(7, true), (Role::Builder, 0));
-        assert_eq!(role(10, false), (Role::Guard, 1));
-        assert_eq!(name(AGGRO), "aggro");
-        assert_eq!(name(13), "t2-guard");
+        // The roles as the pinned brain deals them (`roles` and `assist` are the fleet's to move).
+        with_settings(Settings::pinned(), || {
+            assert_eq!(role(0, true), (Role::Leader, 0));
+            assert_eq!(role(7, true), (Role::Builder, 0));
+            assert_eq!(role(10, false), (Role::Guard, 1));
+            assert_eq!(name(AGGRO), "aggro");
+            assert_eq!(name(13), "t2-guard");
+        });
     }
 
     /// The choice `roles`: 0 deals the roles as they always were; each
@@ -318,14 +321,14 @@ mod tests {
     fn a_bots_team_takes_its_roles_from_its_settings() {
         let old = |r: usize| match r { 0 => Role::Leader, 1 => Role::Guard, 2 | 3 => Role::Ranger, _ => Role::Wing };
         for r in 0..7 {
-            assert_eq!(role_by_rank(r, false), old(r), "rank {} as built", r);
+            assert_eq!(with_settings(Settings::pinned(), || role_by_rank(r, false)), old(r), "rank {} as built", r);
         }
         for mix in MIXES {
             assert_eq!(mix[0], Role::Leader);
         }
-        let guards = |text: &str| with_settings(Settings::parse(text).unwrap(), || (0..5).filter(|r| role_by_rank(*r, false) == Role::Guard).count());
+        let guards = |text: &str| with_settings(Settings::pinned_with(text).unwrap(), || (0..5).filter(|r| role_by_rank(*r, false) == Role::Guard).count());
         assert_eq!((guards("roles = as_built"), guards("roles = no_guard"), guards("roles = two_guards"), guards("roles = 3")), (1, 0, 2, 3));
-        assert_eq!(with_settings(Settings::parse("roles = no_guard").unwrap(), || role_by_rank(1, true)), Role::Builder, "a person's team keeps its builder");
+        assert_eq!(with_settings(Settings::pinned_with("roles = no_guard").unwrap(), || role_by_rank(1, true)), Role::Builder, "a person's team keeps its builder");
     }
 
     /// A fleet match with no time limit is decided: one side is left

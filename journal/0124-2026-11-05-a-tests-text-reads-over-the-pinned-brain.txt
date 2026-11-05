@@ -1,0 +1,49 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 15:30:00 +0000
+Subject: [JOURNAL 0124] A test's text reads over the pinned brain
+Message-ID: <0124.20261105@treadcore.org>
+In-Reply-To: <0123.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: tests, defaults, promotion, pinned brain, choices, switches, set-defaults
+
+## Abstract
+
+The night's best candidate, grove/w10040 (ping_style 0 to 2, held out
++0.69 +/- 0.44), failed a test of pings "as built" whose helper read its
+text over the defaults. LR 147 pinned the brain the tests play but let
+a parse over the defaults by, and its stress never moved a choice or a
+switch. A text now reads over the pinned brain; the fleet's role tests
+ask under it; a scenario's switches read over its own brain; and
+set-defaults.py writes the tactics' true/false fields and switches,
+which a promotion of any of five (three weights, two switches) would
+have failed on. Stressed over every promotable choice, every switch
+and every true/false weight, six tests failed on the line before.
+After, all pass but two lines asserting the kite and castle switches
+on. Paul: "drop assertions." They went, with the smooth assertion on
+the kite's line; the file round-trip test, which a smooth promoted to
+1 would have failed, picks its numbers off the defaults.
+Every searchable weight at its min, then at its max, found two more:
+the slider test's step at a default of 0, and five tests' wingmen made
+on the defaults; both mended, and every move passes.
+
+## Session
+
+Code: `Settings::parse_over` and `Settings::pinned_with`; nine parses in
+five files moved to it; the fleet's role tests under `with_settings`;
+`scenario.rs` reads a scenario's caps over its base; `set-defaults.py`
+writes `Tactics::default()`'s true/false fields and `focus_blend` from
+the final weights and switches; the lint forbids `Settings::parse` and
+follows `role`, `role_by_rank`, `team_role`, `equip`; the test
+`a_text_reads_over_its_brain_and_baseline_is_that_brains`. Reads: on a
+worktree of the line f04f157, before and after, w10040's move, the
+choices one to four versions on, every switch flipped, every true/false
+weight flipped, and LR 147's moves. LR 148, CI-097, CHANGELOG, ROADMAP
+90, BRAIN-MAP, this entry.
+
+## Next
+
+w10040 tried again when main moves (orrery retries a candidate whose
+tests failed once main has moved). Paul's
+word on the top-level scenario files at the candidate's defaults. G22
+taught to the rules.

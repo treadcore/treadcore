@@ -95,7 +95,7 @@ mod tests {
     use super::*;
 
     fn on(shape: &str) -> Settings {
-        Settings::parse(&format!("bio = {}", shape)).unwrap()
+        Settings::pinned_with(&format!("bio = {}", shape)).unwrap()
     }
 
     #[test]
@@ -126,7 +126,7 @@ mod tests {
                 text += &format!("{} = 0\n", w.name());
             }
         }
-        Settings::parse(&(text + set)).unwrap()
+        Settings::pinned_with(&(text + set)).unwrap()
     }
 
     #[test]

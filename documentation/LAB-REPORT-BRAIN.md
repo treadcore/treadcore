@@ -10198,3 +10198,52 @@ Paul: "commit push. then 1 and 2." The first of the two was the finding of the e
 **The rule is met,** and beyond it: every one of the 13 failed promotions of 1 to 4 November, ten moves in all, five of which still fail a test on today's main, passes every test with the pinned brain. (The 166 are the 165 less the old lint, plus the new lint and the names test; `write_the_pinned_brain` is the seventeenth ignored.)
 
 **What a unit test no longer guards.** The thirteen files at the top of `scenarios/` (one seed each: a dodge clears two shells, a dodging tank holds its fire, a tank ducks out of reach in time, and ten more) test the mechanics, and now play the pinned brain. Under the move of every weight two of them failed at the moved defaults: a promotion that left the dodge broken at its new numbers was refused by them before, and is now refused only if a family or a gauntlet file sees it. None of the 13 failures of 1 to 4 November was one of these files. Whether they should also read the candidate's defaults, as a gate with a floor as the gauntlet's files have, is Paul's to say.
+
+## 148. A test's text reads over the pinned brain, and a promotion writes every field of the tactics: the night's best candidate held back by a parse, 5 November
+
+Paul: "fix the test." The night of 4 November gave the fleet one candidate worth a generation, grove/w10040: `ping_style` 0 to 2 (as built to warn), census +2.05 ± 1.31 a seat, held out +0.69 ± 0.44, the families held. Its promotion failed twice. At 00:15 (r0182) the machine that took it had no branch of orrery's line, which orrery mended that morning (orrery `4b8e4d2`). At 05:42 (r0185) bosporus built it on the line and ran the brain's tests, and one failed: `commander::tests::with_pings_on_as_built_a_bot_comes_to_any_ping`. **LR 147 pinned the brain the unit tests play, and this test still read the defaults:** its helper `hears` built the brain with `Settings::parse("caps = baseline, pings")`, and `parse` reads a text over the defaults. With the default moved to warn, the test of pings "as built" played warn, and nobody came to a call for help. LR 147's lint forbade `Settings::default()`, not a parse over it; its stress moved the 109 searchable numbers, and not the 15 choices or the 18 switches, which `RANGES` does not hold, so neither saw it.
+
+**The rule, before the run.** The fix holds if (1) w10040's move passes every brain test; (2) no test fails when every choice the fleet promotes (13 of the 15: `bot_style` and `patch` change the brain's whole form and wait for a person) is moved one, two, three and four versions on from its default, when every switch is flipped, and when every true/false weight of the tactics (`kite`, `shell_boxes`, `longshot_any`) is flipped; (3) LR 147's moves (its 13 failed promotions, ten distinct, and its stress) still pass. **Method** as LR 147's: a worktree of the line the fleet runs (main `aebeb1d` and r0179's `bio` 0 to 3, `f04f157`), and the same with the change; `scripts/set-defaults.py` writes each move as a promotion does; `cargo test -p treadcore-brain --release --lib`.
+
+**Before the change the stresses failed six tests, in four ways:** two of `hears`'s five callers, the fleet's two role tests, the scenario switch test and the tactics' constants.
+
+| The defaults moved to | the line, `f04f157` |
+| --- | --- |
+| w10040: `ping_style` 0 to 2 | 1 fails: `with_pings_on_as_built_a_bot_comes_to_any_ping` |
+| every promotable choice one version on | 3 fail: `at_style_0_with_pings_off_a_bot_answers_no_bot`, `a_bots_team_takes_its_roles_from_its_settings`, `three_teams_of_five_and_one_alone` |
+| two versions on | 2 fail: the pings test as built, the roles test |
+| three versions on | 2 fail: the same |
+| four versions on | 1 fails: `at_style_0_with_pings_off_a_bot_answers_no_bot` |
+| every switch flipped | 3 fail: `at_style_0_with_pings_off_a_bot_answers_no_bot`, `a_switch_is_set_on_every_commander`, `default_weights_are_todays_constants` |
+| every true/false weight of the tactics flipped | 1 fails: `default_weights_are_todays_constants` |
+
+1. **A text read over the defaults.** Every unit test that wrote the numbers it is about as a text and read it with `Settings::parse` played the defaults for every number it did not write: `hears` (five tests of pings), bio's `on` and `matrix`, the fleet's roles test, the commander's ladder test, the scenario switch test and `every_shipped_file_reads`. **`Settings::pinned_with(text)` reads the text over the pinned brain.** Underneath is `Settings::parse_over(brain, text)`, and `parse` is `parse_over` the defaults, as it always read. In a caps line read over a brain, `baseline` stands for that brain's capabilities, not `Caps::BASELINE`, which a promotion of a switch moves. A new test in `weights.rs` holds both: `a_text_reads_over_its_brain_and_baseline_is_that_brains`.
+2. **A seat's role asked of the fleet with no brain set.** `role` and `role_by_rank` read `fleet::settings()`, which is the defaults when no `with_settings` is in force. `three_teams_of_five_and_one_alone` and the first loop of the roles test asked the defaults' `roles` and `assist`; both now ask under `with_settings(Settings::pinned())`.
+3. **A scenario's switches read over the code's baseline.** A scenario's `weights = { caps = "baseline, -x" }` read `baseline` as `Caps::BASELINE` even under `with_base`. It now reads over the brain the scenario starts from: the defaults as dealt, so nothing changes for the families and the gauntlet, which set no base, and the pinned brain in a unit test. This is the one change outside the tests.
+4. **A constant a promotion never wrote.** `default_weights_are_todays_constants` holds `Tactics::default()` to what `Tactics::from_weights` makes of the defaults. `set-defaults.py` wrote its numbers, not its true/false fields (`kite`, `shell_boxes`, `longshot_any`), nor what a switch makes of a field (`kite` needs its switch on; `focus_blend` is a half with its switch off). **A promotion of any of the five would have failed this test,** and it is right that it does: the test is about the defaults themselves, and stays on them. `set-defaults.py` now writes each such field as `from_weights` makes it.
+
+**The lint** `a_unit_test_plays_the_pinned_brain` now also forbids `Settings::parse(` in a unit test or a helper one calls. `role`, `role_by_rank`, `team_role` and `equip` join the fleet's calls that need `with_settings`. Proved on itself: before the tests moved, it named the seven of way 1, with `hears`'s five callers; before the fleet tests moved, it named `three_teams_of_five_and_one_alone`. It reads a test's body whole. The roles test set `with_settings` for one call and not for another, and passed it; the stress found that one.
+
+**After the change** (the line with it; 167 tests, the new test among them):
+
+| The defaults moved to | the line with the change |
+| --- | --- |
+| none | **167 pass** |
+| w10040: `ping_style` 0 to 2 | **167 pass** |
+| every promotable choice one, two, three and four versions on | **167 pass, all four** |
+| every true/false weight of the tactics flipped | **167 pass** |
+| every switch flipped | 1 failed, `default_weights_are_todays_constants`, on its line `s.caps.has(Caps::KITE)`; with the assertions dropped, **167 pass** |
+| every switch flipped but `kite` and `castle_cap`, before they were dropped | **167 pass** |
+| `w_smooth` 1 (the bot smooths) | 1 failed, `a_weights_file_round_trips_and_names_its_mistakes`; with it mended, **167 pass** |
+| every searchable weight at its min (108) | 1 failed, `a_slider_steps_and_steps_back`; with it mended, **167 pass** |
+| every searchable weight at its max (108) | 1 failed, `a_wingman_takes_the_pillbox_by_its_leader`; with the wingmen pinned, **167 pass** |
+| LR 147's stress (109 numbers a fifth of their range) and r0177, r0171 | **167 pass** |
+| the other eight moves of LR 147's 13 failures (r0071, r0072, r0112, r0114, r0117, r0125, r0166, r0170) | **167 pass, all eight** |
+
+**The rule is met, but for two lines that were Paul's.** w10040's move passes every brain test, every choice and every true/false weight the fleet promotes moves without a test failing, and LR 147's moves still pass. The one failure left was not a test reading the defaults. `default_weights_are_todays_constants` asserted that two switches are on by default: `kite`, and `castle_cap`, "Paul's castle is the default (18 October)". Neither is decreed in `RANGES`, so the fleet tries each one off in its A/B trials every generation, and a winner would have failed its promotion on this test, hours after its reads. There were two ways out: decree them in `RANGES` (`kite 1 1`, `castle_cap 1 1`), and the fleet stops trying them; or drop the assertions, and the fleet may move them. Paul: "drop assertions." **Both lines are gone,** and with them the third assertion on the kite's line, that the bot does not smooth (`w_smooth`, searchable 0 to 1, failed it past one half). A number a person holds is a decree in `RANGES`, where the fleet can see it; a test's assertion holds it where the fleet cannot.
+
+**The smooth move found one more:** `a_weights_file_round_trips_and_names_its_mistakes` set `w_smooth` to 1 and `w_wounded` to 1.5, and expected both in the file's list of numbers off their defaults. With `w_smooth`'s default promoted to 1, the list would have been one short. It now sets each a step away from whatever its default is.
+
+**The ends of the ranges found two more.** The search may carry a number to the end of its range, so every searchable weight was set to its min, and then to its max. At the mins, `a_slider_steps_and_steps_back` asserted that a weight's step is a tenth of its default, and a default of 0 has none: the step rule gives 0.1 there, and the test now says so. At the maxes, `a_wingman_takes_the_pillbox_by_its_leader` lost its wingman to a pillbox. `Commander::wingman` is made by `Commander::new`, on the defaults, and five tests built one. They now build `Commander::pinned_wingman`, and the lint forbids `Commander::wingman` in a unit test as it forbids `new`; given one back, it names the test. The fleet's own wingmen take their settings from `equip` after they are made, and were never on the defaults.
+
+The families, with the change on main (`every_family_holds_its_floor`): all nine hold, from a duel in the open at 87.2% ± 1.7% (floor 55%) to a tank under a ready gun at 82.1% ± 1.2% (floor 80%). They set no base, so the scenario reader's change reads their switches as before.

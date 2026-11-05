@@ -81,8 +81,17 @@ def main():
     missing = sorted((set(want) | {"caps:" + c for c in caps}) - seen)
     if missing:
         sys.exit("no such weight in weights.rs: %s (nothing written)" % ", ".join(missing))
-    # Tactics::default(): a field named for a changed weight gets its number
-    # (an integer field stays an integer: from_weights rounds it).
+    # Tactics::default(): a field named for a changed weight or switch gets what
+    # `Tactics::from_weights` makes of the defaults this file leaves. A number is
+    # its weight (an integer field stays an integer: from_weights rounds it), and
+    # focus_blend is a half with its switch off. A true/false field is its weight
+    # at a half or more, and its switch on where one has its name (kite). Until
+    # LR 148 the true/false fields and the switches were not written: a promotion
+    # of `kite`, `shell_boxes`, `longshot_any` or the kite or focus_blend switch
+    # failed `default_weights_are_todays_constants`, as every switch flipped at
+    # once did when the tests were stressed.
+    final_w = {m.group(2): float(m.group(3)) for m in map(LINE.match, lines) if m}
+    final_c = {m.group(2): m.group(3) == "true" for m in map(CAP.match, lines) if m}
     tl = open(TACTICS).read().split("\n")
     start = next((i for i, l in enumerate(tl) if l.startswith("impl Default for Tactics")), None)
     if start is not None:
@@ -90,12 +99,17 @@ def main():
             if tl[i].startswith("}"):
                 break
             m = re.match(r"^(\s+)([a-z_][a-z0-9_]*): (.+),$", tl[i])
-            if m and m.group(2) in want and m.group(3) not in ("true", "false"):
-                v = want[m.group(2)]
-                lit = str(int(round(v))) if re.fullmatch(r"[0-9]+", m.group(3)) else number(v)
-                if lit != m.group(3):
-                    tl[i] = "%s%s: %s," % (m.group(1), m.group(2), lit)
-                    print("  Tactics::default() %s: %s -> %s" % (m.group(2), m.group(3), lit))
+            if not m or m.group(2) not in final_w or not (m.group(2) in want or m.group(2) in caps):
+                continue
+            name, cur = m.group(2), m.group(3)
+            if cur in ("true", "false"):
+                lit = "true" if final_w[name] >= 0.5 and final_c.get(name, True) else "false"
+            else:
+                v = final_w[name] if final_c.get(name, True) or name != "focus_blend" else 0.5
+                lit = str(int(round(v))) if re.fullmatch(r"[0-9]+", cur) else number(v)
+            if lit != cur:
+                tl[i] = "%s%s: %s," % (m.group(1), name, lit)
+                print("  Tactics::default() %s: %s -> %s" % (name, cur, lit))
     if "--check" not in sys.argv:
         open(RS, "w").write("\n".join(lines))
         open(TACTICS, "w").write("\n".join(tl))

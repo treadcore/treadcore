@@ -659,7 +659,10 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
                     for (k, v) in t.table().ok_or("weights: an inline table")? {
                         if k == "caps" {
                             let line = format!("caps = {}", v.str().ok_or("caps: a string")?);
-                            s.caps = crate::weights::Settings::parse(&line).map_err(|e| format!("{:?}", e))?.caps;
+                            // `baseline` is this brain's: the defaults' as dealt, the pinned brain's
+                            // under `with_base` (LR 148: read over the defaults, a unit test's
+                            // switches moved with every promotion of the caps).
+                            s.caps = crate::weights::Settings::parse_over(s.clone(), &line).map_err(|e| format!("{:?}", e))?.caps;
                             continue;
                         }
                         let w = crate::weights::W::by_name(k).ok_or(format!("no weight {}", k))?;
@@ -1346,7 +1349,7 @@ mod tests {
         let mut d = parse("[[brain]]\nseat = 0\n[[brain]]\nseat = 1\nkind = \"rulebot\"\n").unwrap();
         set_weights(&mut d, "caps=baseline, -pings").unwrap();
         let caps = d.lists["brain"][0]["weights"].table().unwrap()["caps"].str().unwrap().to_string();
-        let s = crate::weights::Settings::parse(&format!("caps = {}", caps)).unwrap();
+        let s = crate::weights::Settings::pinned_with(&format!("caps = {}", caps)).unwrap();
         assert!(!s.caps.has(crate::weights::Caps::PINGS), "pings stayed on");
         assert!(s.caps.has(crate::weights::Caps::DODGE), "the rest of the baseline went too");
         assert!(d.lists["brain"][1].get("weights").is_none(), "a rulebot has no switches");

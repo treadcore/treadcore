@@ -594,7 +594,7 @@ mod tests {
                 Kind::Net(b) => assert!(Net::from_bytes(b).is_ok(), "{}", s.name),
                 Kind::Duel(b) => assert!(Champion::from_bytes(b).is_ok(), "{}", s.name),
                 Kind::Transform(_) => assert!(crate::patch::slot(1).is_some(), "{}", s.name),
-                Kind::Rules(t) => assert!(t.is_empty() || Settings::parse(t).is_ok(), "{}", s.name),
+                Kind::Rules(t) => assert!(t.is_empty() || Settings::pinned_with(t).is_ok(), "{}", s.name),
             }
         }
     }
