@@ -138,7 +138,7 @@ weights! {
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
     AdvanceBand "advance_band" 0.652128, "smooth: the advance scalar presses above this and falls back below minus this";
     Jitter "jitter" 3.0, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
-    RetreatArmor "retreat_armor" 50.0, "survival: armour at or under this goes home (blended from the constant by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
+    RetreatArmor "retreat_armor" 100.0, "survival: armour at or under this goes home (blended from the constant by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
     RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home (blended from the constant 4 by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
     // Memory (LR 5).
     ForgetFor "forget_for" 120.0, "memory: seconds a given-up target stays given up";
@@ -154,7 +154,7 @@ weights! {
     SiteArea "site_area" 400.0, "island: an island this large or larger is not small, tiles";
     SitePoor "site_poor" 0.5, "island: island_site moves the base off the nearest depot only when that depot's site scores under this (`site_score`, -1 to 1); 2 (before LR 73) always, so on a map of continents a slightly better site an ocean away won";
     SiteReach "site_reach" 30.0, "island: island_site's better site lies within this many tiles of the nearest depot; 1000 (before LR 73) anywhere, and on atlantic and europe the bases went 70 to 275 tiles off";
-    SiteBeach "w_site_beach" 20.0, "island: tiles of a boat's run a beach's island is worth per point of its site score (`site_score`, -1 a small bare islet to 1 a large forested island), while the side holds no depot (a naval start); 0 (before LR 62) the beach by its run and danger alone; needs island_site";
+    SiteBeach "w_site_beach" 40.0, "island: tiles of a boat's run a beach's island is worth per point of its site score (`site_score`, -1 a small bare islet to 1 a large forested island), while the side holds no depot (a naval start); 0 (before LR 62) the beach by its run and danger alone; needs island_site";
     // Formation (LR 6.3).
     ColumnGap "column_gap" 2.0, "column: tiles between tanks in file on a bridge";
     ColumnPast "column_past" 2.0, "column: the wedge comes back this far past the bridge, tiles";
@@ -166,7 +166,7 @@ weights! {
     Roles "roles" 0.0, "team: a bots' team of five after its leader (choice: as_built | no_guard | two_guards | three_guards): as built a guard, two rangers and a wing; no guard sends the guard out with the fleet; two and three guards keep more at the base (fleet::MIXES)";
     PingStyle "ping_style" 2.0, "pings: what a team calls and answers (choice: as_built | help | warn | defend | all): as built the switch `pings` decides and every call is help; help calls for help when outnumbered and comes when called; warn warns off and takes warnings and cautions; defend calls and comes only for a base under attack; all of them, and it says what it saw";
     PingHelpReach "ping_help_reach" 60.0, "pings: a call for help is answered this near, tiles";
-    PingDefendReach "ping_defend_reach" 90.0, "pings: a call to defend is answered this near, tiles";
+    PingDefendReach "ping_defend_reach" 99.2672, "pings: a call to defend is answered this near, tiles";
     PingDefendHold "ping_defend_hold" 1.5, "pings: a defence is held this many times as long as a rally";
     PingWarnReach "ping_warn_reach" 25.0, "pings: a warning moves a tank this near it, tiles";
     PingWarnFlee "ping_warn_flee" 15.0, "pings: a warned tank moves this far away, tiles";
@@ -272,7 +272,7 @@ weights! {
     // person, not a persona, not the search. As weights they are sliders on the U page and dials the
     // census reads; the defaults are the constants, so nothing plays differently until someone moves one.
     EscortDistance "escort_distance" 4.0, "wingman: the station behind the leader, tiles";
-    WingLeash "wing_leash" 20.0, "wingman: nothing takes it further than this from its leader, tiles";
+    WingLeash "wing_leash" 10.0, "wingman: nothing takes it further than this from its leader, tiles";
     WingGreed "wing_greed" 16.0, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
     WingThreat "wing_threat" 10.0, "wingman: anything hostile this near the leader is its first job, tiles";
     WingAhead "wing_ahead" 16.0, "wingman: it hits what is ahead of the leader within this, tiles";
