@@ -819,9 +819,9 @@ mod tests {
 
     #[test]
     fn a_ledger_line_round_trips_and_rates() {
-        let s = Settings::default();
+        let s = Settings::pinned();
         let g = Genome::of(&s, 7, "leader", None);
-        let mut s2 = Settings::default();
+        let mut s2 = Settings::pinned();
         s2.w[crate::weights::W::Wounded] = 2.0;
         let g2 = Genome::of(&s2, 7, "leader", Some(g.id.clone()));
         assert_ne!(g.id, g2.id, "a weight changed is another genome");

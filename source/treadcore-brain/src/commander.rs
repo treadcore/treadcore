@@ -537,6 +537,14 @@ impl Commander {
         c
     }
 
+    /// A Commander of the pinned brain (weights.rs, LR 147), for the tests: `new`, then the pinned
+    /// Settings applied as `new` applies the defaults.
+    pub fn pinned(seed: u64, name: &str) -> Commander {
+        let mut c = Commander::new(seed, name);
+        c.set_settings(crate::weights::Settings::pinned());
+        c
+    }
+
     /// The weights for its fights (tactics.rs); None shoots the nearest
     /// and answers every ping, as before them.
     pub fn set_tactics(&mut self, t: Option<crate::tactics::Tactics>) {
@@ -3673,8 +3681,8 @@ mod tests {
         let obs = w.observe(0);
         let at = w.map.center();
         let said = || vec![Command::FireIndirect { at }, Command::Launch { kind: DroneKind::Recon, task: DroneTask::Return }];
-        let mut c = Commander::new(17, "commander");
-        let mut s = crate::weights::Settings::default();
+        let mut c = Commander::pinned(17, "commander");
+        let mut s = crate::weights::Settings::pinned();
         s.w[crate::weights::W::Skill] = 0.0;
         c.set_settings(s.clone());
         assert!(c.inner.is_rookie() && !c.inner.tactics.as_ref().unwrap().w.kite);
@@ -3710,7 +3718,7 @@ mod tests {
         }
         let far = free_near(&w, depot.pos, 60.0);
         w.tanks.iter_mut().find(|t| t.owner == 1).unwrap().pos = far;
-        let mut c = Commander::new(17, "commander");
+        let mut c = Commander::pinned(17, "commander");
         c.set_goal(Goal::Auto);
         assert!(c.settings.caps.has(crate::weights::Caps::CASTLE_CAP), "the capped castle is the default");
         // The cap of LR 61, two inside, one on the road, four posts, not
@@ -3772,9 +3780,9 @@ mod tests {
         w.tanks.iter_mut().find(|t| t.owner == 1).unwrap().pos = far;
         let wing_at = free_near(&w, depot.pos, 45.0);
         w.tanks.iter_mut().find(|t| t.owner == 2).unwrap().pos = wing_at;
-        let mut s = crate::weights::Settings::default();
+        let mut s = crate::weights::Settings::pinned();
         s.caps = s.caps.with(crate::weights::Caps::ESCORT);
-        let mut c = Commander::new(19, "leader");
+        let mut c = Commander::pinned(19, "leader");
         c.set_settings(s.clone());
         c.set_goal(Goal::Auto);
         c.members = vec![2];
@@ -3821,7 +3829,7 @@ mod tests {
             d.pos = nan;
         }
         for goal in [Goal::Auto, Goal::HuntPillboxes, Goal::DefendDepot(None), Goal::DefendBase, Goal::DefendPillbox(None), Goal::Hold(me), Goal::Fortify(None)] {
-            let mut c = Commander::new(37, "nan");
+            let mut c = Commander::pinned(37, "nan");
             c.set_goal(goal);
             for _ in 0..40 {
                 c.think_on(&obs, Some(&w.map));
@@ -3856,15 +3864,15 @@ mod tests {
             w
         };
         let commander = |caps: Caps, duck: f32| {
-            let mut s = Settings::default();
+            let mut s = Settings::pinned();
             s.caps = caps;
             s.w[W::Duck] = duck;
-            let mut c = Commander::new(31, "ducker");
+            let mut c = Commander::pinned(31, "ducker");
             c.set_settings(s);
             c.set_goal(Goal::Hold(V2::new(64.5, 64.5)));
             c
         };
-        let on = Caps::BASELINE.with(Caps::DUCK);
+        let on = crate::weights::Settings::pinned().caps.with(Caps::DUCK);
         let w = setup();
         let mut c = commander(on, 1.0);
         let cmds = c.think_on(&w.observe(0), Some(&w.map));
@@ -3881,7 +3889,7 @@ mod tests {
         let mut c = commander(on, 0.0);
         c.think_on(&w.observe(0), Some(&w.map));
         assert_ne!(c.act, Act::Duck, "w_duck 0 never ducks");
-        let mut c = commander(Caps::BASELINE.without(Caps::DUCK), 1.0);
+        let mut c = commander(crate::weights::Settings::pinned().caps.without(Caps::DUCK), 1.0);
         c.think_on(&w.observe(0), Some(&w.map));
         assert_ne!(c.act, Act::Duck, "off, no duck");
         // The duel: the gunner stands and fires a led shot whenever it
@@ -3911,7 +3919,7 @@ mod tests {
         };
         // Kiting off in both: it already holds a fighting tank past the
         // gun's reach; the duck is for the tank that does not kite.
-        let (ducking, standing) = (duel(on.without(Caps::KITE)), duel(Caps::BASELINE.without(Caps::KITE).without(Caps::DUCK)));
+        let (ducking, standing) = (duel(on.without(Caps::KITE)), duel(crate::weights::Settings::pinned().caps.without(Caps::KITE).without(Caps::DUCK)));
         eprintln!("a_tank_ducks_a_gun_ready_before_its_own: (hits taken, gunner's shots, down at s) in 40 s, ducking {:?}, standing {:?}", ducking, standing);
         assert!(ducking.0 < standing.0, "ducking {:?} against standing {:?}", ducking, standing);
     }
@@ -3939,12 +3947,12 @@ mod tests {
             let tiles: Vec<V2> = (1..4).map(|dx| V2::new(x0 + dx as f32 + 0.5, row)).collect();
             let target = V2::new(x0 + 12.5, row);
             w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
-            let mut s = crate::weights::Settings::default();
+            let mut s = crate::weights::Settings::pinned();
             s.caps = s.caps.with(crate::weights::Caps::BOARD);
             s.caps = if on { s.caps.with(crate::weights::Caps::BRIDGE_JOBS) } else { s.caps.without(crate::weights::Caps::BRIDGE_JOBS) };
             let board = crate::board::shared();
             board.lock().unwrap().post_bridge(1, &tiles, target, 0);
-            let mut c = Commander::new(29, "builder");
+            let mut c = Commander::pinned(29, "builder");
             c.board = Some(board.clone());
             c.set_settings(s);
             c.set_goal(Goal::Auto);
@@ -3984,7 +3992,8 @@ mod tests {
         assert_eq!(connect_left(1.0, false, 1.0), 1.0, "1 is as built");
         assert_eq!(connect_left(1.0, false, 0.0), 0.0, "0: nothing to do, no score");
         assert_eq!(connect_left(0.5, false, 0.5), 0.25);
-        assert_eq!(crate::weights::W::ConnectIdle.default_value(), 1.0, "no default moved by the dial's arrival");
+        // The dial's default stayed at 1 when it came (LR 77); since then it is the fleet's to move and the
+        // families' to judge, so this test no longer reads it (LR 147).
     }
 
     #[test]
@@ -4070,7 +4079,7 @@ mod tests {
         let mut c = Commander::wingman(1, "w", 0);
         c.slot = Some(1);
         let wedge = c.slot_point(&leader, Some(&map)).unwrap();
-        let mut s = crate::weights::Settings::default();
+        let mut s = crate::weights::Settings::pinned();
         s.w[crate::weights::W::ColumnGap] = 2.0;
         s.caps = s.caps.with(crate::weights::Caps::COLUMN);
         c.set_settings(s);
@@ -4093,23 +4102,23 @@ mod tests {
     #[test]
     fn a_switch_comes_back_and_a_slider_keeps_the_target() {
         use crate::weights::{Caps, Settings, W};
-        let mut c = Commander::new(1, "t");
+        let mut c = Commander::pinned(1, "t");
         (c.pings, c.answers_pings) = (true, false);
-        c.inner.tactics = Some(crate::tactics::Tactician::default());
-        c.set_settings(Settings::default());
+        c.inner.tactics = Some(crate::tactics::Tactician::pinned());
+        c.set_settings(Settings::pinned());
         c.inner.tactics.as_mut().unwrap().target = Some(7);
-        let mut s = Settings::default();
+        let mut s = Settings::pinned();
         s.caps = s.caps.without(Caps::PINGS).without(Caps::DODGE).without(Caps::BRIDGES);
         c.set_settings(s.clone());
         assert_eq!((c.pings, c.answers_pings, c.dodges, c.inner.hop.no_bridges), (false, false, false, true));
-        // On by name, not by BASELINE: a promotion may turn any of them off.
-        s.caps = Caps::BASELINE.with(Caps::PINGS).with(Caps::DODGE).with(Caps::BRIDGES);
+        // On by name, on the pinned brain's capabilities: a promotion may turn any of them off.
+        s.caps = crate::weights::Settings::pinned().caps.with(Caps::PINGS).with(Caps::DODGE).with(Caps::BRIDGES);
         s.nudge(W::Wounded, 2);
         c.set_settings(s);
         assert_eq!((c.pings, c.answers_pings, c.dodges, c.inner.hop.no_bridges), (true, false, true, false), "back as the role had them");
         let t = c.inner.tactics.as_ref().unwrap();
         assert_eq!(t.target, Some(7));
-        assert!((t.w.w_wounded - (W::Wounded.default_value() + 2.0 * W::Wounded.step())).abs() < 2e-4);
+        assert!((t.w.w_wounded - (Settings::pinned().w[W::Wounded] + 2.0 * W::Wounded.step())).abs() < 2e-4);
     }
 
     /// A world of two allied bots, and a Commander in seat 1 hearing seat 0's ping.
@@ -4129,7 +4138,7 @@ mod tests {
         let me = w.observe(1).me.clone().unwrap().pos;
         let at = V2::new(me.x + at_dist, me.y);
         w.step(&[Order { player: 0, cmd: Command::Ping { at, kind } }]);
-        let mut c = Commander::new(1, "t");
+        let mut c = Commander::pinned(1, "t");
         let s = crate::weights::Settings::parse(text).unwrap();
         c.set_settings(s.clone());
         // As the deal does it: the role's fields, then the settings.
@@ -4149,9 +4158,9 @@ mod tests {
         let id = 91_000;
         w.pillboxes.clear();
         w.pillboxes.push(Pillbox { id, pos: at + V2::new(1.0, 0.0), owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: 0 });
-        let mut s = Settings::default();
+        let mut s = Settings::pinned();
         s.w[W::AdvancePlan] = 1.0;
-        let mut c = Commander::new(1, "forward");
+        let mut c = Commander::pinned(1, "forward");
         c.set_settings(s);
         c.set_goal(Goal::Auto);
         let mut obs = w.observe(0);
@@ -4230,7 +4239,7 @@ mod tests {
         let mut w = World::new(sc);
         w.step(&[]);
         let obs = w.observe(0);
-        let c = Commander::new(1, "t");
+        let c = Commander::pinned(1, "t");
         let start = obs.me.clone().unwrap().pos;
         let to = V2::new(start.x + 5.0, start.y + 5.0);
         let run = |p: &Patch| {
@@ -4254,9 +4263,9 @@ mod tests {
     #[test]
     fn a_switch_off_before_the_deal_is_off_after_it() {
         use crate::weights::{Caps, Settings};
-        let mut off = Settings::default();
+        let mut off = Settings::pinned();
         off.caps = off.caps.without(Caps::PINGS).without(Caps::DODGE).without(Caps::BRIDGES).without(Caps::ROTATE);
-        let mut c = Commander::new(1, "t");
+        let mut c = Commander::pinned(1, "t");
         c.set_settings(off.clone());
         // What fleet.rs's commander_as does before `equip`.
         (c.pings, c.answers_pings) = (true, true);
@@ -4278,7 +4287,7 @@ mod tests {
     /// BRAIN-METHODS.md): `castle_cap` replaced it as the default, and
     /// the two proofs that use this keep the old castle playable.
     fn bastions() -> crate::weights::Settings {
-        let mut s = crate::weights::Settings::default();
+        let mut s = crate::weights::Settings::pinned();
         s.caps = s.caps.without(crate::weights::Caps::CASTLE_CAP);
         s
     }
@@ -4304,7 +4313,7 @@ mod tests {
     /// Run seat 0 under `goal` for `seconds`; the other seat sits still.
     /// Returns the tick the pillbox became ours, and the damage it did.
     fn run(w: &mut World, pillbox: EntityId, goal: Goal, seconds: u32) -> (Option<Tick>, f32) {
-        let mut c = Commander::new(5, "commander");
+        let mut c = Commander::pinned(5, "commander");
         c.set_goal(goal);
         let (mut ours, mut hurt) = (None, 0.0);
         for _ in 0..seconds * TICK_HZ {
@@ -4528,7 +4537,7 @@ mod tests {
         let me = w.tanks[0].pos;
         let depot = w.depots.iter().min_by(|a, b| a.pos.dist(me).total_cmp(&b.pos.dist(me))).unwrap().id;
         w.depots.iter_mut().find(|d| d.id == depot).unwrap().owner = Some(0);
-        let mut c = Commander::new(11, "commander");
+        let mut c = Commander::pinned(11, "commander");
         // The castle of 11b, three towers, kept by `-castle_cap` (the
         // capped castle is the default since 18 October, 12h).
         c.set_settings(bastions());
@@ -4627,7 +4636,7 @@ mod tests {
         let at = free_near(&w, depot.pos, 4.0);
         let guard = 70_020;
         w.pillboxes.push(Pillbox { id: guard, pos: at, owner: Some(0), health: 20.0, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
-        let mut c = Commander::new(12, "commander");
+        let mut c = Commander::pinned(12, "commander");
         c.set_goal(Goal::DefendBase);
         let mut warned = false;
         let mut hits = 0;
@@ -4669,7 +4678,7 @@ mod tests {
         w.pillboxes.clear();
         let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).total_cmp(&b.pos.dist(w.tanks[0].pos))).unwrap().clone();
         w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
-        let mut c = Commander::new(14, "commander");
+        let mut c = Commander::pinned(14, "commander");
         c.set_goal(Goal::DefendBase);
         // The scoot is what is proved: with the dodge on, the test's gun
         // never hits (a_bot_drives_out_from_under_a_shell).
@@ -4741,7 +4750,7 @@ mod tests {
         w.tanks[0].pos = at - toward.scale(1.0);
         let near = free_near(&w, at, 8.0);
         w.tanks[2].pos = near;
-        let mut c = Commander::new(9, "wing");
+        let mut c = Commander::pinned(9, "wing");
         c.set_goal(Goal::Auto);
         w.step(&[Order { player: 0, cmd: Command::Tow { target: Some(id) } }]);
         let mut hitched = false;
@@ -4782,7 +4791,7 @@ mod tests {
         w.tanks[2].pos = near;
         w.tanks[2].pillboys.pos = near;
         w.tanks[2].pillboys.material = 4;
-        let mut c = Commander::new(9, "wing");
+        let mut c = Commander::pinned(9, "wing");
         c.set_goal(Goal::Auto);
         // Down as the world leaves a tank it destroyed.
         let tick = w.tick;
@@ -4830,7 +4839,7 @@ mod tests {
         w.tanks[2].pos = free_near(&w, at, 6.0);
         w.tanks[4].pos = free_near(&w, at - toward.scale(2.0), 6.0);
         let mut crews: Vec<(PlayerId, Commander)> = [2, 4].iter().map(|p| {
-            let mut c = Commander::new(*p as u64, "crew");
+            let mut c = Commander::pinned(*p as u64, "crew");
             c.set_goal(Goal::Auto);
             c.crew.on = true;
             (*p as PlayerId, c)
@@ -4884,7 +4893,7 @@ mod tests {
         let far = free_near(&w, depot.pos, 40.0);
         let enemy = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
         enemy.pos = far;
-        let mut c = Commander::new(13, "commander");
+        let mut c = Commander::pinned(13, "commander");
         // The bastions of 11h, kept by `-castle_cap`.
         c.set_settings(bastions());
         c.set_goal(Goal::Auto);
@@ -5012,7 +5021,7 @@ mod tests {
         w.pillboxes.clear();
         let depot = w.depots.iter().min_by(|a, b| a.pos.dist(w.tanks[0].pos).total_cmp(&b.pos.dist(w.tanks[0].pos))).unwrap().clone();
         w.depots.iter_mut().find(|d| d.id == depot.id).unwrap().owner = Some(0);
-        let mut c = Commander::new(9, "commander");
+        let mut c = Commander::pinned(9, "commander");
         c.set_goal(Goal::DefendDepot(Some(depot.id)));
         let mut furthest: f32 = 0.0;
         let mut hits_on_intruder = 0;

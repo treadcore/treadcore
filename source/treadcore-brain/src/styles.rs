@@ -564,14 +564,14 @@ mod tests {
 
     #[test]
     fn style_zero_is_the_brain_as_it_was() {
-        let mut base = Settings::default();
+        let mut base = Settings::pinned();
         base.w[W::Near] = 3.25;
         assert_eq!(settings_for(&ROSTER[0], &base), base);
     }
 
     #[test]
     fn a_style_of_rules_keeps_the_seats_skill() {
-        let mut base = Settings::default();
+        let mut base = Settings::pinned();
         base.w[W::Skill] = 0.6;
         let s = settings_for(find("raider").unwrap(), &base);
         assert_eq!(s.w[W::Skill], 0.6);
@@ -580,7 +580,7 @@ mod tests {
 
     #[test]
     fn the_overrider_changes_only_the_slot_on_todays_brain() {
-        let base = Settings::default();
+        let base = Settings::pinned();
         let mut want = base.clone();
         let s = settings_for(find("overrider").unwrap(), &base);
         want.w[W::Patch] = 1.0;
@@ -715,7 +715,7 @@ mod tests {
         w[WORLD_CHAMPION_WEIGHTS - 3] = -9.0;
         let (world, obs, _, _) = seat_and_enemy();
         let at = |gate: f32| {
-            let mut s = Settings::default();
+            let mut s = Settings::pinned();
             s.w[W::DuelGate] = gate;
             let b = Duelist::new(Champion { nin: W_NIN, h: W_H, w: w.clone() }, Box::new(Dialed(s)));
             b.duel(&obs, Some(&world.map)).is_some()
@@ -798,10 +798,10 @@ mod tests {
     fn every_style_plays_a_match_to_its_end_without_a_fault() {
         for st in &ROSTER {
             let mut w = world();
-            let base = Settings::default();
-            let mut bots: Vec<(u8, Box<dyn Brain>)> = (0..4u8)
-                .map(|i| (i, make(st, &base, st.name, || crate::fleet::brain_as(crate::fleet::Role::Leader, i, 7 + i as u64, st.name))))
-                .collect();
+            let base = Settings::pinned();
+            let mut bots: Vec<(u8, Box<dyn Brain>)> = crate::fleet::with_settings(base.clone(), || {
+                (0..4u8).map(|i| (i, make(st, &base, st.name, || crate::fleet::brain_as(crate::fleet::Role::Leader, i, 7 + i as u64, st.name)))).collect()
+            });
             for _ in 0..600 {
                 let orders = run_bots(&w, &mut bots);
                 w.step(&orders);

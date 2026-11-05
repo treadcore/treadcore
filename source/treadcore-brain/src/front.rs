@@ -123,9 +123,9 @@ mod tests {
         use crate::weights::{Settings, W};
         let (mut w, us, them) = two_sides();
         w.tanks[0].pos = them;
-        let mut s = Settings::default();
+        let mut s = Settings::pinned();
         s.w[W::MinePlan] = 2.0;
-        let mut c = Commander::new(1, "raider");
+        let mut c = Commander::pinned(1, "raider");
         c.set_settings(s);
         c.set_goal(Goal::Auto);
         let obs = w.observe(w.players[0].id);

@@ -338,7 +338,8 @@ mod tests {
         let names: Vec<(String, bool)> = (0..SEATS).map(|i| (name(i), true)).collect();
         let sc = Scenario { seed, players: names, teams: Some(teams()), time_limit: 0, ..Scenario::default() };
         let mut w = World::new(sc);
-        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..SEATS).map(|i| (i as PlayerId, brain(i, seed ^ i as u64, false))).collect();
+        // The pinned brain (weights.rs, LR 147): a match the tests play does not move with the defaults.
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = with_settings(Settings::pinned(), || (0..SEATS).map(|i| (i as PlayerId, brain(i, seed ^ i as u64, false))).collect());
         while !w.over && w.tick < 30 * 60 * TICK_HZ as Tick {
             let orders = crate::run_bots(&w, &mut bots);
             w.step(&orders);
@@ -522,7 +523,7 @@ mod tests {
         // The spending before LR 86 (`profiles/steady.weights`): this one
         // seed tests the team's mechanics, and with the cowboy's drones
         // its pinging seat happens never to ping.
-        let mut steady = Settings::default();
+        let mut steady = Settings::pinned();
         // The team's mechanics include its pings, by name: a promotion may
         // turn the switch off, and this test is not about the defaults.
         steady.caps = steady.caps.with(Caps::PINGS);
@@ -536,7 +537,7 @@ mod tests {
             (0..seats)
                 .map(|i| {
                     let b: Box<dyn Brain> = if i == 0 {
-                        let mut c = Commander::new(seed, "me");
+                        let mut c = Commander::pinned(seed, "me");
                         c.set_goal(Goal::Auto);
                         c.pings = true;
                         c.answers_pings = true;
@@ -608,12 +609,15 @@ mod tests {
         let sc = Scenario { seed, players: names, map, respawns: 3, time_limit: 0, ..Scenario::default() }.with_teams(3);
         let mut w = World::new(sc);
         assert!(w.ore_game() && !w.deposits.is_empty(), "the naval map was given no ore");
-        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = (0..seats)
-            .map(|i| {
-                let t = team(i);
-                (i as PlayerId, team_brain(i, &t, seed ^ i as u64, false, &format!("s{}", i)))
-            })
-            .collect();
+        // The pinned brain (weights.rs, LR 147): a match the tests play does not move with the defaults.
+        let mut bots: Vec<(PlayerId, Box<dyn Brain>)> = with_settings(Settings::pinned(), || {
+            (0..seats)
+                .map(|i| {
+                    let t = team(i);
+                    (i as PlayerId, team_brain(i, &t, seed ^ i as u64, false, &format!("s{}", i)))
+                })
+                .collect()
+        });
         let (mut smelters, mut mined, mut unloaded, mut smelted, mut refused) = (0, 0u32, 0, 0, Vec::new());
         // Game 7: the workers, the oil, the city.
         let (mut workers_left, mut workers_arrived, mut workers_taken, mut pumped, mut oil_unloaded, mut bought, mut city_items) = (0, 0, 0, 0u32, 0, 0, 0);

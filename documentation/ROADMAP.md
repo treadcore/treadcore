@@ -1395,6 +1395,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
 88. The ring as a sense, not shown to help. (4 November; LR 146,
     CI-095.) Parked off main. Next: G19's training variance (several
     starts, the best kept); G22 taught to the rules.
+89. The tests play a pinned brain. (4 November; LR 147, CI-096.) A
+    promotion moves the game and not the unit tests; the families and
+    the gauntlet judge the defaults. Next: Paul's word on reading the
+    top-level scenario files at the candidate's defaults; G22 taught.
 
 ## Sequencing
 

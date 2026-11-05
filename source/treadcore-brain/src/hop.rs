@@ -929,7 +929,7 @@ mod tests {
         assert_eq!(h.bridge_job().map(|(t, _)| t.len()), Some(4));
         let (h, _) = across(BRIDGE_MAX as i32 + 5, None);
         assert!(h.bridge_front().is_none() && h.act != HopAct::Bridging, "too wide to bridge: {}", h.doing);
-        let s = crate::weights::Settings::default();
+        let s = crate::weights::Settings::pinned();
         let (h, _) = across(7, Some(s.clone()));
         assert_eq!(h.act, HopAct::Bridging, "7 tiles priced: a bridge ({})", h.doing);
         let (h, _) = across(8, Some(s));

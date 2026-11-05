@@ -158,7 +158,7 @@ mod tests {
         }
         w.map.set(Map::tile_centre(base + V2::new(6.0, 0.0)), Terrain::Forest);
         w.tanks[0].pillboys.material = PILLBOY_MATERIAL_MAX;
-        let mut s = Settings::default();
+        let mut s = Settings::pinned();
         let obs = w.observe(0);
         let me = obs.me.clone().unwrap();
         s.w[W::CityPlan] = 0.0;

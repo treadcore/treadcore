@@ -312,6 +312,11 @@ fn worth(t: &Tank) -> f32 {
 }
 
 impl Tactician {
+    /// A Tactician of the pinned brain's tactics (weights.rs, LR 147), for the tests.
+    pub fn pinned() -> Tactician {
+        Tactician::with(Tactics::pinned())
+    }
+
     /// A Tactician of these weights, with nothing heard yet.
     pub fn with(w: Tactics) -> Tactician {
         Tactician { w, ..Tactician::default() }
@@ -677,15 +682,15 @@ mod tests {
         let me = obs.me.clone().unwrap();
         // The two ends of focus_blend, on today's weights and on the
         // search's (LR 116 D: w_near 2, w_in_range 1.4).
-        for base in [Tactics::default(), Tactics { w_near: 2.0, w_in_range: 1.4, kite_in: 4.5, ..Tactics::default() }] {
-            let mut t = Tactician { w: Tactics { focus_blend: 1.0, ..base }, ..Tactician::default() };
+        for base in [Tactics::pinned(), Tactics { w_near: 2.0, w_in_range: 1.4, kite_in: 4.5, ..Tactics::pinned() }] {
+            let mut t = Tactician { w: Tactics { focus_blend: 1.0, ..base }, ..Tactician::pinned() };
             let pick = t.pick(&obs, &me, |_| true).map(|x| x.owner);
             assert_eq!(pick, Some(3), "focus_blend 1: {}", t.reason);
             assert!(t.reason.contains("one shot") && t.reason.contains("1 on it"), "{}", t.reason);
-            let mut near = Tactician { w: Tactics { focus_blend: 0.0, ..base }, ..Tactician::default() };
+            let mut near = Tactician { w: Tactics { focus_blend: 0.0, ..base }, ..Tactician::pinned() };
             assert_eq!(near.pick(&obs, &me, |_| true).map(|x| x.owner), Some(1), "focus_blend 0: {}", near.reason);
         }
-        let mut plain = Tactician { w: Tactics { w_wounded: 0.0, w_finish: 0.0, w_focus: 0.0, w_threat: 0.0, ..Tactics::default() }, ..Tactician::default() };
+        let mut plain = Tactician { w: Tactics { w_wounded: 0.0, w_finish: 0.0, w_focus: 0.0, w_threat: 0.0, ..Tactics::pinned() }, ..Tactician::pinned() };
         assert_eq!(plain.pick(&obs, &me, |_| true).map(|x| x.owner), Some(1), "{}", plain.reason);
     }
 
@@ -708,7 +713,7 @@ mod tests {
         place(&mut w, 2, c + V2::new(-40.0, 30.0));
         place(&mut w, 3, c + V2::new(40.0, 30.0));
         w.tanks.iter_mut().find(|t| t.owner == 1).unwrap().reload = RELOAD_TICKS;
-        let mut t = Tactician::default();
+        let mut t = Tactician::pinned();
         (t.w.kite_in, t.w.kite_in_alone) = (2.25, 6.0);
         let look = |w: &World| {
             let obs = w.observe(0);
@@ -755,7 +760,7 @@ mod tests {
         }
         place(&mut w, 0, c + V2::new(-12.0, 0.0));
         place(&mut w, 1, c);
-        let t = Tactician::default();
+        let t = Tactician::pinned();
         let look = |w: &World, st: Stance| {
             let obs = w.observe(0);
             let me = obs.me.clone().unwrap();
@@ -795,15 +800,15 @@ mod tests {
         // where the bars sit today. At the defaults' engage_odds 1 against
         // 2 (0.25) massed by chance of the number, and grove/w1198's 0.175
         // failed it (29 October).
-        let law = Tactics { engage_odds: 0.7, press_odds: 2.0, ..Tactics::default() };
-        let mut t = Tactician { w: law.clone(), ..Tactician::default() };
+        let law = Tactics { engage_odds: 0.7, press_odds: 2.0, ..Tactics::pinned() };
+        let mut t = Tactician { w: law.clone(), ..Tactician::pinned() };
         assert_eq!(t.stance(0, &two_to_one), Stance::Press);
         let alone = Odds { ours: 1.0, theirs: 2.0, coming: 2 };
         assert_eq!(t.stance(0, &alone), Stance::Mass);
         let alone_for_good = Odds { coming: 0, ..alone };
         assert_eq!(t.stance(0, &alone_for_good), Stance::Engage);
         // Smoothed: one reading of strong odds is not yet a press; a few are.
-        let mut sm = Tactician { w: law, smooth: Some((0.3, 0.35)), ..Tactician::default() };
+        let mut sm = Tactician { w: law, smooth: Some((0.3, 0.35)), ..Tactician::pinned() };
         assert_eq!(sm.stance(0, &two_to_one), Stance::Engage, "one think is not a press");
         assert_eq!(sm.stance(1, &two_to_one), Stance::Engage, "held between thinks");
         assert_eq!(sm.stance(5, &two_to_one), Stance::Press);

@@ -608,12 +608,12 @@ mod tests {
             t.pos = if t.owner % 2 == 0 { V2::new(20.5 + k / 4.0, 60.5) } else { V2::new(100.5, 40.5 + 2.0 * k) };
         }
         let mut b = TeamBoard::default();
-        b.rebuild(&w.observe(0), Some(base), &Settings::default(), Home::default(), 0);
+        b.rebuild(&w.observe(0), Some(base), &Settings::pinned(), Home::default(), 0);
         assert!(b.threat_at(base) > 0.5, "the sector threat has its long tail: {}", b.threat_at(base));
         assert_ne!(b.posture, Posture::Defend, "eight hostile tanks 80 tiles off");
         let t = w.tanks.iter_mut().find(|t| t.owner == 1).unwrap();
         t.pos = base + V2::new(6.0, 0.0);
-        b.rebuild(&w.observe(0), Some(base), &Settings::default(), Home::default(), REBUILD);
+        b.rebuild(&w.observe(0), Some(base), &Settings::pinned(), Home::default(), REBUILD);
         assert_eq!(b.posture, Posture::Defend, "one at the gate");
     }
 
@@ -635,7 +635,7 @@ mod tests {
             b.members = (0..16u8).filter(|p| p % 2 == 0).map(|p| Member { player: p, pos: base, ready: 1.0, alive: true, material: share, doing: String::new(), tick: 0 }).collect();
         };
         let run = |obs: &Observation, home: Home, share: f32, scored: f32| {
-            let mut s = Settings::default();
+            let mut s = Settings::pinned();
             s.w[W::PostureScored] = scored;
             // The worths of LR 25, every posture even, before turtle's
             // lean became the default (LR 77): the cases test the scores.
@@ -695,7 +695,7 @@ mod tests {
                 w.tanks.iter_mut().find(|t| t.owner == p).unwrap().pos = pos;
             }
             let mut b = TeamBoard::default();
-            b.rebuild(&w.observe(0), Some(base), &Settings::default(), Home::default(), 0);
+            b.rebuild(&w.observe(0), Some(base), &Settings::pinned(), Home::default(), 0);
             (b.incursion, b.incursion_at)
         };
         let (n, where_) = at(V2::new(99.0, 64.0));
@@ -708,7 +708,7 @@ mod tests {
     fn the_front_is_where_influence_crosses_zero() {
         let obs = placed([V2::new(20.0, 64.0), V2::new(100.0, 64.0), V2::new(24.0, 64.0), V2::new(104.0, 64.0)]);
         let mut b = TeamBoard::default();
-        b.rebuild(&obs, None, &Settings::default(), Home::default(), 0);
+        b.rebuild(&obs, None, &Settings::pinned(), Home::default(), 0);
         assert!(b.influence_at(V2::new(20.0, 64.0)) > 0.0);
         assert!(b.influence_at(V2::new(104.0, 64.0)) < 0.0);
         let front = b.front();
@@ -729,7 +729,7 @@ mod tests {
         let mut lost = seen.clone();
         lost.tanks.retain(|t| seen.allied(t.owner));
         for keep in [30.0, 0.0] {
-            let mut s = Settings::default();
+            let mut s = Settings::pinned();
             s.w[W::FrontMemory] = keep;
             let mut b = TeamBoard::default();
             b.rebuild(&seen, None, &s, Home::default(), 0);
@@ -749,7 +749,7 @@ mod tests {
 
     #[test]
     fn a_hurt_tank_swaps_out() {
-        let mut s = Settings::default();
+        let mut s = Settings::pinned();
         s.caps = s.caps.with(crate::weights::Caps::TEAM_ROTATE);
         let point = V2::new(60.0, 60.0);
         let mut b = TeamBoard { points: vec![point], ..TeamBoard::default() };

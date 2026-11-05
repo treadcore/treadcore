@@ -369,7 +369,7 @@ mod tests {
         w.pillboxes.clear();
         w.pillboxes.push(Pillbox { id: 9000, pos: base + V2::new(20.0, 0.0), owner: Some(0), health: PILLBOX_HEALTH, reload: 0, capture: 0, capturer: None, shells: PILLBOX_SHELLS });
         let mut plan = Plan::castle(base, base + V2::new(-30.0, 0.0));
-        let s = Settings::default();
+        let s = Settings::pinned();
         let mut c = Cycle::default();
         c.begin(0);
         let obs = w.observe(0);
@@ -417,7 +417,7 @@ mod tests {
         let obs = w.observe(0);
         let f = Some(V2::new(1.0, 0.0));
         // Named here: which goes first follows the two weights, and w_mine 2 was a fair trial that failed this.
-        let mut s = Settings::default();
+        let mut s = Settings::pinned();
         s.w[W::Mend] = 1.0;
         s.w[W::Mine] = 0.5;
         assert!(matches!(Cycle::improvement(&obs, base, f, &s, 8, 0, None), Some((PillboyTask::Repair { .. }, _))));
@@ -425,7 +425,7 @@ mod tests {
         assert!(matches!(Cycle::improvement(&obs, base, f, &s, 8, 0, None), Some((PillboyTask::Build { what: BuildKind::Mine, .. }, _))));
         s.w[W::Mine] = 0.0;
         assert!(Cycle::improvement(&obs, base, f, &s, 8, 0, None).is_none() || obs.pads.iter().any(|p| p.dist(base) <= CONNECT_NEAR));
-        assert!(Cycle::improvement(&obs, base, f, &Settings::default(), 8, MINES, None).map(|(t, _)| !matches!(t, PillboyTask::Build { what: BuildKind::Mine, .. })).unwrap_or(true), "no more than MINES");
+        assert!(Cycle::improvement(&obs, base, f, &Settings::pinned(), 8, MINES, None).map(|(t, _)| !matches!(t, PillboyTask::Build { what: BuildKind::Mine, .. })).unwrap_or(true), "no more than MINES");
     }
 
     /// Posts on the line between two bases, beside the road, every

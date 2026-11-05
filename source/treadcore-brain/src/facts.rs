@@ -193,13 +193,13 @@ mod tests {
         assert_eq!((big.area, small.area, small.forest), (900, 16, 0));
         assert!(big.forest == 300);
         assert!(f.island_at(V2::new(50.5, 50.5)).is_none());
-        let s = Settings::default();
+        let s = Settings::pinned();
         assert!(f.site_score(&s, V2::new(20.5, 20.5)) > f.site_score(&s, V2::new(61.5, 21.5)), "a small bare island is a poor base");
     }
 
     #[test]
     fn a_small_island_takes_a_boat() {
-        let s = Settings::default();
+        let s = Settings::pinned();
         // Trees plenty: a short bridge, and up to seven tiles; a long one is sailed.
         assert!(bridge_it(&s, 3, 0.04));
         assert!(bridge_it(&s, 6, 0.04));

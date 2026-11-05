@@ -1,0 +1,33 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 05:30:00 +0000
+Subject: [JOURNAL 0123] The tests play a pinned brain
+Message-ID: <0123.20261105@treadcore.org>
+In-Reply-To: <0122.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: tests, defaults, promotion, pinned brain, lint
+
+## Abstract
+
+The evening's look at the queue found the promotions blocked by the
+brain's own unit tests: 13 of 36 failed from 1 to 4 November, every one
+on a test that read the defaults, none on a family. The unit tests now
+play a pinned brain, the defaults of 4 November in `pinned.weights`.
+The families and the gauntlet still judge the defaults. Replayed, the
+failed promotions' moves and a move of every searchable weight pass
+every brain test.
+
+## Session
+
+Code: `pinned.weights`; `Settings::pinned`, `Tactics::pinned`,
+`Tactician::pinned`, `Commander::pinned`; `scenario::with_base`; 51 test
+functions moved; the lint `a_unit_test_plays_the_pinned_brain` in place
+of the list of sixteen; `the_pinned_brain_names_every_weight`;
+`write_the_pinned_brain` (ignored). Reads: each move set by
+`scripts/set-defaults.py` on a worktree of 43f9f67 and one with the
+change. LR 147, CI-096, CHANGELOG, ROADMAP 89, BRAIN-MAP, this entry.
+
+## Next
+
+Paul's word on reading the top-level scenario files at the candidate's
+defaults. G22 taught to the rules. G19's training variance.

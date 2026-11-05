@@ -304,6 +304,21 @@ pub struct Outcome {
     pub station: BTreeMap<(PlayerId, PlayerId), (u64, u64)>,
 }
 
+thread_local! {
+    /// The Settings a scenario's commanders start from on this thread: None is the defaults.
+    static BASE: std::cell::RefCell<Option<crate::weights::Settings>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Run `f` with this thread's scenarios starting their commanders from `s` (LR 147): the unit tests
+/// play the files under `scenarios/` on the pinned brain, while the families and the gauntlet, which
+/// set nothing, play the defaults they are there to judge.
+pub fn with_base<R>(s: crate::weights::Settings, f: impl FnOnce() -> R) -> R {
+    let old = BASE.with(|b| b.replace(Some(s)));
+    let r = f();
+    BASE.with(|b| *b.borrow_mut() = old);
+    r
+}
+
 /// Run a scenario: the outcome, and every expectation that failed (none
 /// is a pass). A file that cannot be read or set up is an error.
 pub fn run(doc: &Doc) -> Result<(Outcome, Vec<String>), String> {
@@ -637,8 +652,9 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
             "commander" => {
                 let mut c = Commander::new(seed, "scenario");
                 // The default Settings, as a dealt bot has them (fleet.rs
-                // `equip`); `weights = { name = value }` changes some.
-                let mut s = crate::weights::Settings::default();
+                // `equip`), or the pinned brain in a unit test (`with_base`);
+                // `weights = { name = value }` changes some.
+                let mut s = BASE.with(|b| b.borrow().clone()).unwrap_or_default();
                 if let Some(t) = b.get("weights") {
                     for (k, v) in t.table().ok_or("weights: an inline table")? {
                         if k == "caps" {
@@ -1294,7 +1310,7 @@ mod tests {
     #[test]
     fn the_advance_scenario_earns_the_call_the_chain_and_the_capture() {
         let doc = parse(include_str!("../../../scenarios/a-tank-takes-a-pillbox-and-advances.toml")).unwrap();
-        let (out, failed) = run(&doc).unwrap();
+        let (out, failed) = with_base(crate::weights::Settings::pinned(), || run(&doc)).unwrap();
         assert!(failed.is_empty(), "{:?}", failed);
         eprintln!("advance stages {:?} reward {}", out.advance, reward(&doc, &out, &failed));
         for stage in ["called", "chained"] {
@@ -1348,7 +1364,8 @@ mod tests {
         assert!(parse("x = y").unwrap_err().contains("not a value"));
     }
 
-    /// Every file under `scenarios/` holds.
+    /// Every file under `scenarios/` holds, on the pinned brain (LR 147): these files test the
+    /// mechanics, one seed each, and the defaults are the families' and the gauntlet's to judge.
     #[test]
     fn every_scenario_holds() {
         let mut files: Vec<_> = std::fs::read_dir(dir()).expect("scenarios/").filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
@@ -1356,7 +1373,7 @@ mod tests {
         assert!(!files.is_empty(), "no scenarios");
         let mut bad = Vec::new();
         for f in &files {
-            match run_file(f) {
+            match with_base(crate::weights::Settings::pinned(), || run_file(f)) {
                 Ok((_, failed)) if failed.is_empty() => eprintln!("scenario {}: holds", f.display()),
                 Ok((_, failed)) => bad.push(format!("{}: {}", f.display(), failed.join("; "))),
                 Err(e) => bad.push(e),

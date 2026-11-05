@@ -417,6 +417,14 @@ impl Default for Settings {
 /// Every number's limits (`RANGES`), compiled in: a binary carries its rules.
 const RANGES: &str = include_str!("../RANGES");
 
+/// The pinned brain (`pinned.weights`, LR 147): the defaults of 4 November, written down once, for
+/// the unit tests. From 1 to 4 November 13 promotions of 36 failed, every one on a unit test that
+/// read the defaults and asserted on what the brain did with them, none on a family: a test of how a
+/// part works held still the numbers the fleet is there to move. A test that plays the brain plays
+/// this one; the defaults are judged by the families and the gauntlet, which play the brain as it
+/// ships.
+const PINNED: &str = include_str!("../pinned.weights");
+
 impl Settings {
     /// Read the file form. A name not given keeps its default; `caps =`
     /// replaces the capabilities with the names listed (`baseline` and
@@ -465,6 +473,12 @@ impl Settings {
         }
         s.hold();
         Ok(s)
+    }
+
+    /// The pinned brain: every number of `pinned.weights`, its capabilities too, held to today's
+    /// ranges as any brain is. A weight the file does not name plays its default.
+    pub fn pinned() -> Settings {
+        Settings::parse(PINNED).expect("pinned.weights reads")
     }
 
     /// Holds every number to its range, whatever came before (Paul, 30 October: "Numbers are
@@ -530,6 +544,11 @@ impl Settings {
 }
 
 impl Tactics {
+    /// The pinned brain's tactics (`Settings::pinned`), for the tests.
+    pub fn pinned() -> Tactics {
+        Tactics::from_weights(&Settings::pinned())
+    }
+
     /// The tactics the weights describe.
     pub fn from_weights(s: &Settings) -> Tactics {
         let w = &s.w;
@@ -743,44 +762,123 @@ mod tests {
         }
     }
 
-    /// THE PINNED-TEST LINT (the plan of 2 November, chapter 15). Half of all promotions for three
-    /// days failed on tests that read `Settings::default()` or `Tactics::default()` and asserted on
-    /// what they found, so every move of a searchable number broke a test that had nothing to say
-    /// about it. A test that uses the defaults in an assertion must name the weights it tests
-    /// (`s.w[W::X] = ...` or `Settings::parse("x = ...")`). The sixteen that were written before the
-    /// rule are listed; a new one fails here, by name, before it can fail a promotion.
+    /// THE PINNED-TEST LINT (the plan of 2 November, chapter 15; LR 147). From 1 to 4 November 13
+    /// promotions of 36 failed, every one on a unit test that read the defaults and asserted on what
+    /// it found: a test of how a part works held still a number the fleet is there to move. The first
+    /// rule (2 November) asked such a test to name the weights it tests, and let the sixteen written
+    /// before it stand; r0176 and r0177 (c_boat 5 -> 3.45) failed on one of the sixteen, the hop test.
+    /// The rule since LR 147: a unit test outside this file plays the pinned brain. It may not read
+    /// `Settings::default()`, `Tactics::default()`, `Tactician::default()`, a weight's
+    /// `default_value()`, `Caps::BASELINE` or `Commander::new`; a test that deals bots through the
+    /// fleet (`team_brain`, `brain`, `brain_as`, `commander_as`) sets their brain with
+    /// `with_settings`, and one that plays a scenario file (`run`, `run_file`) with `with_base`. A
+    /// helper in a test module is read when a unit test calls it. An ignored test (a census, a family,
+    /// a ladder) measures the brain as it ships and is not read; nor are this file's tests, which are
+    /// about the defaults themselves.
     #[test]
-    fn a_test_that_uses_the_defaults_names_the_weights_it_tests() {
-        const BEFORE_THE_RULE: &[&str] = &[
-            "the_team_defends_a_threat_at_the_base_not_far_off", "a_hostile_on_the_held_ground_is_an_incursion", "the_front_is_where_influence_crosses_zero", "a_hurt_tank_swaps_out",
-            "a_far_fetch_gathers_the_fleet", "a_teammate_finishes_a_part_laid_bridge", "a_switch_off_before_the_deal_is_off_after_it", "a_full_tank_gives_the_base_an_item",
-            "the_islands_are_counted", "a_small_island_takes_a_boat", "the_default_match_plays_as_teams", "a_hop_bridges_a_narrow_gap_and_sails_a_wide_one",
-            "every_style_plays_a_match_to_its_end_without_a_fault", "focus_fire_picks_the_wounded_tank_a_teammate_is_on", "the_square_law", "default_weights_are_todays_constants",
-        ];
+    fn a_unit_test_plays_the_pinned_brain() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        // `f(` called, not a longer name or a method that ends in it.
+        let calls = |body: &str, f: &str| {
+            body.match_indices(f).any(|(i, _)| !body[..i].ends_with(|c: char| c.is_alphanumeric() || c == '_' || c == '.'))
+        };
+        let reads = |body: &str, file: &str| {
+            let mut why: Vec<String> = ["Settings::default()", "Tactics::default()", "Tactician::default()", "default_value()", "Caps::BASELINE", "Commander::new("]
+                .iter().filter(|d| body.contains(**d)).map(|d| d.to_string()).collect();
+            if ["team_brain(", "brain(", "brain_as(", "commander_as("].iter().any(|f| calls(body, f)) && !body.contains("with_settings(") {
+                why.push("a fleet brain without with_settings".into());
+            }
+            if file == "scenario.rs" && ["run(", "run_file("].iter().any(|f| calls(body, f)) && !body.contains("with_base(") {
+                why.push("a scenario without with_base".into());
+            }
+            why
+        };
         let mut offenders = Vec::new();
         let mut seen = 0;
         for e in std::fs::read_dir(&dir).unwrap() {
             let path = e.unwrap().path();
-            if path.extension().and_then(|x| x.to_str()) != Some("rs") {
+            let file = path.file_name().unwrap().to_string_lossy().to_string();
+            if path.extension().and_then(|x| x.to_str()) != Some("rs") || file == "weights.rs" {
                 continue;
             }
             let src = std::fs::read_to_string(&path).unwrap();
-            for body in src.split("#[test]").skip(1) {
-                let name = body.trim_start().trim_start_matches("#[ignore]").trim_start().strip_prefix("fn ").and_then(|r| r.split(['(', '<']).next()).unwrap_or("").to_string();
-                if name.is_empty() {
-                    continue;
+            let Some(at) = src.find("#[cfg(test)]") else { continue };
+            // The test module's items, one by one: a fn at the module's indent runs to its own `    }`,
+            // and the attributes over it say whether it is a test, and an ignored one.
+            let (mut fns, mut test, mut ignored) = (Vec::new(), false, false);
+            let lines: Vec<&str> = src[at..].lines().collect();
+            let mut i = 0;
+            while i < lines.len() {
+                let l = lines[i];
+                if l.starts_with("    #[test]") {
+                    test = true;
+                } else if l.starts_with("    #[ignore") {
+                    ignored = true;
+                } else if let Some(rest) = l.strip_prefix("    fn ").or_else(|| l.strip_prefix("    pub fn ")) {
+                    let name = rest.split(['(', '<']).next().unwrap_or("").to_string();
+                    let end = (i..lines.len()).find(|&j| lines[j] == "    }").unwrap_or(lines.len() - 1);
+                    fns.push((name, test, ignored, lines[i..=end].join("\n")));
+                    (test, ignored, i) = (false, false, end);
+                } else if !l.trim_start().starts_with("//") && !l.trim().is_empty() && !l.starts_with("    #[") {
+                    (test, ignored) = (false, false);
                 }
-                seen += 1;
-                let uses = body.contains("Settings::default()") || body.contains("Tactics::default()");
-                let names = body.contains(".w[W::") || body.contains(".w[crate::weights::W::") || body.contains("Settings::parse(");
-                if uses && body.contains("assert") && !names && !BEFORE_THE_RULE.contains(&name.as_str()) {
-                    offenders.push(format!("{}::{}", path.file_name().unwrap().to_string_lossy(), name));
+                i += 1;
+            }
+            let units: Vec<&(String, bool, bool, String)> = fns.iter().filter(|f| f.1 && !f.2).collect();
+            seen += units.len();
+            for (name, _, _, body) in &units {
+                let why = reads(body, &file);
+                if !why.is_empty() {
+                    offenders.push(format!("{}::{} ({})", file, name, why.join(", ")));
+                }
+            }
+            // A helper the unit tests call reads as they do; one only the ignored tests call measures.
+            for (name, _, _, body) in fns.iter().filter(|f| !f.1) {
+                let why = reads(body, &file);
+                let callers: Vec<&str> = units.iter().filter(|u| calls(&u.3, &format!("{}(", name))).map(|u| u.0.as_str()).collect();
+                if !why.is_empty() && !callers.is_empty() {
+                    offenders.push(format!("{}::{}, called by {} ({})", file, name, callers.join(", "), why.join(", ")));
                 }
             }
         }
         assert!(seen > 100, "{} tests read", seen);
-        assert!(offenders.is_empty(), "a test that uses the defaults in an assertion must name the weights it tests, or it pins the search: {}", offenders.join(", "));
+        assert!(offenders.is_empty(), "a unit test plays the pinned brain (Settings::pinned, Tactician::pinned, Commander::pinned), or a promotion fails on it: {}", offenders.join("; "));
+    }
+
+    /// The pinned brain names every weight and the capabilities, so no test of it reads a default by
+    /// the back door; a weight added since is added by `write_the_pinned_brain`.
+    #[test]
+    fn the_pinned_brain_names_every_weight() {
+        let named: Vec<&str> = PINNED.lines().filter_map(|l| l.split('#').next()?.split_once('=').map(|(n, _)| n.trim())).collect();
+        assert!(named.contains(&"caps"), "pinned.weights has no caps line");
+        let missing: Vec<&str> = W::ALL.iter().map(|w| w.name()).filter(|n| !named.contains(n)).collect();
+        assert!(missing.is_empty(), "pinned.weights does not name {}: `cargo test -p treadcore-brain --release -- --ignored write_the_pinned_brain` adds them at their defaults", missing.join(", "));
+        let p = Settings::pinned();
+        assert!(p.caps.has(Caps::KITE) && p.caps.has(Caps::CASTLE_CAP), "the capabilities of 4 November");
+    }
+
+    /// Adds the weights `pinned.weights` does not name, each at its default today, and the caps line if
+    /// it has none. A line already there is never changed: to move the pinned brain is a lab report's
+    /// decision, made by hand.
+    #[test]
+    #[ignore]
+    fn write_the_pinned_brain() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("pinned.weights");
+        let mut text = std::fs::read_to_string(&path).unwrap_or_default();
+        let named: Vec<String> = text.lines().filter_map(|l| l.split('#').next()?.split_once('=').map(|(n, _)| n.trim().to_string())).collect();
+        let d = Settings::default();
+        let mut added = 0;
+        if !named.iter().any(|n| n == "caps") {
+            text.push_str(&format!("caps = {}\n", d.caps.names()));
+        }
+        for w in W::ALL {
+            if !named.iter().any(|n| n == w.name()) {
+                text.push_str(&format!("{} = {}  # {}\n", w.name(), d.w[*w], w.doc()));
+                added += 1;
+            }
+        }
+        std::fs::write(&path, text).unwrap();
+        eprintln!("pinned.weights: {} weights added at their defaults", added);
     }
 
     #[test]
