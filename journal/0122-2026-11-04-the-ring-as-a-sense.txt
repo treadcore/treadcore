@@ -1,0 +1,29 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 04:30:00 +0000
+Subject: [JOURNAL 0122] The ring as a sense: built, harmless, not shown to help
+Message-ID: <0122.20261105@treadcore.org>
+In-Reply-To: <0121.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: senses, ring, pillbox, behaviour cloning, G18, G19
+
+## Abstract
+
+Paul asked for a sensor that "will indicate a ring, as it would indicate
+and identify the foe". Six numbers were added to the senses, last, so
+every net widens with zeros: the whole gauntlet read the same to the seed
+for every shipped net. Five nets imitating the rules with the ring and
+five without, trained on the same 163,510 samples, read alike on G18 and
+G19 and worse with it on G7. The rule was not met; the block is parked
+off main. G18 needed experience, not eyes; G19 needs a steadier training.
+
+## Session
+
+Code (parked in a stash): Ring, AT_RING, one test. Reads: the gauntlet
+with and without the block; RECORD_COURSE on G7, G8, G18, G19; treadcore-bc
+on this Mac's processor, five runs a side. LR 146, CI-095, CHANGELOG,
+ROADMAP 88, this entry.
+
+## Next
+
+G19's variance: several starts, the best kept. G22 taught to the rules.

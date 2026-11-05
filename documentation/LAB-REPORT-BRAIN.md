@@ -10162,3 +10162,18 @@ Over the 600, the rules' direct hits rose from 152 to 214 and their strike drone
 **A census by hand on a Mac** needs the paste shim, and the shim needs bash: the first census of this record ran in zsh, where `export -f` does nothing, and played the generated maps only (−0.73 ± 0.62 a seat, inside the noise). It was played again under bash.
 
 **Not done.** G22 taught (the rules stand with friends at 52.5%; with drones off, 34.5%); the ring as a sense for the nets (Paul: "perhaps the sensor will indicate a ring, as it would indicate and identify the foe"), next; whether the waiting ring should stay at the mortar's minimum now that the mortar reloads in 12 s, a question `kite_mortar` answered no to only on G21.
+
+## 146. The ring as a sense: built, proved harmless, and not shown to help, 4 November
+
+Paul: "perhaps the sensor will indicate a ring, as it would indicate and identify the foe." The block was built as the senses' last six numbers (so every net and patch is widened with zeros and plays as it did): the nearest live pillbox that fires on the tank, an enemy's or a neutral one, as its bearing (sine, cosine), where the tank stands against its ring (1 on the pillbox, 0.5 on the edge, 0 a ring's breadth outside), whose it is (1 a foe, 0 neutral), its gun (1 loaded) and its health. One test; the brain's 166 tests pass. **Harmless, proved:** the whole gauntlet for the rules and every shipped net, with the block and without it at LR 145's commit, the same to the seed on all 22 files; only "untrained", a fresh random net drawn at the new size, differs.
+
+**The rule, before the run:** the ring earns its place if a net imitating the rules with it passes G18 and G19 more often than one imitating them without it, by more than two errors, and is not two errors worse on G7 and G8. **Method:** the rules recorded on G7, G8, G18 and G19 (`RECORD_COURSE`, 2,000 seeds from 9,100,000, 163,510 samples, the ring lit in 57% of them); the same file with the six numbers zeroed; `treadcore-bc` on this Mac's processor (`BC_DEVICE=flex`, 30 epochs, batches of 512, rate 0.001), five runs of each, the no-ring nets' six input columns zeroed after training (their weights there never moved from the random start, and would read the lit block as noise); each net read on the gauntlet's 200 seeds.
+
+| Passed, of 200 | the ring, five runs | without it, five runs |
+| --- | --- | --- |
+| G7 | 72, 91, 86, 84, 88: **42.1%** | 117, 118, 95, 114, 76: **52.0%** |
+| G8 | 169, 171, 179, 160, 173: 85.2% | 180, 168, 169, 161, 155: 83.3% |
+| G18 (the first run) | 200 | 200 |
+| G19 | 2, 0, 71, 164, 170: 40.7% | 0, 57, 172, 171, 45: 44.5% |
+
+**The rule is not met,** and the block is parked (a stash in this checkout, not on main) for Paul's word. G7 reads the ring 9.9 ± 4.4 points worse (2.2 errors); G8 the same; G19 cannot be read at all, because its result swings from 0 to 172 of 200 with nothing but the training run's random start. Two findings outweigh the sense. THE NETS' FAILURE ON G18 WAS ONE OF EXPERIENCE, NOT OF EYES: a net that has imitated the rules where G18's choice comes up passes it every time without the ring (the best shipped net, 72%, had never seen it). And G19, two rings one at a time, is the one decision here the imitation has not settled: the same data makes a net that never does it and one that nearly always does. The next step for G19 is the training's variance (several starts, the best kept, as the fleet's clone stage could), not another input.

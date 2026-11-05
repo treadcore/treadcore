@@ -1392,6 +1392,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
 87. Alone, the step in stays shallow: `kite_in_alone` 6. (4 November;
     LR 145, CI-094.) G21 24.5% to 35.5%, G22 the same; two designs
     dropped. Next: the ring as a sense for the nets; G22 taught.
+88. The ring as a sense, not shown to help. (4 November; LR 146,
+    CI-095.) Parked off main. Next: G19's training variance (several
+    starts, the best kept); G22 taught to the rules.
 
 ## Sequencing
 
