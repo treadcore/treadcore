@@ -261,6 +261,110 @@ Paul: "build C, then the background job. commit push."
 
 **The background job, honestly.** It asked ten pieces in its first twenty minutes, for four trials, and filled its one-a-machine allowance; with the CPU at 99%, none had run by 11:41. That is what it was built to do: take only the time no one else wants. Its pieces earn their keep the other way too: a trial asked for its read finds its pieces already queued and moves them to the front, so the read's ids, seeds and stamps were settled before it was needed. Whether it shortens a generation's path is the experiment of section VII: the median from a trial's last read-on to its held-out verdict, over a week, against this week's.
 
+## XV. Addendum, the same afternoon: the Timeline zoomed, its milestones, and each machine's queue at the round table
+
+Paul, in four asks: "in the queue. can we see arrows how the job moves from one to the other ... On highlight of cell, highlight all the chain elements associated"; then "when i highlight i don't see any combination of gray. is the cuda block used. Is there a syncronization of cuda to game rules ... show seperation of major milestones of generation. Cause I don't understand when the CUDA will return. also maybe we can zoom timeline in and out. months, weeks, days, day, hours, hour"; then "describe why so many cuda are a backlog for GPU island, is there an exponential growth ... Is it limited"; and "add more accordians to blame first, to show the job depdency on hover. i want to see job arrow amongst the blame circle, with jobs shown, and a filtered job queue for each machine." All built, committed in orrery `0fcffbc` and `8c8bb46`. Every figure of this section is the console's own `--frame` render of the live `pipeline.json` of 13:42, but Fig. 16, which says how it was made.
+
+### A. Following a chain
+
+The planner names the chain each job is a link of (`chain_of`): a trial's first read, read-ons, held-out reads and their pieces and its promotion are the trial's; a run's steps are the run's; an island's segments are the island's; a commit's builds are the commit's; a proof is its line's. The Timeline carries every job alone beside its merged bars. **Point at a block and its chain lights:** the rest of the hours step back, every job of the chain is framed in amber where it ran, and an arrow runs from the end of the job each link followed to its own start. A click keeps the chain lit.
+
+![The Timeline following w10839: twelve jobs on five machines, an arrow from each to the next](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-chain.png)
+
+*Fig. 4. Trial w10839 followed: its first read on boburner, read-ons on calber, bosporus and macmini, its held-out read in pieces, and its promotion, r0196, on macmini; twelve jobs on five machines.*
+
+### B. Why the GPU rows join no chain, and when the GPU hands the game anything
+
+**No trial uses a GPU.** The trials are the CPU machines' search of the brain's numbers; the GPU islands are crucible, a line of its own, evolving nets in a duel arena. An island's chain is its own segments on its own row, so a pointer on a grey block lights one row and nothing crosses it. The islands meet each other (each segment imports the others' newest champions) but meet the game by one road only:
+
+1. **A milestone.** A segment's champion is examined against the ladder's newest milestone; it becomes the next only when it beats it by two standard errors with the ladder's mean not below zero (`crucible_ladder_home`).
+2. **The bridge read.** The planner then reads the milestone as the Gladiator (style 17) on a fast CPU machine against the shipped one, 48 seeds each on the same seeds.
+3. **The ship.** If it reads better by two errors, `tools/bridge.py` commits it into treadcore as `nets/gladiator.bin` (in auto mode by itself).
+
+The last time that road was travelled: **M0015 was made at 05:42 on 4 November and shipped at 10:31 (treadcore LR 138, `21fdfbd`). In the 32 hours since, 502 segments have been examined against M0015 and none has passed it.** Against M0015 almost every duel is drawn (about 98% of calber's), so a margin moves slowly. The page now says, on each GPU row, what its next milestone must beat and the planner's guess from the trend of its exams (`cuda_return`): the median margin of each hour of the last day, fitted to a line, and the hours until it would cross +2 at that climb.
+
+*Table IX. When each island would next hand the game a net, at 13:42: a guess from a trend.*
+
+| Island | A segment | Since M0015 | Last 6 h, best | Median | Median's climb a day | Crosses +2 in |
+|---|---|---|---|---|---|---|
+| calber-cuda | 8.6 min | 215 | −1.5 | −5.3 | +8.1 | ~21.5 h |
+| whitewolf-cuda | 11.7 min | 152 | −10.5 | −18.1 | +21.4 | ~22.6 h |
+| boburner-cuda | 13.4 min | 135 | −11.3 | −27.0 | +22.0 | ~31.6 h |
+
+Margins in standard errors of the exam's win-less-loss share; a milestone needs +2. **A guess, said as one:** a climb can stall, and the best of six hours (calber's −1.5) is nearer than the median. The bridge read that follows a milestone is about ten minutes of a CPU machine, and is now a link of its island's chain (`chain_extra`, after the segment that made the milestone), so the arrow from the grey row to a CPU row will be drawn the first time there is one.
+
+![The Timeline's GPU rows, each with when it next hands the game anything, and the inspector on calber-cuda](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-cuda.png)
+
+*Fig. 5. Each GPU row's box over its forecast: the milestone to pass and the guess; the inspector on calber-cuda says the road, the rules and the buffer.*
+
+### C. The islands and the game's rules: a side channel
+
+**Synchronised, in part.** Each segment is built with sixteen constants read from treadcore's `rules.rs` at the fleet's commit (speed, acceleration, braking, turning, gun range, shell speed, reload, armour, damage, hit radius, shells, vision, and the pillboxes' range, damage, reload and health: `world_rules`, `world_flags`); a change rebuilds the island at its next segment and raises a flag. The islands have played treadcore's rules since their first world segment at 23:03 on 3 November, and `rules.rs` has not changed since game 8 (19:19, 2 November), so no move has happened to show. On the Timeline the channel is a dashed grey line through the GPU rows only. **Not synchronised:** the economy of games 5 to 8 (ore, oil, workers, supply, trade) and the score of 4 November (score 1) are not in the islands' world, where a net is fitter for winning duels. And a segment's build flags are fixed when it is queued, so a change of rules reaches an island after the up to five segments already queued: an hour, at today's lengths.
+
+### D. The GPU's queue is a buffer, and it does not grow
+
+Section IV-B gave the reason; Paul asked again whether it grows. **It cannot:** each island keeps exactly `ahead` = 6 segments, one running and five queued, each after the one before it, and every pass tops the island up to six and no further (`crucible_jobs`). At 13:42 that was 18 of the 29 jobs on the round table, six an island. It looks long because six was chosen on 28 October, when a hybrid segment took about 2.6 minutes and the planner passed every five: six were a quarter of an hour in hand. Since the world build a segment is 100 generations of a world about ten times the cost, 8.6 to 13.4 minutes, so **six are 52 to 80 minutes of forecast, where a pass now comes every thirty seconds or so.** It costs no GPU time; it costs the lag of section C, and a picture that looks like a backlog. A next step, not built: the buffer sized in minutes, about twenty, two segments today.
+
+### E. The Timeline zoomed, and the milestones drawn through it
+
+Six zooms: the hour and the six hours draw each job as before; **a day, a week, four weeks and three months draw bins of the event log**, five minutes, thirty, two hours and six hours wide, each column a machine's bin filled from the bottom by the share of it each stage took, the rest idle. The planner keeps the bins as the log grows (`timeline_bins`, `plan/timeline-bins.json`: five-minute bins for two weeks, hours for always, read on from the byte the last pass stopped at, about 0.6 s a pass), on the local clock, and hands the page each change of summer time (`clock_shifts`): the day of 1 November had 25 hours, and the log begins at 09:34 on 28 October, summer time, which the page's own arithmetic had said was 08:34. Before the log begins the rows are hatched.
+
+Lines with tags mark what happened, three months of it (`timeline_marks`): **a generation on the line** (29), **the line on main** (13 landings, from treadcore's main), **a candidate the tests stopped** (22), **the game's rules or score moving** (8: games 2 to 8, and score 1), **a GPU milestone** (15), **a net shipped into the game** (1, the Gladiator) and **the islands' rules** (1). Where tags would collide, main, the game and a ship are placed first. `pipeline.json` is now written compact: with the bins it was 889 KB indented, 327 KB without.
+
+![The Timeline at the hour](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-hour.png)
+
+*Fig. 6. The hour: each job with ten-minute ticks. Nothing landed in this hour, so the only lines are the next proof and the bars' easing, in the forecast.*
+
+![The Timeline at six hours](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-hours.png)
+
+*Fig. 7. Six hours, as before, now with the milestones tagged above: r0186, the line on main with w10040 and w9761 at 11:37, r0196.*
+
+![The Timeline at a day](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-day.png)
+
+*Fig. 8. A day in five-minute bins on the clock: the night's stopped candidates in red tags, the morning's generations and the landing on main.*
+
+![The Timeline at days](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-days.png)
+
+*Fig. 9. A week in half-hour bins: the fleet's shutdown of 31 October, the game's rules moving on 2 November (games 5 to 8), the GPU milestones of the night of 3 November, the Gladiator shipped on 4 November.*
+
+![The Timeline at weeks](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-weeks.png)
+
+*Fig. 10. Four weeks in two-hour bins, Mondays labelled; before the log begins the rows are hatched and say so.*
+
+![The Timeline at months](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-months.png)
+
+*Fig. 11. Three months in six-hour bins: the fleet's whole life so far is the last eight days of it.*
+
+![A column's split on the inspector](https://vonglurt.github.io/orrery/docs/site/shots/pipe-timeline-bin.png)
+
+*Fig. 12. One column on the inspector: a machine's half hour, the share each stage took and the idle rest.*
+
+### F. Each machine's queue at the round table
+
+The planner now writes each machine's queue with the round table (`blame_view`'s `queues`): what it runs, then what the Timeline's forecast deals it, in order, each job with the job it waits on and where that job is: **the one ahead of it** on the same machine, **its build** of the newest commit, or **a job another machine has**, the only wait between two machines. A job no machine that is up can take is listed apart. On the page each machine is an accordion beside the table; a click on its header folds it. **Point at a machine, at its seat or in its queue, and its jobs are laid out at the table** between its seat and the middle, in the order they will run: a grey bracket from each to the job ahead, amber to its build, a red arrow to a job another machine has, drawn as a chip at that machine's seat, and red from any job elsewhere that waits on one of these. The rest of the table steps back. Point at one job and its chip and arrow light. A click keeps the machine or job while the pointer goes to the chips, and what it is pointing at is written in a pane under the queues, where a tooltip would have covered the arrows it explains.
+
+**At 13:42 no job waited on another machine:** every wait was a machine's own turn, two or three on each CPU machine and five on each GPU island (Fig. 13).
+
+![The round table with each machine's queue](https://vonglurt.github.io/orrery/docs/site/shots/pipe-blame-queues.png)
+
+*Fig. 13. The round table and its queues: each CPU machine one job running and one or two in turn; each island one segment running and five in turn; "No machine waits on another".*
+
+![A held-out piece pointed at in its machine's queue](https://vonglurt.github.io/orrery/docs/site/shots/pipe-blame-job.png)
+
+*Fig. 14. A held-out piece pointed at in the queue, h0813-p4, piece 4 of 4 of w10998's first read: boburner's jobs at the table in the order they will run, the piece's chip and bracket to h0813-p1 lit, its forecast in the pane.*
+
+![calber-cuda kept at the table: six segments, each after the one before](https://vonglurt.github.io/orrery/docs/site/shots/pipe-blame-gpu.png)
+
+*Fig. 15. calber-cuda kept by a click: one segment running and five after it, each the one before's, 9 to 55 minutes on: the buffer of section D.*
+
+![A constructed example of waits between machines](https://vonglurt.github.io/orrery/docs/site/shots/pipe-blame-constructed.png)
+
+*Fig. 16. CONSTRUCTED, NOT LIVE: the 13:42 data with two waits written in by hand, boburner's h0810-p1 after columbia's e9656 and whitewolf's h0809-p2 after boburner's e9655, to show the red arrows the live fleet had none of.*
+
+### G. Checked
+
+`board-check.py`: each kind of job named to its chain; the event log's bins read on from a half-written line the same as read whole, a failed job's time as `failed`; a day's bins on the five minutes; the 25-hour day's ticks and its shift; the return's climb, median, best and hours from a lineage made to climb one error an hour; a bridge read linked after its milestone's segment; each machine's filtered queue and the job each waits on. The console's tests (401): a chain's links across machines and a link the planner names before the clock; a zoom's bins, its dates in summer time and its CUDA boxes read; each machine's queue and what each job says it waits on.
+
 ## References
 
 [1] orrery, *Fifty-Four Idle Minutes: the Line Replayed Twice, Three Guards, and Restarting Orrery Without Losing Work*, lab report, 4 November 2026, sections X and XI.
