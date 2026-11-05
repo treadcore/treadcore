@@ -1,0 +1,35 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Thu, 05 Nov 2026 17:30:00 +0000
+Subject: [JOURNAL 0125] The backlog brought up to date
+Message-ID: <0125.20261105@treadcore.org>
+In-Reply-To: <0124.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: roadmap, backlog, housekeeping
+
+## Abstract
+
+Paul asked for the backlog's false positives: items still reading as
+open that later work had done or set aside. Each of the 90 was read
+against the lab reports, orrery's reports and the code, and every mark
+was checked against the line it cites. 27 items carry a one-line note
+at their end; nothing was removed or renumbered.
+
+## Session
+
+Done, unmarked: 1 (fair roles), 5 (the kite), 9 (forget), 11 (wire
+version 16), 13 (12h), 22 (the switch census), 42 (the duck), 49 (the
+front read), 58 (the census machine). Done in part: 14, 65, 67, 69,
+70, 74, 79. Bypassed: 73, the rotation, which holds only the
+transform; 31, the dodge afloat (Paul: "mark them"). Dated and still
+unproved: 6, a castle taken by a Commander. A default changed since:
+30, 33, 51. A Next since done: 38, 75, 76, 77, 78. Items 80 to 90 are
+this week's and their Nexts stand.
+
+## Next
+
+Still open and worth a word from Paul: 2 (the boat sailing in place on
+naval.map), 3 (the road on from a bridge), 4 (revives), 7 (wingmen in
+a headless server), 52 (bots' goals on the wire), 68 (pillboxes as
+Paul describes them: Paul to choose), and G22, which items 83 to 90
+all carry.

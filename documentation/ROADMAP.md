@@ -498,6 +498,9 @@ the end with a date.
 
 1. Fair fleet start: deal every team the same roles (journal 0036,
    seat 0's team won five of seven). Goal 4, measured by 12g.
+   Done 18 October (LR 10, LR 14): every bots' team is dealt the same
+   roles, a person's team too while `assist` is under a half, and the
+   census seats each team in the trial seat in turn.
 2. A boat on naval.map at (61,102) keeps choosing (60,102) and sails
    in place (CHANGELOG, Unreleased). Goal 4, 12f2.
 3. Most bridges left part-laid; the road on from a bridge about a tile
@@ -507,16 +510,24 @@ the end with a date.
 4. Revives fell from 113 to 63 over a census (CHANGELOG). Goal 4.
 5. Kiting even at best; plain RuleBot kiting tried and off. Goal 4,
    12c then 12g.
+   Done 21 October (LR 64 to 66): the kite is on, counted, and its hold
+   wins the duel; alone, `kite_in_alone` (LR 145).
 6. The RuleBot attacking a castle, unproved (journal 0036). Goal 3.
+   Still unproved 5 November, and the wording dates it: the bots are
+   Commanders now, and no family or gauntlet file has a Commander take a
+   castle.
 7. A wingman in a headless server's seats (journal 0034). Goal 3.
 8. Direct fire is never dodged before it lands (LR 2). Goal 4, 12d.
    Measured 18 October (LR 19): it cannot be, once fired; backlog 17
    holds what could be done instead.
 9. A Hunt target given up after twelve bearings is given up for good
    (LR 2). Goal 4, 12b.
+   Done (12b; on by default 20 October, LR 55): with `forget` on, a
+   target given up is tried again after `forget_for`.
 10. Done 18 October (LR 23): `partial_cmp().unwrap()` in the brain
     panicked on a NaN; see 19. Goal 4, 12b.
 11. PROTOCOL.md says wire version 14; the source is at 16. Goal 6.
+    Done 26 October (0.2.0): PROTOCOL.md describes wire version 16.
 12. `make test` not recorded since 17 October's commits (journal 0036
     has the last). Goal 4, 12a. Recorded again 18 October: brain 34
     passed, 6 ignored before step 12; journal 0037 has the run after.
@@ -529,10 +540,14 @@ the end with a date.
     first (`connect_bases`); the score between elimination and holdings
     (`long_game`); the builder for a person's team (`assist`); sliders
     for the host's file and each player's own team.
+    Done 18 October (LR 11): built as step 12h; the sliders are 15.
 14. Upgrades and the ways to buy them (11g), designed 18 October; the
     proposal written the same evening (`PROPOSAL-UPGRADES.md`). Left:
     post it for the seven days, run its two traces, then the sim step.
     Goal 5.
+    Done in part 2 November (LR 129, game 7): supply and the first
+    upgrade, the depot's stores. Left: the seven days' post, trace 2,
+    the other upgrades.
 15. Done 18 October (LR 17): the sliders, the coordination screen's
     weights page (`U`), one row per capability and weight, for the
     player's own team, saved beside the keys file. Goal 4.
@@ -590,6 +605,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     IV.A). Goal 4, 12g. Proof: `SEEDS=200 JOBS=3 make switches`. Cost:
     6,600 matches, about 6 h. State: idea; supersedes the seed count of
     18.
+    Done 22 October (LR 73): at 200 seeds a switch on every map, each
+    switch alone read nothing to see, so each default was taken off
+    instead.
 23. An honest tuner. (18 October; cause: CI-001 VI.B, the tuner selects
     noise; Paul: "ways to test and grow these genetic algorithms".)
     Goal 4, 12g. Hypothesis: re-evaluating the parent on fresh seeds and
@@ -693,6 +711,7 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     confirmed: `landfall_shy` (0, Paul's default) built and tested; at
     1, +0.65 +/- 0.69 and landfall deaths 169 against 165. The boat
     cannot price a gun it does not see (sight = direct range = 10).
+    On by default since 19 October (LR 38).
 31. The dodge afloat. (19 October; cause: LR 29, with the dodge off an
     undodged boat is hit by the shell about as often as a dodging one,
     8% against 7.6%, and killed no more often.) Goal 4. Hypothesis: a
@@ -706,6 +725,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     measured exactly, a boat's dodge cuts its kills by a fifth (18.2%
     to 14.7%), so LR 29's premise is withdrawn and the gain, if any, is
     the crossing time traded for that fifth: after 30.
+    Bypassed 21 October (LR 71): on every map the dodge cuts the deaths
+    after it by a quarter afloat (three fifths ashore), so
+    `dodge_afloat` was never built; the crossing time it costs is the
+    A/B's and the search's to weigh.
 32. The beach a teammate saw covered. (19 October; cause: LR 31,
     pricing the guns a boat sees saves none: sight and direct range are
     both 10 tiles.) Goal 4. Hypothesis: `landfall_order` priced by the
@@ -730,6 +753,7 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     default) built and tested; at 10, -0.51 +/- 0.63, landfall deaths
     184 against 165; the stand-off fired under 0.07% of the time. The
     gun is rarely at the beach.
+    On by default, at 10 s, since 19 October (LR 38).
 34. Where the gun that sinks the boat stands. (19 October; cause: LR
     31 to 33, three parts on the landfall that each assumed where the
     gun is, none moved the deaths.) Goal 4. Hypothesis: the killers of
@@ -791,6 +815,8 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     landfall deaths 165 to 89, dodge deaths 354 to 434, the death rate
     the same, matches 4.5% longer, living time +13%. The deaths move
     ashore. Next: the dodge's numbers to the tuner (23).
+    Its Next done 19 and 21 October (LR 43, LR 69): the dodge's numbers
+    went to the tuner twice, and the defaults stayed.
 
 39. Confirm `bridge_jobs` and `duck`. (20 October; cause: LR 44, each
     outside two errors in one pass of 24 tests and inside in the
@@ -824,6 +850,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     seeds (144 to 239), past two errors positive, the rule set first;
     and the duck's own count (direct-fire deaths a seat) moving with
     it. Cost: four censuses, 50 min. State: idea.
+    Answered 24 October (LR 76): on by default since LR 55, `duck` taken
+    off reads +0.03 +/- 0.25 a seat over 200 seeds of every map; it
+    neither pays nor costs.
 
 43. A Commander at sea that never prices a beach. (20 October; cause:
     LR 49.) State: withdrawn 20 October (LR 50). The afloat branch
@@ -913,6 +942,8 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     State: Expand done 20 October (LR 58): `w_front` 0.5 and, since the
     board knew a front at only 2.5 picks a match, `front_memory` 30 s;
     a scenario that fails at 0; the guard -0.14 +/- 0.42 a seat over 48 seeds. The guard posts: 51.
+    Done 21 October (LR 61, item 51). Off by default since 24 October
+    (LR 75): the three front weights at 0 read +1.13 +/- 0.19 a seat.
 50. Allies' goals on the coordination screen (11c). (20 October; cause:
     roadmap goal 3, "not yet: allies' goals"; the board holds them.)
     Goal 3, 11c. Proof: the screen's test shows a teammate's rung and
@@ -933,6 +964,8 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     the base's ring at 85.5% against 50.5% at 0, all of it the push
     point's; the post acts only with a raider at the base, about 8 s a
     match. The guard -0.27 +/- 0.64 a seat over 48 seeds.
+    Off by default since 24 October (LR 75); the raid family sets
+    `w_front_push` 0.75 itself.
 52. Allies' goals in a joining window. (20 October; cause: LR 59, the
     bots think on the host and their goals are not in the
     Observation.) Goal 3, 11c; goal 6. Hypothesis: each bot's status
@@ -1007,6 +1040,8 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     setup. State: the manual (`CENSUS.md`), `RESUME=` and `run.env`,
     `JOBS` from `nproc`, `CLAUDE.md` for a session on the machine,
     done 22 October (LR 72); the machine itself waits on Paul.
+    Done 22 October (LR 73): an i7-13700F of 24 threads read LR 71's
+    census the same to every digit, about ten times faster.
 59. Read sooner: a sequential census. (22 October; cause: LR 72, the
     dodge was settled by seed 20 of 176.) Goal 4, 12g. Hypothesis: a
     sequential test (stop when the reading passes a bound, as chess
@@ -1076,6 +1111,8 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     bridge, harvest, capture, repair, lift, the walk home). Proof: the
     same census before and after, the same to the digit. Cost: a step.
     State: done 25 October (LR 83); its reading on atlantic is next.
+    Done in part 25 October (LR 83): the meter's line. The reading on
+    atlantic was never run, and LR 82's rows are of an older game.
 66. Rewards in the census score. (25 October; cause: Paul, "improve
     Census with a reward system".) Goal 4. Direct hits, damage to
     hostile pillboxes, neutral and hostile pillboxes taken, kills
@@ -1100,6 +1137,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     are the defaults; `steady.weights` keeps the old. The retreat
     weights barely act (`w_smooth` 0.05): timid and aggressive need
     that first.
+    Done in part 2 November (LR 127): the pillbox collector, the front
+    forward and the cowboy's spend are Expander, Shoshone and Assyria
+    among the personas. Timid and aggressive wait on the retreat
+    thresholds, which barely act at `w_smooth` 0.05; the defensive front
+    line is not built.
 68. Pillboxes as Paul describes them. (25 October; cause: the same
     prompt.) Fire slower when damaged; still functional when highly
     damaged; repaired when dragged through forest; fight each other.
@@ -1147,6 +1189,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     A second machine (LR 105): columbia, i3-N300, 8 threads; the
     identity check passed (the run's binary replays a run's job
     identically apart from timing).
+    Carried on in orrery since 28 October (LR 113, LR 118): the fleet
+    runs the learner and promotes by itself, and LR 104's candidate
+    became the defaults (LR 119); MAP-Elites gave way to the personas
+    (LR 127). Open: the retreat thresholds made to act, an Elo table,
+    weights by map features.
 
 70. A learned brain. (26 October; cause: Paul, "start training a
     normal AI neural network given our current reward system"; LR
@@ -1266,6 +1313,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     as before bit for bit (checked); the census reads it. On the way: a
     shared cargo target folder could hand a census another commit's
     binary; CENSUS_BIN, a commit's own binary, closes it.
+    Done in part by 4 November: the gauntlet guards every promotion (LR
+    143) and crucible's islands evolve on the cards (LR 121, LR 124).
+    The school is dormant since 30 October, so maps 5, 6 and 8, the
+    high-water mark and PPO wait.
 
 71. A faster census. (26 October; cause: Paul, "adjust the brain to
     simulate much faster"; LR 91.) Goal 4. Speed-ups that keep every
@@ -1292,12 +1343,17 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     One of each kind of run in turn, a run active in each of two
     lanes (brain; net), fresh seeds each turn, measurements once per
     set of defaults. State: on; r0020 spsa, r0021 train.
+    Bypassed 30 October (orrery's whole-line report, III-G and III-H):
+    the rotation holds only the transform, and the A/B versions do the
+    sweeps continuously.
 74. Machines: a fresh install to a node, from orrery. (28 October;
     cause: Paul, "these steps should be made into the process of
     orrery ... Make then difficult to press"; LR 120, CI-079.) Probe,
     recipes behind a typed confirmation with root typed in a Sessions
     tile, join. State: built; whitewolf (GTX 1080) joined. Next:
     commands by OS; then Media's Ubuntu stick and checklist.
+    Done in part 29 October (orrery 4daa764): recipes by OS and errands
+    on any machine; Media's Ubuntu stick and checklist wait.
 75. A second project for the GPUs: crucible. (28 October; cause: Paul,
     "we want to create a second project to run in cuda ... keep its
     generations within itself"; LR 121, CI-080.) A self-learning loop
@@ -1306,18 +1362,22 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     measured; local repository, no remote yet. Next: orrery's interface
     redesign (projects in the orchestration); crucible islands in the
     queue.
+    Its Next done 28 October (LR 123, LR 124): the Projects view, and
+    crucible's islands on the GPU lanes; crucible has no remote yet.
 76. orrery's interface in treadcore's brushed metal. (28 October;
     cause: Paul, "the interface from treadcore . the styling. thr rows
     and columns of brushed metal"; LR 122, CI-081.) The look: steel,
     metal keys with lamps, black readouts; one header for every view.
     State: done (orrery f82f471). Next: the story (views in the order the
     work goes, a Projects view) and crucible as grove's second job.
+    Its Next done 28 October (LR 123, LR 124).
 77. orrery's story. (28 October; cause: Paul, "rethink about the
     interface progression. tell a story"; he chose Build, Run, Result;
     LR 123, CI-082.) Five chapters (Machines, Projects, Queue, Results,
     Watch) with their pages in a steel column; a Projects view with
     treadcore and crucible and which machine runs which. State: done
     (orrery f0823ec). Next: crucible as grove's second job.
+    Its Next done 28 October (LR 124): crucible is grove's second job.
 78. Census to commit. (28 October; cause: Paul, "describe how the
     coefficients get commited back to treadcore ... micro versions ... a
     do it now button ... add crucible"; LR 124, CI-083.) The loop drawn
@@ -1325,6 +1385,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     candidates re-read; crucible's islands on three GPU lanes; Results
     filtered and scrolled; a bar for every sense and score. State: done.
     Next: the re-reads' verdicts; a GPU arena of treadcore's rules.
+    The GPU arena of treadcore's rules done 3 November (LR 138):
+    crucible's world islands play by the game's rules. The re-reads'
+    verdicts were never written, and the defaults have moved past them.
 79. The post-mortem and the plan. (2 November; cause: Paul, "we are on
     max fix mode ... read all the lab reports ... rewrite the entire
     goals and aspirations ... lock physical constraints into a range of
@@ -1339,6 +1402,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     game version 5); the game-side slot for a net; fleet messages and a
     wingman stance as elements; the shape watch for the transform; the
     pinned-test lint; a playtest afternoon.
+    Done in part by 4 November: game 5, the game-side slot
+    (`--brain-file`), fleet messages and `wing_stance`, the shape watch,
+    and the lint (redone as LR 147); the playtest afternoon is still to
+    hold.
 80. The Duelist with world senses. (4 November; cause: Paul, "yes do
     step 2, the duelist with world senses", of orrery's three GPU steps;
     LR 138, CI-087.) Built: style 17, Gladiator, a world champion of
