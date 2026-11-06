@@ -10298,3 +10298,19 @@ Paul: "How would we give a sensor to the AI net, and Brinz such that it has enou
 **Read in the game.** Crucible's trained maze champion (the errand arm, 30 generations; 0.660 mean share on the CUDA gauntlet) played eight games of 300 s as the Gladiator (`GLADIATOR=`, `bot_style = 17`) without a fault: -2.61 +/- 1.05 against the defaults, from this Mac, whose census plays one map of eleven. It is a check that it plays, not a read of how well: the bridge's census (192 seeds, every map) is that read.
 
 **Not built here.** The Gladiator's net still has its say only in a duel, an enemy within RANGE; the mazes away from an enemy remain the Commander's. Crucible's two kept numbers are written every step; here at each decision (five a second), and only in a duel.
+
+## 153. The intrusion dial: w_breach, a wall shelled by choice, the press temper moving it, 6 November
+
+Paul: "We need to ammend the brainz coding to consider intrusion given its weights (and maybe temperment of bio)." And of orrery's question which treadcore change to build: "w_breach intrusion dial".
+
+**Why.** The rules already breach, but only as a side effect: the mortar aimed at a pillbox inside a compound brings down the wall between (G33, 95.5%). A walled base with no gun inside, or a long way round to a base's gate, was never broken into by choice.
+
+**What changed.**
+
+- A dial, `w_breach` (`weights.rs`, `RANGES` 0 to 4, `pinned.weights` 0). A tank storming a base, with no hostile gun left to shell, finds the first impassable tile on the straight line to the base (`breach_wall`, `lib.rs`). If it is a wall, and the way in is shut or longer than `w_breach` times the straight line, the tank shells that wall from inside the mortar's reach and holds, or moves to a firing position `INDIRECT_MIN_RANGE + 2` tiles back along the line. A mortar's splash brings a wall down, so the tank goes through when it falls. Concrete or water first on the line is no breach: a splash only cracks concrete to a wall, and water stays.
+- THE TEMPER (`commander.rs`): where the press row of the temperament matrix is set, it moves the breach's bar as it moves `press_odds`: `breach = w_breach x row(press)`. A tank in a pressing mood goes through sooner.
+- 0, the default, never breaches by choice: the brain plays as it did until a census finds a value and promotes it.
+
+**Tests**, two new (`lib.rs`): a shut base is breached at the first wall on the line, and there is no breach without a map; a gate on the line is driven through, and a gate round the far side is worth a breach at 1.5 and not at 4. treadcore-brain: 176 passed.
+
+**Not measured.** A storm begins after long contact with an enemy, so no single scenario shows the dial at work; the census does, and the line's search may now try it.

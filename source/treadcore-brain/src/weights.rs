@@ -277,6 +277,7 @@ weights! {
     WingThreat "wing_threat" 10.0, "wingman: anything hostile this near the leader is its first job, tiles";
     WingAhead "wing_ahead" 16.0, "wingman: it hits what is ahead of the leader within this, tiles";
     WingStance "wing_stance" 0.0, "wingman: where its station is (choice: shadow | flank | screen): shadow behind the leader as built; flank off its side, each wingman its own side; screen ahead of it";
+    Breach "w_breach" 0.0, "intrusion (LR 153; Paul, 6 November: \"amend the brainz coding to consider intrusion given its weights (and maybe temperment of bio)\"): a tank storming a base whose way in is shut, or longer than this many times the straight line, shells the first wall on that line (a mortar's splash brings a wall down) and goes through; 0 never, the brain as it was; the press temper scales it, as it scales press_odds";
 }
 
 /// The flat array of every weight.
@@ -607,6 +608,7 @@ impl Tactics {
             longshot_every: w[W::LongshotEvery],
             longshot_any: w[W::LongshotAny] >= 0.5,
             strikes_max: w[W::StrikesMax].round().max(0.0) as usize,
+            breach: w[W::Breach].max(0.0),
         }
     }
 }

@@ -144,6 +144,11 @@ pub struct Tactics {
     pub longshot_any: bool,
     /// Strike drones out at once.
     pub strikes_max: usize,
+    // Intrusion (LR 153).
+    /// Storming a base whose way in is shut, or longer than this many
+    /// times the straight line: shell the wall between and go through.
+    /// 0 never.
+    pub breach: f32,
 }
 
 impl Default for Tactics {
@@ -186,6 +191,7 @@ impl Default for Tactics {
             longshot_every: 1.25,
             longshot_any: true,
             strikes_max: 3,
+            breach: 0.0,
         }
     }
 }

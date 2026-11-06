@@ -169,3 +169,4 @@ wing_greed = 16  # wingman: a pillbox or depot this near the leader is worth tak
 wing_threat = 10  # wingman: anything hostile this near the leader is its first job, tiles
 wing_ahead = 16  # wingman: it hits what is ahead of the leader within this, tiles
 wing_stance = 0  # wingman: where its station is (choice: shadow | flank | screen): shadow behind the leader as built; flank off its side, each wingman its own side; screen ahead of it
+w_breach = 0  # intrusion (LR 153; Paul, 6 November: "amend the brainz coding to consider intrusion given its weights (and maybe temperment of bio)"): a tank storming a base whose way in is shut, or longer than this many times the straight line, shells the first wall on that line (a mortar's splash brings a wall down) and goes through; 0 never, the brain as it was; the press temper scales it, as it scales press_odds

@@ -2934,6 +2934,8 @@ impl Commander {
                 // A row of zeros leaves its dial as it is, not set again from the settings.
                 if crate::bio::temper_on(s, 1) {
                     t.w.press_odds = s.w[W::PressOdds] * row(1);
+                    // The breach's bar moves with the press's: a tank in a pressing mood goes through sooner.
+                    t.w.breach = s.w[W::Breach].max(0.0) * row(1);
                 }
                 if crate::bio::temper_on(s, 3) {
                     t.w.longshot_every = s.w[W::LongshotEvery] * row(3);

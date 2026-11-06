@@ -606,6 +606,30 @@ pub fn drive_to(me: &Tank, to: V2, ticks: u32, map: Option<&Map>) -> Option<V2> 
     drive_path(me, to, ticks, map).map(|p| p.last().copied().unwrap_or(me.pos))
 }
 
+/// THE BREACH BY CHOICE (`w_breach`, LR 153; Paul, 6 November: "amend the
+/// brainz coding to consider intrusion given its weights"): the first wall
+/// tile on the straight line from `from` to `to`, when the way round is
+/// shut or more than `ratio` times that line. Only a wall: a mortar's
+/// splash brings it down, where concrete only cracks to a wall and water
+/// stays; a line that meets either first is no breach. None without a map.
+pub fn breach_wall(map: Option<&Map>, from: V2, to: V2, ratio: f32) -> Option<V2> {
+    let m = map?;
+    let straight = from.dist(to);
+    let n = (straight * 2.0).ceil().max(1.0) as usize;
+    let first = (1..n).map(|i| from.lerp(to, i as f32 / n as f32)).find(|p| !m.at(*p).passable())?;
+    if m.at(first) != Terrain::Wall {
+        return None;
+    }
+    let route = m.route_kept(from, to, false);
+    let (mut way, mut at) = (0.0, from);
+    for p in &route {
+        way += at.dist(*p);
+        at = *p;
+    }
+    let (x, y) = first.tile();
+    (route.is_empty() || way > ratio * straight).then(|| V2::new(x as f32 + 0.5, y as f32 + 0.5))
+}
+
 /// As `drive_to`, where the tank is after each of the `ticks`: element
 /// k after k + 1 ticks. For shells landing at different ticks
 /// (`dodge_every`, LR 56).
@@ -1510,6 +1534,24 @@ impl RuleBot {
         // 10. Storming: guns first, from indirect range; then onto the
         // depot. No scooting.
         if let Some(tgt) = self.storm {
+            // THE BREACH BY CHOICE (`w_breach`, LR 153): no gun left to
+            // shell, and the way in shut or a long way round: the first
+            // wall on the straight line is shelled from a firing position,
+            // and the tank goes through when it falls.
+            let breach = self.tactics.as_ref().map(|t| t.w.breach).unwrap_or(0.0);
+            if let Some(wall) = (breach > 0.0 && guns.is_empty()).then(|| breach_wall(map, me.pos, tgt, breach)).flatten() {
+                let d = me.pos.dist(wall);
+                if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&d) {
+                    if me.reload == 0 && me.shells > 0 && self.last_fire_tick != obs.tick {
+                        cmds.push(Command::FireIndirect { at: wall });
+                        self.last_fire_tick = obs.tick;
+                    }
+                } else if stationary {
+                    let to = wall + (me.pos - wall).norm().scale(INDIRECT_MIN_RANGE + 2.0);
+                    cmds.push(Command::Move { to: obs.clamp(to) });
+                }
+                return cmds;
+            }
             if stationary {
                 if let Some(g) = guns.iter().min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos))) {
                     let d = me.pos.dist(g.pos);
@@ -2116,6 +2158,45 @@ pub fn schema_examples() -> String {
 
 #[cfg(test)]
 mod tests {
+    /// A 40 x 40 field with a walled base: a ring of wall round (24..32, 16..24), and a gate in its
+    /// west side at y = 20 when `gate`, or one in its far east side when `far`.
+    fn walled_base(gate: bool, far: bool) -> Map {
+        let mut rows = vec![vec!['.'; 40]; 40];
+        for y in 16..=24 {
+            for x in 24..=32 {
+                if y == 16 || y == 24 || x == 24 || x == 32 {
+                    rows[y][x] = 'W';
+                }
+            }
+        }
+        if gate {
+            rows[20][24] = '.';
+        }
+        if far {
+            rows[20][32] = '.';
+        }
+        let text = format!("treadcore map 1\nsize 40 40\n{}\nstart 2.5 2.5\nstart 37.5 37.5\n", rows.iter().map(|r| r.iter().collect::<String>()).collect::<Vec<_>>().join("\n"));
+        Map::from_text(&text).expect("the test map")
+    }
+
+    #[test]
+    fn a_shut_base_is_breached_at_the_first_wall_on_the_line() {
+        let m = walled_base(false, false);
+        let at = super::breach_wall(Some(&m), V2::new(10.5, 20.5), V2::new(28.5, 20.5), 1.5).expect("no way in: breach");
+        assert_eq!(at.tile(), (24, 20), "the west wall, where the line meets it");
+        assert!(super::breach_wall(None, V2::new(10.5, 20.5), V2::new(28.5, 20.5), 1.5).is_none(), "no map, no breach");
+    }
+
+    #[test]
+    fn a_gate_on_the_way_is_driven_through_and_a_far_one_is_not_worth_it() {
+        let gate = walled_base(true, false);
+        assert!(super::breach_wall(Some(&gate), V2::new(10.5, 20.5), V2::new(28.5, 20.5), 1.5).is_none(), "the gate is on the line");
+        let far = walled_base(false, true);
+        let (from, to) = (V2::new(10.5, 20.5), V2::new(28.5, 20.5));
+        assert!(super::breach_wall(Some(&far), from, to, 1.5).is_some(), "round to the far gate is more than half again the line");
+        assert!(super::breach_wall(Some(&far), from, to, 4.0).is_none(), "and less than four times it: drive round");
+    }
+
     use super::*;
 
     /// PLAYABILITY item 9: a rookie is beatable. Four RuleBots and four

@@ -1490,6 +1490,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     64-in, 6-out champion of crucible's NAV, nav_senses by the map's own
     route, the arcs and the kept numbers, the rules round a wall. Next:
     the bridge reads the maze home's generations; the intrusion dial.
+95. The intrusion dial. (6 November; LR 153, CI-102.) w_breach, off by
+    default: a storm through the wall when the way in is shut or long,
+    the press temper moving its bar. Next: the census finds its value.
 
 ## Sequencing
 

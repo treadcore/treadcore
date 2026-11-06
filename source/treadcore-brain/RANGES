@@ -131,6 +131,7 @@ connect_tiles 1 16
 castle_road 0 6
 posts_max 0 20  # there are twenty neutral pillboxes
 strikes_max 0 4  # the bay holds 3 and a fourth cannot launch: a decree candidate
+w_breach 0 4  # LR 153: a way round this many times the straight line; 0 never breaches by choice
 ping_defend_hold 0.5 5  # times a rally's length
 ping_outnumbered 1 4  # a ratio of tanks
 ore_low 0 20  # a depot holds 20 shells (DEPOT_STOCK_MAX)

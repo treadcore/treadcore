@@ -1,0 +1,25 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Fri, 06 Nov 2026 23:20:00 +0000
+Subject: [JOURNAL 0130] The intrusion dial
+Message-ID: <0130.20261106@treadcore.org>
+In-Reply-To: <0129.20261106@treadcore.org>
+Organization: treadcore.org
+Keywords: breach, walls, mortar, temperament, weights
+
+## Abstract
+
+A dial for breaking in by choice: w_breach. A tank storming a base
+whose way in is shut, or a long way round, shells the first wall on
+the straight line and goes through when it falls; the press temper
+moves the bar. Off by default, so the brain plays as it did.
+
+## Session
+
+source/treadcore-brain/src/weights.rs, tactics.rs, commander.rs,
+lib.rs (breach_wall, the storm), RANGES, pinned.weights. LR 153,
+CI-102, CHANGELOG, ROADMAP 95, this entry. treadcore-brain: 176 passed.
+
+## Next
+
+The census tries w_breach; the line's search may promote it.
