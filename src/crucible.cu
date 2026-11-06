@@ -450,7 +450,9 @@ __device__ inline bool mine(const Arena& w, int k, const Tank& me) {
 // The costs measured on boburner (6 November): the search every second and the arcs every step made a
 // generation 3.9 times as long as the forest's; the search every three seconds and the waypoint and arcs
 // every third step keep what a tank needs (a goal in a maze stands still; a wall is seen 1.5 s ahead).
+#ifndef NAV_EVERY
 #define NAV_EVERY 30
+#endif
 #define NAV_SENSE 3
 struct Grid { unsigned int shut[GRID * GRID / 32]; };
 // The route's field toward a goal, kept LAZILY: the caller sets the goal and the step each step; the field is
