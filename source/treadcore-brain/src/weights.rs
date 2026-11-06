@@ -148,7 +148,7 @@ weights! {
     BoatCost "c_boat" 5.0, "crossing: a boat's price in material";
     Launch "t_launch" 3.0, "crossing: the launch and the landing, in material";
     TreesPerMaterial "tree_material" 1.0, "crossing: material a tree gives";
-    ForestNeed "forest_need" 12.0, "island: trees a base will ask for";
+    ForestNeed "forest_need" 14.1391, "island: trees a base will ask for";
     SiteForest "w_site_forest" 0.5, "island: a base site's worth of trees enough";
     SiteSmall "w_site_small" 1.0, "island: a base site's cost of a small island";
     SiteArea "site_area" 400.0, "island: an island this large or larger is not small, tiles";
@@ -168,7 +168,7 @@ weights! {
     PingHelpReach "ping_help_reach" 60.0, "pings: a call for help is answered this near, tiles";
     PingDefendReach "ping_defend_reach" 99.2672, "pings: a call to defend is answered this near, tiles";
     PingDefendHold "ping_defend_hold" 1.5, "pings: a defence is held this many times as long as a rally";
-    PingWarnReach "ping_warn_reach" 25.0, "pings: a warning moves a tank this near it, tiles";
+    PingWarnReach "ping_warn_reach" 6.25, "pings: a warning moves a tank this near it, tiles";
     PingWarnFlee "ping_warn_flee" 15.0, "pings: a warned tank moves this far away, tiles";
     PingCautionReach "ping_caution_reach" 20.0, "pings: a rally this near a caution is dropped, tiles";
     PingOutnumbered "ping_outnumbered" 1.5, "pings: hostile tanks over ours by this ratio is a call for help";
@@ -185,7 +185,7 @@ weights! {
     Ladder "ladder" 0.0, "auto: the ladder's order, defend base first in each (choice: as_built | expand_before_hunt | hunt_first | expand_first): as built, fortify, turrets, hunt, expand, guard (Rung::order)";
     Posture "w_posture" 0.95, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
-    PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
+    PostureDefend "w_pos_defend" 0.75, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
     PostureFortify "w_pos_fortify" 0.024941, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
@@ -215,7 +215,7 @@ weights! {
     ConnectTiles "connect_tiles" 5.12027, "cycle: road tiles laid on one visit at most";
     // Paul's answers of 18 October as scalars (ROADMAP 12h, LR 10).
     Mend "w_mend" 0.5, "improvement: worth of mending the most hurt pillbox of the base";
-    Mine "w_mine" 0.860887, "improvement: worth of a mine on the moat";
+    Mine "w_mine" 0.677616, "improvement: worth of a mine on the moat";
     Works "w_works" 0.5, "improvement: worth of works on a pad by the base";
     // GAME 6, THE ORE (Paul, 2 November: "a fun zero-sum economy, where every mineral but the growing trees
     // is finite"). A smelter by the ore is an improvement the cycle offers at w_works; the ore run is a
