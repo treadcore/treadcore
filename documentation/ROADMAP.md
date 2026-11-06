@@ -1483,6 +1483,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     mazes and three takeovers, read by the rules with floors at today's
     success; the same files' words played on the card by crucible's
     CUDA gauntlet. Next: the GPU's nets toward the rules' shares.
+93. The proving ground. (6 November; LR 151, CI-100.) A map of the maze
+    and takeover places with a river, bridges and a ring road; A Flame War
+    Modified among the prior-art maps; G30 to G33 on the map's places.
 
 ## Sequencing
 

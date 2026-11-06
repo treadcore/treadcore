@@ -1,0 +1,26 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Fri, 06 Nov 2026 13:30:00 +0000
+Subject: [JOURNAL 0128] The proving ground
+Message-ID: <0128.20261106@treadcore.org>
+In-Reply-To: <0127.20261106@treadcore.org>
+Organization: treadcore.org
+Keywords: maps, gauntlet, maze, prior art
+
+## Abstract
+
+A map of the tests as places: the S, the @ and the 5 mazes, a walled
+city from A Flame War Modified and a compound with no gate, off a ring
+road over a river, eight bases round the coast. G30 to G33 read the
+rules there: 100%, 100%, 100% and 95.5%.
+
+## Session
+
+scripts/provingmap.py, maps/proving.map, maps/prior-art/flame-war-
+modified.map, scenarios/gauntlet/g30 to g33. LR 151, CI-100,
+CHANGELOG, ROADMAP 93, this entry.
+
+## Next
+
+The GPU's maze senses (orrery's report Round the Corner), and the
+Gladiator taught to read them.

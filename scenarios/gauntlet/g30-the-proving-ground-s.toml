@@ -1,0 +1,28 @@
+# The proving ground (scripts/provingmap.py, maps/proving.map; Paul, 6 November: "build a map, with the test
+# setup gauntlet of a the series of tests. A series of spiral mazes, S shaped bases. and roads"). The tank at the S's door off the ring road; the enemy's pillbox at the S's end, beside its base. Passed: the pillbox is seat 0's within 120 s.
+name = "G30 the proving ground's S: the base at its end"
+reaction = "move"
+floor = 0.95
+players = 2
+seconds = 120
+map = "maps/proving.map"
+pillboxes = false
+depots = false
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-52, -43]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [46, 46]
+[[pillbox]]
+near = "centre"
+offset = [-10.5, -11.5]
+owner = 1
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }

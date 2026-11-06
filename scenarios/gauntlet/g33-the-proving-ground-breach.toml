@@ -1,0 +1,28 @@
+# The proving ground (scripts/provingmap.py, maps/proving.map; Paul, 6 November: "build a map, with the test
+# setup gauntlet of a the series of tests. A series of spiral mazes, S shaped bases. and roads"). The tank at the end of the road that stops at the compound's wall; the enemy's pillbox inside walls with concrete corners and no gate: a wall must come down (a mortar's splash). Passed: the pillbox is seat 0's within 120 s.
+name = "G33 the proving ground's breach: the walled base"
+reaction = "move"
+floor = 0.90
+players = 2
+seconds = 120
+map = "maps/proving.map"
+pillboxes = false
+depots = false
+[[tank]]
+seat = 0
+at = "centre"
+offset = [48, 37]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [46, 46]
+[[pillbox]]
+near = "centre"
+offset = [40.5, 35.5]
+owner = 1
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }

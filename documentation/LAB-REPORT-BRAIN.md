@@ -10266,3 +10266,16 @@ Paul, asking that crucible's card and treadcore's CPUs act within the same rules
 **Read.** The rules alone (`GAUNTLET_BRAINS=scripted`), 200 runs each: the S 99.5%, the 5 66.5%, the @ 100%, take a pillbox 99.5%, take the base 3.5%, build a base 88.0%. The floors are today's success less two errors at 200 runs, as LR 141 set them: 0.95, 0.55, 0.95 (G25's share has no error at 100%, and a floor of 1.00 would fail a promotion on one unlucky run), 0.95, 0.00 and 0.80. The whole gauntlet with the six runs in 1.8 s at 20 runs on the Mac.
 
 **Checked.** The brain's 168 tests pass. The six files parse and play for the rules. The gauntlet that guards every promotion (LR 143) now reads them too; a candidate whose dials break a maze is held as any other is.
+
+
+## 151. The proving ground: a map of the maze and the takeover, A Flame War Modified's walled city, and G30 to G33, 6 November
+
+Paul: "build a map, with the test setup gauntlet of a the series of tests. A series of spiral mazes, S shaped bases. and roads. in fact, [Birdman's map tiles and A Flame War Modified] look at the map tiles, for ways to stitch togeather componets like blocks to make rivers and roads styled with consistent tiles along with your own map creativity. Also the map A Flame War Modified has a good walled section. Add bases around the island if they are missing, but I think its all good."
+
+**The tile sheet.** Birdman's map tiles is a prior-art sheet of five-by-five blocks, each a way terrain meets terrain: roads one tile wide, straight, cornered, crossed and teed, leaving every block at the same offset they entered; rivers two tiles wide; a road over a river as wide as the river; forest and rubble edges ragged a tile deep; walls with a road through a gate. Blocks whose edges agree tile without seams; the proving ground is laid by one function per block kind, so its joins agree.
+
+**The map** (`scripts/provingmap.py`, `maps/proving.map`, 128 by 128): an island with a river two tiles wide down its middle, a ring road and a cross road over it on bridges, forest on the river's banks and in blobs, and a place in each quadrant off the ring road -- the S (two staggered bars in a walled square, a road down the S to a base and a pillbox at its end), the @ (three square rings, their gaps north, south, north, the base at the centre), the 5 (a top bar, a middle bar and the bowl's stroke, the base in the bowl), and A Flame War Modified's walled city as it is (its lanes, blocks and pond) beside a compound of wall with concrete corners and no gate, a base and a pillbox inside. Eight bases round the coast with a start beside each; neutral pillboxes at the bridges and at each place's end.
+
+**A Flame War Modified** joins the prior-art maps (`maps/prior-art/flame-war-modified.map`, by `scripts/priorart2map.py`): twelve starts, eleven bases on the island (enough, as Paul thought) and five on a pad of road at sea in the south-east, sixteen pillboxes, 397 wall tiles.
+
+**The series**, G30 to G33: the tank at a place's door, the enemy's pillbox at its end, the map's own pillboxes and bases cleared so the decision is one; passed when the pillbox is seat 0's. The rules, 200 runs: the S 100%, the @ 100%, the 5 100%, the breach 95.5% -- the rules bring the compound's wall down with the mortar's splash aimed at the pillbox inside. Floors 0.95, 0.95, 0.95, 0.90.
