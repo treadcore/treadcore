@@ -10279,3 +10279,22 @@ Paul: "build a map, with the test setup gauntlet of a the series of tests. A ser
 **A Flame War Modified** joins the prior-art maps (`maps/prior-art/flame-war-modified.map`, by `scripts/priorart2map.py`): twelve starts, eleven bases on the island (enough, as Paul thought) and five on a pad of road at sea in the south-east, sixteen pillboxes, 397 wall tiles.
 
 **The series**, G30 to G33: the tank at a place's door, the enemy's pillbox at its end, the map's own pillboxes and bases cleared so the decision is one; passed when the pillbox is seat 0's. The rules, 200 runs: the S 100%, the @ 100%, the 5 100%, the breach 95.5% -- the rules bring the compound's wall down with the mortar's splash aimed at the pillbox inside. Floors 0.95, 0.95, 0.95, 0.90.
+
+## 152. The Gladiator reads a maze net: nav_senses, the two kept numbers, and the rules' answer round a wall, 6 November
+
+Paul: "How would we give a sensor to the AI net, and Brinz such that it has enough information to pass the maze." And of orrery's question which treadcore change to build: "nav_senses for the Gladiator".
+
+**Why.** Crucible's maze build (`NAV`, orrery's report *Round the Corner*) gives a net nine inputs more and two outputs it reads back: 64 in, 48, 48, 6 out. The game reads a GPU net through the Gladiator (slot 17, `Duelist`), whose senses were crucible's 55 (`world_senses`). Until it read the other nine, orrery's bridge held the maze home's generations unread (`bridge_ready`): the card could elect them and the game could not credit them.
+
+**What changed** (`styles.rs`):
+
+- `Champion` reads a maze champion by its size (`NAV_CHAMPION_WEIGHTS`, 5,766 floats); `world()` holds for it and `nav()` names it; `think` gives six numbers, a four-output champion's last two nothing.
+- `nav_senses`: the world's 55, then from 55 the bearing to the way's next point (sine, cosine), the way's length over RANGE, 1 when the enemy is walled off, how far the tank could drive along three arcs over 1.5 s (left, ahead, right, at half its turn rate), and the two kept numbers. The way is the map's own route (`route_kept`, the planner the rules drive by) where crucible searches a 32 by 32 grid; a clear line (`line_clear`) is the way itself, as crucible's `route_from` has it; an empty route is walled.
+- THE ERRAND: when the straight line to the enemy is shut and there is a way round, the rules' answer the net reads (inputs 32 and 33) turns toward the way's next point at full throttle, as crucible's `errand` does and as the Commander goes round a wall by its route. In the open it is the script, so a world net reads what it read.
+- `Duelist` keeps the two numbers between its decisions and forgets them when no enemy is in reach: a duel's begin at nothing, as each of crucible's runs does.
+
+**Tests**, six new: a maze champion read by its size; one widened from a world champion (crucible's `widen`, every new weight nothing) answers as the world one did; round a wall the way leaves the straight line, is longer than the crow's distance, the straight arc is cut short and the rules turn with it; a walled-off enemy reads walled and the script stands; in the open the world's 55 are unchanged and every arc free; the kept numbers are read back and forgotten after the fight. treadcore-brain: 174 passed.
+
+**Read in the game.** Crucible's trained maze champion (the errand arm, 30 generations; 0.660 mean share on the CUDA gauntlet) played eight games of 300 s as the Gladiator (`GLADIATOR=`, `bot_style = 17`) without a fault: -2.61 +/- 1.05 against the defaults, from this Mac, whose census plays one map of eleven. It is a check that it plays, not a read of how well: the bridge's census (192 seeds, every map) is that read.
+
+**Not built here.** The Gladiator's net still has its say only in a duel, an enemy within RANGE; the mazes away from an enemy remain the Commander's. Crucible's two kept numbers are written every step; here at each decision (five a second), and only in a duel.

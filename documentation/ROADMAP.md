@@ -1486,6 +1486,10 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
 93. The proving ground. (6 November; LR 151, CI-100.) A map of the maze
     and takeover places with a river, bridges and a ring road; A Flame War
     Modified among the prior-art maps; G30 to G33 on the map's places.
+94. The Gladiator reads a maze net. (6 November; LR 152, CI-101.) The
+    64-in, 6-out champion of crucible's NAV, nav_senses by the map's own
+    route, the arcs and the kept numbers, the rules round a wall. Next:
+    the bridge reads the maze home's generations; the intrusion dial.
 
 ## Sequencing
 

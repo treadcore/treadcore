@@ -39,7 +39,7 @@ use crate::weights::{Settings, W};
 use crate::Brain;
 use treadcore_sim::rules::{
     DIRECT_HIT_RADIUS, DIRECT_RANGE, PILLBOX_HEALTH, PILLBOX_RANGE, PILLBOX_RELOAD_TICKS, RELOAD_TICKS, TANK_ARMOR, TANK_SHELLS, TANK_SPEED,
-    TANK_VISION,
+    TANK_TURN, TANK_VISION,
 };
 use treadcore_sim::{wrap_angle, Command, Map, Observation, ShellKind, Tank, Terrain, V2};
 
@@ -194,6 +194,14 @@ pub const CHAMPION_WEIGHTS: usize = NIN * H + H + H * H + H + H * NOUT + NOUT;
 const W_NIN: usize = 55;
 const W_H: usize = 48;
 pub const WORLD_CHAMPION_WEIGHTS: usize = W_NIN * W_H + W_H + W_H * W_H + W_H + W_H * NOUT + NOUT;
+/// A maze champion's (crucible's NAV, LR 152): the world's 55 and nine of the way, 48, 48, and 6 out, the
+/// last two the numbers it keeps (make WORLD=1 HYBRID=1 H=48 FOREST=1 NAV=1).
+const N_NIN: usize = 64;
+const N_NOUT: usize = 6;
+pub const NAV_CHAMPION_WEIGHTS: usize = N_NIN * W_H + W_H + W_H * W_H + W_H + W_H * N_NOUT + N_NOUT;
+/// Where crucible.cu's maze inputs begin (its AT_NAV), and how many numbers its net keeps (its MEM).
+const AT_NAV: usize = W_NIN;
+const MEM: usize = 2;
 /// Where crucible.cu's world inputs begin (its AT_WORLD with the hybrid's three).
 const AT_WORLD: usize = 35;
 /// crucible.cu: how far its rays and its senses reach, and its scripted yardstick's range and aim.
@@ -214,7 +222,7 @@ const STRIDE: f32 = 6.0;
 const SWING: f32 = 1.0;
 
 /// A champion from crucible, tanh throughout, as crucible.cu's `think`: a hybrid (35 in, 32, 32, 4
-/// out) or a world hybrid (55, 48, 48, 4), told apart by its size. A champion without the gate (a
+/// out), a world hybrid (55, 48, 48, 4) or a maze hybrid (64, 48, 48, 6), told apart by its size. A champion without the gate (a
 /// plain build's 3 outputs) is not a Duelist's: it would take every fight, and is refused.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Champion {
@@ -230,34 +238,49 @@ impl Champion {
             n if n * 4 != bytes.len() => (0, 0),
             CHAMPION_WEIGHTS => (NIN, H),
             WORLD_CHAMPION_WEIGHTS => (W_NIN, W_H),
+            NAV_CHAMPION_WEIGHTS => (N_NIN, W_H),
             _ => (0, 0),
         };
         if nin == 0 {
             return Err(format!(
-                "a hybrid champion is {} bytes and a world hybrid {}, this is {}",
+                "a hybrid champion is {} bytes, a world hybrid {} and a maze hybrid {}, this is {}",
                 CHAMPION_WEIGHTS * 4,
                 WORLD_CHAMPION_WEIGHTS * 4,
+                NAV_CHAMPION_WEIGHTS * 4,
                 bytes.len()
             ));
         }
         Ok(Champion { nin, h, w: bytes.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect() })
     }
 
-    /// A world island's champion: it reads the twenty world inputs and drives as the world's tank.
+    /// A world island's champion: it reads the twenty world inputs and drives as the world's tank (a
+    /// maze champion is one too, with nine inputs more).
     pub fn world(&self) -> bool {
-        self.nin == W_NIN
+        self.nin >= W_NIN
     }
 
-    /// crucible.cu's `think`: the inputs through two hidden layers to four outputs, tanh throughout.
-    pub fn think(&self, x: &[f32]) -> [f32; NOUT] {
-        let (w, nin, h) = (&self.w, self.nin, self.h);
+    /// A maze champion (crucible's NAV): it reads the way to its enemy and keeps two numbers.
+    pub fn nav(&self) -> bool {
+        self.nin == N_NIN
+    }
+
+    /// Its outputs: four (turn, throttle, fire, the gate), and a maze champion's two kept numbers.
+    fn nout(&self) -> usize {
+        let h = self.h;
+        (self.w.len() - self.nin * h - h - h * h - h) / (h + 1)
+    }
+
+    /// crucible.cu's `think`: the inputs through two hidden layers to its outputs, tanh throughout. Six
+    /// numbers always; a champion of four outputs leaves the last two nothing.
+    pub fn think(&self, x: &[f32]) -> [f32; N_NOUT] {
+        let (w, nin, h, nout) = (&self.w, self.nin, self.h, self.nout());
         let (b1, w2) = (nin * h, nin * h + h);
         let (b2, w3) = (w2 + h * h, w2 + h * h + h);
-        let b3 = w3 + h * NOUT;
+        let b3 = w3 + h * nout;
         let h1: Vec<f32> = (0..h).map(|j| (w[b1 + j] + (0..nin).map(|i| w[j * nin + i] * x[i]).sum::<f32>()).tanh()).collect();
         let h2: Vec<f32> = (0..h).map(|j| (w[b2 + j] + (0..h).map(|i| w[w2 + j * h + i] * h1[i]).sum::<f32>()).tanh()).collect();
-        let mut out = [0f32; NOUT];
-        for k in 0..NOUT {
+        let mut out = [0f32; N_NOUT];
+        for k in 0..nout {
             let s: f32 = w[b3 + k] + (0..h).map(|i| w[w3 + k * h + i] * h2[i]).sum::<f32>();
             out[k] = s.tanh();
         }
@@ -400,6 +423,89 @@ pub fn world_senses(obs: &Observation, map: Option<&Map>, me: &Tank, en: &Tank) 
     x
 }
 
+/// The way to a goal, as crucible's route sense gives it (`route_from`): the next point to drive to
+/// (the goal itself when the line to it is clear, or there is no way at all), the way's length in
+/// tiles, whether the goal is walled off, and whether the way is the straight line.
+struct Way {
+    to: V2,
+    len: f32,
+    walled: bool,
+    straight: bool,
+}
+
+/// The map's own route (`route_kept`, the planner the rules drive by) where crucible searches a grid:
+/// the first of its points more than a tile off, and the length along all of them. A clear line is the
+/// way itself, as crucible's `route_from` has it (a grove across the line is gone round, not through).
+fn way_to(map: Option<&Map>, from: V2, goal: V2) -> Way {
+    let line = Way { to: goal, len: from.dist(goal), walled: false, straight: true };
+    let Some(m) = map else { return line };
+    if m.line_clear(from, goal) {
+        return line;
+    }
+    let r = m.route_kept(from, goal, false);
+    if r.is_empty() {
+        return Way { to: goal, len: RANGE, walled: true, straight: true };
+    }
+    let (mut len, mut at) = (0.0, from);
+    for p in &r {
+        len += at.dist(*p);
+        at = *p;
+    }
+    let to = r.iter().copied().find(|p| p.dist(from) > 1.0).unwrap_or(goal);
+    Way { to, len, walled: false, straight: false }
+}
+
+/// Where a point is no place for a tank: off the map, or a tile it cannot drive (crucible's `no_room`,
+/// whose walls stand a tank's radius proud: the four corners of that square are tried as well).
+fn no_room(m: &Map, p: V2) -> bool {
+    let r = W_TANK_R * 0.95;
+    [V2::new(0.0, 0.0), V2::new(r, r), V2::new(-r, r), V2::new(r, -r), V2::new(-r, -r)]
+        .iter()
+        .any(|d| !m.in_bounds(p + *d) || !m.at(p + *d).passable())
+}
+
+/// ITS OWN FUTURE, PROJECTED (crucible's `arc_free`): the share of 1.5 s the tank could drive along an
+/// arc turning at `k` of half its turn rate before it meets something it cannot drive through.
+fn arc_free(map: Option<&Map>, me: &Tank, k: f32) -> f32 {
+    let Some(m) = map else { return 1.0 };
+    let (v, om) = (me.speed.max(0.5 * TANK_SPEED), k * 0.5 * TANK_TURN);
+    let (mut p, mut a) = (me.pos, me.heading);
+    for i in 1..=6 {
+        a += om * 0.25;
+        p = p + V2::from_heading(a).scale(v * 0.25);
+        if no_room(m, p) {
+            return (i - 1) as f32 / 6.0;
+        }
+    }
+    1.0
+}
+
+/// A maze champion's 64 (crucible's `sense` under NAV, LR 152): the world's 55, then from AT_NAV the
+/// bearing to the way's next point as a sine and a cosine, the way's length as a share of RANGE, 1 when
+/// the enemy is walled off, how far the tank could drive along three arcs (left, ahead, right), and the
+/// two numbers its net kept. And THE ERRAND (crucible's `errand`): the rules' answer it reads (32 and
+/// 33) turns toward the way's next point at full throttle when the straight line to the enemy is shut,
+/// as the game's Commander goes round a wall by its route. Where the line is clear it is the script.
+pub fn nav_senses(obs: &Observation, map: Option<&Map>, me: &Tank, en: &Tank, mem: [f32; MEM]) -> [f32; N_NIN] {
+    let mut x = [0f32; N_NIN];
+    x[..W_NIN].copy_from_slice(&world_senses(obs, map, me, en));
+    let way = way_to(map, me.pos, en.pos);
+    let rb = wrap_angle((way.to - me.pos).heading() - me.heading);
+    x[AT_NAV] = rb.sin();
+    x[AT_NAV + 1] = rb.cos();
+    x[AT_NAV + 2] = (way.len / RANGE).min(1.0);
+    x[AT_NAV + 3] = if way.walled { 1.0 } else { 0.0 };
+    for (i, k) in [-1.0, 0.0, 1.0].iter().enumerate() {
+        x[AT_NAV + 4 + i] = arc_free(map, me, *k);
+    }
+    x[AT_NAV + 7..AT_NAV + 7 + MEM].copy_from_slice(&mem);
+    if !way.straight {
+        x[32] = (rb / std::f32::consts::PI).clamp(-1.0, 1.0);
+        x[33] = 1.0;
+    }
+    x
+}
+
 /// The rules, with a champion in the fight. THE GATE IS THE CHAMPION'S OWN: shut, this seat is the
 /// Commander to the last command, as the arena's hybrid tank plays its script.
 pub struct Duelist {
@@ -409,11 +515,14 @@ pub struct Duelist {
     /// The rules' last order to go somewhere. THEY SAY IT ONCE, and trust the route: a duel that
     /// replaced it would leave the tank where the duel ended, and the rules believing it on its way.
     errand: Option<Command>,
+    /// A maze champion's two kept numbers (crucible's MEM): what its net wrote at its last decision,
+    /// read back at the next. A duel's begin at nothing, as each of crucible's runs does.
+    mem: [f32; MEM],
 }
 
 impl Duelist {
     pub fn new(champion: Champion, rules: Box<dyn Brain>) -> Duelist {
-        Duelist { champion, rules, open: false, errand: None }
+        Duelist { champion, rules, open: false, errand: None, mem: [0.0; MEM] }
     }
 
     /// THE GATE IS A DIAL (LR 140; Paul, 4 November, of the Gladiator's gap to the defaults: "The gate
@@ -425,17 +534,26 @@ impl Duelist {
     }
 
     /// Its say this decision, if the gate opens: what to do instead of the rules' moving and firing.
-    fn duel(&self, obs: &Observation, map: Option<&Map>) -> Option<Vec<Command>> {
-        let me = obs.me.as_ref().filter(|t| t.alive)?;
-        let en = obs.hostile_tanks().filter(|t| t.alive).min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))?;
-        if me.pos.dist(en.pos) >= RANGE {
+    fn duel(&mut self, obs: &Observation, map: Option<&Map>) -> Option<Vec<Command>> {
+        let foe = obs.me.as_ref().filter(|t| t.alive).and_then(|me| {
+            obs.hostile_tanks()
+                .filter(|t| t.alive)
+                .min_by(|a, b| a.pos.dist(me.pos).total_cmp(&b.pos.dist(me.pos)))
+                .filter(|en| me.pos.dist(en.pos) < RANGE)
+                .map(|en| (me, en))
+        });
+        let Some((me, en)) = foe else {
+            self.mem = [0.0; MEM];
             return None;
-        }
+        };
         if self.champion.world() {
             // crucible's world driver: the turn names a heading error (-1..1 is -pi..pi) and the
             // throttle has no reverse, so a throttle at or under nothing holds the tank where it is.
-            let x = world_senses(obs, map, me, en);
+            let x: Vec<f32> = if self.champion.nav() { nav_senses(obs, map, me, en, self.mem).to_vec() } else { world_senses(obs, map, me, en).to_vec() };
             let y = self.champion.think(&x);
+            if self.champion.nav() {
+                self.mem = [y[4], y[5]];
+            }
             if y[3] <= self.gate() {
                 return None;
             }
@@ -703,7 +821,7 @@ mod tests {
         w[WORLD_CHAMPION_WEIGHTS - 1] = 9.0;
         w[WORLD_CHAMPION_WEIGHTS - 3] = -9.0;
         let (world, obs, _, _) = seat_and_enemy();
-        let b = Duelist::new(Champion { nin: W_NIN, h: W_H, w }, Box::new(Marked(vec![])));
+        let mut b = Duelist::new(Champion { nin: W_NIN, h: W_H, w }, Box::new(Marked(vec![])));
         assert_eq!(format!("{:?}", b.duel(&obs, Some(&world.map))), format!("{:?}", Some(vec![Command::Stop])));
     }
 
@@ -717,11 +835,134 @@ mod tests {
         let at = |gate: f32| {
             let mut s = Settings::pinned();
             s.w[W::DuelGate] = gate;
-            let b = Duelist::new(Champion { nin: W_NIN, h: W_H, w: w.clone() }, Box::new(Dialed(s)));
+            let mut b = Duelist::new(Champion { nin: W_NIN, h: W_H, w: w.clone() }, Box::new(Dialed(s)));
             b.duel(&obs, Some(&world.map)).is_some()
         };
         assert!(at(0.0) && at(0.5), "0.54 passes its own gate and one at a half");
         assert!(!at(0.6), "and not one at 0.6: the rules keep that fight");
+    }
+
+    /// A 30 x 30 field of grass with a wall bar at x = 15 from y = 5 to 24 (`bar`), or a ring of wall
+    /// round (19..25, 12..18) (`ring`): the maze's corner and the walled base, as small as they come.
+    fn maze_map(bar: bool, ring: bool) -> Map {
+        let mut rows = vec![vec!['.'; 30]; 30];
+        if bar {
+            for row in rows.iter_mut().take(25).skip(5) {
+                row[15] = 'W';
+            }
+        }
+        if ring {
+            for y in 12..=18 {
+                for x in 19..=25 {
+                    if y == 12 || y == 18 || x == 19 || x == 25 {
+                        rows[y][x] = 'W';
+                    }
+                }
+            }
+        }
+        let text = format!("treadcore map 1\nsize 30 30\n{}\nstart 2.5 2.5\nstart 27.5 27.5\n", rows.iter().map(|r| r.iter().collect::<String>()).collect::<Vec<_>>().join("\n"));
+        Map::from_text(&text).expect("the test map")
+    }
+
+    /// A world champion as crucible widens it to a maze one (`widen`): every new weight nothing.
+    fn widened(old: &[f32]) -> Vec<f32> {
+        let (h, oi) = (W_H, W_NIN);
+        let mut w = vec![0f32; NAV_CHAMPION_WEIGHTS];
+        for j in 0..h {
+            for i in 0..oi {
+                w[j * N_NIN + i] = old[j * oi + i];
+            }
+        }
+        let (ob, nb) = (oi * h, N_NIN * h);
+        w[nb..nb + h + h * h + h].copy_from_slice(&old[ob..ob + h + h * h + h]);
+        let (ow3, nw3) = (ob + h + h * h + h, nb + h + h * h + h);
+        w[nw3..nw3 + NOUT * h].copy_from_slice(&old[ow3..ow3 + NOUT * h]);
+        let (ob3, nb3) = (ow3 + NOUT * h, nw3 + N_NOUT * h);
+        w[nb3..nb3 + NOUT].copy_from_slice(&old[ob3..ob3 + NOUT]);
+        w
+    }
+
+    #[test]
+    fn a_maze_champion_is_read_by_its_size() {
+        assert_eq!(NAV_CHAMPION_WEIGHTS, 5766, "crucible.cu's NW at 64 in, 48, 48, 6 out");
+        let c = Champion::from_bytes(&vec![0u8; NAV_CHAMPION_WEIGHTS * 4]).unwrap();
+        assert!(c.world() && c.nav(), "a maze champion drives as the world's tank, and reads the way");
+        assert!(!Champion::from_bytes(&vec![0u8; WORLD_CHAMPION_WEIGHTS * 4]).unwrap().nav());
+    }
+
+    #[test]
+    fn a_maze_champion_widened_from_a_world_one_answers_as_it_did() {
+        let old: Vec<f32> = (0..WORLD_CHAMPION_WEIGHTS).map(|i| ((i * 7919 % 1000) as f32 / 1000.0 - 0.5) * 0.3).collect();
+        let x: Vec<f32> = (0..N_NIN).map(|i| ((i * 31 % 17) as f32 / 17.0) - 0.4).collect();
+        let a = Champion { nin: W_NIN, h: W_H, w: old.clone() }.think(&x[..W_NIN]);
+        let b = Champion { nin: N_NIN, h: W_H, w: widened(&old) }.think(&x);
+        for k in 0..NOUT {
+            assert!((a[k] - b[k]).abs() < 1e-5, "output {}: {} and {}", k, a[k], b[k]);
+        }
+        assert_eq!((b[4], b[5]), (0.0, 0.0), "the kept numbers start at nothing");
+    }
+
+    #[test]
+    fn round_a_wall_the_way_turns_off_the_line_and_the_rules_go_with_it() {
+        let (_, obs, mut me, mut en) = seat_and_enemy();
+        let m = maze_map(true, false);
+        me.pos = V2::new(11.5, 14.5);
+        me.heading = 0.0;
+        en.pos = V2::new(19.5, 14.5);
+        let x = nav_senses(&obs, Some(&m), &me, &en, [0.25, -0.5]);
+        assert_eq!(x[AT_NAV + 3], 0.0, "there is a way round: not walled");
+        assert!(x[AT_NAV + 1] < 0.8, "the way's next point is off the straight line: cos {}", x[AT_NAV + 1]);
+        assert!(x[AT_NAV + 2] * RANGE > 8.5, "the way is longer than the crow's 8 tiles: {}", x[AT_NAV + 2] * RANGE);
+        assert!(x[AT_NAV + 5] < 1.0, "the wall ahead cuts the straight arc short");
+        assert_eq!(&x[AT_NAV + 7..AT_NAV + 9], &[0.25, -0.5], "the kept numbers, read back");
+        assert_eq!(x[33], 1.0, "the errand: the rules drive round, at full throttle");
+        assert!((x[32] - (wrap_angle(x[AT_NAV].atan2(x[AT_NAV + 1])) / std::f32::consts::PI)).abs() < 1e-4, "and turn toward the way's next point");
+        assert_eq!(&x[..32], &world_senses(&obs, Some(&m), &me, &en)[..32], "the world's own senses unchanged");
+    }
+
+    #[test]
+    fn a_walled_off_enemy_reads_walled_and_the_rules_are_the_script() {
+        let (_, obs, mut me, mut en) = seat_and_enemy();
+        let m = maze_map(false, true);
+        me.pos = V2::new(10.5, 15.5);
+        me.heading = 0.0;
+        en.pos = V2::new(22.5, 15.5);
+        let x = nav_senses(&obs, Some(&m), &me, &en, [0.0; MEM]);
+        assert_eq!(x[AT_NAV + 3], 1.0, "no way in");
+        assert!((x[AT_NAV + 2] - 1.0).abs() < 1e-6, "and no length to it");
+        assert!((x[AT_NAV + 1] - 1.0).abs() < 1e-4, "it points at the enemy itself");
+        assert_eq!(&x[32..35], &world_senses(&obs, Some(&m), &me, &en)[32..35], "the script's answer: the breach is the rules' to choose");
+    }
+
+    #[test]
+    fn in_the_open_the_maze_senses_add_and_change_nothing() {
+        let (_, obs, mut me, mut en) = seat_and_enemy();
+        let m = maze_map(false, false);
+        me.pos = V2::new(10.5, 15.5);
+        me.heading = 0.0;
+        en.pos = V2::new(18.5, 15.5);
+        let x = nav_senses(&obs, Some(&m), &me, &en, [0.0; MEM]);
+        assert_eq!(&x[..W_NIN], &world_senses(&obs, Some(&m), &me, &en)[..], "the world's 55 as they were");
+        assert!((x[AT_NAV + 1] - 1.0).abs() < 1e-4 && (x[AT_NAV + 2] * RANGE - 8.0).abs() < 1e-3, "dead ahead, 8 tiles");
+        assert_eq!(&x[AT_NAV + 4..AT_NAV + 7], &[1.0, 1.0, 1.0], "every arc free");
+    }
+
+    #[test]
+    fn a_maze_duelist_keeps_its_two_numbers_and_forgets_them_when_the_fight_ends() {
+        // Gate open, and the two kept numbers' biases at 0.5 and -0.25.
+        let mut w = vec![0f32; NAV_CHAMPION_WEIGHTS];
+        let b3 = NAV_CHAMPION_WEIGHTS - N_NOUT;
+        w[b3 + 3] = 9.0;
+        w[b3 + 4] = 0.5;
+        w[b3 + 5] = -0.25;
+        let (world, obs, _, _) = seat_and_enemy();
+        let mut b = Duelist::new(Champion { nin: N_NIN, h: W_H, w }, Box::new(Marked(vec![])));
+        assert!(b.duel(&obs, Some(&world.map)).is_some());
+        assert!((b.mem[0] - 0.5f32.tanh()).abs() < 1e-6 && (b.mem[1] - (-0.25f32).tanh()).abs() < 1e-6, "{:?}", b.mem);
+        let mut alone = obs.clone();
+        alone.tanks.retain(|t| t.owner == 0);
+        assert!(b.duel(&alone, Some(&world.map)).is_none());
+        assert_eq!(b.mem, [0.0; MEM], "no enemy in reach: the next fight starts from nothing");
     }
 
     #[test]

@@ -1,0 +1,27 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Fri, 06 Nov 2026 22:53:00 +0000
+Subject: [JOURNAL 0129] The Gladiator reads a maze net
+Message-ID: <0129.20261106@treadcore.org>
+In-Reply-To: <0128.20261106@treadcore.org>
+Organization: treadcore.org
+Keywords: gladiator, maze, senses, route, memory
+
+## Abstract
+
+The game's Gladiator now reads crucible's maze champion (64 in, 6
+out): the way to its enemy by the map's own route, whether the enemy
+is walled off, three arcs of its own motion, and two numbers it keeps
+between decisions; the rules' answer it reads goes round a wall. Six
+tests; the trained maze champion plays eight games without a fault.
+
+## Session
+
+source/treadcore-brain/src/styles.rs (NAV_CHAMPION_WEIGHTS, nav,
+nav_senses, way_to, arc_free, no_room, the Duelist's mem). LR 152,
+CI-101, CHANGELOG, ROADMAP 94, this entry. treadcore-brain: 174 passed.
+
+## Next
+
+orrery's bridge reads the maze home's generations once it is deployed;
+the intrusion dial, w_breach (LR 153).
