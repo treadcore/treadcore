@@ -814,9 +814,18 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
 // layers are recomputed from its weights, the forward pass being exact.
 #define TREC 22
 #define TNET (NIN + NOUT)
+//
+// THE SPREAD (Paul, 5 November: "can you show more ghosts in the movie"). One start and eleven kinds of
+// opponent made 128 duels only eight to twelve games: the nets are deterministic, and a duel with the
+// same opponent from the same place played out the same, so the film's ghosts stood on one another.
+// --trace-spread S moves each duel's two tanks up to S tiles from the start and turns them up to a fifth
+// of a turn, by dice that are the duel's index (a stream apart from the opponent's, so duel d keeps its
+// opponent): the arena, the pillars and the pillboxes are one world still, duel d is still the same
+// contest in every chapter, and the permutations are permutations. A moved tank is kept off the pillars
+// as place() keeps it, and inside its own starting band; 0 is the one start of before.
 __global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ champ, const float* __restrict__ opps, int n_opps, int steps,
-                                                     uint32_t seed, float drawv, float* rec, int* outcome, int* lasted, float* fit, int* opp_of,
-                                                     float* arena_out, float* mind) {
+                                                     uint32_t seed, float drawv, float spread, float* rec, int* outcome, int* lasted, float* fit,
+                                                     int* opp_of, float* arena_out, float* mind) {
     int d = threadIdx.x;
     Rng r{mix(seed, 0x7a11u)};
     Arena w;
@@ -833,6 +842,23 @@ __global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ c
         oi = -1 - skill.style;
     }
     opp_of[d] = oi;
+    if (spread > 0.0f) {
+        Rng jit{mix(seed, 0x51ed0000u + (uint32_t)d)};
+        Tank* ts[2] = {&A, &B};
+        const float band[2][2] = {{3.0f, 14.0f}, {50.0f, 61.0f}};
+        for (int i = 0; i < 2; i++) {
+            Tank& t = *ts[i];
+            float x = fminf(fmaxf(t.x + jit.in(-spread, spread), band[i][0]), band[i][1]);
+            float y = fminf(fmaxf(t.y + jit.in(-spread, spread), 4.0f), ARENA - 4.0f);
+            bool ok = true;
+            for (int p = 0; p < PILLARS; p++) {
+                float dx = x - w.px[p], dy = y - w.py[p];
+                if (dx * dx + dy * dy < (w.pr[p] + 2.0f) * (w.pr[p] + 2.0f)) ok = false;
+            }
+            if (ok) { t.x = x; t.y = y; }
+            t.a += jit.in(-1.25f, 1.25f);
+        }
+    }
     if (d == 0) {
         for (int p = 0; p < PILLARS; p++) { arena_out[p] = w.px[p]; arena_out[PILLARS + p] = w.py[p]; arena_out[2 * PILLARS + p] = w.pr[p]; }
         for (int k = 0; k < PILLBOXES; k++) { arena_out[3 * PILLARS + k] = w.bx[k]; arena_out[3 * PILLARS + PILLBOXES + k] = w.by[k]; }
@@ -921,6 +947,7 @@ struct Opt {
     std::string trace = "", champs = "", opps = "";
     int trace_duels = 64;
     uint32_t trace_seed = 7;
+    float trace_spread = 0.0f;
     bool bench = false;
 };
 
@@ -930,7 +957,7 @@ static void usage() {
             "         [--sigma S] [--spar P] [--seed N] [--yard K] [--out FILE.tsv] [--save FILE] [--load FILE] [--bench]\n"
             "         [--export CHAMP.bin] [--import A.bin,B.bin,...] [--ladder M1.bin,M2.bin,...] [--lad P]\n"
             "         [--exam FILE.tsv] [--exam-eps N] [--draw V]\n"
-            "crucible --trace OUT.bin --champions C1.bin,C2.bin,... [--opponents M1.bin,...] [--trace-duels N] [--trace-seed S]\n"
+            "crucible --trace OUT.bin --champions C1.bin,C2.bin,... [--opponents M1.bin,...] [--trace-duels N] [--trace-seed S] [--trace-spread TILES]\n"
             "  --export writes the last generation's champion (its weights, as floats);\n"
             "  --import puts other islands' champions into the hall of fame first;\n"
             "  --ladder loads milestones (oldest first): opponents with chance --lad, and a yardstick;\n"
@@ -1114,7 +1141,7 @@ static int run_trace(const Opt& o) {
     for (size_t c = 0; c < cs.size(); c++) {
         CK(cudaMemset(d_rec, 0, recn * sizeof(float)));
         CK(cudaMemset(d_mind, 0, mindn * sizeof(float)));
-        trace_play<<<1, nd>>>(d_ch + c * NW, d_op, (int)os.size(), o.steps, o.trace_seed, o.draw, d_rec, d_out, d_last, d_fit, d_opp, d_ar, d_mind);
+        trace_play<<<1, nd>>>(d_ch + c * NW, d_op, (int)os.size(), o.steps, o.trace_seed, o.draw, o.trace_spread, d_rec, d_out, d_last, d_fit, d_opp, d_ar, d_mind);
         CK(cudaGetLastError());
         CK(cudaDeviceSynchronize());
         CK(cudaMemcpy(rec.data(), d_rec, recn * sizeof(float), cudaMemcpyDeviceToHost));
@@ -1176,6 +1203,7 @@ int main(int argc, char** argv) {
         else if (a == "--opponents") o.opps = val();
         else if (a == "--trace-duels") o.trace_duels = atoi(val());
         else if (a == "--trace-seed") o.trace_seed = (uint32_t)atol(val());
+        else if (a == "--trace-spread") o.trace_spread = (float)atof(val());
         else usage();
     }
 
