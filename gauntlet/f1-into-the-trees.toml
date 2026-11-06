@@ -1,0 +1,32 @@
+# The CUDA gauntlet (crucible, 6 November; Paul: "More Cuda gauntlets that match the style of the CPU
+# gauntlet"): one decision, little else in the arena, read by `crucible --gauntlet` for each segment's
+# champion and the newest milestone on the same runs. The trees, new: at 40% armour, a Raider 9 tiles off and a grove 5 tiles behind. Decision: into the trees, where a tank deep in them is not seen past 3 tiles and a shell does not reach it. Passed: alive at 12 s.
+name = "F1 into the trees"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 12
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+armor = 0.4
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [9, 0]
+around = true
+toward = "seat:0"
+[[grove]]
+near = "seat:0"
+toward = "seat:1"
+away = -5
+radius = 3
+[[brain]]
+seat = 1
+kind = "raider"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+alive = { seat = 0 }

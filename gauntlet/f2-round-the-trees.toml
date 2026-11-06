@@ -1,0 +1,27 @@
+# The CUDA gauntlet (crucible, 6 November; Paul: "More Cuda gauntlets that match the style of the CPU
+# gauntlet"): one decision, little else in the arena, read by `crucible --gauntlet` for each segment's
+# champion and the newest milestone on the same runs. The trees, new: an enemy 9 tiles off with a grove between, so a shot straight at it stops in the trees. Decision: go round, then shoot. Passed: a direct hit within 12 s.
+name = "F2 round the trees"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 12
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [9, 0]
+around = true
+[[grove]]
+near = "seat:0"
+toward = "seat:1"
+away = 4.5
+radius = 2.6
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+hits = { by = 0, on = 1, at_least = 1 }

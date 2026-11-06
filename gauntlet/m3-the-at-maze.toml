@@ -1,0 +1,65 @@
+# The CUDA gauntlet, player against environment (crucible, 6 November; Paul: "navigate a simple maze, Like a
+# maze of S shaped and 5 Shaped, and @ ... where we add takeover tasks like Pillbox capture, Base capture,
+# Building a base capture"). THE @. Two square rings, the outer open on the right above the middle, the inner open on the left: in through the outer gap, half way round, in through the inner gap, and the pillbox at the centre. Passed: it is the tank's within 150 s.
+name = "M3 the @ maze: take the pillbox at its centre"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 150
+[[tank]]
+seat = 0
+at = "centre"
+offset = [27, 27]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [-28, -28]
+[[pillbox]]
+near = "centre"
+owner = 1
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-23, 23]
+y = [22, 23]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-23, 23]
+y = [-23, -22]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-23, -22]
+y = [-23, 23]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [22, 23]
+y = [-23, 8]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-13, 13]
+y = [12, 13]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-13, 13]
+y = [-13, -12]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [12, 13]
+y = [-13, 13]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-13, -12]
+y = [-13, -2]
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }

@@ -11,6 +11,8 @@
 #   make WORLD=1 R_VMAX=4.5f R_PB_RANGE=9.0f   any of the game's numbers given, by
 #                        crucible's name (the coordinator passes all of them, read from
 #                        treadcore's rules.rs at the fleet's commit)
+#   make WORLD=1 FOREST=1  the trees: six groves that slow a tank, stop a flat shot and hide a tank
+#                        deep in them, as treadcore's forest does; the net's senses unchanged
 #   make H=48            a wider net (two nets must fit 48 KB of shared memory: the
 #                        source refuses to compile otherwise; WORLD=1 HYBRID=1 H=48 is
 #                        41,888 bytes, H=64 would be 64,032)
@@ -42,11 +44,11 @@ RULES += $(foreach v,$(filter R_%,$(.VARIABLES)),-D$(patsubst R_%,%,$(v))=$($(v)
 crucible: src/crucible.cu
 	@if [ -n "$(CUDA_MAJOR)" ] && [ "$(CUDA_MAJOR)" -ge 13 ] && [ "$(CAP)" -lt 75 ]; then \
 		echo "crucible: CUDA $(CUDA_MAJOR) cannot build for sm_$(CAP): keep CUDA 12 on this card" >&2; exit 1; fi
-	$(NVCC) $(FLAGS) $(ARCH) -DHID=$(H) -DMINB=$(MINB) $(if $(HYBRID),-DHYBRID) $(if $(WORLD),-DWORLD) $(RULES) -Xptxas -v -o $@ $< 2>&1 | grep -E 'error|registers|spill' || true
+	$(NVCC) $(FLAGS) $(ARCH) -DHID=$(H) -DMINB=$(MINB) $(if $(HYBRID),-DHYBRID) $(if $(WORLD),-DWORLD) $(if $(FOREST),-DFOREST) $(RULES) -Xptxas -v -o $@ $< 2>&1 | grep -E 'error|registers|spill' || true
 	@test -x $@
 
 which:
-	@echo "card sm_$(CAP), CUDA $(or $(CUDA_MAJOR),?) ($(NVCC)), H=$(H), MINB=$(MINB)$(if $(HYBRID), HYBRID)$(if $(WORLD), WORLD)$(if $(RULES), $(RULES))"
+	@echo "card sm_$(CAP), CUDA $(or $(CUDA_MAJOR),?) ($(NVCC)), H=$(H), MINB=$(MINB)$(if $(HYBRID), HYBRID)$(if $(WORLD), WORLD)$(if $(FOREST), FOREST)$(if $(RULES), $(RULES))"
 
 run: crucible
 	mkdir -p runs

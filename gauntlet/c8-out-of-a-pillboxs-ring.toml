@@ -1,0 +1,26 @@
+# The CUDA gauntlet (crucible, 6 November; Paul: "More Cuda gauntlets that match the style of the CPU
+# gauntlet"): one decision, little else in the arena, read by `crucible --gauntlet` for each segment's
+# champion and the newest milestone on the same runs. Treadcore's G8. The tank at 40% armour 5 tiles from a pillbox, inside its ring; nothing else. Decision: get out of reach. Passed: alive at 10 s.
+name = "C8 out of a pillbox's ring"
+cpu = "G8"
+reaction = "move"
+floor = 0.0
+seconds = 10
+[[tank]]
+seat = 0
+at = "centre"
+offset = [5, 0]
+around = true
+heading = "any"
+armor = 0.4
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 30]
+[[pillbox]]
+near = "centre"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+alive = { seat = 0 }

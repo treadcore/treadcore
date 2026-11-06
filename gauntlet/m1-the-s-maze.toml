@@ -1,0 +1,36 @@
+# The CUDA gauntlet, player against environment (crucible, 6 November; Paul: "navigate a simple maze, Like a
+# maze of S shaped and 5 Shaped, and @ ... where we add takeover tasks like Pillbox capture, Base capture,
+# Building a base capture"). THE S. Two bars of wall, staggered: the pillbox at the top right is reached by going right, round the first bar's end, left, round the second's, and right again. The pillbox's bearing is in the net's senses through the walls; the rays see the walls. Decision: find the way, shoot the pillbox from outside its ring, and drive onto its rubble. Passed: it is the tank's within 90 s.
+name = "M1 the S maze: take the pillbox at its end"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 90
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-22, -21]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [-28, 28]
+[[pillbox]]
+near = "centre"
+offset = [22, 21]
+owner = 1
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-30, 16]
+y = [-9, -8]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-16, 30]
+y = [8, 9]
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }

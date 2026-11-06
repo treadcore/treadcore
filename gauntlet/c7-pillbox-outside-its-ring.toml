@@ -1,0 +1,27 @@
+# The CUDA gauntlet (crucible, 6 November; Paul: "More Cuda gauntlets that match the style of the CPU
+# gauntlet"): one decision, little else in the arena, read by `crucible --gauntlet` for each segment's
+# champion and the newest milestone on the same runs. Treadcore's G7. A pillbox 9 tiles off: outside its ring (8), inside the gun's reach (10). Decision: shoot it from where you stand. Passed: it is dead within 12 s and did no damage. Treadcore gives
+# 8 s; crucible's nets turn before they fire, so with the 4 s reload two hits take longer: 12 here.
+name = "C7 a pillbox from outside its ring"
+cpu = "G7"
+reaction = "fire"
+floor = 0.0
+seconds = 12
+[[tank]]
+seat = 0
+at = "centre"
+offset = [9, 0]
+around = true
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 30]
+[[pillbox]]
+near = "centre"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_alive = { pillbox = 0, alive = false }
+pillbox_damage = { pillbox = 0, max = 0 }

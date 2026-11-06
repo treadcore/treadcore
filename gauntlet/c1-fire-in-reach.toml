@@ -1,0 +1,22 @@
+# The CUDA gauntlet (crucible, 6 November; Paul: "More Cuda gauntlets that match the style of the CPU
+# gauntlet"): one decision, little else in the arena, read by `crucible --gauntlet` for each segment's
+# champion and the newest milestone on the same runs. Treadcore's G1, in crucible's arena. An enemy tank stands 8 tiles off on any side, inside the gun's reach (10). Decision: shoot. Passed: a direct hit within 4 s.
+name = "C1 fire at an enemy in reach"
+cpu = "G1"
+reaction = "fire"
+floor = 0.0
+seconds = 4
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [8, 0]
+around = true
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+hits = { by = 0, on = 1, at_least = 1 }
