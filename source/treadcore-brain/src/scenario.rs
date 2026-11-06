@@ -401,7 +401,7 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
         Ok(base + offset(off)?)
     };
     // `[[terrain]]`: a rectangle of tiles, `x` and `y` in tiles from the
-    // anchor's tile, both ends in, set to water, grass or forest.
+    // anchor's tile, both ends in, set to water, grass, forest, road or wall.
     for t in list("terrain") {
         let near = place(&w, &depots, &pillboxes, t.get("near").and_then(Value::str).unwrap_or("seat:0"), None)?;
         let kind = match t.get("kind").and_then(Value::str).unwrap_or("water") {
@@ -409,6 +409,9 @@ fn run_inner(doc: &Doc, seed: Option<u64>, net: Option<&crate::net::Net>, make: 
             "grass" => Terrain::Grass,
             "forest" => Terrain::Forest,
             "road" => Terrain::Road,
+            // A maze's walls (6 November: the S, the 5 and the @, played by the CPU gauntlet and by
+            // crucible's on the card from the same words).
+            "wall" => Terrain::Wall,
             k => return Err(format!("terrain: no kind {}", k)),
         };
         let span = |k: &str| match t.get(k) {

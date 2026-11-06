@@ -1478,6 +1478,11 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
     five defaults written as numbers in the weights table, so a
     promotion can move them; a test holds every default to it. Next:
     w10839 tried again by orrery.
+92. The maze and the takeover as tests. (6 November; LR 150, CI-099.)
+    Walls in a scenario's terrain; G23 to G28, the S, the 5 and the @
+    mazes and three takeovers, read by the rules with floors at today's
+    success; the same files' words played on the card by crucible's
+    CUDA gauntlet. Next: the GPU's nets toward the rules' shares.
 
 ## Sequencing
 

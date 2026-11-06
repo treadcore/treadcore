@@ -1,0 +1,29 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Fri, 06 Nov 2026 11:15:00 +0000
+Subject: [JOURNAL 0127] The maze and the takeover as tests both machines read
+Message-ID: <0127.20261106@treadcore.org>
+In-Reply-To: <0126.20261105@treadcore.org>
+Organization: treadcore.org
+Keywords: gauntlet, scenario, maze, takeover, crucible, CUDA
+
+## Abstract
+
+Walls in a scenario's terrain, and six gauntlet files: the S, the 5 and
+the @ mazes, take a pillbox, take the base, build a base. The rules pass
+the S and the @ nearly always, the 5 two times in three, take a pillbox
+in the open almost always, build a base 88% and take a defended base
+3.5%. Crucible's CUDA gauntlet reads the same words on the card.
+
+## Session
+
+Code: scenario.rs (`kind = "wall"`). Files: scenarios/gauntlet/g23 to
+g28, floors at today's success. LR 150, CI-099, CHANGELOG, ROADMAP 92,
+this entry. Orrery's side: the forest home, the CUDA gauntlet, the GPU's
+elections and its first forest generation, M0016 (orrery's report One
+Rule, Two Machines).
+
+## Next
+
+The GPU's nets learn toward the rules' shares on the same mazes; the
+bridge reads every GPU generation in the game.

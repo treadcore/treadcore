@@ -1,0 +1,49 @@
+# The boundary of the takeover and the maze (6 November; Paul: "navigate a simple maze, Like a maze of S
+# shaped and 5 Shaped, and @ ... where we add takeover tasks like Pillbox capture, Base capture, Building a
+# base capture ... More tests ... coded in Cuda, for GPU and CPU"). The CPU's twin of crucible's file
+# m2-the-5-maze.toml (crucible gauntlet/), in the same words where both play them. Along the top, round, along the middle, round, down past the bowl's stroke and left. Passed: the pillbox is seat 0's within 120 s.
+name = "G24 the 5 maze: take the pillbox in its bowl"
+reaction = "move"
+floor = 0.55
+players = 2
+seconds = 120
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-30, 30]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-14, 30]
+y = [12, 13]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-30, 14]
+y = [-2, -1]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [4, 5]
+y = [-16, -1]
+[[tank]]
+seat = 0
+at = "centre"
+offset = [22, 24]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [28, -28]
+[[pillbox]]
+near = "centre"
+offset = [-20, -22]
+owner = 1
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }

@@ -1,0 +1,33 @@
+# The boundary of the takeover and the maze (6 November; Paul: "navigate a simple maze, Like a maze of S
+# shaped and 5 Shaped, and @ ... where we add takeover tasks like Pillbox capture, Base capture, Building a
+# base capture ... More tests ... coded in Cuda, for GPU and CPU"). The CPU's twin of crucible's file
+# t1-take-a-pillbox.toml (crucible gauntlet/), in the same words where both play them. The enemy's pillbox 12 tiles off in the open. Passed: it is seat 0's within 30 s.
+name = "G26 take a pillbox"
+reaction = "fire"
+floor = 0.95
+players = 2
+seconds = 30
+pillboxes = false
+depots = false
+[[terrain]]
+near = "centre"
+kind = "grass"
+x = [-30, 30]
+y = [-30, 30]
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 30]
+[[pillbox]]
+near = "seat:0"
+offset = [12, 0]
+owner = 1
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }
