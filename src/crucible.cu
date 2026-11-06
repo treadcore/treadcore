@@ -106,13 +106,31 @@
 // decides first; the net reads the senses and that answer (3 more inputs) and gives a
 // correction and a confidence (1 more output). The gate is shut below zero, and then the
 // tank plays the rules exactly. A state file of one kind does not load in the other: NW differs.
+// THE MAZE (Paul, 6 November: "what it takes to make a two part move around a corner. How would we give a
+// sensor to the AI net ... such that it has enough information to pass the maze ... a way to project your
+// own future movements, that don't take too much computation ... more of a perceived memory, or capable of
+// doing delayed actions"). NAV=1 adds NAV_IN senses and MEM memory cells: the bearing to the next cell
+// of the route to the goal (a grid search of the arena, the cheap planner the game's rules use), the
+// route's length, whether the goal is walled off; how far the tank can go along three arcs of its own
+// motion (left, straight, right: its own future, projected); and MEM numbers the net writes as extra
+// outputs and reads back as inputs the next step. A greedy steer toward a goal behind a wall is a local
+// minimum that no width of hidden layer escapes; a route sense removes the minimum, the arcs see a
+// corner before the hull meets it, and the memory lets a net hold a decision it is in the middle of.
+#ifdef NAV
+#define MEM 2
+#define NAV_IN (7 + MEM)
+#else
+#define MEM 0
+#define NAV_IN 0
+#endif
 #ifdef HYBRID
 #define RULES_IN 3
-#define NOUT 4
+#define NOUT_BASE 4
 #else
 #define RULES_IN 0
-#define NOUT 3
+#define NOUT_BASE 3
 #endif
+#define NOUT (NOUT_BASE + MEM)
 // WORLD's senses come after HYBRID's rules, so the first 32 (and a hybrid's
 // 35) keep their places and a smaller net's weights land where they were.
 #ifdef WORLD
@@ -123,8 +141,12 @@
 #if defined(FOREST) && !defined(WORLD)
 #error "FOREST is a world arena's: build with WORLD=1 FOREST=1"
 #endif
+#if defined(NAV) && !defined(FOREST)
+#error "NAV is the forest arena's: build with WORLD=1 FOREST=1 NAV=1"
+#endif
 #define AT_WORLD (32 + RULES_IN)
-#define NIN (32 + RULES_IN + WORLD_IN)
+#define AT_NAV (AT_WORLD + WORLD_IN)
+#define NIN (32 + RULES_IN + WORLD_IN + NAV_IN)
 #define NW (NIN * H + H + H * H + H + H * NOUT + NOUT)
 // Two nets sit in a block's shared memory, and a Pascal card gives a block
 // 48 KB: H=48 with WORLD and HYBRID (55 in, 4 out) is 41,888 bytes; H=64
@@ -228,6 +250,7 @@ static_assert(2 * NW * sizeof(float) <= 49152, "two nets must fit 48 KB of share
 #define WALLS 12
 #define TRAIN_WALLS 3
 #define CAPTURE_R 1.8f
+#define WALL_HP 90.0f          // two direct hits
 // THE GAME'S SCORE, IN KILLS (treadcore-sim rules.rs: SCORE_KILL 100, SCORE_CAPTURE 25, SCORE_HOLD 2 for
 // each live structure every HOLD_EVERY_TICKS, 10 s): a kill 1, a capture 0.25, a held pillbox 0.02 every
 // 10 s. A forest arena's fitness adds it, so a champion is chosen by what the game would score it, beside
@@ -288,6 +311,13 @@ struct Tank {
 #ifdef FOREST
     int side;                      // 0 the learner, 1 the other: whose a taken pillbox is
 #endif
+#ifdef NAV
+    float mem[MEM];                // what its net wrote last step, read back as inputs
+    // The route's waypoint (x, y), its length, walled, and the three arcs' free shares: worked out every
+    // NAV_SENSE steps and kept, the bearing to the waypoint taken fresh each step (it moves with the hull).
+    float navc[8];
+    int tick;
+#endif
 };
 
 struct Arena {
@@ -302,7 +332,12 @@ struct Arena {
     // The walls, boxes from (x0, y0) to (x1, y1), the first nwall of them; and each pillbox's owner: -1
     // neutral, 0 the learner's, 1 the other tank's (taken from rubble).
     float wx0[WALLS], wy0[WALLS], wx1[WALLS], wy1[WALLS];
-    int nwall;
+    // A wall's health when a shot can break it (the breach), -1 when it cannot: the game's walls fall to
+    // the mortar's splash, which crucible's tanks do not have, so a gauntlet marks the walls of a walled
+    // base `breakable` and a direct shot stands in for the mortar there. A fallen wall is gone; `changed`
+    // tells the route's grid to look again.
+    float whp[WALLS];
+    int nwall, changed;
     int bown[PILLBOXES];
 #endif
 };
@@ -326,6 +361,10 @@ __device__ inline float ray_wall(float ox, float oy, float dx, float dy) {
 
 // Where a ray first meets a box (0 when it starts inside; 1e9 when it never does): the slab test.
 __device__ inline float ray_box(float ox, float oy, float dx, float dy, float x0, float y0, float x1, float y1) {
+    // A fallen wall is an empty box (x0 > x1): nothing to strike. Without this the slabs below, taking the
+    // lesser and greater of each pair, turned it into the whole plane -- after B1's first wall fell every
+    // shell stopped at its muzzle and no pillbox could see a tank (found by the maze film, 6 November).
+    if (x0 > x1 || y0 > y1) return 1e9f;
     float lo = -1e9f, hi = 1e9f;
     if (fabsf(dx) < 1e-6f) { if (ox < x0 || ox > x1) return 1e9f; }
     else { float a = (x0 - ox) / dx, b = (x1 - ox) / dx; lo = fmaxf(lo, fminf(a, b)); hi = fminf(hi, fmaxf(a, b)); }
@@ -397,6 +436,132 @@ __device__ inline bool mine(const Arena& w, int k, const Tank& me) {
 #endif
 }
 
+#ifdef NAV
+// ---- the route: a grid search, the cheap planner (6 November) -------------------------------------
+//
+// The arena as GRID x GRID cells of CELL tiles; a cell is shut when a wall or a pillar covers it. A
+// breadth-first search from the goal's cell gives every open cell its number of steps to the goal: the
+// route a tank should take is down that number, and the number itself is the route's length. It costs a
+// few thousand operations, once a second for each tank (every NAV_EVERY steps, or when a wall falls) --
+// far less than the net's own 5,700 multiply-adds a step. No local minimum survives it: going round a
+// corner is going down the numbers, even where it is going away from the goal.
+#define GRID 32
+#define CELL (ARENA / GRID)
+// The costs measured on boburner (6 November): the search every second and the arcs every step made a
+// generation 3.9 times as long as the forest's; the search every three seconds and the waypoint and arcs
+// every third step keep what a tank needs (a goal in a maze stands still; a wall is seen 1.5 s ahead).
+#define NAV_EVERY 30
+#define NAV_SENSE 3
+struct Grid { unsigned int shut[GRID * GRID / 32]; };
+// The route's field toward a goal, kept LAZILY: the caller sets the goal and the step each step; the field is
+// made only when a tank's straight line to the goal is shut (a duel in the open never needs one), and made
+// again when the goal has left the cell it was made for and NAV_EVERY steps have passed, or a wall fell.
+struct Nav { unsigned char d[GRID * GRID]; float gx, gy; int gc, at, now; const struct Grid* g; };
+
+__device__ inline int cell_of(float x, float y) {
+    int cx = min(max((int)(x / CELL), 0), GRID - 1), cy = min(max((int)(y / CELL), 0), GRID - 1);
+    return cy * GRID + cx;
+}
+__device__ inline bool is_shut(const Grid& g, int c) { return (g.shut[c >> 5] >> (c & 31)) & 1u; }
+
+// Which cells are shut, once an arena and again when a wall falls.
+__device__ void grid_build(const Arena& w, Grid& g) {
+    for (int i = 0; i < GRID * GRID / 32; i++) g.shut[i] = 0u;
+    for (int c = 0; c < GRID * GRID; c++) {
+        float x = (c % GRID + 0.5f) * CELL, y = (c / GRID + 0.5f) * CELL, h = 0.45f * CELL;
+        bool s = false;
+        for (int b = 0; b < w.nwall && !s; b++)
+            s = x + h > w.wx0[b] && x - h < w.wx1[b] && y + h > w.wy0[b] && y - h < w.wy1[b];
+        for (int p = 0; p < PILLARS && !s; p++) {
+            float dx = x - w.px[p], dy = y - w.py[p];
+            s = dx * dx + dy * dy < (w.pr[p] + 0.3f) * (w.pr[p] + 0.3f);
+        }
+        if (s) g.shut[c >> 5] |= 1u << (c & 31);
+    }
+}
+
+// Steps from every open cell to the goal's (255: no way there).
+__device__ void nav_field(const Grid& g, float gx, float gy, Nav& nv) {
+    unsigned short q[GRID * GRID];
+    for (int c = 0; c < GRID * GRID; c++) nv.d[c] = 255;
+    nv.gx = gx; nv.gy = gy;
+    int s0 = cell_of(gx, gy), head = 0, tail = 0;
+    nv.gc = s0; nv.at = nv.now;
+    nv.d[s0] = 0;
+    q[tail++] = (unsigned short)s0;
+    while (head < tail) {
+        int c = q[head++], cx = c % GRID, cy = c / GRID, dc = nv.d[c];
+        if (dc >= 254) continue;
+        const int nx[4] = {cx + 1, cx - 1, cx, cx}, ny[4] = {cy, cy, cy + 1, cy - 1};
+        for (int k = 0; k < 4; k++) {
+            if (nx[k] < 0 || ny[k] < 0 || nx[k] >= GRID || ny[k] >= GRID) continue;
+            int n = ny[k] * GRID + nx[k];
+            if (nv.d[n] != 255 || is_shut(g, n)) continue;
+            nv.d[n] = (unsigned char)(dc + 1);
+            q[tail++] = (unsigned short)n;
+        }
+    }
+}
+
+// The field, made if it is missing or stale (see Nav).
+__device__ inline void nav_need(Nav& nv) {
+    if (nv.gc < 0 || (cell_of(nv.gx, nv.gy) != nv.gc && nv.now - nv.at >= NAV_EVERY)) nav_field(*nv.g, nv.gx, nv.gy, nv);
+}
+// A new arena, or a wall fell: the grid again, and every field made on the old one forgotten.
+__device__ inline void nav_reset(const Arena& w, Grid& g, Nav& a, Nav* b) {
+    grid_build(w, g);
+    a.gc = -1; a.g = &g; a.at = 0;
+    if (b) { b->gc = -1; b->g = &g; b->at = 0; }
+}
+
+// The route from a place: the bearing to the next waypoint (the neighbouring cell nearest the goal, or the
+// goal itself when the line to it is clear), the route's length in tiles, and whether there is no way.
+__device__ void route_from(const Nav& nv, const Arena& w, float x, float y, float* wx, float* wy, float* len, bool* walled) {
+    int c = cell_of(x, y), cx = c % GRID, cy = c / GRID, best = nv.d[c], bc = -1;
+    for (int dy = -1; dy <= 1; dy++)
+        for (int dx = -1; dx <= 1; dx++) {
+            int ax = cx + dx, ay = cy + dy;
+            if ((!dx && !dy) || ax < 0 || ay < 0 || ax >= GRID || ay >= GRID) continue;
+            int n = ay * GRID + ax;
+            if (nv.d[n] < best) { best = nv.d[n]; bc = n; }
+        }
+    *walled = best >= 255;
+    if (*walled || line_clear(x, y, nv.gx, nv.gy, w)) {
+        *wx = nv.gx; *wy = nv.gy;
+        float dx = nv.gx - x, dy = nv.gy - y;
+        *len = *walled ? RANGE : sqrtf(dx * dx + dy * dy);
+        return;
+    }
+    *wx = (bc % GRID + 0.5f) * CELL; *wy = (bc / GRID + 0.5f) * CELL;
+    *len = (best + 1) * CELL;
+}
+
+// Where a point is no place for a tank: off the arena, in a wall, on a pillar.
+__device__ inline bool no_room(const Arena& w, float x, float y) {
+    if (x < TANK_R || y < TANK_R || x > ARENA - TANK_R || y > ARENA - TANK_R) return true;
+    for (int b = 0; b < w.nwall; b++)
+        if (x > w.wx0[b] - TANK_R && x < w.wx1[b] + TANK_R && y > w.wy0[b] - TANK_R && y < w.wy1[b] + TANK_R) return true;
+    for (int p = 0; p < PILLARS; p++) {
+        float dx = x - w.px[p], dy = y - w.py[p];
+        if (dx * dx + dy * dy < (w.pr[p] + TANK_R) * (w.pr[p] + TANK_R)) return true;
+    }
+    return false;
+}
+
+// ITS OWN FUTURE, PROJECTED (the dynamic window's arcs, cheaply): the share of 1.5 s the tank could drive
+// along an arc turning at k of half its turn rate before it meets a wall, a pillar or the arena's edge.
+__device__ float arc_free(const Tank& me, const Arena& w, float k) {
+    float v = fmaxf(me.v, 0.5f * VMAX), om = k * 0.5f * TURN, x = me.x, y = me.y, a = me.a;
+    for (int i = 1; i <= 6; i++) {
+        a += om * 0.25f;
+        x += __cosf(a) * v * 0.25f;
+        y += __sinf(a) * v * 0.25f;
+        if (no_room(w, x, y)) return (i - 1) / 6.0f;
+    }
+    return 1.0f;
+}
+#endif
+
 // treadcore's concealment (tank_seen_by, the pillboxes' choice of target): a tank deep in the trees is
 // seen only from inside CONCEAL_RANGE. Without FOREST nothing hides.
 __device__ inline bool hidden_from(float x, float y, float dist, const Arena& w) {
@@ -416,7 +581,10 @@ __device__ inline float wrap(float a) {
 
 // The sensors: what tank `me` can know, as 32 numbers in 0..1 or -1..1
 // (and under WORLD twenty more, from AT_WORLD).
-__device__ void sense(const Tank& me, const Tank& en, const Arena& w, float* in) {
+#ifndef NAV
+struct Nav;
+#endif
+__device__ void sense(const Tank& me, const Tank& en, const Arena& w, float* in, const Nav* nv) {
 #pragma unroll
     for (int r = 0; r < RAYS; r++) {
         float ang = me.a + r * (6.2831853f / RAYS);
@@ -481,6 +649,20 @@ __device__ void sense(const Tank& me, const Tank& en, const Arena& w, float* in)
     }
     x[18] = me.shells / SHELLS;
     x[19] = fmaxf(me.reload, 0.0f) / RELOAD;
+#endif
+#ifdef NAV
+    // The route, the arcs, the memory: from AT_NAV.
+    float* r = in + AT_NAV;
+    if (nv) {
+        float rb = wrap(atan2f(me.navc[1] - me.y, me.navc[0] - me.x) - me.a);
+        r[0] = __sinf(rb); r[1] = __cosf(rb);
+        r[2] = fminf(me.navc[2] / RANGE, 1.0f);
+        r[3] = me.navc[3];
+    } else {
+        r[0] = r[1] = r[2] = r[3] = 0.0f;
+    }
+    r[4] = me.navc[4]; r[5] = me.navc[5]; r[6] = me.navc[6];
+    for (int m = 0; m < MEM; m++) r[7 + m] = me.mem[m];
 #endif
 }
 
@@ -633,20 +815,88 @@ __device__ void scripted(const Tank& me, const Tank& en, Skill k, const Arena& w
 #endif
 }
 
+#if defined(NAV) && defined(HYBRID)
+// THE RULES' ERRAND, AS THE GAME'S COMMANDER RUNS IT (ERRAND=0 to leave the script as it was). In the game
+// the Gladiator's net has its say only in a duel, an enemy within reach; the rest of the time the Commander's
+// rules play, and they go where they are going by map.route -- the proving ground's mazes are theirs, 100%.
+// The arena's script steered straight at the enemy tank, so a maze task asked the net to do the Commander's
+// work as well as its own. Under NAV the hybrid's rules follow the route sense to its goal: round a wall to
+// an enemy tank (the gun stays the script's); to an enemy pillbox until it is in the gun's reach and outside
+// its ring, then face it and shell it (through a wall that shuts it in, which falls); onto rubble, or a
+// point, to stand on it. The net corrects them, as it corrects the Commander in the game.
+#ifndef ERRAND
+#define ERRAND 1
+#endif
+__device__ void errand(const Tank& me, const Tank& en, const Arena& w, const Nav& nv, float* r) {
+    float wb = wrap(atan2f(me.navc[1] - me.y, me.navc[0] - me.x) - me.a);
+    float gx = nv.gx - me.x, gy = nv.gy - me.y, gd = sqrtf(gx * gx + gy * gy);
+    // The waypoint was the goal itself when the line to it was clear, or there was no way round (navc[7]).
+    bool straight = me.navc[7] > 0.5f;
+    if (nv.gx == en.x && nv.gy == en.y) {
+        if (!straight) { r[0] = fmaxf(-1.0f, fminf(1.0f, wb / 3.14159265f)); r[1] = 1.0f; }
+        return;
+    }
+    int q = -1;
+    for (int k = 0; k < PILLBOXES; k++)
+        if (fabsf(w.bx[k] - nv.gx) < 0.01f && fabsf(w.by[k] - nv.gy) < 0.01f) q = k;
+    if (q >= 0 && w.bhp[q] > 0.0f && w.bown[q] != me.side) {
+        if (straight && gd < GUN_RANGE) {
+            float pb = wrap(atan2f(gy, gx) - me.a);
+            r[0] = fmaxf(-1.0f, fminf(1.0f, pb / 3.14159265f));
+            r[1] = gd > GUN_RANGE - 0.5f ? 1.0f : 0.0f;
+            r[2] = fabsf(pb) < 0.08f ? 1.0f : -1.0f;
+        } else {
+            r[0] = fmaxf(-1.0f, fminf(1.0f, wb / 3.14159265f)); r[1] = 1.0f; r[2] = -1.0f;
+        }
+        return;
+    }
+    if (q >= 0 && w.bhp[q] > 0.0f) { r[1] = 0.0f; r[2] = -1.0f; return; }   // ours already: hold it
+    r[0] = fmaxf(-1.0f, fminf(1.0f, wb / 3.14159265f));
+    r[1] = gd > 0.8f ? 1.0f : 0.0f;
+    r[2] = -1.0f;
+}
+#endif
+
 // What a net-driven tank does. Returns 1 when the net's own say reached the tank.
-__device__ int decide(const float* __restrict__ wt, const Tank& me, const Tank& en, const Arena& w, float* in, float* out) {
-    sense(me, en, w, in);
+__device__ int decide(const float* __restrict__ wt, Tank& me, const Tank& en, const Arena& w, float* in, float* out, Nav* nv = nullptr) {
+#ifdef NAV
+    if (me.tick++ % NAV_SENSE == 0) {
+        if (nv && line_clear(me.x, me.y, nv->gx, nv->gy, w)) {
+            // The way is the straight line: no field needed (route_from's own answer when the line is clear).
+            float dx = nv->gx - me.x, dy = nv->gy - me.y;
+            me.navc[0] = nv->gx; me.navc[1] = nv->gy; me.navc[2] = sqrtf(dx * dx + dy * dy); me.navc[3] = 0.0f; me.navc[7] = 1.0f;
+        } else if (nv) {
+            float wx, wy, len;
+            bool walled;
+            nav_need(*nv);
+            route_from(*nv, w, me.x, me.y, &wx, &wy, &len, &walled);
+            me.navc[0] = wx; me.navc[1] = wy; me.navc[2] = len; me.navc[3] = walled ? 1.0f : 0.0f;
+            me.navc[7] = (wx == nv->gx && wy == nv->gy) ? 1.0f : 0.0f;
+        }
+        me.navc[4] = arc_free(me, w, -1.0f); me.navc[5] = arc_free(me, w, 0.0f); me.navc[6] = arc_free(me, w, 1.0f);
+    }
+#endif
+    sense(me, en, w, in, nv);
 #ifdef HYBRID
     float rules[3];
     scripted(me, en, YARDSTICK, w, rules);
+#if defined(NAV) && ERRAND
+    if (nv) errand(me, en, w, *nv, rules);
+#endif
     in[32] = rules[0]; in[33] = rules[1]; in[34] = rules[2];
     think(wt, in, out);
     bool open = out[3] > 0.0f;
 #pragma unroll
     for (int i = 0; i < 3; i++) out[i] = open ? fmaxf(-1.0f, fminf(1.0f, rules[i] + out[i])) : rules[i];
+#ifdef NAV
+    for (int m = 0; m < MEM; m++) me.mem[m] = out[NOUT_BASE + m];
+#endif
     return open ? 1 : 0;
 #else
     think(wt, in, out);
+#ifdef NAV
+    for (int m = 0; m < MEM; m++) me.mem[m] = out[NOUT_BASE + m];
+#endif
     return 1;
 #endif
 }
@@ -759,9 +1009,10 @@ __device__ int fly_world(Tank& t, Tank& en, Arena& w) {
         if (tp < hit) { hit = tp; what = 9; }
     }
 #ifdef FOREST
+    int wall = -1;
     for (int b = 0; b < w.nwall; b++) {
         float tb = ray_box(t.sx, t.sy, dx, dy, w.wx0[b], w.wy0[b], w.wx1[b], w.wy1[b]);
-        if (tb < hit) { hit = tb; what = 9; }
+        if (tb < hit) { hit = tb; what = 9; wall = b; }
     }
     // blocks_fire: a flat shot stops in the trees (past the half tile of a grove's edge it may skim). A
     // shell fired from deep in a grove stops where it starts, as treadcore refuses the shot outright.
@@ -789,6 +1040,14 @@ __device__ int fly_world(Tank& t, Tank& en, Arena& w) {
         return 0;
     }
     t.slife = 0.0f;
+#ifdef FOREST
+    // THE BREACH: a breakable wall (a walled base's, in a gauntlet) takes the shot and falls at WALL_HP.
+    if (what == 9 && wall >= 0 && w.whp[wall] > 0.0f) {
+        w.whp[wall] -= DAMAGE;
+        if (w.whp[wall] <= 0.0f) { w.wx0[wall] = w.wy0[wall] = 1e9f; w.wx1[wall] = w.wy1[wall] = -1e9f; w.changed = 1; }
+        return 0;
+    }
+#endif
     if (what == 1) { en.hp -= DAMAGE; return 1; }
     if (what == 2) { w.bhp[box] -= DAMAGE; return w.bhp[box] <= 0.0f ? 3 : 2; }
     return 0;
@@ -865,6 +1124,11 @@ __device__ void place(Tank& t, Rng& r, float x0, float x1, const Arena& w) {
 #ifdef WORLD
     t.shells = SHELLS;
 #endif
+#ifdef NAV
+    for (int m = 0; m < MEM; m++) t.mem[m] = 0.0f;
+    for (int k = 0; k < 8; k++) t.navc[k] = 0.0f;
+    t.tick = 0;
+#endif
 }
 
 // A duel's arena and both tanks' places, drawn from r: training's and the
@@ -887,6 +1151,8 @@ __device__ inline void lay_out(Arena& w, Tank& A, Tank& B, Rng& r) {
         w.wx0[b] = cx - (up ? 0.5f : 0.5f * len); w.wx1[b] = cx + (up ? 0.5f : 0.5f * len);
         w.wy0[b] = cy - (up ? 0.5f * len : 0.5f); w.wy1[b] = cy + (up ? 0.5f * len : 0.5f);
     }
+    for (int b = 0; b < WALLS; b++) w.whp[b] = -1.0f;
+    w.changed = 0;
     for (int k = 0; k < PILLBOXES; k++) w.bown[k] = -1;
     A.side = 0; B.side = 1;
 #endif
@@ -951,7 +1217,7 @@ struct Scen {
     int ngr, gr_near[G_GROVES], gr_toward[G_GROVES];
     float gr_off[G_GROVES][2], gr_away[G_GROVES], gr_r[G_GROVES];
     // A maze's walls: boxes about a place, [x0, x1] by [y0, y1] tiles from it (treadcore's [[terrain]]).
-    int nwall, w_near[12];
+    int nwall, w_near[12], w_break[12];
     float w_box[12][4];
     // The takeover: pillboxes that must end the learner's (a bit each), and one held this long.
     int captured, hold_pb;
@@ -961,14 +1227,23 @@ struct Scen {
     int hits_min, hits_on_max, alive, pb_dead, pb_dmg_max, standing_max, outscores, win;
     float armor_share;
     int reaction;                     // 0 fire, 1 move
+    // treadcore's `ends_near`: the learner ends within en_r tiles of a still point (the centre or a
+    // pillbox, and an offset): the route without the capture. en_r < 0 where a file does not ask it.
+    int en_near;
+    float en_off[2], en_r;
 };
 
 // A scenario played: what the judge reads at its end.
-struct ScenRun { int hits, hits_on, pb_on, took; float when, held, a0, d0; };
+struct ScenRun { int hits, hits_on, pb_on, took; float when, held, a0, d0, g0; };
 
 #ifdef WORLD
 // The goal a task is measured toward: its first pillbox when the file is about pillboxes, else the enemy.
 __device__ inline void scen_goal(const Scen& sc, const Arena& w, const Tank* T, float& gx, float& gy) {
+    if (sc.en_r > 0.0f) {
+        gx = (sc.en_near >= 10 ? w.bx[sc.en_near - 10] : 0.5f * ARENA) + sc.en_off[0];
+        gy = (sc.en_near >= 10 ? w.by[sc.en_near - 10] : 0.5f * ARENA) + sc.en_off[1];
+        return;
+    }
     bool pb = sc.npb > 0 && (sc.captured || sc.hold_pb >= 0 || sc.pb_dead || sc.standing_max >= 0 || sc.pb_dmg_max >= 0);
     gx = pb ? w.bx[0] : T[1].x; gy = pb ? w.by[0] : T[1].y;
 }
@@ -979,8 +1254,9 @@ __device__ void scen_setup(const Scen& sc, Rng& r, Arena& w, Tank* T, ScenRun& r
     for (int q = 0; q < PILLBOXES; q++) { w.bx[q] = -1000.0f; w.by[q] = -1000.0f; w.bhp[q] = 0.0f; w.brl[q] = 0.0f; }
 #ifdef FOREST
     for (int g = 0; g < GROVES; g++) { w.gx[g] = -1000.0f; w.gy[g] = -1000.0f; w.gr[g] = 0.0f; }
-    for (int b = 0; b < WALLS; b++) { w.wx0[b] = w.wy0[b] = 1e9f; w.wx1[b] = w.wy1[b] = -1e9f; }
+    for (int b = 0; b < WALLS; b++) { w.wx0[b] = w.wy0[b] = 1e9f; w.wx1[b] = w.wy1[b] = -1e9f; w.whp[b] = -1.0f; }
     w.nwall = 0;
+    w.changed = 0;
     for (int q = 0; q < PILLBOXES; q++) w.bown[q] = -1;
 #endif
     const float c = 0.5f * ARENA;
@@ -1029,7 +1305,15 @@ __device__ void scen_setup(const Scen& sc, Rng& r, Arena& w, Tank* T, ScenRun& r
         spot(sc.w_near[b], z, -1, 0.0f, px, py);
         w.wx0[b] = px + sc.w_box[b][0]; w.wx1[b] = px + sc.w_box[b][1];
         w.wy0[b] = py + sc.w_box[b][2]; w.wy1[b] = py + sc.w_box[b][3];
+        w.whp[b] = sc.w_break[b] ? WALL_HP : -1.0f;
         w.nwall = b + 1;
+    }
+#endif
+#ifdef NAV
+    for (int i = 0; i < 2; i++) {
+        for (int m = 0; m < MEM; m++) T[i].mem[m] = 0.0f;
+        for (int k = 0; k < 8; k++) T[i].navc[k] = 0.0f;
+        T[i].tick = 0;
     }
 #endif
     run.hits = run.hits_on = run.pb_on = run.took = 0;
@@ -1037,27 +1321,54 @@ __device__ void scen_setup(const Scen& sc, Rng& r, Arena& w, Tank* T, ScenRun& r
     float gx, gy;
     scen_goal(sc, w, T, gx, gy);
     run.d0 = sqrtf((T[0].x - gx) * (T[0].x - gx) + (T[0].y - gy) * (T[0].y - gy));
+    run.g0 = -1.0f;
 }
 
+#ifdef NAV
+// A run's route: the grid of its arena and the field toward its goal, again every NAV_EVERY steps (the
+// goal may be a tank that moves) or when a wall has fallen.
+__device__ void scen_nav(const Scen& sc, Arena& w, const Tank* T, Grid& g, Nav& nv, int t) {
+    if (t == 0 || w.changed) { nav_reset(w, g, nv, nullptr); w.changed = 0; }
+    scen_goal(sc, w, T, nv.gx, nv.gy);
+    nv.now = t;
+    // A task's goal mostly stands still (a pillbox, a point), so its field is made once a run; the run's
+    // progress along the route (run.g0, g1) reads it at the start and the end.
+    if (nv.gc < 0) nav_field(g, nv.gx, nv.gy, nv);
+}
+// The field brought up to the goal where it is now, for the run's last reading of its progress.
+__device__ inline void nav_fresh(Nav& nv) {
+    if (nv.gc != cell_of(nv.gx, nv.gy)) nav_field(*nv.g, nv.gx, nv.gy, nv);
+}
+// The steps of the route from a place to the goal, in tiles; -1 when there is no way.
+__device__ inline float geo_of(const Nav& nv, float x, float y) {
+    int d = nv.d[cell_of(x, y)];
+    return d >= 255 ? -1.0f : d * CELL;
+}
+#endif
+
 // One step of a file: the learner (seat 0) by `net`, the other seat by its file's brain.
-__device__ void scen_step(const Scen& sc, const float* net, Arena& w, Tank* T, float* in, float* actA, float* actB, ScenRun& run, int t) {
+__device__ int scen_step(const Scen& sc, const float* net, Arena& w, Tank* T, float* in, float* actA, float* actB, ScenRun& run, int t, Nav* nv = nullptr) {
     Tank& A = T[0];
     Tank& B = T[1];
     for (int i = 0; i < NOUT; i++) { actA[i] = 0.0f; actB[i] = 0.0f; }
     actA[2] = actB[2] = -1.0f;
-    if (A.hp > 0.0f) decide(net, A, B, w, in, actA);
+    if (A.hp > 0.0f) decide(net, A, B, w, in, actA, nv);
     if (B.hp > 0.0f && sc.brain[1] >= 0) scripted(B, A, Skill{0.12f, 8.0f, sc.brain[1]}, w, actB);
     float shells = A.shells;
     drive(A, actA, w);
     drive(B, actB, w);
     if (run.when < 0.0f && ((sc.reaction == 0 && A.shells < shells) || (sc.reaction == 1 && A.v > 0.5f))) run.when = t * DT;
-    if (fly_world(A, B, w) == 1) run.hits++;
-    if (fly_world(B, A, w) == 1) run.hits_on++;
-    run.pb_on += guns(w, A, B);
+    int fa = fly_world(A, B, w), fb = fly_world(B, A, w);
+    if (fa == 1) run.hits++;
+    if (fb == 1) run.hits_on++;
+    int pa = guns(w, A, B);
+    run.pb_on += pa;
 #ifdef FOREST
     run.took += takeover(w, A, B);
     if (sc.hold_pb >= 0 && w.bhp[sc.hold_pb] > 0.0f && w.bown[sc.hold_pb] == 0) run.held += DT;
 #endif
+    // What the shells and the pillboxes did this step, for a trace: A's shell, B's, pillbox shots on A.
+    return fa | (fb << 2) | (min(pa, 3) << 4);
 }
 
 // Did the run do what its file asks?
@@ -1079,6 +1390,11 @@ __device__ bool scen_judge(const Scen& sc, const Arena& w, const Tank* T, const 
     if (sc.armor_share >= 0.0f) ok = ok && A.hp >= sc.armor_share * run.a0 - 1e-3f;
     if (sc.outscores >= 0) ok = ok && run.hits > run.hits_on;
     if (sc.win >= 0) ok = ok && B.hp <= 0.0f && A.hp > 0.0f;
+    if (sc.en_r > 0.0f) {
+        float gx, gy;
+        scen_goal(sc, w, T, gx, gy);
+        ok = ok && (A.x - gx) * (A.x - gx) + (A.y - gy) * (A.y - gy) <= sc.en_r * sc.en_r;
+    }
 #ifdef FOREST
     for (int q = 0; q < PILLBOXES; q++)
         if (sc.captured & (1 << q)) ok = ok && w.bhp[q] > 0.0f && w.bown[q] == 0;
@@ -1093,11 +1409,15 @@ __device__ bool scen_judge(const Scen& sc, const Arena& w, const Tank* T, const 
 // (navigation, the maze's signal, which a pass alone gives too seldom to learn from) -- and for the
 // game's score, as a duel is: hits given less taken, a pillbox taken, held ground.
 #define TASK_PASS 3.0f
-__device__ float scen_fitness(const Scen& sc, const Arena& w, const Tank* T, const ScenRun& run, bool pass) {
+__device__ float scen_fitness(const Scen& sc, const Arena& w, const Tank* T, const ScenRun& run, bool pass, float g1 = -1.0f) {
     float gx, gy;
     scen_goal(sc, w, T, gx, gy);
     float d1 = sqrtf((T[0].x - gx) * (T[0].x - gx) + (T[0].y - gy) * (T[0].y - gy));
     float progress = run.d0 > 1.0f ? fminf(fmaxf((run.d0 - d1) / run.d0, -1.0f), 1.0f) : 0.0f;
+    // THE WAY CLOSED ALONG THE ROUTE, NOT THE CROW'S LINE (NAV): in the S maze the straight line to the
+    // goal is the wrong way, and paying it taught a net to press against the first wall. Paid along the
+    // route's steps (a potential, as Ng, Harada and Russell's shaping is), the detour is progress.
+    if (run.g0 > 0.0f && g1 >= 0.0f) progress = fminf(fmaxf((run.g0 - g1) / run.g0, -1.0f), 1.0f);
     float f = (pass ? TASK_PASS : 0.0f) + progress + (float)run.hits - (float)run.hits_on - 0.33f * run.pb_on;
 #ifdef FOREST
     f += SCORE_CAPTURE_W * run.took + SCORE_HOLD_W * (run.held / HOLD_EVERY_S) + SCORE_KILL_W * (T[1].hp <= 0.0f ? 1.0f : 0.0f);
@@ -1192,12 +1512,27 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
         scen_setup(sc, r, w, T, run);
         float tin[NIN], ta[NOUT], tb[NOUT];
         int st = (int)(sc.seconds / DT + 0.5f), t = 0;
+        float g1 = -1.0f;
+#ifdef NAV
+        Grid tg;
+        Nav tn;
+#endif
         for (; t < st && T[0].hp > 0.0f; t++) {
+#ifdef NAV
+            scen_nav(sc, w, T, tg, tn, t);
+            if (t == 0) run.g0 = geo_of(tn, T[0].x, T[0].y);
+            scen_step(sc, wA, w, T, tin, ta, tb, run, t, &tn);
+#else
             scen_step(sc, wA, w, T, tin, ta, tb, run, t);
+#endif
             if (sc.early && t % 5 == 4 && scen_judge(sc, w, T, run)) break;
         }
+#ifdef NAV
+        nav_fresh(tn);
+        g1 = geo_of(tn, T[0].x, T[0].y);
+#endif
         bool ok = scen_judge(sc, w, T, run);
-        atomicAdd(&score, scen_fitness(sc, w, T, run, ok));
+        atomicAdd(&score, scen_fitness(sc, w, T, run, ok, g1));
         atomicAdd(&tot->steps, (unsigned long long)(2 * t));
         atomicAdd(&tot->tasks, 1u);
         if (ok) atomicAdd(&tot->tasks_passed, 1u);
@@ -1216,11 +1551,26 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
     float held_s = 0.0f;
 #endif
     int t = 0;
+#ifdef NAV
+    Grid grid;
+    Nav navA, navB;
+#endif
     for (; t < steps; t++) {
         if (A.hp <= 0.0f || B.hp <= 0.0f) break;
+#ifdef NAV
+        if (t == 0 || w.changed) { nav_reset(w, grid, navA, &navB); w.changed = 0; }
+        navA.gx = B.x; navA.gy = B.y; navA.now = t;
+        navB.gx = A.x; navB.gy = A.y; navB.now = t;
+        opened += decide(wA, A, B, w, in, actA, &navA);
+#else
         opened += decide(wA, A, B, w, in, actA);
+#endif
         aim += in[29] > 0.0f ? in[29] * (in[28] * in[28] < 0.01f ? 1.0f : 0.2f) : 0.0f;
+#ifdef NAV
+        if (net_opp) decide(wB, B, A, w, in, actB, &navB);
+#else
         if (net_opp) decide(wB, B, A, w, in, actB);
+#endif
         else scripted(B, A, skill, w, actB);
         drive(A, actA, w);
         drive(B, actB, w);
@@ -1383,15 +1733,30 @@ __global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ c
     float* out = rec + (size_t)d * steps * TREC;
     float* thought = mind + (size_t)d * steps * TNET;
     int t = 0;
+#ifdef NAV
+    Grid grid;
+    Nav navA, navB;
+#endif
     for (; t < steps; t++) {
         if (A.hp <= 0.0f || B.hp <= 0.0f) break;
+#ifdef NAV
+        if (t == 0 || w.changed) { nav_reset(w, grid, navA, &navB); w.changed = 0; }
+        navA.gx = B.x; navA.gy = B.y; navA.now = t;
+        navB.gx = A.x; navB.gy = A.y; navB.now = t;
+        decide(champ, A, B, w, in, actA, &navA);
+#else
         decide(champ, A, B, w, in, actA);
+#endif
         aim += in[29] > 0.0f ? in[29] * (in[28] * in[28] < 0.01f ? 1.0f : 0.2f) : 0.0f;
         // The mind before the opponent's turn reuses `in`.
         float* m = thought + (size_t)t * TNET;
         for (int i = 0; i < NIN; i++) m[i] = in[i];
         for (int k = 0; k < NOUT; k++) m[NIN + k] = actA[k];
+#ifdef NAV
+        if (opp) decide(opp, B, A, w, in, actB, &navB);
+#else
         if (opp) decide(opp, B, A, w, in, actB);
+#endif
         else scripted(B, A, skill, w, actB);
         drive(A, actA, w);
         drive(B, actB, w);
@@ -1417,6 +1782,68 @@ __global__ void __launch_bounds__(256, 1) trace_play(const float* __restrict__ c
     fit[d] = dealt - taken + (won ? 2.0f : 0.0f) - (lost ? 2.0f : 0.0f) + (drew ? drawv : 0.0f) + 0.5f * aim / steps;
 }
 
+// ---- the maze's film: a champion's runs of one gauntlet file, every step (6 November) ----------------
+// `--trace OUT --trace-scen FILE --champions C`: --trace-duels runs of FILE, each its own dice (the run's
+// index), written as --trace writes duels, so montage.py draws them: the arena, its walls and groves from
+// the first run, every run a ghost and one followed.
+__global__ void __launch_bounds__(256, 1) trace_scen_play(const float* __restrict__ champ, const Scen* __restrict__ scp, int steps, uint32_t seed,
+                                                          float* rec, int* outcome, int* lasted, float* fit, int* opp_of, float* arena_out, float* mind) {
+    int d = threadIdx.x;
+    const Scen& sc = *scp;
+    Rng r{mix(mix(seed, 0x6a17u), (uint32_t)d + 1u)};
+    Arena w;
+    Tank T[2];
+    ScenRun run;
+    scen_setup(sc, r, w, T, run);
+    opp_of[d] = sc.brain[1] >= 0 ? -1 - sc.brain[1] : -1;
+    if (d == 0) {
+        for (int p = 0; p < PILLARS; p++) { arena_out[p] = w.px[p]; arena_out[PILLARS + p] = w.py[p]; arena_out[2 * PILLARS + p] = w.pr[p]; }
+        for (int k = 0; k < PILLBOXES; k++) { arena_out[3 * PILLARS + k] = w.bx[k]; arena_out[3 * PILLARS + PILLBOXES + k] = w.by[k]; }
+#ifdef FOREST
+        for (int g = 0; g < GROVES; g++) {
+            arena_out[3 * PILLARS + 2 * PILLBOXES + g] = w.gx[g];
+            arena_out[3 * PILLARS + 2 * PILLBOXES + GROVES + g] = w.gy[g];
+            arena_out[3 * PILLARS + 2 * PILLBOXES + 2 * GROVES + g] = w.gr[g];
+        }
+        for (int b = 0; b < WALLS; b++) {
+            float* o = arena_out + 3 * PILLARS + 2 * PILLBOXES + 3 * GROVES + 4 * b;
+            o[0] = w.wx0[b]; o[1] = w.wy0[b]; o[2] = w.wx1[b]; o[3] = w.wy1[b];
+        }
+#endif
+    }
+    float in[NIN], actA[NOUT], actB[NOUT];
+    float* out = rec + (size_t)d * steps * TREC;
+    float* thought = mind + (size_t)d * steps * TNET;
+    int t = 0, st = min(steps, (int)(sc.seconds / DT + 0.5f));
+#ifdef NAV
+    Grid g;
+    Nav nv;
+#endif
+    for (; t < st && T[0].hp > 0.0f; t++) {
+#ifdef NAV
+        scen_nav(sc, w, T, g, nv, t);
+        int code = scen_step(sc, champ, w, T, in, actA, actB, run, t, &nv);
+#else
+        int code = scen_step(sc, champ, w, T, in, actA, actB, run, t);
+#endif
+        float* m = thought + (size_t)t * TNET;
+        for (int i = 0; i < NIN; i++) m[i] = in[i];
+        for (int k = 0; k < NOUT; k++) m[NIN + k] = actA[k];
+        float* o = out + (size_t)t * TREC;
+        const Tank& A = T[0];
+        const Tank& B = T[1];
+        o[0] = A.x; o[1] = A.y; o[2] = A.a; o[3] = A.hp; o[4] = A.sx; o[5] = A.sy; o[6] = A.slife;
+        o[7] = B.x; o[8] = B.y; o[9] = B.a; o[10] = B.hp; o[11] = B.sx; o[12] = B.sy; o[13] = B.slife;
+        for (int k = 0; k < PILLBOXES; k++) o[14 + k] = w.bhp[k];
+        o[18] = (float)(code & 3); o[19] = (float)((code >> 2) & 3); o[20] = (float)((code >> 4) & 3); o[21] = 0.0f;
+        if (sc.early && t % 5 == 4 && scen_judge(sc, w, T, run)) { t++; break; }
+    }
+    bool ok = scen_judge(sc, w, T, run);
+    lasted[d] = t;
+    outcome[d] = ok ? 1 : -1;
+    fit[d] = scen_fitness(sc, w, T, run, ok);
+}
+
 __global__ void __launch_bounds__(256, 1) gauntlet_play(const float* __restrict__ net, const Scen* __restrict__ scen, int runs, uint32_t seed,
                                                         unsigned int* passed, float* react, unsigned char* pass_of) {
     extern __shared__ float wsh[];
@@ -1431,8 +1858,17 @@ __global__ void __launch_bounds__(256, 1) gauntlet_play(const float* __restrict_
         scen_setup(sc, r, w, T, run);
         float in[NIN], actA[NOUT], actB[NOUT];
         int steps = (int)(sc.seconds / DT + 0.5f);
+#ifdef NAV
+        Grid tg;
+        Nav tn;
+#endif
         for (int t = 0; t < steps && T[0].hp > 0.0f; t++) {
+#ifdef NAV
+            scen_nav(sc, w, T, tg, tn, t);
+            scen_step(sc, wsh, w, T, in, actA, actB, run, t, &tn);
+#else
             scen_step(sc, wsh, w, T, in, actA, actB, run, t);
+#endif
             if (sc.early && t % 5 == 4 && scen_judge(sc, w, T, run)) break;
         }
         bool ok = scen_judge(sc, w, T, run);
@@ -1490,7 +1926,7 @@ struct Opt {
     int trace_duels = 64;
     uint32_t trace_seed = 7;
     float trace_spread = 0.0f;
-    std::string gauntlet = "", gauntlet_out = "", gauntlet_ref = "";
+    std::string gauntlet = "", gauntlet_out = "", gauntlet_ref = "", trace_scen = "";
     int gauntlet_runs = 256;
     std::string tasks = "";
     float task_p = 0.25f;
@@ -1551,7 +1987,7 @@ static std::string shape(Dims d) {
 // H that fits. False when none does.
 static bool dims_of(long nw, Dims* out) {
     if (nw == nw_of(HERE)) { *out = HERE; return true; }
-    static const int kinds[4][2] = {{32, 3}, {35, 4}, {52, 3}, {55, 4}};
+    static const int kinds[6][2] = {{32, 3}, {35, 4}, {52, 3}, {55, 4}, {61, 5}, {64, 6}};
     for (auto& k : kinds)
         for (int h = 1; h <= 512; h++) {
             Dims d = {k[0], h, k[1]};
@@ -1568,10 +2004,13 @@ static bool dims_of(long nw, Dims* out) {
 // senses into a net without them), and the widening is refused.
 static int input_to(int i, Dims s) {
     if (i < 32) return i;
-    bool s_rules = s.nin == 35 || s.nin == 55;
+    bool s_rules = s.nin == 35 || s.nin == 55 || s.nin == 64;
     if (s_rules && i < 35) return RULES_IN ? i : -1;
     int at = s_rules ? 35 : 32;
-    return WORLD_IN ? AT_WORLD + (i - at) : -1;
+    int s_world = (s.nin == 52 || s.nin == 55 || s.nin == 61 || s.nin == 64) ? 20 : 0;
+    if (i < at + s_world) return WORLD_IN ? AT_WORLD + (i - at) : -1;
+    // A maze net's route, arcs and memory (NAV), after the world's twenty.
+    return NAV_IN ? AT_NAV + (i - at - s_world) : -1;
 }
 
 // One net of shape `s` into this build's layout, every new weight zero: a
@@ -1598,7 +2037,8 @@ static const char* widen(const float* src, Dims s, float* dst) {
         b3[k] = sb3[k];
     }
 #ifdef HYBRID
-    if (s.nout < NOUT) b3[NOUT - 1] = -0.5f;
+    // The confidence is output 3 (the memory, when there is one, comes after it and starts at 0).
+    if (s.nout < 4) b3[3] = -0.5f;
 #endif
     return nullptr;
 }
@@ -1635,98 +2075,6 @@ static std::vector<std::string> split(const std::string& s) {
     return v;
 }
 
-// --trace: the file montage.py reads. A header of ints -- the mark 0x63747231
-// ("ctr1"), the version, champions, duels, steps, TREC, PILLARS, PILLBOXES, NW
-// -- then floats DT, ARENA, HP, PB_HEALTH, GUN_RANGE, PB_RANGE; the arena
-// (pillars' x, y, r, pillboxes' x, y); each duel's opponent (-1 - style a
-// sparring partner of that style, 0 the script to 4 Timid; else the --opponents index); then for each champion its duels'
-// outcomes (1 won, -1 lost, 0 drawn), steps played and fitness, and every
-// step of every duel, TREC floats. A duel that ends early stops there: its
-// later steps are zero, and `steps played` says where. Version 2: after the
-// floats, the net's NIN, H and NOUT as ints, and after each champion's steps
-// its mind, TNET floats a step of every duel.
-static int run_trace(const Opt& o) {
-#ifndef WORLD
-    fprintf(stderr, "--trace is for the WORLD build: make WORLD=1\n");
-    return 2;
-#else
-    std::vector<std::string> cs = split(o.champs), os = split(o.opps);
-    int nd = o.trace_duels;
-    if (cs.empty() || nd < 1 || nd > 256) { fprintf(stderr, "--trace needs --champions, and 1 to 256 --trace-duels\n"); return 2; }
-    std::vector<float> champs, opps;
-    for (auto& path : cs) {
-        std::vector<float> w; std::string note;
-        if (!read_champion(path, w, &note)) { fprintf(stderr, "%s: not a champion of this net\n", path.c_str()); return 1; }
-        champs.insert(champs.end(), w.begin(), w.end());
-    }
-    for (auto& path : os) {
-        std::vector<float> w; std::string note;
-        if (!read_champion(path, w, &note)) { fprintf(stderr, "%s: not a champion of this net\n", path.c_str()); return 1; }
-        opps.insert(opps.end(), w.begin(), w.end());
-    }
-    size_t recn = (size_t)nd * o.steps * TREC, mindn = (size_t)nd * o.steps * TNET;
-    float *d_ch, *d_op = nullptr, *d_rec, *d_fit, *d_ar, *d_mind;
-    int *d_out, *d_last, *d_opp;
-    CK(cudaMalloc(&d_ch, champs.size() * sizeof(float)));
-    CK(cudaMemcpy(d_ch, champs.data(), champs.size() * sizeof(float), cudaMemcpyHostToDevice));
-    if (!opps.empty()) {
-        CK(cudaMalloc(&d_op, opps.size() * sizeof(float)));
-        CK(cudaMemcpy(d_op, opps.data(), opps.size() * sizeof(float), cudaMemcpyHostToDevice));
-    }
-    CK(cudaMalloc(&d_rec, recn * sizeof(float)));
-    CK(cudaMalloc(&d_mind, mindn * sizeof(float)));
-    CK(cudaMalloc(&d_fit, nd * sizeof(float)));
-    CK(cudaMalloc(&d_ar, ARENA_REC * sizeof(float)));
-    CK(cudaMalloc(&d_out, nd * sizeof(int)));
-    CK(cudaMalloc(&d_last, nd * sizeof(int)));
-    CK(cudaMalloc(&d_opp, nd * sizeof(int)));
-    FILE* f = fopen(o.trace.c_str(), "wb");
-    if (!f) { perror(o.trace.c_str()); return 1; }
-    int hdr[9] = {0x63747231, TRACE_VERSION, (int)cs.size(), nd, o.steps, TREC, PILLARS, PILLBOXES, NW};
-    float con[6] = {DT, ARENA, HP, PB_HEALTH, GUN_RANGE, PB_RANGE};
-    int shape[3] = {NIN, H, NOUT};
-    fwrite(hdr, sizeof(int), 9, f);
-    fwrite(con, sizeof(float), 6, f);
-    fwrite(shape, sizeof(int), 3, f);
-#ifdef FOREST
-    int more[2] = {GROVES, WALLS};
-    fwrite(more, sizeof(int), 2, f);
-#endif
-    std::vector<float> rec(recn), mind(mindn), fit(nd), ar(ARENA_REC);
-    std::vector<int> out(nd), last(nd), opp(nd);
-    for (size_t c = 0; c < cs.size(); c++) {
-        CK(cudaMemset(d_rec, 0, recn * sizeof(float)));
-        CK(cudaMemset(d_mind, 0, mindn * sizeof(float)));
-        trace_play<<<1, nd>>>(d_ch + c * NW, d_op, (int)os.size(), o.steps, o.trace_seed, o.draw, o.trace_spread, d_rec, d_out, d_last, d_fit, d_opp, d_ar, d_mind);
-        CK(cudaGetLastError());
-        CK(cudaDeviceSynchronize());
-        CK(cudaMemcpy(rec.data(), d_rec, recn * sizeof(float), cudaMemcpyDeviceToHost));
-        CK(cudaMemcpy(mind.data(), d_mind, mindn * sizeof(float), cudaMemcpyDeviceToHost));
-        CK(cudaMemcpy(fit.data(), d_fit, nd * sizeof(float), cudaMemcpyDeviceToHost));
-        CK(cudaMemcpy(out.data(), d_out, nd * sizeof(int), cudaMemcpyDeviceToHost));
-        CK(cudaMemcpy(last.data(), d_last, nd * sizeof(int), cudaMemcpyDeviceToHost));
-        if (c == 0) {
-            CK(cudaMemcpy(ar.data(), d_ar, ar.size() * sizeof(float), cudaMemcpyDeviceToHost));
-            CK(cudaMemcpy(opp.data(), d_opp, nd * sizeof(int), cudaMemcpyDeviceToHost));
-            fwrite(ar.data(), sizeof(float), ar.size(), f);
-            fwrite(opp.data(), sizeof(int), nd, f);
-        }
-        fwrite(out.data(), sizeof(int), nd, f);
-        fwrite(last.data(), sizeof(int), nd, f);
-        fwrite(fit.data(), sizeof(float), nd, f);
-        fwrite(rec.data(), sizeof(float), recn, f);
-        fwrite(mind.data(), sizeof(float), mindn, f);
-        int w = 0, l = 0;
-        for (int d = 0; d < nd; d++) { w += out[d] == 1; l += out[d] == -1; }
-        printf("# trace %s: %d duels, %d won, %d lost, %d drawn\n", cs[c].c_str(), nd, w, l, nd - w - l);
-    }
-    fclose(f);
-    return 0;
-#endif
-}
-
-
-#ifdef WORLD
 #ifdef WORLD
 // ---- the gauntlet's files ------------------------------------------------------------------------
 //
@@ -1814,6 +2162,8 @@ static bool gauntlet_file(const std::string& path, GFile& g, std::string* why) {
     sc.hits_min = sc.hits_on_max = sc.alive = sc.pb_dmg_max = sc.standing_max = sc.outscores = sc.win = -1;
     sc.armor_share = -1.0f;
     sc.hold_pb = -1;
+    sc.en_near = G_CENTRE;
+    sc.en_r = -1.0f;
     auto& top = t[0].kv;
     g.name = unq(top["name"]);
     g.reaction = top.count("reaction") ? unq(top["reaction"]) : "fire";
@@ -1861,6 +2211,9 @@ static bool gauntlet_file(const std::string& path, GFile& g, std::string* why) {
             sc.w_near[n] = kv.count("near") ? place_of(kv["near"]) : G_CENTRE;
             sc.w_box[n][0] = std::min(xs[0], xs[1]); sc.w_box[n][1] = std::max(xs[0], xs[1]);
             sc.w_box[n][2] = std::min(ys[0], ys[1]); sc.w_box[n][3] = std::max(ys[0], ys[1]);
+            // treadcore's walls fall to the mortar's splash; crucible's tanks have no mortar, so a walled
+            // base's walls are marked `breakable` and two direct hits stand in for it (WALL_HP).
+            sc.w_break[n] = kv.count("breakable") && unq(kv["breakable"]) == "true";
             continue;
         }
         if (kind == "tank") {
@@ -1924,6 +2277,14 @@ static bool gauntlet_file(const std::string& path, GFile& g, std::string* why) {
                     // treadcore's words for the takeover: the pillbox became seat 0's.
                     if (atoi(m["seat"].c_str()) != 0) { *why = "pillbox_owned_by a seat other than the learner's"; return false; }
                     sc.captured |= 1 << atoi(m["pillbox"].c_str());
+                }
+                else if (e.first == "ends_near") {
+                    // `ends_near = { seat = 0, at = "centre", offset = [x, y], within = r }`, treadcore's words.
+                    // The run may end when it is met, so "ends" is where it arrived.
+                    sc.en_near = m.count("at") ? place_of(m["at"]) : G_CENTRE;
+                    if (atoi(m["seat"].c_str()) != 0 || (sc.en_near >= 0 && sc.en_near < 10)) { *why = "ends_near: seat 0, and a point that stands still"; return false; }
+                    if (m.count("offset") && !pair_of(m["offset"], sc.en_off)) { *why = "ends_near: offset"; return false; }
+                    sc.en_r = m.count("within") ? (float)atof(m["within"].c_str()) : 2.0f;
                 }
                 else if (e.first == "hold") { sc.hold_pb = atoi(m["pillbox"].c_str()); sc.hold_s = (float)atof(m["seconds"].c_str()); }
                 else { *why = "an expectation this arena does not keep: " + e.first; return false; }
@@ -2052,6 +2413,110 @@ static std::string base_of(const std::string& path) {
     return b.size() > 4 && b.substr(b.size() - 4) == ".bin" ? b.substr(0, b.size() - 4) : b;
 }
 #endif
+
+// --trace: the file montage.py reads. A header of ints -- the mark 0x63747231
+// ("ctr1"), the version, champions, duels, steps, TREC, PILLARS, PILLBOXES, NW
+// -- then floats DT, ARENA, HP, PB_HEALTH, GUN_RANGE, PB_RANGE; the arena
+// (pillars' x, y, r, pillboxes' x, y); each duel's opponent (-1 - style a
+// sparring partner of that style, 0 the script to 4 Timid; else the --opponents index); then for each champion its duels'
+// outcomes (1 won, -1 lost, 0 drawn), steps played and fitness, and every
+// step of every duel, TREC floats. A duel that ends early stops there: its
+// later steps are zero, and `steps played` says where. Version 2: after the
+// floats, the net's NIN, H and NOUT as ints, and after each champion's steps
+// its mind, TNET floats a step of every duel.
+static int run_trace(const Opt& o) {
+#ifndef WORLD
+    fprintf(stderr, "--trace is for the WORLD build: make WORLD=1\n");
+    return 2;
+#else
+    std::vector<std::string> cs = split(o.champs), os = split(o.opps);
+    int nd = o.trace_duels;
+    if (cs.empty() || nd < 1 || nd > 256) { fprintf(stderr, "--trace needs --champions, and 1 to 256 --trace-duels\n"); return 2; }
+    std::vector<float> champs, opps;
+    for (auto& path : cs) {
+        std::vector<float> w; std::string note;
+        if (!read_champion(path, w, &note)) { fprintf(stderr, "%s: not a champion of this net\n", path.c_str()); return 1; }
+        champs.insert(champs.end(), w.begin(), w.end());
+    }
+    for (auto& path : os) {
+        std::vector<float> w; std::string note;
+        if (!read_champion(path, w, &note)) { fprintf(stderr, "%s: not a champion of this net\n", path.c_str()); return 1; }
+        opps.insert(opps.end(), w.begin(), w.end());
+    }
+    size_t recn = (size_t)nd * o.steps * TREC, mindn = (size_t)nd * o.steps * TNET;
+    // --trace-scen: the runs of one gauntlet file instead of duels.
+    Scen* d_scen = nullptr;
+    if (!o.trace_scen.empty()) {
+        GFile g;
+        std::string why;
+        if (!gauntlet_file(o.trace_scen, g, &why)) { fprintf(stderr, "%s: %s\n", o.trace_scen.c_str(), why.c_str()); return 1; }
+        CK(cudaMalloc(&d_scen, sizeof(Scen)));
+        CK(cudaMemcpy(d_scen, &g.sc, sizeof(Scen), cudaMemcpyHostToDevice));
+        printf("# trace of %s: %s\n", o.trace_scen.c_str(), g.name.c_str());
+    }
+    float *d_ch, *d_op = nullptr, *d_rec, *d_fit, *d_ar, *d_mind;
+    int *d_out, *d_last, *d_opp;
+    CK(cudaMalloc(&d_ch, champs.size() * sizeof(float)));
+    CK(cudaMemcpy(d_ch, champs.data(), champs.size() * sizeof(float), cudaMemcpyHostToDevice));
+    if (!opps.empty()) {
+        CK(cudaMalloc(&d_op, opps.size() * sizeof(float)));
+        CK(cudaMemcpy(d_op, opps.data(), opps.size() * sizeof(float), cudaMemcpyHostToDevice));
+    }
+    CK(cudaMalloc(&d_rec, recn * sizeof(float)));
+    CK(cudaMalloc(&d_mind, mindn * sizeof(float)));
+    CK(cudaMalloc(&d_fit, nd * sizeof(float)));
+    CK(cudaMalloc(&d_ar, ARENA_REC * sizeof(float)));
+    CK(cudaMalloc(&d_out, nd * sizeof(int)));
+    CK(cudaMalloc(&d_last, nd * sizeof(int)));
+    CK(cudaMalloc(&d_opp, nd * sizeof(int)));
+    FILE* f = fopen(o.trace.c_str(), "wb");
+    if (!f) { perror(o.trace.c_str()); return 1; }
+    int hdr[9] = {0x63747231, TRACE_VERSION, (int)cs.size(), nd, o.steps, TREC, PILLARS, PILLBOXES, NW};
+    float con[6] = {DT, ARENA, HP, PB_HEALTH, GUN_RANGE, PB_RANGE};
+    int shape[3] = {NIN, H, NOUT};
+    fwrite(hdr, sizeof(int), 9, f);
+    fwrite(con, sizeof(float), 6, f);
+    fwrite(shape, sizeof(int), 3, f);
+#ifdef FOREST
+    int more[2] = {GROVES, WALLS};
+    fwrite(more, sizeof(int), 2, f);
+#endif
+    std::vector<float> rec(recn), mind(mindn), fit(nd), ar(ARENA_REC);
+    std::vector<int> out(nd), last(nd), opp(nd);
+    for (size_t c = 0; c < cs.size(); c++) {
+        CK(cudaMemset(d_rec, 0, recn * sizeof(float)));
+        CK(cudaMemset(d_mind, 0, mindn * sizeof(float)));
+        if (d_scen) trace_scen_play<<<1, nd>>>(d_ch + c * NW, d_scen, o.steps, o.trace_seed, d_rec, d_out, d_last, d_fit, d_opp, d_ar, d_mind);
+        else trace_play<<<1, nd>>>(d_ch + c * NW, d_op, (int)os.size(), o.steps, o.trace_seed, o.draw, o.trace_spread, d_rec, d_out, d_last, d_fit, d_opp, d_ar, d_mind);
+        CK(cudaGetLastError());
+        CK(cudaDeviceSynchronize());
+        CK(cudaMemcpy(rec.data(), d_rec, recn * sizeof(float), cudaMemcpyDeviceToHost));
+        CK(cudaMemcpy(mind.data(), d_mind, mindn * sizeof(float), cudaMemcpyDeviceToHost));
+        CK(cudaMemcpy(fit.data(), d_fit, nd * sizeof(float), cudaMemcpyDeviceToHost));
+        CK(cudaMemcpy(out.data(), d_out, nd * sizeof(int), cudaMemcpyDeviceToHost));
+        CK(cudaMemcpy(last.data(), d_last, nd * sizeof(int), cudaMemcpyDeviceToHost));
+        if (c == 0) {
+            CK(cudaMemcpy(ar.data(), d_ar, ar.size() * sizeof(float), cudaMemcpyDeviceToHost));
+            CK(cudaMemcpy(opp.data(), d_opp, nd * sizeof(int), cudaMemcpyDeviceToHost));
+            fwrite(ar.data(), sizeof(float), ar.size(), f);
+            fwrite(opp.data(), sizeof(int), nd, f);
+        }
+        fwrite(out.data(), sizeof(int), nd, f);
+        fwrite(last.data(), sizeof(int), nd, f);
+        fwrite(fit.data(), sizeof(float), nd, f);
+        fwrite(rec.data(), sizeof(float), recn, f);
+        fwrite(mind.data(), sizeof(float), mindn, f);
+        int w = 0, l = 0;
+        for (int d = 0; d < nd; d++) { w += out[d] == 1; l += out[d] == -1; }
+        printf("# trace %s: %d duels, %d won, %d lost, %d drawn\n", cs[c].c_str(), nd, w, l, nd - w - l);
+    }
+    fclose(f);
+    return 0;
+#endif
+}
+
+
+#ifdef WORLD
 #endif
 
 static double now() { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
@@ -2095,6 +2560,7 @@ int main(int argc, char** argv) {
         else if (a == "--gauntlet-runs") o.gauntlet_runs = atoi(val());
         else if (a == "--gauntlet-seed") o.gauntlet_seed = (uint32_t)atol(val());
         else if (a == "--tasks") o.tasks = val();
+        else if (a == "--trace-scen") o.trace_scen = val();
         else if (a == "--task-p") o.task_p = (float)atof(val());
         else usage();
     }

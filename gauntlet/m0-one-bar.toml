@@ -1,0 +1,32 @@
+# The CUDA gauntlet, the maze's first step (crucible, 6 November; the curriculum: Gomez and Miikkulainen's
+# incremental evolution, a task made harder one step at a time). One bar of wall between the tank and the
+# enemy's pillbox: the straight line is shut, the way round is one corner. Passed: the pillbox is the
+# tank's within 40 s.
+name = "M0 one bar: round the corner to the pillbox"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 40
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-12, 0]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [-28, 28]
+[[pillbox]]
+near = "centre"
+offset = [10, 0]
+owner = 1
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-1, 0]
+y = [-8, 8]
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }
