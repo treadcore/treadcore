@@ -143,11 +143,11 @@ weights! {
     // Memory (LR 5).
     ForgetFor "forget_for" 120.0, "memory: seconds a given-up target stays given up";
     // Crossings and islands (LR 6.2).
-    BridgeSoft "bridge_soft" 6.0, "crossing: a bridge this long or shorter costs no extra";
+    BridgeSoft "bridge_soft" 24.0, "crossing: a bridge this long or shorter costs no extra";
     LongBridge "k_long" 0.5, "crossing: the square cost of each tile past bridge_soft";
     BoatCost "c_boat" 5.0, "crossing: a boat's price in material";
     Launch "t_launch" 3.0, "crossing: the launch and the landing, in material";
-    TreesPerMaterial "tree_material" 4.0, "crossing: material a tree gives";
+    TreesPerMaterial "tree_material" 1.0, "crossing: material a tree gives";
     ForestNeed "forest_need" 12.0, "island: trees a base will ask for";
     SiteForest "w_site_forest" 1.0, "island: a base site's worth of trees enough";
     SiteSmall "w_site_small" 1.0, "island: a base site's cost of a small island";
@@ -187,7 +187,7 @@ weights! {
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
     PostureDefend "w_pos_defend" 3.0, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
     PostureEconomy "w_pos_economy" 1.0, "posture: worth of Economy's score, the team's material spent, or a starved plan";
-    PostureFortify "w_pos_fortify" 0.046875, "posture: worth of Fortify's score, the share of the castle not yet built";
+    PostureFortify "w_pos_fortify" 0.024941, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
     DefendGround "w_defend_ground" 3.0, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
     ConnectIdle "connect_idle" 1.0, "posture: how much of Connect's score stands when this tank has no pillbox to bring in: 1 as built, 0 a score only for work that can be done";
@@ -224,7 +224,7 @@ weights! {
     OreReach "ore_reach" 40.0, "ore (game 6): a deposit within this of the base is worth a smelter and a run, tiles";
     // GAME 7, THE LOGISTICS OF A BASE: oil runs when the refinery is short, the city the guard builds as
     // quartermaster, and the first thing supply buys.
-    OilLow "oil_low" 4.0, "oil (game 7): a crew fetches oil when the side's refinery holds less than this; 0 never";
+    OilLow "oil_low" 3.29985, "oil (game 7): a crew fetches oil when the side's refinery holds less than this; 0 never";
     CityPlan "city_plan" 3.0, "city (game 7): how far the base's guard builds the city when quiet (choice: none | camp | town | works | city): a camp is the castle and the cycle; a town adds a harvester; the works the stores, the road to the smelter and a refinery; the city a data centre and a workshop";
     UpStores "w_up_stores" 1.0, "city (game 7): worth of the depot's stores at 60 supply; 0 never buys";
     Skill "skill" 1.0, "skill: how well a bot plays (PLAYABILITY item 9, LR 67), 1 in full, 0 a rookie's: the aim off by (1 - skill) of a rookie's scatter and the lead taken by skill; under 0.5 no dodge, kite or storm and one interceptor on station; drones held (1 - skill) of a rookie's 90 s; a plain RuleBot thinks every quarter to half second";
