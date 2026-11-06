@@ -137,7 +137,7 @@ weights! {
     ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target (rounded)";
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
     AdvanceBand "advance_band" 0.652128, "smooth: the advance scalar presses above this and falls back below minus this";
-    Jitter "jitter" 3.0, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
+    Jitter "jitter" 2.81069, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
     RetreatArmor "retreat_armor" 100.0, "survival: armour at or under this goes home (blended from the constant by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
     RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home (blended from the constant 4 by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
     // Memory (LR 5).
@@ -149,7 +149,7 @@ weights! {
     Launch "t_launch" 3.0, "crossing: the launch and the landing, in material";
     TreesPerMaterial "tree_material" 1.0, "crossing: material a tree gives";
     ForestNeed "forest_need" 12.0, "island: trees a base will ask for";
-    SiteForest "w_site_forest" 1.0, "island: a base site's worth of trees enough";
+    SiteForest "w_site_forest" 0.5, "island: a base site's worth of trees enough";
     SiteSmall "w_site_small" 1.0, "island: a base site's cost of a small island";
     SiteArea "site_area" 400.0, "island: an island this large or larger is not small, tiles";
     SitePoor "site_poor" 0.5, "island: island_site moves the base off the nearest depot only when that depot's site scores under this (`site_score`, -1 to 1); 2 (before LR 73) always, so on a map of continents a slightly better site an ocean away won";
@@ -190,7 +190,7 @@ weights! {
     PostureFortify "w_pos_fortify" 0.024941, "posture: worth of Fortify's score, the share of the castle not yet built";
     PostureConnect "w_pos_connect" 1.0, "posture: worth of Connect's score, the share of pillbox slots and road posts still empty";
     DefendGround "w_defend_ground" 3.0, "posture: hostile worth on our held ground (the board's territory of pillboxes and depots alone) beyond the base's alarm, counted toward Defend at this share, as the base's own threat is (LR 68); 0 the base alone (LR 24)";
-    ConnectIdle "connect_idle" 1.0, "posture: how much of Connect's score stands when this tank has no pillbox to bring in: 1 as built, 0 a score only for work that can be done";
+    ConnectIdle "connect_idle" 0.5, "posture: how much of Connect's score stands when this tank has no pillbox to bring in: 1 as built, 0 a score only for work that can be done";
     PostureExpand "w_pos_expand" 0.4, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
     // The dodge (lib.rs `Dodge`, LR 27): its numbers, once constants.
     DodgeHorizon "dodge_horizon" 1.08151, "dodge: seconds before a shell lands that the tank starts out from under it";
@@ -206,7 +206,7 @@ weights! {
     // On by default since LR 38 (Paul, 19 October: "yes all three on"):
     // together +2.31 a seat over 48 seeds (LR 36, 37).
     LandfallShy "landfall_shy" 1.0, "landfall: at 1, each tile of a boat's run in a hostile gun's reach costs as much as 4 tiles more to sail; 0 (before LR 38) prices only the beach and the heading";
-    LandfallWait "landfall_wait" 10.0, "landfall: seconds of a crossing a boat stands off a beach a seen hostile tank covers, out of its reach, before it lands anyway; 0 (before LR 38) lands at once";
+    LandfallWait "landfall_wait" 10.1954, "landfall: seconds of a crossing a boat stands off a beach a seen hostile tank covers, out of its reach, before it lands anyway; 0 (before LR 38) lands at once";
     LandfallMemory "landfall_memory" 30.0, "landfall: seconds a hostile tank out of sight is kept where it was last seen, for the beach, the run and the stand-off; 0 (before LR 38) keeps none";
     // The base cycle (LR 6.1).
     GiveItem "w_give_item" 1.0, "cycle: one plan item for the base on each fill";
