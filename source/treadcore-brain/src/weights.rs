@@ -97,7 +97,7 @@ weights! {
     Wounded "w_wounded" 1.2, "target: worth of its wounds";
     Finish "w_finish" 0.552896, "target: one direct shot from dead";
     Boat "w_boat" 2.0, "target: afloat, a boat sinks at one hit";
-    Called "w_called" 0.8, "target: a teammate pinged it";
+    Called "w_called" 0.4, "target: a teammate pinged it";
     CalledFor "called_for" 15.0, "target: seconds a ping stays a call";
     Focus "w_focus" 0.5, "target: each teammate already on it";
     FocusCap "focus_cap" 2.0, "target: teammates on it before overkill (rounded)";
@@ -241,7 +241,7 @@ weights! {
     Duck "w_duck" 1.0, "duck: safety against the errand; a tank ducks with its armour share at or under this, 1 always, 0 never";
     DuckMemory "duck_memory" 2.5, "duck: seconds a hostile gun seen is remembered where it was, its reload counted down (sight and direct range are both 10 tiles, so a gun at the edge is often unseen)";
     DuckPlan "duck_plan" 1.0, "duck: the point held while it stays safe, else the one `drive_to` has out of the gun's reach or line by the tick it is ready (1, LR 57), against the nearest safe point to the errand, picked anew each think (0, LR 21); thresholded at 0.5";
-    DuckReady "duck_ready" 1.5, "duck: a hostile gun ready within this many seconds threatens, if it fires before mine (a tank covers about five tiles in 1.5 s)";
+    DuckReady "duck_ready" 3.0, "duck: a hostile gun ready within this many seconds threatens, if it fires before mine (a tank covers about five tiles in 1.5 s)";
     Front "w_front" 0.0, "front (0, the default since LR 75): Expand's depot by its distance to the team board's front (1, LR 58) against its distance to the base (0, before LR 58), the cost the blend of the two; a depot so chosen is kept until taken or given up; needs board";
     FrontPost "w_front_post" 0.0, "front (0, the default since LR 75): the guard's post moved this share of the way toward the nearest front sector (1, LR 61), `FRONT_POST_REACH` tiles at most, against the post at the base (0, before LR 61); a guard on rotation leaves its post, so it acts only with a raider at the base; needs board";
     FrontPush "w_front_push" 0.0, "front (0, the default since LR 75): the rotation's push point moved this share of the way toward the front sector nearest it (1, LR 61), against halfway to the side's objective (0, before LR 61); needs board";
@@ -249,7 +249,7 @@ weights! {
     FetchGather "fetch_gather" 20.0, "escort: a fetch trip farther than this from the base gathers the fleet first, tiles";
     LongGame "long_game" 0.5, "score: 0 judges the win and kills, 1 the ground held over time";
     ShellBoxes "shell_boxes" 1.0, "spending (LR 86, the cowboy, the default since): 1 shells a hostile pillbox in the indirect gun's reach whenever the gun is ready and no tank is shot at, 0 only those guarding a stormed depot (before LR 86); thresholded at 0.5";
-    LongshotEvery "longshot_every" 1.25, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
+    LongshotEvery "longshot_every" 0.625, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
     LongshotAny "longshot_any" 1.0, "spending (1 since LR 86): 1 a longshot with no hostile structure to hit goes at the nearest hostile pillbox, else the target tank; 0 at structures only (before LR 86); thresholded at 0.5";
     StrikesMax "strikes_max" 3.30238, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
