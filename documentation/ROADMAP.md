@@ -1496,6 +1496,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
 96. A wall takes the gun. (6 November; LR 154, CI-103; game 9.) Two
     direct hits open a wall two tiles wide in treadcore, three in
     crucible; the mortar still fells walls; the breach uses the gun.
+97. The census's probe seeds. (6 November; LR 155, CI-104.) Eight seeds
+    the same for every candidate, on the maps that tell soonest, played
+    first. Next: each probe seed's telling read as an exam item's.
 
 ## Sequencing
 

@@ -10336,3 +10336,17 @@ Paul: "continue unifiying the motor and the types of direct fire to take down a 
 **Game 9.** `GAME_VERSION` 8 to 9: the census of game 8 does not count for game 9 (the planner splits them); queued `weights` jobs of game 8 are moved to `stopped/` and the running transform cancelled when it ships.
 
 **The guides say it.** `HOW-TO-PLAY.md` (the wall tool) and `MAPS.md` (the terrain table) state game 9's rule: a wall falls to a mortar's splash or to two flat shots aimed at it, and concrete is not hurt by a flat shot. `BRAIN-MAP.md` is written again (`make brainmap`): 636 functions and 194 tests with LR 152 to 154's.
+
+## 155. The census's probe seeds: eight seeds the same for every candidate, on the maps that tell a verdict soonest, played first, 6 November
+
+Paul, of orrery's question whether to order the census's maps by how soon they tell and to give every census the same first seeds: "Map order first, Probe seeds". And of the two maps LR 151 added to the rotation: "how much worse is it to do them all. and keep a history and a passrate."
+
+**Why.** Every census plays fresh seeds (its SEED0 is the job's number times 10,000), so no seed is ever played by two candidates and no seed's own telling power can be read. A map's can: over 10,793 censuses (orrery's `seed_sense.py`), naval, constanine, island, industry and the generated map agree best with the verdict for the least noise a seed; a naval seed is worth about fourteen of europe's toward it.
+
+**What changed** (`scripts/census.sh`): with `MAP=all` a census first plays `PROBE` (8) probe seeds, then `SEEDS - PROBE` of its own from `SEED0`. Seed n plays map (n mod k), so the j-th probe is (10^9 + j) x k + the index of its map in `PROBE_MAPS` (naval, constanine, island, industry, generated, round again): the same numbers, on the same maps, for every candidate, far past any census's own seeds. They run first, a seed a job, so a sequential census's first look reads them; a re-read plays fresh seeds alone. `run.env` names them (`PROBES`). `PROBE=0`, or any other `MAP`, is the census as before. A census of 55 seeds on 8 cores takes about one seed's time more.
+
+**The thirteen maps.** `MAP=all` is every map file but the world, since LR 151 the proving ground and A Flame War Modified too (`common.sh` now says so). Kept, at Paul's word, with their telling and pass rate written every six hours to orrery's `plan/maps-history.jsonl`. They cost: the two take 15% of a census's seeds and tell almost nothing, so a verdict on all thirteen needs 18% more seeds for the same confidence, its standard error 8.6% wider at the same seeds. The proving ground's pass rate is also its own: a candidate beats the defaults there 27% of the time, against about 40% on the rest.
+
+**Tried.** `MAP=all PROBE=3 SEEDS=6 SEED0=5` on this Mac: the probes 13000000002, 13000000017 and 13000000027 played naval, constanine and island; seeds 5 to 7 fidos-airstrip, A Flame War Modified and fortressisles2; all pooled by map as before.
+
+**What it will tell.** Once a few hundred candidates have played them, each probe seed's difficulty and discrimination can be read as an exam's items are, and the census can play the most telling seed next.

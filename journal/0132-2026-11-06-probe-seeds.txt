@@ -1,0 +1,26 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Sat, 07 Nov 2026 02:10:00 +0000
+Subject: [JOURNAL 0132] The census's probe seeds
+Message-ID: <0132.20261106@treadcore.org>
+In-Reply-To: <0131.20261106@treadcore.org>
+Organization: treadcore.org
+Keywords: census, seeds, maps, sequential, item response
+
+## Abstract
+
+A census on every map now plays eight probe seeds first, the same for
+every candidate, on the maps that tell a verdict soonest. The two maps
+LR 151 added stay, at Paul's word; they cost a verdict 18% more seeds,
+and their telling and pass rate are kept in a history.
+
+## Session
+
+scripts/census.sh (PROBE, PROBE_MAPS, PROBES), scripts/common.sh (the
+thirteen maps). A census of six seeds tried on this Mac. LR 155,
+CI-104, CHANGELOG, ROADMAP 97, this entry.
+
+## Next
+
+Each probe seed read as an exam item once enough candidates have
+played it.

@@ -37,7 +37,10 @@ census_maps() {
         case "$m" in
             gen) out="$out,gen" ;;
             # The world (1024 x 1024) is left out until its routes are
-            # cheap: MAP=all stays the eleven maps of LR 71.
+            # cheap. MAP=all is every other map file: the eleven of LR 71,
+            # and since LR 151 the proving ground and A Flame War Modified
+            # (each map's telling and pass rate are kept by orrery's
+            # seed_sense.py, plan/maps-history.jsonl).
             all) out="$out,$(ls "$ROOT"/maps/*.map "$ROOT"/maps/*/*.map | grep -v '/\._' | grep -v '/world/world\.map$' | paste -sd,),gen" ;;
             *) [ -f "$m" ] || die "no map file $m"
                out="$out,$(cd "$(dirname "$m")" && pwd)/$(basename "$m")" ;;
