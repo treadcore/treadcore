@@ -261,9 +261,14 @@ mod tests {
         let alpha = Tuning::rows().position(|r| r == Row::Weight(W::Alpha)).unwrap();
         t.row = alpha;
         t.act(Act::More);
-        assert_eq!(t.s.w[W::Alpha], 0.45);
+        // A step up from alpha's default, whatever a promotion has made the default (LR 156: it read 0.45
+        // when the default was 0.4, and failed when the fleet moved it).
+        let want = ((W::Alpha.default_value() + W::Alpha.step()).max(0.0) * 1e4).round() / 1e4;
+        assert_eq!(t.s.w[W::Alpha], want);
         assert!(t.dirty, "the team is given it");
-        assert!(t.text("me").contains("> * alpha                0.45 [#####|#----]"), "{}", t.text("me"));
+        let page = t.text("me");
+        let line = page.lines().find(|l| l.contains("> * alpha")).unwrap_or_else(|| panic!("no marked alpha row: {}", page));
+        assert!(line.contains(&trim(want)), "{}", line);
         t.act(Act::Reset);
         assert_eq!(t.s, Settings::default());
         assert!(t.act(Act::Up) && t.row == alpha - 1);

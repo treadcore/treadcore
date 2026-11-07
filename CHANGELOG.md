@@ -6,6 +6,7 @@ fixed form (`journal/TEMPLATE.txt`).
 
 ## Unreleased
 
+- **Two client tests mended** (6 November; LR 156; Paul: "Fix 2 old client tests"): the key setup's test finds key-setup's row, and the tuning page's test expects a step up from alpha's default as it is today.
 - **The census's probe seeds** (6 November; LR 155; Paul: "Map order first, Probe seeds"): with MAP=all a census plays 8 probe seeds first, the same for every candidate, on naval, constanine, island, industry and the generated map, part of its SEEDS; `PROBE`, `PROBE_MAPS`, `PROBES` in run.env.
 - **A wall takes the gun** (6 November; LR 154; game 9; Paul: "continue unifiying the motor and the types of direct fire to take down a wall. Treadcore's rules should match crucible"): a direct shot aimed at a wall tile takes 45 from it and its neighbour along the wall (`WALL_HEALTH` 90), two hits open a gap two tiles wide, as crucible's walls now open; the mortar still fells walls; the breach uses the gun in range; three tests.
 - **The intrusion dial** (6 November; LR 153; Paul: "We need to ammend the brainz coding to consider intrusion given its weights (and maybe temperment of bio)."): `w_breach`, 0 by default: a tank storming a base whose way in is shut, or a long way round, shells the first wall on the straight line and goes through; the press temper moves its bar; `breach_wall`; two tests.

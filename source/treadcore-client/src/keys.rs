@@ -509,7 +509,9 @@ mod tests {
         let k = Keys::default();
         let t = setup_text(&k, &Setup { row: 8, waiting: false }, "");
         assert!(t.contains("> interceptor") && t.contains("Drones and the gun"), "{}", t);
-        let t = setup_text(&k, &Setup { row: Action::ALL.len() - 1, waiting: true }, "");
+        // key-setup's own row, wherever the actions added since have put it (LR 156: it was the last).
+        let row = Action::ALL.iter().position(|a| *a == Action::KeySetup).unwrap();
+        let t = setup_text(&k, &Setup { row, waiting: true }, "");
         assert!(t.contains("? key-setup") && t.contains("press a key"), "{}", t);
     }
 }

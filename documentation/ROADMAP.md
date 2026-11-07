@@ -1499,6 +1499,8 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
 97. The census's probe seeds. (6 November; LR 155, CI-104.) Eight seeds
     the same for every candidate, on the maps that tell soonest, played
     first. Next: each probe seed's telling read as an exam item's.
+98. Two client tests mended. (6 November; LR 156, CI-105.) They read
+    the key row and the weight's default from the game as it is.
 
 ## Sequencing
 

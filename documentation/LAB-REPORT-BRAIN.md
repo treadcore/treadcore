@@ -10350,3 +10350,11 @@ Paul, of orrery's question whether to order the census's maps by how soon they t
 **Tried.** `MAP=all PROBE=3 SEEDS=6 SEED0=5` on this Mac: the probes 13000000002, 13000000017 and 13000000027 played naval, constanine and island; seeds 5 to 7 fidos-airstrip, A Flame War Modified and fortressisles2; all pooled by map as before.
 
 **What it will tell.** Once a few hundred candidates have played them, each probe seed's difficulty and discrimination can be read as an exam's items are, and the census can play the most telling seed next.
+
+## 156. Two client tests read what they expect from the game, not from the day they were written, 6 November
+
+Paul, of orrery's question which housekeeping to do: "Fix 2 old client tests".
+
+**Why.** `treadcore-client`'s `keys::key_setup_shows_the_pick_and_the_wait` and `tune::the_page_moves_a_weight_and_puts_it_back` had failed since before LR 152. The first took the last action for `key-setup`; the fleet messages and `buy-stores` were added after it. The second expected alpha a step up to read 0.45, from a default of 0.4 that a promotion has since moved (0.1495).
+
+**What changed.** The key test asks for `key-setup`'s own row (`Action::ALL`'s position of it). The tuning test expects alpha's default plus one step, rounded as `Settings::nudge` rounds, and looks for that value on the marked row. treadcore-client: 34 passed.

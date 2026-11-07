@@ -1,0 +1,19 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Sat, 07 Nov 2026 02:40:00 +0000
+Subject: [JOURNAL 0133] Two client tests mended
+Message-ID: <0133.20261106@treadcore.org>
+In-Reply-To: <0132.20261106@treadcore.org>
+Organization: treadcore.org
+Keywords: tests, client, keys, tuning
+
+## Abstract
+
+Two client tests that failed since before LR 152 now read what they
+expect from the game: key-setup's own row, and a step up from alpha's
+default as a promotion has left it. 34 passed.
+
+## Session
+
+source/treadcore-client/src/keys.rs, tune.rs (tests). LR 156, CI-105,
+CHANGELOG, ROADMAP 98, this entry.
