@@ -81,6 +81,7 @@
 #include <chrono>
 #include <algorithm>
 #include <map>
+#include <sstream>
 #include <cctype>
 #include <dirent.h>
 #include <map>
@@ -465,7 +466,7 @@ struct Grid { unsigned int shut[GRID * GRID / 32]; };
 // The route's field toward a goal, kept LAZILY: the caller sets the goal and the step each step; the field is
 // made only when a tank's straight line to the goal is shut (a duel in the open never needs one), and made
 // again when the goal has left the cell it was made for and NAV_EVERY steps have passed, or a wall fell.
-struct Nav { unsigned char d[GRID * GRID]; float gx, gy; int gc, at, now; const struct Grid* g; };
+struct Nav { unsigned char d[GRID * GRID]; float gx, gy; int gc, at, now, stage; const struct Grid* g; };
 
 __device__ inline int cell_of(float x, float y) {
     int cx = min(max((int)(x / CELL), 0), GRID - 1), cy = min(max((int)(y / CELL), 0), GRID - 1);
@@ -519,8 +520,8 @@ __device__ inline void nav_need(Nav& nv) {
 // A new arena, or a wall fell: the grid again, and every field made on the old one forgotten.
 __device__ inline void nav_reset(const Arena& w, Grid& g, Nav& a, Nav* b) {
     grid_build(w, g);
-    a.gc = -1; a.g = &g; a.at = 0;
-    if (b) { b->gc = -1; b->g = &g; b->at = 0; }
+    a.gc = -1; a.g = &g; a.at = 0; a.stage = 0;
+    if (b) { b->gc = -1; b->g = &g; b->at = 0; b->stage = 0; }
 }
 
 // The route from a place: the bearing to the next waypoint (the neighbouring cell nearest the goal, or the
@@ -1230,6 +1231,10 @@ __device__ inline void lay_out(Arena& w, Tank& A, Tank& B, Rng& r) {
 // two nets meet the same runs and their difference is paired. A seat without a [[brain]] stands idle, as
 // in treadcore; a [[brain]] may be the net or one of the sparring partners' styles.
 #define G_PB 4
+// The camp's (FOREST builds; the others parse none): stages a file may chain, and a stage done at once pays
+// (1 + CAMP_QUICK) times its reward.
+#define STAGES 4
+#define CAMP_QUICK 1.0f
 #define G_GROVES 4
 #define G_IDLE -2
 #define G_NET -1
@@ -1259,14 +1264,37 @@ struct Scen {
     // pillbox, and an offset): the route without the capture. en_r < 0 where a file does not ask it.
     int en_near;
     float en_off[2], en_r;
+    // THE CAMP (Paul, 6 November: "a good set of rewards and cookies for after correctly solving the maze ... the
+    // first items done right should score good reward ... step through milestones like a maze that unravels in
+    // complexity. Like driving onto a spot, then spawning castles at a predictable location after stepping on the
+    // beacon, or taking over base, or castle. We need events that a human would feel accomplished over"). Up to
+    // STAGES stages, in order: 0 reach a point (st_near + st_off, within st_r), 1 take pillbox st_pb, 2 destroy it.
+    // Each pays st_reward, doubled when done at once and falling to itself at st_quick seconds after the stage
+    // began (a slow finish still earns the reward). A pillbox in pb_dormant is not in the arena until the stage
+    // whose st_spawn names it begins: the castle that rises when the beacon is reached. FOREST builds only.
+    int nst, st_kind[STAGES], st_pb[STAGES], st_near[STAGES], st_spawn[STAGES], pb_dormant;
+    float st_off[STAGES][2], st_r[STAGES], st_reward[STAGES], st_quick[STAGES];
 };
 
 // A scenario played: what the judge reads at its end.
-struct ScenRun { int hits, hits_on, pb_on, took; float when, held, a0, d0, g0; };
+struct ScenRun {
+    int hits, hits_on, pb_on, took;
+    float when, held, a0, d0, g0;
+    // The camp's: the stage reached, when it began, what the stages done have paid, each stage's point, and where
+    // each dormant pillbox will rise.
+    int stage;
+    float st_at, camp, gx[STAGES], gy[STAGES], sx[G_PB], sy[G_PB];
+};
 
 #ifdef WORLD
 // The goal a task is measured toward: its first pillbox when the file is about pillboxes, else the enemy.
-__device__ inline void scen_goal(const Scen& sc, const Arena& w, const Tank* T, float& gx, float& gy) {
+__device__ inline void scen_goal(const Scen& sc, const Arena& w, const Tank* T, float& gx, float& gy, const ScenRun* run = nullptr) {
+    if (sc.nst > 0 && run) {
+        int s = min(run->stage, sc.nst - 1);
+        if (sc.st_kind[s] == 0) { gx = run->gx[s]; gy = run->gy[s]; }
+        else { gx = w.bx[sc.st_pb[s]]; gy = w.by[sc.st_pb[s]]; }
+        return;
+    }
     if (sc.en_r > 0.0f) {
         gx = (sc.en_near >= 10 ? w.bx[sc.en_near - 10] : 0.5f * ARENA) + sc.en_off[0];
         gy = (sc.en_near >= 10 ? w.by[sc.en_near - 10] : 0.5f * ARENA) + sc.en_off[1];
@@ -1275,6 +1303,15 @@ __device__ inline void scen_goal(const Scen& sc, const Arena& w, const Tank* T, 
     bool pb = sc.npb > 0 && (sc.captured || sc.hold_pb >= 0 || sc.pb_dead || sc.standing_max >= 0 || sc.pb_dmg_max >= 0);
     gx = pb ? w.bx[0] : T[1].x; gy = pb ? w.by[0] : T[1].y;
 }
+
+#ifdef FOREST
+// The camp's castles: each dormant pillbox in `bits` rises where the file put it, whole, its first shot a
+// reload away.
+__device__ inline void camp_spawn(Arena& w, const ScenRun& run, int bits) {
+    for (int q = 0; q < PILLBOXES; q++)
+        if (bits & (1 << q)) { w.bx[q] = run.sx[q]; w.by[q] = run.sy[q]; w.bhp[q] = PB_HEALTH; w.brl[q] = PB_RELOAD; }
+}
+#endif
 
 // The arena and both tanks of a file, from the dice: training's tasks and the gauntlet's runs alike.
 __device__ void scen_setup(const Scen& sc, Rng& r, Arena& w, Tank* T, ScenRun& run) {
@@ -1346,8 +1383,20 @@ __device__ void scen_setup(const Scen& sc, Rng& r, Arena& w, Tank* T, ScenRun& r
 #endif
     run.hits = run.hits_on = run.pb_on = run.took = 0;
     run.when = -1.0f; run.held = 0.0f; run.a0 = T[0].hp;
+    run.stage = 0; run.st_at = 0.0f; run.camp = 0.0f;
+#ifdef FOREST
+    for (int s = 0; s < sc.nst && s < STAGES; s++) {
+        float z = 0.0f;
+        spot(sc.st_near[s], sc.st_off[s], -1, z, run.gx[s], run.gy[s]);
+    }
+    for (int q = 0; q < PILLBOXES; q++) {
+        run.sx[q] = w.bx[q]; run.sy[q] = w.by[q];
+        if (sc.pb_dormant & (1 << q)) { w.bx[q] = w.by[q] = -1000.0f; w.bhp[q] = 0.0f; }
+    }
+    if (sc.nst > 0) camp_spawn(w, run, sc.st_spawn[0]);
+#endif
     float gx, gy;
-    scen_goal(sc, w, T, gx, gy);
+    scen_goal(sc, w, T, gx, gy, &run);
     run.d0 = sqrtf((T[0].x - gx) * (T[0].x - gx) + (T[0].y - gy) * (T[0].y - gy));
     run.g0 = -1.0f;
 }
@@ -1355,9 +1404,10 @@ __device__ void scen_setup(const Scen& sc, Rng& r, Arena& w, Tank* T, ScenRun& r
 #ifdef NAV
 // A run's route: the grid of its arena and the field toward its goal, again every NAV_EVERY steps (the
 // goal may be a tank that moves) or when a wall has fallen.
-__device__ void scen_nav(const Scen& sc, Arena& w, const Tank* T, Grid& g, Nav& nv, int t) {
+__device__ void scen_nav(const Scen& sc, Arena& w, const Tank* T, Grid& g, Nav& nv, int t, const ScenRun& run) {
     if (t == 0 || w.changed) { nav_reset(w, g, nv, nullptr); w.changed = 0; }
-    scen_goal(sc, w, T, nv.gx, nv.gy);
+    scen_goal(sc, w, T, nv.gx, nv.gy, &run);
+    if (nv.stage != run.stage) { nv.gc = -1; nv.stage = run.stage; }
     nv.now = t;
     // A task's goal mostly stands still (a pillbox, a point), so its field is made once a run; the run's
     // progress along the route (run.g0, g1) reads it at the start and the end.
@@ -1394,6 +1444,26 @@ __device__ int scen_step(const Scen& sc, const float* net, Arena& w, Tank* T, fl
 #ifdef FOREST
     run.took += takeover(w, A, B);
     if (sc.hold_pb >= 0 && w.bhp[sc.hold_pb] > 0.0f && w.bown[sc.hold_pb] == 0) run.held += DT;
+    if (sc.nst > 0 && run.stage < sc.nst) {
+        int s = run.stage, q = sc.st_pb[s];
+        bool done = sc.st_kind[s] == 0 ? (A.x - run.gx[s]) * (A.x - run.gx[s]) + (A.y - run.gy[s]) * (A.y - run.gy[s]) <= sc.st_r[s] * sc.st_r[s]
+                  : sc.st_kind[s] == 1 ? w.bhp[q] > 0.0f && w.bown[q] == 0
+                  : w.bhp[q] <= 0.0f;
+        if (done && A.hp > 0.0f) {
+            float took = t * DT - run.st_at;
+            run.camp += sc.st_reward[s] * (1.0f + CAMP_QUICK * fmaxf(0.0f, 1.0f - took / fmaxf(sc.st_quick[s], 0.1f)));
+            run.stage++;
+            run.st_at = t * DT;
+            if (run.stage < sc.nst) {
+                camp_spawn(w, run, sc.st_spawn[run.stage]);
+                // The next stage's progress is measured from here.
+                float gx, gy;
+                scen_goal(sc, w, T, gx, gy, &run);
+                run.d0 = sqrtf((A.x - gx) * (A.x - gx) + (A.y - gy) * (A.y - gy));
+                run.g0 = -1.0f;
+            }
+        }
+    }
 #endif
     // What the shells and the pillboxes did this step, for a trace: A's shell, B's, pillbox shots on A.
     return fa | (fb << 2) | (min(pa, 3) << 4);
@@ -1424,6 +1494,7 @@ __device__ bool scen_judge(const Scen& sc, const Arena& w, const Tank* T, const 
         ok = ok && (A.x - gx) * (A.x - gx) + (A.y - gy) * (A.y - gy) <= sc.en_r * sc.en_r;
     }
 #ifdef FOREST
+    if (sc.nst > 0) ok = ok && run.stage >= sc.nst;
     for (int q = 0; q < PILLBOXES; q++)
         if (sc.captured & (1 << q)) ok = ok && w.bhp[q] > 0.0f && w.bown[q] == 0;
     if (sc.hold_pb >= 0) ok = ok && run.held >= sc.hold_s;
@@ -1439,7 +1510,7 @@ __device__ bool scen_judge(const Scen& sc, const Arena& w, const Tank* T, const 
 #define TASK_PASS 3.0f
 __device__ float scen_fitness(const Scen& sc, const Arena& w, const Tank* T, const ScenRun& run, bool pass, float g1 = -1.0f) {
     float gx, gy;
-    scen_goal(sc, w, T, gx, gy);
+    scen_goal(sc, w, T, gx, gy, &run);
     float d1 = sqrtf((T[0].x - gx) * (T[0].x - gx) + (T[0].y - gy) * (T[0].y - gy));
     float progress = run.d0 > 1.0f ? fminf(fmaxf((run.d0 - d1) / run.d0, -1.0f), 1.0f) : 0.0f;
     // THE WAY CLOSED ALONG THE ROUTE, NOT THE CROW'S LINE (NAV): in the S maze the straight line to the
@@ -1449,6 +1520,9 @@ __device__ float scen_fitness(const Scen& sc, const Arena& w, const Tank* T, con
     float f = (pass ? TASK_PASS : 0.0f) + progress + (float)run.hits - (float)run.hits_on - 0.33f * run.pb_on;
 #ifdef FOREST
     f += SCORE_CAPTURE_W * run.took + SCORE_HOLD_W * (run.held / HOLD_EVERY_S) + SCORE_KILL_W * (T[1].hp <= 0.0f ? 1.0f : 0.0f);
+    // The camp's stages, each paid as it was done (the quicker, the more); the progress above is toward the
+    // stage it stands at.
+    f += run.camp;
 #endif
     return f;
 }
@@ -1547,8 +1621,8 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
 #endif
         for (; t < st && T[0].hp > 0.0f; t++) {
 #ifdef NAV
-            scen_nav(sc, w, T, tg, tn, t);
-            if (t == 0) run.g0 = geo_of(tn, T[0].x, T[0].y);
+            scen_nav(sc, w, T, tg, tn, t, run);
+            if (run.g0 < 0.0f) run.g0 = geo_of(tn, T[0].x, T[0].y);
             scen_step(sc, wA, w, T, tin, ta, tb, run, t, &tn);
 #else
             scen_step(sc, wA, w, T, tin, ta, tb, run, t);
@@ -1826,7 +1900,12 @@ __global__ void __launch_bounds__(256, 1) trace_scen_play(const float* __restric
     opp_of[d] = sc.brain[1] >= 0 ? -1 - sc.brain[1] : -1;
     if (d == 0) {
         for (int p = 0; p < PILLARS; p++) { arena_out[p] = w.px[p]; arena_out[PILLARS + p] = w.py[p]; arena_out[2 * PILLARS + p] = w.pr[p]; }
-        for (int k = 0; k < PILLBOXES; k++) { arena_out[3 * PILLARS + k] = w.bx[k]; arena_out[3 * PILLARS + PILLBOXES + k] = w.by[k]; }
+        // A camp's castle is written where it will rise (run.sx, sy), not where it waits off the arena.
+        for (int k = 0; k < PILLBOXES; k++) {
+            bool sleeping = w.bx[k] < -500.0f && run.sx[k] > -500.0f;
+            arena_out[3 * PILLARS + k] = sleeping ? run.sx[k] : w.bx[k];
+            arena_out[3 * PILLARS + PILLBOXES + k] = sleeping ? run.sy[k] : w.by[k];
+        }
 #ifdef FOREST
         for (int g = 0; g < GROVES; g++) {
             arena_out[3 * PILLARS + 2 * PILLBOXES + g] = w.gx[g];
@@ -1849,7 +1928,7 @@ __global__ void __launch_bounds__(256, 1) trace_scen_play(const float* __restric
 #endif
     for (; t < st && T[0].hp > 0.0f; t++) {
 #ifdef NAV
-        scen_nav(sc, w, T, g, nv, t);
+        scen_nav(sc, w, T, g, nv, t, run);
         int code = scen_step(sc, champ, w, T, in, actA, actB, run, t, &nv);
 #else
         int code = scen_step(sc, champ, w, T, in, actA, actB, run, t);
@@ -1862,7 +1941,7 @@ __global__ void __launch_bounds__(256, 1) trace_scen_play(const float* __restric
         const Tank& B = T[1];
         o[0] = A.x; o[1] = A.y; o[2] = A.a; o[3] = A.hp; o[4] = A.sx; o[5] = A.sy; o[6] = A.slife;
         o[7] = B.x; o[8] = B.y; o[9] = B.a; o[10] = B.hp; o[11] = B.sx; o[12] = B.sy; o[13] = B.slife;
-        for (int k = 0; k < PILLBOXES; k++) o[14 + k] = w.bhp[k];
+        for (int k = 0; k < PILLBOXES; k++) o[14 + k] = w.bx[k] < -500.0f ? -999.0f : w.bhp[k];   // -999: a castle not yet risen
         o[18] = (float)(code & 3); o[19] = (float)((code >> 2) & 3); o[20] = (float)((code >> 4) & 3); o[21] = 0.0f;
         if (sc.early && t % 5 == 4 && scen_judge(sc, w, T, run)) { t++; break; }
     }
@@ -1892,7 +1971,7 @@ __global__ void __launch_bounds__(256, 1) gauntlet_play(const float* __restrict_
 #endif
         for (int t = 0; t < steps && T[0].hp > 0.0f; t++) {
 #ifdef NAV
-            scen_nav(sc, w, T, tg, tn, t);
+            scen_nav(sc, w, T, tg, tn, t, run);
             scen_step(sc, wsh, w, T, in, actA, actB, run, t, &tn);
 #else
             scen_step(sc, wsh, w, T, in, actA, actB, run, t);
@@ -2276,12 +2355,35 @@ static bool gauntlet_file(const std::string& path, GFile& g, std::string* why) {
                 sc.pb_near[n] = near; sc.pb_off[n][0] = off[0]; sc.pb_off[n][1] = off[1]; sc.pb_toward[n] = toward; sc.pb_away[n] = away;
                 // treadcore's owner: 1 is the enemy's, firing only at the learner; none is neutral.
                 sc.pb_own[n] = kv.count("owner") ? atoi(kv["owner"].c_str()) : -1;
+                // A camp's castle: not in the arena until a stage spawns it.
+                if (kv.count("dormant") && unq(kv["dormant"]) == "true") sc.pb_dormant |= 1 << n;
                 sc.npb++;
             }
             else {
                 sc.gr_near[n] = near; sc.gr_off[n][0] = off[0]; sc.gr_off[n][1] = off[1]; sc.gr_toward[n] = toward; sc.gr_away[n] = away;
                 sc.gr_r[n] = kv.count("radius") ? (float)atof(kv["radius"].c_str()) : 3.0f;
                 sc.ngr++;
+            }
+        } else if (kind == "stage") {
+            // `[[stage]] goal = "reach" at = "centre" offset = [x, y] within = 2`, or `goal = "take"` / "destroy"
+            // `pillbox = k`; then `reward = 1`, `quick = 10` (seconds for the most of it), `spawn = [k, ...]`.
+            if (sc.nst >= STAGES) { *why = "more stages than a camp holds"; return false; }
+            int n = sc.nst++;
+            std::string goal = unq(kv["goal"]);
+            sc.st_kind[n] = goal == "reach" ? 0 : goal == "take" ? 1 : goal == "destroy" ? 2 : -1;
+            if (sc.st_kind[n] < 0) { *why = "a stage's goal: reach, take or destroy"; return false; }
+            sc.st_near[n] = kv.count("at") ? place_of(kv["at"]) : G_CENTRE;
+            if (kv.count("offset")) pair_of(kv["offset"], sc.st_off[n]);
+            sc.st_r[n] = kv.count("within") ? (float)atof(kv["within"].c_str()) : 2.0f;
+            sc.st_pb[n] = kv.count("pillbox") ? atoi(kv["pillbox"].c_str()) : 0;
+            sc.st_reward[n] = kv.count("reward") ? (float)atof(kv["reward"].c_str()) : 1.0f;
+            sc.st_quick[n] = kv.count("quick") ? (float)atof(kv["quick"].c_str()) : 10.0f;
+            if (kv.count("spawn")) {
+                std::string v = trim(kv["spawn"]);
+                for (char& ch : v) if (ch == '[' || ch == ']' || ch == ',') ch = ' ';
+                std::istringstream is(v);
+                int k;
+                while (is >> k) sc.st_spawn[n] |= 1 << k;
             }
         } else if (kind == "brain") {
             int s = atoi(kv["seat"].c_str());
@@ -2320,6 +2422,17 @@ static bool gauntlet_file(const std::string& path, GFile& g, std::string* why) {
         } else { *why = "a [" + kind + "] this arena does not play"; return false; }
     }
     if (sc.brain[0] != G_NET) { *why = "no net in seat 0"; return false; }
+    if (sc.nst > 0) {
+#ifndef FOREST
+        *why = "a camp: a FOREST=1 build"; return false;
+#endif
+        int up = sc.pb_dormant ^ ((1 << sc.npb) - 1);   // the pillboxes standing from the start
+        for (int s = 0; s < sc.nst; s++) {
+            if (sc.st_spawn[s] & ~sc.pb_dormant) { *why = "a stage spawns a pillbox that is not dormant"; return false; }
+            up |= sc.st_spawn[s];
+            if (sc.st_kind[s] && (sc.st_pb[s] >= sc.npb || !(up & (1 << sc.st_pb[s])))) { *why = "a stage about a pillbox not yet in the arena"; return false; }
+        }
+    }
     sc.early = sc.alive < 0 && sc.hold_pb < 0 && sc.hits_on_max < 0 && sc.armor_share < 0.0f && sc.outscores < 0 && sc.pb_dmg_max < 0;
     if (sc.hold_pb >= PILLBOXES || (sc.captured >> PILLBOXES)) { *why = "a pillbox the arena has not"; return false; }
 #ifndef FOREST
