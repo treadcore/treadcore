@@ -251,6 +251,13 @@ static_assert(2 * NW * sizeof(float) <= 49152, "two nets must fit 48 KB of share
 #define TRAIN_WALLS 3
 #define CAPTURE_R 1.8f
 #define WALL_HP 90.0f          // two direct hits
+// A WALL TAKES THE GUN, IN BOTH GAMES (treadcore LR 154; Paul, 6 November: "continue unifying the motor and
+// the types of direct fire to take down a wall. Treadcore's rules should match crucible"): every wall
+// takes the shell that stops on it, and at WALL_HP gone a gap opens where it struck, not the whole bar --
+// treadcore's two hits fell the tile struck and its neighbour, two tiles. Crucible's tank is 2 tiles
+// wide (TANK_R 1) where treadcore's is 1.5, so the gap is 3, to let it through as two let treadcore's.
+// What is left of the bar on either side stands, whole again.
+#define WALL_GAP 3.0f
 // THE GAME'S SCORE, IN KILLS (treadcore-sim rules.rs: SCORE_KILL 100, SCORE_CAPTURE 25, SCORE_HOLD 2 for
 // each live structure every HOLD_EVERY_TICKS, 10 s): a kill 1, a capture 0.25, a held pillbox 0.02 every
 // 10 s. A forest arena's fitness adds it, so a champion is chosen by what the game would score it, beside
@@ -1043,10 +1050,29 @@ __device__ int fly_world(Tank& t, Tank& en, Arena& w) {
     }
     t.slife = 0.0f;
 #ifdef FOREST
-    // THE BREACH: a breakable wall (a walled base's, in a gauntlet) takes the shot and falls at WALL_HP.
+    // THE BREACH: a wall takes the shot, and at WALL_HP gone a gap of WALL_GAP opens where it struck.
     if (what == 9 && wall >= 0 && w.whp[wall] > 0.0f) {
         w.whp[wall] -= DAMAGE;
-        if (w.whp[wall] <= 0.0f) { w.wx0[wall] = w.wy0[wall] = 1e9f; w.wx1[wall] = w.wy1[wall] = -1e9f; w.changed = 1; }
+        if (w.whp[wall] <= 0.0f) {
+            float hx = t.sx + dx * hit, hy = t.sy + dy * hit;
+            bool along_x = w.wx1[wall] - w.wx0[wall] >= w.wy1[wall] - w.wy0[wall];
+            float lo = along_x ? w.wx0[wall] : w.wy0[wall], hi = along_x ? w.wx1[wall] : w.wy1[wall];
+            float h = fminf(fmaxf(along_x ? hx : hy, lo), hi), g0 = h - 0.5f * WALL_GAP, g1 = h + 0.5f * WALL_GAP;
+            // The far piece into a free slot (if there is none, it falls with the gap); the near one stays.
+            if (g1 < hi - 0.25f && w.nwall < WALLS) {
+                int n = w.nwall++;
+                w.wx0[n] = along_x ? g1 : w.wx0[wall]; w.wx1[n] = w.wx1[wall];
+                w.wy0[n] = along_x ? w.wy0[wall] : g1; w.wy1[n] = w.wy1[wall];
+                w.whp[n] = WALL_HP;
+            }
+            if (g0 > lo + 0.25f) {
+                if (along_x) w.wx1[wall] = g0; else w.wy1[wall] = g0;
+                w.whp[wall] = WALL_HP;
+            } else {
+                w.wx0[wall] = w.wy0[wall] = 1e9f; w.wx1[wall] = w.wy1[wall] = -1e9f;
+            }
+            w.changed = 1;
+        }
         return 0;
     }
 #endif
@@ -1153,7 +1179,7 @@ __device__ inline void lay_out(Arena& w, Tank& A, Tank& B, Rng& r) {
         w.wx0[b] = cx - (up ? 0.5f : 0.5f * len); w.wx1[b] = cx + (up ? 0.5f : 0.5f * len);
         w.wy0[b] = cy - (up ? 0.5f * len : 0.5f); w.wy1[b] = cy + (up ? 0.5f * len : 0.5f);
     }
-    for (int b = 0; b < WALLS; b++) w.whp[b] = -1.0f;
+    for (int b = 0; b < WALLS; b++) w.whp[b] = b < TRAIN_WALLS ? WALL_HP : -1.0f;
     w.changed = 0;
     for (int k = 0; k < PILLBOXES; k++) w.bown[k] = -1;
     A.side = 0; B.side = 1;
@@ -1307,7 +1333,7 @@ __device__ void scen_setup(const Scen& sc, Rng& r, Arena& w, Tank* T, ScenRun& r
         spot(sc.w_near[b], z, -1, 0.0f, px, py);
         w.wx0[b] = px + sc.w_box[b][0]; w.wx1[b] = px + sc.w_box[b][1];
         w.wy0[b] = py + sc.w_box[b][2]; w.wy1[b] = py + sc.w_box[b][3];
-        w.whp[b] = sc.w_break[b] ? WALL_HP : -1.0f;
+        w.whp[b] = WALL_HP;                 // every wall takes the gun (LR 154); `breakable` is now every wall's
         w.nwall = b + 1;
     }
 #endif
@@ -2213,8 +2239,8 @@ static bool gauntlet_file(const std::string& path, GFile& g, std::string* why) {
             sc.w_near[n] = kv.count("near") ? place_of(kv["near"]) : G_CENTRE;
             sc.w_box[n][0] = std::min(xs[0], xs[1]); sc.w_box[n][1] = std::max(xs[0], xs[1]);
             sc.w_box[n][2] = std::min(ys[0], ys[1]); sc.w_box[n][3] = std::max(ys[0], ys[1]);
-            // treadcore's walls fall to the mortar's splash; crucible's tanks have no mortar, so a walled
-            // base's walls are marked `breakable` and two direct hits stand in for it (WALL_HP).
+            // Every wall falls to two direct hits now, as treadcore's do (LR 154); `breakable = true`, which
+            // B1 says, is read and kept, and changes nothing.
             sc.w_break[n] = kv.count("breakable") && unq(kv["breakable"]) == "true";
             continue;
         }
