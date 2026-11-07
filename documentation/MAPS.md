@@ -51,8 +51,8 @@ before any `start`, `depot` or `pillbox` line.
 | `+` | bridge | fast | | a road laid on water |
 | `%` | rubble | slow | | what a shell or a mine leaves; what a wall becomes |
 | `D` | depot | medium | | the depot's own tiles; the `depot` line is what counts |
-| `W` | wall | impassable | blocks a flat shot and a pillbox's line | the squad builds them; a splash knocks them down |
-| `H` | concrete | impassable | blocks a flat shot and a pillbox's line | two material; a splash cracks it to a wall, so it takes two |
+| `W` | wall | impassable | blocks a flat shot and a pillbox's line | the squad builds them; a splash knocks them down, and so do two flat shots aimed at one (it and its neighbour along the wall, game 9) |
+| `H` | concrete | impassable | blocks a flat shot and a pillbox's line | two material; a splash cracks it to a wall, so it takes two; a flat shot does not hurt it |
 | `_` | pad | fast | | foundations: the only ground a structure is built on; a shell does not crater it |
 
 Mines are not in a map: they are laid in play and hidden, and a saved

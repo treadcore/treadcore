@@ -10334,3 +10334,5 @@ Paul: "continue unifiying the motor and the types of direct fire to take down a 
 **Tests**, three new: two direct hits open a wall two tiles wide and the other side stands; a shot at what is behind a wall is still refused; the wall on the line is in the gun's sight and one behind it is not.
 
 **Game 9.** `GAME_VERSION` 8 to 9: the census of game 8 does not count for game 9 (the planner splits them); queued `weights` jobs of game 8 are moved to `stopped/` and the running transform cancelled when it ships.
+
+**The guides say it.** `HOW-TO-PLAY.md` (the wall tool) and `MAPS.md` (the terrain table) state game 9's rule: a wall falls to a mortar's splash or to two flat shots aimed at it, and concrete is not hurt by a flat shot. `BRAIN-MAP.md` is written again (`make brainmap`): 636 functions and 194 tests with LR 152 to 154's.
