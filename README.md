@@ -133,6 +133,15 @@ at its `quick` seconds. The camps are K1 (a beacon, then two castles), K2
 (corridors with many ways, two beacons, a castle) and K3 (a corner, then a
 walled castle).
 
+**The last chance.** A camp file's `last_chance = p` gives the learner a
+second life: killed before the last stage, it rises once, whole, where that
+stage began, with its memory kept and the castles left as they stand, and
+every stage it does from then pays `p` of what it would have. The three
+camps say 0.5. A pass is still every stage done on the first life, so the
+gauntlet asks the same question with or without it; the last chance is what
+training learns from a fall, where before a run that died taught nothing
+past the stage it died in.
+
 **Traces.** `--trace OUT --champions C` writes duels step by step for
 orrery's montage. `--trace-scen FILE` writes runs of a gauntlet file instead,
 for its maze films and footage. A camp's castle is written where it will

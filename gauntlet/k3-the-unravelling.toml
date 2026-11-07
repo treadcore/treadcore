@@ -11,6 +11,10 @@ needs = "forest"
 reaction = "move"
 floor = 0.0
 seconds = 110
+# THE LAST CHANCE (Paul: "Gladiator style, where you are given final chances to win and adapt"): killed before
+# the last stage, the learner rises once where that stage began, and the stages after pay half. A pass is still
+# every stage on the first life; the last chance is what training learns from a fall.
+last_chance = 0.5
 [[tank]]
 seat = 0
 at = "centre"

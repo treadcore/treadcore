@@ -1274,6 +1274,15 @@ struct Scen {
     // whose st_spawn names it begins: the castle that rises when the beacon is reached. FOREST builds only.
     int nst, st_kind[STAGES], st_pb[STAGES], st_near[STAGES], st_spawn[STAGES], pb_dormant;
     float st_off[STAGES][2], st_r[STAGES], st_reward[STAGES], st_quick[STAGES];
+    // THE LAST CHANCE (Paul, 6 November: "this will turn the test into a reinforcement camp. Gladiator style,
+    // where you are given final chances to win and adapt"). A camp file's `last_chance = p`: a learner killed
+    // before its last stage rises once, whole, where the stage it fell in began, its memory kept, and every
+    // stage it does from then pays p of what it would have. 0, a file that does not say it, has none.
+    // THE JUDGE STAYS STRICT: a pass is every stage done on the first life, so the gauntlet asks the same
+    // question with or without it and its floors and the GPU's bar keep their meaning; the last chance is the
+    // camp's training -- a run that falls early still learns the stages after, at a price, where before it
+    // ended and taught nothing past the stage it died in.
+    float last_pay;
 };
 
 // A scenario played: what the judge reads at its end.
@@ -1284,6 +1293,9 @@ struct ScenRun {
     // each dormant pillbox will rise.
     int stage;
     float st_at, camp, gx[STAGES], gy[STAGES], sx[G_PB], sy[G_PB];
+    // The last chance: taken or not, and where the stage now played began (the learner's place and heading).
+    int last;
+    float lx, ly, la;
 };
 
 #ifdef WORLD
@@ -1384,6 +1396,7 @@ __device__ void scen_setup(const Scen& sc, Rng& r, Arena& w, Tank* T, ScenRun& r
     run.hits = run.hits_on = run.pb_on = run.took = 0;
     run.when = -1.0f; run.held = 0.0f; run.a0 = T[0].hp;
     run.stage = 0; run.st_at = 0.0f; run.camp = 0.0f;
+    run.last = 0; run.lx = T[0].x; run.ly = T[0].y; run.la = T[0].a;
 #ifdef FOREST
     for (int s = 0; s < sc.nst && s < STAGES; s++) {
         float z = 0.0f;
@@ -1451,9 +1464,10 @@ __device__ int scen_step(const Scen& sc, const float* net, Arena& w, Tank* T, fl
                   : w.bhp[q] <= 0.0f;
         if (done && A.hp > 0.0f) {
             float took = t * DT - run.st_at;
-            run.camp += sc.st_reward[s] * (1.0f + CAMP_QUICK * fmaxf(0.0f, 1.0f - took / fmaxf(sc.st_quick[s], 0.1f)));
+            run.camp += (run.last ? sc.last_pay : 1.0f) * sc.st_reward[s] * (1.0f + CAMP_QUICK * fmaxf(0.0f, 1.0f - took / fmaxf(sc.st_quick[s], 0.1f)));
             run.stage++;
             run.st_at = t * DT;
+            run.lx = A.x; run.ly = A.y; run.la = A.a;
             if (run.stage < sc.nst) {
                 camp_spawn(w, run, sc.st_spawn[run.stage]);
                 // The next stage's progress is measured from here.
@@ -1463,11 +1477,23 @@ __device__ int scen_step(const Scen& sc, const float* net, Arena& w, Tank* T, fl
                 run.g0 = -1.0f;
             }
         }
+        // The last chance: fallen before the last stage, the learner rises once where this stage began, its
+        // armour, gun and shells as at the start and its memory as it is; the stage's quick clock starts again.
+        // The castles stay as they stand. Its progress is still measured from the stage's start, where it is.
+        if (A.hp <= 0.0f && sc.last_pay > 0.0f && !run.last && run.stage < sc.nst) {
+            run.last = 1;
+            A.hp = run.a0; A.x = run.lx; A.y = run.ly; A.a = run.la; A.v = 0.0f;
+            A.reload = sc.reload[0]; A.slife = 0.0f; A.sx = A.sy = -100.0f; A.sdx = A.sdy = 0.0f; A.shells = SHELLS;
+            run.st_at = t * DT;
+        }
     }
 #endif
     // What the shells and the pillboxes did this step, for a trace: A's shell, B's, pillbox shots on A.
     return fa | (fb << 2) | (min(pa, 3) << 4);
 }
+
+// A camp whose stages are all done is over, passed or (done on its last chance) not: for the early end.
+__device__ inline bool camp_over(const Scen& sc, const ScenRun& run) { return sc.nst > 0 && run.stage >= sc.nst; }
 
 // Did the run do what its file asks?
 __device__ bool scen_judge(const Scen& sc, const Arena& w, const Tank* T, const ScenRun& run) {
@@ -1494,7 +1520,7 @@ __device__ bool scen_judge(const Scen& sc, const Arena& w, const Tank* T, const 
         ok = ok && (A.x - gx) * (A.x - gx) + (A.y - gy) * (A.y - gy) <= sc.en_r * sc.en_r;
     }
 #ifdef FOREST
-    if (sc.nst > 0) ok = ok && run.stage >= sc.nst;
+    if (sc.nst > 0) ok = ok && run.stage >= sc.nst && !run.last;
     for (int q = 0; q < PILLBOXES; q++)
         if (sc.captured & (1 << q)) ok = ok && w.bhp[q] > 0.0f && w.bown[q] == 0;
     if (sc.hold_pb >= 0) ok = ok && run.held >= sc.hold_s;
@@ -1627,7 +1653,7 @@ __global__ void __launch_bounds__(256, MINB) play(const float* __restrict__ pop,
 #else
             scen_step(sc, wA, w, T, tin, ta, tb, run, t);
 #endif
-            if (sc.early && t % 5 == 4 && scen_judge(sc, w, T, run)) break;
+            if (sc.early && t % 5 == 4 && (camp_over(sc, run) || scen_judge(sc, w, T, run))) break;
         }
 #ifdef NAV
         nav_fresh(tn);
@@ -1943,7 +1969,7 @@ __global__ void __launch_bounds__(256, 1) trace_scen_play(const float* __restric
         o[7] = B.x; o[8] = B.y; o[9] = B.a; o[10] = B.hp; o[11] = B.sx; o[12] = B.sy; o[13] = B.slife;
         for (int k = 0; k < PILLBOXES; k++) o[14 + k] = w.bx[k] < -500.0f ? -999.0f : w.bhp[k];   // -999: a castle not yet risen
         o[18] = (float)(code & 3); o[19] = (float)((code >> 2) & 3); o[20] = (float)((code >> 4) & 3); o[21] = 0.0f;
-        if (sc.early && t % 5 == 4 && scen_judge(sc, w, T, run)) { t++; break; }
+        if (sc.early && t % 5 == 4 && (camp_over(sc, run) || scen_judge(sc, w, T, run))) { t++; break; }
     }
     bool ok = scen_judge(sc, w, T, run);
     lasted[d] = t;
@@ -1976,7 +2002,7 @@ __global__ void __launch_bounds__(256, 1) gauntlet_play(const float* __restrict_
 #else
             scen_step(sc, wsh, w, T, in, actA, actB, run, t);
 #endif
-            if (sc.early && t % 5 == 4 && scen_judge(sc, w, T, run)) break;
+            if (sc.early && t % 5 == 4 && (camp_over(sc, run) || scen_judge(sc, w, T, run))) break;
         }
         bool ok = scen_judge(sc, w, T, run);
         if (ok) atomicAdd(&passed[blockIdx.x], 1u);
@@ -2276,6 +2302,8 @@ static bool gauntlet_file(const std::string& path, GFile& g, std::string* why) {
     g.reaction = top.count("reaction") ? unq(top["reaction"]) : "fire";
     g.floor = top.count("floor") ? (float)atof(top["floor"].c_str()) : 0.0f;
     sc.seconds = top.count("seconds") ? (float)atof(top["seconds"].c_str()) : 10.0f;
+    sc.last_pay = top.count("last_chance") ? (float)atof(top["last_chance"].c_str()) : 0.0f;
+    if (sc.last_pay < 0.0f || sc.last_pay > 1.0f) { *why = "last_chance is a share, 0 to 1"; return false; }
     sc.reaction = g.reaction == "move" ? 1 : 0;
     if (top.count("needs") && unq(top["needs"]) == "forest") {
 #ifndef FOREST
