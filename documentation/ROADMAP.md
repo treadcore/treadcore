@@ -1493,6 +1493,9 @@ cause, goal and step, hypothesis, proof (with the seeds a census needs,
 95. The intrusion dial. (6 November; LR 153, CI-102.) w_breach, off by
     default: a storm through the wall when the way in is shut or long,
     the press temper moving its bar. Next: the census finds its value.
+96. A wall takes the gun. (6 November; LR 154, CI-103; game 9.) Two
+    direct hits open a wall two tiles wide in treadcore, three in
+    crucible; the mortar still fells walls; the breach uses the gun.
 
 ## Sequencing
 

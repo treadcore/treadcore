@@ -630,6 +630,13 @@ pub fn breach_wall(map: Option<&Map>, from: V2, to: V2, ratio: f32) -> Option<V2
     (route.is_empty() || way > ratio * straight).then(|| V2::new(x as f32 + 0.5, y as f32 + 0.5))
 }
 
+/// A wall the gun can be aimed at (treadcore-sim's `wall_shot`, LR 154):
+/// the first tile on the line that stops fire is the wall's own.
+pub fn wall_in_sight(m: &Map, from: V2, wall: V2) -> bool {
+    let n = (from.dist(wall) * 2.0).ceil().max(1.0) as usize;
+    (1..=n).map(|i| from.lerp(wall, i as f32 / n as f32)).find(|p| m.at(*p).blocks_fire()).map(|p| p.tile() == wall.tile()).unwrap_or(false)
+}
+
 /// As `drive_to`, where the tank is after each of the `ticks`: element
 /// k after k + 1 ticks. For shells landing at different ticks
 /// (`dodge_every`, LR 56).
@@ -1540,14 +1547,22 @@ impl RuleBot {
             // and the tank goes through when it falls.
             let breach = self.tactics.as_ref().map(|t| t.w.breach).unwrap_or(0.0);
             if let Some(wall) = (breach > 0.0 && guns.is_empty()).then(|| breach_wall(map, me.pos, tgt, breach)).flatten() {
+                // The gun when the wall is in its reach and sight (two hits open
+                // it, LR 154, as crucible's do), the mortar beyond.
                 let d = me.pos.dist(wall);
-                if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&d) {
-                    if me.reload == 0 && me.shells > 0 && self.last_fire_tick != obs.tick {
+                let ready = me.reload == 0 && me.shells > 0 && self.last_fire_tick != obs.tick;
+                if d <= DIRECT_RANGE && map.map(|m| wall_in_sight(m, me.pos, wall)).unwrap_or(false) {
+                    if ready {
+                        cmds.push(Command::FireDirect { at: wall });
+                        self.last_fire_tick = obs.tick;
+                    }
+                } else if (INDIRECT_MIN_RANGE..=INDIRECT_MAX_RANGE).contains(&d) {
+                    if ready {
                         cmds.push(Command::FireIndirect { at: wall });
                         self.last_fire_tick = obs.tick;
                     }
                 } else if stationary {
-                    let to = wall + (me.pos - wall).norm().scale(INDIRECT_MIN_RANGE + 2.0);
+                    let to = wall + (me.pos - wall).norm().scale(DIRECT_RANGE - 2.0);
                     cmds.push(Command::Move { to: obs.clamp(to) });
                 }
                 return cmds;
@@ -2185,6 +2200,14 @@ mod tests {
         let at = super::breach_wall(Some(&m), V2::new(10.5, 20.5), V2::new(28.5, 20.5), 1.5).expect("no way in: breach");
         assert_eq!(at.tile(), (24, 20), "the west wall, where the line meets it");
         assert!(super::breach_wall(None, V2::new(10.5, 20.5), V2::new(28.5, 20.5), 1.5).is_none(), "no map, no breach");
+    }
+
+    #[test]
+    fn the_wall_on_the_line_is_in_the_guns_sight_and_one_behind_it_is_not() {
+        let m = walled_base(false, false);
+        let from = V2::new(18.5, 20.5);
+        assert!(super::wall_in_sight(&m, from, V2::new(24.5, 20.5)), "the west wall, nothing before it");
+        assert!(!super::wall_in_sight(&m, from, V2::new(32.5, 20.5)), "the east wall, behind the west");
     }
 
     #[test]

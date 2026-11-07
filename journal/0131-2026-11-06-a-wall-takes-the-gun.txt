@@ -1,0 +1,28 @@
+Newsgroups: treadcore.dev
+From: Paul Richeson <paul@treadcore.org>
+Date: Sat, 07 Nov 2026 00:30:00 +0000
+Subject: [JOURNAL 0131] A wall takes the gun
+Message-ID: <0131.20261106@treadcore.org>
+In-Reply-To: <0130.20261106@treadcore.org>
+Organization: treadcore.org
+Keywords: walls, direct fire, mortar, crucible, game 9
+
+## Abstract
+
+The game and the card now fell walls alike: two direct hits open a
+gap (two tiles here, three on the card for its wider tank), and the
+mortar's splash still fells walls at once. The breach uses the gun in
+range. Game 9.
+
+## Session
+
+source/treadcore-sim/src/rules.rs (WALL_HEALTH), lib.rs (wall_shot,
+hit_wall, wall_hits), GAME_VERSION 9; source/treadcore-brain/src/
+lib.rs (wall_in_sight, the breach by the gun). Crucible's forest
+branch: every wall breakable, WALL_GAP. LR 154, CI-103, CHANGELOG,
+ROADMAP 96, this entry.
+
+## Next
+
+Ship game 9 to the fleet (queued weights of game 8 stopped, the
+transform cancelled); crucible's wall rule to the islands with it.

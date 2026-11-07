@@ -76,6 +76,14 @@ pub const DIRECT_RANGE: f32 = 10.0;
 pub const SHELL_SPEED_DIRECT: f32 = 40.0;
 pub const DIRECT_DAMAGE: f32 = 45.0;
 pub const DIRECT_HIT_RADIUS: f32 = 0.8;
+/// A WALL TAKES THE GUN (LR 154; Paul, 6 November: "continue unifying the
+/// motor and the types of direct fire to take down a wall. Treadcore's
+/// rules should match crucible"): a direct shot aimed at a wall tile takes
+/// DIRECT_DAMAGE from it and from its neighbour along the wall, and at
+/// nothing both are rubble, as a mortar's splash leaves them. Two hits
+/// open a gap two tiles wide, a tank's way through: crucible's breakable
+/// wall (WALL_HP 90, its gun's 45). The splash still fells walls at once.
+pub const WALL_HEALTH: f32 = 90.0;
 
 // ---- the drone crew ----------------------------------------------------
 pub const BAY_FULL: Bay = Bay { recon: 2, interceptor: 6, strike: 3, longshot: 2 };

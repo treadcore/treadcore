@@ -1363,6 +1363,10 @@ pub struct World {
     pub wells: Vec<Well>,
     #[serde(default)]
     pub carries: Vec<Carry>,
+    /// What the gun has taken from wall tiles not yet fallen (LR 154): a
+    /// tile and its health left, in the order first struck.
+    #[serde(default)]
+    pub wall_hits: Vec<((i32, i32), f32)>,
     pub rng: Rng,
     pub next_id: EntityId,
     pub over: bool,
@@ -1405,6 +1409,7 @@ impl World {
         }
         let mut w = World {
             tick: 0,
+            wall_hits: Vec::new(),
             map,
             players: Vec::new(),
             tanks: Vec::new(),
@@ -1660,6 +1665,51 @@ impl World {
     fn set_terrain(&mut self, at: V2, t: Terrain) {
         if self.map.set(at, t).is_some() {
             self.events.push(Event::TerrainChanged { at: Map::tile_centre(at), to: t as u8 });
+            let tile = at.tile();
+            self.wall_hits.retain(|(p, _)| *p != tile);
+        }
+    }
+
+    /// A direct shot at a wall (LR 154): aimed at a wall tile, and that tile
+    /// the first on the line that stops fire. A shot at anything behind a
+    /// wall is still refused, as before.
+    fn wall_shot(&self, from: V2, at: V2) -> bool {
+        if self.map.at(at) != Terrain::Wall {
+            return false;
+        }
+        let n = (from.dist(at) * 2.0).ceil().max(1.0) as usize;
+        (1..=n).map(|i| from.lerp(at, i as f32 / n as f32)).find(|p| self.map.at(*p).blocks_fire()).map(|p| p.tile() == at.tile()).unwrap_or(false)
+    }
+
+    /// The gun's shell on a wall (WALL_HEALTH): the tile struck and its
+    /// neighbour along the wall, across the line of fire on the side of the
+    /// tile the shell met, lose DIRECT_DAMAGE; at nothing they are rubble.
+    fn hit_wall(&mut self, at: V2, from: V2) {
+        let (x, y) = at.tile();
+        let d = at - from;
+        let across = if d.x.abs() >= d.y.abs() { (0, 1) } else { (1, 0) };
+        let c = Map::tile_centre(at);
+        let off = (at.x - c.x) * across.0 as f32 + (at.y - c.y) * across.1 as f32;
+        let tile_at = |t: (i32, i32)| V2::new(t.0 as f32 + 0.5, t.1 as f32 + 0.5);
+        let mut tiles = vec![(x, y)];
+        let sides: [i32; 2] = if off >= 0.0 { [1, -1] } else { [-1, 1] };
+        if let Some(t) = sides.iter().map(|k| (x + across.0 * k, y + across.1 * k)).find(|t| self.map.at(tile_at(*t)) == Terrain::Wall) {
+            tiles.push(t);
+        }
+        for t in tiles {
+            let left = match self.wall_hits.iter_mut().find(|(p, _)| *p == t) {
+                Some((_, h)) => {
+                    *h -= DIRECT_DAMAGE;
+                    *h
+                }
+                None => {
+                    self.wall_hits.push((t, WALL_HEALTH - DIRECT_DAMAGE));
+                    WALL_HEALTH - DIRECT_DAMAGE
+                }
+            };
+            if left <= 0.0 {
+                self.set_terrain(tile_at(t), Terrain::Rubble);
+            }
         }
     }
     fn pillbox_mut(&mut self, id: EntityId) -> Option<&mut Pillbox> {
@@ -2007,7 +2057,7 @@ impl World {
                 if range > DIRECT_RANGE {
                     return self.reject(o, "beyond direct range");
                 }
-                if !self.map.line_clear(pos, *at) {
+                if !self.map.line_clear(pos, *at) && !self.wall_shot(pos, *at) {
                     return self.reject(o, "no line of sight");
                 }
                 let eta = ((range / SHELL_SPEED_DIRECT) * TICK_HZ as f32).ceil().max(1.0) as u32;
@@ -3901,6 +3951,9 @@ impl World {
                         } else if let Some(id) = self.structures.iter().filter(|x| x.alive() && !self.allied_opt(x.owner, s.owner) && x.pos.dist(s.impact) <= DIRECT_HIT_RADIUS + STRUCTURE_SIZE).map(|x| x.id).next() {
                             self.damage_structure(id, DIRECT_DAMAGE, Some(s.owner));
                             hits.push(id);
+                        } else if self.map.at(s.impact) == Terrain::Wall {
+                            // Nothing else there: the wall it was aimed at (LR 154).
+                            self.hit_wall(s.impact, s.from);
                         }
                     }
                 }
@@ -5474,6 +5527,61 @@ mod tests {
             w.step(&[Order { player: 0, cmd: Command::Launch { kind: DroneKind::Interceptor, task: DroneTask::Return } }]);
         }
         assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { .. })));
+    }
+
+    /// Grass round seat 0's tank and a wall across its way five tiles east, seven long (LR 154).
+    fn walled_ahead() -> (World, (i32, i32)) {
+        let mut w = world();
+        w.pillboxes.clear();
+        let (tx, ty) = w.tank_of(0).unwrap().pos.tile();
+        for dy in -5..=5 {
+            for dx in -2..=9 {
+                w.map.set(V2::new((tx + dx) as f32 + 0.5, (ty + dy) as f32 + 0.5), Terrain::Grass);
+            }
+        }
+        for dy in -3..=3 {
+            w.map.set(V2::new((tx + 5) as f32 + 0.5, (ty + dy) as f32 + 0.5), Terrain::Wall);
+        }
+        (w, (tx, ty))
+    }
+
+    fn shoot_and_land(w: &mut World, at: V2) {
+        while w.tank_of(0).unwrap().reload > 0 {
+            w.step(&[]);
+        }
+        w.step(&[Order { player: 0, cmd: Command::FireDirect { at } }]);
+        assert!(!w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "the shot at the wall is taken");
+        while !w.shells.is_empty() {
+            w.step(&[]);
+        }
+    }
+
+    #[test]
+    fn two_direct_hits_open_a_wall_a_tank_can_drive_through() {
+        let (mut w, (tx, ty)) = walled_ahead();
+        let tile = |dx: i32, dy: i32| w_at(tx + dx, ty + dy);
+        fn w_at(x: i32, y: i32) -> V2 {
+            V2::new(x as f32 + 0.5, y as f32 + 0.5)
+        }
+        // Aimed a little south of the tile's middle: its neighbour to the south goes with it.
+        let at = tile(5, 0) + V2::new(0.0, 0.2);
+        shoot_and_land(&mut w, at);
+        assert_eq!(w.map.at(tile(5, 0)), Terrain::Wall, "one hit: still standing");
+        assert_eq!(w.wall_hits.len(), 2, "the tile and its neighbour along the wall are struck");
+        shoot_and_land(&mut w, at);
+        assert_eq!(w.map.at(tile(5, 0)), Terrain::Rubble, "two hits: down");
+        assert_eq!(w.map.at(tile(5, 1)), Terrain::Rubble, "and its neighbour: a gap two tiles wide");
+        assert_eq!(w.map.at(tile(5, -1)), Terrain::Wall, "the other side stands");
+        assert!(w.wall_hits.is_empty(), "nothing left of the struck tiles to remember");
+    }
+
+    #[test]
+    fn a_shot_at_what_is_behind_a_wall_is_still_refused() {
+        let (mut w, (tx, ty)) = walled_ahead();
+        let beyond = V2::new((tx + 8) as f32 + 0.5, ty as f32 + 0.5);
+        w.step(&[Order { player: 0, cmd: Command::FireDirect { at: beyond } }]);
+        assert!(w.events.iter().any(|e| matches!(e, Event::Rejected { .. })), "no line of sight past the wall");
+        assert!(w.shells.is_empty());
     }
 
     #[test]

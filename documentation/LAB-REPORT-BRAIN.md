@@ -10314,3 +10314,23 @@ Paul: "We need to ammend the brainz coding to consider intrusion given its weigh
 **Tests**, two new (`lib.rs`): a shut base is breached at the first wall on the line, and there is no breach without a map; a gate on the line is driven through, and a gate round the far side is worth a breach at 1.5 and not at 4. treadcore-brain: 176 passed.
 
 **Not measured.** A storm begins after long contact with an enemy, so no single scenario shows the dial at work; the census does, and the line's search may now try it.
+
+## 154. A wall takes the gun: two direct hits open a gap, as crucible's walls do; the breach by the gun in range; game 9, 6 November
+
+Paul: "continue unifiying the motor and the types of direct fire to take down a wall. Treadcore's rules should match crucible. Crucible is made for Cude GPU equivalanet to train and compare with existing gladdiators and ai brinz." Asked which way to unify, he chose: "Treadcore takes direct fire".
+
+**Why.** The two games felled walls differently. Treadcore's walls fell only to a mortar's splash (a wall tile within 0.7 of the splash radius becomes rubble, concrete becomes wall); crucible has no mortar, and its gauntlet's walled base (B1) was breakable by its gun as a stand-in. A net trained on the card and a brain played in the game should meet the same walls.
+
+**The rule** (`treadcore-sim`, `WALL_HEALTH` 90, game 9):
+
+- A direct shot aimed at a wall tile, the first tile on its line that stops fire, is taken (`wall_shot`); a shot at anything behind a wall is still refused, as before.
+- Its shell takes `DIRECT_DAMAGE` (45) from the tile it strikes and from its neighbour along the wall, on the side of the tile it met (`hit_wall`); at nothing both are rubble. Two hits open a gap two tiles wide, a tank's way through. What each tile has taken is kept (`World::wall_hits`, serialized with a default) and forgotten when the tile changes.
+- The mortar's splash fells walls at once, as before. Concrete is not hurt by the gun.
+
+**Crucible matches** (crucible, the forest branch): every wall takes the shell that stops on it, in training and in every gauntlet file, and at `WALL_HP` (90) gone a gap of 3 tiles opens where it struck instead of the whole bar falling; what stands on either side is whole again. Crucible's tank is 2 tiles wide where treadcore's is 1.5, hence 3 for treadcore's 2. Crucible's shells stop on any wall they meet, aimed or not; treadcore's gun is refused unless aimed at the wall. That difference is kept: crucible's tank fires along its hull, with no aim point.
+
+**The brain.** The breach (`w_breach`, LR 153) uses the gun when the wall is within direct range and in its sight (`wall_in_sight`), the mortar beyond, and moves to two tiles inside the gun's reach otherwise. The brain aims at a wall only there, and `w_breach` is 0 by default, so the defaults play as they did on game 8's walls unless a shell is aimed at one.
+
+**Tests**, three new: two direct hits open a wall two tiles wide and the other side stands; a shot at what is behind a wall is still refused; the wall on the line is in the gun's sight and one behind it is not.
+
+**Game 9.** `GAME_VERSION` 8 to 9: the census of game 8 does not count for game 9 (the planner splits them); queued `weights` jobs of game 8 are moved to `stopped/` and the running transform cancelled when it ships.
