@@ -182,7 +182,7 @@ weights! {
     PatchConfidence "patch_confidence" 0.5, "patch: it overrides the rules only at this confidence or more";
     PatchReach "patch_reach" 10.0, "patch: at full output it moves the rules' point this far, tiles";
     DuelGate "duel_gate" 0.0, "duel: crucible's champion takes the fight only when its confidence is over this (styles 7 and 17, LR 140): 0 is the champion's own gate, higher keeps it to the fights it is sure of";
-    Ladder "ladder" 0.0, "auto: the ladder's order, defend base first in each (choice: as_built | expand_before_hunt | hunt_first | expand_first): as built, fortify, turrets, hunt, expand, guard (Rung::order)";
+    Ladder "ladder" 1.0, "auto: the ladder's order, defend base first in each (choice: as_built | expand_before_hunt | hunt_first | expand_first): as built, fortify, turrets, hunt, expand, guard (Rung::order)";
     Posture "w_posture" 0.95, "posture: the team's posture against the ladder's fixed order, 0 the order alone; a leaned rung climbs past fewer than 5 w / (1 - w) rungs above it, so from 0.5 the posture decides among the rungs that hold (LR 24)";
     PostureScored "posture_scored" 1.0, "posture: the five scores (1) against the threshold ladder of 12e (0), each posture's worth the blend of the two (LR 25)";
     PostureDefend "w_pos_defend" 0.75, "posture: worth of Defend's score, hostile worth within the base's alarm, half a tank full";
