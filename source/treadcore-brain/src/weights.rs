@@ -139,7 +139,7 @@ weights! {
     AdvanceBand "advance_band" 0.652128, "smooth: the advance scalar presses above this and falls back below minus this";
     Jitter "jitter" 2.81069, "smooth: a moving goal's shift under this is smoothed, over it taken at once, tiles";
     RetreatArmor "retreat_armor" 100.0, "survival: armour at or under this goes home (blended from the constant by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
-    RetreatShells "retreat_shells" 4.0, "survival: shells at or under this go home (blended from the constant 4 by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
+    RetreatShells "retreat_shells" 1.95657, "survival: shells at or under this go home (blended from the constant 4 by `w_smooth`, 0.05: at the defaults it barely acts, LR 86)";
     // Memory (LR 5).
     ForgetFor "forget_for" 120.0, "memory: seconds a given-up target stays given up";
     // Crossings and islands (LR 6.2).
@@ -168,7 +168,7 @@ weights! {
     PingHelpReach "ping_help_reach" 60.0, "pings: a call for help is answered this near, tiles";
     PingDefendReach "ping_defend_reach" 99.2672, "pings: a call to defend is answered this near, tiles";
     PingDefendHold "ping_defend_hold" 1.5, "pings: a defence is held this many times as long as a rally";
-    PingWarnReach "ping_warn_reach" 6.25, "pings: a warning moves a tank this near it, tiles";
+    PingWarnReach "ping_warn_reach" 24.6477, "pings: a warning moves a tank this near it, tiles";
     PingWarnFlee "ping_warn_flee" 15.0, "pings: a warned tank moves this far away, tiles";
     PingCautionReach "ping_caution_reach" 20.0, "pings: a rally this near a caution is dropped, tiles";
     PingOutnumbered "ping_outnumbered" 1.5, "pings: hostile tanks over ours by this ratio is a call for help";
@@ -275,7 +275,7 @@ weights! {
     WingLeash "wing_leash" 10.0, "wingman: nothing takes it further than this from its leader, tiles";
     WingGreed "wing_greed" 16.0, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
     WingThreat "wing_threat" 10.0, "wingman: anything hostile this near the leader is its first job, tiles";
-    WingAhead "wing_ahead" 16.0, "wingman: it hits what is ahead of the leader within this, tiles";
+    WingAhead "wing_ahead" 11.2168, "wingman: it hits what is ahead of the leader within this, tiles";
     WingStance "wing_stance" 0.0, "wingman: where its station is (choice: shadow | flank | screen): shadow behind the leader as built; flank off its side, each wingman its own side; screen ahead of it";
     Breach "w_breach" 0.0, "intrusion (LR 153; Paul, 6 November: \"amend the brainz coding to consider intrusion given its weights (and maybe temperment of bio)\"): a tank storming a base whose way in is shut, or longer than this many times the straight line, shells the first wall on that line (a mortar's splash brings a wall down) and goes through; 0 never, the brain as it was; the press temper scales it, as it scales press_odds";
 }
