@@ -155,7 +155,7 @@ impl Default for Tactics {
     fn default() -> Tactics {
         Tactics {
             w_near: 2.0,
-            near_scale: 30.0,
+            near_scale: 60.0,
             w_wounded: 1.2,
             w_finish: 0.552896,
             w_boat: 2.0,
@@ -185,7 +185,7 @@ impl Default for Tactics {
             kite_margin: 1.5,
             kite_in: 2.25,
             kite_in_alone: 6.0,
-            kite_turn: 0.8,
+            kite_turn: 0.878129,
             kite_spare: 0.4,
             shell_boxes: true,
             longshot_every: 0.625,

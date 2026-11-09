@@ -93,7 +93,7 @@ macro_rules! weights {
 weights! {
     // Tactics: target selection (tactics.rs; the 22 weights and their scales).
     Near "w_near" 2.0, "target: worth of nearness, w_near / (1 + d / near_scale)";
-    NearScale "near_scale" 30.0, "target: the distance scale of nearness, tiles";
+    NearScale "near_scale" 60.0, "target: the distance scale of nearness, tiles";
     Wounded "w_wounded" 1.2, "target: worth of its wounds";
     Finish "w_finish" 0.552896, "target: one direct shot from dead";
     Boat "w_boat" 2.0, "target: afloat, a boat sinks at one hit";
@@ -124,7 +124,7 @@ weights! {
     KiteMargin "kite_margin" 1.5, "kite: the waiting ring past the target's reach, tiles";
     KiteIn "kite_in" 2.25, "kite: the ring a step in ends on, tiles";
     KiteInAlone "kite_in_alone" 6.0, "kite: the ring a step in ends on with no friend inside `odds_r` of the target, tiles: alone, a shallow step in fires from near the target's reach and is out again before its gun is loaded; with friends, the step in closes (LR 145, the gauntlet's G21 and G22; Paul: \"kite and dance, unless we have backup\")";
-    KiteTurn "kite_turn" 0.8, "kite: seconds a step in takes beyond the drive";
+    KiteTurn "kite_turn" 0.878129, "kite: seconds a step in takes beyond the drive";
     KiteSpare "kite_spare" 0.4, "kite: seconds of the target's reload to spare";
     // Smoothing (LR 7).
     // `smooth` as a weight (LR 46; Paul, 20 October: "give it an
@@ -169,7 +169,7 @@ weights! {
     PingDefendReach "ping_defend_reach" 99.2672, "pings: a call to defend is answered this near, tiles";
     PingDefendHold "ping_defend_hold" 1.5, "pings: a defence is held this many times as long as a rally";
     PingWarnReach "ping_warn_reach" 24.6477, "pings: a warning moves a tank this near it, tiles";
-    PingWarnFlee "ping_warn_flee" 15.0, "pings: a warned tank moves this far away, tiles";
+    PingWarnFlee "ping_warn_flee" 12.2364, "pings: a warned tank moves this far away, tiles";
     PingCautionReach "ping_caution_reach" 20.0, "pings: a rally this near a caution is dropped, tiles";
     PingOutnumbered "ping_outnumbered" 1.5, "pings: hostile tanks over ours by this ratio is a call for help";
     HomePick "home_pick" 1.0, "resupply: which base a tank goes home to (choice: nearest | stocked): stocked by shells over the road, front.rs; a depot's store can run dry, so the nearest may be empty";
@@ -194,7 +194,7 @@ weights! {
     PostureExpand "w_pos_expand" 0.4, "posture: worth of Expand's score, the team's odds against what it sees, 1 at press_odds";
     // The dodge (lib.rs `Dodge`, LR 27): its numbers, once constants.
     DodgeHorizon "dodge_horizon" 1.08151, "dodge: seconds before a shell lands that the tank starts out from under it";
-    DodgeMargin "dodge_margin" 0.8, "dodge: tiles past the splash a shell's landing still counts as on the tank";
+    DodgeMargin "dodge_margin" 0.4, "dodge: tiles past the splash a shell's landing still counts as on the tank";
     DodgeClear "dodge_clear" 2.5, "dodge: tiles past the splash the tank drives to, across the shell's line";
     DodgeHold "dodge_hold" 0.0, "dodge: the share of the shell's flight the tank stays out, arrived or not (1), against only while it drives (0, before LR 27)";
     DodgeRelease "dodge_release" 1.0, "dodge: once at its point before the shell lands, an errand that would drive the tank back into the splash waits (1, the default since LR 54, Paul's choice), against every errand at once (0, before LR 53); thresholded at 0.5";
