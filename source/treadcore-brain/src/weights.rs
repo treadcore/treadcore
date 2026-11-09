@@ -265,7 +265,7 @@ weights! {
     TemperTrigger1 "temper_trigger_1" 0.0, "temper: how much the 60 s wave moves longshot_every, the seconds between its longshots, a share of it; bio.rs";
     TemperTrigger2 "temper_trigger_2" 0.0, "temper: how much the 73 s wave moves longshot_every, the seconds between its longshots, a share of it; bio.rs";
     TemperTrigger3 "temper_trigger_3" 0.0, "temper: how much the 86 s wave moves longshot_every, the seconds between its longshots, a share of it; bio.rs";
-    CrewStay "crew_stay" 1.0, "crew: who keeps building while the castle is unfinished, whatever the leader does (choice: none | guard | guard_one | guard_two): crew.rs";
+    CrewStay "crew_stay" 0.0, "crew: who keeps building while the castle is unfinished, whatever the leader does (choice: none | guard | guard_one | guard_two): crew.rs";
     CycleAll "cycle_all" 1.0, "cycle: who gives the base something after filling up (choice: leader_and_guard | every_tank): cycle.rs";
     // THE WINGMAN'S NUMBERS WERE CONSTANTS (Paul, 2 November: "a wingman ... following my moves, like an
     // escort mission"). A person's two wingmen kept station by five numbers nobody could move: not the
