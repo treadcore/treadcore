@@ -1,0 +1,72 @@
+# THE CAMP (crucible, 6 November; Paul: "a good set of rewards and cookies for after correctly solving the maze ...
+# the first items done right should score good reward, and at that point we can step through milestones like a
+# maze that unravels in complexity. Like driving onto a spot, then spawning castles at a predictable location after
+# stepping on the beacon, or taking over base, or castle"). Stages in order; each pays its reward, twice it when done
+# at once, falling to the reward itself at `quick` seconds; a dormant pillbox rises when the stage that spawns it
+# begins. Every position here is the file's to move.
+# K3, THE UNRAVELLING: round one bar to a beacon; on it, a castle rises inside a ring of wall with no gate, to be
+# broken into and taken -- the corner, then the breach, one after the other.
+name = "K3 the unravelling: round a bar to the beacon, then breach the ring and take its castle"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 110
+# THE LAST CHANCE (Paul: "Gladiator style, where you are given final chances to win and adapt"): killed before
+# the last stage, the learner rises once where that stage began, and the stages after pay half. A pass is still
+# every stage on the first life; the last chance is what training learns from a fall.
+last_chance = 0.5
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-26, 0]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [26, 26]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-15, -14]
+y = [-8, 8]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [7, 17]
+y = [-5, -4]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [7, 17]
+y = [4, 5]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [7, 8]
+y = [-4, 4]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [16, 17]
+y = [-4, 4]
+[[pillbox]]
+near = "centre"
+offset = [12, 0]
+owner = 1
+dormant = true
+[[stage]]
+goal = "reach"
+at = "centre"
+offset = [-8, 0]
+within = 2
+reward = 1
+quick = 10
+[[stage]]
+goal = "take"
+pillbox = 0
+reward = 3
+quick = 40
+spawn = [0]
+[[brain]]
+seat = 0
+kind = "net"

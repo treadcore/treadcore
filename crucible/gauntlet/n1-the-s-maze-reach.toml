@@ -1,0 +1,34 @@
+# The CUDA gauntlet, the route alone (crucible, 6 November). Every M file asks for its pillbox to be taken,
+# and no net takes even T1's in the open, so M0 to M3 measured the capture as much as the way. This is M1's
+# maze with the pillbox gone: passed when the tank ends within 3 tiles of where the pillbox stood (treadcore's
+# ends_near; the run stops when it gets there). Its tasks teach the route first (the curriculum, Gomez and
+# Miikkulainen); M0 to M3 then ask for the capture at its end.
+name = "N1 the S maze: reach its end"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 90
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-22, -21]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [-28, 28]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-30, 16]
+y = [-9, -8]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-16, 30]
+y = [8, 9]
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+ends_near = { seat = 0, at = "centre", offset = [22, 21], within = 3 }

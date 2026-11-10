@@ -1,0 +1,28 @@
+# The CUDA gauntlet (crucible, 6 November; Paul: "More Cuda gauntlets that match the style of the CPU
+# gauntlet"): one decision, little else in the arena, read by `crucible --gauntlet` for each segment's
+# champion and the newest milestone on the same runs. Treadcore's G21. Alone against a Raider that comes on from 9 tiles, the tank's gun reloading for its first 2 s. Decision: fight on your terms, kiting. Passed: more hits given than taken in 40 s, and alive.
+name = "C21 alone: kite the one that comes for you"
+cpu = "G21"
+reaction = "fire"
+floor = 0.0
+seconds = 40
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+reload = 2
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [9, 0]
+around = true
+toward = "seat:0"
+[[brain]]
+seat = 1
+kind = "raider"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+outscores = { by = 0, on = 1 }
+alive = { seat = 0 }

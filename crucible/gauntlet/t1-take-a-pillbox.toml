@@ -1,0 +1,25 @@
+# The CUDA gauntlet, player against environment (crucible, 6 November; Paul: "navigate a simple maze, Like a
+# maze of S shaped and 5 Shaped, and @ ... where we add takeover tasks like Pillbox capture, Base capture,
+# Building a base capture"). TAKE A PILLBOX. The enemy's pillbox 12 tiles off in the open. Decision: shoot it from outside its ring (8), then drive onto the rubble, which rises as the tank's own. Passed: it is the tank's within 30 s.
+name = "T1 take a pillbox"
+needs = "forest"
+reaction = "fire"
+floor = 0.0
+seconds = 30
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [0, 30]
+[[pillbox]]
+near = "seat:0"
+offset = [12, 0]
+owner = 1
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }

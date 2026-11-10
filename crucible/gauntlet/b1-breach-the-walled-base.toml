@@ -1,0 +1,51 @@
+# The CUDA gauntlet, the breach (crucible, 6 November; Paul: "a test for destroying a wall inbetween a base
+# which was walled off"). The enemy's pillbox in a ring of wall with no gap: the route sense says there is
+# no way (walled), so the way is through. The walls are breakable -- two direct hits a side, standing for
+# the mortar's splash that brings a wall down in treadcore. Decision: breach the side that faces you, shoot
+# the pillbox from outside its ring, and take it. Passed: it is the tank's within 60 s.
+name = "B1 breach the walled base"
+needs = "forest"
+reaction = "fire"
+floor = 0.0
+seconds = 60
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-16, 0]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [28, 28]
+[[pillbox]]
+near = "centre"
+owner = 1
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-5, 5]
+y = [4, 5]
+breakable = true
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-5, 5]
+y = [-5, -4]
+breakable = true
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-5, -4]
+y = [-4, 4]
+breakable = true
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [4, 5]
+y = [-4, 4]
+breakable = true
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }

@@ -1,0 +1,30 @@
+# The CUDA gauntlet (crucible, 6 November; Paul: "More Cuda gauntlets that match the style of the CPU
+# gauntlet"): one decision, little else in the arena, read by `crucible --gauntlet` for each segment's
+# champion and the newest milestone on the same runs. The trees, new: a Lurker waits on the edge of a grove 8 tiles off, hidden past 3 tiles, and shoots what comes into reach. Decision: do not walk into its gun. Passed: alive at 20 s.
+name = "F3 the lurker in the trees"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 20
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [8, 0]
+around = true
+[[grove]]
+near = "seat:1"
+toward = "seat:0"
+away = -1.5
+radius = 3.5
+[[brain]]
+seat = 1
+kind = "lurker"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+alive = { seat = 0 }

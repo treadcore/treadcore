@@ -1,0 +1,99 @@
+# THE CAMP (crucible, 6 November; Paul: "a good set of rewards and cookies for after correctly solving the maze ...
+# the first items done right should score good reward, and at that point we can step through milestones like a
+# maze that unravels in complexity. Like driving onto a spot, then spawning castles at a predictable location after
+# stepping on the beacon, or taking over base, or castle"). Stages in order; each pays its reward, twice it when done
+# at once, falling to the reward itself at `quick` seconds; a dormant pillbox rises when the stage that spawns it
+# begins. Every position here is the file's to move.
+# K2, THE CORRIDORS: nine blocks of wall, corridors five tiles wide between them, many ways through and no dead
+# end; two beacons in turn, then a castle rises in the far corner, to be taken.
+name = "K2 the corridors: two beacons, then the castle in the far corner"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 110
+# THE LAST CHANCE (Paul: "Gladiator style, where you are given final chances to win and adapt"): killed before
+# the last stage, the learner rises once where that stage began, and the stages after pay half. A pass is still
+# every stage on the first life; the last chance is what training learns from a fall.
+last_chance = 0.5
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-26, -26]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [-26, 26]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-20, -10]
+y = [-20, -10]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-5, 5]
+y = [-20, -10]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [10, 20]
+y = [-20, -10]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-20, -10]
+y = [-5, 5]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-5, 5]
+y = [-5, 5]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [10, 20]
+y = [-5, 5]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-20, -10]
+y = [10, 20]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [-5, 5]
+y = [10, 20]
+[[terrain]]
+near = "centre"
+kind = "wall"
+x = [10, 20]
+y = [10, 20]
+[[pillbox]]
+near = "centre"
+offset = [25, 25]
+owner = 1
+dormant = true
+[[stage]]
+goal = "reach"
+at = "centre"
+offset = [7.5, -15]
+within = 2
+reward = 1
+quick = 12
+[[stage]]
+goal = "reach"
+at = "centre"
+offset = [-7.5, 15]
+within = 2
+reward = 1
+quick = 12
+[[stage]]
+goal = "take"
+pillbox = 0
+reward = 2
+quick = 30
+spawn = [0]
+[[brain]]
+seat = 0
+kind = "net"

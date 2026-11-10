@@ -1,0 +1,65 @@
+# THE CAMP (crucible, 6 November; Paul: "a good set of rewards and cookies for after correctly solving the maze ...
+# the first items done right should score good reward, and at that point we can step through milestones like a
+# maze that unravels in complexity. Like driving onto a spot, then spawning castles at a predictable location after
+# stepping on the beacon, or taking over base, or castle"). Stages in order; each pays its reward, twice it when done
+# at once, falling to the reward itself at `quick` seconds; a dormant pillbox rises when the stage that spawns it
+# begins. Every position here is the file's to move.
+# K1, THE BEACON CAMP: a beacon past a grove; on it, a castle rises to be taken; taken, a second rises to raze.
+name = "K1 the beacon camp: a beacon, a castle that rises, a second to raze"
+needs = "forest"
+reaction = "move"
+floor = 0.0
+seconds = 100
+# THE LAST CHANCE (Paul: "Gladiator style, where you are given final chances to win and adapt"): killed before
+# the last stage, the learner rises once where that stage began, and the stages after pay half. A pass is still
+# every stage on the first life; the last chance is what training learns from a fall.
+last_chance = 0.5
+[[tank]]
+seat = 0
+at = "centre"
+offset = [-22, 0]
+heading = "any"
+[[tank]]
+seat = 1
+at = "centre"
+offset = [26, 26]
+[[grove]]
+near = "centre"
+offset = [-10, -2]
+radius = 3
+[[grove]]
+near = "centre"
+offset = [8, 14]
+radius = 3
+[[pillbox]]
+near = "centre"
+offset = [18, 6]
+owner = 1
+dormant = true
+[[pillbox]]
+near = "centre"
+offset = [-4, 20]
+owner = 1
+dormant = true
+[[stage]]
+goal = "reach"
+at = "centre"
+offset = [2, -4]
+within = 2
+reward = 1
+quick = 8
+[[stage]]
+goal = "take"
+pillbox = 0
+reward = 2
+quick = 25
+spawn = [0]
+[[stage]]
+goal = "destroy"
+pillbox = 1
+reward = 1.5
+quick = 20
+spawn = [1]
+[[brain]]
+seat = 0
+kind = "net"

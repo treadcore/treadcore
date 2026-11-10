@@ -1,0 +1,31 @@
+# The CUDA gauntlet, player against environment (crucible, 6 November; Paul: "navigate a simple maze, Like a
+# maze of S shaped and 5 Shaped, and @ ... where we add takeover tasks like Pillbox capture, Base capture,
+# Building a base capture"). TAKE THE BASE. The enemy's base: its tank parked two tiles from its pillbox, 14 tiles off. Decision: the gun first, then the tank, then the rubble. Passed: the pillbox is the tank's and held 5 s, within 45 s.
+name = "T2 take the base"
+needs = "forest"
+reaction = "fire"
+floor = 0.0
+seconds = 45
+[[tank]]
+seat = 0
+at = "centre"
+heading = "any"
+[[tank]]
+seat = 1
+at = "seat:0"
+offset = [16, 0]
+around = true
+[[pillbox]]
+near = "seat:1"
+toward = "seat:0"
+away = 2
+owner = 1
+[[brain]]
+seat = 1
+kind = "castle"
+[[brain]]
+seat = 0
+kind = "net"
+[expect]
+pillbox_owned_by = { pillbox = 0, seat = 0 }
+hold = { pillbox = 0, seconds = 5 }
