@@ -129,7 +129,7 @@ weights! {
     // Smoothing (LR 7).
     // `smooth` as a weight (LR 46; Paul, 20 October: "give it an
     // insignificant coefficient"), once the capability `smooth`.
-    SmoothShare "w_smooth" 0.05, "smooth: how much the bot smooths, 0 to 1. The move's desire vector and the retreat thresholds blend by it; the rung's and the turret's confirmation, the stance's advance scalar and resupply by the doctrine alone act above 0.5 (yes or no). 0 is the capability off, 1 on";
+    SmoothShare "w_smooth" 0.525, "smooth: how much the bot smooths, 0 to 1. The move's desire vector and the retreat thresholds blend by it; the rung's and the turret's confirmation, the stance's advance scalar and resupply by the doctrine alone act above 0.5 (yes or no). 0 is the capability off, 1 on";
     Alpha "alpha" 0.179532, "smooth: the move's desire vector, share of the new pull a think";
     Beta "beta" 0.652432, "smooth: the advance scalar, share of the new pull a think";
     Margin "margin" 0.15, "smooth: a challenger must beat the intent by this share";
