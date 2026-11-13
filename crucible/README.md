@@ -38,6 +38,7 @@ Options:
 | `--yard` | generations between yardstick reads (4,096 duels) | 10 |
 | `--export` | file for the final champion's weights | none |
 | `--import` | other islands' champions, into the hall first | none |
+| `--migrate` | champions put into the population itself, in its last places: parents if they rank | none |
 | `--ladder` | milestones, oldest first: opponents and a harder yardstick | none |
 | `--lad` | share of games against a milestone | 0.2 |
 | `--exam` | file for the final champion's score against each milestone | none |

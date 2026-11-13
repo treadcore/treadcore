@@ -2054,7 +2054,7 @@ struct Opt {
     float sigma = 0.03f, spar = 0.5f, lad = 0.2f, draw = -1.0f;
     int exam_eps = 2048;
     uint32_t seed = 1;
-    std::string out = "", save = "", load = "", exp = "", imp = "", ladder = "", exam = "";
+    std::string out = "", save = "", load = "", exp = "", imp = "", mig = "", ladder = "", exam = "";
     std::string trace = "", champs = "", opps = "";
     int trace_duels = 64;
     uint32_t trace_seed = 7;
@@ -2081,6 +2081,7 @@ static void usage() {
             "    (and the reference on the same runs) through every file of DIR, treadcore's gauntlet's words;\n"
             "  --export writes the last generation's champion (its weights, as floats);\n"
             "  --import puts other islands' champions into the hall of fame first;\n"
+            "  --migrate puts champions into the population itself, in its last places, to be bred from if they score;\n"
             "  --ladder loads milestones (oldest first): opponents with chance --lad, and a yardstick;\n"
             "  --exam writes the final champion's score against each milestone and the yardstick;\n"
             "  --draw is a drawn duel's worth in training (a win is +2, a loss -2, besides damage).\n"
@@ -2711,6 +2712,7 @@ int main(int argc, char** argv) {
         else if (a == "--load") o.load = val();
         else if (a == "--export") o.exp = val();
         else if (a == "--import") o.imp = val();
+        else if (a == "--migrate") o.mig = val();
         else if (a == "--ladder") o.ladder = val();
         else if (a == "--lad") o.lad = atof(val());
         else if (a == "--draw") o.draw = atof(val());
@@ -2867,6 +2869,30 @@ int main(int argc, char** argv) {
             n++;
         }
         printf("# imported %d champion(s) into the hall of fame (%d there)\n", n, hall_n);
+    }
+
+    // MIGRANTS (Paul, 13 November: "all the cuda need to work together ... they grow the net"). An
+    // import is an opponent: the islands met each other's best and never bred from it, so each card
+    // grew a net of its own, and the game refused every milestone of one of them while crediting
+    // another's. A migrant is put in the population, in its last places (the elite are first, so
+    // what it displaces is a child not yet scored). It is scored with the rest in the next
+    // generation and is a parent only if it ranks: an island keeps its own line where its own is
+    // better, and takes the other's where it is not.
+    if (!o.mig.empty()) {
+        std::vector<std::string> paths = split(o.mig);
+        int n = 0;
+        for (const std::string& path : paths) {
+            if (path.empty() || n >= o.pop - o.elite) continue;
+            std::vector<float> w;
+            std::string note;
+            if (!read_champion(path, w, &note)) {
+                fprintf(stderr, "# migrant %s: not a champion of this net, skipped\n", path.c_str());
+                continue;
+            }
+            CK(cudaMemcpy(pop + (size_t)(o.pop - 1 - n) * NW, w.data(), NW * sizeof(float), cudaMemcpyHostToDevice));
+            n++;
+        }
+        printf("# %d migrant(s) joined the population of %d\n", n, o.pop);
     }
 
     // The ladder: milestones, oldest first, kept on the card beside the hall.
