@@ -138,3 +138,10 @@ ore_low 0 20  # a depot holds 20 shells (DEPOT_STOCK_MAX)
 ore_reach 0 128  # the map
 oil_low 0 20  # a refinery holds what the tanks bring
 w_up_stores 0 4
+
+# A floor a family sets (Paul, 13 November 2026: "implement using best sop"; orrery's Every Block Checked,
+# section VIII). The posture is an auction of weight times score; a raid on the held ground scores Defend
+# 1, and in `a-raid-on-the-held-ground` the building posture bids exactly 0.75: at 0.75 Defend wins the
+# tie and the family holds 400 of 400, at 0.74 it holds 56. Under 0.75 no trial can pass, and the fleet
+# read each one through its stages and its held-out reads to find that out. The search may raise it.
+w_pos_defend 0.75 8
