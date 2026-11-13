@@ -580,10 +580,10 @@ impl Commander {
             t.w = crate::tactics::Tactics::from_weights(&s);
             t.w.kite &= s.w[W::Skill] >= 0.5;
             t.base = self.base;
-            t.confirm = s.smooth_on().then(|| (s.w[W::ConfirmTurret].round().clamp(1.0, 255.0) as u8, s.w[W::Margin]));
-            t.smooth = s.smooth_on().then(|| (s.w[W::Beta], s.w[W::AdvanceBand]));
+            t.confirm = s.smooth_part(W::SmoothTurret).then(|| (s.w[W::ConfirmTurret].round().clamp(1.0, 255.0) as u8, s.w[W::Margin]));
+            t.smooth = s.smooth_part(W::SmoothStance).then(|| (s.w[W::Beta], s.w[W::AdvanceBand]));
         }
-        self.inner.own_resupply = !s.smooth_on();
+        self.inner.own_resupply = !s.smooth_part(W::SmoothSupply);
         // A switch off puts away what the role gave the bot; on again, it gets
         // it back. BY THE SWITCH'S STATE, NOT ITS CHANGE: a role is dealt after
         // `new`, so with a switch off by default there is no change to see, and
@@ -1893,7 +1893,7 @@ impl Commander {
         // row (a think is a quarter second) while the old one still holds;
         // a threat to the base (DefendBase), or the old rung no longer
         // holding, changes it at once.
-        if self.settings.smooth_on() {
+        if self.settings.smooth_part(crate::weights::W::SmoothRung) {
             if let Some(cur) = self.rung.filter(|c| *c != rung && rung != Rung::DefendBase && self.ladder[c.index()] && holds[c.index()]) {
                 let need = (self.settings.w[crate::weights::W::Confirm].round().max(1.0) as Tick) * (TICK_HZ as Tick / 4);
                 let since = match self.rung_challenger {

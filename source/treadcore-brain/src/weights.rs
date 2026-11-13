@@ -278,6 +278,10 @@ weights! {
     WingAhead "wing_ahead" 16.0, "wingman: it hits what is ahead of the leader within this, tiles";
     WingStance "wing_stance" 0.0, "wingman: where its station is (choice: shadow | flank | screen): shadow behind the leader as built; flank off its side, each wingman its own side; screen ahead of it";
     Breach "w_breach" 0.0, "intrusion (LR 153; Paul, 6 November: \"amend the brainz coding to consider intrusion given its weights (and maybe temperment of bio)\"): a tank storming a base whose way in is shut, or longer than this many times the straight line, shells the first wall on that line (a mortar's splash brings a wall down) and goes through; 0 never, the brain as it was; the press temper scales it, as it scales press_odds";
+    SmoothTurret "smooth_turret" 0.0, "smooth, split (LR 157; Paul, 13 November: \"then the smooth\"): the turret's confirmation by itself (choice: with_w_smooth | off | on): as `w_smooth` has it (on above 0.5), or off, or on whatever `w_smooth` is";
+    SmoothStance "smooth_stance" 0.0, "smooth, split (LR 157): the stance's advance scalar by itself (choice: with_w_smooth | off | on)";
+    SmoothSupply "smooth_supply" 0.0, "smooth, split (LR 157): resupply by the doctrine alone, by itself (choice: with_w_smooth | off | on)";
+    SmoothRung "smooth_rung" 0.0, "smooth, split (LR 157): the rung's confirmation by itself (choice: with_w_smooth | off | on)";
 }
 
 /// The flat array of every weight.
@@ -533,6 +537,20 @@ impl Settings {
         self.smooth() > 0.5
     }
 
+    /// One yes-or-no part of smoothing, by its own choice (LR 157): as
+    /// `w_smooth` has it, or off, or on. `w_smooth` at 0.525 turned four
+    /// behaviours on at once and moved the blend tenfold; read held out
+    /// it gained three points a seat and gave up half a point of kills
+    /// less deaths, thirteen times, and nothing could say which part did
+    /// which. Each part is now a choice a census can read alone.
+    pub fn smooth_part(&self, part: W) -> bool {
+        match self.choice(part) {
+            1 => false,
+            2 => true,
+            _ => self.smooth_on(),
+        }
+    }
+
     /// The file form: every weight, and the capabilities.
     pub fn to_text(&self) -> String {
         let mut out = format!("caps = {}\n", self.caps.names());
@@ -731,6 +749,25 @@ mod tests {
         assert!(old.caps == Caps::BASELINE.without(Caps::KITE) && old.smooth_on());
         assert_eq!(Settings::parse("caps = baseline, -smooth").unwrap().smooth(), 0.0);
         assert!(Settings::parse("press_odds = nan").is_err());
+    }
+
+    /// The parts of smoothing (LR 157): each follows `w_smooth` until its
+    /// own choice says off or on, and one part's choice moves no other.
+    #[test]
+    fn each_part_of_smoothing_follows_w_smooth_until_its_own_choice_says() {
+        let parts = [W::SmoothTurret, W::SmoothStance, W::SmoothSupply, W::SmoothRung];
+        let mut s = Settings::default();
+        s.w[W::SmoothShare] = 0.05;
+        assert!(parts.iter().all(|p| s.choice(*p) == 0 && !s.smooth_part(*p)), "as built: every part with w_smooth, off");
+        s.w[W::SmoothShare] = 0.525;
+        assert!(parts.iter().all(|p| s.smooth_part(*p)), "w_smooth past a half turns on every part that follows it");
+        s.w[W::SmoothRung] = 1.0;
+        assert!(!s.smooth_part(W::SmoothRung) && s.smooth_part(W::SmoothTurret), "off is that part's alone");
+        s.w[W::SmoothShare] = 0.05;
+        s.w[W::SmoothSupply] = 2.0;
+        assert!(s.smooth_part(W::SmoothSupply) && !s.smooth_part(W::SmoothStance) && !s.smooth_part(W::SmoothRung), "on is that part's alone");
+        let t = Settings::parse("smooth_turret = 2").unwrap();
+        assert!(t.smooth_part(W::SmoothTurret) && !t.smooth_on());
     }
 
     /// `w_smooth` (LR 46): the default is near off, the desire vector

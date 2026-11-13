@@ -170,3 +170,7 @@ wing_threat = 10  # wingman: anything hostile this near the leader is its first 
 wing_ahead = 16  # wingman: it hits what is ahead of the leader within this, tiles
 wing_stance = 0  # wingman: where its station is (choice: shadow | flank | screen): shadow behind the leader as built; flank off its side, each wingman its own side; screen ahead of it
 w_breach = 0  # intrusion (LR 153; Paul, 6 November: "amend the brainz coding to consider intrusion given its weights (and maybe temperment of bio)"): a tank storming a base whose way in is shut, or longer than this many times the straight line, shells the first wall on that line (a mortar's splash brings a wall down) and goes through; 0 never, the brain as it was; the press temper scales it, as it scales press_odds
+smooth_turret = 0  # smooth, split (LR 157; Paul, 13 November: "then the smooth"): the turret's confirmation by itself (choice: with_w_smooth | off | on): as `w_smooth` has it (on above 0.5), or off, or on whatever `w_smooth` is
+smooth_stance = 0  # smooth, split (LR 157): the stance's advance scalar by itself (choice: with_w_smooth | off | on)
+smooth_supply = 0  # smooth, split (LR 157): resupply by the doctrine alone, by itself (choice: with_w_smooth | off | on)
+smooth_rung = 0  # smooth, split (LR 157): the rung's confirmation by itself (choice: with_w_smooth | off | on)

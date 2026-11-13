@@ -10358,3 +10358,15 @@ Paul, of orrery's question which housekeeping to do: "Fix 2 old client tests".
 **Why.** `treadcore-client`'s `keys::key_setup_shows_the_pick_and_the_wait` and `tune::the_page_moves_a_weight_and_puts_it_back` had failed since before LR 152. The first took the last action for `key-setup`; the fleet messages and `buy-stores` were added after it. The second expected alpha a step up to read 0.45, from a default of 0.4 that a promotion has since moved (0.1495).
 
 **What changed.** The key test asks for `key-setup`'s own row (`Action::ALL`'s position of it). The tuning test expects alpha's default plus one step, rounded as `Settings::nudge` rounds, and looks for that value on the marked row. treadcore-client: 34 passed.
+
+## 157. `w_smooth` split: each yes-or-no part of smoothing a choice of its own, 13 November
+
+Paul, of orrery's report *Always Forward* and its first step: "then the smooth. Do your recommendation."
+
+**Why.** `w_smooth` is one number doing five things. The move's desire vector and the retreat thresholds blend by it, and above 0.5 four yes-or-no behaviours turn on together: the turret's confirmation, the stance's advance scalar, resupply by the doctrine alone, and the rung's confirmation (`Settings::smooth_on`, four places in `commander.rs`). The fleet read `w_smooth = 0.525` held out thirteen times from 5 to 10 November at +2.00 to +4.32 a seat on the score, and each time it gave up 0.30 to 1.33 kills less deaths a seat, and orrery's trade rule refused it. Nothing could say which of the five carried the gain and which the loss.
+
+**What changed.** Four choices at the table's end, `smooth_turret`, `smooth_stance`, `smooth_supply` and `smooth_rung`, each `with_w_smooth | off | on`, and `Settings::smooth_part(W)`, which the four places now ask. At the defaults every part follows `w_smooth`, so no game plays differently: the pinned brain names the four at 0. The blend stays `w_smooth`'s own. orrery's A/B trials read every version of every choice each generation, so each part is read on by itself, against the defaults, with no other part moved.
+
+**Proved.** `each_part_of_smoothing_follows_w_smooth_until_its_own_choice_says`: as built, all with `w_smooth`; past a half, all on; off and on each that part's alone; `smooth_turret = 2` parses and leaves `w_smooth` off. treadcore-brain: 178 passed.
+
+**Still open.** Which part carries the +3 and which the lost fights: the fleet's reads will say. The blend is not split (the desire vector's share and the retreat thresholds' are one number still).
