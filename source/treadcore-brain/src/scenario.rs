@@ -1418,6 +1418,7 @@ mod tests {
         let mut files: Vec<_> = std::fs::read_dir(dir().join("families")).expect("scenarios/families/").filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().map(|x| x == "toml").unwrap_or(false)).collect();
         files.sort();
         let set = std::env::var("SCENARIO_SET").unwrap_or_default();
+        let give: f64 = std::env::var("FLOOR_GIVE").ok().and_then(|v| v.parse().ok()).unwrap_or(0.0);
         let mut low = Vec::new();
         for f in &files {
             let mut doc = parse(&std::fs::read_to_string(f).expect("the file")).unwrap_or_else(|e| panic!("{}: {}", f.display(), e));
@@ -1427,11 +1428,16 @@ mod tests {
             let started = std::time::Instant::now();
             let (held, p, se, why) = many(&doc, 1, runs).unwrap_or_else(|e| panic!("{}: {}", f.display(), e));
             let name = f.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            // A SMALL DROP PASSES, A COLLAPSE DOES NOT (LR 158; Paul, 13 November: "adapting the tests to just pass
+            // with current numbers"). `FLOOR_GIVE` is a share: a family within that of its floor holds, and
+            // says so, and scripts/floors.py moves its floor down to where it now stands. Under the floor by
+            // more it is UNDER, as before: `a-raid-on-the-held-ground` at 0 of 400 is no small drop. Unset, 0.
             let verdict = match floor {
-                Some(fl) if p < fl => {
+                Some(fl) if p < fl - give => {
                     low.push(format!("{}: {:.1}% under its floor {:.1}% ({})", name, 100.0 * p, 100.0 * fl, why.first().cloned().unwrap_or_default()));
                     "UNDER"
                 }
+                Some(fl) if p < fl => "holds, a small drop",
                 Some(_) => "holds",
                 None => "no floor",
             };

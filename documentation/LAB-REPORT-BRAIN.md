@@ -10370,3 +10370,15 @@ Paul, of orrery's report *Always Forward* and its first step: "then the smooth. 
 **Proved.** `each_part_of_smoothing_follows_w_smooth_until_its_own_choice_says`: as built, all with `w_smooth`; past a half, all on; off and on each that part's alone; `smooth_turret = 2` parses and leaves `w_smooth` off. treadcore-brain: 178 passed.
 
 **Still open.** Which part carries the +3 and which the lost fights: the fleet's reads will say. The blend is not split (the desire vector's share and the retreat thresholds' are one number still).
+
+## 158. A small drop passes and moves its floor; a collapse does not, 13 November
+
+Paul: "I want to accept the world, the best suggested way to move forward ... and adapting the tests to just pass with current numbers. Then we can progress forward." Asked which tests, he named all three kinds (the brain's unit tests, the gauntlet's floors, the families' floors); asked what a drop should do, "pass on a small drop".
+
+**Why.** A floor was a wall. A brain better by points a seat and a point under one file's floor was refused whole: seven candidates in a week on the gauntlet's G20 at 58% against 60%. And the day's own test of the split of `w_smooth` (LR 157) parsed `smooth_turret = 2` and expected `w_smooth` off, which is true only while the default is under a half: the promotion of `w_smooth = 0.525` failed on it the same morning.
+
+**What changed.** `every_family_holds_its_floor` reads `FLOOR_GIVE`, a share: a family under its floor by no more than that holds, and its line says "holds, a small drop"; under by more it is UNDER as before. `scripts/floors.py` reads the families' lines and the gauntlet's table against the scenario files: every file on its floor, or under it by no more than the give (0.05 unless said), passes, and with `--write` each small drop's floor is moved down to what it scored less a hundredth; anything under by more is a collapse, exits 1, and nothing is written. Floors only move down there; raising one is a person's. The test of the split names `w_smooth` where it means it.
+
+**Proved.** `floors.py` on a family at 52.0% of a 55% floor: passes, floor to 0.51; on `a-raid-on-the-held-ground` at 0 of 400: a collapse, exit 1, nothing written. treadcore-brain: 178 passed.
+
+**Still open.** A floor moved down stays down until a person raises it: a run of small drops can walk a floor a long way, five points at a time. orrery's watch lists what moved.

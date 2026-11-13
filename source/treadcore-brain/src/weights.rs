@@ -766,7 +766,9 @@ mod tests {
         s.w[W::SmoothShare] = 0.05;
         s.w[W::SmoothSupply] = 2.0;
         assert!(s.smooth_part(W::SmoothSupply) && !s.smooth_part(W::SmoothStance) && !s.smooth_part(W::SmoothRung), "on is that part's alone");
-        let t = Settings::parse("smooth_turret = 2").unwrap();
+        // w_smooth named: the fleet moves the defaults, and this claim is of a part on while w_smooth is off
+        // (13 November: the promotion of w_smooth 0.525 failed here, on the day this test was written).
+        let t = Settings::parse("w_smooth = 0.05\nsmooth_turret = 2").unwrap();
         assert!(t.smooth_part(W::SmoothTurret) && !t.smooth_on());
     }
 
