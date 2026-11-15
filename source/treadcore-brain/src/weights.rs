@@ -98,7 +98,7 @@ weights! {
     Finish "w_finish" 0.552896, "target: one direct shot from dead";
     Boat "w_boat" 2.0, "target: afloat, a boat sinks at one hit";
     Called "w_called" 0.8, "target: a teammate pinged it";
-    CalledFor "called_for" 15.0, "target: seconds a ping stays a call";
+    CalledFor "called_for" 7.5, "target: seconds a ping stays a call";
     Focus "w_focus" 0.5, "target: each teammate already on it";
     FocusCap "focus_cap" 2.0, "target: teammates on it before overkill (rounded)";
     Overkill "w_overkill" 0.6, "target: off for each teammate past the cap";
@@ -122,7 +122,7 @@ weights! {
     Flank "w_flank" 0.3, "stand: cost of leaving the flank's bearing";
     Kite "kite" 1.0, "kite: on (1) or off (0) (rounded)";
     KiteMargin "kite_margin" 0.894871, "kite: the waiting ring past the target's reach, tiles";
-    KiteIn "kite_in" 2.25, "kite: the ring a step in ends on, tiles";
+    KiteIn "kite_in" 1.125, "kite: the ring a step in ends on, tiles";
     KiteInAlone "kite_in_alone" 6.0, "kite: the ring a step in ends on with no friend inside `odds_r` of the target, tiles: alone, a shallow step in fires from near the target's reach and is out again before its gun is loaded; with friends, the step in closes (LR 145, the gauntlet's G21 and G22; Paul: \"kite and dance, unless we have backup\")";
     KiteTurn "kite_turn" 0.8, "kite: seconds a step in takes beyond the drive";
     KiteSpare "kite_spare" 0.4, "kite: seconds of the target's reload to spare";
@@ -133,7 +133,7 @@ weights! {
     Alpha "alpha" 0.179532, "smooth: the move's desire vector, share of the new pull a think";
     Beta "beta" 0.652432, "smooth: the advance scalar, share of the new pull a think";
     Margin "margin" 0.15, "smooth: a challenger must beat the intent by this share";
-    Confirm "confirm" 2.0, "smooth: thinks in a row a challenger must win (rounded)";
+    Confirm "confirm" 1.0, "smooth: thinks in a row a challenger must win (rounded)";
     ConfirmTurret "confirm_turret" 3.0, "smooth: picks in a row before the turret changes target (rounded)";
     Commit "commit" 0.1, "smooth: the intent's commitment bonus";
     AdvanceBand "advance_band" 0.652128, "smooth: the advance scalar presses above this and falls back below minus this";
@@ -251,7 +251,7 @@ weights! {
     ShellBoxes "shell_boxes" 1.0, "spending (LR 86, the cowboy, the default since): 1 shells a hostile pillbox in the indirect gun's reach whenever the gun is ready and no tank is shot at, 0 only those guarding a stormed depot (before LR 86); thresholded at 0.5";
     LongshotEvery "longshot_every" 1.25, "spending: seconds between a tank's longshots (5 since LR 86, 30 before)";
     LongshotAny "longshot_any" 1.0, "spending (1 since LR 86): 1 a longshot with no hostile structure to hit goes at the nearest hostile pillbox, else the target tank; 0 at structures only (before LR 86); thresholded at 0.5";
-    StrikesMax "strikes_max" 3.30238, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
+    StrikesMax "strikes_max" 4.0, "spending: a tank's strike drones out at once (3 since LR 86, 1 before, rounded)";
     Assist "assist" 1.0, "roles: a person's team gets a builder at 0.5 and over, else is dealt as a bots' team";
     TemperEngage1 "temper_engage_1" 0.0, "temper: how much the 60 s wave moves engage_odds, the bar under which a tank holds off, a share of it; bio.rs";
     TemperEngage2 "temper_engage_2" 0.0, "temper: how much the 73 s wave moves engage_odds, the bar under which a tank holds off, a share of it; bio.rs";
