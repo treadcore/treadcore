@@ -182,7 +182,7 @@ impl Default for Tactics {
             w_exposure: 0.605073,
             w_flank: 0.3,
             kite: true,
-            kite_margin: 1.5,
+            kite_margin: 0.894871,
             kite_in: 2.25,
             kite_in_alone: 6.0,
             kite_turn: 0.8,

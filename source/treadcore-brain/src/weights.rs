@@ -121,7 +121,7 @@ weights! {
     Exposure "w_exposure" 0.605073, "stand: cost per gun covering a firing point";
     Flank "w_flank" 0.3, "stand: cost of leaving the flank's bearing";
     Kite "kite" 1.0, "kite: on (1) or off (0) (rounded)";
-    KiteMargin "kite_margin" 1.5, "kite: the waiting ring past the target's reach, tiles";
+    KiteMargin "kite_margin" 0.894871, "kite: the waiting ring past the target's reach, tiles";
     KiteIn "kite_in" 2.25, "kite: the ring a step in ends on, tiles";
     KiteInAlone "kite_in_alone" 6.0, "kite: the ring a step in ends on with no friend inside `odds_r` of the target, tiles: alone, a shallow step in fires from near the target's reach and is out again before its gun is loaded; with friends, the step in closes (LR 145, the gauntlet's G21 and G22; Paul: \"kite and dance, unless we have backup\")";
     KiteTurn "kite_turn" 0.8, "kite: seconds a step in takes beyond the drive";
@@ -129,7 +129,7 @@ weights! {
     // Smoothing (LR 7).
     // `smooth` as a weight (LR 46; Paul, 20 October: "give it an
     // insignificant coefficient"), once the capability `smooth`.
-    SmoothShare "w_smooth" 0.525, "smooth: how much the bot smooths, 0 to 1. The move's desire vector and the retreat thresholds blend by it; the rung's and the turret's confirmation, the stance's advance scalar and resupply by the doctrine alone act above 0.5 (yes or no). 0 is the capability off, 1 on";
+    SmoothShare "w_smooth" 0.7625, "smooth: how much the bot smooths, 0 to 1. The move's desire vector and the retreat thresholds blend by it; the rung's and the turret's confirmation, the stance's advance scalar and resupply by the doctrine alone act above 0.5 (yes or no). 0 is the capability off, 1 on";
     Alpha "alpha" 0.179532, "smooth: the move's desire vector, share of the new pull a think";
     Beta "beta" 0.652432, "smooth: the advance scalar, share of the new pull a think";
     Margin "margin" 0.15, "smooth: a challenger must beat the intent by this share";
@@ -273,7 +273,7 @@ weights! {
     // census reads; the defaults are the constants, so nothing plays differently until someone moves one.
     EscortDistance "escort_distance" 4.0, "wingman: the station behind the leader, tiles";
     WingLeash "wing_leash" 10.0, "wingman: nothing takes it further than this from its leader, tiles";
-    WingGreed "wing_greed" 16.0, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
+    WingGreed "wing_greed" 31.8307, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
     WingThreat "wing_threat" 10.0, "wingman: anything hostile this near the leader is its first job, tiles";
     WingAhead "wing_ahead" 16.0, "wingman: it hits what is ahead of the leader within this, tiles";
     WingStance "wing_stance" 0.0, "wingman: where its station is (choice: shadow | flank | screen): shadow behind the leader as built; flank off its side, each wingman its own side; screen ahead of it";
