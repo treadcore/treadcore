@@ -111,7 +111,7 @@ weights! {
     // Tactics: the engagement and assignment.
     OddsR "odds_r" 14.0, "odds: tanks this near the fight count, tiles";
     PillboxWorth "pillbox_worth" 0.7, "odds: a hostile pillbox as a share of a tank";
-    StrikeWorth "strike_worth" 0.35, "odds: a hostile strike drone as a share of a tank";
+    StrikeWorth "strike_worth" 0.506675, "odds: a hostile strike drone as a share of a tank";
     EngageOdds "engage_odds" 0.353899, "odds: below these, with help coming, mass";
     PressOdds "press_odds" 1.33767, "odds: above these, close in";
     ComingR "coming_r" 221.036, "odds: teammates this near are coming, tiles";
@@ -167,7 +167,7 @@ weights! {
     PingStyle "ping_style" 2.0, "pings: what a team calls and answers (choice: as_built | help | warn | defend | all): as built the switch `pings` decides and every call is help; help calls for help when outnumbered and comes when called; warn warns off and takes warnings and cautions; defend calls and comes only for a base under attack; all of them, and it says what it saw";
     PingHelpReach "ping_help_reach" 60.0, "pings: a call for help is answered this near, tiles";
     PingDefendReach "ping_defend_reach" 99.2672, "pings: a call to defend is answered this near, tiles";
-    PingDefendHold "ping_defend_hold" 1.5, "pings: a defence is held this many times as long as a rally";
+    PingDefendHold "ping_defend_hold" 3.0, "pings: a defence is held this many times as long as a rally";
     PingWarnReach "ping_warn_reach" 6.25, "pings: a warning moves a tank this near it, tiles";
     PingWarnFlee "ping_warn_flee" 15.0, "pings: a warned tank moves this far away, tiles";
     PingCautionReach "ping_caution_reach" 20.0, "pings: a rally this near a caution is dropped, tiles";
@@ -212,7 +212,7 @@ weights! {
     GiveItem "w_give_item" 1.0, "cycle: one plan item for the base on each fill";
     GiveUpgrade "w_give_upgrade" 1.0, "cycle: one improvement for the base on each fill";
     Connect "w_connect" 1.0, "cycle: road tiles toward the next friendly base or pillbox";
-    ConnectTiles "connect_tiles" 5.12027, "cycle: road tiles laid on one visit at most";
+    ConnectTiles "connect_tiles" 6.22535, "cycle: road tiles laid on one visit at most";
     // Paul's answers of 18 October as scalars (ROADMAP 12h, LR 10).
     Mend "w_mend" 0.5, "improvement: worth of mending the most hurt pillbox of the base";
     Mine "w_mine" 0.677616, "improvement: worth of a mine on the moat";
@@ -272,7 +272,7 @@ weights! {
     // person, not a persona, not the search. As weights they are sliders on the U page and dials the
     // census reads; the defaults are the constants, so nothing plays differently until someone moves one.
     EscortDistance "escort_distance" 4.0, "wingman: the station behind the leader, tiles";
-    WingLeash "wing_leash" 10.0, "wingman: nothing takes it further than this from its leader, tiles";
+    WingLeash "wing_leash" 5.0, "wingman: nothing takes it further than this from its leader, tiles";
     WingGreed "wing_greed" 31.8307, "wingman: a pillbox or depot this near the leader is worth taking, tiles";
     WingThreat "wing_threat" 10.0, "wingman: anything hostile this near the leader is its first job, tiles";
     WingAhead "wing_ahead" 16.0, "wingman: it hits what is ahead of the leader within this, tiles";

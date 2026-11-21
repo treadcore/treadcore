@@ -172,7 +172,7 @@ impl Default for Tactics {
             focus_blend: 0.25,
             odds_r: 14.0,
             pillbox_worth: 0.7,
-            strike_worth: 0.35,
+            strike_worth: 0.506675,
             engage_odds: 0.353899,
             press_odds: 1.33767,
             coming_r: 221.036,
